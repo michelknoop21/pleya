@@ -4,6 +4,7 @@
 /// a local folder keeps no rating, and a TV has no share sheet.
 library;
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -58,6 +59,26 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(t.collections.collection), findsOneWidget);
       expect(find.text(t.playlists.playlist), findsOneWidget);
+    });
+
+    // Besluit Michel, "op alle apps": the TV menu is this menu, and the client can.
+    testWidgets('a TV offers Add to on Jellyfin too', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      await MenuHarness.open(tester, item: _item(MediaKind.movie), client: _jellyfin(), size: const Size(1920, 1080));
+      expect(find.text(t.common.addTo), findsOneWidget);
+    });
+
+    testWidgets('and to an owner Remove from collection', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      await MenuHarness.open(
+        tester,
+        item: _item(MediaKind.movie),
+        client: _jellyfin(),
+        canManage: true,
+        collectionId: 'col-1',
+        size: const Size(1920, 1080),
+      );
+      expect(find.text(t.collections.removeFromCollection), findsOneWidget);
     });
 
     testWidgets('NEGATIVE CONTROL: a backend without playlists has no row', (tester) async {

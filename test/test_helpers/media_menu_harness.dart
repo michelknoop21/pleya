@@ -110,9 +110,11 @@ class MenuHarness {
     bool phoneLook = false,
     String? collectionId,
     Size size = const Size(402, 874),
+    double bottomInset = 0,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
+    tester.view.padding = FakeViewPadding(bottom: bottomInset);
     addTearDown(tester.view.reset);
 
     await SettingsService.getInstance();

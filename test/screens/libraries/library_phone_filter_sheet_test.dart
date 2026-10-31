@@ -59,9 +59,11 @@ void main() {
     List<MediaFilter>? filters,
     Map<String, String> selected = const {},
     bool phoneStyle = true,
+    double bottomInset = 0,
   }) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;
+    tester.view.padding = FakeViewPadding(bottom: bottomInset);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       TranslationProvider(
@@ -163,6 +165,16 @@ void main() {
       final check = tester.widget<AppIcon>(find.descendant(of: rowOf(all), matching: find.byType(AppIcon)));
       expect(check.color, tokens(tester.element(find.text(all))).accent);
     });
+  });
+
+  testWidgets('a 48 pt Android navigation bar leaves the last row clear', (tester) async {
+    await open(
+      tester,
+      filters: libraryMenuOrderedFilters([_boolean('hdr', 'HDR'), _category('genre', 'Genre')]),
+      bottomInset: 48,
+    );
+    final last = tester.getRect(find.widgetWithText(LibraryPhoneSheetRow, t.unifiedCatalog.filters.genre));
+    expect(last.bottom, lessThanOrEqualTo(874 - 48));
   });
 
   group('choosing', () {

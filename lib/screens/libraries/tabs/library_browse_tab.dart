@@ -965,7 +965,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         LibraryPhoneSheetHeading(title: t.libraries.groupings.title),
         Flexible(
           child: SingleChildScrollView(
-            padding: LibraryPhoneMetrics.sheetListPadding,
+            padding: LibraryPhoneMetrics.sheetListPaddingOf(context),
             child: Column(
               mainAxisSize: .min,
               children: [
@@ -1823,7 +1823,9 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         LibraryHeaderAction(
           label: t.libraries.sort,
           automationId: AutomationIds.libraryFilterSort,
-          value: _effectiveSort?.title,
+          // The pill always names the order in force. The chip elsewhere keeps
+          // saying only what someone chose: its sheet has no row selected yet.
+          value: _phoneLook ? _effectiveSort?.title : _selectedSort?.title,
           sortDescending: _isSortDescending,
           focusNode: _sortChipFocusNode,
           onPressed: () {

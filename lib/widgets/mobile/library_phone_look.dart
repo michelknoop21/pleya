@@ -7,9 +7,12 @@
 /// instead of guessing from the platform.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../services/settings_service.dart';
+import '../overlay_sheet_geometry.dart';
 
 /// Marks a subtree as drawn in the iPhone library look.
 class LibraryPhoneLook extends InheritedWidget {
@@ -94,8 +97,13 @@ class LibraryPhoneMetrics {
   static const double sheetPlayIconScale = 1.2;
   static const double sheetListBottomInset = 32;
 
-  /// The first row sits directly under the heading, 46 pt from its centre.
-  static const EdgeInsets sheetListPadding = EdgeInsets.only(bottom: sheetListBottomInset);
+  /// The first row sits directly under the heading, 46 pt from its centre. The
+  /// bottom keeps the reference's distance, or more where the device's own inset
+  /// reaches further than the sheet's 8 pt off the edge: a 48 pt Android
+  /// navigation bar would otherwise cover the last row by 8 pt.
+  static EdgeInsets sheetListPaddingOf(BuildContext context) => EdgeInsets.only(
+    bottom: math.max(sheetListBottomInset, MediaQuery.paddingOf(context).bottom - floatingSheetEdgeInset),
+  );
 
   /// The reference sets every text of the look with no tracking, where the
   /// theme's text styles add some.

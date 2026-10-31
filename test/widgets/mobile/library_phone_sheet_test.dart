@@ -24,10 +24,15 @@ List<MediaSort> _sorts(int n) => [for (var i = 0; i < n; i++) MediaSort(key: 'k$
 void main() {
   late BuildContext screen;
 
-  Future<void> open(WidgetTester tester, Size size, Widget Function(BuildContext) builder) async {
+  Future<void> open(
+    WidgetTester tester,
+    Size size,
+    Widget Function(BuildContext) builder, {
+    double bottomInset = 34,
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
-    tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
+    tester.view.padding = FakeViewPadding(top: 47, bottom: bottomInset);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       TranslationProvider(
@@ -95,6 +100,23 @@ void main() {
 
   Rect surfaceRect(WidgetTester tester, Finder inside) =>
       tester.getRect(find.ancestor(of: inside, matching: find.byType(Material)).first);
+
+  group('the bottom inset of the device', () {
+    const screen = Size(402, 874);
+
+    Future<double> lastRowBottom(WidgetTester tester, double inset) async {
+      await open(tester, screen, (_) => sortSheet(3), bottomInset: inset);
+      return tester.getRect(find.text('Sort 2')).center.dy + LibraryPhoneMetrics.sheetRowHeight / 2;
+    }
+
+    testWidgets('a 48 pt Android navigation bar leaves the last row clear', (tester) async {
+      expect(await lastRowBottom(tester, 48), lessThanOrEqualTo(screen.height - 48));
+    });
+
+    testWidgets('NEGATIVE CONTROL: the home indicator keeps the reference\'s 32 pt', (tester) async {
+      expect(await lastRowBottom(tester, 34), closeTo(screen.height - 8 - 32, 0.5));
+    });
+  });
 
   for (final size in _sizes) {
     group('${size.width.toInt()} x ${size.height.toInt()}', () {

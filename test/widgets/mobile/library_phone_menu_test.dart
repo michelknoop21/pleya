@@ -182,6 +182,12 @@ void main() {
       expect(label.center.dy, closeTo(first.center.dy, 0.5));
     });
 
+    testWidgets('a 48 pt Android navigation bar leaves the last row clear', (tester) async {
+      await MenuHarness.open(tester, item: _movie(), client: MenuFakeClient(), phoneLook: true, bottomInset: 48);
+      final rows = inSheet(find.byType(LibraryPhoneSheetActionRow));
+      expect(tester.getRect(rows.last).bottom, lessThanOrEqualTo(874 - 48));
+    });
+
     testWidgets('a film as the owner reads as in the reference, with the rows that exist', (tester) async {
       await MenuHarness.open(
         tester,

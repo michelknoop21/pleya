@@ -73,7 +73,7 @@ class LibraryPhoneFilterMenu extends StatelessWidget {
         ),
         Flexible(
           child: SingleChildScrollView(
-            padding: LibraryPhoneMetrics.sheetListPadding,
+            padding: LibraryPhoneMetrics.sheetListPaddingOf(context),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -142,7 +142,7 @@ class LibraryPhoneFilterValues extends StatelessWidget {
               ? ListView.builder(
                   primary: false,
                   shrinkWrap: true,
-                  padding: LibraryPhoneMetrics.sheetListPadding,
+                  padding: LibraryPhoneMetrics.sheetListPaddingOf(context),
                   itemCount: _skeletonRows,
                   itemBuilder: (_, _) => const SkeletonListTile(),
                 )
@@ -150,7 +150,7 @@ class LibraryPhoneFilterValues extends StatelessWidget {
                   controller: scrollController,
                   primary: false,
                   shrinkWrap: true,
-                  padding: LibraryPhoneMetrics.sheetListPadding,
+                  padding: LibraryPhoneMetrics.sheetListPaddingOf(context),
                   itemCount: values.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) {

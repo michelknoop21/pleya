@@ -187,7 +187,7 @@ class _LibraryPhoneMenuSheetState extends State<LibraryPhoneMenuSheet> {
           ),
           Flexible(
             child: SingleChildScrollView(
-              padding: LibraryPhoneMetrics.sheetListPadding,
+              padding: LibraryPhoneMetrics.sheetListPaddingOf(context),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

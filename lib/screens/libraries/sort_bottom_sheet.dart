@@ -139,7 +139,9 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
             controller: _scrollController,
             primary: false,
             shrinkWrap: true,
-            padding: widget.phoneStyle ? LibraryPhoneMetrics.sheetListPadding : const EdgeInsets.symmetric(vertical: 8),
+            padding: widget.phoneStyle
+                ? LibraryPhoneMetrics.sheetListPaddingOf(context)
+                : const EdgeInsets.symmetric(vertical: 8),
             itemCount: widget.sortOptions.length,
             itemBuilder: (context, index) {
               final sort = widget.sortOptions[index];

@@ -3,10 +3,13 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/watch_target.dart';
+import 'package:pleya/utils/media_server_http_client.dart';
 
 import '../test_helpers/media_menu_harness.dart';
 
@@ -23,6 +26,29 @@ MediaItem _item(String id, MediaKind kind, {int? index, int? leaves, int? viewed
     );
 
 MediaItem _episode(String id, {bool watched = false}) => _item(id, MediaKind.episode, viewCount: watched ? 1 : 0);
+
+/// What a Jellyfin season answers on its own route: no missing or virtual
+/// episodes. `fetchChildren` lists those too, as files that do not exist.
+class _PagingClient extends MenuFakeClient implements SeasonEpisodePagingClient {
+  _PagingClient({required super.children, required this.episodes});
+
+  final List<MediaItem> episodes;
+  final seriesIds = <String>[];
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchSeasonEpisodesPage(
+    String seriesId,
+    String seasonId, {
+    int? start,
+    int? size,
+    AbortController? abort,
+  }) async {
+    seriesIds.add(seriesId);
+    final from = start ?? 0;
+    final end = (from + (size ?? episodes.length)).clamp(0, episodes.length);
+    return LibraryPage(items: episodes.sublist(from.clamp(0, end), end), totalCount: episodes.length, offset: from);
+  }
+}
 
 void main() {
   final show = MediaItem(
@@ -83,6 +109,64 @@ void main() {
       },
     );
     expect((await resolveWatchTarget(client, season))?.id, 'e2');
+  });
+
+  group('a client with its own season route', () {
+    final placeholder = _episode('missing-placeholder');
+
+    test('a season does not start a placeholder without a file', () async {
+      final season = _item('s1', MediaKind.season, index: 1).copyWith(parentId: 'show');
+      final client = _PagingClient(
+        children: {
+          's1': [placeholder, _episode('real')],
+        },
+        episodes: [_episode('real')],
+      );
+      expect((await resolveWatchTarget(client, season))?.id, 'real');
+      expect(client.seriesIds, ['show']);
+    });
+
+    test('nor does a show that falls back to its seasons', () async {
+      final client = _PagingClient(
+        children: {
+          'show': [_item('s1', MediaKind.season, index: 1, leaves: 1)],
+          's1': [placeholder, _episode('real')],
+        },
+        episodes: [_episode('real')],
+      );
+      expect((await resolveWatchTarget(client, show))?.id, 'real');
+      expect(client.seriesIds, ['show']);
+    });
+
+    test('a season longer than one page still reaches its first episode to watch', () async {
+      final season = _item('s1', MediaKind.season, index: 1).copyWith(parentId: 'show');
+      final client = _PagingClient(
+        children: const {},
+        episodes: [for (var i = 0; i < 150; i++) _episode('e$i', watched: true), _episode('next')],
+      );
+      expect((await resolveWatchTarget(client, season))?.id, 'next');
+    });
+
+    test('a season watched to the end starts again at its first episode', () async {
+      final season = _item('s1', MediaKind.season, index: 1).copyWith(parentId: 'show');
+      final client = _PagingClient(
+        children: const {},
+        episodes: [for (var i = 0; i < 150; i++) _episode('e$i', watched: true)],
+      );
+      expect((await resolveWatchTarget(client, season))?.id, 'e0');
+    });
+
+    test('NEGATIVE CONTROL: without a known series the season route cannot be asked', () async {
+      final season = _item('s1', MediaKind.season, index: 1);
+      final client = _PagingClient(
+        children: {
+          's1': [_episode('from-children')],
+        },
+        episodes: [_episode('paged')],
+      );
+      expect((await resolveWatchTarget(client, season))?.id, 'from-children');
+      expect(client.seriesIds, isEmpty);
+    });
   });
 
   test('NEGATIVE CONTROL: a show without episodes has no target', () async {

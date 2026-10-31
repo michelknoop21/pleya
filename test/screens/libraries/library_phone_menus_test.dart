@@ -5,6 +5,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_filter_result.dart';
@@ -124,8 +126,8 @@ void main() {
     }
   }
 
-  Future<void> pumpBrowse(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(402, 874);
+  Future<void> pumpBrowse(WidgetTester tester, {bool phoneLook = true}) async {
+    tester.view.physicalSize = phoneLook ? const Size(402, 874) : const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.runAsync(() async {
@@ -149,8 +151,8 @@ void main() {
             ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
           ],
           child: MaterialApp(
-            theme: monoTheme(dark: true),
-            home: const OverlaySheetHost(child: LibrariesScreen(phoneLook: true)),
+            theme: phoneLook ? monoTheme(dark: true) : monoTheme(dark: true).copyWith(platform: TargetPlatform.macOS),
+            home: OverlaySheetHost(child: LibrariesScreen(phoneLook: phoneLook)),
           ),
         ),
       ),
@@ -190,5 +192,35 @@ void main() {
     ];
     expect(labels, [t.unifiedCatalog.sort.fields.title, t.unifiedCatalog.sort.fields.addedAt, 'Random']);
     expect(find.text(t.common.clear), findsNothing, reason: 'no sort of its own yet, so nothing to clear');
+  });
+
+  group('desktop, which has no pill and no rows of its own for the default sort', () {
+    Finder chip(String id) => find.byWidgetPredicate((w) => w is AutomationNode && w.id == id);
+
+    testWidgets('the sort chip names a sort someone chose, not the server\'s first entry', (tester) async {
+      await pumpBrowse(tester, phoneLook: false);
+      final sort = chip(AutomationIds.libraryFilterSort);
+      expect(sort, findsOneWidget);
+      expect(
+        find.descendant(of: sort, matching: find.textContaining(t.unifiedCatalog.sort.fields.title)),
+        findsNothing,
+      );
+    });
+
+    testWidgets('NEGATIVE CONTROL: the chosen sort does show', (tester) async {
+      await tester.runAsync(() async {
+        await SettingsService.getInstance();
+        final storage = await StorageService.getInstance();
+        await storage.saveLibrarySort(_films.globalKey, 'addedAt', descending: true);
+      });
+      await pumpBrowse(tester, phoneLook: false);
+      expect(
+        find.descendant(
+          of: chip(AutomationIds.libraryFilterSort),
+          matching: find.textContaining(t.unifiedCatalog.sort.fields.addedAt),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }
