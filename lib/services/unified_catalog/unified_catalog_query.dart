@@ -216,25 +216,29 @@ int? _tallestVersion(MediaItem item) {
 /// Whether [item] has anything to sort on under [field].
 bool unifiedCatalogHasSortValue(MediaItem item, UnifiedCatalogSortField field) => _sortKey(item, field) != null;
 
-/// Whether an item without a key under [field] truly has no value on [backend],
-/// so that a server sending it first can be corrected.
+/// Whether an item without a key under [field] truly has no value on [backend].
 ///
-/// False where the server sorts on something the mapped item does not carry:
+/// True means the merge can both correct a server that sends such an item first
+/// and rank it against another source. False where the server sorts series on
+/// something the mapped item does not carry:
 ///
 /// * Jellyfin orders series on `SeriesDatePlayed`, worked out from the episodes,
 ///   while the item's own `UserData.LastPlayedDate` stays empty on a series.
 /// * Pleya Server orders a show's last played date and duration on its episodes
-///   (`keyExpression`, `subjectKey` in `catalog/cursor.go`). Those two also carry
-///   a sentinel that puts titles without a value last, in both directions.
+///   (`keyExpression`, `subjectKey` in `catalog/cursor.go`), and those two carry a
+///   sentinel that puts titles without a value last in both directions.
 ///
-/// Moving such an item would break an order only the server can know. Never for
-/// title, which holds nothing back: an untitled row is rare, and the comparator
-/// sinks it anyway.
-bool unifiedCatalogKeyProvesNoValue(UnifiedCatalogSortField field, MediaKind kind, MediaBackend backend) =>
+/// One library then keeps the server's order untouched, and two sources cannot
+/// be ranked on that field at all: `unifiedFilterCapabilitiesFor` takes it away.
+/// [kind] is null where a caller asks without a kind, which reads as films.
+///
+/// Never for title, which holds nothing back: an untitled row is rare, and the
+/// comparator sinks it anyway.
+bool unifiedCatalogKeyProvesNoValue(UnifiedCatalogSortField field, MediaKind? kind, MediaBackend backend) =>
     switch ((field, backend)) {
       (UnifiedCatalogSortField.title, _) => false,
-      (UnifiedCatalogSortField.recentlyWatched, MediaBackend.jellyfin) => kind != MediaKind.show,
-      (UnifiedCatalogSortField.recentlyWatched || UnifiedCatalogSortField.duration, MediaBackend.pleyaServer) => false,
+      (UnifiedCatalogSortField.recentlyWatched, MediaBackend.jellyfin || MediaBackend.pleyaServer) ||
+      (UnifiedCatalogSortField.duration, MediaBackend.pleyaServer) => kind != MediaKind.show,
       _ => true,
     };
 

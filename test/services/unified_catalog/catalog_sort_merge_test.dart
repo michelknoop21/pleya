@@ -228,16 +228,56 @@ void main() {
       expect(titles, ['Zebra', 'Monk', 'Marked', 'Alias']);
     });
 
-    test('in a merge each server keeps its own order', () async {
-      MediaItem plex(String title, int? at) =>
-          PlexMediaItem(id: title, kind: MediaKind.show, title: title, lastViewedAt: at, serverId: 'p');
-      final titles = await _merge({
-        _library('p', MediaBackend.plex): [plex('P9', 9), plex('P5', 5), plex('PNone', null)],
-        _library('j', MediaBackend.jellyfin): [jellyfinSeries('Zebra'), jellyfinSeries('Monk')],
-      }, recentSeries);
-      expect(titles.where((t) => t!.startsWith('P')), ['P9', 'P5', 'PNone']);
-      expect(titles.where((t) => !t!.startsWith('P')), ['Zebra', 'Monk']);
-      expect(titles.take(2), ['P9', 'P5']);
+    group('two sources cannot be ranked on a key one of them cannot read', () {
+      UnifiedFilterCapabilities capabilities(List<MediaBackend> backends) =>
+          unifiedFilterCapabilitiesFor(backends, kind: MediaKind.show);
+
+      test('Recent bekeken goes for Jellyfin series beside Plex, and the page reads title', () async {
+        final caps = capabilities([MediaBackend.plex, MediaBackend.jellyfin]);
+        expect(caps.supportsSort(UnifiedCatalogSortField.recentlyWatched), isFalse);
+        final query = buildUnifiedCatalogQuery(
+          kind: MediaKind.show,
+          preferences: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.recentlyWatched),
+          capabilities: caps,
+        );
+        expect(query.sortField, UnifiedCatalogSortField.title);
+        MediaItem plex(String title, int? at) =>
+            PlexMediaItem(id: title, kind: MediaKind.show, title: title, lastViewedAt: at, serverId: 'p');
+        final titles = await _merge({
+          _library('p', MediaBackend.plex): [plex('Alias', 9), plex('Monk', 5)],
+          _library('j', MediaBackend.jellyfin): [jellyfinSeries('Lost'), jellyfinSeries('Zebra')],
+        }, query);
+        expect(titles, ['Alias', 'Lost', 'Monk', 'Zebra']);
+      });
+
+      test('two Jellyfin libraries of series lose it too', () {
+        final caps = capabilities([MediaBackend.jellyfin, MediaBackend.jellyfin]);
+        expect(caps.supportsSort(UnifiedCatalogSortField.recentlyWatched), isFalse);
+      });
+
+      test('Pleya Server loses Duur on series beside another source', () {
+        final caps = capabilities([MediaBackend.jellyfin, MediaBackend.pleyaServer]);
+        expect(caps.supportsSort(UnifiedCatalogSortField.duration), isFalse);
+      });
+
+      test('one library keeps them, because there is nothing to rank against', () {
+        expect(capabilities([MediaBackend.jellyfin]).supportsSort(UnifiedCatalogSortField.recentlyWatched), isTrue);
+        expect(capabilities([MediaBackend.pleyaServer]).supportsSort(UnifiedCatalogSortField.duration), isTrue);
+      });
+
+      test('films carry the value, so they keep it in a merge', () {
+        final caps = unifiedFilterCapabilitiesFor([
+          MediaBackend.plex,
+          MediaBackend.jellyfin,
+          MediaBackend.pleyaServer,
+        ], kind: MediaKind.movie);
+        expect(caps.supportsSort(UnifiedCatalogSortField.recentlyWatched), isTrue);
+      });
+
+      test('title always stays, whichever sources take part', () {
+        final caps = capabilities([MediaBackend.plex, MediaBackend.jellyfin, MediaBackend.pleyaServer]);
+        expect(caps.supportsSort(UnifiedCatalogSortField.title), isTrue);
+      });
     });
 
     test('Pleya Server series run on episodes the show state does not carry', () async {

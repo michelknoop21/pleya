@@ -157,7 +157,7 @@ bool _listEquals<T>(List<T> a, List<T> b) =>
 /// its own to order by.
 ///
 /// [backends] holds one entry per participating library, so its length says
-/// whether a merge is needed at all: see [_singleSourceSortFields].
+/// whether a merge is needed at all: see [_sortsAcrossSources].
 UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> backends, {MediaKind? kind}) {
   final sources = backends.toList();
   final all = sources.toSet();
@@ -169,11 +169,19 @@ UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> ba
     sortFields: {
       for (final field in UnifiedCatalogSortField.values)
         if (all.every((backend) => _sortFieldsOf(backend, kind).contains(field)) &&
-            (sources.length == 1 || !_singleSourceSortFields.contains(field)))
+            (sources.length == 1 || _sortsAcrossSources(field, all, kind)))
           field,
     },
   );
 }
+
+/// Whether more than one source can be merged on [field]: the comparator has to
+/// be able to read it on every backend taking part, or a whole source sinks
+/// below the others on a value only its server knows.
+bool _sortsAcrossSources(UnifiedCatalogSortField field, Set<MediaBackend> backends, MediaKind? kind) =>
+    field == UnifiedCatalogSortField.title ||
+    (!_singleSourceSortFields.contains(field) &&
+        backends.every((backend) => unifiedCatalogKeyProvesNoValue(field, kind, backend)));
 
 /// Sorts that cannot be merged, because the sources do not promise the order the
 /// comparator reads.
