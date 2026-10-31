@@ -20,6 +20,7 @@ DEC-XXX (Eén titel over servers heen), Roadmap A-07, op branch `feat/unified-on
   gegevens komen van de gekozen server; menu-acties op die pagina werken op de gekozen bron.
 - Ook opgelost: de TV-picker gaf ongestempelde bronnen door, waardoor de hoofdbron na een eerste keuze
   de pagina niet hield, en een bron die de picker pas later vond gaf een `StateError` in `buildRouteContext`.
+- Op Apple TV was Wijzigen niet met de afstandsbediening te bereiken: de actierij stuurde DOWN er voorbij.
 - Grenzen: downloaden op de detailpagina blijft op de hoofdbron, een externe speler schrijft niet door.
 
 ## [2026-10-29] Unified: Pleya Server voegt mee op bewezen TMDB-nummers

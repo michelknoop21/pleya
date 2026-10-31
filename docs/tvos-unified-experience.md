@@ -1318,7 +1318,8 @@ De detailpagina ontvangt optioneel een `UnifiedMediaRouteContext`. Wanneer meer 
 Bron: NAS • Films 4K              [ Wijzigen ]
 ```
 
-Regels: Wijzigen opent dezelfde source picker in detailsmodus. Blijft de hoofdbron de pagina, dan
+Regels: Wijzigen is op TV de focusstop onder de actierij; DOWN gaat daarna naar de seizoenen of de
+rail, UP terug naar Afspelen. Wijzigen opent dezelfde source picker in detailsmodus. Blijft de hoofdbron de pagina, dan
 geeft de picker de nieuwe keuze terug aan de open pagina: er wordt niets herladen, de route blijft
 staan en de focus keert terug op Wijzigen. Alleen technische gegevens en sporen wisselen mee; die
 komen van de bron die gaat spelen, en de nieuwste aanvraag wint, zodat sporen van de vorige server
