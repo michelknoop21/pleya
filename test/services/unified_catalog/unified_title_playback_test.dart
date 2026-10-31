@@ -6,6 +6,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/media/episode_collection.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -19,13 +20,31 @@ import 'package:pleya/services/unified_catalog/source_episode_index.dart';
 import 'package:pleya/services/unified_catalog/unified_title_playback.dart';
 
 class _Client implements MediaServerClient {
-  _Client(this.episodes, {this.seasons = const [], this.failing = false, this.hangs = false});
+  _Client(
+    this.episodes, {
+    this.seasons = const [],
+    this.failing = false,
+    this.hangs = false,
+    this.ids,
+    this.failsIdsOnce = false,
+  });
 
   final List<MediaItem> episodes;
   final List<MediaItem> seasons;
   final bool failing;
   final bool hangs;
+  final ExternalIds? ids;
+  bool failsIdsOnce;
   int reads = 0;
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    if (failsIdsOnce) {
+      failsIdsOnce = false;
+      throw StateError('no answer');
+    }
+    return ids ?? (throw StateError('no numbers'));
+  }
 
   @override
   Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async {
@@ -36,7 +55,10 @@ class _Client implements MediaServerClient {
   }
 
   @override
-  Future<List<MediaItem>> fetchChildren(String parentId) async => seasons;
+  Future<List<MediaItem>> fetchChildren(String parentId) async {
+    if (failing) throw StateError('server down');
+    return seasons;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -88,8 +110,15 @@ MediaItem _episode(
   viewCount: viewCount,
 );
 
-UnifiedMediaRouteContext _route(List<MediaItem> items, {required String chosen, String? page}) {
-  final sources = [for (final item in items) UnifiedMediaSource.fromItem(item)];
+const _sameTitle = ExternalIds(tmdb: 1);
+
+UnifiedMediaRouteContext _route(
+  List<MediaItem> items, {
+  required String chosen,
+  String? page,
+  ExternalIds Function(MediaItem item) idsOf = _alwaysSameTitle,
+}) {
+  final sources = [for (final item in items) UnifiedMediaSource.fromItem(item, externalIds: idsOf(item))];
   final keys = [for (final s in sources) s.sourceKey];
   final chosenKey = keys.firstWhere((k) => k.startsWith('$chosen:'));
   return UnifiedMediaRouteContext(
@@ -104,6 +133,8 @@ UnifiedMediaRouteContext _route(List<MediaItem> items, {required String chosen, 
   );
 }
 
+ExternalIds _alwaysSameTitle(MediaItem _) => _sameTitle;
+
 UnifiedTitlePlayback _title(
   List<MediaItem> items, {
   required String chosen,
@@ -113,11 +144,13 @@ UnifiedTitlePlayback _title(
   Set<String> authRejected = const {},
   Set<String> hiddenServers = const {},
   Set<String> hiddenLibraries = const {},
+  Set<String> someoneElses = const {},
+  ExternalIds Function(MediaItem item) idsOf = _alwaysSameTitle,
   bool restricted = false,
   MediaItem Function(MediaItem)? fresh,
   Duration secondaryWait = const Duration(seconds: 3),
 }) {
-  final route = _route(items, chosen: chosen, page: page);
+  final route = _route(items, chosen: chosen, page: page, idsOf: idsOf);
   final chosenFirst = [
     ...route.titleSources.where((s) => s.sourceKey == route.sourceKey),
     ...route.titleSources.where((s) => s.sourceKey != route.sourceKey),
@@ -131,6 +164,7 @@ UnifiedTitlePlayback _title(
       isOnline: (id) => !offline.contains(id.value),
       isAuthRejected: (id) => authRejected.contains(id.value),
       isVisible: (id) => !hiddenServers.contains(id.value),
+      isOwn: (id) => !someoneElses.contains(id.value),
       hiddenLibraryKeys: () => hiddenLibraries,
       isRestrictedProfile: () async => restricted,
       fresh: fresh,
@@ -390,6 +424,7 @@ void main() {
           isOnline: (_) => true,
           isAuthRejected: (_) => false,
           isVisible: (_) => true,
+          isOwn: (_) => true,
           hiddenLibraryKeys: () => const {},
           isRestrictedProfile: () async => throw StateError('no profile'),
         ),
@@ -878,6 +913,184 @@ void main() {
       );
 
       expect(await title.copiesOf(_movie('a')), isEmpty);
+    });
+
+    group('a write needs proof, not a shared title and year', () {
+      const none = ExternalIds();
+
+      test('no numbers on either side: no write', () async {
+        final title = _title([_movie('a'), _movie('b')], chosen: 'a', idsOf: (_) => none);
+
+        expect(await title.copiesOf(_movie('a')), isEmpty);
+      });
+
+      test('two different numbers: no write', () async {
+        final title = _title(
+          [_movie('a'), _movie('b')],
+          chosen: 'a',
+          idsOf: (item) => ExternalIds(tmdb: item.serverId == 'a' ? 1 : 2),
+        );
+
+        expect(await title.copiesOf(_movie('a')), isEmpty);
+      });
+
+      test('a number a server gives when asked proves it', () async {
+        final title = _title(
+          [_movie('a'), _movie('b')],
+          chosen: 'a',
+          idsOf: (_) => none,
+          clients: {
+            'a': _Client(const [], ids: _sameTitle),
+            'b': _Client(const [], ids: _sameTitle),
+          },
+        );
+
+        expect((await title.copiesOf(_movie('a'))).map((c) => c.serverId), ['b']);
+      });
+
+      test('a server that failed to answer is asked again next time', () async {
+        final flaky = _Client(const [], ids: _sameTitle, failsIdsOnce: true);
+        final title = _title(
+          [_movie('a'), _movie('b')],
+          chosen: 'a',
+          idsOf: (_) => none,
+          clients: {
+            'a': _Client(const [], ids: _sameTitle),
+            'b': flaky,
+          },
+        );
+
+        expect(await title.copiesOf(_movie('a')), isEmpty);
+        expect((await title.copiesOf(_movie('a'))).map((c) => c.serverId), ['b']);
+      });
+
+      test('the numbers of a list answer count without asking', () async {
+        Map<String, Object?> carried = {
+          'Guid': [
+            {'id': 'tmdb://1'},
+          ],
+        };
+        final title = _title(
+          [_movie('a').copyWith(raw: carried), _movie('b').copyWith(raw: carried)],
+          chosen: 'a',
+          idsOf: (_) => none,
+        );
+
+        expect((await title.copiesOf(_movie('a'))).map((c) => c.serverId), ['b']);
+      });
+
+      test('a guid both carry proves it, a local one does not', () async {
+        Future<List<MediaItem>> copiesWith(String guid) => _title(
+          [_movie('a').copyWith(guid: guid), _movie('b').copyWith(guid: guid)],
+          chosen: 'a',
+          idsOf: (_) => none,
+        ).copiesOf(_movie('a').copyWith(guid: guid));
+
+        expect((await copiesWith('plex://movie/1')).map((c) => c.serverId), ['b']);
+        expect(await copiesWith('local://1'), isEmpty);
+      });
+
+      test('a server that is down is not asked: without numbers it gets no row', () async {
+        final other = _Client(const [], ids: _sameTitle);
+        final title = _title(
+          [_movie('a'), _movie('b')],
+          chosen: 'a',
+          idsOf: (_) => none,
+          offline: {'b'},
+          clients: {
+            'a': _Client(const [], ids: _sameTitle),
+            'b': other,
+          },
+        );
+
+        expect(await title.copiesOf(_movie('a')), isEmpty);
+      });
+
+      test('an episode counts on the numbers of its series', () async {
+        final title = _title(
+          [_show('chosen'), _show('other')],
+          chosen: 'chosen',
+          idsOf: (item) => ExternalIds(tvdb: item.serverId == 'chosen' ? 1 : 2),
+          clients: {
+            'chosen': _Client([_episode('chosen', 1, 1)]),
+            'other': _Client([_episode('other', 1, 1)]),
+          },
+        );
+
+        expect(await title.copiesOf(_episode('chosen', 1, 1).copyWith(serverId: 'chosen')), isEmpty);
+      });
+    });
+
+    test('a server someone else runs is no write target, and still plays', () async {
+      final title = _title(
+        [_movie('mine'), _movie('friend')],
+        chosen: 'friend',
+        page: 'mine',
+        someoneElses: {'friend'},
+      );
+
+      expect(await title.copiesOf(_movie('mine')), isEmpty);
+      expect(title.movieTarget(_movie('mine')).item.serverId, 'friend');
+    });
+
+    test('a Special has no copy: two servers number them differently', () async {
+      final title = _title(
+        [_show('chosen'), _show('other')],
+        chosen: 'chosen',
+        clients: {
+          'chosen': _Client([_episode('chosen', 0, 5)]),
+          'other': _Client([_episode('other', 0, 5)]),
+        },
+      );
+
+      expect(await title.copiesOf(_episode('chosen', 0, 5).copyWith(serverId: 'chosen')), isEmpty);
+    });
+
+    test('a Specials season has no copy either', () async {
+      final season = MediaItem(id: 'specials', backend: MediaBackend.plex, kind: MediaKind.season, index: 0);
+      final title = _title(
+        [_show('chosen'), _show('other')],
+        chosen: 'chosen',
+        clients: {
+          'chosen': _Client(const []),
+          'other': _Client(const [], seasons: [season]),
+        },
+      );
+
+      final mine = season.copyWith(id: 'mine', serverId: 'chosen', parentId: 'show-chosen');
+
+      expect(await title.copiesOf(mine), isEmpty);
+    });
+
+    MediaItem season(int number) =>
+        MediaItem(id: 's$number', backend: MediaBackend.plex, kind: MediaKind.season, index: number);
+
+    test('a series reaches the seasons both servers hold and no others', () async {
+      final title = _title(
+        [_show('chosen'), _show('other')],
+        chosen: 'chosen',
+        clients: {
+          'chosen': _Client(const [], seasons: [season(0), season(1), season(2)]),
+          'other': _Client(const [], seasons: [season(0), season(1), season(2), season(3)]),
+        },
+      );
+
+      final copies = await title.copiesOf(_show('chosen'));
+
+      expect(copies.map((c) => c.globalKey), ['other:s1', 'other:s2']);
+    });
+
+    test('a side that does not answer leaves the series alone', () async {
+      final title = _title(
+        [_show('chosen'), _show('other')],
+        chosen: 'chosen',
+        clients: {
+          'chosen': _Client(const [], seasons: [season(1)], failing: true),
+          'other': _Client(const [], seasons: [season(1)]),
+        },
+      );
+
+      expect(await title.copiesOf(_show('chosen')), isEmpty);
     });
 
     test('a season is found by its number', () async {

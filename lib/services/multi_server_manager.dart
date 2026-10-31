@@ -271,6 +271,11 @@ class MultiServerManager {
   }
 
   @visibleForTesting
+  /// A fake client has no owner data of its own to read.
+  @visibleForTesting
+  void debugMarkAdministeredForTesting(ServerId serverId) => _debugAdministered.add(serverId);
+  final Set<ServerId> _debugAdministered = {};
+
   void debugMarkAuthErrorForTesting(ServerId serverId) {
     _serverStatus[serverId] = false;
     _authErrorServers.add(serverId);
@@ -401,10 +406,21 @@ class MultiServerManager {
   /// Reads the last known role, not live connectivity, so callers that need
   /// an online server check that separately.
   bool canAdministerServer(ServerId serverId) {
+    if (_debugAdministered.contains(serverId)) return true;
     if (_restrictedServerIds.contains(serverId)) return false;
     final client = _clients[serverId];
     if (client is PleyaServerClient) return client.connection.isServerAdministrator;
     return canManageServerMetadata(serverId);
+  }
+
+  /// Whether [serverId] is known not to be this viewer's own. Viewing data stays
+  /// off such a server. A server that is merely not connected right now does
+  /// not count: the queue holds its write, and the replay looks again once there
+  /// is a client that can say.
+  bool isSomeoneElsesServer(ServerId serverId) {
+    if (_restrictedServerIds.contains(serverId)) return true;
+    if (_clients.containsKey(serverId)) return !canAdministerServer(serverId);
+    return _plexServers[serverId]?.owned == false;
   }
 
   /// Plex Home and share administration for an owned Plex server, or null.
@@ -472,7 +488,11 @@ class MultiServerManager {
   /// Check whether the active or scoped client for [serverId] is online.
   bool isClientOnline(ServerId serverId, {String? clientScopeId}) {
     if (clientScopeId != null && clientScopeId.isNotEmpty) {
-      return _jellyfinHealthByCompoundId[clientScopeId] == HealthStatus.online;
+      final health = _jellyfinHealthByCompoundId[clientScopeId];
+      if (health != null) return health == HealthStatus.online;
+      // Only Jellyfin keeps health per connection. Pleya Server has a scope too,
+      // and one connection per server: there the server's answer is the scope's.
+      if (_clients[serverId] is JellyfinClient) return false;
     }
     return isServerOnline(serverId);
   }

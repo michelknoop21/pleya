@@ -95,9 +95,11 @@ steps:
   - wait_until: {id: player.surface, timeout: 30000}
   - settle: 3000
   - snapshot: 06-player
+  # Controls hide five seconds in, and one press then leaves the player. Two
+  # presses left the page too whenever the snapshot took long enough.
+  - settle: 4000
   - press: menu
-  - settle: 1500
-  - press: menu
+  - wait_until: {focused: media-detail.play, timeout: 20000}
   - wait_until: {id: screen.media_detail, timeout: 20000}
   - settle: 1500
   - snapshot: 07-back-on-page

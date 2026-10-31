@@ -27,6 +27,7 @@ import '../../providers/multi_server_provider.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/external_ids.dart';
 import 'source_resolver.dart';
+import 'unified_copy_proof.dart';
 import 'unified_title_playback.dart';
 import 'unified_title_scope.dart';
 
@@ -62,7 +63,10 @@ class UnifiedTitleDiscovery {
       isOnline: manager.isServerOnline,
       authErrorServerIds: manager.authErrorServerIds,
     ).where((s) => isIdentityEligibleBackend(s.backend) && s.online && !s.hasAuthError && s.client != null).toList();
-    if (multiServer.expectedServerIds.length < 2 || servers.isEmpty) return null;
+    // Only the viewer's own servers are asked: a lookup per play tells a
+    // friend's server what was watched elsewhere.
+    final own = servers.where((s) => gate.isOwn(s.serverId)).toList();
+    if (multiServer.expectedServerIds.length < 2 || own.isEmpty) return null;
 
     Future<List<MediaItem>> ask(EligibleSourceServer server, MediaIdentity identity) async {
       final found = <MediaItem>[];
@@ -87,7 +91,7 @@ class UnifiedTitleDiscovery {
       serverWait: serverWait,
       findSources: (identity, except) async {
         final answers = await Future.wait([
-          for (final server in servers)
+          for (final server in own)
             if (server.serverId != except) ask(server, identity),
         ]);
         return [for (final answer in answers) ...answer];
@@ -117,9 +121,10 @@ class UnifiedTitleDiscovery {
     if (serverId == null || title == null || client == null) return null;
 
     final ids = await _idsOf(client, title.id);
-    if ((title.guid ?? '').isEmpty && !ids.hasAny) return null;
+    final guid = provingGuid(title.guid);
+    if (guid == null && !ids.hasAny) return null;
     final identity = MediaIdentity(
-      guid: title.guid,
+      guid: guid,
       externalIds: ids,
       title: title.name,
       year: item.isMovie ? item.year : null,
@@ -164,6 +169,7 @@ class UnifiedTitleDiscovery {
       ),
       sources: sources,
       gate: gate,
+      identityProven: true,
     );
   }
 

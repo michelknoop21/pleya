@@ -301,7 +301,9 @@ Afspelen: gekozen bron. Details: hoofdbron, technische gegevens en sporen van de
 detailpagina die de hoofdbron toont werkt daarom op de gekozen bron. Markeer bekeken en onbekeken:
 alle bronnen (hoofdstuk 13.5, DEC-071). Kijkvoortgang en de gekeken-status uit een afspeelsessie:
 alle bronnen met die titel, behalve bij niet-vergelijkbare runtimes (hoofdstuk 13.2, DEC-XXX "Eén
-titel over servers heen"). Rate: alle bronnen (hoofdstuk 13.8, DEC-075); een bron die op dat moment
+titel over servers heen"). Beide bereiken alleen servers die de kijker zelf beheert, slaan Specials
+over en raken bij een serie of seizoen alleen seizoenen die op beide servers staan. Afspelen vanaf
+een gekozen gedeelde server blijft kunnen. Rate: alle bronnen (hoofdstuk 13.8, DEC-075); een bron die op dat moment
 onbereikbaar is wordt gemeld, niet vastgehouden, want een cijfer heeft geen wachtrij. Verwijder uit
 Verder kijken: expliciet logisch groepscontract, beschreven in hoofdstuk 13.
 
@@ -1047,17 +1049,85 @@ bron apart.
 Start een bron zonder eigen positie terwijl een andere bron van dezelfde titel er wel een heeft, dan
 begint hij op die positie, zolang de runtimes vergelijkbaar zijn. Voor een aflevering geldt dat per
 seizoen- en afleveringsnummer. Een bron met een eigen positie houdt die, want de picker belooft hem
-op de rij.
+op de rij. Of een bron een eigen positie heeft beslist de verse lezing vlak voor de start, niet de
+stand op de kaart.
 
 De positie waarop een sessie eindigt en het moment waarop hij als bekeken telt, gaan naar alle andere
 bronnen met die titel (`UnifiedProgressMirror`). Een kopie met een niet-vergelijkbare runtime
 (`runtimesAreComparable`, G7) slaat de speler over: die houdt zijn eigen stand. De schrijfactie loopt
 altijd via de kijkstatuswachtrij als rij `mirroredProgress`, ook als de server online is. Een server
 die laat antwoordt of weigert probeert het daardoor opnieuw zoals elke rij in die wachtrij, en raakt
-de speler en de spelende bron niet. De replay houdt de last-writer-wins-controle van de wachtrij en
-slaat de trackers over: de bron die speelde heeft de kijkbeurt al gemeld, en Trakt telt watched-events
-per kijkbeurt. Een bron met een auth-fout krijgt niets, ook geen rij: inloggen herstelt dat, niet een
-reconnect, en een rij zou onder de volgende login worden afgespeeld.
+de speler en de spelende bron niet. Trackers horen niets: de bron die speelde heeft de kijkbeurt al
+gemeld, en Trakt telt watched-events per kijkbeurt. Zo'n rij meldt zich als kopie (`isCopy`): de
+oppervlakken en de downloadcache zien de nieuwe stand, en de volgende pull vindt geen overgang die hij
+als eigen kijkbeurt kan melden. Een bron met een auth-fout krijgt niets, ook geen rij: inloggen
+herstelt dat, niet een reconnect, en een rij zou onder de volgende login worden afgespeeld.
+
+Op een kopie kijkt niemand, dus een rij gebruikt nooit de start en stop van een kijksessie
+(`CopyStateClient`). Op Jellyfin telt een start als kijkbeurt: `PlayCount` plus één, en op 10.x gaat
+`Played` eraf. Per backend:
+
+| Backend | Positie | Gekeken | Effect op een gekeken kopie |
+| --- | --- | --- | --- |
+| Jellyfin 10.9+ | `POST /UserItems/{id}/UserData` met alleen `PlaybackPositionTicks` | `POST /UserPlayedItems/{id}` | `Played`, `PlayCount` en `LastPlayedDate` blijven staan: de server schrijft alleen meegestuurde velden |
+| Emby | `POST /Users/{u}/Items/{id}/UserData` met de eigen `UserData` terug en een nieuwe positie | `POST /Users/{u}/PlayedItems/{id}` | Emby documenteert niet wat het met weggelaten velden doet, dus die gaan mee |
+| Plex | `/:/progress` met `state=stopped` | `/:/scrobble` | Onbewezen: Plex documenteert dit niet, en niets is op een echte server gedraaid. Open zijn `viewCount`, `lastViewedAt` en wat een positie vlak bij het einde doet |
+| Pleya Server | `playback_started` met `reclaim`, dan een gewone melding | dezelfde weg met `completed` | Geen rij: de server kent geen schrijfactie zonder sessie, en de geschiedenis telt dit als afspelen. Een gekeken kopie blijft zoals hij is |
+
+Jellyfin vóór 10.9 kent de route niet: die rij eindigt op een 404. Pleya Server krijgt geen backlog,
+want die verplaatst de stand van een bekende titel niet (regel 6), en een eigen oorzaak vraagt een
+protocolvenster. Dat besluit ligt bij Michel. Tot dan geldt: een positie vanaf 90 procent zet een
+Pleya Server-kopie op gekeken, want `reclaim` draagt de positie en de drempel van de server is de
+terugval, ook met `completed: false`. Zo'n server kent per titel één schrijver (DEC-049), en
+`user_started` neemt die rol over ongeacht de lease; `reclaim` niet. Houdt een kijksessie de titel
+vast, dan vervalt een positie, want die sessie is nieuwer, en wacht een afgekeken stand op zijn beurt.
+Elke kopieschrijfactie van een client is dezelfde sessie, zodat de lease van de vorige de volgende
+niet tegenhoudt. Een rechtstreekse markering blijft een expliciete handeling (regel 5) en negeert de
+lease, net als de knop op het eigen scherm.
+
+Een spiegeling verplaatst een kopie alleen vooruit. Acht seconden op bron A laten een uur op bron B
+staan; alleen een gekeken sessie mag een kopie verlagen. Er is geen minimumduur: de vergelijking
+gaat tegen de stand van de kopie, en die stand wordt bij de replay opnieuw gelezen omdat een rij lang
+kan wachten (`readCopyState`). Bij die lezing beëindigt alleen een bewezen 404 de rij. Elk ander
+antwoord zegt niets over de kopie en houdt hem vast: een serverfout, offline, een pagina die geen item
+is, een geweigerd token of een mislukte tokenronde. Een titel
+op Pleya Server zonder `user_state` bestaat en is nooit gekeken. Gekeken volgt daar `watched`, niet
+`play_count`, want die blijft staan na een markering als ongezien; dat geldt voor rijen van kopieën en
+voor eigen offline rijen. De pull meldt een film alleen als er een eerdere stand in de cache staat.
+Pleya Server bewaart die niet, dus daar meldt de pull niets. Een wachtende rij houdt zijn
+verste positie en verliest een afgekeken stand niet door een latere korte sessie; een echte
+markering op die kopie ruimt hem op, ook als die rechtstreeks landt, en een markering op een seizoen
+of serie ruimt ook de rijen van zijn afleveringen op.
+
+Een eerdere kijkbeurt op de kopie houdt een positie niet tegen: een herkijkpositie bereikt een kopie
+die al gekeken was, behalve op Pleya Server. Alleen een nieuwere `lastViewedAt` op die kopie laat de
+rij vervallen. Een afgekeken stand op een kopie die al gekeken is en geen positie heeft, voegt niets
+toe: één kijkbeurt telt één keer, ook als een mislukte stop hem later nog eens meldt. Staat er wel
+een positie, dan is dat een herkijkbeurt, en die mag eindigen.
+
+Of een sessie gekeken telt volgt de drempel van de spelende server, ook als die server de stop niet
+ontving. Een sessie die offline liep bereikt de kopieën zodra zijn eigen rij echt is afgespeeld, met
+positie of als gekeken; een rij die de eigen server al had ingehaald meldt niets. Een rij van een
+kopie vervalt ook als de server de schrijfactie zelf weigert op een manier die wachten niet oplost.
+Een mislukte tokenronde op Pleya Server is geen weigering: de schrijfactie is dan niet verstuurd, en
+de rij blijft staan tot er weer een token is, onder hetzelfde account. Rijen die
+hun pogingen op hebben, krijgen een nieuwe ronde bij de eerste sync na een start van de app en
+daarna bij de eerste sync na zes uur; er loopt geen eigen timer. Een replay verwijdert een rij alleen
+als die tijdens de replay niet is bijgewerkt. Mislukt op Jellyfin, Emby of Pleya Server de start van
+een eigen sessierij, dan blijft de rij staan: Jellyfin accepteert een stop zonder open sessie en
+bewaart niets. Op Plex is de stop wat telt, daar gaat de replay door.
+
+Schrijven vraagt bewijs, ook naar bronnen die de kaart al toonde. Grouping mag op titel en jaar één
+kaart maken (11.6), en twee verschillende films kunnen beide delen. Een bron krijgt daarom alleen een
+schrijfactie bij een gedeelde guid of een gedeeld providernummer (`UnifiedCopyProof`). De nummers
+komen uit de bron zelf, uit het lijstantwoord, of uit een vraag aan een bereikbare server; voor een
+aflevering telt het nummer van de serie. Een server die onbereikbaar is en zijn nummers niet in de
+lijst meegaf krijgt geen rij. Een kopie zonder bekende looptijd slaagt voor G7 en houdt de positie
+van de sessie als maat: met het bewijs is de titel zeker, de versie niet.
+
+Specials krijgen geen kopie: twee servers nummeren ze verschillend (TVDB tegenover TMDB), en het
+gelijke nummer kan een andere aflevering zijn. Dat geldt voor voortgang en voor markeringen, en een
+markering krijgt dezelfde runtimecontrole als voortgang: een andere versie behoudt zijn eigen stand.
 
 Een kaart kan minder bronnen tonen dan de titel heeft, bijvoorbeeld een Verder kijken-kaart met één
 bron. Daarom zoekt een sessie de overige bronnen op zodra hij tot rust komt (`UnifiedTitleDiscovery`),
@@ -1065,8 +1135,31 @@ nadat de bekende bronnen zijn geschreven. Afspelen wacht daar niet op. Elke serv
 seconden, de hele zoekactie twintig; wie niet antwoordt hoort niets, de rest wel. Een schrijfactie
 vraagt per server bewijs: dezelfde guid of een gedeeld providernummer, nooit alleen een gelijke
 titel. Dat is strenger dan de picker, die een titeltreffer aan de kijker voorlegt. Een kinderprofiel
-zoekt niet: zijn schrijfacties blijven bij de bronnen die het al ziet. Een rij landt alleen onder het
-profiel dat keek; een profiel dat tijdens de zoekactie overneemt krijgt hem niet.
+zoekt niet: zijn schrijfacties blijven bij de bronnen die het al ziet. Een guid die niets bewijst
+telt niet mee: `normalizeStableGuid` weigert `agents.none`, de zoekactie weigert ook `local://`,
+want twee servers kunnen hetzelfde lokale nummer voor verschillende thuisvideo's hebben.
+
+Spiegelen en zoeken gebeuren alleen op servers die de kijker zelf beheert. De maat is
+`canAdministerServer`: Plex `owned` en niet beperkt, Jellyfin en Emby `IsAdministrator`, Pleya Server
+de rol `owner` of `admin`; een geleende verbinding telt nooit. Een server die bewezen van iemand
+anders is, krijgt geen zoekactie en geen schrijfactie. Een huisgenoot zonder beheerrecht spiegelt
+daardoor niet naar die server. Een bekende server die nu niet verbonden is, valt niet af: de wachtrij
+houdt zijn rij vast, en zodra er een client is kijkt de replay opnieuw. Blijkt het dan een server
+van iemand anders, dan vervalt de rij zonder dat er iets is verstuurd. Tijdens het koppelen van een
+profiel gelden de rechten van het vorige nog: dan blijft zo'n rij staan.
+
+Het profiel van een sessie ligt vast zodra de speler de sessie opent, dus voordat een stop kan
+beginnen. Een profielwissel sluit de speler, en die stop mag niet onder het nieuwe profiel landen.
+De replay-lus stopt bij een wissel: zijn clients worden per rij opgezocht en horen dan bij het
+volgende profiel. Een rij met een scope gaat alleen naar de client van die verbinding. Ook binnen een rij kijkt de replay vlak voor elke schrijfactie, want een Plex-client
+krijgt het token van het volgende profiel in place; de rij blijft dan onaangeroerd staan. Een rij landt alleen onder het profiel dat keek; een profiel dat tijdens de
+zoekactie overneemt krijgt hem niet.
+
+Per item wint de nieuwste actie. Een markering die volgt op een sessie of op een andere markering
+houdt de oudere weg bij een kopie waar die nog onderweg naartoe was (`WatchMarkOrder`). Dat gebeurt
+vóór de schrijfactie: staat een oudere schrijfactie al op de lijn naar een server, dan bepaalt die
+server de volgorde. De interface wacht niet op kopieën, een hangende server houdt de markering niet
+op.
 
 ### 13.3 Verder kijken
 
@@ -1106,6 +1199,19 @@ interacties; de andere kopieën krijgen alleen de servermarkering, ook bij een s
 wachtrij staan die als `mirroredWatched` en `mirroredUnwatched`. Is geen enkele bron bereikbaar, dan
 draagt de eerste vastgehouden rij de melding. Alleen een fout die herhalen kan oplossen krijgt een
 rij; een auth-fout, 403, 404 of een ontbrekend endpoint niet.
+
+"Alle bronnen" kent vijf grenzen uit DEC-XXX "Eén titel over servers heen". Een Special krijgt geen
+kopie, want het nummer bewijst daar niets. Een andere versie (`runtimesAreComparable`, G7) houdt zijn
+eigen stand. Een serie- of seizoenmarkering raakt op de andere server alleen seizoenen die op beide
+staan, Specials niet; een serie wordt daar per seizoen gemarkeerd, zodat seizoen 4 en 5 niet als
+gezien gelden omdat bron A er maar drie heeft. Een server die bewezen van iemand anders is, krijgt
+geen markering zolang de kaart een eigen bron heeft: de echte markering valt dan op de eerste eigen
+bron. Heeft de kaart alleen servers van anderen, dan krijgt de eerste bron de markering die de kijker
+daar zelf koos, zoals afspelen op een gekozen gedeelde server kan; meer niet. Een bron zonder gedeeld
+id-bewijs krijgt niets (13.2): een kaart op titel en jaar markeert alleen de bron die de melding
+draagt. Deze vijf zijn geen mislukking en tellen niet mee in de noemer van de melding. Zijn
+de seizoenen van een onbereikbare server niet bekend, dan krijgt die serie geen rij: wat op beide
+staat is dan niet vast te stellen. Dat telt wel mee in de melding.
 
 In de geavanceerde libraryweergave blijft de actie rechtstreeks die library betreffen.
 

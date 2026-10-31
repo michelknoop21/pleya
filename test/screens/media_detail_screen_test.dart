@@ -35,6 +35,7 @@ import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/screens/tv/tv_media_source_picker_route.dart';
 import 'package:pleya/screens/tv/tv_unified_activation.dart';
 import 'package:pleya/services/unified_catalog/source_preference_store.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
@@ -62,6 +63,7 @@ import 'package:pleya/services/download_storage_service.dart';
 import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/unified_catalog/mobile_media_source_picker_route.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_preference_store.dart';
 import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
@@ -777,6 +779,9 @@ void main() {
 
       final manager = MultiServerManager()..debugRegisterClientForTesting(client);
       otherClients.forEach(manager.debugRegisterClientForTesting);
+      for (final server in [client, ...otherClients]) {
+        manager.debugMarkAdministeredForTesting(server.serverId);
+      }
       final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
       final watchStateOverlay = WatchStateStore();
       final offlineWatchSync = OfflineWatchSyncService(database: db, serverManager: manager);
@@ -1447,7 +1452,12 @@ void main() {
 
         UnifiedMediaRouteContext routeTo(List<MediaItem> items, String chosen) {
           final sources = [
-            for (final item in items) UnifiedMediaSource.fromItem(item, availability: SourceAvailability.online),
+            for (final item in items)
+              UnifiedMediaSource.fromItem(
+                item,
+                availability: SourceAvailability.online,
+                externalIds: const ExternalIds(tmdb: 45745),
+              ),
           ];
           final page = sources.first.sourceKey;
           final picked = sources.firstWhere((s) => s.item.serverId == chosen);
@@ -2897,6 +2907,103 @@ void main() {
       await tester.runAsync(() async {
         expect(await SourcePreferenceStore.read(unified.identity), 'server_2:show_1');
       });
+    });
+
+    testWidgets('on a phone the same offer keeps the page and moves only what Play starts', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      await SettingsService.getInstance();
+      // Wider than a phone: the test font makes the picker's button twice as wide.
+      tester.view.physicalSize = const Size(1560, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      PlexApiCache.initialize(db);
+      JellyfinApiCache.initialize(db);
+      final downloadManager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) => null,
+      );
+      downloadManager.recoveryFuture = Future<void>.value();
+      final downloads = DownloadProvider.forTesting(downloadManager: downloadManager, database: db);
+      await downloads.ensureInitialized();
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      final watchState = WatchStateStore();
+      final offlineSync = OfflineWatchSyncService(database: db, serverManager: manager);
+      addTearDown(() async {
+        watchState.dispose();
+        offlineSync.dispose();
+        downloads.dispose();
+        downloadManager.dispose();
+        provider.dispose();
+        await db.close();
+      });
+
+      final observer = _RouteLog();
+      final unified = group();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+              ChangeNotifierProvider<DownloadProvider>.value(value: downloads),
+              ChangeNotifierProvider<WatchStateStore>.value(value: watchState),
+              ChangeNotifierProvider<OfflineWatchSyncService>.value(value: offlineSync),
+            ],
+            child: MaterialApp(
+              navigatorObservers: [observer],
+              builder: withNoticeLayer(
+                (context, child) => OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: TextButton(
+                      onPressed: () => unawaited(
+                        openMobileMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          availabilityFor: (_) => SourceAvailability.online,
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('server_1').last);
+      await tester.pumpAndSettle();
+      expect(find.text('server_1'), findsOneWidget, reason: 'the card says which source the page reads');
+
+      final pushesBefore = observer.pushes;
+      final popsBefore = observer.pops;
+
+      await tester.ensureVisible(find.text(t.sourcePicker.change));
+      await tester.tap(find.text(t.sourcePicker.change));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('server_2').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('server_2'), findsOneWidget, reason: 'the card says which source Play starts from');
+      expect(find.text('Season 2'), findsNothing, reason: 'the seasons stay those of the main source');
+      expect(observer.pops - popsBefore, 0, reason: 'one page: nothing was replaced');
+      expect(observer.pushes - pushesBefore, 0);
     });
 
     testWidgets('a first choice of another source already keeps the main page', (tester) async {

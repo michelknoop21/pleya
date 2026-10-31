@@ -6,6 +6,7 @@ import '../mpv/mpv.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../media/media_source_info.dart';
+import '../media/watch_progress.dart';
 import 'offline_watch_sync_service.dart';
 import 'playback_report_session.dart';
 import 'playback_stream_indexes.dart';
@@ -464,9 +465,17 @@ class PlaybackProgressTracker {
   /// [isFinal] is the terminal stop notification, which fires at most once per
   /// session. [force] only bypasses the 30-second delta, for a jump the user
   /// made deliberately; it does not consume the terminal latch.
+  /// [watched] when the server said so, or when the play went past the
+  /// threshold: a stop that did not reach this server still finished the title
+  /// for the others.
   void _reportSettled(Duration position, Duration duration, {required bool watched}) {
+    final finished = isWatchedProgress(
+      positionMs: position.inMilliseconds,
+      durationMs: duration.inMilliseconds,
+      threshold: client?.watchedThreshold ?? 0.9,
+    );
     try {
-      onSettled?.call(position, duration, watched: watched);
+      onSettled?.call(position, duration, watched: watched || finished);
     } catch (e, st) {
       appLogger.w('A listener on the settled play failed', error: e, stackTrace: st);
     }

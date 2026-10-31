@@ -656,6 +656,17 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   @override
   Future<MediaItem?> fetchItem(String id) => _fetchItem(id);
 
+  Future<MediaItem?> readCopyState(String id) async {
+    if (isOfflineMode) throw StateError('Offline: no answer about $id');
+    final response = await _http.get('/Users/${_segment(connection.userId)}/Items/${_segment(id)}');
+    if (response.statusCode == 404) return null;
+    throwIfHttpError(response);
+    final data = response.data;
+    final item = data is Map<String, dynamic> ? _mapItem(data) : null;
+    if (item == null) throw StateError('No item in the answer about $id');
+    return item;
+  }
+
   Future<MediaItem?> _fetchItem(String id, {bool allowCacheFallback = true}) async {
     final endpoint = '/Users/${_segment(connection.userId)}/Items/${_segment(id)}';
     // Contract:

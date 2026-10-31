@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -62,13 +63,13 @@ void main() {
       }),
     );
     await service.flushQueue();
-    await Future<void>.delayed(const Duration(milliseconds: 150));
+    await pumpEventQueue();
     expect(requests, isEmpty);
     expect(await queue.load('u1'), hasLength(1), reason: 'kept for when the user allows it');
 
     await service.setEnabled(true);
     await service.flushQueue();
-    await Future<void>.delayed(const Duration(milliseconds: 150));
+    await pumpEventQueue();
     expect(requests, ['/sync/history']);
     expect(await queue.load('u1'), isEmpty);
 
@@ -78,6 +79,7 @@ void main() {
 
   test('one mark is one play on Trakt, however many copies the title has', () async {
     final requests = <String>[];
+    final sent = Completer<String>();
     final manager = MultiServerManager()..debugRegisterClientForTesting(_ImdbClient());
     addTearDown(manager.dispose);
     final service = TraktSyncService.instance;
@@ -89,17 +91,19 @@ void main() {
       onSessionInvalidated: () {},
       httpClient: MockClient((r) async {
         requests.add(r.url.path);
+        if (!sent.isCompleted) sent.complete(r.body);
         return http.Response(json.encode({}), 200);
       }),
     );
-    final film = MediaItem(id: 'm1', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 'srv');
+    MediaItem film(String id) => MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 'srv');
 
-    WatchStateNotifier().notifyWatched(item: film, isCopy: true);
-    await Future<void>.delayed(const Duration(milliseconds: 150));
-    expect(requests, isEmpty, reason: 'a copy says nothing about a viewing');
+    // In this order: a copy that did go out would be the first thing sent.
+    WatchStateNotifier().notifyWatched(item: film('111'), isCopy: true);
+    WatchStateNotifier().notifyWatched(item: film('222'));
+    final body = await sent.future;
 
-    WatchStateNotifier().notifyWatched(item: film);
-    await Future<void>.delayed(const Duration(milliseconds: 150));
+    expect(body, contains('tt222'));
+    expect(body, isNot(contains('tt111')), reason: 'a copy says nothing about a viewing');
     expect(requests, ['/sync/history']);
 
     service.rebindToProfile('u1', null, onSessionInvalidated: () {});
@@ -112,7 +116,7 @@ class _ImdbClient implements MediaServerClient {
   ServerId get serverId => ServerId('srv');
 
   @override
-  Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds(imdb: 'tt1160419');
+  Future<ExternalIds> fetchExternalIds(String itemId) async => ExternalIds(imdb: 'tt$itemId');
 
   @override
   void close() {}
