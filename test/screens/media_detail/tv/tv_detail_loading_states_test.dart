@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -37,6 +38,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/watch_state_notifier.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/pressable.dart';
 import 'package:provider/provider.dart';
@@ -143,7 +145,7 @@ class _Client implements MediaServerClient {
   ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
   @override
   Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async =>
-      (item: item, onDeckEpisode: onDeck);
+      (item: watched ? item.copyWith(viewCount: 1, viewOffsetMs: 0) : item, onDeckEpisode: onDeck);
   @override
   Future<List<MediaItem>> fetchChildren(String parentId) async {
     if (seasonsFail && parentId == 'show') throw StateError('seasons did not load');
@@ -177,6 +179,19 @@ class _Client implements MediaServerClient {
 
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => const [];
+
+  /// What [markWatched] turns the item into: no position left, one more play.
+  var watched = false;
+
+  @override
+  Future<void> markWatched(MediaItem item) async {
+    WatchStateNotifier().notifyWatched(item: item, isNowWatched: true, cacheServerId: 'server_1');
+  }
+
+  @override
+  Future<MediaItem?> fetchItem(String id) async =>
+      watched ? this.item.copyWith(viewCount: 1, viewOffsetMs: 0) : this.item;
+
   @override
   Future<MediaFileInfo?> getFileInfo(MediaItem item) async {
     fileInfoFor.add(item.id);
@@ -473,5 +488,22 @@ void main() {
     expect(rows, isNot(contains('audio')));
     client.gates['season_2']!.complete();
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('✓ takes the restart button away, and the focus stays on ✓', (tester) async {
+    final client = _Client(item: _movie(const []).copyWith(viewOffsetMs: 1000));
+    await pumpDetail(tester, client);
+    for (var i = 0; i < 6 && _focus != 'detail_watched'; i++) {
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+    }
+    expect(_focus, 'detail_watched');
+    client.watched = true;
+
+    await _press(tester, LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Symbols.replay_rounded), findsNothing);
+    expect(_focus, 'detail_watched');
   });
 }

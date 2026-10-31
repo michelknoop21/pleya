@@ -115,11 +115,50 @@ class FocusableActionBarState extends State<FocusableActionBar> {
   @override
   void didUpdateWidget(FocusableActionBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_shouldRebuildFocusNodes(oldWidget)) {
-      _disposeNodes();
-      _initNodes();
+    if (_shouldRebuildFocusNodes(oldWidget)) _syncNodes();
+  }
+
+  /// Follows a row whose buttons came or went. An action keeps its node by its
+  /// label, and [build] keys a button on that node, so the element and the focus
+  /// move along with it. When the button in use is gone, the focus goes to the
+  /// one that took its place, or the last one.
+  void _syncNodes() {
+    final focused = _focusNodes.indexWhere((node) => node.hasPrimaryFocus);
+    final reusable = <String, FocusNode>{
+      for (var i = 0; i < _focusNodes.length; i++)
+        if (_ownsFocusNodes[i] && _focusNodes[i].debugLabel != null) _focusNodes[i].debugLabel!: _focusNodes[i],
+    };
+    final previous = _focusNodes;
+    final previousOwned = _ownsFocusNodes;
+    for (var i = 0; i < previous.length; i++) {
+      previous[i].removeListener(_focusListeners[i]);
+    }
+
+    final next = <FocusNode>[];
+    for (final (index, action) in widget.actions.indexed) {
+      next.add(action.focusNode ?? reusable.remove(action.debugLabel) ?? _newNode(action, index));
+    }
+    _adoptNodes(next);
+
+    final moved = focused >= 0 && !next.contains(previous[focused]);
+    if (moved && next.isNotEmpty) {
+      final heir = next[focused.clamp(0, next.length - 1)];
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && heir.context != null) heir.requestFocus();
+      });
+    }
+    for (var i = 0; i < previous.length; i++) {
+      if (previousOwned[i] && !next.contains(previous[i])) {
+        // Not before the frame: its Focus still holds it until then, and the
+        // focus it carries is what the heir takes over.
+        final gone = previous[i];
+        WidgetsBinding.instance.addPostFrameCallback((_) => gone.dispose());
+      }
     }
   }
+
+  FocusNode _newNode(FocusableAction action, int index) =>
+      FocusNode(debugLabel: action.debugLabel ?? 'ActionBar[$index]');
 
   bool _shouldRebuildFocusNodes(FocusableActionBar oldWidget) {
     if (oldWidget.actions.length != widget.actions.length) return true;
@@ -131,10 +170,11 @@ class FocusableActionBarState extends State<FocusableActionBar> {
   }
 
   void _initNodes() {
-    _focusNodes = List.generate(
-      widget.actions.length,
-      (i) => widget.actions[i].focusNode ?? FocusNode(debugLabel: widget.actions[i].debugLabel ?? 'ActionBar[$i]'),
-    );
+    _adoptNodes([for (final (index, action) in widget.actions.indexed) action.focusNode ?? _newNode(action, index)]);
+  }
+
+  void _adoptNodes(List<FocusNode> nodes) {
+    _focusNodes = nodes;
     _ownsFocusNodes = List.generate(widget.actions.length, (i) => widget.actions[i].focusNode == null);
     _focusListeners = [];
     _focusStates = List.generate(widget.actions.length, (i) => _focusNodes[i].hasFocus);
@@ -186,7 +226,7 @@ class FocusableActionBarState extends State<FocusableActionBar> {
       children: [
         for (var i = 0; i < widget.actions.length; i++) ...[
           if (i > 0 && widget.spacing > 0) SizedBox(width: widget.spacing),
-          _buildButton(i, isKeyboard, duration),
+          KeyedSubtree(key: ValueKey<FocusNode>(_focusNodes[i]), child: _buildButton(i, isKeyboard, duration)),
         ],
       ],
     );
