@@ -1488,6 +1488,12 @@ class TranslationsMediaMenuEn {
 
 	// Translations
 
+	/// en: 'Add to Playlist / Collection'
+	String get addToPlaylistOrCollection => 'Add to Playlist / Collection';
+
+	/// en: 'Add to Playlist'
+	String get addToPlaylist => 'Add to Playlist';
+
 	/// en: 'Mark as Watched'
 	String get markAsWatched => 'Mark as Watched';
 
@@ -10800,6 +10806,8 @@ extension on Translations {
 			'detailActions.watched' => 'Watched',
 			'detailActions.download' => 'Download',
 			'detailActions.more' => 'More',
+			'mediaMenu.addToPlaylistOrCollection' => 'Add to Playlist / Collection',
+			'mediaMenu.addToPlaylist' => 'Add to Playlist',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -10852,10 +10860,10 @@ extension on Translations {
 			'videoControls.subtitlesLabel' => 'Subtitles',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
-			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
-			'videoControls.playsLater' => ({required Object label}) => '${label} plays later',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
+			'videoControls.playsLater' => ({required Object label}) => '${label} plays later',
 			'videoControls.playsEarlier' => ({required Object label}) => '${label} plays earlier',
 			'videoControls.noOffset' => 'No offset',
 			'videoControls.letterbox' => 'Letterbox',
@@ -11366,10 +11374,10 @@ extension on Translations {
 			'about.sources' => 'Sources',
 			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-			'about.wikidataSource' => 'Wikidata (CC0): age rating (MPA) of films for Big P.',
-			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.',
 			_ => null,
 		} ?? switch (path) {
+			'about.wikidataSource' => 'Wikidata (CC0): age rating (MPA) of films for Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.',
 			'about.traktSource' => 'Trakt: age rating, genres, runtime and score for Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
@@ -11880,10 +11888,10 @@ extension on Translations {
 			'externalPlayer.off' => 'Off',
 			'externalPlayer.launchFailed' => 'Failed to open external player',
 			'externalPlayer.appNotInstalled' => ({required Object name}) => '${name} is not installed',
-			'externalPlayer.playInExternalPlayer' => 'Play in External Player',
-			'metadataEdit.editMetadata' => 'Edit...',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.playInExternalPlayer' => 'Play in External Player',
+			'metadataEdit.editMetadata' => 'Edit...',
 			'metadataEdit.screenTitle' => 'Edit Metadata',
 			'metadataEdit.basicInfo' => 'Basic Info',
 			'metadataEdit.artwork' => 'Artwork',
@@ -12394,10 +12402,10 @@ extension on Translations {
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
 			'unifiedCatalog.rail.sources' => 'Sources',
-			'unifiedCatalog.rail.noFilters' => 'None',
-			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.rail.noFilters' => 'None',
+			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} active',
 			'unifiedCatalog.filters.status' => 'Status',
@@ -12908,10 +12916,10 @@ extension on Translations {
 			'assistant.steps.cancelJob' => 'Cancelling job',
 			'assistant.steps.retryJob' => 'Retrying job',
 			'assistant.steps.createUser' => 'Creating user',
-			'assistant.steps.setUserLibraryAccess' => 'Setting library access',
-			'assistant.steps.removeUser' => 'Removing user',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.setUserLibraryAccess' => 'Setting library access',
+			'assistant.steps.removeUser' => 'Removing user',
 			'assistant.steps.searchCatalog' => 'Searching the catalog',
 			'assistant.steps.createHomeRow' => 'Creating home row',
 			'assistant.steps.createCollection' => 'Creating collection',

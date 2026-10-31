@@ -8,6 +8,7 @@ class MediaMenuAction {
     required this.label,
     this.destructive = false,
     this.subtitle,
+    this.panelLabel,
   });
 
   /// What [MediaContextMenuState.runMenuAction] takes to run it.
@@ -16,6 +17,10 @@ class MediaMenuAction {
   final String label;
   final bool destructive;
   final String? subtitle;
+
+  /// What a side panel says where a row has room for more than the menu's
+  /// [label].
+  final String? panelLabel;
 }
 
 /// What the menu offers for its item, as one list: the menu itself draws it, and
@@ -332,15 +337,22 @@ extension MediaContextMenuActions on MediaContextMenuState {
         }
       }
 
-      // Add to... (for episodes, movies, shows, and seasons). Plex-only:
-      // uses `buildMetadataUri` + `addToPlaylist` / `addToCollection`. The
-      // Jellyfin item-add API is different and not wired here yet.
-      if (isPlex &&
+      // Add to... (for episodes, movies, shows, and seasons), on every backend
+      // with server-side playlists: `addToPlaylist` and `addToCollection` are
+      // on the neutral client. Collections stay behind `_canManageServerData`.
+      if ((mediaClient?.capabilities.serverSidePlaylists ?? false) &&
           (mediaKind == MediaKind.episode ||
               mediaKind == MediaKind.movie ||
               mediaKind == MediaKind.show ||
               mediaKind == MediaKind.season)) {
-        menuActions.add(MediaMenuAction(value: 'add_to', icon: Symbols.add_rounded, label: t.common.addTo));
+        menuActions.add(
+          MediaMenuAction(
+            value: 'add_to',
+            icon: Symbols.add_rounded,
+            label: t.common.addTo,
+            panelLabel: isAdmin ? t.mediaMenu.addToPlaylistOrCollection : t.mediaMenu.addToPlaylist,
+          ),
+        );
       }
 
       // Delete media item (for episodes, movies, shows, and seasons): admin

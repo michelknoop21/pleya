@@ -488,6 +488,8 @@
     "more": "More"
   },
   "mediaMenu": {
+    "addToPlaylistOrCollection": "Add to Playlist / Collection",
+    "addToPlaylist": "Add to Playlist",
     "markAsWatched": "Mark as Watched",
     "markAsUnwatched": "Mark as Unwatched",
     "removeFromContinueWatching": "Remove from Continue Watching",

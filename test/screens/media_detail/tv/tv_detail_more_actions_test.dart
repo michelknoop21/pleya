@@ -263,7 +263,16 @@ void main() {
     await pumpDetail(tester, _Client(_movie(), extras: [trailer], fileInfo: _tracks()));
     await openPanel(tester);
 
-    expect(_rows(tester), ['audio', 'subtitles', 'play_trailer', 'watch', 'rate', 'play_version', 'fileinfo']);
+    expect(_rows(tester), [
+      'audio',
+      'subtitles',
+      'add_to',
+      'play_trailer',
+      'watch',
+      'rate',
+      'play_version',
+      'fileinfo',
+    ]);
     expect(_row(tester, 'audio').value, 'English (EAC3 5.1)');
     expect(_row(tester, 'subtitles').value, 'Off');
   });

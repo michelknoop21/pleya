@@ -641,6 +641,8 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get addToPlaylistOrCollection => 'Toevoegen aan afspeellijst / collectie';
+	@override String get addToPlaylist => 'Toevoegen aan afspeellijst';
 	@override String get markAsWatched => 'Markeer als gekeken';
 	@override String get markAsUnwatched => 'Markeer als ongekeken';
 	@override String get removeFromContinueWatching => 'Verwijderen uit Verder kijken';
@@ -5011,6 +5013,8 @@ extension on TranslationsNl {
 			'detailActions.watched' => 'Bekeken',
 			'detailActions.download' => 'Downloaden',
 			'detailActions.more' => 'Meer',
+			'mediaMenu.addToPlaylistOrCollection' => 'Toevoegen aan afspeellijst / collectie',
+			'mediaMenu.addToPlaylist' => 'Toevoegen aan afspeellijst',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
 			'mediaMenu.removeFromContinueWatching' => 'Verwijderen uit Verder kijken',
@@ -5063,10 +5067,10 @@ extension on TranslationsNl {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
-			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
-			'videoControls.playsLater' => ({required Object label}) => '${label} speelt later af',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
+			'videoControls.playsLater' => ({required Object label}) => '${label} speelt later af',
 			'videoControls.playsEarlier' => ({required Object label}) => '${label} speelt eerder af',
 			'videoControls.noOffset' => 'Geen offset',
 			'videoControls.letterbox' => 'Letterbox',
@@ -5577,10 +5581,10 @@ extension on TranslationsNl {
 			'about.sources' => 'Bronnen',
 			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-			'about.wikidataSource' => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.',
-			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.',
 			_ => null,
 		} ?? switch (path) {
+			'about.wikidataSource' => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.',
 			'about.traktSource' => 'Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
@@ -6091,10 +6095,10 @@ extension on TranslationsNl {
 			'externalPlayer.off' => 'Uit',
 			'externalPlayer.launchFailed' => 'Kan externe speler niet openen',
 			'externalPlayer.appNotInstalled' => ({required Object name}) => '${name} is niet geïnstalleerd',
-			'externalPlayer.playInExternalPlayer' => 'Afspelen in externe speler',
-			'metadataEdit.editMetadata' => 'Bewerken...',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.playInExternalPlayer' => 'Afspelen in externe speler',
+			'metadataEdit.editMetadata' => 'Bewerken...',
 			'metadataEdit.screenTitle' => 'Metadata bewerken',
 			'metadataEdit.basicInfo' => 'Basisinformatie',
 			'metadataEdit.artwork' => 'Artwork',
@@ -6605,10 +6609,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
 			'unifiedCatalog.rail.sources' => 'Bronnen',
-			'unifiedCatalog.rail.noFilters' => 'Geen',
-			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.rail.noFilters' => 'Geen',
+			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
@@ -7119,10 +7123,10 @@ extension on TranslationsNl {
 			'assistant.steps.cancelJob' => 'Taak stoppen',
 			'assistant.steps.retryJob' => 'Taak opnieuw starten',
 			'assistant.steps.createUser' => 'Gebruiker aanmaken',
-			'assistant.steps.setUserLibraryAccess' => 'Toegang instellen',
-			'assistant.steps.removeUser' => 'Gebruiker verwijderen',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.steps.setUserLibraryAccess' => 'Toegang instellen',
+			'assistant.steps.removeUser' => 'Gebruiker verwijderen',
 			'assistant.steps.searchCatalog' => 'Catalogus doorzoeken',
 			'assistant.steps.createHomeRow' => 'Rij op het beginscherm maken',
 			'assistant.steps.createCollection' => 'Collectie maken',

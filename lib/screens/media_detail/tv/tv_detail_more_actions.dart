@@ -70,7 +70,7 @@ extension _MediaDetailTvMoreActions on _MediaDetailScreenState {
   ) => TvDetailActionRow(
     id: action.value,
     icon: action.icon,
-    label: action.label,
+    label: action.panelLabel ?? action.label,
     value: action.subtitle,
     onSelect: () {
       SelectKeyUpSuppressor.suppressSelectUntilKeyUp();

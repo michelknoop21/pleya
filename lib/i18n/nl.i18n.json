@@ -488,6 +488,8 @@
     "more": "Meer"
   },
   "mediaMenu": {
+    "addToPlaylistOrCollection": "Toevoegen aan afspeellijst / collectie",
+    "addToPlaylist": "Toevoegen aan afspeellijst",
     "markAsWatched": "Markeer als gekeken",
     "markAsUnwatched": "Markeer als ongekeken",
     "removeFromContinueWatching": "Verwijderen uit Verder kijken",
