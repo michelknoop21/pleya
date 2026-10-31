@@ -9,13 +9,18 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/source_availability.dart';
 import 'package:pleya/media/unified/source_coverage_state.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_route_context.dart';
+import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
 import 'package:pleya/providers/offline_watch_provider.dart';
+import 'package:pleya/screens/tv/tv_unified_context_actions.dart';
+import 'package:pleya/screens/tv/tv_unified_context_menu.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/download_manager_service.dart';
 import 'package:pleya/services/download_storage_service.dart';
@@ -25,6 +30,7 @@ import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/unified_catalog/unified_title_playback.dart';
 import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
 import 'package:pleya/services/watch_actions.dart';
+import 'package:pleya/utils/watch_state_notifier.dart';
 import 'package:provider/provider.dart';
 
 /// Watch-state marks must survive their own server being unreachable, and that
@@ -258,6 +264,25 @@ void main() {
       expect(outcome, WatchMarkOutcome.marked);
       expect(first.writes, hasLength(1));
       expect(last.writes, hasLength(1), reason: 'one refusal does not stop the source after it');
+      final held = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
+      expect(held?.actionType, 'mirroredWatched', reason: 'a refusal is retried like any queued write');
+    });
+
+    testWidgets('one mark is one viewing: only the first source reports it', (tester) async {
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(_HealthyClient('b'));
+      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+      final events = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await tester.runAsync(() async {
+        await WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true);
+        await pumpEventQueue();
+      });
+
+      expect({for (final e in events) e.globalKey: e.isCopy}, {'a:dune': false, 'b:dune': true});
     });
 
     testWidgets('a source that is down keeps the mark in the queue', (tester) async {
@@ -269,7 +294,7 @@ void main() {
       await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
 
       final action = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
-      expect(action?.actionType, 'watched');
+      expect(action?.actionType, 'mirroredWatched');
     });
 
     testWidgets('another title on the same page stays alone', (tester) async {
@@ -282,6 +307,84 @@ void main() {
       await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'blade-runner'), watched: true));
 
       expect(other.writes, isEmpty);
+    });
+  });
+
+  group('the TV menu counts one viewing too', () {
+    UnifiedMediaGroup groupOf(List<MediaItem> copies) {
+      final sources = [for (final copy in copies) UnifiedMediaSource.fromItem(copy)];
+      return UnifiedMediaGroup(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'Dune', year: 2021),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: sources.first.sourceKey),
+      );
+    }
+
+    testWidgets('the first membership reports it, the others only get the write', (tester) async {
+      final second = _HealthyClient('b');
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(second);
+      final ctx = await pumpTree(tester);
+      final events = <WatchStateEvent>[];
+      final subscription = WatchStateNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await tester.runAsync(() async {
+        await runUnifiedGroupAction(
+          ctx,
+          action: UnifiedGroupAction.markWatched,
+          group: groupOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]),
+          availabilityFor: (_) => SourceAvailability.online,
+        );
+        await pumpEventQueue();
+      });
+
+      expect(second.writes, hasLength(1));
+      expect({for (final e in events) e.globalKey: e.isCopy}, {'a:dune': false, 'b:dune': true});
+    });
+
+    testWidgets('a membership held for later is a copy once another one reported', (tester) async {
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(_HealthyClient('b'), online: false);
+      final ctx = await pumpTree(tester);
+
+      await tester.runAsync(
+        () => runUnifiedGroupAction(
+          ctx,
+          action: UnifiedGroupAction.markWatched,
+          group: groupOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]),
+          availabilityFor: (source) =>
+              source.serverId.value == 'a' ? SourceAvailability.online : SourceAvailability.offline,
+        ),
+      );
+
+      final held = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
+      expect(held?.actionType, 'mirroredWatched');
+    });
+
+    testWidgets('with nothing reachable the first held row carries the report', (tester) async {
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'), online: false)
+        ..debugRegisterClientForTesting(_HealthyClient('b'), online: false);
+      final ctx = await pumpTree(tester);
+
+      await tester.runAsync(
+        () => runUnifiedGroupAction(
+          ctx,
+          action: UnifiedGroupAction.markWatched,
+          group: groupOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]),
+          availabilityFor: (_) => SourceAvailability.offline,
+        ),
+      );
+
+      final first = await tester.runAsync(() => db.getLatestWatchAction('a:dune'));
+      final second = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
+      expect(first?.actionType, 'watched');
+      expect(second?.actionType, 'mirroredWatched');
     });
   });
 

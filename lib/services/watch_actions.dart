@@ -15,6 +15,8 @@ import '../utils/haptics.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/watch_state_notifier.dart';
 import 'trackers/tracker_coordinator.dart';
+import 'multi_server_manager.dart';
+import 'unified_catalog/unified_title_discovery.dart';
 import 'unified_catalog/unified_title_playback.dart';
 import 'unified_catalog/unified_title_scope.dart';
 
@@ -62,39 +64,39 @@ class WatchActions {
     required bool watched,
     bool? offline,
     UnifiedTitlePlayback? unifiedTitle,
+    bool acrossSources = true,
   }) async {
     Haptics.selection();
-    final title = unifiedTitle ?? UnifiedTitleScope.maybeOf(context);
+    final known = acrossSources ? unifiedTitle ?? UnifiedTitleScope.maybeOf(context) : null;
+    final discovery = acrossSources && known == null && offline != true ? UnifiedTitleDiscovery.of(context) : null;
+    final copies = _CopyWriter.of(context);
     final outcome = await _setOne(context, item, watched: watched, offline: offline);
-    if (title != null && title.holds(item) && outcome != WatchMarkOutcome.skipped) {
-      await _reachOtherSources(context, title, item, watched: watched, offline: offline);
+    if (outcome == WatchMarkOutcome.skipped) return outcome;
+    if (known != null && known.holds(item)) {
+      await copies.reachOtherSources(known, item, watched: watched);
+    } else if (discovery != null) {
+      // The mark landed; the rest is a lookup across servers nobody waits for.
+      unawaited(_reachFound(copies, discovery, item, watched: watched));
     }
     return outcome;
   }
 
-  /// The same mark on every other source of the title on this page (besluit 3
-  /// of DEC-XXX "Eén titel over servers heen"), the way the TV menu fans out
-  /// (hoofdstuk 13.5). The mark on [item] already landed; one that a second
-  /// server refuses does not undo it and does not reach the caller.
-  static Future<void> _reachOtherSources(
-    BuildContext context,
-    UnifiedTitlePlayback title,
+  static Future<void> _reachFound(
+    _CopyWriter copies,
+    UnifiedTitleDiscovery discovery,
     MediaItem item, {
     required bool watched,
-    bool? offline,
   }) async {
-    try {
-      for (final copy in await title.copiesOf(item)) {
-        if (!context.mounted) return;
-        await _setOne(context, copy, watched: watched, offline: offline).catchError((Object e, StackTrace st) {
-          appLogger.w('Could not mark ${copy.globalKey}', error: e, stackTrace: st);
-          return WatchMarkOutcome.skipped;
-        });
-      }
-    } catch (e, st) {
-      appLogger.w('Could not reach the other sources of ${item.globalKey}', error: e, stackTrace: st);
-    }
+    final title = await discovery.titleOf(item);
+    if (title != null) await copies.reachOtherSources(title, item, watched: watched);
   }
+
+  /// The mark on one more copy of a title that was marked already: the server
+  /// gets it, Trakt, the trackers and the interactions do not. One mark is one
+  /// viewing, however many servers hold the title. Falls back to the queue, so
+  /// this does not throw for a server that refuses.
+  static Future<WatchMarkOutcome> markCopy(BuildContext context, MediaItem item, {required bool watched}) =>
+      _CopyWriter.of(context).write(item, watched: watched);
 
   static Future<WatchMarkOutcome> _setOne(
     BuildContext context,
@@ -178,6 +180,62 @@ class WatchActions {
     await hidden.hide(item);
     WatchStateNotifier().notifyRemovedFromContinueWatching(item: item);
     return ContinueWatchingRemoval.hiddenOnDevice;
+  }
+}
+
+/// Marks the other copies of a title. Holds on to what it reads from the
+/// context: a lookup can outlast the screen that started the mark.
+class _CopyWriter {
+  _CopyWriter(this._manager, this._queue);
+
+  factory _CopyWriter.of(BuildContext context) =>
+      _CopyWriter(context.read<MultiServerProvider?>()?.serverManager, context.read<OfflineWatchProvider?>());
+
+  final MultiServerManager? _manager;
+  final OfflineWatchProvider? _queue;
+
+  /// The mark on [item] already landed: nothing a second server does undoes it
+  /// or reaches the caller.
+  Future<void> reachOtherSources(UnifiedTitlePlayback title, MediaItem item, {required bool watched}) async {
+    try {
+      for (final copy in await title.copiesOf(item)) {
+        await write(copy, watched: watched);
+      }
+    } catch (e, st) {
+      appLogger.w('Could not reach the other sources of ${item.globalKey}', error: e, stackTrace: st);
+    }
+  }
+
+  Future<WatchMarkOutcome> write(MediaItem copy, {required bool watched}) async {
+    final serverId = copy.serverId;
+    if (serverId == null) return WatchMarkOutcome.skipped;
+    final id = ServerId(serverId);
+    final client = _manager?.getClient(id);
+    if (client != null && (_manager?.isServerOnline(id) ?? false)) {
+      try {
+        if (watched) {
+          await client.markWatched(copy);
+        } else {
+          await client.markUnwatched(copy);
+        }
+        WatchStateNotifier().notifyWatched(
+          item: copy,
+          isNowWatched: watched,
+          cacheServerId: client.cacheServerId,
+          isCopy: true,
+        );
+        return WatchMarkOutcome.marked;
+      } catch (e, st) {
+        appLogger.w('Could not mark ${copy.globalKey}; keeping it for the next sync', error: e, stackTrace: st);
+      }
+    }
+    try {
+      await _queue?.markCopy(serverId: id, itemId: copy.id, watched: watched);
+    } catch (e, st) {
+      appLogger.w('Could not keep the mark on ${copy.globalKey}', error: e, stackTrace: st);
+      return WatchMarkOutcome.skipped;
+    }
+    return WatchMarkOutcome.queuedOffline;
   }
 }
 

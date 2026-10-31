@@ -60,6 +60,11 @@ class WatchStateEvent with HierarchicalEventMixin {
   /// session (see PlaybackProgressTracker); a progress tick is never final.
   final bool isFinal;
 
+  /// The same mark on another copy of a title (DEC-XXX "Eén titel over servers
+  /// heen"). Surfaces show it; what counts viewings, Trakt and the recorded
+  /// interactions, has already heard about the title and skips it.
+  final bool isCopy;
+
   WatchStateEvent({
     required this.itemId,
     required this.serverId,
@@ -72,6 +77,7 @@ class WatchStateEvent with HierarchicalEventMixin {
     this.librarySectionID,
     this.durationMs,
     this.isFinal = false,
+    this.isCopy = false,
   }) : globalKey = buildGlobalKey(ServerId(serverId), itemId);
 
   /// `serverId:librarySectionID`, matching [MediaLibrary.globalKey]. Null when
@@ -107,7 +113,7 @@ class WatchStateNotifier extends BaseNotifier<WatchStateEvent> {
   }
 
   /// Helper to emit a watched/unwatched event from a [MediaItem].
-  void notifyWatched({required MediaItem item, bool isNowWatched = true, String? cacheServerId}) {
+  void notifyWatched({required MediaItem item, bool isNowWatched = true, String? cacheServerId, bool isCopy = false}) {
     final serverId = serverIdOrNull(item.serverId);
     if (serverId == null) {
       appLogger.w('WatchStateNotifier: missing serverId for ${item.id}, skipping watched event');
@@ -123,6 +129,7 @@ class WatchStateNotifier extends BaseNotifier<WatchStateEvent> {
         mediaType: item.kind.id,
         isNowWatched: isNowWatched,
         librarySectionID: item.libraryId,
+        isCopy: isCopy,
       ),
     );
   }

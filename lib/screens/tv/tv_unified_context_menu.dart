@@ -480,11 +480,27 @@ Future<void> _applyToSources(
         ]
       : <UnifiedMediaSource>[];
 
+  final isMark = action == UnifiedGroupAction.markWatched || action == UnifiedGroupAction.markUnwatched;
+  // One mark is one viewing: the first membership it lands on reports it, the
+  // others only get the server write (DEC-XXX "Eén titel over servers heen").
+  var reported = false;
   var done = 0;
+  var queuedCopies = 0;
   for (final source in sources) {
     if (!context.mounted) return;
     try {
-      await _applyToOneSource(context, action: action, item: source.item);
+      if (isMark && reported) {
+        final outcome = await WatchActions.markCopy(
+          context,
+          source.item,
+          watched: action == UnifiedGroupAction.markWatched,
+        );
+        if (outcome == WatchMarkOutcome.queuedOffline) queuedCopies++;
+        if (outcome == WatchMarkOutcome.marked) done++;
+        continue;
+      }
+      await _applyToOneSource(context, action: action, item: source.item, onlyMembership: total == 1);
+      reported = true;
       done++;
     } catch (e, st) {
       appLogger.w('Unified context action ${action.name} failed on ${source.sourceKey}', error: e, stackTrace: st);
@@ -510,7 +526,7 @@ Future<void> _applyToSources(
     }
   }
 
-  final queued = await _queueDeferred(offlineWatch, action, toQueue);
+  final queued = queuedCopies + await _queueDeferred(offlineWatch, action, toQueue, reported: reported);
 
   if (!context.mounted) return;
   if (done > 0 || queued > 0) onChanged?.call();
@@ -610,10 +626,14 @@ UnifiedMediaSource _ratingOrigin(BuildContext context, List<UnifiedMediaSource> 
 Future<int> _queueDeferred(
   OfflineWatchProvider? offlineWatch,
   UnifiedGroupAction action,
-  List<UnifiedMediaSource> sources,
-) async {
+  List<UnifiedMediaSource> sources, {
+  required bool reported,
+}) async {
   if (offlineWatch == null || sources.isEmpty) return 0;
 
+  // Nothing landed yet: the first held row carries the report, the rest are
+  // copies of it.
+  var isCopy = reported;
   var queued = 0;
   for (final source in sources) {
     final serverId = source.item.serverId;
@@ -623,10 +643,20 @@ Future<int> _queueDeferred(
           await offlineWatch.queueRemoveFromContinueWatching(source.item);
         case UnifiedGroupAction.markWatched:
           if (serverId == null || serverId.isEmpty) continue;
-          await offlineWatch.markAsWatched(serverId: ServerId(serverId), itemId: source.item.id);
+          if (isCopy) {
+            await offlineWatch.markCopy(serverId: ServerId(serverId), itemId: source.item.id, watched: true);
+          } else {
+            await offlineWatch.markAsWatched(serverId: ServerId(serverId), itemId: source.item.id);
+          }
+          isCopy = true;
         case UnifiedGroupAction.markUnwatched:
           if (serverId == null || serverId.isEmpty) continue;
-          await offlineWatch.markAsUnwatched(serverId: ServerId(serverId), itemId: source.item.id);
+          if (isCopy) {
+            await offlineWatch.markCopy(serverId: ServerId(serverId), itemId: source.item.id, watched: false);
+          } else {
+            await offlineWatch.markAsUnwatched(serverId: ServerId(serverId), itemId: source.item.id);
+          }
+          isCopy = true;
         case UnifiedGroupAction.addToWatchlist:
         case UnifiedGroupAction.removeFromWatchlist:
         case UnifiedGroupAction.rate:
@@ -646,12 +676,15 @@ Future<void> _applyToOneSource(
   BuildContext context, {
   required UnifiedGroupAction action,
   required MediaItem item,
+  required bool onlyMembership,
 }) async {
   switch (action) {
+    // With more memberships this fan-out is the reach; a card with one may
+    // still have copies its row did not show.
     case UnifiedGroupAction.markWatched:
-      await WatchActions.setWatched(context, item, watched: true);
+      await WatchActions.setWatched(context, item, watched: true, acrossSources: onlyMembership);
     case UnifiedGroupAction.markUnwatched:
-      await WatchActions.setWatched(context, item, watched: false);
+      await WatchActions.setWatched(context, item, watched: false, acrossSources: onlyMembership);
     case UnifiedGroupAction.removeFromContinueWatching:
       await WatchActions.removeFromContinueWatching(context, item);
     case UnifiedGroupAction.addToWatchlist || UnifiedGroupAction.removeFromWatchlist || UnifiedGroupAction.rate:

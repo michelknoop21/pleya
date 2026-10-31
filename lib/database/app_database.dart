@@ -30,7 +30,7 @@ enum OfflineActionType {
   /// No migration: `OfflineWatchProgressQueue.actionType` is a plain text
   /// column with no constraint, check or index tied to its values, so a new
   /// value is new *data*, not a new schema. What it does need is a replay
-  /// branch in `OfflineWatchSyncService._syncAction` — a queued row whose
+  /// branch in `replayOfflineWatchAction` — a queued row whose
   /// type nothing handles would sit there being retried and deleted without
   /// ever performing the write.
   removedFromContinueWatching,
@@ -39,7 +39,13 @@ enum OfflineActionType {
   /// title (besluit 3 of DEC-XXX "Eén titel over servers heen"). Replays like
   /// [progress], without the trackers: the source that played reported it, and
   /// a second report would count the same viewing twice.
-  mirroredProgress;
+  mirroredProgress,
+
+  /// A watched or unwatched mark on another copy of the same title. Replays
+  /// like [watched] and [unwatched], without the trackers: one mark is one
+  /// viewing, however many servers hold the title.
+  mirroredWatched,
+  mirroredUnwatched;
 
   /// Stable string id used for persistence. Survives an enum-name rename
   /// (e.g. `progress` → `inProgress`) — `.name` would corrupt every row.
@@ -49,6 +55,8 @@ enum OfflineActionType {
     OfflineActionType.unwatched => 'unwatched',
     OfflineActionType.removedFromContinueWatching => 'removeFromContinueWatching',
     OfflineActionType.mirroredProgress => 'mirroredProgress',
+    OfflineActionType.mirroredWatched => 'mirroredWatched',
+    OfflineActionType.mirroredUnwatched => 'mirroredUnwatched',
   };
 
   /// Inverse of [id]. Throws on unknown so a typo in production doesn't
@@ -59,6 +67,8 @@ enum OfflineActionType {
     'unwatched' => OfflineActionType.unwatched,
     'removeFromContinueWatching' => OfflineActionType.removedFromContinueWatching,
     'mirroredProgress' => OfflineActionType.mirroredProgress,
+    'mirroredWatched' => OfflineActionType.mirroredWatched,
+    'mirroredUnwatched' => OfflineActionType.mirroredUnwatched,
     _ => throw ArgumentError('Unknown OfflineActionType id: $id'),
   };
 }

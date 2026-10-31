@@ -274,6 +274,24 @@ void main() {
     expect((await db.getLatestWatchAction('other:film'))?.viewOffset, 2 * _hour - 60000);
   });
 
+  test('a held copy mark lands on the server without telling anyone else', () async {
+    final other = _Server('other', item: _film('other'));
+    manager.debugRegisterClientForTesting(other);
+    final events = <WatchStateEvent>[];
+    final subscription = WatchStateNotifier().stream.listen(events.add);
+    addTearDown(subscription.cancel);
+
+    await queue.queueCopyMark(serverId: ServerId('other'), itemId: 'film', watched: true);
+    expect(await queue.getLocalWatchStatus('other:film'), isTrue, reason: 'waiting rows count as local state');
+
+    await queue.syncPendingItems();
+    await pumpEventQueue();
+
+    expect(other.watched, ['film']);
+    expect(await queue.getPendingSyncCount(), 0);
+    expect(events, isEmpty);
+  });
+
   test('a row written during a running sync does not wait for the next reconnect', () async {
     final gate = Completer<void>();
     final other = _Server('other', holdUntil: gate.future);

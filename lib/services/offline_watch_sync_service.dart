@@ -279,6 +279,15 @@ class OfflineWatchSyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Holds a watched or unwatched mark for another copy of a title whose mark
+  /// already went out once. See [OfflineActionType.mirroredWatched].
+  Future<String?> queueCopyMark({required ServerId serverId, required String itemId, required bool watched}) =>
+      _queueWatchStatusAction(
+        serverId: serverId,
+        itemId: itemId,
+        actionType: (watched ? OfflineActionType.mirroredWatched : OfflineActionType.mirroredUnwatched).id,
+      );
+
   Future<String?> queueMarkWatched({required ServerId serverId, required String itemId}) =>
       _queueWatchStatusAction(serverId: serverId, itemId: itemId, actionType: OfflineActionType.watched.id);
 

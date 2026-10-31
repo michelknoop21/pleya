@@ -23,6 +23,8 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
   final needsRichItem =
       action.actionType == OfflineActionType.watched.id ||
       action.actionType == OfflineActionType.unwatched.id ||
+      action.actionType == OfflineActionType.mirroredWatched.id ||
+      action.actionType == OfflineActionType.mirroredUnwatched.id ||
       action.actionType == OfflineActionType.removedFromContinueWatching.id ||
       ((action.actionType == OfflineActionType.progress.id ||
               action.actionType == OfflineActionType.mirroredProgress.id) &&
@@ -48,6 +50,14 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
     case 'unwatched':
       await client.markUnwatched(resolvedItem);
       await _scrobbleBestEffort(() => TrackerCoordinator.instance.markUnwatched(resolvedItem, client));
+      break;
+
+    case 'mirroredWatched':
+      await client.markWatched(resolvedItem);
+      break;
+
+    case 'mirroredUnwatched':
+      await client.markUnwatched(resolvedItem);
       break;
 
     case 'removeFromContinueWatching':

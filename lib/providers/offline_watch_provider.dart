@@ -144,11 +144,17 @@ class OfflineWatchProvider extends ChangeNotifier with DisposableChangeNotifierM
     required bool isNowWatched,
     required WatchStateChangeType changeType,
     String? cacheServerId,
+    bool isCopy = false,
   }) {
     final globalKey = buildGlobalKey(ServerId(serverId), itemId);
     final metadata = _downloadProvider.getMetadata(globalKey);
     if (metadata != null) {
-      WatchStateNotifier().notifyWatched(item: metadata, isNowWatched: isNowWatched, cacheServerId: cacheServerId);
+      WatchStateNotifier().notifyWatched(
+        item: metadata,
+        isNowWatched: isNowWatched,
+        cacheServerId: cacheServerId,
+        isCopy: isCopy,
+      );
     } else {
       // Fallback: emit minimal event without parent chain.
       WatchStateNotifier().notify(
@@ -160,6 +166,7 @@ class OfflineWatchProvider extends ChangeNotifier with DisposableChangeNotifierM
           parentChain: [],
           mediaType: 'unknown',
           isNowWatched: isNowWatched,
+          isCopy: isCopy,
         ),
       );
     }
@@ -218,6 +225,21 @@ class OfflineWatchProvider extends ChangeNotifier with DisposableChangeNotifierM
       isNowWatched: false,
       changeType: WatchStateChangeType.unwatched,
       cacheServerId: cacheServerId,
+    );
+    safeNotifyListeners();
+  }
+
+  /// Holds a mark for another copy of a title, one that was already marked
+  /// once. The trackers and Trakt heard about the title there.
+  Future<void> markCopy({required ServerId serverId, required String itemId, required bool watched}) async {
+    final cacheServerId = await _syncService.queueCopyMark(serverId: serverId, itemId: itemId, watched: watched);
+    _emitWatchStateChange(
+      serverId: serverId,
+      itemId: itemId,
+      isNowWatched: watched,
+      changeType: watched ? WatchStateChangeType.watched : WatchStateChangeType.unwatched,
+      cacheServerId: cacheServerId,
+      isCopy: true,
     );
     safeNotifyListeners();
   }

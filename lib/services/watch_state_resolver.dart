@@ -50,10 +50,14 @@ class WatchStateResolver {
     OfflineWatchProgressItem? latest;
 
     for (final action in actions) {
-      if (action.actionType != 'watched' &&
-          action.actionType != 'unwatched' &&
-          action.actionType != 'progress' &&
-          action.actionType != 'mirroredProgress') {
+      if (!const {
+        'watched',
+        'unwatched',
+        'progress',
+        'mirroredProgress',
+        'mirroredWatched',
+        'mirroredUnwatched',
+      }.contains(action.actionType)) {
         continue;
       }
       if (latest == null || action.updatedAt > latest.updatedAt) latest = action;
@@ -66,8 +70,10 @@ class WatchStateResolver {
     final latest = latestAction(actions);
 
     return switch (latest?.actionType) {
-      'watched' => const WatchStateSnapshot(isWatched: true, hasViewOffsetMs: true, viewOffsetMs: 0),
-      'unwatched' => const WatchStateSnapshot(isWatched: false, hasViewOffsetMs: true, viewOffsetMs: 0),
+      'watched' ||
+      'mirroredWatched' => const WatchStateSnapshot(isWatched: true, hasViewOffsetMs: true, viewOffsetMs: 0),
+      'unwatched' ||
+      'mirroredUnwatched' => const WatchStateSnapshot(isWatched: false, hasViewOffsetMs: true, viewOffsetMs: 0),
       'progress' || 'mirroredProgress' =>
         latest!.shouldMarkWatched
             ? const WatchStateSnapshot(isWatched: true, hasViewOffsetMs: true, viewOffsetMs: 0)
