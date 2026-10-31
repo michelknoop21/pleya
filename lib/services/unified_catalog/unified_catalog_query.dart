@@ -228,10 +228,9 @@ bool unifiedCatalogHasSortValue(MediaItem item, UnifiedCatalogSortField field) =
 ///   (`keyExpression`, `subjectKey` in `catalog/cursor.go`), and those two carry a
 ///   sentinel that puts titles without a value last in both directions.
 /// * Jellyfin's `PlayCount` on a series: `JellyfinMappers._viewCount` reads 0 unless
-///   `UserData.Played` is set, which a series with one episode watched is not.
-///   The demo server had nothing watched on 31 October 2026, so whether the
-///   server's own count stays 0 there is unmeasured, and the row stays for one
-///   library.
+///   `UserData.Played` is set, so an empty key proves nothing. The demo server had
+///   nothing watched on 31 October 2026, so whether the server's own count stays 0
+///   on a series is unmeasured, and the row stays for one library.
 ///
 /// One library then keeps the server's order untouched, and two sources cannot
 /// be ranked on that field at all: `unifiedFilterCapabilitiesFor` takes it away.

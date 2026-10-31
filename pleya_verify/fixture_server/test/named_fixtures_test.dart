@@ -33,11 +33,24 @@ void main() {
     test('sends titles without a value last descending and first ascending', () async {
       final jellyfin = JellyfinFakeServer();
       applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin);
-      final down = (await items(jellyfin, 'Descending,Ascending'))['Items'] as List;
+      final down = (await items(jellyfin, 'Descending'))['Items'] as List;
       final up = (await items(jellyfin, 'Ascending'))['Items'] as List;
       expect((down.first as Map)['CriticRating'], 100);
       expect((down.last as Map).containsKey('CriticRating'), isFalse);
       expect((up.first as Map).containsKey('CriticRating'), isFalse);
+    });
+
+    test('one SortOrder runs every key that way, a list runs per key', () async {
+      final jellyfin = JellyfinFakeServer();
+      applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin);
+      List<Object?> tied(List<dynamic> rows) => [
+        for (final row in rows.cast<Map>())
+          if (!row.containsKey('CriticRating')) row['Name'],
+      ];
+      final one = tied((await items(jellyfin, 'Descending'))['Items'] as List);
+      final perKey = tied((await items(jellyfin, 'Descending,Ascending'))['Items'] as List);
+      expect(one, hasLength(2));
+      expect(one, perKey.reversed.toList());
     });
   });
 

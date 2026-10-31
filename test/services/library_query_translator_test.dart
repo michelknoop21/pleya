@@ -170,7 +170,7 @@ void main() {
 
       final addedSort = translator.toQueryParameters(const LibraryQuery(sort: LibrarySort(field: 'addedAt')));
       expect(addedSort['SortBy'], 'DateCreated,SortName');
-      expect(addedSort['SortOrder'], 'Descending,Ascending');
+      expect(addedSort['SortOrder'], 'Descending');
     });
 
     group('equal values page stably', () {
@@ -186,10 +186,10 @@ void main() {
         expect(params('year', LibrarySortDirection.ascending)['SortOrder'], 'Ascending');
       });
 
-      test('ties read A to Z in a descending sort too, as the merge compares them', () {
+      test('one SortOrder: the direction, which both Jellyfin and Emby read', () {
         final descending = params('criticRating', LibrarySortDirection.descending);
         expect(descending['SortBy'], 'CriticRating,SortName');
-        expect(descending['SortOrder'], 'Descending,Ascending');
+        expect(descending['SortOrder'], 'Descending');
       });
 
       test('a sort on the name needs no second key', () {

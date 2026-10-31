@@ -274,12 +274,14 @@ class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
       final field = _sortFieldFor(sort.field, query.kind);
       final descending = sort.direction == LibrarySortDirection.descending;
       // Without a second key the server decides how equal values fall per
-      // request, so a title can drop out between two pages. SortOrder is per
-      // field: ties read A to Z whichever way the field runs, as the merge's
-      // comparator reads them.
-      final tieBreak = field != 'Random' && !field.contains('SortName');
-      params['SortBy'] = tieBreak ? '$field,SortName' : field;
-      params['SortOrder'] = descending ? (tieBreak ? 'Descending,Ascending' : 'Descending') : 'Ascending';
+      // request, so a title can drop out between two pages. One SortOrder runs
+      // every key that way (measured on Jellyfin 12.4.0: `Descending` and
+      // `Descending,Descending` give the same order, `Descending,Ascending` does
+      // not), so equal values read Z to A in a descending sort. The merge's
+      // comparator reads ties A to Z, which only decides the source that pops
+      // next. Emby is not tested live: it gets the same single value.
+      params['SortBy'] = field != 'Random' && !field.contains('SortName') ? '$field,SortName' : field;
+      params['SortOrder'] = descending ? 'Descending' : 'Ascending';
     }
     if (query.search != null && query.search!.isNotEmpty) {
       params['SearchTerm'] = query.search;

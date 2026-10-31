@@ -365,7 +365,7 @@ void main() {
     expect(query['Years'], '2023,2024');
     expect(query['Filters'], 'IsUnplayed');
     expect(query['SortBy'], 'PremiereDate,SortName');
-    expect(query['SortOrder'], 'Descending,Ascending');
+    expect(query['SortOrder'], 'Descending');
   });
 
   test('native genre OR query preserves every requested value instead of truncating before save', () async {

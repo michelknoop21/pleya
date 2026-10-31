@@ -104,8 +104,14 @@ class JellyfinFakeServer {
 
   http.Response _items(Map<String, String> query) {
     itemQueries.add(query);
-    // Both are lists with the tie-break on SortName behind the field.
-    final descending = query['SortOrder']?.split(',').first == 'Descending';
+    // Both are lists, as on Jellyfin: a key without an order of its own takes the
+    // first one (measured on 12.4.0), so one value runs the SortName behind the
+    // field the same way.
+    final orders = (query['SortOrder'] ?? '').split(',');
+    final descending = orders.first == 'Descending';
+    final tieDescending = (orders.length > 1 ? orders[1] : orders.first) == 'Descending';
+    int tie(JellyfinFakeMovie a, JellyfinFakeMovie b) =>
+        tieDescending ? b.title.compareTo(a.title) : a.title.compareTo(b.title);
     Comparable<Object>? key(JellyfinFakeMovie movie) => switch (query['SortBy']?.split(',').first) {
       'CriticRating' => movie.criticRating,
       'CommunityRating' => movie.communityRating,
@@ -118,13 +124,13 @@ class JellyfinFakeServer {
       ..sort((a, b) {
         final (ka, kb) = (key(a), key(b));
         if (ka == null || kb == null) {
-          if (ka == null && kb == null) return a.title.compareTo(b.title);
+          if (ka == null && kb == null) return tie(a, b);
           // SQLite's order: NULL below every value.
           final nullFirst = ka == null ? -1 : 1;
           return descending ? -nullFirst : nullFirst;
         }
         final cmp = ka.compareTo(kb);
-        return cmp != 0 ? (descending ? -cmp : cmp) : a.title.compareTo(b.title);
+        return cmp != 0 ? (descending ? -cmp : cmp) : tie(a, b);
       });
     final start = int.tryParse(query['StartIndex'] ?? '') ?? 0;
     final limit = int.tryParse(query['Limit'] ?? '') ?? sorted.length;
