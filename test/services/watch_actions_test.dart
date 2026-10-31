@@ -196,6 +196,31 @@ class _HungClient extends _HealthyClient {
   Future<void> markWatched(MediaItem item) => answer.future;
 }
 
+/// A watched mark goes out, hangs, and comes back as a server error once told.
+class _SlowFailure extends _HealthyClient {
+  _SlowFailure(super.id, {this.unwatchedFails = false});
+
+  final bool unwatchedFails;
+
+  /// Made inside `runAsync`, like [_HungClient.answer].
+  late Completer<void> answer;
+
+  static Never _serverError() =>
+      throw MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 503);
+
+  @override
+  Future<void> markWatched(MediaItem item) async {
+    await answer.future;
+    _serverError();
+  }
+
+  @override
+  Future<void> markUnwatched(MediaItem item) async {
+    if (unwatchedFails) _serverError();
+    return super.markUnwatched(item);
+  }
+}
+
 /// Hands out the real answers, after something changed meanwhile.
 class _SlowTitle implements UnifiedTitlePlayback {
   _SlowTitle(this._title, {this.onCopies, this.holdUntil});
@@ -617,6 +642,90 @@ void main() {
       });
 
       expect(other.writes, [(itemId: 'dune', watched: false)]);
+    });
+
+    testWidgets('a mark that fails after its correction landed leaves no row', (tester) async {
+      await pumpTree(tester);
+      final slow = _SlowFailure('b');
+      serverManager.debugRegisterClientForTesting(slow);
+      final writer = WatchCopyWriter(serverManager, offlineWatch, null);
+
+      final outcome = await tester.runAsync(() async {
+        slow.answer = Completer<void>();
+        final first = writer.write(_itemOn('b', 'dune'), watched: true);
+        await pumpEventQueue();
+        await writer.write(_itemOn('b', 'dune'), watched: false);
+        slow.answer.complete();
+        return first;
+      });
+
+      expect(outcome, WatchCopyOutcome.leftAlone);
+      expect(slow.writes, [(itemId: 'dune', watched: false)]);
+      expect(await tester.runAsync(() => db.getLatestWatchAction('b:dune')), isNull);
+    });
+
+    testWidgets('a mark that fails after its correction went into the queue leaves that row alone', (tester) async {
+      await pumpTree(tester);
+      final slow = _SlowFailure('b', unwatchedFails: true);
+      serverManager.debugRegisterClientForTesting(slow);
+      final writer = WatchCopyWriter(serverManager, offlineWatch, null);
+
+      await tester.runAsync(() async {
+        slow.answer = Completer<void>();
+        final first = writer.write(_itemOn('b', 'dune'), watched: true);
+        await pumpEventQueue();
+        await writer.write(_itemOn('b', 'dune'), watched: false);
+        slow.answer.complete();
+        await first;
+      });
+
+      final held = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
+      expect(held?.actionType, 'mirroredUnwatched');
+    });
+
+    testWidgets('a mark that fails while its correction is still looking up its copies leaves no row', (tester) async {
+      final slow = _SlowFailure('b');
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(slow);
+      final copies = [_itemOn('a', 'dune'), _itemOn('b', 'dune')];
+      Completer<void>? lookup;
+      final ctx = await scoped(
+        tester,
+        await pumpTree(tester),
+        _SlowTitle(titleOf(copies), holdUntil: () => lookup?.future),
+      );
+
+      final held = await tester.runAsync(() async {
+        slow.answer = Completer<void>();
+        await WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true);
+        await pumpEventQueue();
+        lookup = Completer<void>();
+        await WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: false);
+        slow.answer.complete();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        final whileLooking = await db.getLatestWatchAction('b:dune');
+        lookup!.complete();
+        await WatchActions.copiesReached();
+        return whileLooking;
+      });
+
+      expect(held, isNull, reason: 'the row of the older mark was never written');
+      expect(slow.writes, [(itemId: 'dune', watched: false)]);
+    });
+
+    testWidgets('a mark that fails on its own still gets its row', (tester) async {
+      await pumpTree(tester);
+      final slow = _SlowFailure('b');
+      serverManager.debugRegisterClientForTesting(slow);
+
+      final outcome = await tester.runAsync(() async {
+        slow.answer = Completer<void>()..complete();
+        return WatchCopyWriter(serverManager, offlineWatch, null).write(_itemOn('b', 'dune'), watched: true);
+      });
+
+      expect(outcome, WatchCopyOutcome.held);
+      expect((await tester.runAsync(() => db.getLatestWatchAction('b:dune')))?.actionType, 'mirroredWatched');
     });
 
     testWidgets('another cut keeps its own state, as it does for a play', (tester) async {

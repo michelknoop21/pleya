@@ -93,8 +93,7 @@ class WatchActions {
       item,
       {item.globalKey, ...reachedElsewhere},
       watched: watched,
-      isCurrent: (copy) =>
-          WatchMarkOrder.isLatest(item.globalKey, stamp) && !WatchMarkOrder.markedAfter(copy.globalKey, stamp),
+      stamp: stamp,
     );
     _reaching.add(reaching);
     unawaited(reaching.whenComplete(() => _reaching.remove(reaching)));
@@ -114,12 +113,12 @@ class WatchActions {
     MediaItem item,
     Set<String> reached, {
     required bool watched,
-    required bool Function(MediaItem copy) isCurrent,
+    required int stamp,
   }) async {
     try {
-      if (known != null) await copies.reachOtherSources(known, item, reached, watched: watched, isCurrent: isCurrent);
+      if (known != null) await copies.reachOtherSources(known, item, reached, watched: watched, stamp: stamp);
       final found = await discovery?.titleOf(item);
-      if (found != null) await copies.reachOtherSources(found, item, reached, watched: watched, isCurrent: isCurrent);
+      if (found != null) await copies.reachOtherSources(found, item, reached, watched: watched, stamp: stamp);
     } catch (e, st) {
       appLogger.w('Could not reach the other sources of ${item.globalKey}', error: e, stackTrace: st);
     }
@@ -221,7 +220,8 @@ enum WatchCopyOutcome {
   /// Waiting in the queue for a server that can take it.
   held,
 
-  /// Not for this copy: another cut, or a server someone else runs.
+  /// Not for this copy: another cut, a server someone else runs, or a newer
+  /// mark that took over.
   leftAlone,
 
   /// It should have landed and did not, and waiting will not help.
@@ -254,17 +254,20 @@ class WatchCopyWriter {
 
   /// The mark on [item] already landed: nothing a second server does undoes it
   /// or reaches the caller. Adds what it wrote to to [reached], and leaves a
-  /// copy alone when [isCurrent] says a newer mark took over.
+  /// copy alone when a mark newer than [stamp] took over, on [item] or on it.
   Future<void> reachOtherSources(
     UnifiedTitlePlayback title,
     MediaItem item,
     Set<String> reached, {
     required bool watched,
-    required bool Function(MediaItem copy) isCurrent,
+    required int stamp,
   }) async {
+    bool isCurrent() => WatchMarkOrder.isLatest(item.globalKey, stamp);
     for (final copy in await title.copiesOf(item)) {
-      if (!isCurrent(copy)) continue;
-      if (reached.add(copy.globalKey) && runtimesAreComparable(item, copy)) await write(copy, watched: watched);
+      if (!isCurrent() || WatchMarkOrder.markedAfter(copy.globalKey, stamp)) continue;
+      if (reached.add(copy.globalKey) && runtimesAreComparable(item, copy)) {
+        await write(copy, watched: watched, isCurrent: isCurrent);
+      }
     }
   }
 
@@ -314,14 +317,16 @@ class WatchCopyWriter {
     (id) => (_manager?.isServerOnline(id) ?? false) ? _manager?.getClient(id) : null,
   );
 
-  Future<WatchCopyOutcome> write(MediaItem copy, {required bool watched}) async {
+  /// [isCurrent] says the mark this write belongs to is still the newest one on
+  /// the item it started from. Marks on [copy] itself are kept track of here.
+  Future<WatchCopyOutcome> write(MediaItem copy, {required bool watched, bool Function()? isCurrent}) async {
     final serverId = copy.serverId;
     if (serverId == null || _profiles?.activeId != _profileId) return WatchCopyOutcome.skipped;
     if (_manager?.isSomeoneElsesServer(ServerId(serverId)) ?? true) return WatchCopyOutcome.leftAlone;
     // A rejected token: a reconnect does not fix it, and a row would replay
     // under whoever signs in next.
     if (_manager?.authErrorServerIds.contains(serverId) ?? false) return WatchCopyOutcome.skipped;
-    WatchMarkOrder.next(copy.globalKey);
+    final stamp = WatchMarkOrder.next(copy.globalKey);
     final id = ServerId(serverId);
     final client = _manager?.getClient(id);
     if (client != null && (_manager?.isServerOnline(id) ?? false)) {
@@ -346,6 +351,11 @@ class WatchCopyWriter {
       }
     }
     if (_profiles?.activeId != _profileId) return WatchCopyOutcome.skipped;
+    // The write can answer long after it went out. A newer mark took over by
+    // then, and this row would write the older state back on the next sync.
+    if (WatchMarkOrder.markedAfter(copy.globalKey, stamp) || isCurrent?.call() == false) {
+      return WatchCopyOutcome.leftAlone;
+    }
     try {
       final held = await _queue?.markCopy(serverId: id, itemId: copy.id, watched: watched, profileId: _queueProfileId);
       return held == true ? WatchCopyOutcome.held : WatchCopyOutcome.skipped;

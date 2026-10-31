@@ -1163,8 +1163,9 @@ zoekactie overneemt krijgt hem niet.
 Per item wint de nieuwste actie. Een markering die volgt op een sessie of op een andere markering
 houdt de oudere weg bij een kopie waar die nog onderweg naartoe was (`WatchMarkOrder`). Dat gebeurt
 vóór de schrijfactie: staat een oudere schrijfactie al op de lijn naar een server, dan bepaalt die
-server de volgorde. De interface wacht niet op kopieën, een hangende server houdt de markering niet
-op.
+server de volgorde. Mislukt zo'n oudere schrijfactie pas nadat de nieuwere is begonnen, dan krijgt
+hij geen rij: de wachtrij zou de oude stand anders terugschrijven. De interface wacht niet op
+kopieën, een hangende server houdt de markering niet op.
 
 ### 13.3 Verder kijken
 
