@@ -37,7 +37,7 @@ const Key tvCatalogSkeletonKey = ValueKey('tvCatalogSkeleton');
 /// animation — for motion that a 10-foot surface reads as flicker rather than
 /// as progress.
 class TvCatalogSkeletonGrid extends StatelessWidget {
-  const TvCatalogSkeletonGrid({super.key, this.reservedLeading = 0});
+  const TvCatalogSkeletonGrid({super.key, this.reservedLeading = 0, this.fullBleed = false, this.densityScale = 1});
 
   /// Width held back before the first column, so the placeholder keeps
   /// reproducing the real grid's geometry while CAT5's rail is open. Without
@@ -45,10 +45,47 @@ class TvCatalogSkeletonGrid extends StatelessWidget {
   /// rail the loaded page will show five under.
   final double reservedLeading;
 
+  /// A-06c: stand in for the compact six-by-two grid, on the same geometry.
+  final bool fullBleed;
+
+  /// The density of a [fullBleed] grid, see [tvCatalogDensityScale].
+  final double densityScale;
+
   @override
   Widget build(BuildContext context) {
     final mono = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
+    if (fullBleed) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final grid = TvCatalogFullBleedLayout.grid(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            scale: scale,
+            density: densityScale,
+          );
+          return Padding(
+            padding: grid.scrollPadding(cardHeight: 0, focusScale: 1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var row = 0; row < TvCatalogFullBleedLayout.rows; row++) ...[
+                  if (row > 0) SizedBox(height: grid.rowGutter),
+                  Row(
+                    children: [
+                      for (var column = 0; column < grid.columns; column++) ...[
+                        if (column > 0) SizedBox(width: grid.gutter),
+                        _SkeletonCard(width: grid.cardWidth, scale: scale, mono: mono, compact: true),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      );
+    }
     final grid = TvCatalogGrid.forWidth(
       MediaQuery.sizeOf(context).width,
       scale: scale,
@@ -101,16 +138,20 @@ class TvCatalogSkeletonGrid extends StatelessWidget {
 /// One placeholder card: the poster block and the two text bars under it, on
 /// the metrics [TvUnifiedMediaCard] uses for the real thing.
 class _SkeletonCard extends StatelessWidget {
-  const _SkeletonCard({required this.width, required this.scale, required this.mono});
+  const _SkeletonCard({required this.width, required this.scale, required this.mono, this.compact = false});
 
   final double width;
   final double scale;
   final MonoTokens mono;
 
+  /// The compact card's shape: no inset, the footer's fixed height, centred.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final barHeight = TvCatalogLayout.cardTitleFontSize * scale;
     final metaHeight = TvCatalogLayout.cardMetaFontSize * scale;
+    if (compact) return _buildCompact(barHeight, metaHeight);
 
     // The same inset the real card carries, and it is made of two things.
     // `TvUnifiedMediaCard` sizes the *wrapper* to the grid's card width, and
@@ -156,6 +197,49 @@ class _SkeletonCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCompact(double barHeight, double metaHeight) {
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            key: tvCatalogPosterKey,
+            width: width,
+            height: width / TvCatalogLayout.posterAspectRatio,
+            decoration: BoxDecoration(
+              color: mono.text.withValues(alpha: TvCatalogLayout.skeletonArtworkFill),
+              borderRadius: BorderRadius.circular(TvCatalogLayout.cardRadius * scale),
+            ),
+          ),
+          SizedBox(
+            height: TvCatalogFullBleedLayout.footerHeight * scale,
+            child: Padding(
+              padding: EdgeInsets.only(top: TvCatalogFullBleedLayout.footerTopGap(scale)),
+              child: Column(
+                children: [
+                  _SkeletonBar(
+                    width: width * TvCatalogLayout.skeletonTitleWidthFraction,
+                    height: barHeight * 0.8,
+                    scale: scale,
+                    mono: mono,
+                  ),
+                  SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale),
+                  _SkeletonBar(
+                    width: width * TvCatalogLayout.skeletonMetaWidthFraction,
+                    height: metaHeight * 0.8,
+                    scale: scale,
+                    mono: mono,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:pleya_verify_fixture_server/jellyfin_fake_server.dart';
 import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
 import 'package:pleya_verify_fixture_server/seerr_fake_server.dart';
@@ -13,6 +14,46 @@ Future<http.Response> _post(PleyaFakeServer server, String path, Object body) {
 }
 
 void main() {
+  group('catalog.scores.v1', () {
+    Future<Map<String, dynamic>> items(JellyfinFakeServer jellyfin, String sortOrder) async {
+      final url = Uri.parse(
+        'http://fixture/jellyfin/Items?ParentId=${JellyfinFakeServer.libraryId}&SortBy=CriticRating,SortName&SortOrder=$sortOrder&StartIndex=0&Limit=50',
+      );
+      final response = await jellyfin.handle(http.Request('GET', url));
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    test('seeds a Jellyfin library with scores, two titles without', () async {
+      final jellyfin = JellyfinFakeServer();
+      expect(applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin), isTrue);
+      expect(jellyfin.movies, hasLength(12));
+      expect(jellyfin.movies.where((movie) => movie.criticRating == null), hasLength(2));
+    });
+
+    test('sends titles without a value last descending and first ascending', () async {
+      final jellyfin = JellyfinFakeServer();
+      applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin);
+      final down = (await items(jellyfin, 'Descending'))['Items'] as List;
+      final up = (await items(jellyfin, 'Ascending'))['Items'] as List;
+      expect((down.first as Map)['CriticRating'], 100);
+      expect((down.last as Map).containsKey('CriticRating'), isFalse);
+      expect((up.first as Map).containsKey('CriticRating'), isFalse);
+    });
+
+    test('one SortOrder runs every key that way, a list runs per key', () async {
+      final jellyfin = JellyfinFakeServer();
+      applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin);
+      List<Object?> tied(List<dynamic> rows) => [
+        for (final row in rows.cast<Map>())
+          if (!row.containsKey('CriticRating')) row['Name'],
+      ];
+      final one = tied((await items(jellyfin, 'Descending'))['Items'] as List);
+      final perKey = tied((await items(jellyfin, 'Descending,Ascending'))['Items'] as List);
+      expect(one, hasLength(2));
+      expect(one, perKey.reversed.toList());
+    });
+  });
+
   group('seeding preserves the session', () {
     // `seed` used to call the full reset(), which also wiped credentials,
     // refreshCount and the clock. Nothing in the scenario grammar forbids
@@ -335,6 +376,20 @@ void main() {
       expect(applied, isTrue);
       expect(server.libraries, hasLength(1));
       expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(19));
+    });
+  });
+
+  group('catalog.alphabet-500.v1', () {
+    test('five hundred movies, twenty per letter from A to Y and none under Z', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.alphabet-500.v1');
+
+      expect(applied, isTrue);
+      expect(server.libraries, hasLength(1));
+      final titles = server.items.values.where((i) => i['kind'] == 'movie').map((i) => i['title'] as String);
+      expect(titles, hasLength(500));
+      expect(titles.where((title) => title.startsWith('M ')), hasLength(20));
+      expect(titles.where((title) => title.startsWith('Z ')), isEmpty);
     });
   });
 

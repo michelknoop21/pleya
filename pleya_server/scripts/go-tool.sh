@@ -27,17 +27,19 @@ if [ -n "${PLEYA_TEST_FFPROBE_MOUNT:-}" ]; then
   extra+=(-v "${PLEYA_TEST_FFPROBE_MOUNT}:/usr/local/bin/ffprobe:ro")
 fi
 
-# Alleen de twee authority-bronnen die Go-tests lezen gaan alleen-lezen mee.
+# Alleen de drie authority-bronnen die Go-tests lezen gaan alleen-lezen mee.
 # De hele repository mounten zou ook gitignored .env- en signingbestanden aan
 # de testcontainer blootstellen.
 REPO_ROOT="$(cd .. && pwd)"
 REDACT_CASES_DIR="$REPO_ROOT/pleya_verify/redact"
 PROTOCOL_SPEC="$REPO_ROOT/docs/pleya-protocol-v1.md"
+PROTOCOL_CONTRACT="$REPO_ROOT/docs/pleya-protocol/v1/openapi.yaml"
 
 exec docker run --rm \
   -v "$PWD:/src" \
   -v "$REDACT_CASES_DIR:/repo/pleya_verify/redact:ro" \
   -v "$PROTOCOL_SPEC:/repo/docs/pleya-protocol-v1.md:ro" \
+  -v "$PROTOCOL_CONTRACT:/repo/docs/pleya-protocol/v1/openapi.yaml:ro" \
   -v "$MODCACHE/mod:/go/pkg/mod" \
   -v "$MODCACHE/build:/root/.cache/go-build" \
   -w /src \
