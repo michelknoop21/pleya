@@ -1113,7 +1113,9 @@ ontving. Een sessie die offline liep bereikt de kopieën zodra zijn eigen rij ec
 positie of als gekeken; een rij die de eigen server al had ingehaald meldt niets. Een rij van een
 kopie vervalt ook als de server de schrijfactie zelf weigert op een manier die wachten niet oplost.
 Een mislukte tokenronde op Pleya Server is geen weigering: de schrijfactie is dan niet verstuurd, en
-de rij blijft staan tot er weer een token is, onder hetzelfde account. Rijen die
+de rij blijft staan tot er weer een token is, onder hetzelfde account. Dat geldt ook voor een
+markering die rechtstreeks ging: een 429, kale 401 of 409 op `/auth/refresh` geeft die kopie alsnog
+een rij, langs dezelfde regel als de replay (`copyWriteStaysQueued`). Rijen die
 hun pogingen op hebben, krijgen een nieuwe ronde bij de eerste sync na een start van de app en
 daarna bij de eerste sync na zes uur; er loopt geen eigen timer. Een replay verwijdert een rij alleen
 als die tijdens de replay niet is bijgewerkt. Mislukt op Jellyfin, Emby of Pleya Server de start van
@@ -1201,7 +1203,9 @@ Eén markering is één kijkbeurt. De eerste bron die hem krijgt meldt hem aan T
 interacties; de andere kopieën krijgen alleen de servermarkering, ook bij een seizoen of serie. In de
 wachtrij staan die als `mirroredWatched` en `mirroredUnwatched`. Is geen enkele bron bereikbaar, dan
 draagt de eerste vastgehouden rij de melding. Alleen een fout die herhalen kan oplossen krijgt een
-rij; een auth-fout, 403, 404 of een ontbrekend endpoint niet.
+rij; een auth-fout, 403, 404 of een ontbrekend endpoint niet. Een mislukte tokenronde op Pleya Server
+is geen auth-fout van de server: de schrijfactie ging niet de deur uit, dus die krijgt wel een rij
+(13.2).
 
 "Alle bronnen" kent vijf grenzen uit DEC-XXX "Eén titel over servers heen". Een Special krijgt geen
 kopie, want het nummer bewijst daar niets. Een andere versie (`runtimesAreComparable`, G7) houdt zijn

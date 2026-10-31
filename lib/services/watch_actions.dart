@@ -22,6 +22,7 @@ import '../utils/provider_extensions.dart';
 import '../utils/watch_state_notifier.dart';
 import 'trackers/tracker_coordinator.dart';
 import 'multi_server_manager.dart';
+import 'offline_watch_replay.dart';
 import 'unified_catalog/unified_title_discovery.dart';
 import 'unified_catalog/unified_title_playback.dart';
 import 'unified_catalog/unified_copy_proof.dart';
@@ -301,6 +302,14 @@ class WatchCopyWriter {
     return outcome;
   }
 
+  /// Whether a write to [source] that failed on this path joins the queue, by
+  /// the same rule as a replay. The client decides, so a caller that only has
+  /// the source does not have to go looking for it.
+  bool keepsFailedWrite(UnifiedMediaSource source, Object error) {
+    final client = _manager?.getClient(source.serverId);
+    return client == null ? isRetryableServerWriteFailure(error) : copyWriteStaysQueued(client, error);
+  }
+
   late final _proof = UnifiedCopyProof(
     (id) => (_manager?.isServerOnline(id) ?? false) ? _manager?.getClient(id) : null,
   );
@@ -332,9 +341,8 @@ class WatchCopyWriter {
         return WatchCopyOutcome.written;
       } catch (e, st) {
         appLogger.w('Could not mark ${copy.globalKey}', error: e, stackTrace: st);
-        // Waiting does not fix a refusal, and a row would replay under whoever
-        // signs in next (hoofdstuk 13.2).
-        if (!isRetryableServerWriteFailure(e)) return WatchCopyOutcome.skipped;
+        // Waiting does not fix a refusal (hoofdstuk 13.2).
+        if (!copyWriteStaysQueued(client, e)) return WatchCopyOutcome.skipped;
       }
     }
     if (_profiles?.activeId != _profileId) return WatchCopyOutcome.skipped;

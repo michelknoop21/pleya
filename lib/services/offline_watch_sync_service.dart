@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 
 import '../database/app_database.dart';
 import '../database/download_operations.dart';
-import '../exceptions/media_server_exceptions.dart';
 import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
@@ -20,7 +19,6 @@ import 'offline_watch_replay.dart';
 import 'playback_resume_resolver.dart';
 import '../utils/watch_state_notifier.dart';
 import 'multi_server_manager.dart';
-import 'pleya_server_client.dart';
 import 'plex_client.dart';
 import 'settings_service.dart';
 import 'watch_state_resolver.dart';
@@ -603,15 +601,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
             appLogger.d('Profile changed during the replay of ${action.id}; it stays queued');
           } catch (e) {
             appLogger.w('Failed to sync action ${action.id}: $e');
-            // A copy that refuses or is gone will not change its mind, and
-            // nobody is waiting on it: the source that played has the viewing.
-            // A Pleya Server token round that failed is neither: on that client
-            // an auth exception only comes from minting a token, so the write
-            // never went out. Which kind says little: after a bare 401 the
-            // session answers as if its chain was revoked. The row is scoped to
-            // this account and lands after the next sign-in.
-            final tokenRoundFailed = client is PleyaServerClient && e is MediaServerAuthException;
-            if (_isCopyAction(action) && !tokenRoundFailed && !isRetryableServerWriteFailure(e)) {
+            if (_isCopyAction(action) && !copyWriteStaysQueued(client, e)) {
               await _database.deleteReplayedWatchAction(action);
             } else {
               await _database.updateSyncAttempt(action.id, e.toString());

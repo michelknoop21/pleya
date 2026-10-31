@@ -38,7 +38,6 @@ import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import 'package:provider/provider.dart';
 
-import '../../exceptions/media_server_exceptions.dart';
 import '../../providers/continue_watching_hidden_provider.dart';
 import '../../providers/offline_watch_provider.dart';
 import '../../providers/watchlist_provider.dart';
@@ -527,7 +526,7 @@ Future<void> _applyToSources(
       // the queue instead of being reported and forgotten. A local hide that
       // failed is not such a write: there is no server to retry it against.
       if (action.queuesUnreachableMemberships &&
-          isRetryableServerWriteFailure(e) &&
+          copies.keepsFailedWrite(source, e) &&
           !localOnlyKeys.contains(source.sourceKey)) {
         toQueue.add(source);
       }

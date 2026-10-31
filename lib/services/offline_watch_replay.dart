@@ -1,4 +1,5 @@
 import '../database/app_database.dart';
+import '../exceptions/media_server_exceptions.dart';
 import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
@@ -6,7 +7,19 @@ import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
 import '../utils/app_logger.dart';
 import '../utils/watch_state_notifier.dart';
+import 'pleya_server_client.dart';
 import 'trackers/tracker_coordinator.dart';
+
+/// Whether a write to a copy that failed stays in the queue, for the replay and
+/// for the first attempt alike. A copy that refuses or is gone will not change
+/// its mind, and nobody is waiting on it: the source that played has the viewing.
+///
+/// A Pleya Server token round that failed is neither: on that client an auth
+/// exception only comes from minting a token, so the write never went out. Which
+/// kind says little: after a bare 401 the session answers as if its chain was
+/// revoked. The row is scoped to this account and lands after the next sign-in.
+bool copyWriteStaysQueued(MediaServerClient client, Object error) =>
+    (client is PleyaServerClient && error is MediaServerAuthException) || isRetryableServerWriteFailure(error);
 
 /// The profile changed while a row was being replayed. The row stays: a Plex
 /// client takes the next profile's token in place, so anything sent now lands

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
@@ -33,6 +34,8 @@ import 'package:pleya/services/download_storage_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/offline_watch_sync_service.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/pleya_server_api_cache.dart';
+import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/unified_catalog/unified_title_playback.dart';
 import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
@@ -41,6 +44,7 @@ import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/watch_state_notifier.dart';
 import 'package:provider/provider.dart';
 
+import '../pleya_server/pleya_fake_server.dart';
 import '../test_helpers/prefs.dart';
 
 /// Watch-state marks must survive their own server being unreachable, and that
@@ -215,6 +219,25 @@ class _SlowTitle implements UnifiedTitlePlayback {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Fails every token round: `queueFailure` lasts one request, and a write can
+/// make several.
+class _FailingRefresh extends http.BaseClient {
+  _FailingRefresh(this.server, this.status, this.code) : inner = server.asHttpClient();
+
+  final PleyaFakeServer server;
+  final http.Client inner;
+  final int status;
+  final String code;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    if (request.url.path.contains('/auth/refresh')) {
+      server.queueFailure(pathPrefix: '/auth/refresh', status: status, errorCode: code);
+    }
+    return inner.send(request);
+  }
+}
+
 MediaItem _itemOn(String serverId, String id) =>
     MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Dune', serverId: serverId);
 
@@ -236,6 +259,7 @@ void main() {
     await SettingsService.getInstance();
     db = AppDatabase.forTesting(NativeDatabase.memory());
     PlexApiCache.initialize(db);
+    PleyaServerApiCache.initialize(db);
     serverManager = MultiServerManager();
     for (final server in const ['a', 'b', 'c']) {
       serverManager.debugMarkAdministeredForTesting(ServerId(server));
@@ -384,8 +408,10 @@ void main() {
       expect(held?.actionType, 'mirroredWatched', reason: 'a refusal is retried like any queued write');
     });
 
+    // What the server itself refused. A Pleya Server client that could not get a
+    // token never asked: see 'a Pleya Server copy'.
     for (final (name, failure) in <(String, Object)>[
-      ('a rejected token', const MediaServerAuthException('rejected', statusCode: 401)),
+      ('a token Plex or Jellyfin rejected', const MediaServerAuthException('rejected', statusCode: 401)),
       ('a 403', MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 403)),
       ('a 404', MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 404)),
       ('a missing endpoint', UnsupportedError('no such endpoint')),
@@ -770,6 +796,120 @@ void main() {
       await markAll(tester, ctx, _itemOn('a', 'blade-runner'));
 
       expect(other.writes, isEmpty);
+    });
+  });
+
+  group('a Pleya Server copy', () {
+    late PleyaFakeServer server;
+    late PleyaServerClient pleya;
+
+    const failedRounds = [
+      ('a rate limit', 429, 'auth.rate_limited'),
+      ('a bare 401', 401, 'proxy'),
+      ('a 409', 409, 'conflict'),
+    ];
+
+    Future<void> connect({(int, String)? failingRefresh}) async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      server.addLibrary(id: 'lib-films', title: 'Films', kind: 'movies');
+      server.addItem(id: 'movie-1', kind: 'movie', title: 'Dune', libraryId: 'lib-films', durationMs: 6720000);
+      pleya = failingRefresh == null
+          ? server.client()
+          : PleyaServerClient.create(
+              server.connection(),
+              httpClientFactory: () => _FailingRefresh(server, failingRefresh.$1, failingRefresh.$2),
+            );
+      await pleya.refreshCapabilities();
+      addTearDown(pleya.close);
+      serverManager
+        ..debugMarkAdministeredForTesting(pleya.serverId)
+        ..debugRegisterClientForTesting(pleya);
+    }
+
+    MediaItem copy() => MediaItem(
+      id: 'movie-1',
+      backend: MediaBackend.pleyaServer,
+      kind: MediaKind.movie,
+      title: 'Dune',
+      serverId: pleya.serverId.value,
+    );
+
+    Future<OfflineWatchProgressItem?> row() => db.getLatestWatchAction('${pleya.serverId}:movie-1');
+
+    UnifiedMediaGroup groupOf(List<MediaItem> copies) {
+      final sources = [
+        for (final item in copies) UnifiedMediaSource.fromItem(item, externalIds: const ExternalIds(tmdb: 1)),
+      ];
+      return UnifiedMediaGroup(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'Dune', year: 2021),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: sources.first.sourceKey),
+      );
+    }
+
+    Future<void> markGroup(BuildContext ctx, List<MediaItem> copies) async {
+      await runUnifiedGroupAction(
+        ctx,
+        action: UnifiedGroupAction.markWatched,
+        group: groupOf(copies),
+        availabilityFor: (_) => SourceAvailability.online,
+      );
+      await WatchActions.copiesReached();
+    }
+
+    for (final (name, status, code) in failedRounds) {
+      testWidgets('$name on the token round keeps a direct mark: the write never went out', (tester) async {
+        await pumpTree(tester);
+        await tester.runAsync(() async {
+          await connect(failingRefresh: (status, code));
+
+          final outcome = await WatchCopyWriter(serverManager, offlineWatch, null).write(copy(), watched: true);
+
+          expect(outcome, WatchCopyOutcome.held);
+          expect((await row())?.actionType, 'mirroredWatched');
+          expect(server.watchEvents, isEmpty);
+        });
+      });
+
+      testWidgets('$name on the first source of a card keeps the mark as a copy', (tester) async {
+        final other = _HealthyClient('b');
+        serverManager.debugRegisterClientForTesting(other);
+        final ctx = await pumpTree(tester);
+        await tester.runAsync(() async {
+          await connect(failingRefresh: (status, code));
+
+          await markGroup(ctx, [copy(), _itemOn('b', 'movie-1')]);
+
+          expect((await row())?.actionType, 'mirroredWatched');
+          expect(other.writes, [(itemId: 'movie-1', watched: true)]);
+        });
+      });
+
+      testWidgets('$name on the only source of a card keeps the report', (tester) async {
+        final ctx = await pumpTree(tester);
+        await tester.runAsync(() async {
+          await connect(failingRefresh: (status, code));
+
+          await markGroup(ctx, [copy()]);
+
+          expect((await row())?.actionType, 'watched');
+        });
+      });
+    }
+
+    testWidgets('a write the server itself refuses gets no row', (tester) async {
+      await pumpTree(tester);
+      await tester.runAsync(() async {
+        await connect();
+        server.watchStateFailureStatus = 403;
+
+        final outcome = await WatchCopyWriter(serverManager, offlineWatch, null).write(copy(), watched: true);
+
+        expect(outcome, WatchCopyOutcome.skipped);
+        expect(await row(), isNull);
+      });
     });
   });
 
