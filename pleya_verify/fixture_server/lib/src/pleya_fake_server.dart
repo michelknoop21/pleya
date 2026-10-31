@@ -901,7 +901,7 @@ class PleyaFakeServer {
       if (event['backlog'] == true && ((current?['revision'] as int?) ?? 0) > 0) {
         return _json({...current!, 'owned_by_this_session': false});
       }
-      if (event['explicit_action'] != 'none') watchLeases[itemId] = event['session_id'] as String;
+      if ((event['explicit_action'] ?? 'none') != 'none') watchLeases[itemId] = event['session_id'] as String;
       final previous = watchStates[itemId];
       final revision = ((previous?['revision'] as int?) ?? 0) + 1;
       final state = {
