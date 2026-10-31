@@ -280,6 +280,36 @@ void main() {
       });
     });
 
+    test('Afgespeeld on Jellyfin series: the mapper reads 0 unless Played, so nothing moves', () async {
+      MediaItem series(String title, int plays) =>
+          JellyfinMediaItem(id: title, kind: MediaKind.show, title: title, viewCount: plays, serverId: 'j');
+      final titles = await _merge(
+        {
+          _library('j', MediaBackend.jellyfin): [
+            series('Zebra', 0),
+            series('Monk', 0),
+            series('Marked', 3),
+            series('Alias', 0),
+          ],
+        },
+        const UnifiedCatalogQuery(
+          kind: MediaKind.show,
+          sortField: UnifiedCatalogSortField.plays,
+          sortDirection: LibrarySortDirection.descending,
+        ),
+      );
+      expect(titles, ['Zebra', 'Monk', 'Marked', 'Alias']);
+    });
+
+    test('Afgespeeld stays for a single Jellyfin library and goes beside a second source', () {
+      const field = UnifiedCatalogSortField.plays;
+      bool offered(List<MediaBackend> backends, MediaKind kind) =>
+          unifiedFilterCapabilitiesFor(backends, kind: kind).supportsSort(field);
+      expect(offered([MediaBackend.jellyfin], MediaKind.show), isTrue);
+      expect(offered([MediaBackend.plex, MediaBackend.jellyfin], MediaKind.show), isFalse);
+      expect(offered([MediaBackend.plex, MediaBackend.jellyfin], MediaKind.movie), isTrue);
+    });
+
     test('Pleya Server series run on episodes the show state does not carry', () async {
       MediaItem pleya(String title) =>
           MediaItem(id: title, backend: MediaBackend.pleyaServer, kind: MediaKind.show, title: title, serverId: 'x');
