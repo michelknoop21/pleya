@@ -39,15 +39,19 @@ Widget _shell(Widget child) => MaterialApp(
   home: OverlaySheetHost(child: Scaffold(body: child)),
 );
 
-Future<void> _phone(WidgetTester tester, MediaBackend backend) async {
+Future<void> _phone(WidgetTester tester, List<MediaBackend> backends, {HomeCustomRow row = _row}) async {
   tester.view.physicalSize = const Size(393, 852);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     _shell(
       HomeRowWizardView(
-        editing: HomeRowEditing(librariesFor: (_) => [_library(backend)], preview: _found, clientFor: (_) => null),
-        initial: _row,
+        editing: HomeRowEditing(
+          librariesFor: (_) => [for (final backend in backends) _library(backend)],
+          preview: _found,
+          clientFor: (_) => null,
+        ),
+        initial: row,
         onSave: (_) {},
         onCancel: () {},
       ),
@@ -56,15 +60,15 @@ Future<void> _phone(WidgetTester tester, MediaBackend backend) async {
   await tester.pump();
 }
 
-Future<void> _tv(WidgetTester tester, MediaBackend backend) async {
+Future<void> _tv(WidgetTester tester, List<MediaBackend> backends, {HomeCustomRow row = _row}) async {
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     _shell(
       TvHomeRowWizard(
-        initial: _row,
-        librariesFor: (_) => [_library(backend)],
+        initial: row,
+        librariesFor: (_) => [for (final backend in backends) _library(backend)],
         preview: _found,
         onSave: (_) {},
         onCancel: () {},
@@ -94,7 +98,7 @@ void main() {
   for (final (name, open) in [('phone', _phone), ('tvOS', _tv)]) {
     group('$name wizard', () {
       testWidgets('on Pleya Server the filter step and the preview read the year', (tester) async {
-        await open(tester, MediaBackend.pleyaServer);
+        await open(tester, [MediaBackend.pleyaServer]);
         await _next(tester);
         expect(reads(t.unifiedCatalog.sort.yearNewest), findsWidgets);
         expect(reads(t.unifiedCatalog.sort.newestRelease), findsNothing);
@@ -103,8 +107,34 @@ void main() {
         expect(reads(t.unifiedCatalog.sort.newestRelease), findsNothing);
       });
 
+      group('a field the merge takes away', () {
+        const series = HomeCustomRow(
+          id: 's',
+          kind: MediaKind.show,
+          name: 'Series',
+          preferences: UnifiedCatalogPreferences(sort: UnifiedCatalogSort.recentlyWatched),
+        );
+
+        testWidgets('Plex beside Jellyfin: a Recently watched row of series reads title', (tester) async {
+          await open(tester, [MediaBackend.plex, MediaBackend.jellyfin], row: series);
+          await _next(tester);
+          expect(reads(t.unifiedCatalog.sort.titleAsc), findsWidgets);
+          expect(reads(t.unifiedCatalog.sort.recentlyWatched), findsNothing);
+          await _next(tester);
+          expect(reads(t.unifiedCatalog.sort.titleAsc), findsWidgets);
+          expect(reads(t.unifiedCatalog.sort.recentlyWatched), findsNothing);
+        });
+
+        testWidgets('NEGATIVE CONTROL: Jellyfin alone keeps it', (tester) async {
+          await open(tester, [MediaBackend.jellyfin], row: series);
+          await _next(tester);
+          expect(reads(t.unifiedCatalog.sort.recentlyWatched), findsWidgets);
+          expect(reads(t.unifiedCatalog.sort.titleAsc), findsNothing);
+        });
+      });
+
       testWidgets('NEGATIVE CONTROL: a backend with the date keeps saying release', (tester) async {
-        await open(tester, MediaBackend.jellyfin);
+        await open(tester, [MediaBackend.jellyfin]);
         await _next(tester);
         expect(reads(t.unifiedCatalog.sort.newestRelease), findsWidgets);
         expect(reads(t.unifiedCatalog.sort.yearNewest), findsNothing);
