@@ -111,6 +111,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       return;
     }
 
+    // The old track's wait would otherwise run on until after open(), and landing
+    // in that gap puts the previous episode's text on this one.
+    _deferredSubtitles.abortPending();
     await _reloadMediaInPlace(
       metadata: episodeMetadata,
       selectedMediaIndex: _effectiveSelectedMediaIndex,
@@ -328,7 +331,6 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     if (!(isCurrent?.call() ?? true)) return;
     final currentPlayer = player;
     if (!mounted || currentPlayer == null || _playbackTransition != _PlaybackTransition.idle) return;
-    if (newSubtitleStreamId != null) _deferredSubtitles.abortPending();
 
     final effectiveMediaIndex = newMediaIndex ?? _effectiveSelectedMediaIndex;
     final effectivePreset = newPreset ?? _selectedQualityPreset;
@@ -346,6 +348,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     final isAudioChange = effectiveAudioStreamId != _selectedAudioStreamId;
     final isSubtitleChange = newSubtitleStreamId != null && effectiveSubtitleStreamId != currentSubtitleStreamId;
     if (!isVersionChange && !isPresetChange && !isAudioChange && !isSubtitleChange) return;
+    // After the check: tapping the track that is being prepared changes nothing,
+    // and stopping the wait then would leave it selected with no subtitle coming.
+    if (newSubtitleStreamId != null) _deferredSubtitles.abortPending();
 
     // Read the client before any await — context across an async gap. A
     // missing client leaves this null and the guard below reports it.

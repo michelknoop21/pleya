@@ -272,7 +272,9 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
             itemAt: (index) => loadedItems[index],
             onRefresh: updateItem,
             onSkeletonVisible: (index) => ensureIndexLoaded(index, pageSize: _pageSize),
-            collectionId: widget.collection.id,
+            // Only a collection this viewer may change: the id is what offers
+            // "remove from collection" on every card.
+            collectionId: _canManageCollection ? widget.collection.id : null,
             onListRefresh: loadItems,
           ),
       ],

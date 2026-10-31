@@ -3,6 +3,8 @@
 /// owner rights never sees either action.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -123,5 +125,13 @@ void main() {
     expect(screen.onDelete, isNotNull);
     expect(screen.onRemoveItem, isNotNull);
     expect(find.text(t.common.delete), findsOneWidget);
+  });
+
+  // The grid needs the download and settings stack, so this reads the source. The
+  // id on a card is what offers "remove from collection" in its context menu, and
+  // that menu cannot see `is_owner`: it holds the film, not the collection.
+  test('a card only carries the collection when this viewer may change it', () {
+    final source = File('lib/screens/collection_detail_screen.dart').readAsStringSync();
+    expect(source, contains('collectionId: _canManageCollection ? widget.collection.id : null'));
   });
 }
