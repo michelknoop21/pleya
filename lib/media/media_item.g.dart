@@ -6,85 +6,93 @@ part of 'media_item.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-PlexMediaItem _$PlexMediaItemFromJson(Map<String, dynamic> json) => PlexMediaItem(
-  id: readStringField(json, 'id') as String? ?? '',
-  kind: _mediaKindFromJson(json['kind']),
-  guid: json['guid'] as String?,
-  title: json['title'] as String?,
-  titleSort: json['titleSort'] as String?,
-  summary: json['summary'] as String?,
-  tagline: json['tagline'] as String?,
-  originalTitle: json['originalTitle'] as String?,
-  editionTitle: json['editionTitle'] as String?,
-  studio: json['studio'] as String?,
-  year: flexibleInt(json['year']),
-  originallyAvailableAt: json['originallyAvailableAt'] as String?,
-  contentRating: json['contentRating'] as String?,
-  parentId: json['parentId'] as String?,
-  parentTitle: json['parentTitle'] as String?,
-  parentThumbPath: json['parentThumbPath'] as String?,
-  parentIndex: flexibleInt(json['parentIndex']),
-  index: flexibleInt(json['index']),
-  grandparentId: json['grandparentId'] as String?,
-  grandparentGuid: json['grandparentGuid'] as String?,
-  grandparentTitle: json['grandparentTitle'] as String?,
-  grandparentThumbPath: json['grandparentThumbPath'] as String?,
-  grandparentArtPath: json['grandparentArtPath'] as String?,
-  thumbPath: json['thumbPath'] as String?,
-  artPath: json['artPath'] as String?,
-  clearLogoPath: json['clearLogoPath'] as String?,
-  backgroundSquarePath: json['backgroundSquarePath'] as String?,
-  durationMs: flexibleInt(json['durationMs']),
-  viewOffsetMs: flexibleInt(json['viewOffsetMs']),
-  viewCount: flexibleInt(json['viewCount']),
-  lastViewedAt: flexibleInt(json['lastViewedAt']),
-  continueWatchingKind: $enumDecodeNullable(_$ContinueWatchingKindEnumMap, json['continueWatchingKind']),
-  leafCount: flexibleInt(json['leafCount']),
-  viewedLeafCount: flexibleInt(json['viewedLeafCount']),
-  childCount: flexibleInt(json['childCount']),
-  addedAt: flexibleInt(json['addedAt']),
-  updatedAt: flexibleInt(json['updatedAt']),
-  rating: flexibleDouble(json['rating']),
-  audienceRating: flexibleDouble(json['audienceRating']),
-  userRating: flexibleDouble(json['userRating']),
-  ratingImage: json['ratingImage'] as String?,
-  audienceRatingImage: json['audienceRatingImage'] as String?,
-  genres: _mediaItemStringList(json['genres']),
-  directors: _mediaItemStringList(json['directors']),
-  writers: _mediaItemStringList(json['writers']),
-  producers: _mediaItemStringList(json['producers']),
-  countries: _mediaItemStringList(json['countries']),
-  collections: _mediaItemStringList(json['collections']),
-  labels: _mediaItemStringList(json['labels']),
-  styles: _mediaItemStringList(json['styles']),
-  moods: _mediaItemStringList(json['moods']),
-  roles: _mediaItemRolesFromJson(json['roles']),
-  externalRatings:
-      (json['externalRatings'] as List<dynamic>?)
-          ?.map((e) => ExternalRating.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const <ExternalRating>[],
-  reviews:
-      (json['reviews'] as List<dynamic>?)?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>)).toList() ??
-      const <MediaReview>[],
-  mediaVersions: _mediaItemVersionsFromJson(json['mediaVersions']),
-  libraryId: json['libraryId'] as String?,
-  libraryTitle: json['libraryTitle'] as String?,
-  audioLanguage: json['audioLanguage'] as String?,
-  subtitleLanguage: json['subtitleLanguage'] as String?,
-  subtitleMode: flexibleInt(json['subtitleMode']),
-  trailerKey: json['trailerKey'] as String?,
-  playlistItemId: flexibleInt(json['playlistItemId']),
-  playQueueItemId: flexibleInt(json['playQueueItemId']),
-  subtype: json['subtype'] as String?,
-  extraType: flexibleInt(json['extraType']),
-  serverId: json['serverId'] as String?,
-  serverName: json['serverName'] as String?,
-  backendFolderKey: json['backendFolderKey'] as String?,
-  raw: _mediaItemRawFromJson(json['raw']),
-);
+PlexMediaItem _$PlexMediaItemFromJson(Map<String, dynamic> json) =>
+    PlexMediaItem(
+      id: readStringField(json, 'id') as String? ?? '',
+      kind: _mediaKindFromJson(json['kind']),
+      guid: json['guid'] as String?,
+      title: json['title'] as String?,
+      titleSort: json['titleSort'] as String?,
+      summary: json['summary'] as String?,
+      tagline: json['tagline'] as String?,
+      originalTitle: json['originalTitle'] as String?,
+      editionTitle: json['editionTitle'] as String?,
+      studio: json['studio'] as String?,
+      year: flexibleInt(json['year']),
+      originallyAvailableAt: json['originallyAvailableAt'] as String?,
+      contentRating: json['contentRating'] as String?,
+      parentId: json['parentId'] as String?,
+      parentTitle: json['parentTitle'] as String?,
+      parentThumbPath: json['parentThumbPath'] as String?,
+      parentIndex: flexibleInt(json['parentIndex']),
+      index: flexibleInt(json['index']),
+      grandparentId: json['grandparentId'] as String?,
+      grandparentGuid: json['grandparentGuid'] as String?,
+      grandparentTitle: json['grandparentTitle'] as String?,
+      grandparentThumbPath: json['grandparentThumbPath'] as String?,
+      grandparentArtPath: json['grandparentArtPath'] as String?,
+      thumbPath: json['thumbPath'] as String?,
+      artPath: json['artPath'] as String?,
+      clearLogoPath: json['clearLogoPath'] as String?,
+      backgroundSquarePath: json['backgroundSquarePath'] as String?,
+      durationMs: flexibleInt(json['durationMs']),
+      viewOffsetMs: flexibleInt(json['viewOffsetMs']),
+      viewCount: flexibleInt(json['viewCount']),
+      lastViewedAt: flexibleInt(json['lastViewedAt']),
+      continueWatchingKind: $enumDecodeNullable(
+        _$ContinueWatchingKindEnumMap,
+        json['continueWatchingKind'],
+      ),
+      leafCount: flexibleInt(json['leafCount']),
+      viewedLeafCount: flexibleInt(json['viewedLeafCount']),
+      childCount: flexibleInt(json['childCount']),
+      addedAt: flexibleInt(json['addedAt']),
+      updatedAt: flexibleInt(json['updatedAt']),
+      rating: flexibleDouble(json['rating']),
+      audienceRating: flexibleDouble(json['audienceRating']),
+      userRating: flexibleDouble(json['userRating']),
+      ratingImage: json['ratingImage'] as String?,
+      audienceRatingImage: json['audienceRatingImage'] as String?,
+      genres: _mediaItemStringList(json['genres']),
+      directors: _mediaItemStringList(json['directors']),
+      writers: _mediaItemStringList(json['writers']),
+      producers: _mediaItemStringList(json['producers']),
+      countries: _mediaItemStringList(json['countries']),
+      collections: _mediaItemStringList(json['collections']),
+      labels: _mediaItemStringList(json['labels']),
+      styles: _mediaItemStringList(json['styles']),
+      moods: _mediaItemStringList(json['moods']),
+      roles: _mediaItemRolesFromJson(json['roles']),
+      externalRatings:
+          (json['externalRatings'] as List<dynamic>?)
+              ?.map((e) => ExternalRating.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <ExternalRating>[],
+      reviews:
+          (json['reviews'] as List<dynamic>?)
+              ?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <MediaReview>[],
+      mediaVersions: _mediaItemVersionsFromJson(json['mediaVersions']),
+      libraryId: json['libraryId'] as String?,
+      libraryTitle: json['libraryTitle'] as String?,
+      audioLanguage: json['audioLanguage'] as String?,
+      subtitleLanguage: json['subtitleLanguage'] as String?,
+      subtitleMode: flexibleInt(json['subtitleMode']),
+      trailerKey: json['trailerKey'] as String?,
+      playlistItemId: flexibleInt(json['playlistItemId']),
+      playQueueItemId: flexibleInt(json['playQueueItemId']),
+      subtype: json['subtype'] as String?,
+      extraType: flexibleInt(json['extraType']),
+      serverId: json['serverId'] as String?,
+      serverName: json['serverName'] as String?,
+      backendFolderKey: json['backendFolderKey'] as String?,
+      raw: _mediaItemRawFromJson(json['raw']),
+    );
 
-Map<String, dynamic> _$PlexMediaItemToJson(PlexMediaItem instance) => <String, dynamic>{
+Map<String, dynamic> _$PlexMediaItemToJson(
+  PlexMediaItem instance,
+) => <String, dynamic>{
   'id': instance.id,
   'kind': _mediaKindToJson(instance.kind),
   'guid': ?instance.guid,
@@ -116,7 +124,8 @@ Map<String, dynamic> _$PlexMediaItemToJson(PlexMediaItem instance) => <String, d
   'viewOffsetMs': ?instance.viewOffsetMs,
   'viewCount': ?instance.viewCount,
   'lastViewedAt': ?instance.lastViewedAt,
-  'continueWatchingKind': ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
+  'continueWatchingKind':
+      ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
   'leafCount': ?instance.leafCount,
   'viewedLeafCount': ?instance.viewedLeafCount,
   'childCount': ?instance.childCount,
@@ -156,77 +165,88 @@ Map<String, dynamic> _$PlexMediaItemToJson(PlexMediaItem instance) => <String, d
   'raw': ?instance.raw,
 };
 
-const _$ContinueWatchingKindEnumMap = {ContinueWatchingKind.resume: 'resume', ContinueWatchingKind.nextUp: 'nextUp'};
+const _$ContinueWatchingKindEnumMap = {
+  ContinueWatchingKind.resume: 'resume',
+  ContinueWatchingKind.nextUp: 'nextUp',
+};
 
-JellyfinMediaItem _$JellyfinMediaItemFromJson(Map<String, dynamic> json) => JellyfinMediaItem(
-  id: readStringField(json, 'id') as String? ?? '',
-  kind: _mediaKindFromJson(json['kind']),
-  guid: json['guid'] as String?,
-  title: json['title'] as String?,
-  titleSort: json['titleSort'] as String?,
-  summary: json['summary'] as String?,
-  tagline: json['tagline'] as String?,
-  originalTitle: json['originalTitle'] as String?,
-  studio: json['studio'] as String?,
-  year: flexibleInt(json['year']),
-  originallyAvailableAt: json['originallyAvailableAt'] as String?,
-  contentRating: json['contentRating'] as String?,
-  parentId: json['parentId'] as String?,
-  parentTitle: json['parentTitle'] as String?,
-  parentThumbPath: json['parentThumbPath'] as String?,
-  parentIndex: flexibleInt(json['parentIndex']),
-  index: flexibleInt(json['index']),
-  grandparentId: json['grandparentId'] as String?,
-  grandparentGuid: json['grandparentGuid'] as String?,
-  grandparentTitle: json['grandparentTitle'] as String?,
-  grandparentThumbPath: json['grandparentThumbPath'] as String?,
-  grandparentArtPath: json['grandparentArtPath'] as String?,
-  thumbPath: json['thumbPath'] as String?,
-  artPath: json['artPath'] as String?,
-  clearLogoPath: json['clearLogoPath'] as String?,
-  backgroundSquarePath: json['backgroundSquarePath'] as String?,
-  durationMs: flexibleInt(json['durationMs']),
-  viewOffsetMs: flexibleInt(json['viewOffsetMs']),
-  viewCount: flexibleInt(json['viewCount']),
-  lastViewedAt: flexibleInt(json['lastViewedAt']),
-  continueWatchingKind: $enumDecodeNullable(_$ContinueWatchingKindEnumMap, json['continueWatchingKind']),
-  leafCount: flexibleInt(json['leafCount']),
-  viewedLeafCount: flexibleInt(json['viewedLeafCount']),
-  childCount: flexibleInt(json['childCount']),
-  addedAt: flexibleInt(json['addedAt']),
-  updatedAt: flexibleInt(json['updatedAt']),
-  rating: flexibleDouble(json['rating']),
-  userRating: flexibleDouble(json['userRating']),
-  genres: _mediaItemStringList(json['genres']),
-  directors: _mediaItemStringList(json['directors']),
-  writers: _mediaItemStringList(json['writers']),
-  producers: _mediaItemStringList(json['producers']),
-  countries: _mediaItemStringList(json['countries']),
-  collections: _mediaItemStringList(json['collections']),
-  labels: _mediaItemStringList(json['labels']),
-  styles: _mediaItemStringList(json['styles']),
-  moods: _mediaItemStringList(json['moods']),
-  roles: _mediaItemRolesFromJson(json['roles']),
-  externalRatings:
-      (json['externalRatings'] as List<dynamic>?)
-          ?.map((e) => ExternalRating.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const <ExternalRating>[],
-  reviews:
-      (json['reviews'] as List<dynamic>?)?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>)).toList() ??
-      const <MediaReview>[],
-  mediaVersions: _mediaItemVersionsFromJson(json['mediaVersions']),
-  libraryId: json['libraryId'] as String?,
-  libraryTitle: json['libraryTitle'] as String?,
-  audioLanguage: json['audioLanguage'] as String?,
-  playlistItemId: json['playlistItemId'] as String?,
-  serverId: json['serverId'] as String?,
-  serverName: json['serverName'] as String?,
-  backendFolderKey: json['backendFolderKey'] as String?,
-  raw: _mediaItemRawFromJson(json['raw']),
-);
+JellyfinMediaItem _$JellyfinMediaItemFromJson(Map<String, dynamic> json) =>
+    JellyfinMediaItem(
+      id: readStringField(json, 'id') as String? ?? '',
+      kind: _mediaKindFromJson(json['kind']),
+      guid: json['guid'] as String?,
+      title: json['title'] as String?,
+      titleSort: json['titleSort'] as String?,
+      summary: json['summary'] as String?,
+      tagline: json['tagline'] as String?,
+      originalTitle: json['originalTitle'] as String?,
+      studio: json['studio'] as String?,
+      year: flexibleInt(json['year']),
+      originallyAvailableAt: json['originallyAvailableAt'] as String?,
+      contentRating: json['contentRating'] as String?,
+      parentId: json['parentId'] as String?,
+      parentTitle: json['parentTitle'] as String?,
+      parentThumbPath: json['parentThumbPath'] as String?,
+      parentIndex: flexibleInt(json['parentIndex']),
+      index: flexibleInt(json['index']),
+      grandparentId: json['grandparentId'] as String?,
+      grandparentGuid: json['grandparentGuid'] as String?,
+      grandparentTitle: json['grandparentTitle'] as String?,
+      grandparentThumbPath: json['grandparentThumbPath'] as String?,
+      grandparentArtPath: json['grandparentArtPath'] as String?,
+      thumbPath: json['thumbPath'] as String?,
+      artPath: json['artPath'] as String?,
+      clearLogoPath: json['clearLogoPath'] as String?,
+      backgroundSquarePath: json['backgroundSquarePath'] as String?,
+      durationMs: flexibleInt(json['durationMs']),
+      viewOffsetMs: flexibleInt(json['viewOffsetMs']),
+      viewCount: flexibleInt(json['viewCount']),
+      lastViewedAt: flexibleInt(json['lastViewedAt']),
+      continueWatchingKind: $enumDecodeNullable(
+        _$ContinueWatchingKindEnumMap,
+        json['continueWatchingKind'],
+      ),
+      leafCount: flexibleInt(json['leafCount']),
+      viewedLeafCount: flexibleInt(json['viewedLeafCount']),
+      childCount: flexibleInt(json['childCount']),
+      addedAt: flexibleInt(json['addedAt']),
+      updatedAt: flexibleInt(json['updatedAt']),
+      rating: flexibleDouble(json['rating']),
+      userRating: flexibleDouble(json['userRating']),
+      genres: _mediaItemStringList(json['genres']),
+      directors: _mediaItemStringList(json['directors']),
+      writers: _mediaItemStringList(json['writers']),
+      producers: _mediaItemStringList(json['producers']),
+      countries: _mediaItemStringList(json['countries']),
+      collections: _mediaItemStringList(json['collections']),
+      labels: _mediaItemStringList(json['labels']),
+      styles: _mediaItemStringList(json['styles']),
+      moods: _mediaItemStringList(json['moods']),
+      roles: _mediaItemRolesFromJson(json['roles']),
+      externalRatings:
+          (json['externalRatings'] as List<dynamic>?)
+              ?.map((e) => ExternalRating.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <ExternalRating>[],
+      reviews:
+          (json['reviews'] as List<dynamic>?)
+              ?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <MediaReview>[],
+      mediaVersions: _mediaItemVersionsFromJson(json['mediaVersions']),
+      libraryId: json['libraryId'] as String?,
+      libraryTitle: json['libraryTitle'] as String?,
+      audioLanguage: json['audioLanguage'] as String?,
+      playlistItemId: json['playlistItemId'] as String?,
+      serverId: json['serverId'] as String?,
+      serverName: json['serverName'] as String?,
+      backendFolderKey: json['backendFolderKey'] as String?,
+      raw: _mediaItemRawFromJson(json['raw']),
+    );
 
-Map<String, dynamic> _$JellyfinMediaItemToJson(JellyfinMediaItem instance) => <String, dynamic>{
+Map<String, dynamic> _$JellyfinMediaItemToJson(
+  JellyfinMediaItem instance,
+) => <String, dynamic>{
   'id': instance.id,
   'kind': _mediaKindToJson(instance.kind),
   'guid': ?instance.guid,
@@ -257,7 +277,8 @@ Map<String, dynamic> _$JellyfinMediaItemToJson(JellyfinMediaItem instance) => <S
   'viewOffsetMs': ?instance.viewOffsetMs,
   'viewCount': ?instance.viewCount,
   'lastViewedAt': ?instance.lastViewedAt,
-  'continueWatchingKind': ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
+  'continueWatchingKind':
+      ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
   'leafCount': ?instance.leafCount,
   'viewedLeafCount': ?instance.viewedLeafCount,
   'childCount': ?instance.childCount,
@@ -288,74 +309,82 @@ Map<String, dynamic> _$JellyfinMediaItemToJson(JellyfinMediaItem instance) => <S
   'raw': ?instance.raw,
 };
 
-LocalMediaItem _$LocalMediaItemFromJson(Map<String, dynamic> json) => LocalMediaItem(
-  id: readStringField(json, 'id') as String? ?? '',
-  kind: _mediaKindFromJson(json['kind']),
-  guid: json['guid'] as String?,
-  title: json['title'] as String?,
-  titleSort: json['titleSort'] as String?,
-  summary: json['summary'] as String?,
-  tagline: json['tagline'] as String?,
-  originalTitle: json['originalTitle'] as String?,
-  studio: json['studio'] as String?,
-  year: flexibleInt(json['year']),
-  originallyAvailableAt: json['originallyAvailableAt'] as String?,
-  contentRating: json['contentRating'] as String?,
-  parentId: json['parentId'] as String?,
-  parentTitle: json['parentTitle'] as String?,
-  parentThumbPath: json['parentThumbPath'] as String?,
-  parentIndex: flexibleInt(json['parentIndex']),
-  index: flexibleInt(json['index']),
-  grandparentId: json['grandparentId'] as String?,
-  grandparentGuid: json['grandparentGuid'] as String?,
-  grandparentTitle: json['grandparentTitle'] as String?,
-  grandparentThumbPath: json['grandparentThumbPath'] as String?,
-  grandparentArtPath: json['grandparentArtPath'] as String?,
-  thumbPath: json['thumbPath'] as String?,
-  artPath: json['artPath'] as String?,
-  clearLogoPath: json['clearLogoPath'] as String?,
-  backgroundSquarePath: json['backgroundSquarePath'] as String?,
-  durationMs: flexibleInt(json['durationMs']),
-  viewOffsetMs: flexibleInt(json['viewOffsetMs']),
-  viewCount: flexibleInt(json['viewCount']),
-  lastViewedAt: flexibleInt(json['lastViewedAt']),
-  continueWatchingKind: $enumDecodeNullable(_$ContinueWatchingKindEnumMap, json['continueWatchingKind']),
-  leafCount: flexibleInt(json['leafCount']),
-  viewedLeafCount: flexibleInt(json['viewedLeafCount']),
-  childCount: flexibleInt(json['childCount']),
-  addedAt: flexibleInt(json['addedAt']),
-  updatedAt: flexibleInt(json['updatedAt']),
-  rating: flexibleDouble(json['rating']),
-  userRating: flexibleDouble(json['userRating']),
-  genres: _mediaItemStringList(json['genres']),
-  directors: _mediaItemStringList(json['directors']),
-  writers: _mediaItemStringList(json['writers']),
-  producers: _mediaItemStringList(json['producers']),
-  countries: _mediaItemStringList(json['countries']),
-  collections: _mediaItemStringList(json['collections']),
-  labels: _mediaItemStringList(json['labels']),
-  styles: _mediaItemStringList(json['styles']),
-  moods: _mediaItemStringList(json['moods']),
-  roles: _mediaItemRolesFromJson(json['roles']),
-  externalRatings:
-      (json['externalRatings'] as List<dynamic>?)
-          ?.map((e) => ExternalRating.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const <ExternalRating>[],
-  reviews:
-      (json['reviews'] as List<dynamic>?)?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>)).toList() ??
-      const <MediaReview>[],
-  mediaVersions: _mediaItemVersionsFromJson(json['mediaVersions']),
-  libraryId: json['libraryId'] as String?,
-  libraryTitle: json['libraryTitle'] as String?,
-  audioLanguage: json['audioLanguage'] as String?,
-  serverId: json['serverId'] as String?,
-  serverName: json['serverName'] as String?,
-  backendFolderKey: json['backendFolderKey'] as String?,
-  raw: _mediaItemRawFromJson(json['raw']),
-);
+LocalMediaItem _$LocalMediaItemFromJson(Map<String, dynamic> json) =>
+    LocalMediaItem(
+      id: readStringField(json, 'id') as String? ?? '',
+      kind: _mediaKindFromJson(json['kind']),
+      guid: json['guid'] as String?,
+      title: json['title'] as String?,
+      titleSort: json['titleSort'] as String?,
+      summary: json['summary'] as String?,
+      tagline: json['tagline'] as String?,
+      originalTitle: json['originalTitle'] as String?,
+      studio: json['studio'] as String?,
+      year: flexibleInt(json['year']),
+      originallyAvailableAt: json['originallyAvailableAt'] as String?,
+      contentRating: json['contentRating'] as String?,
+      parentId: json['parentId'] as String?,
+      parentTitle: json['parentTitle'] as String?,
+      parentThumbPath: json['parentThumbPath'] as String?,
+      parentIndex: flexibleInt(json['parentIndex']),
+      index: flexibleInt(json['index']),
+      grandparentId: json['grandparentId'] as String?,
+      grandparentGuid: json['grandparentGuid'] as String?,
+      grandparentTitle: json['grandparentTitle'] as String?,
+      grandparentThumbPath: json['grandparentThumbPath'] as String?,
+      grandparentArtPath: json['grandparentArtPath'] as String?,
+      thumbPath: json['thumbPath'] as String?,
+      artPath: json['artPath'] as String?,
+      clearLogoPath: json['clearLogoPath'] as String?,
+      backgroundSquarePath: json['backgroundSquarePath'] as String?,
+      durationMs: flexibleInt(json['durationMs']),
+      viewOffsetMs: flexibleInt(json['viewOffsetMs']),
+      viewCount: flexibleInt(json['viewCount']),
+      lastViewedAt: flexibleInt(json['lastViewedAt']),
+      continueWatchingKind: $enumDecodeNullable(
+        _$ContinueWatchingKindEnumMap,
+        json['continueWatchingKind'],
+      ),
+      leafCount: flexibleInt(json['leafCount']),
+      viewedLeafCount: flexibleInt(json['viewedLeafCount']),
+      childCount: flexibleInt(json['childCount']),
+      addedAt: flexibleInt(json['addedAt']),
+      updatedAt: flexibleInt(json['updatedAt']),
+      rating: flexibleDouble(json['rating']),
+      userRating: flexibleDouble(json['userRating']),
+      genres: _mediaItemStringList(json['genres']),
+      directors: _mediaItemStringList(json['directors']),
+      writers: _mediaItemStringList(json['writers']),
+      producers: _mediaItemStringList(json['producers']),
+      countries: _mediaItemStringList(json['countries']),
+      collections: _mediaItemStringList(json['collections']),
+      labels: _mediaItemStringList(json['labels']),
+      styles: _mediaItemStringList(json['styles']),
+      moods: _mediaItemStringList(json['moods']),
+      roles: _mediaItemRolesFromJson(json['roles']),
+      externalRatings:
+          (json['externalRatings'] as List<dynamic>?)
+              ?.map((e) => ExternalRating.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <ExternalRating>[],
+      reviews:
+          (json['reviews'] as List<dynamic>?)
+              ?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <MediaReview>[],
+      mediaVersions: _mediaItemVersionsFromJson(json['mediaVersions']),
+      libraryId: json['libraryId'] as String?,
+      libraryTitle: json['libraryTitle'] as String?,
+      audioLanguage: json['audioLanguage'] as String?,
+      serverId: json['serverId'] as String?,
+      serverName: json['serverName'] as String?,
+      backendFolderKey: json['backendFolderKey'] as String?,
+      raw: _mediaItemRawFromJson(json['raw']),
+    );
 
-Map<String, dynamic> _$LocalMediaItemToJson(LocalMediaItem instance) => <String, dynamic>{
+Map<String, dynamic> _$LocalMediaItemToJson(
+  LocalMediaItem instance,
+) => <String, dynamic>{
   'id': instance.id,
   'kind': _mediaKindToJson(instance.kind),
   'guid': ?instance.guid,
@@ -386,7 +415,8 @@ Map<String, dynamic> _$LocalMediaItemToJson(LocalMediaItem instance) => <String,
   'viewOffsetMs': ?instance.viewOffsetMs,
   'viewCount': ?instance.viewCount,
   'lastViewedAt': ?instance.lastViewedAt,
-  'continueWatchingKind': ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
+  'continueWatchingKind':
+      ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
   'leafCount': ?instance.leafCount,
   'viewedLeafCount': ?instance.viewedLeafCount,
   'childCount': ?instance.childCount,
@@ -416,7 +446,9 @@ Map<String, dynamic> _$LocalMediaItemToJson(LocalMediaItem instance) => <String,
   'raw': ?instance.raw,
 };
 
-PleyaServerMediaItem _$PleyaServerMediaItemFromJson(Map<String, dynamic> json) => PleyaServerMediaItem(
+PleyaServerMediaItem _$PleyaServerMediaItemFromJson(
+  Map<String, dynamic> json,
+) => PleyaServerMediaItem(
   id: readStringField(json, 'id') as String? ?? '',
   kind: _mediaKindFromJson(json['kind']),
   guid: json['guid'] as String?,
@@ -447,7 +479,10 @@ PleyaServerMediaItem _$PleyaServerMediaItemFromJson(Map<String, dynamic> json) =
   viewOffsetMs: flexibleInt(json['viewOffsetMs']),
   viewCount: flexibleInt(json['viewCount']),
   lastViewedAt: flexibleInt(json['lastViewedAt']),
-  continueWatchingKind: $enumDecodeNullable(_$ContinueWatchingKindEnumMap, json['continueWatchingKind']),
+  continueWatchingKind: $enumDecodeNullable(
+    _$ContinueWatchingKindEnumMap,
+    json['continueWatchingKind'],
+  ),
   leafCount: flexibleInt(json['leafCount']),
   viewedLeafCount: flexibleInt(json['viewedLeafCount']),
   childCount: flexibleInt(json['childCount']),
@@ -471,7 +506,9 @@ PleyaServerMediaItem _$PleyaServerMediaItemFromJson(Map<String, dynamic> json) =
           .toList() ??
       const <ExternalRating>[],
   reviews:
-      (json['reviews'] as List<dynamic>?)?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>)).toList() ??
+      (json['reviews'] as List<dynamic>?)
+          ?.map((e) => MediaReview.fromJson(e as Map<String, dynamic>))
+          .toList() ??
       const <MediaReview>[],
   mediaVersions: _mediaItemVersionsFromJson(json['mediaVersions']),
   libraryId: json['libraryId'] as String?,
@@ -483,7 +520,9 @@ PleyaServerMediaItem _$PleyaServerMediaItemFromJson(Map<String, dynamic> json) =
   raw: _mediaItemRawFromJson(json['raw']),
 );
 
-Map<String, dynamic> _$PleyaServerMediaItemToJson(PleyaServerMediaItem instance) => <String, dynamic>{
+Map<String, dynamic> _$PleyaServerMediaItemToJson(
+  PleyaServerMediaItem instance,
+) => <String, dynamic>{
   'id': instance.id,
   'kind': _mediaKindToJson(instance.kind),
   'guid': ?instance.guid,
@@ -514,7 +553,8 @@ Map<String, dynamic> _$PleyaServerMediaItemToJson(PleyaServerMediaItem instance)
   'viewOffsetMs': ?instance.viewOffsetMs,
   'viewCount': ?instance.viewCount,
   'lastViewedAt': ?instance.lastViewedAt,
-  'continueWatchingKind': ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
+  'continueWatchingKind':
+      ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
   'leafCount': ?instance.leafCount,
   'viewedLeafCount': ?instance.viewedLeafCount,
   'childCount': ?instance.childCount,

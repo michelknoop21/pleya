@@ -14,10 +14,11 @@ MediaReview _$MediaReviewFromJson(Map<String, dynamic> json) => MediaReview(
   source: json['source'] as String?,
 );
 
-Map<String, dynamic> _$MediaReviewToJson(MediaReview instance) => <String, dynamic>{
-  'author': instance.author,
-  'text': instance.text,
-  'imageUri': ?instance.imageUri,
-  'link': ?instance.link,
-  'source': ?instance.source,
-};
+Map<String, dynamic> _$MediaReviewToJson(MediaReview instance) =>
+    <String, dynamic>{
+      'author': instance.author,
+      'text': instance.text,
+      'imageUri': ?instance.imageUri,
+      'link': ?instance.link,
+      'source': ?instance.source,
+    };
