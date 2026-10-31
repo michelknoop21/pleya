@@ -198,7 +198,7 @@ class UnifiedTitlePlayback {
             .where((e) => e.key == coordinate || inSpecials || !isSpecialSeasonNumber(e.key.season))
             .map((e) => e.value)
             .toList()
-          ..sort(compareEpisodesByWatchOrder);
+          ..sort(inSpecials ? compareEpisodesByWatchOrder : _compareEpisodes);
     final at = ordered.indexWhere((e) => episodeCoordinateOf(e) == coordinate);
     final neighbourAt = forward ? at + 1 : at - 1;
     final neighbour = neighbourAt < 0 || neighbourAt >= ordered.length ? null : ordered[neighbourAt];
@@ -220,8 +220,25 @@ class UnifiedTitlePlayback {
     if (queued == null) return null;
     final server = queued.serverId;
     if (server != null && server != current.serverId) return null;
-    final order = compareEpisodesByWatchOrder(queued, current);
+    final from = episodeCoordinateOf(current);
+    final to = episodeCoordinateOf(queued);
+    // Where a Special falls is the queue's own business.
+    if (from == null || to == null || isSpecialSeasonNumber(from.season) || isSpecialSeasonNumber(to.season)) {
+      return queued;
+    }
+    final order = _compareNumbers(to, from);
     return (forward ? order > 0 : order < 0) ? queued : null;
+  }
+
+  /// Season, then episode. Not the air date: a queue follows the numbering, and
+  /// two servers can disagree on a date.
+  static int _compareNumbers(EpisodeCoordinate a, EpisodeCoordinate b) =>
+      a.season != b.season ? a.season.compareTo(b.season) : a.episode.compareTo(b.episode);
+
+  static int _compareEpisodes(MediaItem a, MediaItem b) {
+    final first = episodeCoordinateOf(a);
+    final second = episodeCoordinateOf(b);
+    return first == null || second == null ? compareEpisodesByWatchOrder(a, b) : _compareNumbers(first, second);
   }
 
   /// Whether [key], a queue's context, is this series on one of its sources.
@@ -245,7 +262,7 @@ class UnifiedTitlePlayback {
       }
     }
     final rows = byCoordinate.values.where((copies) => !isSpecialSeasonNumber(copies.values.first.parentIndex)).toList()
-      ..sort((a, b) => compareEpisodesByWatchOrder(a.values.first, b.values.first));
+      ..sort((a, b) => _compareEpisodes(a.values.first, b.values.first));
     final states = [for (final row in rows) selectRepresentativeWatchState(row)];
     final lastStarted = states.lastIndexWhere((s) => s.hasActiveProgress);
     final lastDone = states.lastIndexWhere((s) => s.isWatched && !s.hasActiveProgress);
@@ -262,7 +279,7 @@ class UnifiedTitlePlayback {
     }
     final across = rows[acrossAt].values.first;
     if (onDeck != null) {
-      if (compareEpisodesByWatchOrder(onDeck, across) >= 0) return onDeck;
+      if (_compareEpisodes(onDeck, across) >= 0) return onDeck;
       if (gate.freshen(onDeck).hasActiveProgress && !_provablyNewer(states[provenAt], gate.freshen(onDeck))) {
         return onDeck;
       }

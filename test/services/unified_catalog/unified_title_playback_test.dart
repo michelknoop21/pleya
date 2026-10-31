@@ -580,6 +580,66 @@ void main() {
       expect(next, isNull);
     });
 
+    test('the queue goes by the numbers: an episode aired earlier than the one before it is not skipped', () async {
+      MediaItem aired(MediaItem episode, String date) => episode.copyWith(originallyAvailableAt: date);
+      final episodes = [
+        aired(_episode('chosen', 1, 3), '2022-01-29'),
+        aired(_episode('chosen', 1, 4), '2022-01-22'),
+        aired(_episode('chosen', 1, 5), '2022-02-05'),
+      ];
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {'page': _Client(const []), 'chosen': _Client(episodes)},
+      );
+      MediaItem on(int number) => episodes.firstWhere((e) => e.index == number).copyWith(serverId: 'chosen');
+
+      final next = await title.neighbourOf(on(3), forward: true, queued: on(4));
+      final previous = await title.neighbourOf(on(4), forward: false, queued: on(3));
+
+      expect(next?.index, 4);
+      expect(previous?.index, 3);
+    });
+
+    test('without a queue the merged order goes by the numbers too', () async {
+      MediaItem aired(MediaItem episode, String date) => episode.copyWith(originallyAvailableAt: date);
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([aired(_episode('page', 1, 3), '2022-01-29'), aired(_episode('page', 1, 4), '2022-01-22')]),
+          'chosen': _Client(const []),
+        },
+      );
+
+      final next = await title.neighbourOf(
+        aired(_episode('page', 1, 3), '2022-01-29').copyWith(serverId: 'page'),
+        forward: true,
+      );
+
+      expect(next?.index, 4);
+    });
+
+    test('a Special in the queue stays the queue\'s own business', () async {
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([_episode('page', 1, 2), _episode('page', 1, 3)]),
+          'chosen': _Client([_episode('chosen', 0, 1), _episode('chosen', 1, 2), _episode('chosen', 1, 3)]),
+        },
+      );
+      final special = on('chosen', 0, 1);
+
+      expect(
+        (await title.neighbourOf(on('chosen', 1, 2), forward: true, queued: special))?.globalKey,
+        special.globalKey,
+      );
+    });
+
     test('a queue pointing the wrong way is not followed', () async {
       final title = _title(
         [_show('page'), _show('chosen')],
