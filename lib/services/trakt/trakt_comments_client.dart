@@ -31,6 +31,17 @@ class TraktComment {
   final int? season;
 }
 
+/// What one title's routes gave. Not [complete] when a season failed.
+typedef _TitleComments = ({List<TraktComment> comments, bool complete});
+
+/// What [TraktCommentsClient._get] hands back for a 404.
+const Object _notFound = Object();
+
+/// Trakt answered that it does not know the title by this id.
+final class _UnknownTitle implements Exception {
+  const _UnknownTitle();
+}
+
 /// Reads the public reactions on a title from Trakt.
 ///
 /// Reading comments needs the app's public `trakt-api-key` and no account, so
@@ -85,12 +96,14 @@ class TraktCommentsClient {
 
   /// The reactions on a film, most liked first.
   Future<List<TraktComment>?> movieComments(ExternalIds ids) => _load('movie', ids, const [], (id) async {
-    return _comments('/movies/$id/comments/likes');
+    final comments = await _comments('/movies/$id/comments/likes');
+    return comments == null ? null : (comments: comments, complete: true);
   });
 
   /// The reactions on a series and on the seasons in [seasons], most liked
-  /// first. A season Trakt does not know is left out; the series itself decides
-  /// whether there is an answer at all.
+  /// first. A season Trakt does not know is left out, and one that failed too:
+  /// the series itself decides whether there is an answer at all. An answer
+  /// that misses a season is not kept, so the next visit asks for it again.
   Future<List<TraktComment>?> showComments(ExternalIds ids, {List<int> seasons = const []}) {
     final asked = ([...seasons]..sort()).reversed.take(maxSeasons).toList();
     return _load('show', ids, asked, (id) async {
@@ -100,8 +113,7 @@ class TraktCommentsClient {
         for (final season in asked)
           _comments('/shows/$id/seasons/$season/comments/likes', season: season, missingIsEmpty: true),
       ]);
-      if (perSeason.contains(null)) return null;
-      return [show, for (final list in perSeason) list!].expand((list) => list).toList();
+      return (comments: [...show, for (final list in perSeason) ...?list], complete: !perSeason.contains(null));
     });
   }
 
@@ -109,7 +121,7 @@ class TraktCommentsClient {
     String type,
     ExternalIds ids,
     List<int> seasons,
-    Future<List<TraktComment>?> Function(String id) read,
+    Future<_TitleComments?> Function(String id) read,
   ) async {
     if (!isConfigured) return null;
     final key = _titleKey(ids);
@@ -120,16 +132,39 @@ class TraktCommentsClient {
 
     final id = await _traktId(type, ids);
     if (id == null) return null;
-    final all = await read(id);
-    if (all == null) return null;
-    all.sort((a, b) => b.likes.compareTo(a.likes));
+    final answer = await _readTitle(type, ids, id, read);
+    if (answer == null) return null;
+    final all = [...answer.comments]..sort((a, b) => b.likes.compareTo(a.likes));
     final comments = List<TraktComment>.unmodifiable(all.take(maxComments));
+    if (!answer.complete) return comments;
     _answers.remove(cacheKey);
     _answers[cacheKey] = (at: _now(), comments: comments);
     while (_answers.length > cacheSize) {
       _answers.remove(_answers.keys.first);
     }
     return comments;
+  }
+
+  /// [read] on [id]. An IMDb id Trakt has never heard of says nothing about the
+  /// title itself, so that one case gets a second try through the TMDB id.
+  Future<_TitleComments?> _readTitle(
+    String type,
+    ExternalIds ids,
+    String id,
+    Future<_TitleComments?> Function(String id) read,
+  ) async {
+    try {
+      return await read(id);
+    } on _UnknownTitle {
+      if (ids.imdb?.isNotEmpty != true) return null;
+    }
+    final found = await _traktIdFromTmdb(type, ids.tmdb);
+    if (found == null) return null;
+    try {
+      return await read(found);
+    } on _UnknownTitle {
+      return null;
+    }
   }
 
   String? _titleKey(ExternalIds ids) {
@@ -142,7 +177,10 @@ class TraktCommentsClient {
   /// looked up first.
   Future<String?> _traktId(String type, ExternalIds ids) async {
     if (ids.imdb case final imdb? when imdb.isNotEmpty) return Uri.encodeComponent(imdb);
-    final tmdb = ids.tmdb;
+    return _traktIdFromTmdb(type, ids.tmdb);
+  }
+
+  Future<String?> _traktIdFromTmdb(String type, int? tmdb) async {
     if (tmdb == null) return null;
     final body = await _get('/search/tmdb/$tmdb', query: {'type': type});
     if (body is! List) return null;
@@ -158,6 +196,7 @@ class TraktCommentsClient {
 
   Future<List<TraktComment>?> _comments(String path, {int? season, bool missingIsEmpty = false}) async {
     final body = await _get(path, query: {'page': '1', 'limit': '$pageSize'}, missingIsEmpty: missingIsEmpty);
+    if (identical(body, _notFound)) throw const _UnknownTitle();
     if (body is! List) return null;
     return [
       for (final raw in body)
@@ -206,7 +245,7 @@ class TraktCommentsClient {
       final response = await _http
           .get(uri, headers: TraktConstants.headers(clientId: clientId))
           .timeout(requestTimeout);
-      if (response.statusCode == 404 && missingIsEmpty) return const <Object?>[];
+      if (response.statusCode == 404) return missingIsEmpty ? const <Object?>[] : _notFound;
       if (response.statusCode != 200) {
         appLogger.d('Trakt comments: ${response.statusCode}');
         return null;

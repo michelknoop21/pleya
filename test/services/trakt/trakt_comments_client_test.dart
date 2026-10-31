@@ -136,12 +136,19 @@ void main() {
     expect(requests.map((request) => request.url.path), contains('/shows/tt9/seasons/3/comments/likes'));
   });
 
-  test('a season that fails takes the answer with it, a season Trakt does not know does not', () async {
+  test('neither a season that fails nor one Trakt does not know takes the series with it', () async {
     routes['/shows/tt9/comments/likes'] = () => _json([_comment(1, 'Show')]);
     routes['/shows/tt9/seasons/2/comments/likes'] = () => _json('down', 500);
 
     expect(await client().showComments(const ExternalIds(imdb: 'tt9'), seasons: [1]), isNotNull);
-    expect(await client().showComments(const ExternalIds(imdb: 'tt9'), seasons: [2]), isNull);
+    expect(await client().showComments(const ExternalIds(imdb: 'tt9'), seasons: [2]), isNotNull);
+  });
+
+  test('the series itself failing is no answer, whatever its seasons say', () async {
+    routes['/shows/tt9/comments/likes'] = () => _json('down', 500);
+    routes['/shows/tt9/seasons/1/comments/likes'] = () => _json([_comment(1, 'Season')]);
+
+    expect(await client().showComments(const ExternalIds(imdb: 'tt9'), seasons: [1]), isNull);
   });
 
   test('an error, a bad body and a thrown request are all no answer', () async {
@@ -198,5 +205,48 @@ void main() {
       TraktCommentsClient.plainComment('## Title\n\n**Bold** and *soft* and [a link](https://x.y) and 2*3*4'),
       'Title\n\nBold and soft and a link and 2*3*4',
     );
+  });
+
+  group('when part of the answer is missing', () {
+    test('a season that fails leaves the series and the other seasons, and is asked again later', () async {
+      routes['/shows/tt1/comments/likes'] = () => _json([_comment(1, 'The series')]);
+      routes['/shows/tt1/seasons/1/comments/likes'] = () => _json(const [], 500);
+      routes['/shows/tt1/seasons/2/comments/likes'] = () => _json([_comment(2, 'Season two')]);
+      final trakt = client();
+
+      final found = await trakt.showComments(const ExternalIds(imdb: 'tt1'), seasons: const [1, 2]);
+
+      expect(found!.map((comment) => comment.text), containsAll(['The series', 'Season two']));
+      routes['/shows/tt1/seasons/1/comments/likes'] = () => _json([_comment(3, 'Season one')]);
+      final again = await trakt.showComments(const ExternalIds(imdb: 'tt1'), seasons: const [1, 2]);
+      expect(again!.map((comment) => comment.text), contains('Season one'));
+    });
+
+    test('an IMDb id Trakt does not know falls back on the TMDB id', () async {
+      routes['/search/tmdb/42'] = () => _json([
+        {
+          'type': 'movie',
+          'movie': {
+            'ids': {'trakt': 7},
+          },
+        },
+      ]);
+      routes['/movies/7/comments/likes'] = () => _json([_comment(1, 'Found it')]);
+
+      final found = await client().movieComments(const ExternalIds(imdb: 'tt404', tmdb: 42));
+
+      expect(found!.single.text, 'Found it');
+    });
+
+    test('an IMDb id that fails for another reason does not ask for the TMDB id', () async {
+      routes['/movies/tt500/comments/likes'] = () => _json(const [], 500);
+
+      expect(await client().movieComments(const ExternalIds(imdb: 'tt500', tmdb: 42)), isNull);
+      expect(requests.map((request) => request.url.path), isNot(contains('/search/tmdb/42')));
+    });
+
+    test('an unknown IMDb id without a TMDB id stays no answer', () async {
+      expect(await client().movieComments(const ExternalIds(imdb: 'tt404')), isNull);
+    });
   });
 }
