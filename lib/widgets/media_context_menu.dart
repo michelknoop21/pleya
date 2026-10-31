@@ -62,6 +62,8 @@ import '../utils/error_message_utils.dart';
 
 import 'media_context_menu_dialogs.dart';
 import 'media_menu_action.dart';
+import 'mobile/library_phone_look.dart';
+import 'mobile/library_phone_menu.dart';
 
 part 'media_context_menu/menu_actions.dart';
 part 'media_context_menu/menu_add_to.dart';
@@ -217,7 +219,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     final openedFromKeyboard = _openedFromKeyboard;
     _openedFromKeyboard = false;
 
-    if (useBottomSheet) {
+    if (LibraryPhoneLook.of(context)) {
+      selected = await showLibraryPhoneMenu(
+        context,
+        title: _itemDisplayTitle(),
+        rows: libraryPhoneMenuRows(menuActions),
+        focusFirstRow: openedFromKeyboard,
+      );
+    } else if (useBottomSheet) {
       selected = await OverlaySheetController.showAdaptive<String>(
         context,
         showDragHandle: true,

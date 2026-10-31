@@ -9,6 +9,7 @@ class MediaMenuAction {
     required this.label,
     this.destructive = false,
     this.subtitle,
+    this.active = false,
   });
 
   final String value;
@@ -16,4 +17,7 @@ class MediaMenuAction {
   final String label;
   final bool destructive;
   final String? subtitle;
+
+  /// The state this row switches off is on: already on the watchlist.
+  final bool active;
 }

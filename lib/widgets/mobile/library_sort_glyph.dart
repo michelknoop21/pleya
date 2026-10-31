@@ -32,34 +32,32 @@ class _SortGlyphPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = size.width * 0.09
+      ..strokeWidth = size.width * 0.06
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
-    // Ascending runs from the short line to the long one, whichever way the
-    // arrow points. The arrow alone says which direction the list reads.
-    const lengths = [0.25, 0.4, 0.55];
-    const ys = [0.25, 0.5, 0.75];
+    // Reference 74ace49c: A to Z reads downward, so the arrow points down, with
+    // the lines growing towards its head. Descending is the same mark flipped.
+    double y(double fraction) => size.height * (descending ? 1 - fraction : fraction);
+
+    const lengths = [0.2, 0.33, 0.47];
+    const ys = [0.21, 0.41, 0.61];
+    const linesEnd = 0.54;
     for (var i = 0; i < lengths.length; i++) {
-      final y = size.height * ys[i];
-      canvas.drawLine(Offset(size.width * 0.06, y), Offset(size.width * (0.06 + lengths[i]), y), paint);
+      final from = size.width * (linesEnd - lengths[i]);
+      canvas.drawLine(Offset(from, y(ys[i])), Offset(size.width * linesEnd, y(ys[i])), paint);
     }
 
     final x = size.width * 0.8;
-    final top = size.height * 0.12;
-    final bottom = size.height * 0.88;
-    final head = descending ? bottom : top;
-    final tail = descending ? top : bottom;
-    final wing = size.width * 0.16;
-    final wingY = descending ? head - wing : head + wing;
+    const wing = 0.16;
     canvas.drawPath(
       Path()
-        ..moveTo(x, tail)
-        ..lineTo(x, head)
-        ..moveTo(x - wing, wingY)
-        ..lineTo(x, head)
-        ..lineTo(x + wing, wingY),
+        ..moveTo(x, y(0.12))
+        ..lineTo(x, y(0.88))
+        ..moveTo(x - size.width * wing, y(0.88 - wing))
+        ..lineTo(x, y(0.88))
+        ..lineTo(x + size.width * wing, y(0.88 - wing)),
       paint,
     );
   }

@@ -186,8 +186,9 @@ void main() {
     final inSheet = find.descendant(of: find.byType(SortBottomSheet), matching: find.byType(Text));
     final labels = [
       for (final text in tester.widgetList<Text>(inSheet))
-        if (text.data != t.libraries.sortBy && text.data != t.common.clear) text.data,
+        if (text.data != t.libraries.sortBy) text.data,
     ];
     expect(labels, [t.unifiedCatalog.sort.fields.title, t.unifiedCatalog.sort.fields.addedAt, 'Random']);
+    expect(find.text(t.common.clear), findsNothing, reason: 'no sort of its own yet, so nothing to clear');
   });
 }

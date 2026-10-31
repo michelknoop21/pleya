@@ -1,6 +1,6 @@
 /// Pieces of the floating sheets of the iPhone library look: a centred bold
-/// heading, a 46 pt row with the choice's check on the right, and the rule
-/// between two groups of rows.
+/// heading, a 46 pt row with the choice's check on the right or an icon and a
+/// label, and the rule between two groups of rows.
 library;
 
 import 'package:flutter/material.dart';
@@ -85,7 +85,12 @@ class LibraryPhoneSheetRow extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: LibraryPhoneMetrics.sortRowInset),
         title: Text(title, style: _rowTextStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
         trailing: selected
-            ? AppIcon(Symbols.check_rounded, color: accent, size: LibraryPhoneMetrics.sheetIconSize)
+            ? AppIcon(
+                Symbols.check_rounded,
+                color: accent,
+                size: LibraryPhoneMetrics.sheetIconSize,
+                weight: LibraryPhoneMetrics.sheetIconWeight,
+              )
             : shown == null
             ? null
             : ConstrainedBox(
@@ -100,6 +105,65 @@ class LibraryPhoneSheetRow extends StatelessWidget {
         onTap: onTap,
       ),
     );
+  }
+}
+
+/// One action: an icon and a label. Taller only when a subtitle needs the room.
+class LibraryPhoneSheetActionRow extends StatelessWidget {
+  const LibraryPhoneSheetActionRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filledIcon = false,
+    this.iconScale = 1,
+    this.subtitle,
+    this.destructive = false,
+    this.autofocus = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filledIcon;
+
+  /// Paint only: a larger icon must not push the label off its edge.
+  final double iconScale;
+  final String? subtitle;
+  final bool destructive;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = destructive ? Theme.of(context).colorScheme.error : null;
+    final note = subtitle;
+    final tile = FocusableListTile(
+      dense: false,
+      autofocus: autofocus,
+      visualDensity: LibraryPhoneMetrics.sheetRowDensity,
+      contentPadding: const EdgeInsets.symmetric(horizontal: LibraryPhoneMetrics.sheetActionRowInset),
+      minLeadingWidth: LibraryPhoneMetrics.sheetActionIconSize,
+      horizontalTitleGap: LibraryPhoneMetrics.sheetActionIconGap,
+      leading: Transform.scale(
+        scale: iconScale,
+        child: AppIcon(
+          icon,
+          fill: filledIcon ? 1 : 0,
+          size: LibraryPhoneMetrics.sheetActionIconSize,
+          weight: LibraryPhoneMetrics.sheetIconWeight,
+          color: color,
+        ),
+      ),
+      title: Text(
+        label,
+        style: _rowTextStyle.copyWith(color: color),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: note == null ? null : Text(note),
+      onTap: onTap,
+    );
+    return note == null ? SizedBox(height: LibraryPhoneMetrics.sheetRowHeight, child: tile) : tile;
   }
 }
 

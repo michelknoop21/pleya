@@ -1116,11 +1116,14 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
           pendingDescending = descending;
           pendingCleared = false;
         },
-        onClear: () {
-          pendingSort = null;
-          pendingDescending = false;
-          pendingCleared = true;
-        },
+        // The look shows Clear only with a sort to clear, as the reference shows none.
+        onClear: _phoneLook && _selectedSort == null
+            ? null
+            : () {
+                pendingSort = null;
+                pendingDescending = false;
+                pendingCleared = true;
+              },
       ),
     ).then((_) {
       if (!mounted) return;

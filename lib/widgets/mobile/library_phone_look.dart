@@ -83,7 +83,15 @@ class LibraryPhoneMetrics {
   /// Keeps a centred heading clear of a back button or a clear action.
   static const double sheetHeadingActionInset = 88;
   static const double sheetIconSize = 22;
-  static const double sheetIconGap = 16;
+
+  /// Action rows: the icon is centred 27 pt from the sheet edge, the label 54.
+  static const double sheetActionIconSize = 26;
+  static const double sheetActionRowInset = 14;
+  static const double sheetActionIconGap = 14;
+
+  /// The reference's line icons, thinner than the app's default weight.
+  static const double sheetIconWeight = 300;
+  static const double sheetPlayIconScale = 1.2;
   static const double sheetListBottomInset = 32;
 
   /// The first row sits directly under the heading, 46 pt from its centre.

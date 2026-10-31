@@ -130,6 +130,7 @@ extension on MediaContextMenuState {
             value: 'watchlist_toggle',
             icon: onWatchlist ? Symbols.bookmark_remove_rounded : Symbols.bookmark_add_rounded,
             label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
+            active: onWatchlist,
           ),
         );
       }
