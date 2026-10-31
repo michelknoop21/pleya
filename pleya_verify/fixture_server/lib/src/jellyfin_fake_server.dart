@@ -15,6 +15,7 @@ class JellyfinFakeMovie {
     this.communityRating,
     this.officialRating,
     this.runTimeMinutes = 100,
+    this.releasedDaysAgo,
   });
 
   final String id;
@@ -25,6 +26,12 @@ class JellyfinFakeMovie {
   final String? officialRating;
   final int runTimeMinutes;
 
+  /// Released this many days before the moment it is served, with a backdrop.
+  /// Relative to the wall clock because the app judges "recently released"
+  /// (DEC-097) against its own wall clock: a fixed date would age out of the
+  /// 90-day window. Null keeps the year's fixed date.
+  final int? releasedDaysAgo;
+
   Map<String, Object?> toJson(String serverId) => {
     'Id': id,
     'ServerId': serverId,
@@ -32,13 +39,16 @@ class JellyfinFakeMovie {
     'SortName': title.toLowerCase(),
     'Type': 'Movie',
     'ProductionYear': year,
-    'PremiereDate': '$year-06-01T00:00:00.0000000Z',
+    'PremiereDate': releasedDaysAgo == null
+        ? '$year-06-01T00:00:00.0000000Z'
+        : DateTime.now().toUtc().subtract(Duration(days: releasedDaysAgo!)).toIso8601String(),
     'DateCreated': '2026-01-01T00:00:00.0000000Z',
     'CriticRating': ?criticRating,
     'CommunityRating': ?communityRating,
     'OfficialRating': ?officialRating,
     'RunTimeTicks': runTimeMinutes * 60 * 10000000,
     'ImageTags': {'Primary': id},
+    if (releasedDaysAgo != null) 'BackdropImageTags': [id],
     'UserData': {'Played': false, 'PlayCount': 0, 'PlaybackPositionTicks': 0},
   };
 }
@@ -88,6 +98,14 @@ class JellyfinFakeServer {
     }
     if (path == '/Items' && request.url.queryParameters['ParentId'] == libraryId) {
       return _items(request.url.queryParameters);
+    }
+    // Latest answers with a bare array, not an Items wrapper. Only dated films:
+    // the other catalogs keep the empty Home their scenarios were written on.
+    if (path == '/Users/$userId/Items/Latest') {
+      return _json([
+        for (final movie in movies)
+          if (movie.releasedDaysAgo != null) movie.toJson(serverId),
+      ]);
     }
     if (path.contains('/Images/')) {
       final digest = sha256.convert(utf8.encode(path.split('/')[2])).bytes;

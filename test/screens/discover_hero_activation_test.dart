@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/focus/focusable_action_bar.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -15,6 +18,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/profiles/plex_home_service.dart';
@@ -30,6 +34,7 @@ import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
+import 'package:pleya/providers/tv_home_projection_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
 import 'package:pleya/services/download_manager_service.dart';
 import 'package:pleya/services/download_storage_service.dart';
@@ -37,6 +42,7 @@ import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/offline_watch_sync_service.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/screens/discover_screen.dart';
+import 'package:pleya/screens/home/ipad_home_hero.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -51,6 +57,8 @@ import 'package:pleya/widgets/fitting_title_text.dart';
 import 'package:pleya/widgets/hub_section.dart';
 import 'package:pleya/widgets/home_hero_artwork.dart';
 import 'package:pleya/widgets/media_card.dart';
+import 'package:pleya/widgets/mobile/mobile_hero_card.dart';
+import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -71,10 +79,16 @@ void main() {
     SettingsService.resetForTesting();
     TvDetectionService.debugSetAppleTVOverride(false);
     TvDetectionService.setForceTVSync(false);
+    // On iOS this tree's PageView hero lives on in the shipped macOS build, the
+    // iOS app on a Mac. A real iPad has its own hero; see 'iPad (A-17)' below.
+    TvDetectionService.debugSetIOSAppOnMacOverride(true);
     LocaleSettings.setLocaleSync(AppLocale.en);
   });
 
-  tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+  tearDown(() {
+    TvDetectionService.debugSetAppleTVOverride(null);
+    TvDetectionService.debugSetIOSAppOnMacOverride(null);
+  });
 
   /// Pumps the screen and returns the observer that records pushed routes.
   ///
@@ -101,6 +115,7 @@ void main() {
     double? topViewPadding,
     String? heroSquarePath,
     String? heroArtPath,
+    String? releaseDate = '2026-08-01',
   }) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = size;
@@ -139,7 +154,7 @@ void main() {
       // Inside the hero's release window (DEC-097). Without a release date a
       // film is out of the pool by design, so an undated fixture renders no
       // hero at all and every assertion below fails on a missing title.
-      originallyAvailableAt: '2026-08-01',
+      originallyAvailableAt: releaseDate,
     );
 
     final client = _FakeHeroClient(movie, continueWatching: continueWatching);
@@ -221,6 +236,14 @@ void main() {
             ChangeNotifierProvider<CompanionRemoteProvider>.value(value: companionRemoteProvider),
             ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfileProvider),
             ChangeNotifierProvider<DiscoverProvider>.value(value: discoverProvider),
+            ChangeNotifierProvider<TvHomeProjectionProvider>(
+              create: (_) => TvHomeProjectionProvider(
+                discover: discoverProvider,
+                multiServer: multiServerProvider,
+                continueWatchingTitle: 'Continue Watching',
+                latestMoviesTitle: 'Recently Released',
+              ),
+            ),
             ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
             ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineModeProvider),
             ChangeNotifierProvider<OfflineWatchSyncService>.value(value: offlineWatchSync),
@@ -234,16 +257,18 @@ void main() {
             // so they stay at the original hardcoded desktop-ish geometry
             // regardless of `size` — real per-size layout comes entirely
             // from `tester.view.physicalSize` via MediaQuery.
-            home: MainScreenFocusScope(
-              focusSidebar: () {},
-              focusContent: () {},
-              isSidebarFocused: false,
-              sideNavigationWidth: 80,
-              reservedSideNavigationWidth: 80,
-              foregroundLeft: 80,
-              foregroundWidth: 1200,
-              viewportWidth: 1280,
-              child: const DiscoverScreen(),
+            home: InputModeTracker(
+              child: MainScreenFocusScope(
+                focusSidebar: () {},
+                focusContent: () {},
+                isSidebarFocused: false,
+                sideNavigationWidth: 80,
+                reservedSideNavigationWidth: 80,
+                foregroundLeft: 80,
+                foregroundWidth: 1200,
+                viewportWidth: 1280,
+                child: const DiscoverScreen(),
+              ),
             ),
           ),
         ),
@@ -256,6 +281,148 @@ void main() {
     await tester.pump(const Duration(milliseconds: 900));
     return spy;
   }
+
+  group('iPad (A-17)', () {
+    setUp(() => TvDetectionService.debugSetIOSAppOnMacOverride(false));
+
+    const portrait = Size(834, 1194);
+    const landscape = Size(1194, 834);
+
+    /// A film outside the DEC-097 window, a title to resume: what Home holds on
+    /// a library with nothing recently released.
+    Future<void> pumpEmptyPool(WidgetTester tester, Size size, {TargetPlatform platform = TargetPlatform.iOS}) =>
+        pumpDiscover(
+          tester,
+          size: size,
+          platform: platform,
+          releaseDate: '1998-01-01',
+          continueWatching: [_resumable('Halfway Through')],
+        );
+
+    // The report. tvOS stands in with the first row's title; this page had no
+    // such branch and drew no hero at all.
+    testWidgets('no recent film, held upright: the card stands in', (tester) async {
+      await pumpEmptyPool(tester, portrait);
+
+      expect(find.byType(MobileHeroCard), findsOneWidget);
+      expect(find.text('Halfway Through'), findsWidgets);
+      expect(find.byType(HubSection), findsWidgets, reason: 'the rows stay under it');
+    });
+
+    testWidgets('no recent film, held sideways: the billboard stands in', (tester) async {
+      await pumpEmptyPool(tester, landscape);
+
+      expect(find.byType(TvHeroBillboardCarousel), findsOneWidget);
+      expect(find.byType(HubSection), findsWidgets, reason: 'the rows stay under it');
+    });
+
+    testWidgets('a recent film is on the hero, not the stand-in', (tester) async {
+      await pumpDiscover(tester, size: landscape, platform: TargetPlatform.iOS);
+
+      expect(find.byType(TvHeroBillboardCarousel), findsOneWidget);
+      expect(find.text('Movie 1'), findsWidgets);
+    });
+
+    // Review I-1. The page's keyboard route ran through a hero this tree no
+    // longer draws on the iPad, so the arrows skipped Afspelen altogether.
+    group('hardware keyboard', () {
+      Future<void> press(WidgetTester tester, LogicalKeyboardKey key) async {
+        await tester.sendKeyEvent(key);
+        await tester.pump();
+        await tester.pump();
+      }
+
+      /// The first key flips the page into keyboard mode.
+      Future<void> onActionBar(WidgetTester tester) async {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        tester.state<FocusableActionBarState>(find.byType(FocusableActionBar)).requestFocusOnFirst();
+        await tester.pump();
+      }
+
+      bool heroHasFocus(WidgetTester tester, Size size) => size == landscape
+          ? tester.state<TvHeroBillboardCarouselState>(find.byType(TvHeroBillboardCarousel)).hasFocus
+          : tester.state<MobileHeroCardState>(find.byType(MobileHeroCard)).hasFocus;
+
+      for (final (name, size) in [('held sideways', landscape), ('held upright', portrait)]) {
+        testWidgets('DOWN from the action bar lands on the hero, $name', (tester) async {
+          await pumpDiscover(tester, size: size, platform: TargetPlatform.iOS);
+          await onActionBar(tester);
+
+          await press(tester, LogicalKeyboardKey.arrowDown);
+
+          expect(heroHasFocus(tester, size), isTrue);
+        });
+
+        testWidgets('UP from the first row comes back to the hero, $name', (tester) async {
+          await pumpEmptyPool(tester, size);
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+          tester.state<HubSectionState>(find.byType(HubSection).first).requestFocusFromMemory();
+          await tester.pump();
+          await tester.pump();
+
+          await press(tester, LogicalKeyboardKey.arrowUp);
+
+          expect(heroHasFocus(tester, size), isTrue);
+        });
+
+        testWidgets('without a hero DOWN from the action bar still reaches the rows, $name', (tester) async {
+          final settings = await SettingsService.getInstance();
+          await settings.write(SettingsService.showHeroSection, false);
+          await pumpEmptyPool(tester, size);
+          await onActionBar(tester);
+
+          await press(tester, LogicalKeyboardKey.arrowDown);
+
+          final focused = FocusManager.instance.primaryFocus?.context;
+          expect(focused?.findAncestorWidgetOfExactType<HubSection>(), isNotNull);
+        });
+      }
+
+      testWidgets('a return to the tab under a finger leaves the hero alone, so it keeps rotating', (tester) async {
+        await pumpDiscover(tester, size: landscape, platform: TargetPlatform.iOS);
+
+        (tester.state(find.byType(DiscoverScreen)) as FocusableTab).focusActiveTabIfReady();
+        await tester.pump();
+
+        expect(heroHasFocus(tester, landscape), isFalse);
+      });
+
+      testWidgets('a return to the tab with a keyboard in use lands on the hero', (tester) async {
+        await pumpDiscover(tester, size: landscape, platform: TargetPlatform.iOS);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+
+        (tester.state(find.byType(DiscoverScreen)) as FocusableTab).focusActiveTabIfReady();
+        await tester.pump();
+
+        expect(heroHasFocus(tester, landscape), isTrue);
+      });
+    });
+
+    testWidgets('showHeroSection off means no hero in either orientation', (tester) async {
+      final settings = await SettingsService.getInstance();
+      await settings.write(SettingsService.showHeroSection, false);
+      await pumpEmptyPool(tester, landscape);
+
+      expect(find.byType(IpadHomeHero), findsNothing);
+      expect(find.byType(HubSection), findsWidgets);
+    });
+
+    testWidgets('the iOS app on a Mac keeps the page it had', (tester) async {
+      TvDetectionService.debugSetIOSAppOnMacOverride(true);
+      await pumpDiscover(tester, size: landscape, platform: TargetPlatform.iOS);
+
+      expect(find.byType(IpadHomeHero), findsNothing);
+      expect(find.byKey(DiscoverScreen.heroPaginationKey), findsOneWidget);
+    });
+
+    testWidgets('an Android tablet keeps the page it had', (tester) async {
+      await pumpDiscover(tester, size: landscape, platform: TargetPlatform.android);
+
+      expect(find.byType(IpadHomeHero), findsNothing);
+      expect(find.byKey(DiscoverScreen.heroPaginationKey), findsOneWidget);
+    });
+  });
 
   testWidgets('the hero play button still starts playback', (tester) async {
     final spy = await pumpDiscover(tester);
@@ -711,6 +878,17 @@ class _RouteSpy extends NavigatorObserver {
 
 /// The instant the hero's release window is measured from in this file.
 final _now = DateTime(2026, 8, 15);
+
+MediaItem _resumable(String title) => MediaItem(
+  id: title,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: title,
+  serverId: 'server_1',
+  serverName: 'Server',
+  durationMs: 7200000,
+  viewOffsetMs: 600000,
+);
 
 class _FakeHeroClient implements MediaServerClient {
   _FakeHeroClient(this.movie, {this.continueWatching = const []});

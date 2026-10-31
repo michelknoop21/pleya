@@ -19,6 +19,12 @@ GeometryVerdict _dispatch(String function, Map<String, Object?> args) {
       return notOverlapping(_rect(args['a'] as Map<String, Object?>), _rect(args['b'] as Map<String, Object?>));
     case 'below':
       return below(_rect(args['a'] as Map<String, Object?>), _rect(args['b'] as Map<String, Object?>));
+    case 'peeksAbove':
+      return peeksAbove(
+        _rect(args['a'] as Map<String, Object?>),
+        _rect(args['b'] as Map<String, Object?>),
+        minPeek: (args['minPeek'] as num?)?.toDouble() ?? defaultMinPeek,
+      );
     case 'above':
       return above(_rect(args['a'] as Map<String, Object?>), _rect(args['b'] as Map<String, Object?>));
     case 'leftOf':
