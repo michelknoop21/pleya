@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 	"unicode/utf8"
 
@@ -26,8 +28,11 @@ const passwordSlots = 2
 const loginSlotWait = 3 * time.Second
 
 // Hoeveel pogingen per clientadres bij de Argon2-stap komen: 60 achter elkaar en daarna
-// één per seconde. Ruim, want zonder PLEYA_SERVER_TRUSTED_PROXIES delen alle clients achter
-// een tunnel dit adres; de wachttijd hierboven hangt er daarom niet van af.
+// één per seconde. Het adres is altijd clientAddress: een doorgestuurd adres telt alleen
+// achter een vertrouwde proxy, want anders kiest een client zelf zijn emmer. Staat
+// PLEYA_SERVER_TRUSTED_PROXIES leeg op een server achter een tunnel, dan delen alle
+// clients één emmer en kan één client de logins van anderen op 429 zetten. Dat is een
+// verkeerde opstelling, zie docs/pleya-server-operator-remote.md.
 const (
 	loginAddressBurst  = 60.0
 	loginAddressRefill = 1.0
@@ -111,6 +116,30 @@ func (s *Server) auditLoginDenied(r *http.Request, detail map[string]any) {
 	}
 	s.auditAnonymous(r, auditLogin, audit.OutcomeDenied, detail)
 }
+
+// writeInvalidCredentials geeft het hele antwoord vóór er nog iets gebeurt. Een bestaande
+// naam schrijft daarna altijd een auditregel en een verzonnen naam niet altijd, en dat
+// verschil mag de client niet kunnen klokken: hij heeft dit antwoord dan al compleet, met
+// Content-Length, dus ook het einde ervan wacht niet op de database.
+func (s *Server) writeInvalidCredentials(w http.ResponseWriter) {
+	answer := bufferedResponse{header: w.Header()}
+	writeError(&answer, s.log, CodeInvalidCredentials, "invalid credentials", nil)
+	w.Header().Set("Content-Length", strconv.Itoa(answer.body.Len()))
+	w.WriteHeader(answer.status)
+	_, _ = w.Write(answer.body.Bytes())
+	_ = http.NewResponseController(w).Flush()
+}
+
+// bufferedResponse vangt een antwoord op om zijn lengte te kennen.
+type bufferedResponse struct {
+	header http.Header
+	status int
+	body   bytes.Buffer
+}
+
+func (b *bufferedResponse) Header() http.Header         { return b.header }
+func (b *bufferedResponse) WriteHeader(status int)      { b.status = status }
+func (b *bufferedResponse) Write(p []byte) (int, error) { return b.body.Write(p) }
 
 // auditWrongPassword is de regel van een mislukte controle. Op een bestaande naam gaat
 // hij buiten de grens om: die naam heeft al zijn eigen emmer, en dit is de regel waar een

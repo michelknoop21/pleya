@@ -5432,8 +5432,19 @@ alleen een logregel zonder naam. Een fout wachtwoord op een bestaande naam gaat 
 vloed op verzonnen namen de poging waar een beheerder naar zoekt, en die regel is al per naam begrensd. Er lopen hoogstens
 twee controles tegelijk, een poging wacht maximaal 3 seconden op een plek en krijgt dan 429 met `Retry-After`, en per
 clientadres komen 60 pogingen plus één per seconde bij die stap. Restrisico: een vloed op de login kan echte logins een
-429 geven, en login is de uitweg voor wie zijn sessie kwijt is. Zonder `PLEYA_SERVER_TRUSTED_PROXIES` delen tunnelclients
-hun adres. `login:<naam>` is zonder wachtwoord leeg te houden met één aanvraag per 12 seconden; dat bestond al.
+429 geven, en login is de uitweg voor wie zijn sessie kwijt is. `login:<naam>` is zonder wachtwoord leeg te houden met één aanvraag per 12 seconden; dat bestond al.
+
+De emmer per adres geldt altijd op `clientAddress`: een doorgestuurd adres telt alleen achter een vertrouwde proxy. Staat
+`PLEYA_SERVER_TRUSTED_PROXIES` leeg op een server achter een tunnel, dan delen alle tunnelclients één adresemmer en kan één
+client de logins van anderen op 429 zetten. Dat is het bekende restrisico van een verkeerde opstelling, de bedoelde
+opstelling staat in `docs/pleya-server-operator-remote.md`. De emmer overslaan als `X-Forwarded-For` aanwezig is, is geen
+uitweg: die header schrijft de client zelf.
+
+Op de foute-wachtwoordroute komt de auditregel na het antwoord. Een bestaande naam schrijft hem altijd en een verzonnen
+naam niet als de emmer leeg is, en dat verschil in tijd zou verraden welke namen bestaan, wat de regel "kosten hetzelfde"
+juist uitsluit. Het antwoord gaat daarom compleet en met `Content-Length` de deur uit vóór de INSERT. Wat overblijft: een volgende
+aanvraag op dezelfde keep-alive-verbinding wacht wel op die INSERT, dus wie twee aanvragen achter elkaar stuurt kan het
+verschil nog meten. Dat is één commit, niet gemeten, tegen de ruis van Argon2.
 
 Migratie 0030 zet indexen op `session_id` en `replaced_by`. `replaced_by` is een foreign key op de eigen tabel, dus de
 opruiming zocht per verwijderde rij de hele tabel door: 500 ms per rij bij een miljoen synthetische rijen, gemeten in

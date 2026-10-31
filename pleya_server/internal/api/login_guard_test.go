@@ -2,7 +2,9 @@ package api_test
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 	"sync"
@@ -187,8 +189,12 @@ func TestLoginAnswers429WhenNoSlotComesFree(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 
+	// De context vangt de test op als de wachttijdgrens er niet is.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 	started := time.Now()
-	rec := e.do(http.MethodPost, loginPath, map[string]string{"username": "derde", "password": "verkeerd"}, withoutAuth)
+	rec := e.do(http.MethodPost, loginPath, map[string]string{"username": "derde", "password": "verkeerd"}, withoutAuth,
+		func(r *http.Request) { *r = *r.WithContext(ctx) })
 	elapsed := time.Since(started)
 	close(release)
 	wg.Wait()
@@ -232,6 +238,87 @@ func TestLoginCountsAttemptsPerAddress(t *testing.T) {
 	}
 	if code := e.tryLogin("ander-adres", from("203.0.113.10:4000")); code != http.StatusUnauthorized {
 		t.Fatalf("een ander adres gaf %d", code)
+	}
+}
+
+// Zonder vertrouwde proxy is X-Forwarded-For wat de client zelf opschrijft. Een vervalst
+// adres, ook een ander per aanvraag, blijft dus op de emmer van het echte adres.
+func TestAForgedForwardedForStaysOnTheAddressBucket(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	var checks atomic.Int32
+	e.server.SetPasswordVerifier(func(string, string, auth.Argon2Params) (bool, bool, error) {
+		checks.Add(1)
+		return false, false, nil
+	})
+
+	refused := 0
+	for i := range 80 {
+		forged := withHeader("X-Forwarded-For", "198.51.100."+strconv.Itoa(i%250))
+		if e.tryLogin("vervalst-"+strconv.Itoa(i), forged) == http.StatusTooManyRequests {
+			refused++
+		}
+	}
+	if refused < 15 || checks.Load() > 65 {
+		t.Fatalf("%d geweigerd, %d controles", refused, checks.Load())
+	}
+}
+
+// Een bestaande en een verzonnen naam krijgen hetzelfde antwoord, compleet, terwijl de
+// auditregel nog moet komen. Zo is de INSERT die alleen de bestaande naam altijd doet niet
+// te klokken, en raakt een fout daarin de aanvraag niet.
+func TestAWrongPasswordIsAnsweredBeforeTheAuditLine(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	ctx := context.Background()
+	server := httptest.NewServer(e.server.Handler())
+	defer server.Close()
+
+	block, err := e.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = block.Rollback(ctx) }()
+	if _, err := block.Exec(ctx, `LOCK TABLE admin_audit IN ACCESS EXCLUSIVE MODE`); err != nil {
+		t.Fatal(err)
+	}
+
+	// Een eigen verbinding per aanvraag: op dezelfde verbinding wacht de volgende aanvraag
+	// wel tot de handler klaar is, en die meet deze test niet.
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	answer := func(username string) (int, string) {
+		t.Helper()
+		started := time.Now()
+		body := `{"username":"` + username + `","password":"verkeerd"}`
+		res, err := client.Post(server.URL+loginPath, "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		raw, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if elapsed := time.Since(started); elapsed > 2*time.Second {
+			t.Fatalf("%s kreeg zijn antwoord pas na %s", username, elapsed)
+		}
+		return res.StatusCode, string(raw)
+	}
+	knownStatus, knownBody := answer("michel")
+	madeUpStatus, madeUpBody := answer("verzonnen")
+	if knownStatus != http.StatusUnauthorized || knownStatus != madeUpStatus || knownBody != madeUpBody {
+		t.Fatalf("%d %q tegen %d %q", knownStatus, knownBody, madeUpStatus, madeUpBody)
+	}
+
+	if err := block.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for len(e.deniedLoginNames()) < 2 {
+		if time.Now().After(deadline) {
+			t.Fatalf("auditregels: %v", e.deniedLoginNames())
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

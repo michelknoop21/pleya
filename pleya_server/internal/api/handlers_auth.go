@@ -352,8 +352,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// bijna goed typen, inclusief hun echte wachtwoord met één tikfout.
 		//
 		// user_id blijft leeg, ook wanneer de naam bestaat: zie auditAnonymous.
+		s.writeInvalidCredentials(w)
 		s.auditWrongPassword(r, req.Username, known)
-		writeError(w, s.log, CodeInvalidCredentials, "invalid credentials", nil)
 		return
 	}
 

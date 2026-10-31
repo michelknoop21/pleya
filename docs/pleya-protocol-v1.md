@@ -309,6 +309,11 @@ Klasse: **`public`**.
 Een onbekende gebruiker en een verkeerd wachtwoord geven hetzelfde antwoord, `auth.invalid_credentials`,
 zodat het bestaan van een account niet lekt.
 
+Inloggen kan `429 auth.rate_limited` geven. De grens per gebruikersnaam noemt de wachttijd in
+`details.retry_after_ms`. Komt de aanvraag niet bij de wachtwoordcontrole omdat haar clientadres zijn grens
+raakte, of omdat er binnen 3 seconden geen plek vrijkwam, dan staat ook `Retry-After` in het antwoord; bij de
+wachttijdgrens is dat geen oordeel over het wachtwoord, en een client die later terugkomt wordt gewoon bediend.
+
 **`device_id` en `device_name` zijn optioneel op zowel `/auth/login` als `/auth/setup`**, en alleen te
 sturen wanneer `capabilities.sessions` waar is (hoofdstuk 17):
 
@@ -570,7 +575,7 @@ contract keurt ze af.
 | `auth.setup_required` | 409 | nee | er is nog geen eigenaar aangemaakt |
 | `auth.setup_already_completed` | 409 | nee | er is al een eigenaar |
 | `auth.setup_code_invalid` | 401 | nee | de setupcode klopt niet |
-| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details`; `POST /auth/refresh` en een `POST /auth/login` die geen wachtwoordcontrole krijgt zetten daarnaast `Retry-After`, zie 6.3 |
+| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details`; `POST /auth/refresh` zet daarnaast `Retry-After`, zie 6.3, en `POST /auth/login` alleen in de twee gevallen uit 6.2 |
 | `library.not_found` | 404 | nee | bibliotheek, item of versie bestaat niet, of niet voor u |
 | `library.scan_in_progress` | 409 | ja | de gevraagde bewerking botst met een lopende scan |
 | `library.cursor_invalid` | 400 | nee | de cursor is onleesbaar of hoort bij een andere sortering |
