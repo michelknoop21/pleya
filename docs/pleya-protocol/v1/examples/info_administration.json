@@ -10,6 +10,7 @@
     "artwork": true,
     "artwork_sizes": true,
     "filters": true,
+    "external_id_lookup": true,
     "watch_state": true,
     "watch_state_ownership": true,
     "stream_sessions": true,

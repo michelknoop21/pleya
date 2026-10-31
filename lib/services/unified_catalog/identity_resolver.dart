@@ -13,6 +13,7 @@ library;
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/canonical_media_identity.dart';
+import '../../media/unified/carried_external_ids.dart';
 import '../../media/unified/identity_evidence.dart';
 import '../../utils/external_ids.dart';
 
@@ -77,7 +78,16 @@ class ResolvableItem {
     this.includeGuidEvidence = true,
   });
 
-  String? get _effectiveBucketKey => bucketKeyOverride ?? identity?.bucketKey;
+  /// The numbers the item's own list answer carried, when they describe the
+  /// item itself: the lookup target is the item and nothing narrows them.
+  ExternalIds? get _carriedIds {
+    if (externalIdDiscriminator != null) return null;
+    final target = externalIdTarget;
+    if (target == null || target.targetId != item.id) return null;
+    return externalIdsCarriedBy(item);
+  }
+
+  String? get _effectiveBucketKey => bucketKeyOverride ?? identity?.resolutionKey;
 }
 
 /// Resolves [IdentityEvidence] for a batch of [ResolvableItem]s, in input
@@ -124,6 +134,20 @@ class UnifiedIdentityResolver {
     final pending = <int>[];
     for (var i = 0; i < items.length; i++) {
       final entry = items[i];
+      // Numbers the list answer already carried decide identity on their own:
+      // no request, and no title or year in the way. A title bucket only
+      // gathers candidates for items that came without them.
+      final carried = entry._carriedIds;
+      if (carried != null) {
+        evidence[i] = IdentityEvidence(
+          identity: entry.identity ?? CanonicalMediaIdentity.opaque(),
+          strongTokens: {
+            ..._guidTokensFor(entry),
+            ...externalIdTokens(scope: entry.scope, ids: carried),
+          },
+        );
+        continue;
+      }
       final key = entry._effectiveBucketKey;
       final inDuplicateBucket = key != null && duplicateBuckets.contains(key);
       final remembered = inDuplicateBucket ? known?.call(i) : null;

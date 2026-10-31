@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_identity.dart';
@@ -18,16 +19,18 @@ import 'fake_favorites_client.dart';
 /// now dispatches per server through the shared fan-out (hoofdstuk 4.3),
 /// which calls that rather than [findByIdentity].
 class _MatchingClient extends FakeFavoritesClient {
-  _MatchingClient({this.match, this.throws = false}) : super(favorites: const []);
+  _MatchingClient({this.match, this.throws = false, this.unsupported = false}) : super(favorites: const []);
 
   final MediaItem? match;
   final bool throws;
+  final bool unsupported;
 
   int lookups = 0;
 
   @override
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
     lookups++;
+    if (unsupported) throw const IdentityLookupUnsupported('no tmdb number');
     if (throws) throw StateError('server down mid-flight');
     return match == null ? const [] : [match!];
   }
@@ -52,6 +55,18 @@ WatchlistEntry entry({String key = 'plex:abc', String? guid = 'plex://movie/abc'
   );
 }
 
+WatchlistEntry entryWithTmdb() {
+  final base = entry();
+  return WatchlistEntry(
+    key: base.key,
+    kind: base.kind,
+    item: base.item,
+    guid: base.guid,
+    externalIds: const ExternalIds(imdb: 'tt1727587', tmdb: 4242),
+    memberships: base.memberships,
+  );
+}
+
 EligibleServer server(
   String id, {
   MediaBackend backend = MediaBackend.plex,
@@ -59,11 +74,12 @@ EligibleServer server(
   bool online = true,
   bool throws = false,
   bool noClient = false,
+  bool unsupported = false,
 }) {
   return (
     serverId: ServerId(id),
     backend: backend,
-    client: noClient || !online ? null : _MatchingClient(match: match, throws: throws),
+    client: noClient || !online ? null : _MatchingClient(match: match, throws: throws, unsupported: unsupported),
     online: online,
   );
 }
@@ -121,6 +137,55 @@ void main() {
       ]).resolve(entry());
 
       expect(result.coverageComplete, isTrue);
+    });
+
+    test('a Pleya Server is asked, and a title it holds is found there', () async {
+      final match = MediaItem(
+        id: 'ps-1',
+        backend: MediaBackend.pleyaServer,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        serverId: 'ps',
+      );
+
+      final result = await resolverFor([
+        server('ps', backend: MediaBackend.pleyaServer, match: match),
+      ]).resolve(entryWithTmdb());
+
+      expect(result.match?.serverId, 'ps');
+      expect(result.coverageComplete, isTrue);
+    });
+
+    test('a Pleya Server that cannot prove the title counts as not checked, never as "not there"', () async {
+      final result = await resolverFor([
+        server('s1'),
+        server('ps', backend: MediaBackend.pleyaServer, throws: true),
+      ]).resolve(entryWithTmdb());
+
+      expect(result.match, isNull);
+      expect(result.coverageComplete, isFalse);
+    });
+
+    test(
+      'an entry without a TMDB number cannot be asked of a Pleya Server: not checked, never a complete miss',
+      () async {
+        final result = await resolverFor([
+          server('s1'),
+          server('ps', backend: MediaBackend.pleyaServer, unsupported: true),
+        ]).resolve(entry());
+
+        expect(result.match, isNull);
+        expect(result.coverageComplete, isFalse);
+      },
+    );
+
+    test('an offline Pleya Server counts in the denominator like any other', () async {
+      final result = await resolverFor([
+        server('s1'),
+        server('ps', backend: MediaBackend.pleyaServer, online: false),
+      ]).resolve(entryWithTmdb());
+
+      expect(result.coverageComplete, isFalse);
     });
 
     test('an identity with nothing to match on costs no request', () async {

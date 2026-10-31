@@ -23,6 +23,11 @@ enum UncheckedSourceReason {
   /// error, timeout) — distinct from [offline] because the server's health
   /// status did not predict the failure.
   lookupFailed,
+
+  /// The server cannot answer this question at all: it predates the capability,
+  /// or the title has nothing it can be asked by (no TMDB number). Retrying does
+  /// not help; the title may well be there, so it is never a complete "no".
+  cannotBeAsked,
 }
 
 /// Whether every server a title could plausibly be on was actually asked.

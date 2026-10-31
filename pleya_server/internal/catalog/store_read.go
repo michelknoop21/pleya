@@ -260,6 +260,9 @@ func (s *Store) hydrate(ctx context.Context, items []Item) error {
 	if err := s.attachMetadata(ctx, ids, byID); err != nil {
 		return err
 	}
+	if err := s.attachExternalIDs(ctx, ids, byID); err != nil {
+		return err
+	}
 	return s.attachCounts(ctx, ids, byID)
 }
 

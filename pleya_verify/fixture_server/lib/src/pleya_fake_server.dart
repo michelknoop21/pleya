@@ -28,6 +28,7 @@ class PleyaFakeServer {
     this.pageSizeCap = 100,
     this.artworkBytes = const [0x89, 0x50, 0x4e, 0x47],
     this.setupCode = 'VERIFY-SETUP-CODE',
+    this.serverId = 'srv-1',
     FixtureClock? clock,
   }) : clock = clock ?? FixtureClock(),
        _initialSetupRequired = setupRequired;
@@ -173,6 +174,10 @@ class PleyaFakeServer {
   /// off this field (or `/__verify/state`) instead.
   final String setupCode;
 
+  /// The server id `/info` answers with. A scenario with two fixture servers
+  /// gives the second its own id, or the app would take both for one server.
+  final String serverId;
+
   /// username -> password, registered by a successful `/auth/setup` and
   /// checked by `/auth/login`. Empty on a fresh server with setup required.
   final Map<String, String> _credentials = {};
@@ -246,6 +251,10 @@ class PleyaFakeServer {
 
   /// query -> ordered result ids.
   final Map<String, List<String>> searchResults = {};
+
+  /// Whether items carry the `external_ids` key. False plays a server that
+  /// predates the field. Read by [addItem], so set it before adding items.
+  bool reportsExternalIds = true;
 
   int refreshCount = 0;
 
@@ -462,6 +471,10 @@ class PleyaFakeServer {
     String addedAt = '2026-06-18T21:34:02Z',
     List<String>? genres,
     String? contentRating,
+
+    /// The provider numbers the server has proven for this title, as
+    /// `{'tmdb': 1100}`. Null is a title without a proven match.
+    Map<String, dynamic>? externalIds,
   }) {
     final item = <String, dynamic>{
       'id': id,
@@ -478,6 +491,10 @@ class PleyaFakeServer {
       'child_count': childCount,
       'episode_count': episodeCount,
       'watched_episode_count': watchedEpisodeCount,
+      // A server that knows the field always sends the key, null when it has
+      // no proof; `reportsExternalIds = false` leaves it out, the way a server
+      // that predates it does. Set it before adding items.
+      if (reportsExternalIds) 'external_ids': externalIds,
       'artwork': {'poster_id': posterId, 'backdrop_id': backdropId},
       'versions': durationMs == null
           ? <Map<String, dynamic>>[]
@@ -837,7 +854,19 @@ class PleyaFakeServer {
     if (libraryMatch != null) {
       final ids = libraryItems[Uri.decodeComponent(libraryMatch.group(1)!)];
       if (ids == null) return _json(_error('library.not_found'), status: 404);
-      final narrowed = filtersCapability ? _filtered(ids, request.url.queryParametersAll) : ids;
+      var narrowed = filtersCapability ? _filtered(ids, request.url.queryParametersAll) : ids;
+      final externalId = query['external_id'];
+      if (reportsExternalIds && externalId != null) {
+        // Like the real server: only a proven number on a movie or show.
+        final tmdb = externalId.startsWith('tmdb:') ? int.tryParse(externalId.substring(5)) : null;
+        if (tmdb == null || tmdb <= 0) {
+          return _json(_error('library.filter_invalid'), status: 400);
+        }
+        narrowed = [
+          for (final id in narrowed)
+            if ((items[id]!['external_ids'] as Map?)?['tmdb'] == tmdb) id,
+        ];
+      }
       return _json(_page(_sorted(narrowed, query['sort']), query));
     }
 
@@ -1016,7 +1045,7 @@ class PleyaFakeServer {
 
   Map<String, dynamic> _info() => {
     'protocol': {'major': 1, 'feature_level': 1, 'profile': 'full'},
-    'server': {'id': 'srv-1'},
+    'server': {'id': serverId},
     'capabilities': {
       'browse': true,
       'search': true,
@@ -1033,6 +1062,7 @@ class PleyaFakeServer {
       'watch_state_ownership': watchStateOwnership,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
+      if (reportsExternalIds) 'external_id_lookup': true,
       if (playbackPlanCapability) 'playback_plan': true,
       if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},

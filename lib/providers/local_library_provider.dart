@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../media/ids.dart';
 import '../media/library_query.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
@@ -411,7 +412,20 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     if (cached == null) return null;
     final raw = cached.raw;
     final local = raw?['pleyaLocalExternalIds'];
-    if (local is Map<String, Object?>) return ExternalIds.fromJson(local);
+    if (local is Map<String, Object?>) {
+      final ids = ExternalIds.fromJson(local);
+      // A Pleya Server answer is final only when the scan marked it so: the
+      // server knew the field and said what it has, numbers or none. A snapshot
+      // from before that, or from a server that predates the field, may be empty
+      // for the wrong reason, so null sends the caller to the server. A final
+      // empty answer is kept: no network on every screen build for unmatched
+      // titles.
+      if (cached.backend == MediaBackend.pleyaServer && raw?['pleyaLocalExternalIdsFinal'] != true) return null;
+      return ids;
+    }
+    // A Pleya Server snapshot without a stored answer (the lookup failed during
+    // the scan) is unknown, not empty.
+    if (cached.backend == MediaBackend.pleyaServer) return null;
     final ids = raw?['ProviderIds'];
     if (ids is Map<String, Object?>) return ExternalIds.fromJellyfinProviderIds(ids);
     final guids = raw?['Guid'];

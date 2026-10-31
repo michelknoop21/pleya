@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -411,6 +412,54 @@ func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]
 		}
 	}
 	return nil
+}
+
+// ProviderTMDB is de naam waaronder metadata_candidates een TMDB-match bewaart.
+const ProviderTMDB = "tmdb"
+
+// attachExternalIDs vult per pagina in één query het TMDB-nummer van elk item
+// dat een geslaagde match heeft. Een item zonder match, of met een match die
+// ambigu, mislukt of afgewezen is, krijgt niets: een nummer dat niet bewezen is
+// hoort niet als identiteit de deur uit (unified, DEC-XXX).
+func (s *Store) attachExternalIDs(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
+	// Alleen films en series kunnen een nummer dragen. Een pagina met seizoenen
+	// of afleveringen kost dus geen query.
+	titles := make([]id.ID, 0, len(ids))
+	for _, itemID := range ids {
+		if it := byID[itemID]; it != nil && (it.Kind == "movie" || it.Kind == "show") {
+			titles = append(titles, itemID)
+		}
+	}
+	if len(titles) == 0 {
+		return nil
+	}
+	ids = titles
+	rows, err := s.pool.Query(ctx, `
+		SELECT c.item_id, c.external_id
+		FROM metadata_candidates c
+		JOIN media_items i ON i.id = c.item_id AND i.kind IN ('movie', 'show')
+		WHERE c.item_id = ANY($1) AND c.state = $2 AND c.provider = $3 AND c.external_id IS NOT NULL`,
+		ids, CandidateMatched, ProviderTMDB)
+	if err != nil {
+		return fmt.Errorf("externe ids lezen: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var itemID id.ID
+		var raw string
+		if err := rows.Scan(&itemID, &raw); err != nil {
+			return err
+		}
+		n, err := strconv.Atoi(raw)
+		if err != nil || n <= 0 {
+			continue // een onleesbaar nummer is geen bewijs
+		}
+		if it := byID[itemID]; it != nil {
+			it.ExternalIDs.TMDB = &n
+		}
+	}
+	return rows.Err()
 }
 
 // ProviderArtworkFile zoekt een gecachede afbeelding op id. cacheDir komt van de

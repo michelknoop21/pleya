@@ -64,15 +64,6 @@ mixin _PleyaServerUnsupportedMethods {
   /// Related titles need genres and people, which arrive in PS-7.
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => const [];
 
-  /// No `external_ids` table until PS-7, so identity lookups have nothing to
-  /// match on. Answering null rather than guessing keeps the watchlist
-  /// availability count honest.
-  Future<MediaItem?> findByIdentity(MediaIdentity identity) async => null;
-
-  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => const [];
-
-  Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
-
   // ── Per-user state: PS-9 ──
 
   Future<void> setFavorite(MediaItem item, bool isFavorite) async {}

@@ -161,6 +161,7 @@ class PleyaCapabilities {
     this.users = false,
     this.artworkSizes = false,
     this.filters = false,
+    this.externalIdLookup = false,
     this.watchStateOwnership = false,
     this.streamSessions = false,
     this.sessions = false,
@@ -215,6 +216,11 @@ class PleyaCapabilities {
   /// library as the answer to a filter; this flag decides whether they are sent.
   final bool filters;
 
+  /// `GET /libraries/{id}/items` answers `external_id=tmdb:<n>` and items carry
+  /// `external_ids`. Without it the parameter is ignored and the whole library
+  /// comes back, so the client never sends it.
+  final bool externalIdLookup;
+
   /// The server knows the ownership model: `base_revision`, the
   /// `playback_started` acquisition and the backlog marker on a watch-state
   /// event. `WatchStateEvent` is a closed schema, so a client that sends those
@@ -258,6 +264,7 @@ class PleyaCapabilities {
     realtime: booleanOr(json, 'realtime', orElse: false),
     artworkSizes: booleanOr(json, 'artwork_sizes', orElse: false),
     filters: booleanOr(json, 'filters', orElse: false),
+    externalIdLookup: booleanOr(json, 'external_id_lookup', orElse: false),
     watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
     streamSessions: booleanOr(json, 'stream_sessions', orElse: false),
     users: booleanOr(json, 'users', orElse: false),

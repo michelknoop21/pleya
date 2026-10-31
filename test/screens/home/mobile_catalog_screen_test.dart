@@ -40,6 +40,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/skeleton_media_card.dart';
 import 'package:pleya/widgets/mobile/mobile_catalog_sort_sheet.dart';
+import 'package:pleya/widgets/mobile/mobile_source_picker_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
 
@@ -334,6 +335,27 @@ void main() {
       findsOneWidget,
       reason: 'and so must the Sort chip',
     );
+  });
+
+  testWidgets('a card with two sources opens the picker when the screen is pushed as a route', (tester) async {
+    manager.debugRegisterClientForTesting(
+      _FakeLibraryClient(
+        's2',
+        itemsByLibrary: {
+          'B': [_movie('b1', title: 'Alien', serverId: 's2')],
+        },
+      ),
+    );
+    libraries.debugSetLibraries([_library('A', serverId: 's1'), _library('B', serverId: 's2')]);
+    await pumpPushedCatalog(tester);
+    await settle(tester);
+
+    await tester.tap(find.text('Alien'));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(MobileSourcePickerSheet), findsOneWidget);
   });
 
   testWidgets('shows a skeleton before the stored preferences and the first page have loaded', (tester) async {

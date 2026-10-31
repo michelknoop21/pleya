@@ -734,6 +734,51 @@ void main() {
   });
 
   test(
+    'a scenario with two fixture servers starts both, seeds and mutates the second, and stops both',
+    () async {
+      const source =
+          'name: fixture.two_servers\ntarget: macos\nsetup:\n'
+          '  - seed: unified.pair.a.v1\n'
+          '  - seed_second: unified.pair.b.v1\n'
+          'steps:\n'
+          '  - fixture_mutate_second: {op: offline, enabled: true}\n'
+          '  - fixture_mutate_second: {op: offline, enabled: false}\n';
+      final result = await runScenario(
+        scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+        scenarioSource: source,
+        driver: FakeDriver(),
+        repoRoot: Directory('../..'),
+      );
+
+      expect(result.passed, isTrue, reason: result.failureMessage);
+      final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
+      expect(manifest, contains(RegExp(r'"offline": ?true')));
+      expect(manifest, contains(RegExp(r'"offline": ?false')));
+      // What the app asked the second server is evidence too: without it a
+      // failing two-server run cannot show whether B was ever reached.
+      expect(File('${result.bundleDir.path}/fixture/requests-second.jsonl').existsSync(), isTrue);
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test('connections_seed without an app client fails the run with its own name', () async {
+    const source =
+        'name: fixture.seed_connection\ntarget: macos\nsetup:\n'
+        '  - connections_seed: {base_url: "http://127.0.0.1:1", server_id: srv-2, server_name: B, '
+        'user_name: u, refresh_token: rt}\nsteps: []\n';
+    final result = await runScenario(
+      scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+      scenarioSource: source,
+      driver: FakeDriver(),
+      repoRoot: Directory('../..'),
+    );
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('connections_seed'));
+    final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
+    expect(manifest, isNot(contains('"rt"')), reason: 'the refresh token never reaches the bundle');
+  });
+
+  test(
     'a fixture_mutate response is redacted before it reaches the manifest, not written verbatim',
     () async {
       // `fixture.mutate` is a generic pass-through to the fixture server's

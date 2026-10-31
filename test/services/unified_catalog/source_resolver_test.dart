@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_identity.dart';
@@ -15,10 +16,11 @@ import 'package:pleya/services/unified_catalog/source_resolver.dart';
 
 /// A client whose only implemented member is [findAllByIdentity].
 class _MatchingClient implements MediaServerClient {
-  _MatchingClient({this.matches = const [], this.throws = false});
+  _MatchingClient({this.matches = const [], this.throws = false, this.unsupported = false});
 
   final List<MediaItem> matches;
   final bool throws;
+  final bool unsupported;
   int lookups = 0;
 
   /// `eligibleSourceServers` reads this to decide identity eligibility, so it
@@ -29,6 +31,7 @@ class _MatchingClient implements MediaServerClient {
   @override
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
     lookups++;
+    if (unsupported) throw const IdentityLookupUnsupported('no tmdb number');
     if (throws) throw StateError('server down mid-flight');
     return matches;
   }
@@ -69,11 +72,12 @@ EligibleSourceServer _server(
   bool online = true,
   bool hasAuthError = false,
   bool throws = false,
+  bool unsupported = false,
 }) {
   return (
     serverId: ServerId(id),
     backend: backend,
-    client: online ? _MatchingClient(matches: matches, throws: throws) : null,
+    client: online ? _MatchingClient(matches: matches, throws: throws, unsupported: unsupported) : null,
     online: online,
     hasAuthError: hasAuthError,
   );
@@ -800,6 +804,18 @@ void main() {
             'Build the list with eligibleSourceServers() instead of from the live client map.\n'
             '${offenders.join('\n')}',
       );
+    });
+
+    test('a server that cannot be asked is unchecked with its own reason, and no negative is cached', () async {
+      final servers = [_server('s1'), _server('ps', backend: MediaBackend.pleyaServer, unsupported: true)];
+      final resolver = resolverFor(servers);
+
+      final first = await resolver.resolveAllSourcesForGroup(_identity);
+      await resolver.resolveAllSourcesForGroup(_identity);
+
+      expect(first.coverage.isComplete, isFalse);
+      expect(first.coverage.uncheckedReasons['ps'], UncheckedSourceReason.cannotBeAsked);
+      expect((servers.first.client! as _MatchingClient).lookups, 2, reason: 'an incomplete miss is not cached');
     });
 
     test('a clientless expected server has no known backend, and counts anyway', () {

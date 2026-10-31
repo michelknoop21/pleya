@@ -18,6 +18,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import '../../exceptions/identity_lookup_exceptions.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_identity.dart';
@@ -39,7 +40,11 @@ typedef FanOutServer = ({ServerId serverId, MediaServerClient? client, bool onli
 /// returned, and whether the lookup itself succeeded. `ok: false` covers
 /// "offline/no client" and "the call threw" alike — both mean this server
 /// was not actually checked.
-typedef SourceLookupOutcome = ({ServerId serverId, List<MediaItem> matches, bool ok});
+///
+/// [unsupported] marks a server that cannot answer this question at all (an
+/// older Pleya Server, an identity it cannot be asked by). It is still not
+/// checked, but retrying does not help, so it is reported apart from an outage.
+typedef SourceLookupOutcome = ({ServerId serverId, List<MediaItem> matches, bool ok, bool unsupported});
 
 /// Runs `findAllByIdentity(identity)` against [servers] in
 /// [maxConcurrent]-sized batches, in list order — deterministic, so two
@@ -60,13 +65,21 @@ Future<void> fanOutFindAllByIdentity({
       batch.map((server) async {
         final client = server.client;
         if (!server.online || client == null) {
-          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: false);
         }
         try {
-          return (serverId: server.serverId, matches: await client.findAllByIdentity(identity), ok: true);
+          return (
+            serverId: server.serverId,
+            matches: await client.findAllByIdentity(identity),
+            ok: true,
+            unsupported: false,
+          );
+        } on IdentityLookupUnsupported catch (e) {
+          appLogger.d('findAllByIdentity unsupported on ${server.serverId}', error: e);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: true);
         } catch (e, st) {
           appLogger.d('findAllByIdentity failed on ${server.serverId}', error: e, stackTrace: st);
-          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: false);
         }
       }),
     );
@@ -105,14 +118,17 @@ List<MediaItem> visibleMatchesFromServer(List<MediaItem> matches, ServerId serve
 /// Which backends can answer a catalogue-identity lookup at all.
 ///
 /// Same rule `WatchlistAvailabilityResolver` already established (hoofdstuk
-/// 1.2): a local folder and a Pleya Share have no guid and no external ids;
-/// neither does a Pleya Server (`external_ids` is PS-7). Counting one of
-/// them as "expected" would make coverage never complete for a group that
-/// includes one of their sources — they become eligible in the phase that
-/// gives them identity, not before.
+/// 1.2): a local folder and a Pleya Share have no guid and no external ids,
+/// so counting one of them as "expected" would make coverage never complete
+/// for a group that includes one of their sources.
+///
+/// Pleya Server answers since its items carry a TMDB number (`external_ids`).
+/// A server that cannot prove a title, say one that predates the field, throws
+/// from `findAllByIdentity` instead of answering empty, so it lands in
+/// coverage as unchecked and never as a silent "not here".
 bool isIdentityEligibleBackend(MediaBackend backend) => switch (backend) {
-  MediaBackend.plex || MediaBackend.jellyfin => true,
-  MediaBackend.local || MediaBackend.pleyaServer => false,
+  MediaBackend.plex || MediaBackend.jellyfin || MediaBackend.pleyaServer => true,
+  MediaBackend.local => false,
 };
 
 /// One server [SourceAllResolver] is allowed to ask, plus enough state to
@@ -310,7 +326,9 @@ class SourceAllResolver {
             // warm hit for up to [positiveTtl].
             items.addAll(visibleMatchesFromServer(result.matches, result.serverId, hiddenLibraryKeys));
           } else {
-            uncheckedReasons[id] = UncheckedSourceReason.lookupFailed;
+            uncheckedReasons[id] = result.unsupported
+                ? UncheckedSourceReason.cannotBeAsked
+                : UncheckedSourceReason.lookupFailed;
           }
         }
         // Without a caller-supplied rule this never stops early: every

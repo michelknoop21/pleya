@@ -29,6 +29,7 @@ import '../models/seerr/seerr_media.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
 import '../services/jellyfin_client.dart';
+import '../exceptions/identity_lookup_exceptions.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../services/pleya_server_client.dart';
 import '../media/ids.dart';

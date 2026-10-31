@@ -93,6 +93,11 @@
       "note": "serie met episode_count en watched_episode_count"
     },
     {
+      "file": "item_show_with_external_ids.json",
+      "schema": "Item",
+      "note": "serie met een bewezen TMDB-nummer (unified)"
+    },
+    {
       "file": "item_episode.json",
       "schema": "Item",
       "note": "aflevering met parent_id en index"

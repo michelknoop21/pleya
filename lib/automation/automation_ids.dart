@@ -217,6 +217,11 @@ class AutomationIds {
   /// with the ring here, and Menu from the detail rail comes back to it.
   static const String mediaDetailPlay = 'media-detail.play';
 
+  /// The "Bron" card on the iPhone detail of a title with more than one
+  /// source; its state names the server the page is bound to, and a tap opens
+  /// the source picker to switch (unified, DEC-XXX).
+  static const String mediaDetailSource = 'media-detail.source';
+
   /// Visible preparation feedback; each concurrent notice has its own instance.
   static const String noticeBusy = 'notice.busy';
 
@@ -993,6 +998,7 @@ class AutomationIds {
     {'id': mediaDetailTab, 'role': 'chip', 'instanceable': true},
     {'id': mediaDetailActivity, 'role': 'text', 'instanceable': false},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailSource, 'role': 'button', 'instanceable': false},
     {'id': noticeBusy, 'role': 'status', 'instanceable': true},
     {'id': serverStatus, 'role': 'dialog', 'instanceable': false},
     {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},

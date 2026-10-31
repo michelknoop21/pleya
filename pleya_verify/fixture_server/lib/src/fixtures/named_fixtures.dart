@@ -59,6 +59,12 @@ bool applyNamedFixture(
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
       return true;
+    case 'unified.pair.a.v1':
+      _applyUnifiedPair(server, side: 'a');
+      return true;
+    case 'unified.pair.b.v1':
+      _applyUnifiedPair(server, side: 'b');
+      return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
@@ -788,5 +794,64 @@ void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
     user: 'verify-viewer',
     title: 'Aurora Drift',
     mediaType: 'movie',
+  );
+}
+
+/// One half of a two-server unified scenario (DEC-XXX). Side `a` and side `b`
+/// both hold Severance under the same TMDB number, but with another title and
+/// year, so only identity can fold them into one card; each side also holds a
+/// Battlestar Galactica with its own number (the 1978 series and the 2004
+/// remake), which must stay two cards. Every episode has a playable version.
+void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
+  final fixture = 'unified.pair.$side.v1';
+  server.resetCatalog();
+  // Side B is attached with `connections_seed`, never through /auth/setup. A
+  // server that still offers setup reads as signed out to the app, so B is a
+  // server whose owner already exists.
+  if (side == 'b') server.setupRequired = false;
+
+  final libraryId = _mintId(server, fixture, 'library', 'shows');
+  server.addLibrary(id: libraryId, title: side == 'a' ? 'Series' : 'Series NAS', kind: 'shows', itemCount: 2);
+
+  final severance = (title: side == 'a' ? 'Severance' : 'Severance (Ontslagen)', year: side == 'a' ? 2022 : 2021);
+  final bsg = (year: side == 'a' ? 1978 : 2004, tmdb: side == 'a' ? 1 : 71);
+
+  final showId = _mintId(server, fixture, 'show', 'severance');
+  server.addItem(
+    id: showId,
+    kind: 'show',
+    title: severance.title,
+    libraryId: libraryId,
+    year: severance.year,
+    childCount: 1,
+    episodeCount: 2,
+    posterId: _registerArtwork(server, showId),
+    externalIds: {'tmdb': 95396},
+  );
+  final seasonId = _mintId(server, fixture, 'season', 'severance-s01');
+  server.addItem(id: seasonId, kind: 'season', title: 'Season 1', parentId: showId, index: 1, childCount: 2);
+  for (var episode = 1; episode <= 2; episode++) {
+    final episodeId = _mintId(server, fixture, 'episode', 'severance-s01e0$episode');
+    server.addItem(
+      id: episodeId,
+      kind: 'episode',
+      title: 'Episode $episode',
+      parentId: seasonId,
+      index: episode,
+      durationMs: 3000000,
+    );
+  }
+
+  final bsgId = _mintId(server, fixture, 'show', 'bsg');
+  server.addItem(
+    id: bsgId,
+    kind: 'show',
+    title: 'Battlestar Galactica',
+    libraryId: libraryId,
+    year: bsg.year,
+    childCount: 0,
+    episodeCount: 0,
+    posterId: _registerArtwork(server, bsgId),
+    externalIds: {'tmdb': bsg.tmdb},
   );
 }

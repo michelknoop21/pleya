@@ -1674,6 +1674,38 @@ void main() {
         }
       });
 
+      testWidgets('a tap on the source row opens the source change', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+        final keys = ['${movie.serverId}:${movie.id}', 'server_2:${movie.id}'];
+        BuildContext? changedFrom;
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          unifiedRouteContext: UnifiedMediaRouteContext(
+            groupId: 'g1',
+            identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+            sourceKey: keys.first,
+            availableSourceKeys: keys,
+            coverage: SourceCoverageState.complete(keys.toSet()),
+            intent: UnifiedActivationIntent.details,
+          ),
+          onChangeSource: (detailContext) async => changedFrom = detailContext,
+        );
+
+        await tester.ensureVisible(find.text(t.sourcePicker.change));
+        await tester.pump();
+        await tester.tap(find.text(t.sourcePicker.change));
+        await tester.pump();
+
+        expect(changedFrom, isNotNull);
+        expect(OverlaySheetController.maybeOf(changedFrom!), isNotNull);
+      });
+
       testWidgets('a film keeps its title and a white play button (D-01)', (tester) async {
         final movie = buildMovie();
         final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});

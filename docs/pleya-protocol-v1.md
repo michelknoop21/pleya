@@ -692,6 +692,7 @@ EN.
 | `watch` | `unwatched`, `in_progress`, `watched` | voor de aanvrager; `unwatched` bevat ook wat half bekeken is, `in_progress` is de deelverzameling met voortgang. Bij een serie telt de som van haar afleveringen: alle gezien is `watched`, een deel gezien of begonnen is `in_progress`, en `unwatched` is elke serie die niet helemaal gezien is, ook een serie zonder afleveringen |
 | `content_rating` | herhaalbaar, tekst | kijkwijzer zoals op `Item`, zonder hoofdletters |
 | `audio_language` | herhaalbaar, twee of drie letters | `nl`, `nld` en `dut` zijn dezelfde taal; de server zet om naar ISO 639-2/B zoals de facetten (`dut`, `eng`), `und` en onbekende codes zijn een fout; een film telt mee met een geluidsspoor van een van zijn versies, een serie met een spoor van een van haar afleveringen |
+| `external_id` | `tmdb:<getal>` | de titels met dit bewezen providernummer (9.4a); alleen onder `capabilities.external_id_lookup`, een oudere server negeert de parameter stil en levert de hele bibliotheek. Telt een film in een `movies`- en een serie in een `shows`-bibliotheek, dus de rechten van de bibliotheek gelden gewoon |
 | `resolution` | herhaalbaar, `sd`, `hd`, `fhd`, `uhd` | de klasse van het videospoor, op breedte of hoogte: `uhd` vanaf 3200 of 2000, `fhd` vanaf 1800 of 1000, `hd` vanaf 1200 of 700, anders `sd`. Een letterboxfilm van 1920x804 is dus `fhd` |
 
 Een waarde die de server niet kan uitvoeren is `400 library.filter_invalid` met `details.parameter`
@@ -788,6 +789,30 @@ identiteit nog nooit heeft aangeraakt draagt `user_state: null`.
 **Technische velden dragen in deze versie geen detectiemetadata.** De server houdt per veld bij hoe
 zeker hij is en waar het vandaan komt, maar de client heeft dat pas nodig wanneer de afspeelplanner
 bestaat. Die velden komen in PS-6 bij, wat regel 1 uit hoofdstuk 3 toestaat.
+
+### 9.4a Providernummers: `external_ids`
+
+Een `movie` of `show` draagt `external_ids` zodra de matcher van de server voor die titel een geslaagde providermatch heeft vastgelegd (nummer uit een `.nfo`, handmatige keuze of een eenduidige zoektreffer met titel en jaar), in elk antwoord dat een `Item` bevat (detail, bibliotheeklijst, kinderen, zoeken, hubs):
+
+```json
+{ "external_ids": { "tmdb": 438631 } }
+```
+
+Regels:
+
+1. Het veld is een nieuw optioneel antwoordveld (regel 1, hoofdstuk 3). `null` of afwezig betekent
+   "de server heeft hier geen bewijs van", niet "deze titel heeft geen nummer" en zeker niet "deze
+   titel is anders dan een titel op een andere server".
+2. Een nummer verschijnt alleen bij een geslaagde match. Een titel die ambigu, niet gevonden,
+   mislukt of afgewezen is draagt geen nummer, ook niet als de server er intern nog een bewaart.
+3. `tmdb` is per soort. Dezelfde waarde kan een film en een serie aanwijzen; een client combineert
+   het met `kind`.
+4. Een `season` of `episode` draagt geen `external_ids`. Hun identiteit is de serie plus
+   seizoennummer plus afleveringsnummer (`index` en het `index` van het seizoen). Een client die een
+   aflevering wil herkennen vraagt de serie.
+5. Opzoeken op nummer kan met de filterparameter `external_id=tmdb:<getal>` van 9.3, onder `capabilities.external_id_lookup`. Een client die de vlag niet ziet, vraagt het niet en weet dan alleen dat hij het niet kan controleren.
+6. Een nieuwe provider (`imdb`, `tvdb`) komt als nieuwe optionele sleutel in hetzelfde object.
+   Daarvoor is nu geen serverbron; de sleutels bestaan dus nog niet.
 
 ### 9.5 `GET /pleya/v1/items/{item_id}/children`
 

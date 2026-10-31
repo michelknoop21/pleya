@@ -16,6 +16,8 @@ import (
 // vijftig is een vergissing of een poging de query groot te maken.
 const maxFilterValues = 50
 
+var canonicalNumber = regexp.MustCompile(`^[1-9][0-9]*$`)
+
 var languagePattern = regexp.MustCompile(`^[a-z]{3}$`)
 
 // filterError noemt de parameter en de waarde die de server afkeurt.
@@ -119,6 +121,17 @@ func parseItemFilters(q url.Values, subject string) (catalog.Filters, *filterErr
 			return f, &filterError{parameter: "resolution", value: r}
 		}
 		f.Resolutions = append(f.Resolutions, r)
+	}
+
+	if _, present := q["external_id"]; present {
+		provider, raw, ok := strings.Cut(q.Get("external_id"), ":")
+		n, err := strconv.Atoi(raw)
+		// Alleen tmdb bestaat, en alleen een positief geheel getal in kale cijfers
+		// (het patroon van het contract): geen spaties, plusteken of voorloopnul.
+		if !ok || provider != catalog.ProviderTMDB || !canonicalNumber.MatchString(raw) || err != nil || n <= 0 {
+			return f, &filterError{parameter: "external_id", value: q.Get("external_id")}
+		}
+		f.ExternalID = &catalog.ExternalIDFilter{Provider: provider, Value: n}
 	}
 
 	if _, present := q["watch"]; present {

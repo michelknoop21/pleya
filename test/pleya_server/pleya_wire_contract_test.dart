@@ -214,8 +214,8 @@ void main() {
       );
     });
 
-    test('covers the 106 fixtures the contract ships', () {
-      expect(fixtures, hasLength(106));
+    test('covers the 107 fixtures the contract ships', () {
+      expect(fixtures, hasLength(107));
     });
 
     for (final fixture in fixtures) {

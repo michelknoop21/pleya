@@ -34,11 +34,16 @@ import 'unified_activation_coordinator.dart';
 /// the playback-failure re-entry come along for free because both hang off
 /// [UnifiedMediaRouteContext.hasAlternativeSources] the same way they do on
 /// tvOS.
+///
+/// [pickerContext] is for a caller whose own [context] sits above its
+/// [OverlaySheetHost], as `MobileCatalogScreen` when it is pushed as a route:
+/// the picker opens from there, everything else stays on [context].
 Future<MobileActivationOutcome> openMobileMediaGroup(
   BuildContext context, {
   required UnifiedMediaGroup group,
   required UnifiedActivationIntent intent,
   required SourceAvailability Function(UnifiedMediaSource source) availabilityFor,
+  BuildContext? pickerContext,
   SourceCoverageState? coverage,
   bool playDirectly = false,
   bool isOffline = false,
@@ -73,7 +78,7 @@ Future<MobileActivationOutcome> openMobileMediaGroup(
           preferredServerId,
           required coverage,
         }) => showMobileSourcePickerSheet(
-          context,
+          pickerContext ?? context,
           representative: group.representativeSource.item,
           sources: sources,
           preferredSourceKey: preferredSourceKey,

@@ -27,6 +27,7 @@ mixin _PleyaServerRequests {
   Future<({Map<String, dynamic>? json, String? errorCode})> _getJsonDetailed(
     String path, {
     Map<String, dynamic>? queryParameters,
+    Duration? timeout,
     AbortController? abort,
   });
 

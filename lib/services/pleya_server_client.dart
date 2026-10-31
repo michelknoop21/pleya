@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../connection/connection.dart';
 import '../automation/pleya_verify.dart';
 import '../utils/continue_watching_merge.dart';
+import '../exceptions/identity_lookup_exceptions.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
 import '../media/external_rating.dart';

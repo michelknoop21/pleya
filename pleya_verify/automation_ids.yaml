@@ -228,6 +228,9 @@ ids:
   - id: media-detail.play
     role: button
     instanceable: false
+  - id: media-detail.source
+    role: button
+    instanceable: false
   - id: notice.busy
     role: status
     instanceable: true

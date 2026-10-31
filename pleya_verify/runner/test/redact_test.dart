@@ -47,10 +47,14 @@ void main() {
     test('redacts nested maps', () {
       expect(
         redactJson({
-          'result': {'auth': {'oldPassword': 'hunter2', 'note': 'fine'}},
+          'result': {
+            'auth': {'oldPassword': 'hunter2', 'note': 'fine'},
+          },
         }),
         {
-          'result': {'auth': {'oldPassword': '[REDACTED]', 'note': 'fine'}},
+          'result': {
+            'auth': {'oldPassword': '[REDACTED]', 'note': 'fine'},
+          },
         },
       );
     });

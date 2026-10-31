@@ -22,12 +22,15 @@ class GroupingCandidate {
   const GroupingCandidate({required this.source, required this.evidence});
 }
 
-/// Backends DEC-063 forbids ever merging — not with Plex/Jellyfin, and not
-/// with each other — because their identity data isn't proven equivalent yet
-/// (Pleya Server's external-id support is PS-7, still unbuilt). A source on
-/// one of these backends is always its own single-source group; hoofdstuk 4.2
+/// Backends that never merge, not with other backends and not with each other.
+/// A local folder and a Pleya Share carry no guid and no external ids, so a
+/// source on one of them is always its own single-source group; hoofdstuk 4.2
 /// still allows that group to *exist*, it just never grows a second source.
-const _neverMergedBackends = {MediaBackend.local, MediaBackend.pleyaServer};
+///
+/// Pleya Server used to be on this list (DEC-063, while its external-id support
+/// was unbuilt). It merges since DEC-XXX, on the same strong-token rule as
+/// Plex and Jellyfin: its items carry a proven TMDB number (`external_ids`).
+const _neverMergedBackends = {MediaBackend.local};
 
 /// Groups [candidates] into [UnifiedMediaGroup]s. Every *distinct concrete
 /// source* ends up in exactly one group — grouping never drops a membership
@@ -206,6 +209,11 @@ List<List<int>> _unionFind(List<GroupingCandidate> candidates, List<int> indices
 }
 
 bool _weakFallbackAllowed(GroupingCandidate a, GroupingCandidate b) {
+  // A Pleya Server is only ever recognised by a proven provider number
+  // (DEC-XXX). "Same title and year" is a guess, and a guess must not fold two
+  // cards into one: without an identical strong token the sources stay apart
+  // and each stays recognisable by its server.
+  if (_involvesPleyaServer(a, b)) return false;
   final ia = a.evidence.identity;
   final ib = b.evidence.identity;
   if (ia.granularity != ib.granularity) return false;
@@ -214,6 +222,9 @@ bool _weakFallbackAllowed(GroupingCandidate a, GroupingCandidate b) {
   if (_hasConflictingToken(a.evidence.strongTokens, b.evidence.strongTokens)) return false;
   return true;
 }
+
+bool _involvesPleyaServer(GroupingCandidate a, GroupingCandidate b) =>
+    a.source.backend == MediaBackend.pleyaServer || b.source.backend == MediaBackend.pleyaServer;
 
 bool _hasConflictingToken(Set<IdentityToken> a, Set<IdentityToken> b) {
   for (final ta in a) {

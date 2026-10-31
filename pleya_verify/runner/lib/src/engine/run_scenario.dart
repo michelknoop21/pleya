@@ -33,6 +33,19 @@ const Set<String> _fixtureVerbs = {'seed', 'sign_in', 'seed_seerr', 'fixture_mut
 bool _needsFixture(Scenario scenario) =>
     [...scenario.setup, ...scenario.steps].any((s) => _fixtureVerbs.contains(s.verb));
 
+/// A second fixture server, for a scenario with two servers at once (unified,
+/// DEC-XXX). Started only when a scenario names it, with its own server id so
+/// the app sees two servers and not one twice.
+const Set<String> _secondFixtureVerbs = {'seed_second', 'fixture_mutate_second'};
+
+/// The server id the second fixture answers `/info` with.
+const String secondFixtureServerId = 'srv-2';
+
+bool _needsSecondFixture(Scenario scenario) => [
+  ...scenario.setup,
+  ...scenario.steps,
+].any((s) => _secondFixtureVerbs.contains(s.verb) || jsonEncode(s.args).contains('{{fixture_second'));
+
 /// Runs a validated [Scenario] against [driver] end to end, dispatching
 /// `setup` then `steps` verbs in file order — there is no engine-injected
 /// implicit launch: `install`/`launch` are explicit setup verbs a scenario
@@ -65,6 +78,7 @@ Future<ScenarioRunResult> runScenario({
   var launchAttempted = false;
   var launched = false;
   FixtureServerHandle? fixture;
+  FixtureServerHandle? fixtureSecond;
   VerifyInstance? instance;
   String? snapshotHash;
 
@@ -82,6 +96,10 @@ Future<ScenarioRunResult> runScenario({
         return fixture != null
             ? '${fixture.baseUrl}/jellyfin'
             : throw StateError('"{{fixture_jellyfin}}" used but no fixture server is running');
+      }
+      if (value == '{{fixture_second}}') {
+        return fixtureSecond?.baseUrl ??
+            (throw StateError('"{{fixture_second}}" used but no second fixture server is running'));
       }
       if (value == '{{fixture_seerr}}') {
         return fixture != null
@@ -218,6 +236,51 @@ Future<ScenarioRunResult> runScenario({
           // invariant as `record['error']` below: redact at the point data
           // enters the bundle, not by trusting every future op to be benign.
           record['result'] = redactJson(await fixture.mutate(op, args));
+        case 'seed_second':
+          if (step.args case final String fixtureName) {
+            await fixtureSecond!.seed(fixtureName);
+          } else {
+            throw ArgumentError('seed_second needs a fixture name: ${step.args}');
+          }
+        case 'fixture_mutate_second':
+          final second = fixtureSecond;
+          if (second == null) {
+            throw StateError('fixture_mutate_second needs a second fixture server, but none is running');
+          }
+          final raw = step.args;
+          if (raw is! Map<String, Object?> || raw['op'] is! String) {
+            throw ArgumentError('fixture_mutate_second needs an "op" field naming a /__verify/ route: $raw');
+          }
+          final args = Map<String, Object?>.from(
+            resolvePlaceholders(raw, second, null, seededIds: await second.seededIds()) as Map<String, Object?>,
+          );
+          final op = args.remove('op') as String;
+          record['op'] = op;
+          record['result'] = redactJson(await second.mutate(op, args));
+        case 'connections_seed':
+          // A connection that exists before the scenario starts, without the
+          // sign-in flow: `/v1/connections/seed`. The refresh token is a
+          // fixture value and never reaches the bundle.
+          final raw = step.args;
+          if (raw is! Map<String, Object?>) {
+            throw ArgumentError('connections_seed needs base_url, server_id, server_name, user_name, refresh_token');
+          }
+          final args = resolvePlaceholders(raw, fixture, null) as Map<String, Object?>;
+          String need(String key) => args[key] is String && (args[key] as String).isNotEmpty
+              ? args[key] as String
+              : throw ArgumentError('connections_seed needs "$key"');
+          final seeded = await _requireClient(driver, 'connections_seed').connectionsSeed(
+            baseUrl: need('base_url'),
+            serverId: need('server_id'),
+            userId: args['user_id'] as String?,
+            serverName: need('server_name'),
+            userName: need('user_name'),
+            refreshToken: need('refresh_token'),
+          );
+          if (seeded['ok'] != true) {
+            throw StateError('connections_seed failed: ${redact('${seeded['error']}')}');
+          }
+          record['server_id'] = args['server_id'];
         case 'open':
           final screen = step.args;
           if (screen is! String) {
@@ -375,6 +438,12 @@ Future<ScenarioRunResult> runScenario({
         fixtureServerPackageDir: Directory('${repoRoot.path}/pleya_verify/fixture_server'),
       );
     }
+    if (_needsSecondFixture(scenario)) {
+      fixtureSecond = await FixtureServerHandle.start(
+        fixtureServerPackageDir: Directory('${repoRoot.path}/pleya_verify/fixture_server'),
+        serverId: secondFixtureServerId,
+      );
+    }
     for (final step in [...scenario.setup, ...scenario.steps]) {
       await runStep(step);
     }
@@ -418,6 +487,14 @@ Future<ScenarioRunResult> runScenario({
         // step failure can.
         stepRecords.add({'verb': 'terminate', 'ok': false, 'error': redact('$e')});
       }
+    }
+    if (fixtureSecond != null) {
+      try {
+        bundle.writeFixtureRequests(await fixtureSecond.requestsSince(0), name: 'requests-second');
+      } catch (_) {
+        bundle.writeFixtureRequests(const [], name: 'requests-second');
+      }
+      await fixtureSecond.stop();
     }
     if (fixture != null) {
       try {

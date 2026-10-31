@@ -120,6 +120,24 @@ class CanonicalMediaIdentity {
     }
   }
 
+  /// The key that decides which items are worth an external-id lookup. Unlike
+  /// [bucketKey] it leaves the year out for movies and shows: the same title can
+  /// carry another year on each server (folder name versus release date), and a
+  /// year must not stop two items from being compared on their proven numbers.
+  /// Looking up is cheap and only ever adds evidence; whether two items merge
+  /// is still decided by identical numbers (or, outside Pleya Server, by the
+  /// year-aware weak fallback, which keeps using [bucketKey]).
+  String? get resolutionKey {
+    switch (granularity) {
+      case CanonicalIdentityGranularity.movie:
+      case CanonicalIdentityGranularity.show:
+        final title = normalizedTitle;
+        return title == null ? null : '${granularity.name}:$title';
+      default:
+        return bucketKey;
+    }
+  }
+
   /// Whether [year] agrees for a weak title+year fallback merge (hoofdstuk
   /// 11.6): both known and equal. A missing year on either side never counts
   /// as agreement — omission is not equality.

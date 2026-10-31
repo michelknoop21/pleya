@@ -50,6 +50,29 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 421 · 30 October 2026 · Apple TV
+
+<!-- commit: 257e11a8 -->
+
+### New
+
+- **A title on both Plex and Pleya Server shows up once.** When both servers carry the same TMDB
+  number, Series, Films, Search, Home and Continue Watching show one card with both sources.
+  You still pick which server plays it. A title without a proven match stays as two cards.
+
+### Notes
+
+- This is a test build for the two-server check. It needs a Pleya Server updated on 30 October.
+
+### Worth checking
+
+- Severance shows one card with Plex and Pleya Server as sources, and both play, with the right
+  seasons and episodes per source.
+- With the Pleya Server switched off the card still opens on Plex, and the choice comes back when
+  the server does.
+- Search, Home and Continue Watching show the title once.
+- These Woods are Haunted and Star Wars: The Force Awakens stay as two cards.
+
 ## 2.8.1 · build 420 · 29 October 2026 · Apple TV
 
 <!-- commit:8558d26c -->

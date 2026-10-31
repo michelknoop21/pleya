@@ -64,7 +64,10 @@ class RealProcessRunner implements ProcessRunner {
   /// `SIGKILL` on a timed-out process.
   final Duration terminationGrace;
 
-  const RealProcessRunner({this.timeout = const Duration(minutes: 10), this.terminationGrace = const Duration(seconds: 5)});
+  const RealProcessRunner({
+    this.timeout = const Duration(minutes: 10),
+    this.terminationGrace = const Duration(seconds: 5),
+  });
 
   @override
   Future<ProcessRunResult> run(List<String> args, {required String workingDirectory}) async {

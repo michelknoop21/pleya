@@ -46,9 +46,13 @@ List<Map<String, dynamic>> _itemsArray(Object? data) {
 ///    one, and has no date to show under the poster
 ///
 /// Heavier fields (`MediaSources`, `People`, `Genres`, `Tags`, `Studios`,
-/// `Taglines`, `ProviderIds`, `Chapters`) stay in [_detailFields] — together
+/// `Taglines`, `Chapters`) stay in [_detailFields] — together
 /// they added seconds to large-library pages on small home servers.
-const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,DateCreated,OriginalTitle,SortName,Overview';
+///
+/// `ProviderIds` is the exception among the identity fields: it is a small map
+/// (three short strings) and it lets unified grouping recognise the same title
+/// on another server without one detail request per title.
+const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,DateCreated,OriginalTitle,SortName,Overview,ProviderIds';
 
 /// Existing episode-row requests can show Plex-style quality labels when the
 /// response includes `MediaSources`. Keep this off broad library/search/latest
@@ -262,7 +266,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         'Recursive': 'true',
         'Limit': '20',
         'IncludeItemTypes': _includeTypesForIdentity(identity.kind),
-        'Fields': '$_browseFields,ProviderIds',
+        'Fields': _browseFields,
         ...jellyfinImageQueryParameters,
       },
     );

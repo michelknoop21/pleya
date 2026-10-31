@@ -24,10 +24,20 @@ type Filters struct {
 	AudioLanguages []string
 	Resolutions    []string
 
+	// ExternalID zoekt de titel met dit providernummer (unified). Het geldt voor
+	// films en series met een geslaagde match en heeft geen jaar of titel nodig.
+	ExternalID *ExternalIDFilter
+
 	// Subject is de identiteit waarvoor Watch en de sortering op laatst gekeken
 	// gelden (watch_states.subject). Telt niet mee in de vingerafdruk: de cursor
 	// hoort bij de filterset, de aanvrager is al door de autorisatie vastgelegd.
 	Subject string
+}
+
+// ExternalIDFilter is één providernummer, zoals `tmdb:438631`.
+type ExternalIDFilter struct {
+	Provider string
+	Value    int
 }
 
 // WatchFilter is de betekenis van de watch-parameter (specificatie 4.1).
@@ -49,7 +59,8 @@ func IsKnownResolution(v string) bool { return slices.Contains(knownResolutions,
 // Empty zegt of er geen enkel filter staat.
 func (f Filters) Empty() bool {
 	return len(f.Genres) == 0 && len(f.Years) == 0 && f.YearFrom == nil && f.YearTo == nil &&
-		f.Watch == "" && len(f.ContentRatings) == 0 && len(f.AudioLanguages) == 0 && len(f.Resolutions) == 0
+		f.Watch == "" && len(f.ContentRatings) == 0 && len(f.AudioLanguages) == 0 && len(f.Resolutions) == 0 &&
+		f.ExternalID == nil
 }
 
 // Fingerprint is een korte vingerafdruk van de filterset, voor in de cursor
@@ -75,10 +86,16 @@ func (f Filters) Fingerprint() string {
 	if f.YearTo != nil {
 		to = fmt.Sprint(*f.YearTo)
 	}
-	sum := sha256.Sum256([]byte(strings.Join([]string{
+	parts := []string{
 		norm(f.Genres), norm(years), from, to, string(f.Watch),
 		norm(f.ContentRatings), norm(f.AudioLanguages), norm(f.Resolutions),
-	}, "\x1e")))
+	}
+	// Alleen een filterset mét external_id krijgt er een deel bij, zodat een
+	// cursor van voor de upgrade geldig blijft.
+	if f.ExternalID != nil {
+		parts = append([]string{fmt.Sprintf("%s:%d", f.ExternalID.Provider, f.ExternalID.Value)}, parts...)
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x1e")))
 	return hex.EncodeToString(sum[:6])
 }
 
@@ -182,6 +199,13 @@ func (f Filters) where(clauses *[]string, param func(any) int) {
 	if len(f.Resolutions) > 0 {
 		*clauses = append(*clauses, fmt.Sprintf("i.id IN (%s)",
 			streamOwnersWhere(fmt.Sprintf("st.kind = 'video' AND (%s) = ANY($%d::text[])", resolutionClass, param(f.Resolutions)))))
+	}
+	if f.ExternalID != nil {
+		// Alleen een geslaagde match telt, en alleen op film en serie: dezelfde
+		// regel als Item.external_ids op de draad.
+		p, v := param(f.ExternalID.Provider), param(fmt.Sprint(f.ExternalID.Value))
+		*clauses = append(*clauses, fmt.Sprintf(`i.kind IN ('movie', 'show') AND EXISTS (SELECT 1 FROM metadata_candidates mc
+			WHERE mc.item_id = i.id AND mc.state = 'matched' AND mc.provider = $%d AND mc.external_id = $%d)`, p, v))
 	}
 	if f.Watch != "" {
 		*clauses = append(*clauses, watchPredicate(f.Watch, param(f.Subject)))

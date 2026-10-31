@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show VoidCallback;
 
+import 'dart:async' show TimeoutException;
+
+import '../../exceptions/identity_lookup_exceptions.dart';
 import '../../exceptions/media_server_exceptions.dart';
 import '../../media/library_query.dart';
 import '../../media/media_item.dart';
@@ -8,6 +11,7 @@ import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../utils/external_ids.dart';
 import '../../media/media_server_client.dart';
+import '../../media/unified/carried_external_ids.dart';
 import '../jellyfin_client.dart';
 import '../plex_client.dart';
 import '../pleya_server_client.dart';
@@ -103,22 +107,63 @@ class LocalLibrarySync {
         parentId: detail.parentId ?? candidate.parentId,
         grandparentId: detail.grandparentId ?? candidate.grandparentId,
       );
-      // Preserve strong cross-server identity for offline grouping. The Plex
-      // neutral mapper intentionally omits the Guid array from raw metadata.
+      // Preserve strong cross-server identity for offline grouping. The list
+      // answer usually carried the numbers already (Plex `includeGuids`,
+      // Jellyfin `ProviderIds`, Pleya `external_ids`); only without them is
+      // the server asked per title.
       ExternalIds? ids;
-      if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) && item.raw?['pleyaLocalExternalIds'] == null) {
-        try {
-          ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
-        } on MediaServerHttpException {
-          // Plex used to answer a failed lookup with no ids. Keep that here: one
-          // flaky includeGuids call must not fail the whole library scan.
-          ids = null;
+      // Whether the stored answer may be trusted as final. Only a Pleya Server
+      // that knows the field says so; the others keep the behaviour they had.
+      var authoritative = false;
+      // A Pleya row whose stored answer was not final (written by an older build,
+      // or by a server that predates the field) is asked again, also when the
+      // rest of the row was retained unchanged.
+      final storedFinal = client is! PleyaServerClient || item.raw?['pleyaLocalExternalIdsFinal'] == true;
+      // Numbers the fresh list answer carries always win: a retained row keeps
+      // its old stored answer, which predates a match the server made since.
+      final fresh = externalIdsCarriedBy(candidate);
+      if (fresh != null) {
+        ids = fresh;
+        authoritative = true;
+      } else if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) &&
+          (item.raw?['pleyaLocalExternalIds'] == null || !storedFinal)) {
+        final listed = externalIdsCarriedBy(item);
+        if (listed != null) {
+          ids = listed;
+          authoritative = true;
+        } else {
+          try {
+            if (client is PleyaServerClient) {
+              final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));
+              ids = answer.ids;
+              authoritative = answer.authoritative;
+            } else {
+              ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+            }
+          } on MediaServerHttpException {
+            // Plex used to answer a failed lookup with no ids. Keep that here: one
+            // flaky includeGuids call must not fail the whole library scan.
+            ids = null;
+          } on IdentityLookupException {
+            // The server did not answer (offline, 429, 503, a broken body). The row
+            // is kept with no stored answer, which readers treat as unknown rather
+            // than as "no numbers", so the next scan or lookup asks again.
+            ids = null;
+          } on TimeoutException {
+            ids = null;
+          }
+          await check();
         }
-        await check();
       }
       next[item.globalKey] = ids == null
           ? item
-          : item.copyWith(raw: {...?item.raw, 'pleyaLocalExternalIds': ids.toJson()});
+          : item.copyWith(
+              raw: {
+                ...?item.raw,
+                'pleyaLocalExternalIds': ids.toJson(),
+                if (client is PleyaServerClient) 'pleyaLocalExternalIdsFinal': authoritative,
+              },
+            );
       final loader = posterLoader;
       final path = item.thumbPath;
       if (loader != null &&
