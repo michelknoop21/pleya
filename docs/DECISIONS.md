@@ -5400,6 +5400,14 @@ daarna 15,5 per seconde in plaats van een halve. Dat vraagt een geldig token en 
 elders mag; een lus op één token blijft op 30 plus een halve per seconde. De kaart blijft op zijn 1024 emmers, gemeten
 132 kB, en een verdrongen emmer begint weer vol.
 
+Twee gelijktijdige aanbiedingen van verschillende tokens met dezelfde kop liepen in een deadlock: elk hield zijn eigen rij
+vast en wachtte op die van de ander, omdat een herhaling alles bijwerkt wat naar de kop wijst. In de review was dat 191 keer
+`500` op 400 antwoorden, na een seconde wachten. Dezelfde test vond een tweede: een rotatie nam tokens en dan de sessie,
+`RevokeSession` andersom, dus een afmelding tijdens een rotatie gaf ook een deadlock. De rotatie neemt nu eerst de rij van de
+sessie, `FOR NO KEY UPDATE`, zoals `UPDATE sessions` zelf ook doet. Daarmee geldt overal één volgorde, en lopen rotaties van
+één sessie achter elkaar. Opnieuw proberen na `40P01` was het alternatief; dat laat de seconde wachten staan en lost de
+afmelding niet op.
+
 De kolomcomment in migratie 0028 zegt nog "Leeg na de eerste aanbieding". Die migratie is niet gewijzigd; de betekenis
 staat op `RotateRefreshToken`.
 

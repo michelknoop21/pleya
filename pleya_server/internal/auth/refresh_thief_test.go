@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
 // De dief zag het token T één keer en begint binnen het respijt van een verversing van
@@ -183,6 +184,81 @@ func TestSixConcurrentPresentationsKeepTheSession(t *testing.T) {
 		t.Fatalf("uitkomsten %v", counts)
 	}
 	r.sessionMustLive()
+}
+
+// newSession geeft een sessie met een eigen eerste token, zodat een test die een race
+// vaak nakijkt elke ronde schoon begint.
+func (r *rotation) newSession() (id.ID, string) {
+	r.t.Helper()
+	session, err := r.store.CreateSession(r.ctx, r.user, nil, "browser", r.now)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	token := r.fresh()
+	if err := r.store.StoreRefreshToken(r.ctx, auth.HashOpaque(token), session, r.now.Add(30*24*time.Hour)); err != nil {
+		r.t.Fatal(err)
+	}
+	return session, token
+}
+
+// Twee verschillende tokens met dezelfde kop, tegelijk aangeboden: het slachtoffer met
+// zijn vervangen token en de dief met een reserve. Elk hield zijn eigen rij vast en
+// wachtte op die van de ander, en dat gaf in de review 191 keer deadlock detected op 400
+// antwoorden. De volgorde ligt nu vast, dus dit is geen race meer die een test moet winnen.
+func TestTwoTokensWithOneHeadDoNotDeadlock(t *testing.T) {
+	r, _ := newRotation(t)
+	for run := range 200 {
+		_, stolen := r.newSession()
+		victim := r.present(stolen, auth.RefreshOK)
+		r.wait(time.Second)
+		reserve := r.present(stolen, auth.RefreshReplayed)
+		r.wait(time.Second)
+		r.present(stolen, auth.RefreshReplayed)
+		r.wait(5 * time.Minute)
+
+		type result struct {
+			outcome auth.RefreshOutcome
+			err     error
+		}
+		results := make(chan result, 2)
+		for n, token := range []string{victim, reserve} {
+			go func() {
+				outcome, _, _, err := r.store.RotateRefreshToken(r.ctx, auth.HashOpaque(token), auth.HashOpaque(fmt.Sprintf("kop-%d-%d", run, n)),
+					r.now.Add(30*24*time.Hour), r.now, rotationGrace)
+				results <- result{outcome, err}
+			}()
+		}
+		for range 2 {
+			got := <-results
+			if got.err != nil {
+				t.Fatalf("run %d: %v", run, got.err)
+			}
+			if got.outcome != auth.RefreshReplayed && got.outcome != auth.RefreshReused {
+				t.Fatalf("run %d: uitkomst %v", run, got.outcome)
+			}
+		}
+	}
+}
+
+// Afmelden tijdens een rotatie: RevokeSession neemt eerst de sessie en dan de tokens, en
+// de rotatie moet dezelfde volgorde houden.
+func TestRevokingASessionDuringARotationDoesNotDeadlock(t *testing.T) {
+	r, _ := newRotation(t)
+	for run := range 200 {
+		session, token := r.newSession()
+		errs := make(chan error, 2)
+		go func() {
+			_, _, _, err := r.store.RotateRefreshToken(r.ctx, auth.HashOpaque(token), auth.HashOpaque(fmt.Sprintf("rotatie-%d", run)),
+				r.now.Add(30*24*time.Hour), r.now, rotationGrace)
+			errs <- err
+		}()
+		go func() { errs <- r.store.RevokeSession(r.ctx, session, r.now) }()
+		for range 2 {
+			if err := <-errs; err != nil {
+				t.Fatalf("run %d: %v", run, err)
+			}
+		}
+	}
 }
 
 // Een ingetrokken sessie raakt alleen die sessie: een ander toestel van dezelfde

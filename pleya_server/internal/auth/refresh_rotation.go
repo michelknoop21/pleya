@@ -100,6 +100,10 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := lockSessionOfRefreshToken(ctx, tx, oldHash); err != nil {
+		return RefreshUnknown, id.Nil, id.Nil, err
+	}
+
 	var expiresAt time.Time
 	var revokedAt *time.Time
 	var replacedBy []byte
@@ -193,6 +197,29 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 		return RefreshUnknown, id.Nil, id.Nil, err
 	}
 	return RefreshOK, *sessionID, *userID, nil
+}
+
+// lockSessionOfRefreshToken neemt de rij van de sessie, vóór welke tokenrij dan ook.
+//
+// Een rotatie raakt meer dan het aangeboden token: de kop, en bij een herhaling alles
+// wat naar de kop wijst. Twee tokens met dezelfde kop hielden zo elk hun eigen rij vast
+// en wachtten op die van de ander, en RevokeSession, de sessieopruiming en
+// RevokeAllSessions nemen eerst de sessie en dan de tokens, dus een afmelding tijdens een
+// rotatie liep andersom. Elk van die gevallen was een deadlock, en dus een 500 na een
+// seconde wachten. Met de sessie eerst geldt overal dezelfde volgorde, en lopen rotaties
+// van één sessie achter elkaar. FOR NO KEY UPDATE is wat UPDATE sessions zelf ook neemt:
+// een foreign key naar de sessie wacht er niet op.
+//
+// De subquery leest zonder slot, en dat kan: session_id van een token verandert nooit. Een
+// onbekend token of een historische rij zonder sessie neemt geen slot.
+func lockSessionOfRefreshToken(ctx context.Context, tx pgx.Tx, hash []byte) error {
+	if _, err := tx.Exec(ctx, `
+		SELECT 1 FROM sessions
+		WHERE id = (SELECT session_id FROM auth_refresh_tokens WHERE token_hash = $1)
+		FOR NO KEY UPDATE`, hash); err != nil {
+		return fmt.Errorf("sessie van refreshtoken vergrendelen: %w", err)
+	}
+	return nil
 }
 
 // replayLostRotation handelt de herhaling van een verloren rotatie-antwoord af.
