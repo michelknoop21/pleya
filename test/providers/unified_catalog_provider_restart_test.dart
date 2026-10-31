@@ -44,7 +44,7 @@ class _Client implements MediaServerClient {
   void close() {}
 
   /// Every library holds the same 120 titles, so two of them collide on identity
-  /// and the merge has to ask for external ids.
+  /// and the merge has to ask for external ids. The order follows the query.
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
     String libraryId, {
@@ -56,7 +56,7 @@ class _Client implements MediaServerClient {
     final gate = pageGate;
     if (gate != null) await gate.future;
     await Future<void>.delayed(const Duration(milliseconds: 5));
-    final all = [
+    final ascending = [
       for (var i = 0; i < 120; i++)
         MediaItem(
           id: '$libraryId$i',
@@ -68,6 +68,8 @@ class _Client implements MediaServerClient {
           serverName: 'nas',
         ),
     ];
+    // Real servers sort: an overtaken restart on the other direction shows.
+    final all = query.sort?.direction == LibrarySortDirection.descending ? ascending.reversed.toList() : ascending;
     final end = (query.offset + query.limit).clamp(0, all.length);
     return LibraryPage<MediaItem>(
       items: all.sublist(query.offset.clamp(0, all.length), end),
@@ -145,6 +147,7 @@ void main() {
 
   test('a library joining while the screen sets a new query: one load, on the new order', () async {
     await catalog.setQuery(_down);
+    expect(titles().first, 'T 119', reason: 'the fake follows the order');
     client.fetched.clear();
     reactWith(_up);
 
@@ -160,6 +163,7 @@ void main() {
   test('duplicate titles and slow external ids: never the error page', () async {
     client.idDelay = const Duration(milliseconds: 40);
     await catalog.setQuery(_down);
+    expect(titles().first, 'T 119', reason: 'the fake follows the order');
     final seen = <bool>[];
     catalog.addListener(() => seen.add(catalog.loadFailed));
     reactWith(_up);

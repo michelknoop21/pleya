@@ -73,15 +73,20 @@ List<String?> _titles(UnifiedCatalogService service) => [
   for (final group in service.snapshot.groups) group.representativeSource.item.title,
 ];
 
-UnifiedCatalogService _service(Map<String, _Server> servers, {int pageSize = 50, int groupsPerPage = 3}) =>
-    UnifiedCatalogService(
-      query: _titleUp,
-      libraries: [for (final id in servers.keys) _library(id)],
-      clientFor: (id) => servers[id.value],
-      pageSize: pageSize,
-      groupsPerPage: groupsPerPage,
-      progressiveLoadingGrace: const Duration(seconds: 5),
-    );
+UnifiedCatalogService _service(
+  Map<String, _Server> servers, {
+  int pageSize = 50,
+  int groupsPerPage = 3,
+  Set<String> Function()? preferredSourceKeys,
+}) => UnifiedCatalogService(
+  query: _titleUp,
+  libraries: [for (final id in servers.keys) _library(id)],
+  clientFor: (id) => servers[id.value],
+  pageSize: pageSize,
+  groupsPerPage: groupsPerPage,
+  progressiveLoadingGrace: const Duration(seconds: 5),
+  preferredSourceKeys: preferredSourceKeys,
+);
 
 void main() {
   test('a second call while one runs is that same round, not a second one', () async {
@@ -104,14 +109,46 @@ void main() {
     expect(_titles(service), hasLength(6));
   });
 
-  test('a failed round leaves the way open too', () async {
+  test('a page that failed lands on its cursor and the next round retries it', () async {
     final server = _Server(_films('p', 30));
     final service = _service({'p': server});
     server.pageGate = Completer<void>()..completeError(StateError('offline'));
     await service.loadMore();
+    expect(service.snapshot.failedLibraryIds, isNotEmpty);
     server.pageGate = null;
     await service.loadMore();
+    expect(service.snapshot.failedLibraryIds, isEmpty);
     expect(_titles(service), ['T000', 'T001', 'T002']);
+  });
+
+  test('a round that throws reaches its caller and leaves the way open', () async {
+    var broken = true;
+    final service = _service({
+      'p': _Server(_films('p', 30)),
+    }, preferredSourceKeys: () => broken ? throw StateError('no preferences') : const {});
+
+    await expectLater(service.loadMore(), throwsStateError);
+
+    broken = false;
+    await service.loadMore();
+    expect(_titles(service), isNotEmpty);
+  });
+
+  test('a caller during the last round gets that round, not the snapshot it is still working on', () async {
+    final servers = {'p': _Server(_films('p', 2)), 'q': _Server(_films('q', 2))};
+    servers['p']!.idGate = Completer<void>();
+    final service = _service(servers, groupsPerPage: 10);
+
+    final first = service.loadMore();
+    await pumpEventQueue();
+    expect(service.isComplete, isTrue, reason: 'every page is in, only the ids are still out');
+
+    final second = service.loadMore();
+    expect(identical(first, second), isTrue);
+
+    servers['p']!.idGate!.complete();
+    await first;
+    expect(_titles(service), ['T000', 'T001']);
   });
 
   test('a second call cannot pop past a cursor that is refilling', () async {
