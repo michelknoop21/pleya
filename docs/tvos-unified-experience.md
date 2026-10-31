@@ -1057,11 +1057,14 @@ slaat de trackers over: de bron die speelde heeft de kijkbeurt al gemeld, en Tra
 per kijkbeurt. Een bron met een auth-fout krijgt niets, ook geen rij: inloggen herstelt dat, niet een
 reconnect, en een rij zou onder de volgende login worden afgespeeld.
 
-Een sessie die zonder de andere bronnen begint, bijvoorbeeld vanaf een Verder kijken-kaart die maar
-één bron toonde, zoekt ze op zodra hij tot rust komt (`UnifiedTitleDiscovery`). Afspelen wacht daar
-niet op, en zonder antwoord binnen twintig seconden blijft het bij de spelende bron. Een schrijfactie
-vraagt bewijs: alleen dezelfde guid of een gedeeld providernummer telt, een gelijke titel niet. Dat is
-strenger dan de picker, die een titeltreffer aan de kijker voorlegt.
+Een kaart kan minder bronnen tonen dan de titel heeft, bijvoorbeeld een Verder kijken-kaart met één
+bron. Daarom zoekt een sessie de overige bronnen op zodra hij tot rust komt (`UnifiedTitleDiscovery`),
+nadat de bekende bronnen zijn geschreven. Afspelen wacht daar niet op. Elke server krijgt acht
+seconden, de hele zoekactie twintig; wie niet antwoordt hoort niets, de rest wel. Een schrijfactie
+vraagt per server bewijs: dezelfde guid of een gedeeld providernummer, nooit alleen een gelijke
+titel. Dat is strenger dan de picker, die een titeltreffer aan de kijker voorlegt. Een kinderprofiel
+zoekt niet: zijn schrijfacties blijven bij de bronnen die het al ziet. Een rij landt alleen onder het
+profiel dat keek; een profiel dat tijdens de zoekactie overneemt krijgt hem niet.
 
 ### 13.3 Verder kijken
 
@@ -1099,7 +1102,8 @@ van hoofdstuk 13.4 punt 5.
 Eén markering is één kijkbeurt. De eerste bron die hem krijgt meldt hem aan Trakt, de trackers en de
 interacties; de andere kopieën krijgen alleen de servermarkering, ook bij een seizoen of serie. In de
 wachtrij staan die als `mirroredWatched` en `mirroredUnwatched`. Is geen enkele bron bereikbaar, dan
-draagt de eerste vastgehouden rij de melding.
+draagt de eerste vastgehouden rij de melding. Alleen een fout die herhalen kan oplossen krijgt een
+rij; een auth-fout, 403, 404 of een ontbrekend endpoint niet.
 
 In de geavanceerde libraryweergave blijft de actie rechtstreeks die library betreffen.
 
@@ -1351,7 +1355,8 @@ en die de volgende aflevering heeft. Ontbreekt die, of speelt een geleende aflev
 de samengevoegde volgorde van alle bronnen wat volgt, ook voor Vorige, en de speler keert terug naar
 de gekozen server zodra die de aflevering heeft. Een wachtrij spreekt alleen voor zijn eigen server:
 tijdens een geleende aflevering staat hij nog op de laatste eigen aflevering en telt zijn antwoord
-niet. Specials van een andere server tellen niet als gat. Shuffle, een
+niet. De volgorde gaat op seizoen en nummer, niet op uitzenddatum: servers verschillen daarin en een
+aflevering kan eerder zijn uitgezonden dan de vorige. Specials van een andere server tellen niet als gat. Shuffle, een
 afspeellijst en Samen kijken houden hun eigen volgorde.
 
 **Rechten.** Elke bron wordt per beslissing getoetst (`UnifiedSourceGate`): een verborgen server, een
