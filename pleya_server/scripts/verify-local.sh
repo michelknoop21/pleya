@@ -396,14 +396,20 @@ else
   fail "de gebruiker kon niet verwijderd worden"
 fi
 
-# En de latere fasen bestaan nog steeds niet.
-for path in "/pleya/v1/playback/plan" "/pleya/v1/collections"; do
-  if [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")" = "404" ]; then
-    ok "$path bestaat niet"
-  else
-    fail "$path gaf $(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE$path")"
-  fi
-done
+# Een pad dat het protocol niet kent bestaat ook niet, en verzamelingen staan er
+# sinds S19 wel.
+status="$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE/pleya/v1/onbekend")"
+if [ "$status" = "404" ]; then
+  ok "een onbekend pad bestaat niet"
+else
+  fail "/pleya/v1/onbekend gaf $status"
+fi
+status="$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${AUTH[@]}" "$BASE/pleya/v1/collections")"
+if [ "$status" = "200" ]; then
+  ok "verzamelingen bestaan"
+else
+  fail "/pleya/v1/collections gaf $status"
+fi
 
 # De ids overleven een herstart, en de tweede ronde raakt ffprobe niet aan.
 before="$(api "/libraries/$FILMS/items" "${AUTH[@]}" | jq_field 'sorted(i["id"] for i in d["items"])')"

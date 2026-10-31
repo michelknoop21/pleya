@@ -624,7 +624,8 @@ paths:
         (klasse `admin`) verandert niet. Voor een `restricted` gebruiker is aan
         de enige weg naar zichtbaar zijn; wie restricted wordt verliest een
         eerdere opt-in (`true`) en zet het opnieuw zelf aan; een eerdere
-        opt-out (`false`) blijft staan.
+        opt-out (`false`) blijft staan. Een API-token onder bereik `admin` krijgt
+        `403` met `auth.scope_insufficient` (17c.2).
       requestBody:
         required: true
         content:
@@ -642,6 +643,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "404":
           description: |
             `auth.user_not_found` als de gebruiker achter dit token niet meer

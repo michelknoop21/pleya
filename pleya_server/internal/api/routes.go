@@ -134,7 +134,7 @@ func (s *Server) routeTable() []route {
 		// De eigen opt-out op de activiteit van het huishouden (matrixregels 75 en
 		// 76). Elke rol, en altijd over de aanvrager: er staat geen id in het pad.
 		{"GET " + p + "/users/me/activity-sharing", s.authenticated(s.handleGetActivitySharing)},
-		{"PUT " + p + "/users/me/activity-sharing", s.authenticated(s.handleSetActivitySharing)},
+		{"PUT " + p + "/users/me/activity-sharing", s.ownDataWrite(s.handleSetActivitySharing)},
 
 		// De persoonlijke laag (venster 6 deel 2, S20, matrixregels 52 tot en met 60).
 		// Alles klasse authenticated, over de aanvrager zelf; een item buiten de

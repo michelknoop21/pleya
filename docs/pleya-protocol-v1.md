@@ -1255,7 +1255,8 @@ zichzelf.
 **`GET` en `PUT /pleya/v1/users/me/activity-sharing`** lezen en zetten die keuze, voor elke rol en
 altijd voor de aanvrager zelf. Het zijn eigen routes en geen veld op `User`, want dat schema staat ook
 in `GET /users` en in elke beheerhandeling. `PUT` neemt `{ "share_activity": false }` en antwoordt met
-dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`. `GET` geeft wat nu
+dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`, en een API-token onder
+bereik `admin` krijgt `403` (17c.2). `GET` geeft wat nu
 geldt: de eigen keuze, of zonder keuze waar, en onwaar voor een `restricted` gebruiker. De keuze geldt
 meteen en werkt terug op wat er al in de geschiedenis staat. Wie restricted wordt verliest een eerdere
 opt-in (`true`) en zet delen opnieuw zelf aan; een eerdere opt-out (`false`) blijft staan, ook na
@@ -1549,7 +1550,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 73 | `POST /users/me/memory/clear` | eigen geheugen wissen en epoch roteren | als regel 71, geldige epoch en base_revision |
 | 74 | `GET /items/{item_id}/activity` | wie in het huishouden een item keek, met gebruikersnamen | elke rol antwoordt; item buiten bereik `404` zoals regel 3; `restricted` ziet alleen zichzelf; anderen alleen als ze delen (`restricted` is opt-in, de rest opt-out) en recht op de bibliotheek hebben (14b) |
 | 75 | `GET /users/me/activity-sharing` | de eigen keuze om te delen | klasse `authenticated`, geen id in het pad, dus er valt niets te raden |
-| 76 | `PUT /users/me/activity-sharing` | de eigen keuze zetten | als regel 75 |
+| 76 | `PUT /users/me/activity-sharing` | de eigen keuze zetten | als regel 75; een API-token onder bereik `admin` krijgt `403` (17c.2) |
 | 77 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft; een API-token onder bereik `admin` krijgt `403` (S20.4, 17c.2) |
 | 78 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 77, `404` voor een regel van een ander of die niet bestaat |
 | 79 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
@@ -1944,17 +1945,19 @@ mint alleen tokens wanneer het zelf bereik `admin` heeft.** Zonder die regel toe
 een grens op moest zetten.
 
 **Eigen gegevens wissen en lijsten schrijven vraagt bereik `admin`.** `DELETE /history`,
-`DELETE /history/{history_id}` en elke schrijfroute op `/collections` en `/playlists` (aanmaken, wijzigen,
-verwijderen, en de drie routes op `.../items`) geven een token onder `admin` `403` met
-`auth.scope_insufficient`, met het bereik in `details.scope`. De reden is wat een gelekt token kan
-aanrichten: een leestoken in de configuratie van Home Assistant hoort geen geschiedenis te kunnen wissen,
-want dat is niet terug te draaien, en geen lijst te kunnen leegmaken. Geen `404` zoals bij de adminklasse:
+`DELETE /history/{history_id}`, `PUT /users/me/activity-sharing` en elke schrijfroute op `/collections` en
+`/playlists` (aanmaken, wijzigen, verwijderen, en de drie routes op `.../items`) geven een token onder
+`admin` `403` met `auth.scope_insufficient`, met het bereik in `details.scope`. De reden is wat een gelekt
+token kan aanrichten: een leestoken in de configuratie van Home Assistant hoort geen geschiedenis te kunnen
+wissen, want dat is niet terug te draaien, en geen lijst te kunnen leegmaken. De keuze om te delen is wel
+terug te draaien, maar hij bepaalt wie een `restricted` gebruiker in het huishouden ziet, en dat besluit
+hoort niet bij een credential dat alleen mag lezen. Geen `404` zoals bij de adminklasse:
 de route bestaat voor deze gebruiker, alleen dit credential mag er niet door. De weigering hangt niet af
 van het doel, dus een lijst buiten zicht verraadt niets. Een `member` kan geen token met bereik `admin`
 aanvragen, want dat vraagt rol `owner` of `admin`; zijn gewone sessie haalt deze routes wel. Een token dat
 vóór een degradatie gemaakt is blijft bestaan en behoudt zijn bereik, dus het schrijft na de degradatie nog
-de eigen gegevens van zijn eigenaar. Delen en de adminklasse lezen ook de rol en gaan dan dicht. Omkeerbare
-eigen staat (favorieten, waarderingen, spoorvoorkeuren) valt buiten deze regel, en `/users/me/memory`
+de eigen gegevens van zijn eigenaar. Delen en de adminklasse lezen ook de rol en gaan dan dicht. Andere
+omkeerbare eigen staat (favorieten, waarderingen, spoorvoorkeuren) valt buiten deze regel, en `/users/me/memory`
 weigert elk API-token op eigen gronden.
 
 ### 17c.3 Het auditlog

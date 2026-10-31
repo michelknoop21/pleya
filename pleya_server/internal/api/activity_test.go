@@ -439,6 +439,31 @@ func TestActivitySharingRejectsABadBody(t *testing.T) {
 	}
 }
 
+// De keuze bepaalt wie iemand in het huishouden ziet, dus een gelekt leestoken
+// zet hem niet om. Lezen blijft met elk bereik open.
+func TestActivitySharingWriteFollowsTheTokenScope(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	tokens := e.tokenPerScope()
+
+	for _, scope := range []string{"read", "maintenance"} {
+		rec := e.do(http.MethodPut, activitySharingPath, map[string]bool{"share_activity": false}, asToken(tokens[scope]))
+		assertScopeRefused(t, rec, scope)
+		if rec := e.do(http.MethodGet, activitySharingPath, nil, asToken(tokens[scope])); rec.Code != http.StatusOK {
+			t.Fatalf("lezen met bereik %s gaf %d", scope, rec.Code)
+		}
+	}
+	if !e.sharesActivity(e.access) {
+		t.Fatal("een geweigerd token veranderde de keuze")
+	}
+	if rec := e.do(http.MethodPut, activitySharingPath, map[string]bool{"share_activity": false}, asToken(tokens["admin"])); rec.Code != http.StatusOK {
+		t.Fatalf("bereik admin gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if e.sharesActivity(e.access) {
+		t.Fatal("bereik admin zette de keuze niet om")
+	}
+}
+
 // De vlag en de routes horen bij elkaar: zonder opslag zegt de server nee en
 // zijn alle drie de routes onbekend.
 func TestActivityCapabilityFollowsTheStore(t *testing.T) {
