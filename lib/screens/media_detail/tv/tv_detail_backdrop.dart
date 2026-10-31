@@ -90,6 +90,24 @@ LinearGradient _softFade({
 class TvDetailHeroArt extends StatelessWidget {
   const TvDetailHeroArt({super.key, required this.item, required this.client, this.localPath});
 
+  // Static on purpose: a closure is a new callback on every build, and
+  // [RenderShaderMask] repaints for that. The page rebuilds on each focus step.
+  static Shader _sideFade(Rect bounds) => _softFade(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    from: 0.3,
+    to: 0.72,
+    rising: true,
+  ).createShader(bounds);
+
+  static Shader _bottomFade(Rect bounds) => _softFade(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    from: 0.4,
+    to: 0.8,
+    rising: false,
+  ).createShader(bounds);
+
   final MediaItem item;
   final MediaServerClient? client;
   final String? Function(String? path)? localPath;
@@ -102,22 +120,10 @@ class TvDetailHeroArt extends StatelessWidget {
     return RepaintBoundary(
       child: ShaderMask(
         blendMode: BlendMode.dstIn,
-        shaderCallback: (bounds) => _softFade(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          from: 0.3,
-          to: 0.72,
-          rising: true,
-        ).createShader(bounds),
+        shaderCallback: _sideFade,
         child: ShaderMask(
           blendMode: BlendMode.dstIn,
-          shaderCallback: (bounds) => _softFade(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            from: 0.4,
-            to: 0.8,
-            rising: false,
-          ).createShader(bounds),
+          shaderCallback: _bottomFade,
           child: OptimizedMediaImage(
             client: client,
             imagePath: paths.first,
