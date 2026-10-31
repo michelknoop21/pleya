@@ -32,8 +32,17 @@ class LibraryFilterSortLoader {
   LibraryFilterSortLoader({required this.clientFor});
 
   Future<LoadedFiltersAndSorts> load(MediaLibrary library) async {
-    final (filterResult, sorts) = await (loadFilters(library), loadSorts(library)).wait;
-    return LoadedFiltersAndSorts(filters: filterResult.filters, sorts: sorts, cachedValues: filterResult.cachedValues);
+    // Future.wait and not a record's `.wait`: that wraps a failure in a
+    // ParallelWaitError, and `friendlyError` would lose the specific message.
+    final filters = loadFilters(library);
+    final sorts = loadSorts(library);
+    await Future.wait([filters, sorts]);
+    final filterResult = await filters;
+    return LoadedFiltersAndSorts(
+      filters: filterResult.filters,
+      sorts: await sorts,
+      cachedValues: filterResult.cachedValues,
+    );
   }
 
   /// The sorts alone, in the shared menu's order and words, for a Jellyfin page 1

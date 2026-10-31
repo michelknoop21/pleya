@@ -17,6 +17,30 @@ import 'package:pleya/screens/libraries/library_filter_sort_loader.dart';
 import 'package:pleya/screens/libraries/sort_bottom_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 
+class _Offline implements Exception {
+  const _Offline(this.call);
+  final String call;
+}
+
+class _Failing extends _Client {
+  _Failing({this.failSorts = false, this.failFilters = false});
+
+  final bool failSorts;
+  final bool failFilters;
+
+  @override
+  Future<List<MediaSort>> fetchSortOptions(String libraryId, {String? libraryType}) async {
+    if (failSorts) throw const _Offline('sorts');
+    return super.fetchSortOptions(libraryId, libraryType: libraryType);
+  }
+
+  @override
+  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) async {
+    if (failFilters) throw const _Offline('filters');
+    return super.fetchLibraryFiltersWithValues(libraryId);
+  }
+}
+
 class _Client implements MediaServerClient {
   _Client({this.sorts = const [], this.filters = const [], this.values = const {}});
 
@@ -52,6 +76,22 @@ void main() {
     await LocaleSettings.setLocale(AppLocale.nl);
   });
   tearDown(() => LocaleSettings.setLocale(AppLocale.en));
+
+  group('a failure keeps its own face, so friendlyError can word it', () {
+    Matcher offline(String call) => throwsA(isA<_Offline>().having((e) => e.call, 'call', call));
+
+    test('sorts failing', () {
+      expect(_load(MediaBackend.plex, _Failing(failSorts: true)), offline('sorts'));
+    });
+
+    test('filters failing', () {
+      expect(_load(MediaBackend.plex, _Failing(failFilters: true)), offline('filters'));
+    });
+
+    test('both failing: the first is the one reported', () {
+      expect(_load(MediaBackend.plex, _Failing(failSorts: true, failFilters: true)), offline('filters'));
+    });
+  });
 
   group('sorts', () {
     final plex = [
