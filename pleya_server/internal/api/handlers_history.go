@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
@@ -120,6 +121,7 @@ func (s *Server) handleClearHistory(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
+	s.auditEvent(r, auditClearHistory, "", audit.OutcomeOK, nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -145,6 +147,7 @@ func (s *Server) handleDeleteHistoryEntry(w http.ResponseWriter, r *http.Request
 	case err != nil:
 		writeInternal(w, s.log, err)
 	default:
+		s.auditEvent(r, auditDeleteHistoryEntry, entry.String(), audit.OutcomeOK, nil)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

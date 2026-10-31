@@ -153,12 +153,86 @@ func TestAPITokenBelowAdminCannotRewriteOwnData(t *testing.T) {
 		t.Fatalf("een gewone sessie gaf %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// Een lid kan geen admintoken krijgen, dus zijn token komt hier nooit door.
+	// Een lid kan geen admintoken aanvragen, dus een token dat hij zelf maakt komt
+	// hier niet door. Na degradatie is dat anders, zie de test hieronder.
 	member := asUser(e.tokenFor(e.createUser("member", "bob")))
 	own := e.createToken(map[string]any{"name": "bob", "scope": "read"}, http.StatusCreated, member)
 	assertScopeRefused(t, e.do(http.MethodPost, playlistsPath, title, asToken(own.Secret)), "read")
 	if rec := e.do(http.MethodPost, playlistsPath, title, member); rec.Code != http.StatusCreated {
 		t.Fatalf("de sessie van een lid gaf %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// De grens van 17c.2 kijkt naar het bereik, en een degradatie trekt geen tokens in.
+// Een admintoken van vóór de degradatie blijft dus eigen gegevens schrijven; wat
+// anderen raakt leest de rol en gaat dicht.
+func TestDemotedAdminKeepsItsTokenForOwnDataOnly(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	ann := e.createUser("admin", "ann")
+	session := asUser(e.tokenFor(ann))
+	token := asToken(e.createToken(map[string]any{"name": "ann", "scope": "admin"}, http.StatusCreated, session).Secret)
+	if rec := e.do(http.MethodPatch, "/pleya/v1/users/"+ann.String(), map[string]string{"role": "member"}); rec.Code != http.StatusOK {
+		t.Fatalf("degraderen gaf %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if rec := e.do(http.MethodPost, playlistsPath, map[string]any{"title": "Eigen"}, token); rec.Code != http.StatusCreated {
+		t.Fatalf("een eigen lijst met het oude token gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec := e.do(http.MethodDelete, "/pleya/v1/history", nil, token); rec.Code != http.StatusNoContent {
+		t.Fatalf("eigen geschiedenis wissen met het oude token gaf %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec := e.do(http.MethodPost, collectionsPath, map[string]any{"title": "Open", "visibility": "everyone"}, token)
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "library.list_share_not_permitted") {
+		t.Fatalf("delen met het oude token gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	e.auditPage(auditPath, http.StatusNotFound, token)
+}
+
+// Geschiedenis wissen is niet terug te draaien, dus na een lek moet te zien zijn
+// welk credential het deed (17c.3). Wat niet gebeurde krijgt geen regel.
+func TestAuditRecordsWhoClearedHistory(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	tokens := e.tokenPerScope()
+	admin := e.createToken(map[string]any{"name": "beheer", "scope": "admin"}, http.StatusCreated)
+	e.startAndProgress(e.findMovie("Grease").ID, "tv", 600_000, 6_720_000)
+	entry := e.historyIDs()[0]
+
+	historyRows := func() []api.AuditEntryWire {
+		t.Helper()
+		var out []api.AuditEntryWire
+		for _, row := range e.auditPage(auditPath+"?limit=100", http.StatusOK).Items {
+			if row.Operation == "clearHistory" || row.Operation == "deleteHistoryEntry" {
+				out = append(out, row)
+			}
+		}
+		return out
+	}
+
+	assertScopeRefused(t, e.do(http.MethodDelete, "/pleya/v1/history", nil, asToken(tokens["read"])), "read")
+	missing := "/pleya/v1/history/0198f2d0-0000-7000-8000-000000000000"
+	if rec := e.do(http.MethodDelete, missing, nil, asToken(admin.Secret)); rec.Code != http.StatusNotFound {
+		t.Fatalf("een onbekende regel gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if got := historyRows(); len(got) != 0 {
+		t.Fatalf("wat niet gebeurde staat in het log: %+v", got)
+	}
+
+	if rec := e.do(http.MethodDelete, "/pleya/v1/history/"+entry, nil, asToken(admin.Secret)); rec.Code != http.StatusNoContent {
+		t.Fatalf("een regel wissen gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if rows := historyRows(); len(rows) != 1 || rows[0].Operation != "deleteHistoryEntry" || rows[0].Target != entry ||
+		rows[0].Outcome != "ok" || rows[0].SessionID != admin.Token.ID {
+		t.Fatalf("de regel noemt het credential niet: %+v, verwacht sessie %s", rows, admin.Token.ID)
+	}
+
+	if rec := e.do(http.MethodDelete, "/pleya/v1/history", nil, asToken(admin.Secret)); rec.Code != http.StatusNoContent {
+		t.Fatalf("alles wissen gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if rows := historyRows(); len(rows) != 2 || rows[0].Operation != "clearHistory" || rows[0].SessionID != admin.Token.ID {
+		t.Fatalf("alles wissen staat niet in het log: %+v", rows)
 	}
 }
 

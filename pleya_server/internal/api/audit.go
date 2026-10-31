@@ -67,6 +67,11 @@ const (
 	// zonder dat dat verandert schrijft geen regel.
 	auditCreateCollection = "createCollection"
 	auditUpdateCollection = "updateCollection"
+
+	// Geschiedenis wissen is niet terug te draaien (17c.2), dus een credential dat
+	// het deed moet achteraf te vinden zijn. GET /history schrijft niets weg.
+	auditClearHistory       = "clearHistory"
+	auditDeleteHistoryEntry = "deleteHistoryEntry"
 )
 
 // auditEvent schrijft één regel over de aanvrager van deze aanvraag.

@@ -111,9 +111,6 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       return;
     }
 
-    // The old track's wait would otherwise run on until after open(), and landing
-    // in that gap puts the previous episode's text on this one.
-    _deferredSubtitles.abortPending();
     await _reloadMediaInPlace(
       metadata: episodeMetadata,
       selectedMediaIndex: _effectiveSelectedMediaIndex,
@@ -479,6 +476,11 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     final previousPartId = _currentMediaInfo?.partId;
     final previousHasFirstFrame = _hasFirstFrame.value;
     final isItemChange = previousMetadata.globalKey != metadata.globalKey;
+    // Here and not at the callers: a refused reload leaves the title playing and
+    // its track on the way, and every path to another title passes this line. The
+    // old track's wait would otherwise run on until after open(), and landing in
+    // that gap puts the previous title's text on this one.
+    if (isItemChange) _deferredSubtitles.abortPending();
 
     final currentAudioTrack = preserveCurrentTrackSelection ? currentPlayer.state.track.audio : null;
     final currentSubtitleTrack = preserveCurrentTrackSelection ? currentPlayer.state.track.subtitle : null;

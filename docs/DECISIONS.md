@@ -5317,3 +5317,13 @@ wijziging niet, want de web stuurt de zichtbaarheid bij elke hernoeming mee. De 
 contract niet in betekenis: `limit` op de vijf lijstoperaties verwijst naar de gedeelde parameter met maximum
 500, wat de server al deed, en een cursor van `GET /history` weigert nu aantoonbaar een andere `kind`, wat het
 schema al beloofde.
+
+**Aanvulling van 31 oktober 2026, tweede reviewronde op S19: geschiedenis wissen staat in het auditlog, en een
+degradatie trekt geen token in.** `DELETE /history` en `DELETE /history/{history_id}` schrijven een regel met
+de `operationId`, want dit is de enige eigen handeling die niet terug te draaien is en een gelekt `admin`-token
+zou anders geen spoor achterlaten. Een geweigerde aanvraag en een `404` schrijven niets; de overige lijstroutes
+blijven erbuiten. De zin in 17c.2 beweerde dat een `member` deze routes niet met een token bereikt, en dat
+klopte alleen voor een token dat hij zelf aanvraagt: `UpdateUser` trekt geen tokens in en `ownDataWrite` leest
+het bereik. Het gedrag blijft zoals het is, want het raakt alleen eigen gegevens; delen en de adminklasse lezen
+de rol en gaan dicht. Alleen de zin is gewijzigd. Dit zijn twee passages in `pleya-protocol-v1.md`;
+`openapi.yaml` wijzigt niet, en beide operationId's bestonden al.

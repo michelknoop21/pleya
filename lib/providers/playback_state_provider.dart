@@ -74,13 +74,21 @@ class PlaybackStateProvider with ChangeNotifier, DisposableChangeNotifierMixin {
   /// items this is the server's `playQueueItemID`; for client-side queues
   /// (Jellyfin) it's a synthetic index assigned in [setPlaybackFromLocalQueue].
   /// Returns null when [item] isn't in the current loaded window.
+  ///
+  /// `navigateToVideoPlayer` swaps the launcher's item for a fresh read, which
+  /// carries neither the instance nor `playQueueItemId`, so a copy of the title
+  /// the queue stands on counts as that title, by `globalKey`. Only that one: the
+  /// instance tells two rows of one title apart, and a copy of any other title is
+  /// a start from elsewhere in the app that has to leave an old queue behind.
   int? playQueueItemIdFor(MediaItem item) {
     if (item is PlexMediaItem && item.playQueueItemId != null) {
       return item.playQueueItemId;
     }
     final idx = _loadedItems.indexOf(item);
-    if (idx < 0 || idx >= _syntheticIds.length) return null;
-    return _syntheticIds[idx];
+    if (idx >= 0 && idx < _syntheticIds.length) return _syntheticIds[idx];
+    final current = _currentPlayQueueItemID;
+    if (current == null) return null;
+    return _findLoadedItem(current)?.globalKey == item.globalKey ? current : null;
   }
 
   /// Whether shuffle mode is currently active

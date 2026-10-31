@@ -26,11 +26,20 @@ void main() {
     expect(abort, greaterThan(unchanged));
   });
 
-  test('the wait of the old episode ends before the next one opens', () {
-    final body = _method(navigation, 'Future<void> _navigateToEpisode(');
+  test('the wait of the old title ends once the reload owns the transition, for every path to another title', () {
+    final body = _method(navigation, 'Future<bool> _reloadMediaInPlace({');
+    final claim = body.indexOf('_playbackTransition = _PlaybackTransition.reloadingMedia;');
     final abort = body.indexOf('_deferredSubtitles.abortPending()');
-    expect(abort, isNonNegative);
-    expect(abort, lessThan(body.indexOf('_reloadMediaInPlace(')));
+    expect(claim, isNonNegative);
+    expect(body.substring(0, abort), endsWith('if (isItemChange) '), reason: 'a source switch keeps its own wait');
+    expect(abort, greaterThan(claim), reason: 'a refused reload leaves the track of the playing title alone');
+    expect(abort, lessThan(body.indexOf('playbackResolver.resolve(')), reason: 'before the next title opens');
+
+    expect(_method(navigation, 'Future<void> _navigateToEpisode('), isNot(contains('abortPending')));
+    expect(
+      File('lib/screens/video_player/parts/watch_together.dart').readAsStringSync(),
+      contains('_reloadMediaInPlace('),
+    );
   });
 
   test('the cycle key reaches the source list on a server that selects subtitles', () {
@@ -39,5 +48,15 @@ void main() {
     expect(body, contains('_serverSupportsSubtitleSelection && !_isOfflinePlayback'));
     expect(source, isNonNegative);
     expect(source, lessThan(body.indexOf('_trackManager?.cycleSubtitleTrack()')));
+  });
+
+  test('the cycle key announces a track only when the switch can run', () {
+    final body = _method('lib/screens/video_player/parts/companion_remote.dart', 'void _cycleSubtitleTrack() {');
+    final accepted = body.indexOf('final accepted = _playbackTransition == _PlaybackTransition.idle;');
+    final notice = body.indexOf('if (accepted && mounted) {');
+    expect(accepted, isNonNegative);
+    expect(accepted, lessThan(body.indexOf('_switchPlaybackSource(')), reason: 'read before the switch can claim it');
+    expect(notice, greaterThan(accepted));
+    expect(notice, lessThan(body.indexOf('showAppSnackBar(')));
   });
 }

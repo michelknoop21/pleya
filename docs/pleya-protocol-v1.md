@@ -1888,10 +1888,12 @@ verwijderen, en de drie routes op `.../items`) geven een token onder `admin` `40
 aanrichten: een leestoken in de configuratie van Home Assistant hoort geen geschiedenis te kunnen wissen,
 want dat is niet terug te draaien, en geen lijst te kunnen leegmaken. Geen `404` zoals bij de adminklasse:
 de route bestaat voor deze gebruiker, alleen dit credential mag er niet door. De weigering hangt niet af
-van het doel, dus een lijst buiten zicht verraadt niets. Omdat `admin` rol `owner` of `admin` vraagt, kan
-een `member` deze routes niet met een token bereiken; zijn gewone sessie wel. Omkeerbare eigen staat
-(favorieten, waarderingen, spoorvoorkeuren) valt buiten deze regel, en `/users/me/memory` weigert elk
-API-token op eigen gronden.
+van het doel, dus een lijst buiten zicht verraadt niets. Een `member` kan geen token met bereik `admin`
+aanvragen, want dat vraagt rol `owner` of `admin`; zijn gewone sessie haalt deze routes wel. Een token dat
+vóór een degradatie gemaakt is blijft bestaan en behoudt zijn bereik, dus het schrijft na de degradatie nog
+de eigen gegevens van zijn eigenaar. Delen en de adminklasse lezen ook de rol en gaan dan dicht. Omkeerbare
+eigen staat (favorieten, waarderingen, spoorvoorkeuren) valt buiten deze regel, en `/users/me/memory`
+weigert elk API-token op eigen gronden.
 
 ### 17c.3 Het auditlog
 
@@ -1914,6 +1916,13 @@ sleutelrotatie, en de configuratie die de beveiliging raakt. Eruit: catalogusrea
 leesvoortgang. Een log dat alleen wijzigingen ziet, mist de vraag die na een incident als eerste
 gesteld wordt: wie is er wanneer binnengekomen, en met welk credential. Een log dat álles ziet wordt
 niet gelezen.
+
+Twee handelingen op eigen gegevens staan er ook in, omdat ze een lek zichtbaar moeten maken: een
+wijziging van wie een verzameling ziet (14b), en het wissen van geschiedenis. `DELETE /history` schrijft
+`clearHistory` zonder `target`, `DELETE /history/{history_id}` schrijft `deleteHistoryEntry` met de regel als
+`target`, allebei met de sessie van het credential en alleen wanneer er iets gewist is. Een geweigerde
+aanvraag en een `404` geven geen regel. De rest van de lijstroutes blijft buiten het log: een lijst is terug
+te bouwen, een gewiste geschiedenis niet.
 
 `operation` is de `operationId` uit dit contract en niet het pad. Een pad verandert mee met een
 route-refactor en breekt dan de leesbaarheid van een log dat jaren teruggaat.

@@ -114,14 +114,16 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
 
   /// mpv lists the sidecars and the one attached track on a server that selects
   /// subtitles, so the source list is what the viewer can cycle through. The
-  /// switch stops a track that is still being prepared, as the track sheet does.
+  /// switch stops a track that is still being prepared, as the track sheet does,
+  /// and refuses while a reload runs, so that press has no track to announce.
   void _cycleSubtitleTrack() {
     if (_serverSupportsSubtitleSelection && !_isOfflinePlayback) {
       final tracks = _sourceSubtitleTracksForControls();
       final next = nextSourceSubtitleTrack(tracks, _selectedSourceSubtitleStreamIdForControls(tracks));
       if (next != null) {
+        final accepted = _playbackTransition == _PlaybackTransition.idle;
         unawaited(_switchPlaybackSource(newSubtitleStreamId: next.id));
-        if (mounted) {
+        if (accepted && mounted) {
           showAppSnackBar(
             context,
             'Subtitles: ${next.displayTitle ?? next.title ?? next.languageCode ?? next.id}',
