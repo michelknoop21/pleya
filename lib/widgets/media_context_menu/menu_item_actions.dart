@@ -1,6 +1,34 @@
 part of '../media_context_menu.dart';
 
 extension on MediaContextMenuState {
+  /// Starts the item, or for a show or season the episode its detail page would
+  /// start. Strictly this item's server: an id means nothing on another one.
+  Future<void> _handleWatch(BuildContext context, {required VoidCallback onNavigate}) async {
+    final item = _mediaItem!;
+    final client = context.tryGetMediaClientForServer(serverIdOrNull(item.serverId));
+    if (client == null) {
+      showErrorSnackBar(context, t.errors.noClientAvailable);
+      return;
+    }
+    var cancelled = false;
+    final target = item.kind == MediaKind.movie || item.kind == MediaKind.episode
+        ? item
+        : await showCancellableLoadingDialog(
+            context: context,
+            task: resolveWatchTarget(client, item),
+            timeout: MediaServerTimeouts.interactive,
+            timeoutMessage: t.common.timedOut,
+            onCancel: () => cancelled = true,
+          );
+    if (!context.mounted || cancelled) return;
+    if (target == null) {
+      showErrorSnackBar(context, t.messages.noEpisodesFoundGeneral);
+      return;
+    }
+    onNavigate();
+    await navigateToVideoPlayerWithRefresh(context, metadata: target, onRefresh: () => _notifyRefresh(item.id));
+  }
+
   Future<void> _handleUnmatch(BuildContext context, MediaItem item) async {
     final confirmed = await showConfirmDialog(
       context,

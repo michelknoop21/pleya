@@ -11,11 +11,14 @@ extension on MediaContextMenuState {
   }) async {
     final mediaItem = facts.mediaItem;
     final mediaKind = facts.mediaKind;
-    final isAdmin = facts.isAdmin;
     final isCollection = facts.isCollection;
     final isPlaylist = facts.isPlaylist;
 
     switch (selected) {
+      case 'play_item':
+        await _handleWatch(context, onNavigate: onNavigate);
+        break;
+
       case 'play_from_beginning':
         onNavigate();
         if (context.mounted) await playFromBeginning(context, mediaItem!);
@@ -27,7 +30,12 @@ extension on MediaContextMenuState {
         break;
 
       case 'share':
-        widget.onShare?.call();
+        if (widget.onShare case final share?) {
+          share();
+        } else {
+          // This widget's own box: the sheet that held the row is gone by now.
+          await shareMediaItem(this.context, mediaItem!);
+        }
         break;
 
       case 'request':
@@ -165,7 +173,7 @@ extension on MediaContextMenuState {
         break;
 
       case 'add_to':
-        await _showAddToSubmenu(context, canManageCollections: isAdmin);
+        await _showAddToSubmenu(context, canManageCollections: facts.canManageCollections);
         break;
 
       case 'shuffle_play':

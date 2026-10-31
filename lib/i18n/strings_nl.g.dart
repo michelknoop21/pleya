@@ -634,6 +634,9 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Kijken';
+	@override String get manage => 'Beheren';
+	@override String get moreWaysToWatch => 'Meer manieren om te kijken';
 	@override String get markAsWatched => 'Markeer als gekeken';
 	@override String get markAsUnwatched => 'Markeer als ongekeken';
 	@override String get removeFromContinueWatching => 'Verwijderen uit Verder kijken';
@@ -646,7 +649,7 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get goToSeries => 'Ga naar serie';
 	@override String get shufflePlay => 'Willekeurig afspelen';
 	@override String get shuffleNotAvailableOffline => 'Shuffle is offline niet beschikbaar';
-	@override String get fileInfo => 'Bestand info';
+	@override String get fileInfo => 'Bestandsinformatie';
 	@override String get deleteFromServer => 'Verwijderen van server';
 	@override String get confirmDelete => 'Deze media en bestanden van je server verwijderen?';
 	@override String get deleteMultipleWarning => 'Dit omvat alle afleveringen en hun bestanden.';
@@ -1214,7 +1217,8 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String emptyTrashConfirm({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?';
 	@override String get manageLibraries => 'Beheer bibliotheken';
 	@override String get sort => 'Sorteren';
-	@override String get sortBy => 'Sorteer op';
+	@override String get sortBy => 'Sorteren op';
+	@override String get filterBy => 'Filteren op';
 	@override String get filters => 'Filters';
 	@override String get confirmActionMessage => 'Weet je zeker dat je deze actie wilt uitvoeren?';
 	@override String get showLibrary => 'Toon bibliotheek';
@@ -1655,7 +1659,7 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 	@override String get movies => 'Films';
 	@override String get noDownloads => 'Nog geen downloads';
 	@override String get noDownloadsDescription => 'Gedownloade content verschijnt hier voor offline weergave';
-	@override String get downloadNow => 'Download';
+	@override String get downloadNow => 'Downloaden';
 	@override String get deleteDownload => 'Download verwijderen';
 	@override String get retryDownload => 'Download opnieuw proberen';
 	@override String get downloadQueued => 'Download in wachtrij';
@@ -5029,6 +5033,9 @@ extension on TranslationsNl {
 			'detailActions.watched' => 'Bekeken',
 			'detailActions.download' => 'Downloaden',
 			'detailActions.more' => 'Meer',
+			'mediaMenu.watch' => 'Kijken',
+			'mediaMenu.manage' => 'Beheren',
+			'mediaMenu.moreWaysToWatch' => 'Meer manieren om te kijken',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
 			'mediaMenu.removeFromContinueWatching' => 'Verwijderen uit Verder kijken',
@@ -5041,7 +5048,7 @@ extension on TranslationsNl {
 			'mediaMenu.goToSeries' => 'Ga naar serie',
 			'mediaMenu.shufflePlay' => 'Willekeurig afspelen',
 			'mediaMenu.shuffleNotAvailableOffline' => 'Shuffle is offline niet beschikbaar',
-			'mediaMenu.fileInfo' => 'Bestand info',
+			'mediaMenu.fileInfo' => 'Bestandsinformatie',
 			'mediaMenu.deleteFromServer' => 'Verwijderen van server',
 			'mediaMenu.confirmDelete' => 'Deze media en bestanden van je server verwijderen?',
 			'mediaMenu.deleteMultipleWarning' => 'Dit omvat alle afleveringen en hun bestanden.',
@@ -5087,11 +5094,11 @@ extension on TranslationsNl {
 			'videoControls.noOffset' => 'Geen offset',
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Vul scherm',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.stretch' => 'Uitrekken',
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer actief',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
@@ -5507,7 +5514,8 @@ extension on TranslationsNl {
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?',
 			'libraries.manageLibraries' => 'Beheer bibliotheken',
 			'libraries.sort' => 'Sorteren',
-			'libraries.sortBy' => 'Sorteer op',
+			'libraries.sortBy' => 'Sorteren op',
+			'libraries.filterBy' => 'Filteren op',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Weet je zeker dat je deze actie wilt uitvoeren?',
 			'libraries.showLibrary' => 'Toon bibliotheek',
@@ -5600,12 +5608,12 @@ extension on TranslationsNl {
 			'logs.clearLogs' => 'Wis logs',
 			'logs.copyLogs' => 'Kopieer logs',
 			'logs.uploadLogs' => 'Logs uploaden',
+			_ => null,
+		} ?? switch (path) {
 			'logs.refreshLogs' => 'Verversen',
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
 			'logs.levelWarnings' => 'Waarschuwingen',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
@@ -5857,7 +5865,7 @@ extension on TranslationsNl {
 			'downloads.movies' => 'Films',
 			'downloads.noDownloads' => 'Nog geen downloads',
 			'downloads.noDownloadsDescription' => 'Gedownloade content verschijnt hier voor offline weergave',
-			'downloads.downloadNow' => 'Download',
+			'downloads.downloadNow' => 'Downloaden',
 			'downloads.deleteDownload' => 'Download verwijderen',
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
@@ -6114,12 +6122,12 @@ extension on TranslationsNl {
 			'metadataEdit.selectPoster' => 'Poster selecteren',
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.imageUrl' => 'Afbeeldings-URL',
 			'metadataEdit.metadataUpdated' => 'Metadata bijgewerkt',
 			'metadataEdit.metadataUpdateFailed' => 'Metadata bijwerken mislukt',
@@ -6628,12 +6636,12 @@ extension on TranslationsNl {
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.status' => 'Status',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Jaar',
 			'unifiedCatalog.filters.contentRating' => 'Leeftijd',
 			'unifiedCatalog.filters.servers' => 'Servers',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.libraries' => 'Bibliotheken',
 			'unifiedCatalog.filters.apply' => 'Toepassen',
 			'unifiedCatalog.filters.clearAll' => 'Alles wissen',
@@ -7142,12 +7150,12 @@ extension on TranslationsNl {
 			'assistant.working.busy' => 'Bezig met je vraag…',
 			'assistant.working.stillChecking' => 'Tot nu toe gevonden. Big P controleert nog…',
 			'assistant.steps.withServer' => ({required Object server, required Object step}) => '${server} · ${step}',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.steps.listServers' => 'Servers controleren',
 			'assistant.steps.listLibraries' => 'Bibliotheken ophalen',
 			'assistant.steps.findMedia' => 'Titel zoeken',
 			'assistant.steps.listJobs' => 'Taken ophalen',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.listUsers' => 'Gebruikers ophalen',
 			'assistant.steps.scanLibrary' => 'Bibliotheek scannen',
 			'assistant.steps.refreshMetadata' => 'Metadata vernieuwen',

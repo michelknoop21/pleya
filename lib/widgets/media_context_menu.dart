@@ -21,10 +21,12 @@ import '../services/playlist_items_loader.dart';
 import '../services/rating_actions.dart';
 import '../services/unified_action_outcome.dart';
 import '../services/watch_actions.dart';
+import '../services/watch_target.dart';
 import '../models/transcode_quality_preset.dart';
 import '../utils/download_version_utils.dart';
 import '../utils/download_utils.dart';
 import '../utils/quality_preset_labels.dart';
+import '../utils/share_media_item.dart';
 import '../utils/media_version_resolver.dart';
 import '../utils/global_key_utils.dart';
 import '../providers/download_provider.dart';
@@ -66,6 +68,7 @@ part 'media_context_menu/menu_add_to.dart';
 part 'media_context_menu/menu_dispatch.dart';
 part 'media_context_menu/menu_downloads.dart';
 part 'media_context_menu/menu_item_actions.dart';
+part 'media_context_menu/menu_item_rows.dart';
 
 /// A reusable wrapper widget that adds a context menu (long press / right click)
 /// to any media item with appropriate actions based on the item type.
@@ -86,8 +89,9 @@ class MediaContextMenu extends StatefulWidget {
   /// button to fit a small screen.
   final VoidCallback? onPlayTrailer;
 
-  /// Share and request (Seerr) entries. Only the phone detail page passes
-  /// these: its action row has no room for them (DEC-140).
+  /// Request (Seerr) and a share of the surface's own. Only the phone detail
+  /// page passes these: its action row has no room for them (DEC-140). Without
+  /// [onShare] the menu shares the item itself, anchored to this widget.
   final VoidCallback? onShare;
   final VoidCallback? onRequest;
   final Widget child;
@@ -189,13 +193,12 @@ class MediaContextMenuState extends State<MediaContextMenu> {
   };
 
   /// Get the correct PlexClient for this item's server. Throws on
-  /// non-Plex backends — Plex-only flows (Add to Collection, match,
-  /// unmatch, etc.) call this directly. Backend-neutral flows must use
-  /// [_getMediaClientForItem] instead.
+  /// non-Plex backends: Plex-only flows (match, unmatch) call this directly.
+  /// Backend-neutral flows must use [_getMediaClientForItem] instead.
   PlexClient _getClientForItem() => context.getPlexClientWithFallback(serverIdOrNull(_itemServerId));
 
   /// Backend-neutral client for the active item's server. Used by flows
-  /// that work for Jellyfin too (downloads, basic browse).
+  /// that work on every backend (downloads, Add to, basic browse).
   MediaServerClient _getMediaClientForItem() => context.getMediaClientWithFallback(serverIdOrNull(_itemServerId));
 
   void _showContextMenu(BuildContext context) async {
