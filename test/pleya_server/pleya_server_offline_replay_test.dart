@@ -190,6 +190,31 @@ void main() {
     });
   });
 
+  test('a finished viewing on a title a copy set to watched is one announcement, without a mark', () async {
+    Map<String, dynamic> copied({required DateTime at}) => {
+      'position_ms': 0,
+      'watched': true,
+      'play_count': 1,
+      'updated_at': at.toUtc().toIso8601String(),
+      'revision': 3,
+    };
+    await connect(
+      userState: copied(at: longAgo),
+      // The server takes it as the first viewing, and that moves updated_at.
+      transport: (server) => _AfterWrite(server, '"backlog":true', () {
+        server.items['movie-1']?['user_state'] = copied(at: DateTime.now().add(const Duration(minutes: 1)));
+      }),
+    );
+    await playedOffline(finished: true);
+
+    await sync();
+
+    expect(server.watchEvents.single['backlog'], isTrue);
+    expect(await row(), isNull);
+    expect(heard, [true]);
+    expect(told, hasLength(1));
+  });
+
   group('a read that fails before the backlog says nothing, so the read after it decides', () {
     for (final (name, standing) in [
       (

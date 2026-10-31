@@ -177,6 +177,81 @@ func TestARealFinishAfterACopyIsTheFirstPlay(t *testing.T) {
 	}
 }
 
+// Een markering telt op een titel die alleen door een kopie op gezien staat, net als
+// een echte kijkbeurt, en op een titel met een telling niet.
+func TestAMarkAfterACopyCountsLikeAPlay(t *testing.T) {
+	cur := expired()
+	cur.Watched = true
+	cur.PlayCount = 0
+	mark := Event{SessionID: "tv", Action: ActionMarkWatched}
+
+	out := Decide(cur, mark, base, MinLease)
+	if !out.Accepted || out.Next.PlayCount != 1 {
+		t.Fatalf("na een kopie: %+v", out)
+	}
+	cur.PlayCount = 2
+	if out := Decide(cur, mark, base, MinLease); out.Next.PlayCount != 2 {
+		t.Fatalf("met een telling: %+v", out)
+	}
+}
+
+// Regel 6, de uitzondering: gezien zonder telling komt alleen uit een kopie, dus een
+// afgeronde backlog is de eerste echte kijkbeurt. Hij telt en verzet het moment, en
+// laat de rest staan. Ook de revision: een sessie die kijkt, mag niet achterlopen op
+// iets dat ze niet ziet.
+func TestAFinishedBacklogOnACopyIsTheFirstPlay(t *testing.T) {
+	until := base.Add(time.Minute)
+	cur := owned("tv", 7, 0, until)
+	cur.Watched = true
+	cur.PlayCount = 0
+	backlog := Event{SessionID: "telefoon", PositionMs: 95_000, DurationMs: ms(100_000), Completed: true, Backlog: true}
+
+	out := Decide(cur, backlog, base, MinLease)
+	if !out.Accepted || out.Next.PlayCount != 1 || !out.Next.UpdatedAt.Equal(base) {
+		t.Fatalf("backlog: %+v", out)
+	}
+	if out.Next.PositionMs != 0 || !out.Next.Watched || out.Next.Revision != 7 {
+		t.Fatalf("de stand bewoog: %+v", out.Next)
+	}
+	if out.Next.OwnerSessionID != "tv" || !out.Next.OwnerLeaseUntil.Equal(until) || out.OwnedByThisSession {
+		t.Fatalf("eigenaar of lease bewoog: %+v", out)
+	}
+
+	revision := int64(7)
+	tick := Decide(out.Next, Event{SessionID: "tv", PositionMs: 1_000, BaseRevision: &revision}, base, MinLease)
+	if !tick.Accepted {
+		t.Fatalf("de kijkende sessie viel eruit: %s", tick.Reason)
+	}
+	if again := Decide(out.Next, backlog, base, MinLease); again.Accepted || again.Reason != ReasonBacklogIsHistory {
+		t.Fatalf("tweede keer: %+v", again)
+	}
+}
+
+// Regel 6 blijft voor alles buiten die ene stand.
+func TestRule6HoldsOutsideACopyWithoutACount(t *testing.T) {
+	finished := Event{SessionID: "telefoon", PositionMs: 95_000, DurationMs: ms(100_000), Completed: true, Backlog: true}
+	partial := Event{SessionID: "telefoon", PositionMs: 5_000, DurationMs: ms(100_000), Backlog: true}
+	watched := func(count int) State {
+		cur := expired()
+		cur.Watched = true
+		cur.PlayCount = count
+		return cur
+	}
+	for name, tc := range map[string]struct {
+		cur State
+		ev  Event
+	}{
+		"kopie, niet afgerond": {watched(0), partial},
+		"gezien met telling":   {watched(1), finished},
+		"ongezien":             {expired(), finished},
+	} {
+		out := Decide(tc.cur, tc.ev, base, MinLease)
+		if out.Accepted || out.Reason != ReasonBacklogIsHistory {
+			t.Errorf("%s: %+v", name, out)
+		}
+	}
+}
+
 // Zonder copy blijft elk event wat het was: de drempel geldt, en reclaim verwerft.
 func TestWithoutCopyReclaimAndATickKeepTheirBehaviour(t *testing.T) {
 	cur := expired()

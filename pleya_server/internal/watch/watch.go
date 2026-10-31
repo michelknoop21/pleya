@@ -152,6 +152,16 @@ func Decide(cur State, ev Event, now time.Time, lease time.Duration) Outcome {
 	// het eerst ziet. Alleen bij revision 0 valt er niets te beschermen.
 	if ev.Backlog {
 		if cur.Revision > 0 {
+			// De uitzondering: gezien zonder telling komt alleen uit een kopie, dus een
+			// afgeronde backlog is de eerste echte kijkbeurt. Hij telt en verzet het
+			// moment, en verder niets. Ook de revision blijft: op de lijn verandert
+			// alleen updated_at, en een sessie die kijkt mag hier niet op stranden.
+			if cur.Watched && cur.PlayCount == 0 && backlogFinished(cur, ev) {
+				next := cur
+				next.PlayCount = 1
+				next.UpdatedAt = now
+				return Outcome{Accepted: true, Next: next, OwnedByThisSession: isOwner}
+			}
 			return reject(ReasonBacklogIsHistory)
 		}
 		next := applyProgress(cur, ev)
@@ -273,7 +283,8 @@ func applyExplicit(cur State, ev Event) State {
 	}
 	switch ev.Action {
 	case ActionMarkWatched:
-		if !next.Watched {
+		// Gezien zonder telling komt alleen uit een kopie, zoals in applyProgress.
+		if !next.Watched || next.PlayCount == 0 {
 			next.PlayCount++
 		}
 		next.Watched = true
@@ -306,6 +317,14 @@ func applyCopy(cur State, ev Event) State {
 	next.Watched = true
 	next.PositionMs = 0
 	return next
+}
+
+// backlogFinished is completed voor een event dat de toestand zelf niet verzet.
+func backlogFinished(cur State, ev Event) bool {
+	if ev.DurationMs != nil {
+		return completed(ev, ev.DurationMs)
+	}
+	return completed(ev, cur.DurationMs)
 }
 
 // completed zegt of dit event het item uitgekeken maakt.

@@ -1088,9 +1088,11 @@ antwoord (`watched` bij een afgekeken stand, anders `position_ms`). `owned_by_th
 kopie niets: een kopie verwerft niets, en een weigering onder de eigen lease antwoordt waar. Elke
 kopieschrijfactie van een client is dezelfde sessie. Een afgekeken kopie telt geen kijkbeurt: de server
 laat zijn telling staan, en houdt `play_count` op de lijn op minstens 1 zolang `watched` waar is, omdat
-de app gezien op een gewone lezing daaruit afleidt. De kopie staat niet in de kijkgeschiedenis en telt
-niet bij de assistent. Hij staat wel in Recent bekeken, en een positie staat in Verder kijken van die
-server, bovenaan: die twee lezen `updated_at`, en die beweegt wel.
+de app gezien op een gewone lezing daaruit afleidt. Een schrijfactie met `copy: true` staat niet in de
+kijkgeschiedenis en telt niet bij de assistent; een handmatige markering die naar een kopie waaiert en
+de terugval zonder `watch_state_copy` zijn een gewone `mark_watched` en doen dat wel. De kopie staat
+wel in Recent bekeken, en een positie staat in Verder kijken van die server, bovenaan: die twee lezen
+`updated_at`, en die beweegt wel.
 
 Zonder die vlag, zoals op de NAS nu, bereikt een positie een Pleya Server-kopie niet.
 `playback_started` zet een rij in `play_history`, schuift

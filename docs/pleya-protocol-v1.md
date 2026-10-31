@@ -1217,11 +1217,13 @@ zijn drie dingen. `copy: true` op een gewone melding zegt dat het om de eerste t
 | een sessie houdt een geldige lease, welke dan ook | afgewezen: een kopie neemt een kijkende sessie nooit over |
 | geen `completed`, item staat op gezien | afgewezen: een positie op een gezien item is een halve toestand (DEC-049) |
 | geen `completed` | alleen `position_ms` en, als die is meegestuurd, `duration_ms`. De drempel van 0,9 geldt niet |
-| `completed` | `watched` waar en `position_ms` 0. De kopie telt geen kijkbeurt: de opgeslagen telling blijft staan, en `play_count` is op de lijn minstens 1 zolang `watched` waar is |
+| `completed` | `watched` waar en `position_ms` 0. De kopie telt geen kijkbeurt: de opgeslagen telling blijft staan. `watched` waar impliceert op de lijn `play_count` minstens 1, niet omgekeerd: na `mark_unwatched` blijft de telling staan |
 
 In elk geaccepteerd geval stijgt `revision` en beweegt `updated_at`, zodat een ander toestel de kopie
 ziet. De eigenaar, de lease en de laatste expliciete handeling blijven staan. `play_history` krijgt geen
-rij, ook niet bij een afwijzing. `last_played_at` blijft staan: een nieuwe rij krijgt hier geen waarde,
+rij, ook niet bij een afwijzing. Een echte kijkbeurt op zo'n titel telt wel als eerste, ook een afgeronde
+backlog: die uitzondering op regel 6 verzet alleen `updated_at` op de lijn en `last_played_at`, en laat
+positie, `watched`, `revision`, eigenaar en lease staan. `last_played_at` blijft staan: een nieuwe rij krijgt hier geen waarde,
 een bestaande houdt de zijne.
 
 Het antwoord is ook hier de actuele toestand. `owned_by_this_session` zegt niet of de kopie landde, want
@@ -1971,8 +1973,10 @@ bron maken voor dezelfde vraag.
 
 `GET /pleya/v1/watch-history?days=7` geeft per gebruiker de films en afleveringen die hij heeft
 afgekeken (een opgeslagen telling boven nul) en die hij in de laatste `days` dagen echt heeft bekeken
-(`last_played_at`). Klasse `admin`, toegevoegd door DEC-143 buiten venster 2. Een kopie (14.1b) is geen
-kijkbeurt: ze staat hier niet in en verzet geen regel.
+(`last_played_at`). Klasse `admin`, toegevoegd door DEC-143 buiten venster 2. Een event met `copy: true`
+(14.1b) is geen kijkbeurt: het staat hier niet in en verzet geen regel. Een gewone `mark_watched` staat
+er wel in, ook als een handmatige markering naar een andere bron waaiert of een client zonder
+`capabilities.watch_state_copy` hem als terugval stuurt.
 
 ```json
 { "days": 7, "truncated": false, "items": [

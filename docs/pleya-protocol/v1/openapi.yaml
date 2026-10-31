@@ -847,8 +847,9 @@ paths:
         Klasse `admin` (DEC-143, hoofdstuk 17b.7). Per gebruiker de films en
         afleveringen met een opgeslagen telling boven nul die in de laatste
         `days` dagen echt zijn bekeken. Geen afspeellog: een regel is het
-        laatste echte moment van een gebruiker op een item. Een kopie
-        (`WatchStateEvent.copy`) is dat moment niet en telt niet.
+        laatste echte moment van een gebruiker op een item. Een event met
+        `copy: true` is dat moment niet en telt niet; een gewone `mark_watched`
+        wel, ook als die naar een andere bron van de titel waaiert.
 
         Nieuwste eerst, ten hoogste 1000 regels; `truncated` zegt dat er meer
         waren.
@@ -4351,8 +4352,9 @@ components:
           type: integer
           minimum: 0
           description: |
-            Echte kijkbeurten en markeringen. Minstens 1 zolang watched waar is:
-            een client mag gezien hieruit afleiden.
+            Echte kijkbeurten en markeringen. watched waar impliceert minstens 1,
+            niet omgekeerd: na mark_unwatched blijft de telling staan, dus gezien
+            lees je aan watched.
         updated_at: { $ref: "#/components/schemas/Timestamp" }
         revision:
           type: integer
@@ -5364,7 +5366,9 @@ components:
             canonieke toestand niet zolang revision > 0, ook niet wanneer de
             lease van de eigenaar verlopen is. Alleen bij revision = 0 is er
             niets te beschermen en vestigt het laatste event uit de batch de
-            toestand alsnog.
+            toestand alsnog. Op een titel die alleen door een kopie op gezien
+            staat, telt een afgeronde backlog als eerste kijkbeurt; alleen
+            updated_at beweegt op de lijn, positie, watched en revision blijven.
 
             Alleen te sturen wanneer capabilities.watch_state_ownership waar is.
         copy:

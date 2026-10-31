@@ -117,12 +117,14 @@ Future<bool> replayOfflineWatchAction(
       // (marked watched, or viewed more recently than this queued offline
       // action), replaying our stale viewOffset would clobber it. Best-effort:
       // if the state fetch fails we proceed with the replay as before.
+      MediaItem? before;
       try {
         // Watched as it stands now: `viewCount` on a plain read is `play_count`
         // on Pleya Server, and that outlives a mark as unwatched.
         final server = client is CopyStateClient
             ? await client.readCopyState(action.ratingKey)
             : await client.fetchItem(action.ratingKey);
+        before = server;
         if (server != null) {
           final serverViewedMs = (server.lastViewedAt ?? 0) * 1000;
           final serverIsNewer =
@@ -145,7 +147,7 @@ Future<bool> replayOfflineWatchAction(
             ? duration
             : Duration(milliseconds: action.viewOffset!);
         if (client is PleyaServerClient) {
-          return _replayOwnPleyaViewing(client, action, resolvedItem, position, duration, beforeWrite);
+          return _replayOwnPleyaViewing(client, action, resolvedItem, before, position, duration, beforeWrite);
         }
         // Pleya backlog must never acquire live ownership before replay.
         if (client.backend != MediaBackend.pleyaServer &&
@@ -195,12 +197,16 @@ Future<bool> replayOfflineWatchAction(
 /// reported: answers true when it did, and trackers and copies hear of nothing else.
 ///
 /// The read before the backlog may have failed, so a turned-down viewing reads
-/// again: a state newer than this row stands, and the row ends without a word. The
-/// session comes from the row: a retry is the same viewing, also in the history.
+/// again: a state newer than this row stands, and the row ends without a word. A
+/// title that says watched keeps the read from before, if there was one: the server
+/// takes a finished backlog on a title only a copy set to watched, and that write
+/// moves the title itself. The session comes from the row: a retry is the same
+/// viewing, also in the history.
 Future<bool> _replayOwnPleyaViewing(
   PleyaServerClient client,
   OfflineWatchProgressItem action,
   MediaItem item,
+  MediaItem? before,
   Duration position,
   Duration? duration,
   void Function() beforeWrite,
@@ -218,7 +224,7 @@ Future<bool> _replayOwnPleyaViewing(
   var viewed = item;
   if (!landed || !state.watched) {
     beforeWrite();
-    final copy = await _readCopy(client, action);
+    final copy = (state.watched ? before : null) ?? await _readCopy(client, action);
     // Before the row can end: this answer may be the next profile's.
     beforeWrite();
     if (copy == null || _copyMovedOn(copy, action)) return false;

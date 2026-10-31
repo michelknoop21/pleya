@@ -192,3 +192,54 @@ func TestARealViewingAfterACopyCounts(t *testing.T) {
 		}
 	})
 }
+
+// Een handmatige markering op een titel die alleen door een kopie gezien staat, telt
+// en staat in de kijkgeschiedenis: last_played_at beweegt immers mee.
+func TestAMarkOnACopyCounts(t *testing.T) {
+	e := newEnv(t)
+	e.eachKind(func(t *testing.T, itemID string) {
+		e.copiedWatched(itemID)
+		e.markWatched(itemID, "tv")
+
+		if got := e.storedPlayCount(itemID); got != 1 {
+			t.Fatalf("telling %d, verwacht 1", got)
+		}
+		if _, ok := e.historyEntry("?days=1", itemID); !ok {
+			t.Fatal("de markering staat niet in de kijkgeschiedenis")
+		}
+	})
+}
+
+// Offline echt afkijken op een titel die alleen door een kopie gezien staat, is de
+// eerste kijkbeurt: hij telt en staat in de kijkgeschiedenis, en de stand blijft.
+func TestAnOfflineViewingOnACopyCounts(t *testing.T) {
+	e := newEnv(t)
+	e.eachKind(func(t *testing.T, itemID string) {
+		e.copiedWatched(itemID)
+		backlog := event(itemID, "offline", map[string]any{
+			"backlog": true, "completed": true, "position_ms": watchedLength, "duration_ms": watchedLength,
+		})
+
+		answer := e.report(backlog, http.StatusOK)
+		if !answer.Watched || answer.PositionMs != 0 || answer.PlayCount != 1 {
+			t.Fatalf("antwoord: %+v", answer)
+		}
+		if got := e.storedPlayCount(itemID); got != 1 {
+			t.Fatalf("telling %d, verwacht 1", got)
+		}
+		if got := e.historyRows(itemID); got != 1 {
+			t.Fatalf("%d rijen in play_history, verwacht 1", got)
+		}
+		if _, ok := e.historyEntry("?days=1", itemID); !ok {
+			t.Fatal("de kijkbeurt staat niet in de kijkgeschiedenis")
+		}
+
+		e.report(backlog, http.StatusOK)
+		if got := e.storedPlayCount(itemID); got != 1 {
+			t.Fatalf("een herhaling telde: %d", got)
+		}
+		if got := e.historyRows(itemID); got != 1 {
+			t.Fatalf("een herhaling gaf %d rijen", got)
+		}
+	})
+}
