@@ -143,6 +143,10 @@ type Capabilities struct {
 	// credential_mode meestuurt een weigering krijgen van een oudere server in
 	// plaats van een veld dat stil wegvalt.
 	CookieAuth bool `json:"cookie_auth"`
+	// CookieUpgrade zegt dat POST /auth/refresh credential_mode cookie_upgrade kent. Een
+	// aparte vlag: cookie_auth bestaat al op servers die die waarde weigeren, en een
+	// browser die hem daar stuurt verliest zijn sessie.
+	CookieUpgrade bool `json:"cookie_upgrade"`
 
 	// Administration (J.2 rij 1). Aan sinds S1.6, en hij dekt wat S1.2 tot en
 	// met S1.5 hebben gebouwd: GET/PATCH /settings, de vier routes onder

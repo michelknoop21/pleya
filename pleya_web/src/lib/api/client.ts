@@ -12,7 +12,8 @@
 import createClient, { type Client, type Middleware } from 'openapi-fetch';
 
 import type { paths } from './schema';
-import { type ApiError, TransportError, isSessionRejected, toApiError } from './errors';
+import { type ApiError, TransportError, toApiError } from './errors';
+import { browserLocks, TokenRefresher, type RefreshLocks } from './tokenRefresher';
 import { TokenStore } from '../auth/tokens';
 import type { DeviceFields } from '../auth/device';
 import type {
@@ -40,24 +41,6 @@ export const DEFAULT_BASE_URL = '/pleya/v1';
  */
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-/** Hoe vaak een verversing een 429 mag krijgen voor deze ronde opgeeft. */
-const REFRESH_LIMIT_ATTEMPTS = 5;
-/** Ruim boven wat de server vraagt; een proxy die langer vraagt krijgt geen hangend scherm. */
-const REFRESH_LIMIT_MAX_WAIT_MS = 30_000;
-/**
- * Tabbladen die dezelfde 429 kregen, komen niet op hetzelfde moment terug. Twee
- * gelijktijdige verversingen met één cookie zijn precies de race die de sessie kan
- * laten vallen; met dit verschil ziet de tweede de cookie van de eerste.
- */
-const REFRESH_LIMIT_JITTER_MS = 750;
-
-/** De wachttijd van een 429: `Retry-After`, anders `details.retry_after_ms`, anders een seconde. */
-function refreshRetryDelayMs(response: Response, error: unknown): number {
-  const seconds = Number(response.headers.get('Retry-After'));
-  if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
-  return toApiError(response.status, error).retryAfterMs ?? 1000;
-}
-
 /** Endpoints van klasse `public`: ze krijgen nooit een Authorization-header. */
 const PUBLIC_PATHS = new Set(['/info', '/auth/setup', '/auth/login', '/auth/refresh']);
 
@@ -77,6 +60,8 @@ export interface PleyaClientOptions {
   onSessionLost?: () => void;
   /** Wachten tussen twee pogingen; alleen tests vervangen dit. */
   delay?: (ms: number) => Promise<void>;
+  /** Het slot tussen tabbladen; zonder waarde `navigator.locks` als die bestaat. */
+  locks?: RefreshLocks | null;
 }
 
 export class PleyaClient {
@@ -85,30 +70,26 @@ export class PleyaClient {
 
   #raw: Client<paths>;
   #fetch: FetchLike;
-  #refreshing: Promise<boolean> | null = null;
-  #refreshGeneration = -1;
-  #refreshUnavailable = false;
-  #refreshRefused: ApiError | null = null;
+  #refresher: TokenRefresher;
   #sessionGeneration = 0;
   #epoch: string | null;
   #supportsCookieAuth = false;
+  #supportsCookieUpgrade = false;
   #cookieAuth = false;
   #requests = new WeakMap<Request, { generation: number; replay: Request }>();
 
   get sessionGeneration(): number { return this.#sessionGeneration; }
   /** De laatste verversing gaf op zonder oordeel over het token (429, 5xx, geen verbinding). De sessie bestaat nog. */
-  get refreshUnavailable(): boolean { return this.#refreshUnavailable; }
+  get refreshUnavailable(): boolean { return this.#refresher.unavailable; }
   /** De server weigerde deze verversing om iets dat herhalen niet oplost, zoals `auth.origin_rejected`. De sessie bestaat nog. */
-  get refreshRefused(): ApiError | null { return this.#refreshRefused; }
+  get refreshRefused(): ApiError | null { return this.#refresher.refused; }
   #onSessionLost: (() => void) | undefined;
-  #delay: (ms: number) => Promise<void>;
 
   constructor(options: PleyaClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
     this.tokens = options.tokens ?? new TokenStore();
     this.#fetch = options.fetch ?? ((...args) => globalThis.fetch(...args));
     this.#onSessionLost = options.onSessionLost;
-    this.#delay = options.delay ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.#epoch = this.tokens.epoch;
 
     this.#raw = createClient<paths>({
@@ -116,6 +97,20 @@ export class PleyaClient {
       fetch: this.#fetch
     });
     this.#raw.use(this.#authMiddleware());
+
+    const client = this;
+    this.#refresher = new TokenRefresher({
+      tokens: this.tokens,
+      raw: this.#raw,
+      delay: options.delay ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+      locks: options.locks === undefined ? browserLocks() : options.locks,
+      get generation() { return client.#sessionGeneration; },
+      get replaced() { return client.tokens.epoch !== client.#epoch; },
+      get supportsUpgrade() { return client.#supportsCookieUpgrade; },
+      get cookieAuth() { return client.#cookieAuth; },
+      set cookieAuth(value) { client.#cookieAuth = value; },
+      loseSession: () => this.#loseSession()
+    });
   }
 
   #authMiddleware(): Middleware {
@@ -135,7 +130,7 @@ export class PleyaClient {
         if (!original || original.generation !== this.#sessionGeneration) return response;
         const generation = original.generation;
 
-        const refreshed = await this.#refreshOnce();
+        const refreshed = await this.#refresher.run();
         if (!refreshed || generation !== this.#sessionGeneration) return response;
 
         // Opnieuw sturen met het verse accesstoken. De markering voorkomt dat
@@ -146,100 +141,6 @@ export class PleyaClient {
         return await this.#fetch(retry);
       }
     };
-  }
-
-  /**
-   * Vernieuwt het tokenpaar, hoogstens één keer tegelijk.
-   *
-   * Zonder die samenvoeging stuurt een scherm met vier gelijktijdige aanvragen
-   * vier refreshverzoeken. Het refreshtoken roteert bij elk gebruik, dus de
-   * tweede is per definitie hergebruik: de server trekt dan de hele keten in
-   * (auth.refresh_token_reused) en de gebruiker vliegt eruit terwijl er niets
-   * mis was.
-   */
-  #refreshOnce(): Promise<boolean> {
-    const generation = this.#sessionGeneration;
-    if (this.#refreshing && this.#refreshGeneration === generation) return this.#refreshing;
-    this.#refreshGeneration = generation;
-    this.#clearRefreshFailure();
-
-    // De cookie is van het hele browserprofiel: na een wissel in een ander tabblad zou deze client
-    // zich als die andere gebruiker verversen en zijn aanvraag met diens credential herhalen.
-    const replaced = () => this.tokens.epoch !== this.#epoch;
-    const stale = () => (!this.#cookieAuth && !this.tokens.refreshToken) || (this.#cookieAuth && this.tokens.signedOut) || replaced();
-    if (stale()) {
-      this.#loseSession();
-      return Promise.resolve(false);
-    }
-
-    // Het token waarmee deze ronde begon; dat kan de server net hebben afgewezen.
-    const startedWith = this.tokens.accessToken;
-    this.#refreshing = (async () => {
-      try {
-        for (let attempt = 1; ; attempt++) {
-          // Elke poging leest het token opnieuw: een ander tabblad kan het tijdens het wachten geroteerd hebben.
-          const refresh = this.tokens.refreshToken;
-          const { data, error, response } = await this.#raw.POST('/auth/refresh', {
-            body: this.#cookieAuth ? { credential_mode: 'cookie' } : { refresh_token: refresh! }
-          });
-          if (generation !== this.#sessionGeneration) return false;
-          if (response.status === 429) {
-            // Geen sessieverlies: de server heeft niets geroteerd en het token is nog goed. Tokens blijven
-            // staan, ook als deze ronde opgeeft; de aanvraag die erop wachtte faalt en de volgende probeert het.
-            const wait = refreshRetryDelayMs(response, error);
-            if (attempt >= REFRESH_LIMIT_ATTEMPTS || wait > REFRESH_LIMIT_MAX_WAIT_MS) {
-              this.#refreshUnavailable = true;
-              return false;
-            }
-            await this.#delay(wait + Math.random() * REFRESH_LIMIT_JITTER_MS);
-            if (generation !== this.#sessionGeneration) return false;
-            // Alleen een ander token telt als geslaagd: het accesstoken staat per tabblad, dus hetzelfde
-            // token is geen teken dat iemand ververst heeft, ook al is het lokaal nog geldig.
-            const access = this.tokens.accessToken;
-            if (access && access !== startedWith) return true;
-            if (stale()) {
-              this.#loseSession();
-              return false;
-            }
-            continue;
-          }
-          if (replaced() || (error !== undefined && isSessionRejected(toApiError(response.status, error)))) {
-            this.#loseSession();
-            return false;
-          }
-          if (error !== undefined || !data) {
-            const failure = toApiError(response.status, error);
-            // Opnieuw proberen verandert hier niets: de origin van deze pagina wordt geweigerd. Dat
-            // is een instelling van de server of proxy, dus de tokens blijven en de diagnose gaat mee.
-            if (failure.code === 'auth.origin_rejected') {
-              this.#refreshRefused = failure;
-              return false;
-            }
-            // Alleen een afwijzing van het token beëindigt de sessie. Een 5xx of een proxyfout zegt
-            // daar niets over; het token blijft staan en de volgende poging probeert het opnieuw.
-            this.#refreshUnavailable = true;
-            return false;
-          }
-          this.tokens.set(data);
-          return true;
-        }
-      } catch {
-        // Een netwerkstoring is geen verlopen sessie: het token blijft staan
-        // zodat de volgende poging het opnieuw kan proberen.
-        if (generation === this.#sessionGeneration) this.#refreshUnavailable = true;
-        return false;
-      } finally {
-        if (this.#refreshGeneration === generation) this.#refreshing = null;
-      }
-    })();
-
-    return this.#refreshing;
-  }
-
-  /** Een oordeel over een vorige ronde zegt niets over de volgende. */
-  #clearRefreshFailure(): void {
-    this.#refreshUnavailable = false;
-    this.#refreshRefused = null;
   }
 
   #loseSession(): void {
@@ -271,6 +172,7 @@ export class PleyaClient {
   async info(signal?: AbortSignal): Promise<Info> {
     const info = await this.#unwrap(this.#raw.GET('/info', { signal }));
     this.#supportsCookieAuth = info.capabilities?.cookie_auth === true;
+    this.#supportsCookieUpgrade = this.#supportsCookieAuth && info.capabilities?.cookie_upgrade === true;
     if (!this.#supportsCookieAuth) {
       this.#cookieAuth = false;
       this.tokens.setMemoryOnly(false);
@@ -340,15 +242,16 @@ export class PleyaClient {
    * geldig is; dat is een normale toestand en geen fout.
    */
   restore(): Promise<boolean> {
-    this.#clearRefreshFailure();
+    this.#refresher.clearFailure();
     // Een geldig accesstoken overleeft een herlaadbeurt, dus meestal is er
     // niets te verversen. Dat scheelt niet alleen een aanvraag: het
     // refreshtoken roteert bij elk gebruik, en een refresh per paginaladen
     // maakt van elke herlaadbeurt een kans om er middenin te vallen.
     if (this.tokens.accessToken) return Promise.resolve(true);
+    this.#refresher.followUpgrade();
     if (!this.#cookieAuth && !this.tokens.refreshToken) return Promise.resolve(false);
     if (this.#cookieAuth && this.tokens.signedOut) return Promise.resolve(false);
-    return this.#refreshOnce();
+    return this.#refresher.run();
   }
 
   /**
@@ -365,6 +268,7 @@ export class PleyaClient {
    */
   async signOut(options: { remote?: boolean } = {}): Promise<void> {
     const generation = ++this.#sessionGeneration;
+    this.#refresher.followUpgrade();
     // In cookiemodus is een verlopen accesstoken geen reden om de sessie te laten leven: de cookie is
     // voor JavaScript niet te wissen, en de volgende herlaadbeurt zou er weer mee inloggen.
     if (options.remote && this.#cookieAuth && !this.tokens.accessToken) await this.bearer();
@@ -391,8 +295,9 @@ export class PleyaClient {
   async bearer(): Promise<string | null> {
     const access = this.tokens.accessToken;
     if (access) return access;
+    this.#refresher.followUpgrade();
     if (!this.#cookieAuth && !this.tokens.refreshToken) return null;
-    return (await this.#refreshOnce()) ? this.tokens.accessToken : null;
+    return (await this.#refresher.run()) ? this.tokens.accessToken : null;
   }
 
   server(signal?: AbortSignal): Promise<ServerDetail> {
@@ -502,7 +407,7 @@ export class PleyaClient {
       throw new TransportError(cause);
     }
 
-    if (response.status === 401 && (await this.#refreshOnce())) {
+    if (response.status === 401 && (await this.#refresher.run())) {
       const retryHeaders = new Headers();
       retryHeaders.set('Authorization', `Bearer ${this.tokens.accessToken ?? ''}`);
       try {

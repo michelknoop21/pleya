@@ -3616,6 +3616,14 @@ components:
             routes onder `/server`, `GET /stream-sessions` en `GET /audit`. Een
             client die de vlag niet ziet toont geen beheer, en dat is geen
             beveiliging maar netheid: de server weigert onafhankelijk daarvan met
+        cookie_upgrade:
+          type: boolean
+          default: false
+          description: |
+            POST /auth/refresh kent `credential_mode: cookie_upgrade`: een browser
+            met een refreshtoken uit de tijd van vóór de cookie stapt over zonder
+            opnieuw in te loggen (17d.1). Een eigen vlag, want `cookie_auth` staat
+            ook aan op servers die die waarde weigeren.
             `404` voor wie er niet bij mag (hoofdstuk 16.4, regel 16 tot en met
             26).
 
@@ -3846,10 +3854,23 @@ components:
         `credential_mode: cookie` komt het credential uit de cookie
         `pleya_refresh` en hoort `refresh_token` er niet bij; staan ze er
         allebei, dan weigert de server met `auth.token_invalid`, want dan zijn er
-        twee bronnen en geen manier om te weten welke bedoeld is.
+        twee bronnen en geen manier om te weten welke bedoeld is. Met
+        `credential_mode: cookie_upgrade` is `refresh_token` verplicht en is dat
+        het credential, ook als er een oude cookie meekomt; het nieuwe gaat de
+        cookie in (17d.1).
       properties:
         refresh_token: { type: string, minLength: 1 }
-        credential_mode: { $ref: "#/components/schemas/CredentialMode" }
+        credential_mode: { $ref: "#/components/schemas/RefreshCredentialMode" }
+
+    RefreshCredentialMode:
+      type: string
+      description: |
+        `CredentialMode` plus `cookie_upgrade`, dat alleen op refresh bestaat en
+        alleen te sturen is wanneer `capabilities.cookie_upgrade` waar is. Een
+        server zonder die vlag weigert de waarde met `auth.token_invalid`, en een
+        browser die dat voor een oordeel over zijn token houdt, logt uit.
+      enum: [token, cookie, cookie_upgrade]
+      x-unknown-safe: false
 
     CredentialMode:
       type: string

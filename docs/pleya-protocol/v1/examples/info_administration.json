@@ -16,6 +16,7 @@
     "sessions": true,
     "api_tokens": true,
     "cookie_auth": true,
+    "cookie_upgrade": true,
     "history": true,
     "ratings": true,
     "personal_data": true,

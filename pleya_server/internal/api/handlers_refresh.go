@@ -26,13 +26,26 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mode, ok := s.credentialMode(w, r, req.CredentialMode, CodeTokenInvalid, "")
+	raw := strings.TrimSpace(req.CredentialMode)
+	upgrade := raw == credentialModeCookieUpgrade
+	if upgrade {
+		raw = credentialModeCookie
+	}
+	mode, ok := s.credentialMode(w, r, raw, CodeTokenInvalid, "")
 	if !ok {
 		return
 	}
 
 	presented := strings.TrimSpace(req.RefreshToken)
-	if mode == credentialModeCookie {
+	if upgrade {
+		// Het token in het lichaam is het credential en het antwoord gaat de cookie
+		// in. De aanvraag zegt zelf welke van de twee geldt, dus een oude cookie
+		// ernaast is hier niet de dubbelzinnigheid van hieronder.
+		if presented == "" {
+			writeError(w, s.log, CodeTokenInvalid, "refresh token missing", nil)
+			return
+		}
+	} else if mode == credentialModeCookie {
 		// Twee bronnen is geen bron. Wie een token in het lichaam zet én om de
 		// cookie vraagt heeft twee credentials en geen manier om te zeggen welk
 		// van de twee hij bedoelt, en stilzwijgend kiezen is precies hoe een
@@ -75,8 +88,9 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	// Een afgewezen refresh in cookiemodus laat geen dode cookie achter. Zonder
 	// deze regel blijft de browser bij elke volgende poging een credential
 	// meesturen dat nooit meer werkt, en dan lijkt "opnieuw inloggen" niet te
-	// helpen.
-	if mode == credentialModeCookie && outcome != auth.RefreshOK && outcome != auth.RefreshReplayed {
+	// helpen. RefreshSuperseded staat erbuiten: dat antwoord kan achter een geslaagde
+	// rotatie aan komen, en dan haalt het juist de goede cookie weg.
+	if mode == credentialModeCookie && outcome != auth.RefreshOK && outcome != auth.RefreshReplayed && outcome != auth.RefreshSuperseded {
 		s.clearRefreshCookie(w)
 	}
 
@@ -99,7 +113,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	case auth.RefreshSessionRevoked:
 		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
 		return
-	case auth.RefreshExpired, auth.RefreshUnknown:
+	case auth.RefreshExpired, auth.RefreshUnknown, auth.RefreshSuperseded:
 		writeError(w, s.log, CodeTokenInvalid, "refresh token invalid", nil)
 		return
 	}

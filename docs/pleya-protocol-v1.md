@@ -200,6 +200,7 @@ Precies daarom staat er zo weinig in.
     "sessions": true,
     "api_tokens": true,
     "cookie_auth": true,
+    "cookie_upgrade": true,
     "administration": true,
     "mcp": false,
     "playback_plan": false,
@@ -336,9 +337,18 @@ Het antwoord is een nieuw paar. **Het refreshtoken roteert bij elk gebruik** en 
 onmiddellijk. Een tweede aanroep met hetzelfde refreshtoken geeft `auth.refresh_token_reused`, en de
 server mag de hele keten dan ongeldig maken.
 
+**Twee aanvragen tegelijk zijn geen hergebruik.** Komt een net geroteerd token binnen het respijtvenster
+terug terwijl zijn opvolger nooit gebruikt is, dan was dat een verloren antwoord of een tweede tabblad: de
+aanvrager krijgt een nieuw paar en de ongebruikte opvolger vervalt. Die vervallen opvolger kan zelf nog bij
+de client aankomen, als zijn antwoord later binnenkomt dan dat van de herhaling. Hij is dan nooit
+aangeboden, dus zijn eerste aanbieding is geen hergebruik, ook niet na het venster: zolang de keten niet
+verder is krijgt hij een nieuw paar, en daarna `auth.token_invalid`. De sessie blijft in beide gevallen
+staan. Dit verandert geen veld en geen code; het beperkt wanneer een bestaande uitkomst valt.
+
 Ook hier bestaat `credential_mode`. Draagt de aanvraag `{"credential_mode": "cookie"}`, dan komt het
 oude refreshcredential uit de cookie en gaat het nieuwe er weer in, en blijft `refresh_token` uit
-lichaam en antwoord. Zie 17d.
+lichaam en antwoord. Met `cookie_upgrade` komt het oude uit het lichaam en gaat het nieuwe de cookie
+in. Zie 17d.
 
 **`429 auth.rate_limited` is geen sessieverlies.** De grens staat vóór de rotatie: er is niets
 geroteerd of ingetrokken, het token en de cookie blijven geldig. Het antwoord draagt `Retry-After` in
@@ -2056,6 +2066,24 @@ antwoordschema achter een `oneOf`, en dat is afgewogen: het houdt `TokenPair` le
 maar het maakt van het antwoord van `/auth/login` een unie in elke gegenereerde client, inclusief de
 clients die cookiemodus nooit zullen gebruiken. Eén voorwaardelijk veld met de voorwaarde erbij is
 kleiner en eerlijker dan een unie die iedereen moet uitpakken.
+
+**`cookie_upgrade`, voor een browser van vóór de cookie.** Een sessie uit de tijd van `localStorage`
+heeft een refreshtoken in JavaScript, en met alleen `token` en `cookie` kwam daar geen cookie voor in de
+plaats zonder opnieuw in te loggen. Onder `capabilities.cookie_upgrade` accepteert `POST /auth/refresh`
+daarom een derde waarde, naast hetzelfde `refresh_token`:
+
+```json
+{ "refresh_token": "...", "credential_mode": "cookie_upgrade" }
+```
+
+Het credential is het token in het lichaam, met dezelfde rotatie en hergebruikdetectie; het antwoord is
+dat van `cookie`, dus zonder `refresh_token` en met `Set-Cookie`, en dezelfde `Origin`-eis. Een oude cookie
+die meekomt telt niet: de aanvraag zegt zelf welk credential geldt, en daarom is dit een eigen waarde en
+geen versoepeling van de regel dat twee bronnen samen `auth.token_invalid` geven. Een geweigerde `Origin`
+raakt niets, dus het token blijft bruikbaar in `token`-modus en de client gaat daarmee door. Op login
+bestaat de waarde niet. Getoetst aan hoofdstuk 3: de vlag is een nieuw optioneel antwoordveld (regel 1), de
+waarde gaat alleen mee als de vlag aanstaat (regel 5), en `credential_mode` is een aanvraag-enum waar een
+waarde bij mag (regel 6). `cookie` en `token` betekenen hetzelfde als eerst (regel 3).
 
 ### 17d.2 De cookie autoriseert één endpoint, en niets anders
 

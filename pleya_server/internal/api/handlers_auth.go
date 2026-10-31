@@ -113,6 +113,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// credential_mode en zetten het refreshcredential desgevraagd in een
 			// HttpOnly-cookie (RB-29).
 			CookieAuth: true,
+			// CookieUpgrade: refresh ruilt een token uit localStorage in voor de
+			// cookie, zonder nieuwe login (17d.1).
+			CookieUpgrade: true,
 			// Administration: aan sinds S1.6, voor het oppervlak dat S1.2 tot
 			// en met S1.5 hebben gebouwd (J.2 rij 1).
 			Administration: true,
@@ -505,10 +508,13 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.I
 	s.writeTokenPair(w, r, mode, access, refresh, (claims.ExpiresAt-claims.IssuedAt)*1000)
 }
 
-// De twee waarden van credential_mode (J.2 rij 16, hoofdstuk 17d).
+// De waarden van credential_mode (J.2 rij 16, hoofdstuk 17d). cookie_upgrade bestaat
+// alleen op POST /auth/refresh: een browser met een oud token in localStorage ruilt
+// dat in en krijgt de cookie terug (17d.1).
 const (
-	credentialModeToken  = "token"
-	credentialModeCookie = "cookie"
+	credentialModeToken         = "token"
+	credentialModeCookie        = "cookie"
+	credentialModeCookieUpgrade = "cookie_upgrade"
 )
 
 // credentialMode leest het veld, toetst de origin wanneer het om de cookie

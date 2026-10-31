@@ -979,3 +979,211 @@ describe('existing catalog filter contract', () => {
     expect(request!.headers.get('Authorization')).toBe('Bearer canned-A');
   });
 });
+
+/** Een server met één refreshketen, en twee tabbladen met dezelfde opslag. */
+function refreshServer(start = 'R1') {
+  let live = start;
+  let counter = 1;
+  const seen: Record<string, unknown>[] = [];
+  let inFlight = 0;
+  let overlap = false;
+  const handler = async (request: Request, capabilities: Record<string, boolean>): Promise<Response> => {
+    const path = new URL(request.url).pathname.replace('/pleya/v1', '');
+    if (path === '/info') return json({ capabilities });
+    if (path !== '/auth/refresh') return json({ items: [] });
+    const body = (await request.json()) as Record<string, string>;
+    seen.push(body);
+    inFlight += 1;
+    overlap = overlap || inFlight > 1;
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    inFlight -= 1;
+    if (body['credential_mode'] !== 'cookie' && body['refresh_token'] !== live) {
+      return json({ error: { code: 'auth.refresh_token_reused', message: 'reused', retryable: false } }, 401);
+    }
+    counter += 1;
+    live = `R${counter}`;
+    return json({
+      access_token: `A${counter}`, token_type: 'bearer', expires_in_ms: 900_000,
+      ...(body['credential_mode']?.startsWith('cookie') ? {} : { refresh_token: live })
+    });
+  };
+  return { seen, handler, overlapped: () => overlap };
+}
+
+/** Exclusief op naam, zoals `navigator.locks`: wie volgt wacht tot de callback klaar is. */
+function memoryLocks() {
+  let tail: Promise<unknown> = Promise.resolve();
+  return {
+    request<T>(_name: string, callback: () => Promise<T>): Promise<T> {
+      const run = tail.then(callback, callback);
+      tail = run.catch(() => undefined);
+      return run;
+    }
+  };
+}
+
+describe('verversen tussen tabbladen', () => {
+  function tab(persistent: TokenStorage, server: ReturnType<typeof refreshServer>, capabilities: Record<string, boolean>,
+    locks: ReturnType<typeof memoryLocks> | null, onSessionLost = vi.fn()) {
+    const tokens = new TokenStore(persistent, memoryStorage());
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks, onSessionLost,
+      fetch: ((input: RequestInfo | URL) => server.handler(input as Request, capabilities)) as FetchLike
+    });
+    return { client, tokens, onSessionLost };
+  }
+
+  it('laat twee tabbladen na elkaar verversen, en de tweede gebruikt het nieuwe token', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const server = refreshServer();
+    const locks = memoryLocks();
+    const first = tab(persistent, server, { cookie_auth: true }, locks);
+    const second = tab(persistent, server, { cookie_auth: true }, locks);
+
+    const results = await Promise.all([first.client.restore(), second.client.restore()]);
+
+    expect(results).toEqual([true, true]);
+    expect(server.overlapped()).toBe(false);
+    expect(server.seen.map((body) => body['refresh_token'])).toEqual(['R1', 'R2']);
+    expect(first.onSessionLost).not.toHaveBeenCalled();
+    expect(second.onSessionLost).not.toHaveBeenCalled();
+    expect(new Set([first.tokens.accessToken, second.tokens.accessToken]).size).toBe(2);
+  });
+
+  it('werkt zonder navigator.locks zoals eerst: zonder slot lopen de aanvragen door elkaar', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const server = refreshServer();
+    const only = tab(persistent, server, { cookie_auth: true }, null);
+    await expect(only.client.restore()).resolves.toBe(true);
+    expect(server.seen).toEqual([{ refresh_token: 'R1' }]);
+
+    const raced = refreshServer();
+    const shared = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    await Promise.all([tab(shared, raced, {}, null).client.restore(), tab(shared, raced, {}, null).client.restore()]);
+    expect(raced.overlapped()).toBe(true);
+  });
+
+  it('houdt het slot niet vast tijdens het wachten op een 429', async () => {
+    let held = false;
+    let heldDuringDelay = false;
+    const locks = {
+      async request<T>(_name: string, callback: () => Promise<T>): Promise<T> {
+        held = true;
+        try {
+          return await callback();
+        } finally {
+          held = false;
+        }
+      }
+    };
+    const answers = [
+      () => json({ error: { code: 'auth.rate_limited', message: 'wacht', retryable: true, details: { retry_after_ms: 10 } } }, 429),
+      () => json({ access_token: 'A2', refresh_token: 'R2', token_type: 'bearer', expires_in_ms: 900_000 })
+    ];
+    const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'R1' }), memoryStorage());
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks,
+      delay: async () => { heldDuringDelay = held; },
+      fetch: (async () => answers.shift()!()) as FetchLike
+    });
+    await expect(client.restore()).resolves.toBe(true);
+    expect(heldDuringDelay).toBe(false);
+  });
+});
+
+describe('een oude websessie stapt over op de cookie', () => {
+  const capabilities = { cookie_auth: true, cookie_upgrade: true };
+  function tab(persistent: TokenStorage, server: ReturnType<typeof refreshServer>, onSessionLost = vi.fn(), caps = capabilities, session = memoryStorage()) {
+    const tokens = new TokenStore(persistent, session);
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks: null, onSessionLost,
+      fetch: ((input: RequestInfo | URL) => server.handler(input as Request, caps)) as FetchLike
+    });
+    return { client, tokens, onSessionLost };
+  }
+
+  it('ruilt het token in, wist het en ververst daarna met de cookie', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1', 'pleya.session_epoch': 'e1' });
+    const server = refreshServer();
+    const session = memoryStorage();
+    const { client, tokens } = tab(persistent, server, vi.fn(), capabilities, session);
+    await client.info();
+
+    await expect(client.restore()).resolves.toBe(true);
+    expect(server.seen).toEqual([{ refresh_token: 'R1', credential_mode: 'cookie_upgrade' }]);
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+    expect(tokens.accessToken).toBe('A2');
+    expect(tokens.epoch).toBe('e1');
+
+    tokens.set({ access_token: 'verlopen', expires_in_ms: 0 });
+    await expect(client.bearer()).resolves.toBe('A3');
+    expect(server.seen[1]).toEqual({ credential_mode: 'cookie' });
+  });
+
+  it('blijft op het token als de server de overstap niet kent', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const server = refreshServer();
+    const { client } = tab(persistent, server, vi.fn(), { cookie_auth: true, cookie_upgrade: false });
+    await client.info();
+    await client.restore();
+    expect(server.seen).toEqual([{ refresh_token: 'R1' }]);
+    expect(persistent.getItem('pleya.refresh_token')).toBe('R2');
+  });
+
+  it('een tabblad dat achterbleef volgt de cookie in plaats van zijn sessie te verliezen', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1', 'pleya.session_epoch': 'e1' });
+    const server = refreshServer();
+    const ahead = tab(persistent, server);
+    const behind = tab(persistent, server);
+    await ahead.client.info();
+    await behind.client.info();
+
+    await ahead.client.restore();
+    await expect(behind.client.bearer()).resolves.toBe('A3');
+
+    expect(server.seen[1]).toEqual({ credential_mode: 'cookie' });
+    expect(behind.onSessionLost).not.toHaveBeenCalled();
+  });
+
+  it('een uitlog in een ander tabblad blijft een uitlog', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1', 'pleya.session_epoch': 'e1' });
+    const server = refreshServer();
+    const here = tab(persistent, server);
+    await here.client.info();
+    persistent.removeItem('pleya.refresh_token');
+    persistent.setItem('pleya.session_epoch', 'e2');
+
+    await expect(here.client.bearer()).resolves.toBeNull();
+    expect(server.seen).toEqual([]);
+  });
+
+  it('valt terug op het token als deze origin geen cookie mag: de sessie werkte al zonder', async () => {
+    const seen: Record<string, unknown>[] = [];
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const tokens = new TokenStore(persistent, memoryStorage());
+    const onSessionLost = vi.fn();
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks: null, onSessionLost, delay: async () => undefined,
+      fetch: (async (input: RequestInfo | URL) => {
+        const request = input as Request;
+        if (request.url.endsWith('/info')) return json({ capabilities });
+        const body = (await request.json()) as Record<string, unknown>;
+        seen.push(body);
+        if (body['credential_mode']) return json({ error: { code: 'auth.origin_rejected', message: 'nee', retryable: false } }, 403);
+        return json({ access_token: 'A2', refresh_token: 'R2', token_type: 'bearer', expires_in_ms: 900_000 });
+      }) as FetchLike
+    });
+    await client.info();
+
+    await expect(client.restore()).resolves.toBe(true);
+    expect(seen).toEqual([{ refresh_token: 'R1', credential_mode: 'cookie_upgrade' }, { refresh_token: 'R1' }]);
+    expect(persistent.getItem('pleya.refresh_token')).toBe('R2');
+    expect(client.refreshRefused).toBeNull();
+    expect(onSessionLost).not.toHaveBeenCalled();
+
+    tokens.set({ access_token: 'verlopen', refresh_token: 'R2', expires_in_ms: 0 });
+    await client.bearer();
+    expect(seen[2]).toEqual({ refresh_token: 'R2' });
+  });
+});

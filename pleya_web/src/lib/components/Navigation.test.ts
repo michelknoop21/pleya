@@ -40,6 +40,7 @@ const caps: Capabilities = {
   sessions: false,
   api_tokens: false,
   cookie_auth: false,
+  cookie_upgrade: false,
   administration: false,
   mcp: false
 };

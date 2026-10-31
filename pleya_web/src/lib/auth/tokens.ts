@@ -1,4 +1,4 @@
-/** Cookie-capable logins keep access in memory; legacy sessions retain their existing storage until explicit login. */
+/** Cookie-capable logins keep access in memory; a legacy session in storage moves to the cookie at its next refresh, where the server can. */
 
 const REFRESH_KEY = 'pleya.refresh_token';
 const ACCESS_KEY = 'pleya.access_token';
@@ -88,8 +88,7 @@ export class TokenStore {
   /**
    * `refresh_token` is optioneel omdat het contract het sinds S1.8 weglaat
    * wanneer de aanvraag `credential_mode: cookie` droeg: het credential zit dan
-   * in een HttpOnly-cookie en de pagina hoort het niet te zien. Deze client
-   * vraagt daar nog niet om, dus in de praktijk staat het er altijd; wat hier
+   * in een HttpOnly-cookie en de pagina hoort het niet te zien. Wat hier
    * telt is dat een antwoord zonder dat veld geen `undefined` in `localStorage`
    * schrijft en daarna als bewaard token terugleest.
    */

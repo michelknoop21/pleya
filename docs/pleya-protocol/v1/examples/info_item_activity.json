@@ -16,6 +16,7 @@
     "sessions": true,
     "api_tokens": true,
     "cookie_auth": true,
+    "cookie_upgrade": true,
     "administration": true,
     "mcp": false,
     "playback_plan": true,

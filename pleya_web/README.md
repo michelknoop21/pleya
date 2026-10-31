@@ -266,10 +266,15 @@ blijft in geheugen, refresh staat in een HttpOnly/SameSiteStrict-cookie. Herlade
 nieuwe access via die cookie. De browser-POST moet van een toegestane origin komen; er is geen
 stille terugval op een JavaScript-refreshcredential wanneer cookieherstel wordt geweigerd.
 
-Oude servers krijgen geen `credential_mode`. Bestaande token-sessies blijven tot een expliciete
-login hun huidige opslag gebruiken: access per tab in `sessionStorage`, refresh in `localStorage`.
-Een geslaagde nieuwe cookie-login ruimt die opslag op; een mislukt wachtwoord doet dat niet.
-Dit is geen geforceerde migratie van bestaande browsers.
+Oude servers krijgen geen `credential_mode`. Een bestaande token-sessie gebruikt zijn huidige
+opslag (access per tab in `sessionStorage`, refresh in `localStorage`) tot zijn eerstvolgende
+verversing. Staat `capabilities.cookie_upgrade` aan, dan ruilt die verversing het token in voor de
+cookie en wist hij het uit `localStorage`. Weigert de server de origin, dan blijft de sessie op het
+token. Niemand hoeft daarvoor opnieuw in te loggen, en een ander tabblad volgt bij zijn volgende
+verversing.
+
+Eén verversing tegelijk tussen tabbladen loopt over `navigator.locks` (`tokenRefresher.ts`). Die API
+bestaat alleen in een secure context, dus op `http://` blijft het bij het respijt van de server.
 
 Vernieuwen wordt per accountgeneratie samengevoegd. Late antwoorden mogen een nieuw account
 niet vervangen of een oude aanvraag met diens credential herhalen. Afmelden gebruikt het bestaande
