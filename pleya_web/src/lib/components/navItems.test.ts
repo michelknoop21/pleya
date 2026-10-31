@@ -16,6 +16,7 @@ const all: Capabilities = {
   favorites: false,
   ratings: false,
   track_preferences: false,
+  item_activity: false,
   transcode: false,
   downloads: false,
   backups: false,

@@ -73,6 +73,8 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Favorites:        s.opts.Personal != nil,
 			Ratings:          s.opts.Personal != nil,
 			TrackPreferences: s.opts.Personal != nil,
+			// Activiteit van het huishouden, op dezelfde opslag.
+			ItemActivity: s.opts.Personal != nil,
 			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
 			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
 			// zonder watch-store draait zegt dat eerlijk in plaats van een

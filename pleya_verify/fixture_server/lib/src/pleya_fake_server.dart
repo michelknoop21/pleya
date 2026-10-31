@@ -65,6 +65,15 @@ class PleyaFakeServer {
   /// item id and records each call so a test can read what the app sent.
   bool personalCapability = false;
 
+  /// Household activity (protocol chapter 14b). [itemActivityByItem] holds the
+  /// wire entries per item id, [itemActivityRequests] every path that was
+  /// asked, also without the flag, and [itemActivityFailureStatus] makes the
+  /// route fail with that status.
+  bool itemActivityCapability = false;
+  final Map<String, List<Map<String, dynamic>>> itemActivityByItem = {};
+  final List<String> itemActivityRequests = [];
+  int? itemActivityFailureStatus;
+
   /// BP-08b is opt-in so existing fixtures retain their old-server behavior.
   bool assistantMemoryCapability = false;
   final Map<String, String> _memoryAccessUsers = {};
@@ -296,6 +305,10 @@ class PleyaFakeServer {
     filtersCapability = false;
     playbackPlanCapability = false;
     personalCapability = false;
+    itemActivityCapability = false;
+    itemActivityByItem.clear();
+    itemActivityRequests.clear();
+    itemActivityFailureStatus = null;
     assistantMemoryCapability = false;
     _memoryAccessUsers.clear();
     _memoryRefreshUsers.clear();
@@ -701,6 +714,14 @@ class PleyaFakeServer {
       return http.Response('', 204);
     }
 
+    final activityMatch = RegExp(r'^/items/([^/]+)/activity$').firstMatch(path);
+    if (activityMatch != null) {
+      itemActivityRequests.add(path);
+      final failure = itemActivityCapability ? itemActivityFailureStatus : 404;
+      if (failure != null) return _json(_error('library.not_found'), status: failure);
+      return _json({'items': itemActivityByItem[activityMatch.group(1)] ?? const []});
+    }
+
     if (personalCapability) {
       final personal = _personal(request, path);
       if (personal != null) return personal;
@@ -962,6 +983,7 @@ class PleyaFakeServer {
       if (playbackPlanCapability) 'playback_plan': true,
       if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},
+      if (itemActivityCapability) 'item_activity': true,
     },
     'auth': {
       'methods': ['password'],

@@ -133,6 +133,11 @@ class ServerCapabilities {
   /// `/Items?ParentId=...&Recursive=false` queries.
   final bool folderGrouping;
 
+  /// The server says who in the household watched an item. Pleya Server only:
+  /// Plex answers that through `ItemWatchersService`, and the others have no
+  /// such route.
+  final bool itemActivity;
+
   const ServerCapabilities({
     this.serverSidePlayQueue = false,
     this.serverSidePlaylists = false,
@@ -156,6 +161,7 @@ class ServerCapabilities {
     this.scrubThumbnails = false,
     this.serverFavorites = false,
     this.folderGrouping = false,
+    this.itemActivity = false,
   });
 
   /// Defaults for a fully-featured Plex server.
@@ -268,6 +274,7 @@ class ServerCapabilities {
     bool? scrubThumbnails,
     bool? serverFavorites,
     bool? folderGrouping,
+    bool? itemActivity,
   }) {
     return ServerCapabilities(
       serverSidePlayQueue: serverSidePlayQueue ?? this.serverSidePlayQueue,
@@ -292,6 +299,7 @@ class ServerCapabilities {
       scrubThumbnails: scrubThumbnails ?? this.scrubThumbnails,
       serverFavorites: serverFavorites ?? this.serverFavorites,
       folderGrouping: folderGrouping ?? this.folderGrouping,
+      itemActivity: itemActivity ?? this.itemActivity,
     );
   }
 }

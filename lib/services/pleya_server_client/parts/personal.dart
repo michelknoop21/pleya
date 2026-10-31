@@ -53,6 +53,24 @@ mixin _PleyaServerPersonalMethods on _PleyaServerRequests {
     return true;
   }
 
+  /// Who in the household watched [itemId], most recent first. On a season or
+  /// show the server adds up everything underneath.
+  ///
+  /// Empty when the server has no such feature, did not answer, or sent
+  /// something unreadable: this is a line on a detail page, and a failure here
+  /// is never worth more than the line not appearing.
+  Future<List<PleyaItemActivityEntry>> fetchItemActivity(String itemId) async {
+    if (!wireCapabilities.itemActivity) return const [];
+    final json = await _getJson('/items/$itemId/activity');
+    if (json == null) return const [];
+    try {
+      return PleyaItemActivity.fromJson(json).items;
+    } on PleyaWireFormatException catch (e) {
+      appLogger.d('PleyaServerClient: activity of $itemId is unreadable', error: e);
+      return const [];
+    }
+  }
+
   /// The Pleya Verify fixture's kijklijst (`watchlist.studio.v1`): item ids,
   /// newest first. Only `WatchlistSourceFactory` in a `PLEYA_VERIFY` build
   /// asks; a real Pleya Server has no such route, and its 404 reads as empty.
