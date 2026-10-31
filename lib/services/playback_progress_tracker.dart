@@ -3,15 +3,14 @@ import '../media/ids.dart';
 
 import '../mpv/mpv.dart';
 
-import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../media/media_source_info.dart';
 import 'offline_watch_sync_service.dart';
 import 'playback_report_session.dart';
+import 'playback_stream_indexes.dart';
 import 'playback_write_authority.dart';
 import 'pleya_profile_language_preference_store.dart';
-import 'track_selection_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/watch_state_notifier.dart';
 
@@ -564,8 +563,8 @@ class PlaybackProgressTracker {
 
     return PlaybackStreamSelection(
       mediaSourceId: info.mediaSourceId,
-      audioStreamIndex: _currentAudioStreamIndex(info),
-      subtitleStreamIndex: _currentSubtitleStreamIndex(info),
+      audioStreamIndex: currentAudioStreamIndex(player, metadata, info),
+      subtitleStreamIndex: currentSubtitleStreamIndex(player, info),
     );
   }
 
@@ -576,66 +575,6 @@ class PlaybackProgressTracker {
       appLogger.d('Could not read track-selection persistence setting; reporting selected streams', error: e);
       return true;
     }
-  }
-
-  int? _currentAudioStreamIndex(MediaSourceInfo info) {
-    final playerAudioTracks = player.state.tracks.audio.where((t) => t.id != 'auto' && t.id != 'no').toList();
-    if (metadata.backend == MediaBackend.jellyfin &&
-        (info.audioTracks.any((track) => track.isExternal) || playerAudioTracks.length <= 1)) {
-      final selectedSourceTrack = _selectedSourceAudioTrack(info);
-      if (selectedSourceTrack != null) return selectedSourceTrack.id;
-    }
-
-    final track = player.state.track.audio;
-    if (track == null) return null;
-
-    final ordinal = playerAudioTracks.indexOf(track);
-    if (ordinal >= 0 && ordinal < info.audioTracks.length) return info.audioTracks[ordinal].id;
-
-    final matched = findPlexTrackForMpvAudio(track, info.audioTracks, allMpvTracks: player.state.tracks.audio);
-    if (matched != null) return matched.id;
-
-    final parsedId = int.tryParse(track.id);
-    if (parsedId != null && info.audioTracks.any((t) => t.id == parsedId)) return parsedId;
-
-    return null;
-  }
-
-  MediaAudioTrack? _selectedSourceAudioTrack(MediaSourceInfo info) {
-    for (final track in info.audioTracks) {
-      if (track.selected) return track;
-    }
-    final defaultIndex = info.defaultAudioStreamIndex;
-    if (defaultIndex == null) return null;
-    for (final track in info.audioTracks) {
-      if (track.id == defaultIndex) return track;
-    }
-    return null;
-  }
-
-  int? _currentSubtitleStreamIndex(MediaSourceInfo info) {
-    final track = player.state.track.subtitle;
-    if (track == null || track.id == 'no') return -1;
-
-    if (track.isExternal && track.uri != null) {
-      for (final mediaTrack in info.subtitleTracks) {
-        final key = mediaTrack.key;
-        if (mediaTrack.isExternal && key != null && track.uri!.contains(key)) {
-          return mediaTrack.id;
-        }
-      }
-    }
-
-    final ordinal = player.state.tracks.subtitle.where((t) => t.id != 'auto' && t.id != 'no').toList().indexOf(track);
-    if (ordinal >= 0 && ordinal < info.subtitleTracks.length) return info.subtitleTracks[ordinal].id;
-
-    final matched = findPlexTrackForMpvSubtitle(track, info.subtitleTracks, allMpvTracks: player.state.tracks.subtitle);
-    if (matched != null) return matched.id;
-
-    final parsedId = int.tryParse(track.id);
-    if (parsedId != null && info.subtitleTracks.any((t) => t.id == parsedId)) return parsedId;
-
-    return null;
   }
 
   /// Queue progress update locally (offline mode)
