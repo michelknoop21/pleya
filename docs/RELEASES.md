@@ -50,6 +50,31 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 427 · 31 October 2026 · Apple TV, iPhone and iPad
+
+<!-- commit: fcd80e3f -->
+
+### New
+
+- **One page per title.** A film or series on two servers keeps the same artwork and description, whichever server plays it. The technical details and tracks follow the server you chose.
+- **Your place travels with you.** A title continues at your last position on the other server, and progress and watched marks now go to every server with that title.
+- **A missing episode just plays.** If your chosen server lacks an episode, it plays from a server that has it.
+
+### Fixed
+
+- **Scrolling on Apple TV.** A library scan no longer holds back the remote, and uses far less memory during playback.
+
+### Notes
+
+- Progress and watched marks are written to your real servers.
+
+### Worth checking
+
+- Watch a title on one server, stop, and open it from the other: it continues at your position.
+- Stop halfway on one server and check the position on the other.
+- Let a series run on to the next episode, also where one server lacks it.
+- Scroll the Home rows, and step Volume boost during a film.
+
 ## 2.8.1 · build 423 · 30 October 2026 · Apple TV
 
 <!-- commit: 43aa2871 -->
