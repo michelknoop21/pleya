@@ -193,7 +193,16 @@ func (m *Manager) extractSubtitleFile(ctx context.Context, p SubtitleParams, fin
 	if err := temp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(temp.Name(), target)
+	// A rename keeps the time of ffmpeg's last write. After a long silent tail that is already
+	// past subtitleInUse, and the trim right behind this would take the track from its request.
+	m.subtitleCache.Lock()
+	defer m.subtitleCache.Unlock()
+	if err := os.Rename(temp.Name(), target); err != nil {
+		return err
+	}
+	now := time.Now()
+	_ = os.Chtimes(target, now, now)
+	return nil
 }
 
 // subtitleFailedRecently keeps a failure readable for the repeat that follows Retry-After.

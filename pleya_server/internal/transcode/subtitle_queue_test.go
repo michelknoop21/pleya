@@ -373,3 +373,32 @@ func TestATrackHandedOutMomentsAgoStaysEvenOverBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A rename keeps the mtime of ffmpeg's last write. A track that ends in a long silent stretch
+// is therefore already old when it lands in the cache, and the trim right behind it must not
+// take it away before the request gets its path.
+func TestATrackWithASilentTailSurvivesTheTrimRightBehindIt(t *testing.T) {
+	dir := t.TempDir()
+	tool := filepath.Join(dir, "ffmpeg")
+	temps := filepath.Join(dir, "work", "subtitles", ".subtitle-*")
+	script := "#!/bin/sh\nprintf '1\\n00:00:00,000 --> 00:00:01,000\\nCaption\\n'\n" +
+		"while :; do for f in " + temps + "; do if [ -s \"$f\" ]; then touch -t 200001010000 \"$f\"; exit 0; fi; done; sleep 0.01; done\n"
+	if err := os.WriteFile(tool, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	m := queueManager(t, dir, tool, transcode.Options{SubtitleWait: 10 * time.Second, SubtitleCacheBytes: 10})
+
+	path, err := m.ExtractSubtitle(context.Background(), transcode.SubtitleParams{
+		InputPath: subtitleSource(t, dir), StreamIndex: 1, Format: "srt", Generation: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("the trim took the track: %v", err)
+	}
+	if time.Since(info.ModTime()) > time.Minute {
+		t.Fatalf("the track still carries the age of its last write: %v", info.ModTime())
+	}
+}
