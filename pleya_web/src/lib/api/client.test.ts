@@ -855,6 +855,41 @@ describe('existing cookie-auth contract', () => {
     expect(await tab.client.restore()).toBe(false);
     expect(tab.seen.some(request => request.path === '/auth/refresh')).toBe(false);
   });
+  it('an abandoned tab leaves the cookie note of a new login elsewhere alone', async () => {
+    const shared = stores();
+    const tab = cookieServer(true, undefined, shared);
+    await tab.client.info();
+    await tab.client.login({ username: 'A', password: 'canned' });
+    const other = cookieServer(true, undefined, { ...shared, tokens: new TokenStore(shared.persistent, memoryStorage()) });
+    await other.client.info();
+    await other.client.login({ username: 'B', password: 'canned' });
+    tab.tokens.clearLocal();
+
+    expect(await tab.client.restore()).toBe(false);
+    expect(shared.persistent.getItem('pleya.cookie_session')).toBe('1');
+    expect(new TokenStore(shared.persistent, memoryStorage()).signedIn).toBe(true);
+  });
+  it('an abandoned tab leaves the refresh token of a new login elsewhere alone', async () => {
+    const shared = stores();
+    const tab = cookieServer(false, undefined, shared);
+    await tab.client.info();
+    await tab.client.login({ username: 'A', password: 'canned' });
+    const other = cookieServer(false, undefined, { ...shared, tokens: new TokenStore(shared.persistent, memoryStorage()) });
+    await other.client.info();
+    await other.client.login({ username: 'B', password: 'canned' });
+    tab.tokens.clearLocal();
+
+    expect(await tab.client.restore()).toBe(false);
+    expect(shared.persistent.getItem('pleya.refresh_token')).toBe('new-R');
+  });
+  it('a tab that lost its own session still clears what it shares', async () => {
+    const shared = stores();
+    const { client } = cookieServer(true, '/users/me', shared);
+    await client.info();
+    await client.login({ username: 'A', password: 'canned' });
+    await client.signOut({ remote: true });
+    expect(shared.persistent.getItem('pleya.cookie_session')).toBeNull();
+  });
   it('discards a refresh when the account changed while it was in flight', async () => {
     const shared = stores();
     const otherTab = new TokenStore(shared.persistent, memoryStorage());

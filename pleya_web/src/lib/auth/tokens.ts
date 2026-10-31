@@ -120,13 +120,21 @@ export class TokenStore {
     this.#write(COOKIE_SESSION_KEY, null);
   }
 
-  #clearTokens(): void {
+  /**
+   * Alleen wat van dit tabblad is. Voor een tabblad dat vervangen is: het refreshtoken en de aantekening
+   * in localStorage horen dan bij de login in een ander tabblad.
+   */
+  clearLocal(): void {
     this.#memoryAccess = null;
     try {
       this.#session?.removeItem(ACCESS_KEY);
     } catch {
-      // One blocked storage must not prevent clearing the other.
+      // niets te doen
     }
+  }
+
+  #clearTokens(): void {
+    this.clearLocal();
     try {
       this.#persistent?.removeItem(REFRESH_KEY);
     } catch {
@@ -188,8 +196,12 @@ export class TokenStore {
    * Of deze browser bij het laatste contact ingelogd was. Dat is meer dan `hasSomething`: een cookiesessie
    * heeft na een herlaadbeurt geen enkel token in beeld, en als `GET /info` dan mislukt weet deze client ook nog
    * niet dat de server cookies kent. Dit is een aantekening en geen oordeel: alleen de server weet of de sessie leeft.
+   *
+   * Alleen wat gedeeld is telt: een accesstoken staat per tabblad en overleeft een uitlog in een ander tabblad. Zonder
+   * opslag is er geen ander tabblad en is dat token alles wat er is.
    */
   get signedIn(): boolean {
-    return this.hasSomething || this.#read(COOKIE_SESSION_KEY) !== null;
+    if (!this.#persistent) return this.hasSomething;
+    return this.refreshToken !== null || this.#read(COOKIE_SESSION_KEY) !== null;
   }
 }

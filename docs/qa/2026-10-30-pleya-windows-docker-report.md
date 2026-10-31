@@ -22,12 +22,12 @@ Eindbewijs op `4848e07246f92c0b312b55d9613e7539f4e276c5`, lokaal, niet gepusht, 
 
 **Sinds `86b608937`.** Vijf correcties: een dood refreshtoken telt op een eigen emmer en niet op die van de sessie, een rotatie neemt eerst de sessie en dan de tokens (geen `deadlock detected` meer), "Je bent nog ingelogd" werkt ook voor een cookiesessie, Opnieuw op een ondertitel wacht bewust de 15 s uit en vraagt daarna meteen, en de plaatshouder `Unknown device` komt vertaald in beeld. De laatste commit is een commentaarcorrectie in `handlers_refresh.go`. Hoofdstuk 6.3 van `docs/pleya-protocol-v1.md` zegt daarom dat een ingetrokken token per token telt; `openapi.yaml` is niet geraakt.
 
-**Open punten uit de laatste review.**
-- Een lus op een dood token kan tot ongeveer 45 rijen per seconde in de tabel schrijven (90 herhalingen in het respijt, de sessie-emmer levert elke 2 s een nieuw dood token) in plaats van 0,5. Geen uitlog; de rijen blijven tot `expires_at`. Het commentaar zegt dit nu eerlijk.
-- Twee tabbladgevallen rond "Je bent nog ingelogd": een verlaten tabblad wist bij `loseSession` de aantekening van een nieuwe login in een ander tabblad, en na uitloggen in tab A toont tab B bij een storing nog "nog ingelogd" tot zijn accesstoken verloopt.
-- `PurgeExpiredRefreshTokens` neemt tokenrijen zonder sessieslot. Niet aangetoond; het gevolg is hooguit één mislukte aanvraag.
+**Open punten uit de laatste review, daarna gemeten.**
+- De 45 rijen per seconde klopte niet als grens: het was het gemiddelde over de eerste 30 seconden. Die lus houdt 16 per seconde vol, en een andere lus via vervangen tokens haalde 67 op één sessie en 145 op vier, met een gewone aanvraag van 9 naar 311 ms. Opgelost met een grens per account op rotaties en herhalingen, en indexen in migratie 0030. Open: inloggen schrijft een tokenrij buiten die grens om (gemeten 2,3 tot 4,7 logins per seconde, begrensd door Argon2). Sessies per account hebben geen bovengrens. Die fix hoort in `handlers_auth.go`.
+- `PurgeExpiredRefreshTokens` kon wel degelijk vastlopen tegen een rotatie. Een afgedwongen volgorde gaf `40P01` op twee manieren, op het toeval 0 keer in 400 runs. Opgelost: per sessie, met de sessie eerst.
+- Beide tabbladgevallen rond "Je bent nog ingelogd" zijn gereproduceerd in Chromium en opgelost. Het tabbladslot werkt in een echte browser: twee verversingen na elkaar, zonder `navigator.locks` overlappen ze en vangt het respijt dat op. `tests/e2e/tabs.spec.ts` blijft in de suite.
 
-**Niet gedraaid.** Playwright-project `mobile`, de live NAS, toestellen, Windows op deze commit, een echte browser op het tabbladslot, de `dart_code_linter`-scans en Flutter-goldens op Linux. `deferred_subtitle_loader_test.dart` viel één keer tijdens een parallelle Go-run en daarna niet meer, ook niet op deze commit. Tijdgevoelig vermoed, niet aangetoond.
+**Niet gedraaid.** Playwright-project `mobile`, de live NAS, toestellen, Windows op deze commit, de `dart_code_linter`-scans en Flutter-goldens op Linux. `deferred_subtitle_loader_test.dart` viel één keer tijdens een parallelle Go-run en daarna niet meer, ook niet op deze commit. Tijdgevoelig vermoed, niet aangetoond.
 
 ## Wat er getest is
 

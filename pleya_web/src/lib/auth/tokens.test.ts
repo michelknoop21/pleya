@@ -122,6 +122,44 @@ describe('cookie credential storage', () => {
     reloaded.clear();
     expect(new TokenStore(persistent, store()).signedIn).toBe(false);
   });
+  it('telt een accesstoken in het geheugen niet als een ander tabblad uitlogde', () => {
+    const persistent = store();
+    const here = new TokenStore(persistent, store());
+    const other = new TokenStore(persistent, store());
+    here.setMemoryOnly(true);
+    other.setMemoryOnly(true);
+    other.set({ access_token: 'cookie-B', expires_in_ms: 900000 });
+    here.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    expect(here.signedIn).toBe(true);
+
+    other.clear();
+    expect(here.accessToken).toBe('cookie-A');
+    expect(here.signedIn).toBe(false);
+  });
+  it('telt ook een accesstoken in sessionStorage niet na een uitlog in een ander tabblad', () => {
+    const persistent = store(); const session = store();
+    const here = new TokenStore(persistent, session);
+    here.set({ access_token: 'legacy-A', refresh_token: 'legacy-R', expires_in_ms: 900000 });
+    new TokenStore(persistent, store()).clear();
+    const reloaded = new TokenStore(persistent, session);
+    expect(reloaded.accessToken).toBe('legacy-A');
+    expect(reloaded.signedIn).toBe(false);
+  });
+  it('kent zonder opslag alleen het geheugen', () => {
+    const tokens = new TokenStore(null, null);
+    expect(tokens.signedIn).toBe(false);
+    tokens.set({ access_token: 'A', expires_in_ms: 900000 });
+    expect(tokens.signedIn).toBe(true);
+  });
+  it('clearLocal laat staan wat gedeeld is', () => {
+    const persistent = store(); const session = store();
+    const tokens = new TokenStore(persistent, session);
+    tokens.set({ access_token: 'A', refresh_token: 'R', expires_in_ms: 900000 });
+    tokens.clearLocal();
+    expect(tokens.accessToken).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+    expect(persistent.getItem('pleya.refresh_token')).toBe('R');
+  });
   it('zegt niet dat een lege browser of een server zonder cookies een cookiesessie heeft', () => {
     expect(new TokenStore(store(), store()).signedIn).toBe(false);
 

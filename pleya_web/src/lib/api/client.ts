@@ -148,7 +148,9 @@ export class PleyaClient {
 
   #loseSession(): void {
     this.#sessionGeneration++;
-    this.tokens.clear();
+    // Een ander tabblad wisselde van sessie: wat in localStorage staat is dan van die sessie, niet van deze.
+    if (this.tokens.epoch !== this.#epoch) this.tokens.clearLocal();
+    else this.tokens.clear();
     this.#onSessionLost?.();
   }
 
