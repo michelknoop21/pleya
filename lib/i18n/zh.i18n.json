@@ -374,6 +374,9 @@
     "has64bitOffsets": "64位偏移量"
   },
   "mediaMenu": {
+    "watch": "观看",
+    "manage": "管理",
+    "moreWaysToWatch": "更多观看方式",
     "markAsWatched": "标记为已观看",
     "markAsUnwatched": "标记为未观看",
     "removeFromContinueWatching": "从继续观看中移除",
@@ -741,6 +744,7 @@
     "manageLibraries": "管理媒体库",
     "sort": "排序",
     "sortBy": "排序依据",
+    "filterBy": "筛选依据",
     "filters": "筛选器",
     "confirmActionMessage": "确定要执行此操作吗？",
     "showLibrary": "显示媒体库",

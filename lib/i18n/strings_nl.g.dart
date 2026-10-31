@@ -643,6 +643,9 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	// Translations
 	@override String get addToPlaylistOrCollection => 'Toevoegen aan afspeellijst / collectie';
 	@override String get addToPlaylist => 'Toevoegen aan afspeellijst';
+	@override String get watch => 'Kijken';
+	@override String get manage => 'Beheren';
+	@override String get moreWaysToWatch => 'Meer manieren om te kijken';
 	@override String get markAsWatched => 'Markeer als gekeken';
 	@override String get markAsUnwatched => 'Markeer als ongekeken';
 	@override String get removeFromContinueWatching => 'Verwijderen uit Verder kijken';
@@ -1242,7 +1245,8 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String emptyTrashConfirm({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?';
 	@override String get manageLibraries => 'Beheer bibliotheken';
 	@override String get sort => 'Sorteren';
-	@override String get sortBy => 'Sorteer op';
+	@override String get sortBy => 'Sorteren op';
+	@override String get filterBy => 'Filteren op';
 	@override String get filters => 'Filters';
 	@override String get confirmActionMessage => 'Weet je zeker dat je deze actie wilt uitvoeren?';
 	@override String get showLibrary => 'Toon bibliotheek';
@@ -1683,7 +1687,7 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 	@override String get movies => 'Films';
 	@override String get noDownloads => 'Nog geen downloads';
 	@override String get noDownloadsDescription => 'Gedownloade content verschijnt hier voor offline weergave';
-	@override String get downloadNow => 'Download';
+	@override String get downloadNow => 'Downloaden';
 	@override String get deleteDownload => 'Download verwijderen';
 	@override String get retryDownload => 'Download opnieuw proberen';
 	@override String get downloadQueued => 'Download in wachtrij';
@@ -5066,6 +5070,9 @@ extension on TranslationsNl {
 			'detailActions.more' => 'Meer',
 			'mediaMenu.addToPlaylistOrCollection' => 'Toevoegen aan afspeellijst / collectie',
 			'mediaMenu.addToPlaylist' => 'Toevoegen aan afspeellijst',
+			'mediaMenu.watch' => 'Kijken',
+			'mediaMenu.manage' => 'Beheren',
+			'mediaMenu.moreWaysToWatch' => 'Meer manieren om te kijken',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
 			'mediaMenu.removeFromContinueWatching' => 'Verwijderen uit Verder kijken',
@@ -5115,11 +5122,11 @@ extension on TranslationsNl {
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
 			'videoControls.playsLater' => ({required Object label}) => '${label} speelt later af',
 			'videoControls.playsEarlier' => ({required Object label}) => '${label} speelt eerder af',
@@ -5560,7 +5567,8 @@ extension on TranslationsNl {
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?',
 			'libraries.manageLibraries' => 'Beheer bibliotheken',
 			'libraries.sort' => 'Sorteren',
-			'libraries.sortBy' => 'Sorteer op',
+			'libraries.sortBy' => 'Sorteren op',
+			'libraries.filterBy' => 'Filteren op',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Weet je zeker dat je deze actie wilt uitvoeren?',
 			'libraries.showLibrary' => 'Toon bibliotheek',
@@ -5628,12 +5636,12 @@ extension on TranslationsNl {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
+			_ => null,
+		} ?? switch (path) {
 			'about.licence' => 'Licentie',
 			'about.sources' => 'Bronnen',
 			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-			_ => null,
-		} ?? switch (path) {
 			'about.wikidataSource' => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.',
 			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.',
 			'about.traktSource' => 'Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P.',
@@ -5910,7 +5918,7 @@ extension on TranslationsNl {
 			'downloads.movies' => 'Films',
 			'downloads.noDownloads' => 'Nog geen downloads',
 			'downloads.noDownloadsDescription' => 'Gedownloade content verschijnt hier voor offline weergave',
-			'downloads.downloadNow' => 'Download',
+			'downloads.downloadNow' => 'Downloaden',
 			'downloads.deleteDownload' => 'Download verwijderen',
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
@@ -6142,12 +6150,12 @@ extension on TranslationsNl {
 			'externalPlayer.playerNameHint' => 'Mijn speler',
 			'externalPlayer.playerCommand' => 'Commando',
 			'externalPlayer.playerPackage' => 'Pakketnaam',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL-schema',
 			'externalPlayer.off' => 'Uit',
 			'externalPlayer.launchFailed' => 'Kan externe speler niet openen',
 			'externalPlayer.appNotInstalled' => ({required Object name}) => '${name} is niet geïnstalleerd',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playInExternalPlayer' => 'Afspelen in externe speler',
 			'metadataEdit.editMetadata' => 'Bewerken...',
 			'metadataEdit.screenTitle' => 'Metadata bewerken',
@@ -6656,12 +6664,12 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
 			'unifiedCatalog.sort.yearNewest' => 'Nieuwste jaar',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.yearOldest' => 'Oudste jaar',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
 			'unifiedCatalog.sort.fields.title' => 'Titel',
@@ -7170,12 +7178,12 @@ extension on TranslationsNl {
 			'assistant.examples.trending.0' => 'Wat is er nu populair?',
 			'assistant.examples.trending.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.examples.request.0' => 'Welke thrillers van dit jaar kan ik aan mijn bibliotheek toevoegen?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Zoek een sciencefictionserie die het aanvragen waard is.',
 			'assistant.examples.trakt.0' => 'Welke titels van mijn Trakt-kijklijst kan ik hier vanavond kijken?',
 			'assistant.examples.history.0' => 'Wat heb ik de laatste tijd gekeken?',
 			'assistant.examples.history.1' => 'Geef me een tip op basis van wat ik heb gekeken.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.memory.0' => 'Wat herinner je je over mij?',
 			'assistant.examples.watchStats.0' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.examples.watchStats.1' => 'Wie kijkt er nu?',

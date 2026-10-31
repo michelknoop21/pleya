@@ -147,6 +147,27 @@ ids:
   - id: library.header
     role: region
     instanceable: false
+  - id: library.header.search
+    role: button
+    instanceable: false
+  - id: library.header.watchlist
+    role: button
+    instanceable: false
+  - id: library.header.avatar
+    role: button
+    instanceable: false
+  - id: library.filter.more
+    role: button
+    instanceable: false
+  - id: library.filter.count
+    role: region
+    instanceable: false
+  - id: sheet.library_sort
+    role: sheet
+    instanceable: false
+  - id: sheet.library_filter
+    role: sheet
+    instanceable: false
   - id: library.filter.grouping
     role: filter
     instanceable: false

@@ -30,6 +30,11 @@ enum OverlaySheetPresentation {
   /// close to the edges where a modal keeps the overscan band: Meer acties in
   /// northstar 12 runs from top to bottom. Anywhere else this is [panel].
   tvSidePanel,
+
+  /// A sheet that floats clear of the edges of a phone: inset on all four
+  /// sides, every corner rounded like the screen. Wider windows get the same
+  /// centred modal as [panel]. Used by the iPhone library look.
+  floating,
 }
 
 /// Resolved placement for one overlay sheet. Pure data: the host reads it,
@@ -90,7 +95,12 @@ class OverlaySheetGeometry {
     required this.fadeIn,
     this.verticalEdgePadding = 0,
     this.shadows = const [],
+    this.floating = false,
   });
+
+  /// Floats clear of every edge of a phone, so it takes no safe-area padding
+  /// inside: its own inset already keeps it off the home indicator.
+  final bool floating;
 
   /// Whether the surface floats in the middle rather than hanging off an edge.
   /// A floating panel needs no safe-area padding on the edge it does not touch.
@@ -108,6 +118,7 @@ class OverlaySheetGeometry {
       other.allowDragHandle == allowDragHandle &&
       other.enterOffset == enterOffset &&
       other.fadeIn == fadeIn &&
+      other.floating == floating &&
       listEquals(other.shadows, shadows);
 
   @override
@@ -121,6 +132,7 @@ class OverlaySheetGeometry {
     allowDragHandle,
     enterOffset,
     fadeIn,
+    floating,
     Object.hashAll(shadows),
   );
 }
@@ -295,6 +307,9 @@ OverlaySheetGeometry resolveOverlaySheetGeometry({
     return alignment == null
         ? _tvPanelGeometry(viewport: viewport, explicitConstraints: explicitConstraints)
         : _tvPlacedSheetGeometry(viewport: viewport, alignment: alignment, explicitConstraints: explicitConstraints);
+  }
+  if (presentation == OverlaySheetPresentation.floating && ScreenBreakpoints.isMobile(viewport.width)) {
+    return floatingSheetGeometry(viewport: viewport, explicitConstraints: explicitConstraints);
   }
   final usePanel = presentation != OverlaySheetPresentation.sheet && !ScreenBreakpoints.isMobile(viewport.width);
   return usePanel
@@ -473,6 +488,36 @@ OverlaySheetGeometry _sheetGeometry({
 /// breakpoint. An iPad in landscape (744 short side and up) is not one.
 bool _isPhoneLandscape(Size viewport) =>
     viewport.width > viewport.height && viewport.shortestSide < ScreenBreakpoints.mobile;
+
+/// Gap between a floating sheet and every screen edge, the bottom one included.
+const double floatingSheetEdgeInset = 8;
+
+/// Corner radius of a floating sheet. Large enough that the bottom corners
+/// follow the rounding of the screen they sit next to.
+const double floatingSheetCornerRadius = 37;
+
+/// Width of the grip at the top of a floating sheet.
+const double floatingSheetHandleWidth = 58;
+
+/// Share of the viewport height a floating sheet may take before it scrolls.
+const double _floatingSheetMaxHeightFraction = 0.85;
+
+/// The sheet of the iPhone library look: floats 8 pt off the left, right and
+/// bottom edges, 37 pt corners, as tall as its content up to the maximum.
+OverlaySheetGeometry floatingSheetGeometry({required Size viewport, BoxConstraints? explicitConstraints}) {
+  return OverlaySheetGeometry(
+    alignment: Alignment.bottomCenter,
+    constraints: explicitConstraints ?? BoxConstraints(maxHeight: viewport.height * _floatingSheetMaxHeightFraction),
+    borderRadius: BorderRadius.circular(floatingSheetCornerRadius),
+    edgePadding: floatingSheetEdgeInset,
+    verticalEdgePadding: floatingSheetEdgeInset,
+    allowPointerAnchor: false,
+    allowDragHandle: true,
+    enterOffset: Offset(0, viewport.height),
+    fadeIn: false,
+    floating: true,
+  );
+}
 
 OverlaySheetGeometry _panelGeometry({required Size viewport, BoxConstraints? explicitConstraints}) {
   // Only a viewport at least [ScreenBreakpoints.mobile] wide reaches this

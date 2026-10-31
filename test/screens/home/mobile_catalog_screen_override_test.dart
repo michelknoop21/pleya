@@ -195,7 +195,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(notifications, lessThan(40));
+    expect(notifications, 2);
+
+    // A library joining: each screen answers once, and then it is quiet.
+    notifications = 0;
+    librariesProvider.debugSetLibraries([
+      ...librariesProvider.libraries,
+      MediaLibrary(
+        id: 'B',
+        backend: MediaBackend.plex,
+        title: 'B',
+        kind: MediaKind.movie,
+        serverId: 's1',
+        serverName: 's1',
+      ),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(notifications, 4);
   });
 
   testWidgets('NEGATIVE CONTROL: without an override the catalog opens on the stored filter', (tester) async {

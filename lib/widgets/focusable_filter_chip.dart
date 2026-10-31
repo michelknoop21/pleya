@@ -4,6 +4,7 @@ import 'package:pleya/widgets/app_icon.dart';
 import '../focus/focusable_chip_mixin.dart';
 import '../focus/input_mode_tracker.dart';
 import 'focus_builders.dart';
+import 'mobile/library_phone_look.dart';
 import '../theme/mono_shapes.dart';
 import '../theme/mono_tokens.dart';
 
@@ -39,6 +40,10 @@ enum FilterChipVariant {
   /// surfaces (TV, desktop, iPad) that already render [outlined] do not
   /// change shape underneath them; see DEC-103.
   scope,
+
+  /// [filled] with the label in full ink: the filter row of the iPhone library
+  /// look, where the pill carries the current value rather than a name.
+  libraryPill,
 }
 
 /// A focusable filter chip that shows a color change when focused.
@@ -67,6 +72,10 @@ class FocusableFilterChip extends StatefulWidget {
   /// control pill carries its active-filter count this way instead of an
   /// accent tint.
   final int badgeCount;
+
+  /// Replaces [icon] when the glyph is not a font icon. Only
+  /// [FilterChipVariant.libraryPill] draws it.
+  final Widget? leading;
 
   /// Icon rendered after the label, e.g. the season-picker chevron. Separate
   /// from [icon], which is always leading.
@@ -99,6 +108,7 @@ class FocusableFilterChip extends StatefulWidget {
     this.value,
     this.selected = false,
     this.badgeCount = 0,
+    this.leading,
     this.trailingIcon,
     this.focusNode,
     this.onNavigateDown,
@@ -163,6 +173,8 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
         return _buildText(context, showFocus);
       case FilterChipVariant.filled:
         return _buildFilled(context, showFocus);
+      case FilterChipVariant.libraryPill:
+        return _buildFilled(context, showFocus, ink: tokens(context).text);
       case FilterChipVariant.outlined:
       case FilterChipVariant.scope:
         return _buildOutlinedOrScope(context, showFocus);
@@ -217,9 +229,9 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
   /// shape, so its height must not drift with the label's font metrics or the
   /// platform text scale. The 44pt tap target lives in the wrapper around this
   /// surface (see `minTapHeight`) and does not enlarge it.
-  Widget _buildFilled(BuildContext context, bool showFocus) {
+  Widget _buildFilled(BuildContext context, bool showFocus, {Color? ink}) {
     final tk = tokens(context);
-    final foregroundColor = showFocus ? tk.text : tk.textMuted;
+    final foregroundColor = ink ?? (showFocus ? tk.text : tk.textMuted);
     final borderColor = showFocus ? tk.text.withValues(alpha: 0.75) : null;
 
     return FocusBuilders.buildFocusableChip(
@@ -233,11 +245,41 @@ class _FocusableFilterChipState extends State<FocusableFilterChip> with Focusabl
       minTapHeight: 44,
       borderColor: borderColor,
       backgroundColor: tk.surfaceElevated,
-      child: SizedBox(height: _filledPillHeight, child: _buildContent(context, foregroundColor)),
+      child: SizedBox(
+        height: _filledPillHeight,
+        child: widget.variant == FilterChipVariant.libraryPill
+            ? _buildLibraryPillContent(context, foregroundColor)
+            : _buildContent(context, foregroundColor),
+      ),
     );
   }
 
   IconData? get icon => widget.icon;
+
+  Widget _buildLibraryPillContent(BuildContext context, Color foregroundColor) {
+    final icon = widget.icon;
+    final leading =
+        widget.leading ??
+        (icon == null ? null : AppIcon(icon, size: LibraryPhoneMetrics.pillIconSize, color: foregroundColor));
+    return Row(
+      mainAxisSize: .min,
+      children: [
+        if (leading != null) ...[leading, const SizedBox(width: 6)],
+        Flexible(
+          child: Text(
+            widget.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: foregroundColor,
+              fontSize: LibraryPhoneMetrics.pillFontSize,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildContent(BuildContext context, Color foregroundColor) {
     return Row(

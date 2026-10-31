@@ -316,7 +316,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(notifications, lessThan(40));
+    expect(notifications, 4);
 
     // A library joining: each screen answers once, and then it is quiet.
     notifications = 0;
@@ -335,7 +335,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(notifications, lessThan(40));
+    expect(notifications, 6);
   });
 
   // A deliberate sort change made while viewing an override is not this

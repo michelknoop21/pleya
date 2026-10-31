@@ -221,6 +221,19 @@ void main() {
     expect(panel['add_to']!.label, t.mediaMenu.addToPlaylistOrCollection);
     final ids = panel.keys.toList();
     expect(ids.indexOf('watchlist_toggle'), lessThan(ids.indexOf('add_to')));
+    final drawn = tester.widget<TvDetailActionPanel>(find.byType(TvDetailActionPanel).last).rows.map((row) => row.id);
+    expect(drawn.where((id) => id == 'add_to'), hasLength(1));
+  });
+
+  testWidgets('an owner on a backend without collections is offered a playlist, nothing more', (tester) async {
+    final panel = await rows(
+      tester,
+      MediaBackend.jellyfin,
+      ServerCapabilities.jellyfin.copyWith(serverSideCollections: false),
+      owner: true,
+    );
+
+    expect(panel['add_to']!.label, t.mediaMenu.addToPlaylist);
   });
 
   testWidgets('someone who cannot manage the server is only offered a playlist', (tester) async {

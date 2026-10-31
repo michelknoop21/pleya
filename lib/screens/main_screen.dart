@@ -1610,6 +1610,8 @@ class _MainScreenState extends State<MainScreen>
           // keep `LibrariesScreen` unchanged, same split DEC-092 made for TV.
           NavigationTabId.libraries when _isPhone => MobileLibrariesScreen(
             onBack: () => _selectTab(NavigationTabId.myPleya),
+            onOpenSearch: _openSearch,
+            onOpenWatchlist: () => _selectTab(NavigationTabId.watchlist),
           ),
           NavigationTabId.libraries => LibrariesScreen(
             key: _librariesKey,

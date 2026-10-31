@@ -1494,6 +1494,15 @@ class TranslationsMediaMenuEn {
 	/// en: 'Add to Playlist'
 	String get addToPlaylist => 'Add to Playlist';
 
+	/// en: 'Watch'
+	String get watch => 'Watch';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'More Ways to Watch'
+	String get moreWaysToWatch => 'More Ways to Watch';
+
 	/// en: 'Mark as Watched'
 	String get markAsWatched => 'Mark as Watched';
 
@@ -2984,6 +2993,9 @@ class TranslationsLibrariesEn {
 
 	/// en: 'Sort By'
 	String get sortBy => 'Sort By';
+
+	/// en: 'Filter By'
+	String get filterBy => 'Filter By';
 
 	/// en: 'Filters'
 	String get filters => 'Filters';
@@ -10923,6 +10935,9 @@ extension on Translations {
 			'detailActions.more' => 'More',
 			'mediaMenu.addToPlaylistOrCollection' => 'Add to Playlist / Collection',
 			'mediaMenu.addToPlaylist' => 'Add to Playlist',
+			'mediaMenu.watch' => 'Watch',
+			'mediaMenu.manage' => 'Manage',
+			'mediaMenu.moreWaysToWatch' => 'More Ways to Watch',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -10972,11 +10987,11 @@ extension on Translations {
 			'tooltips.markAsWatched' => 'Mark as watched',
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Subtitles',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
 			'videoControls.playsLater' => ({required Object label}) => '${label} plays later',
 			'videoControls.playsEarlier' => ({required Object label}) => '${label} plays earlier',
@@ -11418,6 +11433,7 @@ extension on Translations {
 			'libraries.manageLibraries' => 'Manage Libraries',
 			'libraries.sort' => 'Sort',
 			'libraries.sortBy' => 'Sort By',
+			'libraries.filterBy' => 'Filter By',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Are you sure you want to perform this action?',
 			'libraries.showLibrary' => 'Show library',
@@ -11485,12 +11501,12 @@ extension on Translations {
 			'about.basedOnPlezy' => 'Based on Plezy',
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
+			_ => null,
+		} ?? switch (path) {
 			'about.licence' => 'Licence',
 			'about.sources' => 'Sources',
 			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-			_ => null,
-		} ?? switch (path) {
 			'about.wikidataSource' => 'Wikidata (CC0): age rating (MPA) of films for Big P.',
 			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.',
 			'about.traktSource' => 'Trakt: age rating, genres, runtime and score for Big P.',
@@ -11999,12 +12015,12 @@ extension on Translations {
 			'externalPlayer.playerNameHint' => 'My Player',
 			'externalPlayer.playerCommand' => 'Command',
 			'externalPlayer.playerPackage' => 'Package Name',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL Scheme',
 			'externalPlayer.off' => 'Off',
 			'externalPlayer.launchFailed' => 'Failed to open external player',
 			'externalPlayer.appNotInstalled' => ({required Object name}) => '${name} is not installed',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playInExternalPlayer' => 'Play in External Player',
 			'metadataEdit.editMetadata' => 'Edit...',
 			'metadataEdit.screenTitle' => 'Edit Metadata',
@@ -12513,12 +12529,12 @@ extension on Translations {
 			'unifiedCatalog.sort.titleAsc' => 'Title A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Title Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recently added',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oldest added',
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
 			'unifiedCatalog.sort.yearNewest' => 'Newest year',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.yearOldest' => 'Oldest year',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
 			'unifiedCatalog.sort.fields.title' => 'Title',
@@ -13027,12 +13043,12 @@ extension on Translations {
 			'assistant.examples.trending.0' => 'What is popular right now?',
 			'assistant.examples.trending.1' => 'Which popular new movies don\'t I have yet?',
 			'assistant.examples.request.0' => 'Which thrillers from this year could I add to my library?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Find a science fiction series worth requesting.',
 			'assistant.examples.trakt.0' => 'Which titles on my Trakt watchlist can I watch here tonight?',
 			'assistant.examples.history.0' => 'What did I watch lately?',
 			'assistant.examples.history.1' => 'Give me a tip based on what I watched.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.memory.0' => 'What do you remember about me?',
 			'assistant.examples.watchStats.0' => 'Who watched the most this week?',
 			'assistant.examples.watchStats.1' => 'Who is watching right now?',
