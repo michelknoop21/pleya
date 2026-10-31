@@ -135,6 +135,19 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
     }
   }
 
+  /// Whatever failed, again: the first page of what this tab shows, or the page
+  /// after the last one that came.
+  void _tvDetailRetryEpisodes() {
+    SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+    if (_episodes.isNotEmpty) {
+      unawaited(_loadMoreEpisodeList());
+    } else if (_isFlattenEpisodeList) {
+      unawaited(_fetchAllEpisodes());
+    } else {
+      unawaited(_fetchSeasonEpisodes(_selectedSeasonIndex));
+    }
+  }
+
   /// The season's card and its episodes, or the episodes of a series without
   /// seasons. The first page can still be on its way: the season's own card is
   /// there at once, so a Select on its poster always has somewhere to land.
@@ -165,7 +178,7 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
             cell: cell,
             label: t.common.retry,
             height: TvDetailLayout.wideCardHeight * pt,
-            onSelect: () => unawaited(_fetchSeasonEpisodes(_selectedSeasonIndex)),
+            onSelect: _tvDetailRetryEpisodes,
           );
         }
         final episode = episodes[position];

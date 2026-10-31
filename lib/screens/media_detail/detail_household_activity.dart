@@ -21,13 +21,14 @@ extension _MediaDetailHouseholdActivity on _MediaDetailScreenState {
     });
   }
 
-  /// A season tab shows that season's activity, every other page its own item.
-  MediaItem get _tvDetailActivitySubject => _tvDetailShowsSeasonTab ? _tvDetailOpenSeason ?? _metadata : _metadata;
+  /// What the open tab is about: that season, or the page's own item. Its
+  /// activity, and the tracks of what Play starts there.
+  MediaItem get _tvDetailOpenItem => _tvDetailShowsSeasonTab ? _tvDetailOpenSeason ?? _metadata : _metadata;
 
   ItemWatchers? _tvDetailActivity() {
     final client = _getMediaClientForMetadata(context);
     if (client == null || !client.capabilities.ownActivityLine) return _watchers;
-    final subject = _tvDetailActivitySubject;
+    final subject = _tvDetailOpenItem;
     if (subject.id != _metadata.id) unawaited(_loadHouseholdActivity(subject));
     return const ItemWatchersService().activityLine(
       subject,

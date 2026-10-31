@@ -96,7 +96,7 @@ extension _MediaDetailTvMoreActions on _MediaDetailScreenState {
     final ordered = [...general]..sort((a, b) => rank(a).compareTo(rank(b)));
     final audio = _detailAudioTracks.where((track) => track.id == _selectedDetailAudioTrackId).firstOrNull;
     final subtitle = _detailSubtitleTracks.where((track) => track.id == _selectedDetailSubtitleTrackId).firstOrNull;
-    final hasTracks = _detailAudioTarget != null;
+    final hasTracks = _detailAudioTarget != null && !_tvDetailSeasonPending(_tvDetailOpenItem);
     return [
       if (hasTracks && _detailAudioTracks.isNotEmpty)
         TvDetailActionRow(

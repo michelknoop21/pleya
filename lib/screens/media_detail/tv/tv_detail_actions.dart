@@ -36,6 +36,7 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     final pt = TvHig.of(context);
     final iconSize = TvHig.body * pt;
     final play = model.of(_DetailActionKind.play)!;
+    final onPlay = _tvDetailSeasonPending(metadata) ? null : play.onPressed;
     // A series resumes into an episode, so that is what the ring reads.
     final target = _tvDetailResumeTarget(metadata);
     final resumable = (target?.viewOffsetMs ?? 0) > 0;
@@ -74,21 +75,21 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
         FocusableAction(
           debugLabel: 'detail_play',
           focusNode: _playButtonFocusNode,
-          onPressed: play.onPressed,
+          onPressed: onPlay,
           builder: (context, state) => AutomationNode(
             id: AutomationIds.mediaDetailPlay,
             role: 'button',
-            state: () => {'enabled': play.onPressed != null, 'resumable': resumable},
+            state: () => {'enabled': onPlay != null, 'resumable': resumable},
             focusNode: _playButtonFocusNode,
             child: Pressable(
-              onTap: play.onPressed,
+              onTap: onPlay,
               child: metadata.isMovie
                   ? TvDetailPlayPill(
                       label: label,
                       icon: _getPlayButtonIcon(metadata),
                       progress: progress,
                       focused: state.showFocus,
-                      enabled: play.onPressed != null,
+                      enabled: onPlay != null,
                     )
                   : Semantics(
                       button: true,
@@ -162,6 +163,11 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
       ],
     );
   }
+
+  /// A season tab whose first page is still on its way. Play has nothing of this
+  /// season to start yet, and its fallback is the first episode of the series.
+  bool _tvDetailSeasonPending(MediaItem target) =>
+      target.isSeason && target.id != _metadata.id && _seasonNextEpisode == null;
 
   /// What Play starts, for the ring and the restart button.
   MediaItem? _tvDetailResumeTarget(MediaItem metadata) {

@@ -164,7 +164,7 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
   }
 
   Widget _buildTvDetailHero(BuildContext context, MediaItem metadata, Size size, {required bool hideSpoilers}) {
-    _scheduleDetailAudioTracksLoad(metadata);
+    _scheduleDetailAudioTracksLoad(_tvDetailOpenItem);
     final pt = TvHig.of(context);
     final ink = _tvDetailForegroundColor(context);
     final muted = tokens(context).textMuted;

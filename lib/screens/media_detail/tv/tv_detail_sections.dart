@@ -17,8 +17,19 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
   /// season or an episode that was opened without a series to hang under.
   bool _tvDetailUsesPage(MediaItem metadata) => metadata.isMovie || metadata.isShow;
 
+  /// One entry per person. An actor with two parts comes twice from a server,
+  /// and a person's id is what a card, its focus and a "Meer met" row hang on.
+  /// Someone without an id stays: nothing says who they are the same as.
+  List<MediaRole> _tvDetailCastRoles(MediaItem metadata) {
+    final seen = <String>{};
+    return [
+      for (final role in metadata.roles ?? const <MediaRole>[])
+        if (role.tag.trim().isNotEmpty && ((role.id ?? '').trim().isEmpty || seen.add(role.id!.trim()))) role,
+    ];
+  }
+
   List<MediaRole> _tvDetailPersonRoles(MediaItem metadata) => [
-    for (final role in metadata.roles ?? const <MediaRole>[])
+    for (final role in _tvDetailCastRoles(metadata))
       if ((role.id ?? '').trim().isNotEmpty) role,
   ].take(_tvDetailPersonRows).toList();
 
@@ -276,7 +287,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
 
   List<TvDetailSection> _tvDetailSections(MediaItem metadata) {
     final hubs = _relatedHubs.where((hub) => hub.items.isNotEmpty).toList();
-    final roles = metadata.roles?.where((role) => role.tag.trim().isNotEmpty).toList() ?? const <MediaRole>[];
+    final roles = _tvDetailCastRoles(metadata);
     TvDetailSection hubSection(MediaHub hub) =>
         _tvDetailPosterSection(id: 'hub:${hub.id}', title: hub.title, items: hub.items, hub: hub);
     return [
@@ -334,7 +345,12 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
                 localPath: widget.isOffline ? (path) => _offlineArtworkLocalPath(context, path) : null,
               ),
               hero: _buildTvDetailHero(context, metadata, constraints.biggest, hideSpoilers: hideSpoilers),
-              sections: onSeason ? [_tvDetailEpisodesSection(metadata)] : _tvDetailSections(metadata),
+              sections: !onSeason
+                  ? _tvDetailSections(metadata)
+                  // A deep link opens here before anyone knows there are seasons.
+                  : _seasons.isEmpty && _seasonsLoadFailed
+                  ? [_tvDetailSeasonsRetrySection()]
+                  : [_tvDetailEpisodesSection(metadata)],
               onFocusHero: onSeason ? _focusAboveTvDetailSeasonRow : _focusTvDetailActionRow,
               footer: onSeason ? _buildTvDetailSeasonFooter(metadata) : null,
               onExitBottom: onSeason ? _focusTvDetailActionRow : null,
