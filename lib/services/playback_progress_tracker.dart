@@ -15,6 +15,9 @@ import 'track_selection_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/watch_state_notifier.dart';
 
+/// See [PlaybackProgressTracker.onSettled].
+typedef PlaybackSettledCallback = void Function(Duration position, Duration duration, {required bool watched});
+
 /// Tracks playback progress and reports it to the active media server.
 ///
 /// Both Plex and Jellyfin go through the unified
@@ -59,6 +62,11 @@ class PlaybackProgressTracker {
   /// Local observation of whether this player may still write watch state.
   /// Null keeps the pre-existing behaviour of always reporting.
   final ObservedPlaybackAuthority? authority;
+
+  /// Hears the two moments a play settles: the position it ended on, and the
+  /// moment it counts as watched. For the other sources of the title; it runs
+  /// behind the report to this source and nothing it does reaches that report.
+  final PlaybackSettledCallback? onSettled;
 
   /// Timer for periodic progress updates
   Timer? _progressTimer;
@@ -138,6 +146,7 @@ class PlaybackProgressTracker {
     this.playSessionId,
     this.mediaInfo,
     this.authority,
+    this.onSettled,
     this.updateInterval = const Duration(seconds: 10),
     this.stoppedReportTimeout = const Duration(seconds: 5),
   }) : assert(!isOffline || offlineWatchService != null, 'offlineWatchService is required when isOffline is true'),
@@ -456,12 +465,21 @@ class PlaybackProgressTracker {
   /// [isFinal] is the terminal stop notification, which fires at most once per
   /// session. [force] only bypasses the 30-second delta, for a jump the user
   /// made deliberately; it does not consume the terminal latch.
+  void _reportSettled(Duration position, Duration duration, {required bool watched}) {
+    try {
+      onSettled?.call(position, duration, watched: watched);
+    } catch (e, st) {
+      appLogger.w('A listener on the settled play failed', error: e, stackTrace: st);
+    }
+  }
+
   void _notifyProgressIfNeeded(Duration position, Duration duration, {bool isFinal = false, bool force = false}) {
     if (_scrobbled) return;
     if (position.inMilliseconds <= 0 || duration.inMilliseconds <= 0) return;
     if (isFinal) {
       if (_stopProgressNotified) return;
       _stopProgressNotified = true;
+      _reportSettled(position, duration, watched: false);
     } else if (!force) {
       final last = _lastProgressNotifiedPosition;
       if (last != null && (position - last).abs() < _progressNotifyDelta) return;
@@ -525,6 +543,7 @@ class PlaybackProgressTracker {
           appLogger.d(
             'Scrobbled ${metadata.id} (${(percent * 100).toStringAsFixed(0)}% >= ${(threshold * 100).toStringAsFixed(0)}%)',
           );
+          _reportSettled(position, duration, watched: true);
         } catch (e) {
           appLogger.w('Failed to scrobble ${metadata.id}', error: e);
           _scrobbled = false; // Retry on next tick

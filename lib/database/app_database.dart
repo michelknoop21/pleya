@@ -33,7 +33,13 @@ enum OfflineActionType {
   /// branch in `OfflineWatchSyncService._syncAction` — a queued row whose
   /// type nothing handles would sit there being retried and deleted without
   /// ever performing the write.
-  removedFromContinueWatching;
+  removedFromContinueWatching,
+
+  /// A progress or watched state that happened on another source of the same
+  /// title (besluit 3 of DEC-XXX "Eén titel over servers heen"). Replays like
+  /// [progress], without the trackers: the source that played reported it, and
+  /// a second report would count the same viewing twice.
+  mirroredProgress;
 
   /// Stable string id used for persistence. Survives an enum-name rename
   /// (e.g. `progress` → `inProgress`) — `.name` would corrupt every row.
@@ -42,6 +48,7 @@ enum OfflineActionType {
     OfflineActionType.watched => 'watched',
     OfflineActionType.unwatched => 'unwatched',
     OfflineActionType.removedFromContinueWatching => 'removeFromContinueWatching',
+    OfflineActionType.mirroredProgress => 'mirroredProgress',
   };
 
   /// Inverse of [id]. Throws on unknown so a typo in production doesn't
@@ -51,6 +58,7 @@ enum OfflineActionType {
     'watched' => OfflineActionType.watched,
     'unwatched' => OfflineActionType.unwatched,
     'removeFromContinueWatching' => OfflineActionType.removedFromContinueWatching,
+    'mirroredProgress' => OfflineActionType.mirroredProgress,
     _ => throw ArgumentError('Unknown OfflineActionType id: $id'),
   };
 }
@@ -1016,6 +1024,7 @@ class AppDatabase extends _$AppDatabase {
     required int viewOffset,
     required int? duration,
     required bool shouldMarkWatched,
+    OfflineActionType actionType = OfflineActionType.progress,
   }) async {
     final globalKey = buildGlobalKey(ServerId(serverId), ratingKey);
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -1028,7 +1037,7 @@ class AppDatabase extends _$AppDatabase {
                       t.globalKey.equals(globalKey) &
                       _nullableTextPredicate(t.profileId, profileId) &
                       _clientScopePredicate(t.clientScopeId, clientScopeId) &
-                      t.actionType.equals(OfflineActionType.progress.id),
+                      t.actionType.equals(actionType.id),
                 )
                 ..orderBy([(t) => OrderingTerm.asc(t.id)]))
               .get();
@@ -1057,7 +1066,7 @@ class AppDatabase extends _$AppDatabase {
             clientScopeId: Value(clientScopeId),
             ratingKey: ratingKey,
             globalKey: globalKey,
-            actionType: OfflineActionType.progress.id,
+            actionType: actionType.id,
             viewOffset: Value(viewOffset),
             duration: Value(duration),
             shouldMarkWatched: Value(shouldMarkWatched),

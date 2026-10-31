@@ -487,7 +487,10 @@ class SyncRuleExecutor {
       final action = actions[buildGlobalKey(ServerId(serverId), ep.id)];
       if (action == null) return true;
       if (action.actionType == OfflineActionType.watched.id) return false;
-      if (action.actionType == OfflineActionType.progress.id && action.shouldMarkWatched) return false;
+      final carriesProgress =
+          action.actionType == OfflineActionType.progress.id ||
+          action.actionType == OfflineActionType.mirroredProgress.id;
+      if (carriesProgress && action.shouldMarkWatched) return false;
       return true;
     }).toList();
   }

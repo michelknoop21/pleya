@@ -40,6 +40,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
   OfflineModeSource? _offlineModeSource;
   VoidCallback? _offlineModeListener;
   bool _isSyncing = false;
+  bool _syncRequested = false;
   bool _isBidirectionalSyncing = false;
   bool _isShutDown = false;
   DateTime? _lastSyncTime;
@@ -252,6 +253,34 @@ class OfflineWatchSyncService extends ChangeNotifier {
     return clientScopeId;
   }
 
+  /// Holds a position that happened on another source of the same title, and
+  /// a watched state with it when [watched] is set: the source that played
+  /// decided that, whatever this server's own threshold says.
+  ///
+  /// Goes through this queue whether the server is up or not, so a server that
+  /// answers late or refuses retries like any other queued write and can never
+  /// reach the play. The replay keeps its last-writer guard: a position this
+  /// server already moved past is dropped.
+  Future<void> queueMirroredProgress({
+    required ServerId serverId,
+    required String itemId,
+    required int viewOffset,
+    required int? duration,
+    required bool watched,
+  }) async {
+    await _database.upsertProgressAction(
+      profileId: _activeProfileId,
+      serverId: serverId,
+      clientScopeId: await _clientScopeIdForItem(ServerId(serverId), itemId),
+      ratingKey: itemId,
+      viewOffset: viewOffset,
+      duration: duration,
+      shouldMarkWatched: watched,
+      actionType: OfflineActionType.mirroredProgress,
+    );
+    notifyListeners();
+  }
+
   Future<String?> queueMarkWatched({required ServerId serverId, required String itemId}) =>
       _queueWatchStatusAction(serverId: serverId, itemId: itemId, actionType: OfflineActionType.watched.id);
 
@@ -433,9 +462,13 @@ class OfflineWatchSyncService extends ChangeNotifier {
   ///
   /// Called automatically when connectivity is restored, or manually.
   /// Actions are batched by server to reduce connectivity lookups.
-  Future<void> syncPendingItems() async {
+  ///
+  /// [queueIfBusy] is for a caller that just wrote a row: a sync already running
+  /// has read its list, so that row would otherwise wait for the next reconnect.
+  Future<void> syncPendingItems({bool queueIfBusy = false}) async {
     if (_isSyncing) {
       appLogger.d('Sync already in progress, skipping');
+      if (queueIfBusy) _syncRequested = true;
       return;
     }
 
@@ -484,6 +517,10 @@ class OfflineWatchSyncService extends ChangeNotifier {
     } finally {
       _isSyncing = false;
       notifyListeners();
+      if (_syncRequested) {
+        _syncRequested = false;
+        unawaited(syncPendingItems());
+      }
     }
   }
 
@@ -644,7 +681,9 @@ class OfflineWatchSyncService extends ChangeNotifier {
         action.actionType == OfflineActionType.watched.id ||
         action.actionType == OfflineActionType.unwatched.id ||
         action.actionType == OfflineActionType.removedFromContinueWatching.id ||
-        (action.actionType == OfflineActionType.progress.id && action.shouldMarkWatched);
+        ((action.actionType == OfflineActionType.progress.id ||
+                action.actionType == OfflineActionType.mirroredProgress.id) &&
+            action.shouldMarkWatched);
     MediaItem? item;
     if (needsRichItem) {
       try {
@@ -688,7 +727,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
         await client.removeFromContinueWatching(resolvedItem);
         break;
 
-      case 'progress':
+      case 'progress' || 'mirroredProgress':
         // Last-writer-wins guard: if another device produced newer watch state
         // (marked watched, or viewed more recently than this queued offline
         // action), replaying our stale viewOffset would clobber it. Best-effort:
@@ -740,8 +779,15 @@ class OfflineWatchSyncService extends ChangeNotifier {
         // emits the local watch event — an explicit markWatched would
         // double-scrobble via the Trakt plugin (#1287).
         if (action.shouldMarkWatched) {
-          await client.markWatchedFromPlaybackStop(resolvedItem);
-          await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
+          if (action.actionType == OfflineActionType.mirroredProgress.id) {
+            // The source that played told the trackers. This write only has
+            // to reach the server, so no watched event either: Trakt keys on
+            // that one and would count the viewing twice.
+            if (!client.marksWatchedOnPlaybackStopped) await client.markWatched(resolvedItem);
+          } else {
+            await client.markWatchedFromPlaybackStop(resolvedItem);
+            await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
+          }
         }
         break;
     }
