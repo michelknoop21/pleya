@@ -163,6 +163,41 @@ void main() {
     });
   });
 
+  testWidgets('two screens on one catalog with different overrides do not write each other back', (tester) async {
+    final catalogs = await open(tester, override: const UnifiedCatalogPreferences(sort: UnifiedCatalogSort.titleAsc));
+    var notifications = 0;
+    catalogs.forKind(MediaKind.movie).addListener(() => notifications++);
+
+    final multiServer = tester.element(find.byType(MobileCatalogScreen)).read<MultiServerProvider>();
+    Widget screen(UnifiedCatalogSort sort) => MobileCatalogScreen(
+      kind: MobileCatalogKind.movies,
+      initialFilterOverride: UnifiedCatalogPreferences(sort: sort),
+      debugPrefetcher: UnifiedArtworkPrefetcher(clientFor: (_) => null, precache: (_, _) async {}),
+    );
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+          Provider<UnifiedCatalogs>.value(value: catalogs),
+        ],
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: OverlaySheetHost(
+            child: IndexedStack(
+              index: 1,
+              children: [screen(UnifiedCatalogSort.titleAsc), screen(UnifiedCatalogSort.titleDesc)],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(notifications, lessThan(40));
+  });
+
   testWidgets('NEGATIVE CONTROL: without an override the catalog opens on the stored filter', (tester) async {
     await open(tester);
     expect(filterBadge(tester), 0);

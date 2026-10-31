@@ -55,6 +55,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -308,9 +309,12 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     if (mounted) setState(() {});
     // A library that joins or leaves restarts the merge on the query it already
     // had, and the provider cannot do better: the preferences live here. What
-    // can run follows that set, so the query is derived again. An equal one is
-    // skipped, which is every other notification.
-    if (mounted && _preferencesLoaded) unawaited(_applyQuery());
+    // can run follows that set, so the query is derived again, but only then:
+    // answering every notification would write this page's query over that of
+    // another screen on the same catalog, and that one would answer back.
+    if (mounted && _preferencesLoaded && !setEquals(_knownLibraryKeys, _appliedLibraryKeys)) {
+      unawaited(_applyQuery());
+    }
     _scheduleRestore();
     if (_wantsEntryFocus) {
       // After the frame this rebuild produces: the grid's `State` only exists
@@ -365,6 +369,11 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// memory only; nothing here is written back, so leaving the screen loses
   /// nothing the viewer had stored.
   Future<void> _restorePreferences() async {
+    // Out of initState first. With an override nothing below waits, and setQuery
+    // would notify every listener on this catalog in the middle of a build,
+    // another screen among them.
+    await Future<void>.value();
+    if (!mounted) return;
     final override = widget.initialFilterOverride;
     final stored = override ?? await UnifiedCatalogQueryStore.read(widget.catalog.query.kind);
     if (!mounted) return;
@@ -412,6 +421,9 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     kind: widget.catalog.query.kind,
   ).narrowedTo(_menuSupport);
 
+  /// The eligible libraries the last [_applyQuery] ran against.
+  Set<String> _appliedLibraryKeys = const {};
+
   /// What the Plex libraries behind this page listed, and for which set. Null
   /// until they answered, and when there are none to ask.
   LibraryMenuSupport? _menuSupport;
@@ -431,6 +443,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// applied in the same call: asking the provider what participates today
   /// would evaluate the new genre filter against yesterday's backends.
   Future<void> _applyQuery({bool startIfNeeded = false}) {
+    _appliedLibraryKeys = _knownLibraryKeys;
     final selection = _preferences.filters;
     final participating = widget.catalog.eligibleLibraries.where(selection.selects);
     final capabilities = unifiedFilterCapabilitiesFor(

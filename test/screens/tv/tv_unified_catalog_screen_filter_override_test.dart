@@ -98,9 +98,10 @@ Widget _shell(Widget child) {
 }
 
 class _Built {
-  const _Built({required this.catalog, required this.multiServer});
+  const _Built({required this.catalog, required this.multiServer, required this.libraries});
   final UnifiedCatalogProvider catalog;
   final MultiServerProvider multiServer;
+  final LibrariesProvider libraries;
 }
 
 Future<_Built> _buildCatalog({MediaBackend backend = MediaBackend.plex}) async {
@@ -126,7 +127,7 @@ Future<_Built> _buildCatalog({MediaBackend backend = MediaBackend.plex}) async {
     kind: MediaKind.movie,
   );
   await catalog.ensureStarted();
-  return _Built(catalog: catalog, multiServer: multiServer);
+  return _Built(catalog: catalog, multiServer: multiServer, libraries: libraries);
 }
 
 void main() {
@@ -284,6 +285,57 @@ void main() {
       expect(h.catalog.query, before);
       expect(changes, 0, reason: 'the same libraries: nothing to restart and nothing to derive');
     });
+  });
+
+  testWidgets('two screens on one catalog with different overrides do not write each other back', (tester) async {
+    resetSharedPreferencesForTest();
+    SettingsService.resetForTesting();
+    await SettingsService.getInstance();
+    LocaleSettings.setLocaleSync(AppLocale.en);
+    final built = await _buildCatalog();
+    addTearDown(built.catalog.dispose);
+    addTearDown(built.multiServer.dispose);
+    var notifications = 0;
+    built.catalog.addListener(() => notifications++);
+
+    Widget screen(UnifiedCatalogSort sort) => TvUnifiedCatalogScreen(
+      catalog: built.catalog,
+      title: 'x',
+      initialFilterOverride: UnifiedCatalogPreferences(sort: sort),
+    );
+    setGoldenSurfaceSize(tester);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MultiServerProvider>.value(
+        value: built.multiServer,
+        child: _shell(
+          IndexedStack(index: 1, children: [screen(UnifiedCatalogSort.titleAsc), screen(UnifiedCatalogSort.titleDesc)]),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(notifications, lessThan(40));
+
+    // A library joining: each screen answers once, and then it is quiet.
+    notifications = 0;
+    built.libraries.debugSetLibraries([
+      ...built.libraries.libraries,
+      MediaLibrary(
+        id: '2',
+        backend: MediaBackend.plex,
+        title: 'Meer films',
+        kind: MediaKind.movie,
+        serverId: 'nas',
+        serverName: 'nas',
+      ),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(notifications, lessThan(40));
   });
 
   // A deliberate sort change made while viewing an override is not this

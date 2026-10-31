@@ -22,6 +22,7 @@ library;
 
 import '../../providers/offline_mode_provider.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -174,7 +175,10 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     if (mounted) setState(() {});
     // See `TvUnifiedCatalogScreen._onCatalogChanged`: a library that joins or
     // leaves changes what can run, and only this screen holds the preferences.
-    if (mounted && _preferencesLoaded) unawaited(_applyQuery());
+    // Only then, or two screens on one catalog write each other back forever.
+    if (mounted && _preferencesLoaded && !setEquals(_knownLibraryKeys, _appliedLibraryKeys)) {
+      unawaited(_applyQuery());
+    }
   }
 
   Set<String> get _knownServerIds => {for (final library in _catalog.eligibleLibraries) library.serverId.value};
@@ -189,6 +193,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   /// already carry the user's filters instead of loading unfiltered and
   /// replacing it a frame later.
   Future<void> _restorePreferences() async {
+    // See `TvUnifiedCatalogScreen._restorePreferences`: never inside a build.
+    await Future<void>.value();
+    if (!mounted) return;
     final override = widget.initialFilterOverride;
     final stored = override ?? await UnifiedCatalogQueryStore.read(widget.kind.mediaKind);
     if (!mounted) return;
@@ -217,7 +224,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
 
   UnifiedCatalogFilterSelection get _effectiveFilters => _preferences.filters.constrainedTo(_capabilities);
 
+  /// The eligible libraries the last [_applyQuery] ran against.
+  Set<String> _appliedLibraryKeys = const {};
+
   Future<void> _applyQuery({bool startIfNeeded = false}) {
+    _appliedLibraryKeys = _knownLibraryKeys;
     final selection = _preferences.filters;
     final participating = _catalog.eligibleLibraries.where(selection.selects);
     final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend), kind: widget.kind.mediaKind);
