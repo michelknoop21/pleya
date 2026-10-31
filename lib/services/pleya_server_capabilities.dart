@@ -37,16 +37,21 @@ class PleyaServerCapabilityResolver {
   /// it is a server that has told us nothing. Claiming otherwise is how a
   /// screen calls an endpoint that is not there and shows a failure where a
   /// spinner belonged.
-  static const ServerCapabilities unknown = ServerCapabilities(videoTranscoding: false, alphaBar: AlphaBarMode.none);
+  static const ServerCapabilities unknown = ServerCapabilities(
+    clientDownloads: false,
+    videoTranscoding: false,
+    sourceAudioSelection: false,
+    alphaBar: AlphaBarMode.none,
+  );
 
   static ServerCapabilities resolve(PleyaCapabilities wire) => ServerCapabilities(
     // No play-queue resource in the protocol. A shared queue is server-side
     // state Pleya Server does not keep.
     serverSidePlayQueue: false,
 
-    // No playlist or collection endpoints. G1 in the replacement matrix: it
-    // needs a phase before it needs a flag.
-    serverSidePlaylists: false,
+    // S19: each list resource has its own flag and a real part behind it.
+    serverSidePlaylists: _offered(wire.playlists, implementedHere: true),
+    serverSideCollections: _offered(wire.collections, implementedHere: true),
 
     // PS-4 brought watch state, so these two have somewhere to write to.
     //
@@ -59,30 +64,37 @@ class PleyaServerCapabilityResolver {
     // backlog as history: it never acquires ownership and never moves a newer
     // canonical state (DEC-049, rule 6). That is what makes replaying safe.
     offlineWatchQueue: _offered(wire.watchState, implementedHere: true),
-    // Track preferences are PS-9T, because they only become true once the
-    // playback plan can resolve a stored language onto the actual streams of
-    // the version it picks. Storing a stream index instead would point at a
-    // different track after any re-encode.
-    trackPreferencePersistence: _offered(wire.watchState, implementedHere: false),
+    // PS-9T: the adapter resolves stored language/mode through the shared
+    // track manager; indexes never become remembered preferences.
+    trackPreferencePersistence: _offered(wire.trackPreferences, implementedHere: true),
 
     // PS-8 on the server, PS-6 for the client's side of the negotiation.
     // Leaving this on the wire flag alone would put quality presets in the
     // player with nothing behind them the moment a server flips it.
-    videoTranscoding: _offered(wire.transcode, implementedHere: false),
+    videoTranscoding: _offered(wire.transcode && wire.playbackPlan && wire.playbackQuality, implementedHere: true),
+    sourceAudioSelection: _offered(
+      wire.transcode && wire.playbackPlan && wire.playbackAudioSelection,
+      implementedHere: true,
+    ),
+
+    sourceSubtitleSelection: _offered(
+      wire.transcode && wire.playbackPlan && wire.playbackSubtitles,
+      implementedHere: true,
+    ),
 
     // PS-10.
     serverSideSync: _offered(wire.downloads, implementedHere: false),
+    clientDownloads: _offered(wire.downloads, implementedHere: true),
 
     // No Live TV surface in v1, and a tab that opens on an empty screen is
     // exactly what criterion 4 forbids.
     liveTv: _offered(wire.liveTv, implementedHere: false),
     liveTvDvr: false,
 
-    // PS-9 brings users, and favourites and ratings are per-user by
-    // definition. One bootstrap identity has nobody to be favourite for.
-    serverFavorites: _offered(wire.users, implementedHere: false),
-    userRating: _offered(wire.users, implementedHere: false),
-    numericUserRating: _offered(wire.users, implementedHere: false),
+    // Each personal feature has its own server flag and a public app caller.
+    serverFavorites: _offered(wire.favorites, implementedHere: true),
+    userRating: _offered(wire.ratings, implementedHere: true),
+    numericUserRating: _offered(wire.ratings, implementedHere: true),
 
     // Subtitle *search* is a marketplace call. The server serves the sidecars
     // the scanner found on disk and looks nothing up.

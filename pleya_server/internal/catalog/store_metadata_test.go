@@ -89,6 +89,80 @@ func TestMetadataDueSkipsDoneAmbiguousAndSeasons(t *testing.T) {
 	}
 }
 
+// Zonder sleutel draait de ronde op naam 'nfo': een nagelopen item komt niet meer
+// terug, en dat zegt niets over wat een provider er later van vindt.
+func TestSidecarRoundRemembersWhatItChecked(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+	due := func(provider string) map[id.ID]bool {
+		t.Helper()
+		targets, err := store.MetadataDue(ctx, provider, 3, nil, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[id.ID]bool{}
+		for _, target := range targets {
+			out[target.ID] = true
+		}
+		return out
+	}
+	if !due(catalog.SourceNFO)[ids["alien"]] {
+		t.Fatal("een nieuw item hoort aan de beurt te zijn")
+	}
+	if err := store.MarkSidecarChecked(ctx, ids["alien"]); err != nil {
+		t.Fatal(err)
+	}
+	if due(catalog.SourceNFO)[ids["alien"]] {
+		t.Fatal("een nagelopen item kwam terug")
+	}
+	if !due(catalog.SourceNFO)[ids["heat"]] {
+		t.Fatal("een ander item viel weg")
+	}
+	if !due("tmdb")[ids["alien"]] {
+		t.Fatal("een provider hoort het item nog te zien")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET sidecar_checked_at = now() - interval '8 days' WHERE id = $1`, ids["alien"]); err != nil {
+		t.Fatal(err)
+	}
+	if !due(catalog.SourceNFO)[ids["alien"]] {
+		t.Fatal("een bijgewerkte .nfo komt zo nooit meer door")
+	}
+}
+
+// updated_at is wat clients op verversen zetten, dus dezelfde waarden opnieuw
+// schrijven raakt de rij niet.
+func TestApplyMetadataLeavesTheItemAloneWithoutChanges(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+	details := catalog.MetadataDetails{Summary: "Plot", Genres: []string{"Horror"}, ContentRating: "16",
+		People: []catalog.Person{{Name: "Ridley Scott", Role: "director"}}}
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, details); err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET updated_at = $2 WHERE id = $1`, ids["alien"], stamp); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, details); err != nil {
+		t.Fatal(err)
+	}
+	var got time.Time
+	if err := pool.QueryRow(ctx, `SELECT updated_at FROM media_items WHERE id = $1`, ids["alien"]).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.Equal(stamp) {
+		t.Fatalf("ongewijzigde gegevens raakten de rij: %v", got)
+	}
+	details.Summary = "Nieuwe plot"
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, details); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT updated_at FROM media_items WHERE id = $1`, ids["alien"]).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Equal(stamp) {
+		t.Fatal("een echte wijziging zette updated_at niet")
+	}
+}
+
 func TestApplyMetadataRespectsFieldPrecedence(t *testing.T) {
 	store, ctx, ids, pool := metadataFixture(t)
 

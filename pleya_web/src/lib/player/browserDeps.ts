@@ -24,6 +24,7 @@ export function browserPlayerDeps(client: PleyaClient, server: Capabilities | nu
     // het scheelt een derde van de bundel. Pas laden als het plan om HLS vraagt.
     loadHls: async () => (await import('hls.js/light')).default as unknown as HlsCtor,
     origin: location.origin,
-    streamSessions
+    streamSessions,
+    refreshUnavailable: () => client.refreshUnavailable
   };
 }

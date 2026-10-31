@@ -4,9 +4,11 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'fake_lists.dart';
 import 'fixture_clock.dart';
 import 'memory_fake_store.dart';
 import 'fixtures/sample_media.dart';
+import 'fixtures/sample_hls.dart';
 
 /// A Pleya Server routing kernel, good enough to browse.
 ///
@@ -61,6 +63,28 @@ class PleyaFakeServer {
   /// [planFailureStatus] makes the route fail with that status. Every request
   /// body lands in [planRequests].
   bool playbackPlanCapability = false;
+  bool playbackQualityCapability = false;
+  bool playbackAudioSelectionCapability = false;
+  bool embeddedSubtitlesCapability = false;
+  bool playbackSubtitlesCapability = false;
+
+  /// S19: the collection and playlist routes of chapter 14c.
+  bool listsCapability = false;
+
+  /// What the routes of [listsCapability] hold.
+  late final FakeLists lists = FakeLists(
+    itemKind: (id) => items[id]?['kind'] as String?,
+    page: _page,
+    posterOf: (id) => (items[id]?['artwork'] as Map?)?['poster_id'] as String?,
+    role: () => usersMeRole,
+  );
+
+  /// The role `/users/me` answers for the single fixture identity. A test moves
+  /// it to play a demotion on the server.
+  String usersMeRole = 'owner';
+
+  /// A status `/users/me` answers instead, for a role that cannot be read.
+  int? usersMeFailureStatus;
 
   /// S20: favorites, ratings and remembered tracks. The fake keeps them per
   /// item id and records each call so a test can read what the app sent.
@@ -119,6 +143,14 @@ class PleyaFakeServer {
   String planVersionId = 'version-1';
   String planDeliveryMode = 'direct_play';
   int? planFailureStatus;
+
+  /// Number each plan's session (`sess-1`, `sess-2`), in order of arrival.
+  bool numberPlanSessions = false;
+
+  /// Held per incoming plan: the answer waits for the next gate in line, so a
+  /// test can finish two overlapping plans in the order it wants.
+  final List<Future<void>> planGates = [];
+  int _planCount = 0;
   final List<Map<String, dynamic>> planRequests = [];
 
   /// Calls on `/playback/sessions/{id}` and below, as `METHOD path`.
@@ -216,6 +248,7 @@ class PleyaFakeServer {
   /// version id -> playable bytes, auto-populated by [addItem] for every
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
+  final Map<String, String> subtitleFiles = {};
 
   /// `"<kind>/<slug>"` -> the id [applyNamedFixture] generated for it.
   ///
@@ -319,6 +352,7 @@ class PleyaFakeServer {
     searchResults.clear();
     artworkById.clear();
     versionBytes.clear();
+    subtitleFiles.clear();
     seededIds.clear();
     verifyWatchlistIds.clear();
     verifyDetail.clear();
@@ -335,7 +369,15 @@ class PleyaFakeServer {
     ownedByThisSession = true;
     filtersCapability = false;
     playbackPlanCapability = false;
+    playbackQualityCapability = false;
+    playbackAudioSelectionCapability = false;
+    embeddedSubtitlesCapability = false;
+    playbackSubtitlesCapability = false;
     personalCapability = false;
+    listsCapability = false;
+    lists.clear();
+    usersMeRole = 'owner';
+    usersMeFailureStatus = null;
     itemActivityCapability = false;
     itemActivityRequests.clear();
     itemActivityFailureStatus = null;
@@ -359,6 +401,9 @@ class PleyaFakeServer {
     planVersionId = 'version-1';
     planDeliveryMode = 'direct_play';
     planFailureStatus = null;
+    numberPlanSessions = false;
+    planGates.clear();
+    _planCount = 0;
     planRequests.clear();
     sessionCalls.clear();
     watchStateFailureStatus = null;
@@ -713,8 +758,9 @@ class PleyaFakeServer {
           'role': _memoryRoles[memoryUsername] ?? 'member',
         });
       }
+      if (usersMeFailureStatus case final status?) return _json(_error('server.internal'), status: status);
       // The old fixtures keep their original single owner identity.
-      return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': 'owner'});
+      return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': usersMeRole});
     }
     if (assistantMemoryCapability && (path == '/users/me/memory' || path == '/users/me/memory/clear')) {
       if (memoryUsername == null || !{'owner', 'admin', 'member'}.contains(_memoryRoles[memoryUsername] ?? 'member')) {
@@ -735,6 +781,9 @@ class PleyaFakeServer {
       if (failure != null) return _json(_error('playback.not_playable'), status: failure);
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       planRequests.add(body);
+      _planCount++;
+      final sessionId = numberPlanSessions ? 'sess-$_planCount' : 'sess-1';
+      if (planGates.isNotEmpty) await planGates.removeAt(0);
       final versionId = (body['version_id'] as String?) ?? planVersionId;
       final reason = {
         'code': planDeliveryMode == 'direct_play' ? 'direct.supported' : 'container.unsupported',
@@ -747,22 +796,42 @@ class PleyaFakeServer {
         'item_id': body['item_id'],
         'version_id': versionId,
         'delivery_mode': planDeliveryMode,
-        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/sess-1/index.m3u8',
+        if (body['subtitle'] case final Map sub)
+          'subtitle': {
+            'action': sub['mode'],
+            if (sub['stream_id'] != null) 'stream_id': sub['stream_id'],
+            if (sub['mode'] == 'external') 'url': '/pleya/v1/subtitles/${sub['stream_id']}',
+          },
+        if (body['quality'] != null) 'effective_quality': body['quality'],
+        if (body['audio_stream_id'] != null) 'selected_audio_stream_id': body['audio_stream_id'],
+        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/$sessionId/index.m3u8',
         'container': direct ? 'original' : 'hls',
-        'video': {'action': 'copy'},
+        'video': {'action': (body['subtitle'] as Map?)?['mode'] == 'burn' ? 'transcode' : 'copy'},
         'audio': {'action': 'copy'},
         'seekable': direct,
-        'session_id': direct ? null : 'sess-1',
+        'session_id': direct ? null : sessionId,
         'reason': reason,
         'reasons': [reason],
       });
     }
 
     if (path.startsWith('/playback/sessions/') && playbackPlanCapability) {
+      if (request.method == 'GET') {
+        final file = path.split('/').last;
+        final bytes = sampleHlsFiles[file];
+        if (bytes != null) {
+          if (!file.endsWith('.m3u8')) return _streamResponse(request, bytes);
+          return http.Response.bytes(bytes, 200, headers: {'content-type': 'application/vnd.apple.mpegurl'});
+        }
+      }
       sessionCalls.add('${request.method} $path');
       return http.Response('', 204);
     }
 
+    if (listsCapability) {
+      final answer = lists.handle(request, path);
+      if (answer != null) return answer;
+    }
     final activityMatch = RegExp(r'^/items/([^/]+)/activity$').firstMatch(path);
     if (activityMatch != null) {
       itemActivityRequests.add(path);
@@ -842,6 +911,12 @@ class PleyaFakeServer {
       return http.Response.bytes(bytes, 200, headers: {'content-type': _imageContentType(bytes)});
     }
 
+    if (path.startsWith('/subtitles/')) {
+      final text = subtitleFiles[Uri.decodeComponent(path.split('/').last)];
+      return text == null
+          ? _json(_error('library.not_found'), status: 404)
+          : http.Response(text, 200, headers: {'content-type': 'application/x-subrip'});
+    }
     final streamMatch = RegExp(r'^/stream/([^/]+)$').firstMatch(path);
     if (streamMatch != null) {
       final versionId = Uri.decodeComponent(streamMatch.group(1)!);
@@ -888,7 +963,7 @@ class PleyaFakeServer {
     if (itemMatch != null) {
       final item = items[Uri.decodeComponent(itemMatch.group(1)!)];
       if (item == null) return _json(_error('library.not_found'), status: 404);
-      return _json(item);
+      return _json(_withPersonalMarks(item));
     }
 
     final hubMatch = RegExp(r'^/hubs/([^/]+)$').firstMatch(path);
@@ -1037,7 +1112,7 @@ class PleyaFakeServer {
     final window = ids.skip(start).take(limit).toList();
     final next = start + window.length;
     return {
-      'items': [for (final id in window) items[id]!],
+      'items': [for (final id in window) _withPersonalMarks(items[id]!)],
       'next_cursor': next < ids.length ? base64Url.encode(utf8.encode('$next')) : null,
       'total_estimate': ids.length,
     };
@@ -1064,8 +1139,15 @@ class PleyaFakeServer {
       if (filtersCapability) 'filters': true,
       if (reportsExternalIds) 'external_id_lookup': true,
       if (playbackPlanCapability) 'playback_plan': true,
+      if (playbackQualityCapability) 'playback_quality': true,
+      if (playbackQualityCapability || playbackAudioSelectionCapability || playbackSubtitlesCapability)
+        'transcode': true,
+      if (playbackAudioSelectionCapability) 'playback_audio_selection': true,
+      if (embeddedSubtitlesCapability) 'embedded_subtitles': true,
+      if (playbackSubtitlesCapability) 'playback_subtitles': true,
       if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},
+      if (listsCapability) ...{'collections': true, 'playlists': true},
       if (itemActivityCapability) 'item_activity': true,
     },
     'auth': {
@@ -1173,7 +1255,15 @@ class PleyaFakeServer {
     'error': {'code': code, 'message': code, 'retryable': false},
   };
 
+  Map<String, dynamic> _withPersonalMarks(Map<String, dynamic> item) => {
+    ...item,
+    if (personalCapability) ...{'favorite': favoriteIds.contains(item['id']), 'rating': ratingsByItem[item['id']]},
+  };
+
   http.Response? _personal(http.Request request, String path) {
+    if (path == '/favorites' && request.method == 'GET') {
+      return _json(_page(favoriteIds.where(items.containsKey).toList(), request.url.queryParameters));
+    }
     final id = path.split('/').last;
     if (path.startsWith('/favorites/')) {
       if (request.method == 'PUT') favoriteIds.add(id);

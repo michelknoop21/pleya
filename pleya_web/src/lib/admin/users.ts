@@ -16,6 +16,7 @@ import type { Library, Role, User } from '../api/types';
 import type { PillTone } from '../components/StatusPill.svelte';
 import { t, type MessageKey } from '../i18n';
 import { formatRelative } from '../util/format';
+import { deviceLabel } from './sessionCleanup';
 
 export const PASSWORD_MIN = 8;
 
@@ -120,7 +121,7 @@ export function lastActiveText(sessions: UserSession[] | null, now = Date.now())
   const latest = latestSession(sessions);
   if (!latest) return t('admin.users.lastActive.never');
   const when = formatRelative(latest.last_seen_at, now) ?? '';
-  return t('admin.users.lastActive.value', { when, device: latest.device_name });
+  return t('admin.users.lastActive.value', { when, device: deviceLabel(latest) });
 }
 
 /** Wat de kolom Bibliotheken zegt: de rol dekt alles, anders staat het per gebruiker. */

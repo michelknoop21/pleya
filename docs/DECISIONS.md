@@ -5133,6 +5133,359 @@ of externe/publicatie naar App Review.
 6. Tekst op tvOS gaat niet onder 23 pt en wordt niet kleiner dan voorheen (besluit Michel, 26 oktober 2026). De kleine kapitalen die het bord op ongeveer 17 pt tekent, worden op 23 pt gebouwd en de layout schuift mee. Op het canvas van 1038 x 584 past de pagina zonder scrollen, met de laatste rij bereikbaar en heel.
 **Consequences:** Dit vervangt het TV-deel van het A-24b-besluit voor Mijn Pleya (het besluit "A-24b bouwt Instellingen en Mijn Pleya na volgens de northstars": de Editorial-indeling op Apple TV, de rechterkolom van 440 pt en de twee titelregels op een kijklijstkaart). Het iPhone-deel blijft van kracht. Instellingen is op TV geen geneste route van Mijn Pleya meer maar een eigen bestemming; de Instellingen-subpagina's blijven geneste routes binnen de shell zoals [PB-1](tvos-redesign-implementatiecontract.md#pb-1-topnav-blijft-staan-op-tv-contentroutes) ze opent, nu onder Instellingen in plaats van onder Mijn Pleya. De bestemming Instellingen en haar subpagina's houden de inklapbare balk van [DEC-166](#dec-166-instellingen-op-apple-tv-zonder-vaste-bovenbalk-en-de-rail-past-in-het-venster): de ingang staat in het topmenu, op de pagina's zelf schuift de balk weg en UP haalt hem terug. De oude Beheer-tegels, de profielregel en de voetregel verdwijnen; elke route uit die tegels heeft een ingang in `pariteit-v4.csv`. Afwijkingen van de borden staan in [`docs/plans/AFWIJKINGEN_A24B.md`](plans/AFWIJKINGEN_A24B.md) onder "Mijn Pleya op Apple TV, v4". Simulatorbewijs is geen hardware-acceptatie; de Siri Remote-controle op een toestel staat open in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen tvOS-presentatie en navigatie, geen backend, protocol of datamodel.
 
+
+## DEC-XXX: P5 en PS-15 vrijgegeven voor afronding van Pleya Server en apps
+
+**Date:** 2026-10-29
+**Status:** accepted. Michel koos expliciet “P5 en PS-15 vrijgeven” tijdens de uitvoering van het gezamenlijke plan.
+
+**Decision:** Het bestaande voorstel `pleya-server-p5-locator-proposal.md` is geaccepteerd: Readium Locator plus de SHA-256-publicatiedigest, herstel-/conflictregels en validatie zoals daarin beschreven. PS-15 is vrijgegeven voor de reader en leesvoortgang uit S6/S9/S12/S14 binnen de bestaande Unified Library en goedgekeurde platformroutes. De overige voorwaarden van DEC-128/149 blijven gelden: audiovisuele tabellen niet als boekenmodel gebruiken, geen DRM/winkel/abonnement of nieuwe TV-reader, het boekencontractvenster afzonderlijk toetsen en openen, en vereiste hardwaremeting behouden. Dit besluit geeft geen productie-, merge-, migratie- of releaseautorisatie.
+
+**Consequences:** P5 en de PS-15-fasevrijgave zijn geen open productbesluiten meer. Contractcompatibiliteit, S3-afhankelijkheden, fysieke acceptatie en de overige releasepoorten blijven hun eigen bewijs vragen. Het DEC-nummer wordt bij merge toegewezen.
+
+## DEC-XXX: playbackvenster voor kwaliteit en audiokeuze vrijgegeven
+
+**Status:** geaccepteerd door Michel op 29 oktober 2026.
+
+Michel gaf expliciet het afgebakende venster uit
+`docs/pleya-server-playback-selection-proposal.md` vrij: optionele kwaliteitslimieten
+en een stabiel audiospoor-ID, aparte capabilities en effectieve antwoordvelden,
+planner-/ffmpeg-consumptie, validatie en compatibiliteitsbewijs. Alleen dit venster
+is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: ondertitelvenster voor HLS-levering en selectie vrijgegeven
+
+**Status:** geaccepteerd door Michel op 29 oktober 2026.
+
+Michel heeft de aanvulling `docs/pleya-server-subtitle-delivery-proposal.md` expliciet
+vrijgegeven: ingebedde levering via de bestaande ondertitelroute en optionele
+selectie/off/burn in playbackplannen, met eigen capabilities, begrensde extractie,
+cache-/rechtenbewijs en behoud van gedeelde voorkeuren. Dit opent uitsluitend het
+beschreven ondertitelvenster. Productie, merge en release blijven afzonderlijk.
+Nummer volgt bij integratie.
+
+## DEC-168: S15.9 eerst een afzonderlijk Plex-migratievoorstel afbakenen
+
+**Status:** geaccepteerd door Michel tijdens de gezamenlijke uitvoering, vastgelegd op 30 oktober 2026.
+
+Michel koos “Migratie eerst afbakenen”. Werk eerst de noodzakelijke scope, identiteit-/accountkoppeling, conflictregels, proefimport, herstelbaarheid en volgorde ten opzichte van S15.5 uit in een afzonderlijk voorstel. Dit is geen keuze om leeg te beginnen en geen vrijgave van PS-12 of een import. S15.9 blijft open totdat het voorstel en het definitieve besluit over de kijkgeschiedenis vaststaan. De bestaande PS-12-vrijgave na S15 moet vóór uitvoering expliciet met de S15.5-gate worden uitgelijnd; dit besluit verplaatst die vrijgave niet stilzwijgend. Productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: ondertitelvenster voor doorlopende voorbereiding van ingebedde sporen vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 1 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+Michel gaf het venster voor alleen `getSubtitle` en de ondertitelvoorbereiding in het
+playbackplan vrij. Extractie van een ingebed spoor loopt los van de aanvraag door, met een
+grens van 10 minuten en één werker. De aanvraag antwoordt binnen 30 s met `200` of met
+`503 playback.transcode_busy` en `Retry-After: 5`; een herhaling sluit aan op de lopende
+extractie. Geen nieuw veld, geen nieuwe enum en geen nieuwe code: alleen de begrenzingszin in
+het contract wijzigt, en dat past binnen de zes regels van hoofdstuk 3. Een oude client krijgt
+op hetzelfde moment `503` in plaats van `502` en faalt zoals nu. Web en Flutter herhalen zolang
+de kijker dat spoor gekozen houdt; Flutter geeft mpv daarvoor een lokaal tijdelijk bestand in
+plaats van de URL. Alleen dit venster is geopend; productie, merge en release blijven
+afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor persoonlijke gegevens vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 2 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+Michel gaf vier toevoegingen vrij: `DELETE /history`, `DELETE /history/{id}`, `kind` op
+`GET /history` en `GET /ratings`, plus de nieuwe vlag `capabilities.personal_data` die ze samen
+aankondigt. Vraag 31 uit de vragenlijst wordt zo uitgevoerd: volledig of selectief wisbaar, alleen
+eigen regels, een regel van een ander is `404`. Wissen raakt `play_history` en niets anders;
+positie, gezien en Verder kijken staan in `watch_states` en blijven. `DELETE /history` wist ook
+regels uit een bibliotheek die de aanvrager niet meer mag zien, want het zijn zijn eigen gegevens.
+
+Een eigen vlag en niet `history` of `ratings`: een server van vóór dit venster zet die twee ook op
+waar, negeert `kind` stil en levert dan een ongefilterde lijst. Regel 4 van hoofdstuk 3 staat de
+optionele parameter toe, 3.1 eist de vlag, en `filters` loste hetzelfde geval zo op. Eén vlag voor de vier, omdat ze in één venster komen en een client ze nooit
+los hoeft te onderhandelen. Geen veld hernoemd, geen enum uitgebreid, geen verplicht aanvraagveld.
+Regel 77, 78 en 79 staan in de matrix van hoofdstuk 16.4. Alleen dit venster is geopend; productie,
+merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor de velden van downloads en bibliotheken vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 3 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+Michel gaf twee optionele antwoordvelden vrij: `device_name` op `Download` en `permission` op
+`Library`, zichtbaar op `/server/downloads`. Regel 1 van hoofdstuk 3 dekt allebei en er is geen vlag
+nodig: een client die het veld mist toont zijn terugval. `permission` hergebruikt de gesloten enum
+`Permission` zonder waarde erbij, en staat alleen op `GET /libraries`.
+
+De toestelnaam volgt het patroon van `play_history`: migratie 0025 zet `auth_session_id` op
+`downloads` en de naam komt bij het lezen uit `sessions`. Bestaande rijen krijgen geen backfill,
+want wie ze aanvroeg is nergens vastgelegd; zij en een sessie zonder naam geven `null`, en de web
+toont dan "Toestel onbekend". "Bekeken door" blijft klasse admin: wat een huisgenoot kijkt is privé.
+Ruimte per toestel valt buiten dit venster. Alleen dit venster is geopend; productie, merge en
+release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor 429 op /auth/refresh vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, het `429`-deel van besluit 5 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
+
+`POST /auth/refresh` kent nu `429 auth.rate_limited` met `Retry-After` in hele seconden en
+`details.retry_after_ms`. De code bestond al en is herhaalbaar, dus geen nieuwe code en geen vlag: een
+client hoeft niet vooraf te weten of de server hem stuurt. Oudere Flutter-builds zetten een 429 al om in
+`PleyaRateLimitedException` en houden hun token. Een webbundel van vóór dit besluit logt bij een 429 lokaal
+uit; in cookiemodus herstelt de volgende paginalading de sessie, en de server levert dan de nieuwe bundel mee.
+
+De grens is 30 verversingen achter elkaar en daarna één per twee seconden, per sessie. De sessie is de
+sleutel omdat zij één toestel of browserprofiel is: twee tabbladen delen hun emmer, een lus in één client
+raakt geen huisgenoot achter dezelfde NAT of tunnel, en dat hangt niet af van een juiste
+`PLEYA_SERVER_TRUSTED_PROXIES`. Het token zelf kan de sleutel niet zijn: dat roteert, dus juist een lus zou
+steeds een volle emmer krijgen. Een token zonder sessie telt op het clientadres, uit `X-Forwarded-For` alleen
+achter een vertrouwde proxy en rechts gelezen. De limiter is een eigen instantie, zodat verzonnen
+gebruikersnamen op login zijn emmers niet verdringen.
+
+De grens staat vóór `RotateRefreshToken`, die zelf niet is gewijzigd. De rotatie, het respijtvenster van
+twee minuten en de sessie-scoped intrekking uit DEC-123 blijven dus zoals ze zijn; de sessie-drop uit
+augustus zat daar en niet in een limiet. De wachttijd is hoogstens twee seconden, zodat een client die zijn
+antwoord kwijtraakte en eerst een 429 krijgt nog binnen het respijt terugkomt. Een 429 laat de cookie staan.
+
+Web en Flutter wachten volgens `Retry-After` en proberen het opnieuw met hun huidige token, de web met tot
+750 ms verschil per tabblad zodat twee tabbladen niet tegelijk terugkomen. Geven ze op, dan blijft het token
+staan: de web gaat naar de onbereikbaar-staat met zijn poging per 30 s in plaats van naar inloggen, Flutter
+geeft `PleyaRateLimitedException` zonder `isRevoked`. De bekende race van twee tabbladen die zonder 429
+tegelijk verversen (lage bevinding in het rapport) is niet opgelost en niet erger geworden.
+
+De opruimjob voor `stream_sessions` ontbrak en draait nu mee in de dagelijkse sessieronde. Alleen dit venster
+is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+## DEC-XXX: venster voor verzamelingen en afspeellijsten vrijgegeven
+
+**Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 4 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`: één venster per onderdeel en S19 eerst. S21 en S16 blijven dicht.
+
+Het contract krijgt twee resources, `/collections` en `/playlists`, met elk negen operaties (regel 80 tot en
+met 97 van de matrix, hoofdstuk 14c), twee vlaggen en twee foutcodes: `library.list_invalid` en
+`library.list_not_owner`. Alles is nieuw, dus regel 1 van hoofdstuk 3 dekt de antwoorden en de vlaggen de
+routes. `Collection.visibility` is een nieuw enum-veld en staat als zevende in 3.2: er mag later een waarde
+bij, en een client die hem niet kent toont de verzameling als gedeeld, stuurt de waarde nooit terug en laat
+de zichtbaarheid bij bewerken ongemoeid. Geen veld hernoemd, geen bestaande enum uitgebreid, geen verplicht
+aanvraagveld op een bestaande route.
+
+Twee operaties staan niet in J.5b: `POST .../items` en `DELETE .../items/{item_id}`. Met alleen `PUT` moet
+"Toevoegen aan" op een kaart eerst de hele lijst lezen, en dan verliest een tweede tabblad zijn toevoeging
+aan de eerste. De app-members `addToPlaylist` en `removeFromPlaylist` vragen hetzelfde. `PUT` blijft de enige
+route die herordent, en zij doet dat atomair.
+
+Zichtbaarheid is per rij: privé, iedereen of per gebruiker, en een afspeellijst alleen de eigenaar (vraag
+30). Geen rol opent een privélijst, ook `owner` en `admin` niet. Buiten zicht is `404`, ook bij schrijven;
+zichtbaar en van een ander is `403`, dezelfde vorm als `library.download_not_permitted`. Een item dat de
+kijker niet mag zien telt nergens mee, en de eigenaar die een bibliotheekrecht kwijtraakt verliest niets:
+zijn `PUT` laat die rijen op hun plek staan, naar het voorbeeld van favorieten die onzichtbaar worden zonder
+gewist te zijn.
+
+`position` is een sleutel met gaten. De server berekent uit de volledige lijst de langste reeks die al goed
+staat en schrijft alleen de rest, zodat criterium 2 van PS-9C geldt zonder het contract op een
+verplaats-operatie te bouwen. Een afspeellijst neemt alleen `movie` en `episode` aan; uitklappen van een
+serie gebeurt in de client, omdat een rij die zelf niet speelt "Alles afspelen" en de speelduur breekt.
+
+`shared_with` vullen kan vanaf deze commit alleen wie `GET /users` volledig ziet: `owner` en `admin`. Regel 14
+zegt dat een lid alleen zichzelf ziet, en een gebruikerslijst voor leden is een eigen privacybesluit dat dit
+venster niet neemt. De app-implementatie (S19.4) en journey 11 volgen in een eigen ronde. Alleen dit venster
+is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+**Aanvulling van 31 oktober 2026, besluit van Michel: delen is voor `owner` en `admin`.** Eerder kon een lid wel
+`everyone` kiezen, en alleen het kiezen van gebruikers was aan beheerders voorbehouden omdat de namen ontbraken.
+Nu zetten alleen `owner` en `admin` een andere `visibility` dan `private` of `shared_with`, bij aanmaken en bij
+wijzigen; `member` en `restricted` houden hun verzamelingen privé en krijgen anders `403`. Dit valt binnen dit
+venster en wijzigt een nog niet uitgebrachte resource, dus `POST /collections` krijgt een `403` en de regels
+van hoofdstuk 3 worden niet geraakt. De code is nieuw: `library.list_share_not_permitted`. `list_not_owner` zou
+hier iets onwaars zeggen, want de aanvrager is juist de eigenaar van zijn lijst. Afspeellijsten veranderen niet.
+De server leest de accountrol per aanvraag. Een gedegradeerde beheerder houdt wat hij deelde: de regel kijkt naar
+de aanvraag en niet naar de bestaande rij, en een ingetrokken recht wist niets. In de app is dit de enige
+uitzondering op de eis uit het plan om `canAdministerServer` niet te gebruiken: delen gaat over `owner` of
+`admin` met de rol vers vóór de aanvraag, en beheer van een canonieke verzameling blijft bij de `owner`.
+
+**Aanvulling van 31 oktober 2026, reviewronde op S19: de naam van een deler is zichtbaar.** `Collection.owner`
+blijft verplicht en gaat ook naar `member` en `restricted`. Wie een lijst ziet, ziet door wie hij gedeeld is;
+beeld 17 toont dat als "door Sanne", en een gedeelde lijst zonder afzender leest als iets dat de server zelf
+aanbiedt. Dit is de enige uitzondering op regel 14 in hoofdstuk 14c en geldt alleen voor lijsten die de kijker
+al ziet: `GET /users` blijft zoals het was en `shared_with` gaat alleen naar de eigenaar. De zin in 14c is
+aangepast. Een lid dat zijn rol verloor mag een lijst die nog gedeeld staat wel op `private` zetten.
+
+**Aanvulling van 31 oktober 2026, reviewronde op S19: schrijven met een API-token vraagt bereik `admin`.**
+`allowListSharing` gebruikt `canAdminister` en niet de accountrol alleen, want een `read`-token van de owner
+kon een privélijst op `everyone` zetten. `DELETE /history`, `DELETE /history/{history_id}` en de schrijfroutes
+op `/collections` en `/playlists` geven een token onder `admin` `403` met de nieuwe code
+`auth.scope_insufficient`, vastgelegd in 17c.2. Beide routes op `/history` en de hele resource zijn nog niet
+uitgebracht, dus een extra `403` raakt geen bestaande client en de regels van hoofdstuk 3 worden niet geraakt.
+`POST /playlists`, `DELETE /history` en `DELETE /history/{history_id}` kregen die `403` in het schema.
+Favorieten, waarderingen en spoorvoorkeuren vallen erbuiten: die zijn terug te zetten en bestonden al. Een
+wijziging van `visibility` of `shared_with` schrijft een auditregel met de `operationId`; bewaren zonder
+wijziging niet, want de web stuurt de zichtbaarheid bij elke hernoeming mee. De overige correcties raken het
+contract niet in betekenis: `limit` op de vijf lijstoperaties verwijst naar de gedeelde parameter met maximum
+500, wat de server al deed, en een cursor van `GET /history` weigert nu aantoonbaar een andere `kind`, wat het
+schema al beloofde.
+
+**Aanvulling van 31 oktober 2026, tweede reviewronde op S19: geschiedenis wissen staat in het auditlog, en een
+degradatie trekt geen token in.** `DELETE /history` en `DELETE /history/{history_id}` schrijven een regel met
+de `operationId`, want dit is de enige eigen handeling die niet terug te draaien is en een gelekt `admin`-token
+zou anders geen spoor achterlaten. Een geweigerde aanvraag en een `404` schrijven niets; de overige lijstroutes
+blijven erbuiten. De zin in 17c.2 beweerde dat een `member` deze routes niet met een token bereikt, en dat
+klopte alleen voor een token dat hij zelf aanvraagt: `UpdateUser` trekt geen tokens in en `ownDataWrite` leest
+het bereik. Het gedrag blijft zoals het is, want het raakt alleen eigen gegevens; delen en de adminklasse lezen
+de rol en gaan dicht. Alleen de zin is gewijzigd. Dit zijn twee passages in `pleya-protocol-v1.md`;
+`openapi.yaml` wijzigt niet, en beide operationId's bestonden al.
+
+## DEC-XXX: reviewronde op het ondertitelvenster, de refreshketen en herordenen
+
+**Status:** geaccepteerd door Michel op 31 oktober 2026 ("Fix alles"), op de bevindingen uit de review van de proefmerge. Alleen de drie onderdelen hieronder zijn open; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
+
+**Ondertitelwerker.** Besluit 1 blijft staan: één werker, 10 minuten, `503` met `Retry-After: 5`. Eronder komt een
+wachtrij in plaats van wie het eerst pollt. De werker gaat om de beurt naar een andere gebruiker, een gebruiker heeft
+hoogstens twee sporen in behandeling, en daarboven krijgt hij dezelfde `503` zonder plek in de rij. Een job leeft
+zolang iemand erop wacht en 15 s daarna, hetzelfde venster als het onthouden van een fout: een antwoord met
+`Retry-After: 5` en een proxy die een stille aanvraag afkapt zijn op dat moment niet te onderscheiden van een kijker
+die wegging, en een herhaling moet aansluiten. Komt die niet, dan stopt de job en is de werker vrij. Dat scherpt de
+zin "loopt los van de aanvraag door" aan: los van de aanvraag, niet los van elke vraag. Geen veld, geen code.
+De cache overleeft een herstart, een hit ververst de leeftijd, en wat net is uitgegeven blijft vijf minuten staan
+zodat een omzetting die hem inbrandt hem nog kan koppelen. De cache gaat van 64 naar 512 MiB, want met 64 MiB per spoor verdrong één
+PGS-spoor alles. Die grens stond als zin in het contract en is daar meegewijzigd; hij is geen wiregedrag.
+
+**Refreshketen.** Een opvolger die door een herhaling vervangen werd is nooit aangeboden. Bood een client hem later
+toch aan, omdat zijn antwoord als laatste binnenkwam, dan telde dat als hergebruik en ging de sessie eruit. Hij krijgt
+nu een eigen markering (`superseded_at`, migratie 0028): zijn eerste aanbieding levert een nieuw paar zolang de keten
+niet verder is, ook na het respijt. Een tweede aanbieding buiten zijn eigen respijt is gewoon hergebruik. Geen nieuwe
+code en geen veld, dus de regels van hoofdstuk 3 worden niet geraakt.
+
+Deze alinea zei eerst dat een vervangen token na een doorgeroteerde keten `auth.token_invalid` kreeg, zonder intrekking.
+Dat is op 31 oktober teruggedraaid, op de review van `19720e15a`, omdat twee houders van één token er ongemerkt mee
+doorkwamen. Elke herhaling gaf een nieuw token dezelfde uitzondering, dus twee houders konden om en om blijven roteren,
+en een dief die doorrouleerde hield de sessie terwijl het slachtoffer alleen een weigering kreeg. De uitzondering geldt nu
+één generatie: de kop die wijkt voor de eerste aanbieding van een vervangen token krijgt geen markering en geen
+`replaced_by`, dus wie hem aanbiedt is een tweede houder, ook binnen het respijt. Hetzelfde geldt voor een vervangen
+token na een doorgeroteerde keten. Beide geven `auth.refresh_token_reused` en trekken de sessie in. De race van twee
+tabbladen en een verloren antwoord raken dit niet: één browserprofiel heeft één cookie of één `localStorage`-plek, dus
+een vervangen token komt daar alleen terug als de keten nog op hem wacht.
+
+De prijs is een smalle race zonder Web Locks of met een verlopen slot: drie verversingen die elkaar overlappen, waarbij
+het antwoord dat een tweede herhaling verdrong als allerlaatste binnenkomt. Die browser logt dan opnieuw in. Dat is de
+kant waarop dit hoort te falen, en een eigen kolom voor dat geval weegt er niet tegenop.
+
+"Eén generatie" klopte daarna nog niet. De review van `02ac4148c` liet een dief op een echte Postgres 24 uur naast het
+slachtoffer roteren: 3060 rotaties tegenover 95 verversingen, en de sessie leefde nog. `superseded_at` ging bij de eerste
+aanbieding leeg, terwijl `replaced_by` bleef staan en het respijt opnieuw begon. De tweede aanbieding telde daardoor als
+die van een gewoon token en markeerde de actuele kop, ook die van het slachtoffer. Wie één token zag kon zo elke kop in
+een vervangen token veranderen en kwam nooit op de kop zonder markering uit, en daar zit de detectie.
+
+`superseded_at` blijft nu staan. De eerste aanbieding is te herkennen aan `revoked_at = superseded_at`: alleen die verzet
+`revoked_at`, dus het eigen respijt start één keer en herhalingen schuiven het niet op. Een herhaling binnen dat respijt
+geeft nog een nieuw paar, want anders loggen twee tabbladen die een laat token samen aanbieden elkaar in beide volgordes
+uit, maar wat ervoor wijkt krijgt geen markering en geen wijzer. Na dat respijt geeft een tweede aanbieding
+`auth.refresh_token_reused`. Een grens per token sluit het gat niet: de oogst uit het respijt van het oorspronkelijke
+token levert tientallen reserves op.
+
+Wat dit bereikt, gemeten in `refresh_thief_test.go`: de dief uit de review valt in zijn eerste tik, wie ook begint. Een
+zorgvuldigere dief die elke reserve één keer gebruikt komt verder, maar niet voorbij de tweede verversing van het
+slachtoffer, want elke aanbieding laat de kop onherroepelijk vallen en een nieuwe markering vraagt een gewoon token dat
+korter dan het respijt geleden roteerde. Roteert hij zelf gewoon, dan wees het token van het slachtoffer al naar de oude
+kop en valt dat op hergebruik uit. Zolang het slachtoffer niet terugkomt ziet de server niets, en dat geldt voor elke
+refreshketen.
+
+De prijs is dezelfde klasse als hierboven, zonder Web Locks en alleen bij omgekeerde aankomst: twee tabbladen die samen
+een laat token aanbieden en het antwoord van de eerste aanbieding overhouden, loggen opnieuw in. Dat antwoord is de kop
+die wijkt, en die uitzondering is precies wat de dief gebruikte. De subtest `eerste antwoord blijft over` legt dat nu
+vast. Verloren antwoorden binnen 2 minuten, zes aanvragen tegelijk, een ander toestel en de app raken dit niet: de app
+biedt zelf geen vervangen token aan.
+
+Die uitkomst gold alleen voor een aanvraag die de opslag bereikte. De limiter staat vóór de rotatie en telde per sessie,
+ook voor een al gebruikt token, en wie de kop houdt kan die emmer onbeperkt leeg houden. In de review haalde het
+slachtoffer in 90 seconden met 31 pogingen nul keer de opslag. Een ingetrokken token telt daarom op een eigen emmer per
+token, en alleen de kop op die van de sessie. De dief kan die emmer niet leegmaken: buiten het respijt sluit de eerste
+aanbieding die erdoor komt de sessie, en binnen het respijt duurt het hooguit 2 minuten. De prijs is een zwakkere grens
+voor een houder die het erop aanlegt: om en om de kop roteren en het net gebruikte token herhalen levert per rotatie 30
+extra aanbiedingen op. Gemeten via de handler: 1209 antwoorden `200` in 20 seconden, de eerste 930 uit de twee bursts en
+daarna 15,5 per seconde in plaats van een halve. Dat vraagt een geldig token en is niet meer dan een ingelogde client
+elders mag; een lus op één token blijft op 30 plus een halve per seconde. De kaart blijft op zijn 1024 emmers, gemeten
+132 kB, en een verdrongen emmer begint weer vol.
+
+Die grens was niet de hele rekening. Elke herhaling laat een vervangen token achter, en dat krijgt een eigen emmer: uit
+één dood token komen zo 30 plus 29 keer 30 rijen, zonder de emmer van de sessie aan te raken. Gemeten tegen de echte
+handler over HTTP: de lus van hierboven houdt 16 rijen per seconde vol, de eerdere 45 was het gemiddelde over de eerste
+30 seconden met de burst erin, en de boom haalde 67 per seconde op één sessie en 145 op vier, waar de database de grens
+was en niet de limiter. Bij die vier sessies liep een gewone `GET /libraries` van 9 naar 311 ms, met de pool vol
+wachtend op sessieslots. Sessies zijn niet begrensd, dus een account kan dit vermenigvuldigen. Rotaties en herhalingen
+vragen nu vlak voor het schrijven een emmer per account, elk een eigen: 120 achter elkaar, daarna twee per seconde. Die
+emmers staan in een eigen kaart, want de sleutels in de andere kaart kiest de client. De beslissing valt in de
+transactie, omdat alleen die weet of er een rij komt. Hergebruik van een token met een gebruikte opvolger schrijft er
+geen en vraagt de grens niet. Een geweigerde herhaling houdt 429 zolang de emmer leeg is: daarna is een gewoon token na
+het respijt hergebruik, en een vervangen, nooit aangeboden token heeft geen respijt en blijft wachten. Onder dezelfde
+aanval bleef `GET /libraries` op 4,6 ms en kwamen er twee rijen per seconde bij, gemeten met één emmer van 120 en 2.
+
+Eén emmer voor beide bleek fout: een gestolen token van een stilstaand toestel maakt hem leeg met herhalingen, en dan
+krijgt elke andere sessie 429 op haar gewone rotatie, zonder einde als dat toestel uit blijft. Daarom hebben rotaties en
+herhalingen elk een sleutel. Eén token haalt op de kop 0,5 per seconde en kan die emmer niet leegmaken. Wat blijft: een
+verloren antwoord op hetzelfde account tijdens zo'n aanval krijgt 429 tot het respijt om is, en dan sluit zijn sessie;
+vóór deze grens slaagde die herhaling. De som per account is daarmee hoogstens vier rijen per seconde, en die 4 is
+gerekend, niet gemeten. Inloggen schrijft een tokenrij buiten deze grens om; dat kost een wachtwoord en Argon2 per rij.
+
+Dat de grens eerst op 150 en 2,5 stond kwam door een test met een nepklok: de limiter volgde die klok niet, dus 125 rijen
+over ruim twee uur testtijd vielen in 2,5 seconde. `SetClock` zet nu ook de klok van deze emmers.
+
+`POST /auth/login` had hetzelfde gat zonder wachtwoord. Elke geweigerde aanvraag schreef een auditregel, met de naam
+ongeknipt tot 8 KiB, 90 dagen bewaard, en elke verzonnen naam kreeg vijf keer Argon2 tegen de owner-hash, 64 MiB per stuk
+zonder grens op gelijktijdigheid. De auditregel bleef bewust: het patroon over een nacht is wat een beheerder wil zien.
+Een afgewezen `Origin` deed hetzelfde vóór de limiter, tot 1 MiB per regel. Naam en Origin worden nu op 64 tekens geknipt.
+Verzonnen namen, volle emmers en afgewezen origins krijgen per proces 12 regels plus één per vijf seconden, de rest
+alleen een logregel zonder naam. Een fout wachtwoord op een bestaande naam gaat buiten die emmer om: anders verbergt een
+vloed op verzonnen namen de poging waar een beheerder naar zoekt, en die regel is al per naam begrensd. Er lopen hoogstens
+twee controles tegelijk, een poging wacht maximaal 3 seconden op een plek en krijgt dan 429 met `Retry-After`, en per
+clientadres komen 60 pogingen plus één per seconde bij die stap. Restrisico: een vloed op de login kan echte logins een
+429 geven, en login is de uitweg voor wie zijn sessie kwijt is. `login:<naam>` is zonder wachtwoord leeg te houden met één aanvraag per 12 seconden; dat bestond al.
+
+De emmer per adres geldt altijd op `clientAddress`: een doorgestuurd adres telt alleen achter een vertrouwde proxy. Staat
+`PLEYA_SERVER_TRUSTED_PROXIES` leeg op een server achter een tunnel, dan delen alle tunnelclients één adresemmer en kan één
+client de logins van anderen op 429 zetten. Dat is het bekende restrisico van een verkeerde opstelling, de bedoelde
+opstelling staat in `docs/pleya-server-operator-remote.md`. De emmer overslaan als `X-Forwarded-For` aanwezig is, is geen
+uitweg: die header schrijft de client zelf.
+
+Op de foute-wachtwoordroute komt de auditregel na het antwoord. Een bestaande naam schrijft hem altijd en een verzonnen
+naam niet als de emmer leeg is, en dat verschil in tijd zou verraden welke namen bestaan, wat de regel "kosten hetzelfde"
+juist uitsluit. Het antwoord gaat daarom compleet en met `Content-Length` de deur uit vóór de INSERT. Wat overblijft: een volgende
+aanvraag op dezelfde keep-alive-verbinding wacht wel op die INSERT, dus wie twee aanvragen achter elkaar stuurt kan het
+verschil nog meten. Dat is één commit, niet gemeten, tegen de ruis van Argon2.
+
+Migratie 0030 zet indexen op `session_id` en `replaced_by`. `replaced_by` is een foreign key op de eigen tabel, dus de
+opruiming zocht per verwijderde rij de hele tabel door: 500 ms per rij bij een miljoen synthetische rijen, gemeten in
+een lokale container onder amd64-emulatie. Met de indexen 0,2 ms. Dit is geen NAS-meting.
+
+Twee gelijktijdige aanbiedingen van verschillende tokens met dezelfde kop liepen in een deadlock: elk hield zijn eigen rij
+vast en wachtte op die van de ander, omdat een herhaling alles bijwerkt wat naar de kop wijst. In de review was dat 191 keer
+`500` op 400 antwoorden, na een seconde wachten. Dezelfde test vond een tweede: een rotatie nam tokens en dan de sessie,
+`RevokeSession` andersom, dus een afmelding tijdens een rotatie gaf ook een deadlock. De rotatie neemt nu eerst de rij van de
+sessie, `FOR NO KEY UPDATE`, zoals `UPDATE sessions` zelf ook doet. Daarmee geldt overal één volgorde, en lopen rotaties van
+één sessie achter elkaar. Opnieuw proberen na `40P01` was het alternatief; dat laat de seconde wachten staan en lost de
+afmelding niet op.
+
+`PurgeExpiredRefreshTokens` week daar nog van af: één DELETE over de hele tabel, zonder sessieslot. Met een
+hulptransactie die de volgorde vastzet gaf dat een echte `40P01` op twee manieren: een herhaling binnen het respijt van
+een verlopen token, en via de wijzer in `replaced_by` als de opvolger eerder verloopt dan zijn voorganger. Op het toeval
+kwam hij in 400 runs niet. De opruiming werkt nu per sessie, met de sessie eerst, in een eigen transactie.
+
+De kolomcomment in migratie 0028 zegt nog "Leeg na de eerste aanbieding". Die migratie is niet gewijzigd; de betekenis
+staat op `RotateRefreshToken`.
+
+**`cookie_upgrade`.** Een browser met een token in `localStorage` kon alleen via een nieuwe login op de cookie komen.
+`POST /auth/refresh` kent daarom onder de nieuwe vlag `capabilities.cookie_upgrade` de waarde
+`credential_mode: cookie_upgrade`. Getoetst in 17d.1: regel 1 voor de vlag, regel 5 omdat de waarde pas meegaat als de
+vlag aanstaat, regel 6 omdat dit een aanvraag-enum is, regel 3 omdat `token` en `cookie` niets veranderen, en regel 2
+en 4 raken niets. Een eigen waarde en geen versoepeling van "twee bronnen zijn geen bron", omdat de aanvraag zo zelf
+zegt welk credential geldt, ook met een oude cookie ernaast. `CredentialMode` op login verandert niet; refresh krijgt
+`RefreshCredentialMode`, want op login bestaat de waarde niet.
+
+**Herordenen onder een revisie.** `PUT .../items` kreeg het optionele `base_revision`, met `revision` op `Collection`
+en `Playlist` en de nieuwe code `library.list_conflict` (`409`, huidige revisie in `details.revision`). `memory.conflict`
+past niet: die code hoort bij een ander domein. `updated_at` kan het niet, want die staat in hele seconden op de lijn.
+De zes regels: regel 1 voor `revision`, regel 4 omdat `base_revision` optioneel is met het oude gedrag als default,
+regel 5 omdat `capabilities.collections` en `capabilities.playlists` tegelijk met het veld ontstaan en geen uitgebrachte
+server dus bestaat die het afwijst, regel 2 en 3 omdat `ListItemsRequest` voor `POST` ongewijzigd blijft en `PUT` een
+eigen schema krijgt, en regel 6 is niet van toepassing. Dit valt binnen het S19-venster: de resource is nog niet
+uitgebracht. `revision` loopt alleen op bij schrijven op de rijen, niet bij hernoemen, zodat een nieuwe titel geen
+herordening weggooit. Een item dat de catalogus verlaat telt niet mee; dat vangen `PUT` (`404`) en het opnieuw lezen vlak
+vóór het schrijven op. `openapi.yaml` en hoofdstuk 14c noemen die uitzondering sinds de review van `19720e15a`; alleen de
+beschrijving wijzigde, dus de regels van hoofdstuk 3 worden niet geraakt.
+
 ## DEC-169: Activiteit van het huishouden krijgt een eigen protocolvenster, en `play_history` wordt leesbaar voor huisgenoten met een opt-out, en opt-in voor restricted
 
 **Date:** 2026-10-30

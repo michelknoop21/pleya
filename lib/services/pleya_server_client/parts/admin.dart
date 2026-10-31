@@ -305,6 +305,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
         'GET' => _http.get(path, queryParameters: queryParameters, headers: headers, timeout: timeout),
         'POST' => _http.post(path, body: encoded, headers: headers, timeout: timeout),
         'PUT' => _http.put(path, body: encoded, headers: headers, timeout: timeout),
+        'PATCH' => _http.patch(path, body: encoded, headers: headers, timeout: timeout),
         'DELETE' => _http.delete(path, headers: headers, timeout: timeout),
         _ => throw ArgumentError.value(method, 'method'),
       };

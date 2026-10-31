@@ -15,6 +15,12 @@ const nl: Record<string, string> = { ...sharedNl, ...webNl };
  * vrijwel zeker een vergeten kopie.
  */
 const SAME_ON_PURPOSE = [
+  // Een Nederlands leenwoord en een cijfernotatie.
+  'downloads.title',
+  'history.ratingScore',
+  // Gangbare Nederlandse leenwoorden voor de catalogusbediening.
+  'catalog.filters',
+  'catalog.genre',
   'admin.tok.list.title',
   'admin.tok.owner',
   'admin.tok.mcp.title',

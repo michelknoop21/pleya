@@ -14,6 +14,8 @@
   let error = $state<string | null>(null);
 
   const valid = $derived(username.trim().length > 0 && password.length > 0);
+  // De schil kan hier belanden met een reden die vóór het inloggen al vaststaat.
+  const shown = $derived(error ?? session.error);
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -80,7 +82,7 @@
           bind:value={password}
           autocomplete="current-password"
           required
-          error={error ?? undefined}
+          error={shown ?? undefined}
         />
       </div>
 
@@ -90,7 +92,7 @@
         Deze regio staat er altijd en meldt dezelfde zin, zoals het oude
         foutvak deed.
       -->
-      <p class="visually-hidden" role="alert">{error ?? ''}</p>
+      <p class="visually-hidden" role="alert">{shown ?? ''}</p>
 
       <button class="btn btn--full login__submit" type="submit" disabled={!valid || busy}>
         {busy ? t('loading') : t('login.submit')}

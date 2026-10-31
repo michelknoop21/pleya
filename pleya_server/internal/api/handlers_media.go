@@ -5,11 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/edde746/plezy/pleya_server/internal/transcode"
 	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -108,6 +109,9 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 	s.serveFile(w, r, served, contentType)
 }
 
+// subtitleRetryAfterSeconds is what a client waits before it asks for a track that is not ready.
+const subtitleRetryAfterSeconds = "5"
+
 // subtitleContentTypes volgen hoofdstuk 12 van de specificatie.
 var subtitleContentTypes = map[string]string{
 	"srt": "application/x-subrip",
@@ -129,39 +133,78 @@ func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request, versionS
 	}
 
 	file, versionID, libraryID, err := s.opts.Catalog.SubtitleFile(r.Context(), streamID)
+	embedded, index := false, 0
+	if errors.Is(err, catalog.ErrNotFound) && s.transcodeEnabled() {
+		file, versionID, libraryID, index, err = s.opts.Catalog.EmbeddedSubtitleFile(r.Context(), streamID)
+		embedded = err == nil
+	}
 	if err != nil {
 		s.writeStoreError(w, err)
 		return
 	}
 
-	if versionScope != nil {
-		if *versionScope != versionID {
-			// Het token is smal: een ondertitel van een andere versie valt erbuiten.
-			// Dit was eerder een tokenfout (401), maar dat lekte bestaan: een
-			// niet-bestaand subtitle_id gaf 404 via de lookup hierboven, een
-			// bestaand-maar-verboden id gaf 401, en die twee statuscodes samen
-			// waren een oracle waarmee elke geldige streamtoken (voor om het even
-			// welke versie) het bestaan van elk subtitle_id in de hele catalogus
-			// kon aftasten, ongeacht bibliotheekrecht. DEC-126 regel 8 eist
-			// expliciet "anders 404, ook met een geldig streamtoken"; dezelfde
-			// respons als writeStoreError(catalog.ErrNotFound) hieronder maakt
-			// bestaat-niet en mag-niet weer ononderscheidbaar.
-			writeError(w, s.log, CodeNotFound, "not found", nil)
+	if !s.canReadSubtitle(w, r, versionScope, versionID, libraryID) {
+		return
+	}
+	if embedded {
+		user, ok := streamRequester(r)
+		if !ok {
+			writeError(w, s.log, CodeTokenInvalid, "token invalid", nil)
 			return
 		}
-		// Een streamtoken of -sessie is al op het aanvraagpad gecontroleerd, in
-		// streamAuthorized/streamSessionScope (DEC-126, hoofdstuk 16.4 regel 8),
-		// vóórdat deze handler draait — tegen het subject van het token of de
-		// sessie, niet alleen bij het minten.
-	} else if !s.authorizeLibrary(w, r, libraryID) {
-		return
+		path, extractErr := s.opts.Transcode.ExtractSubtitle(r.Context(), transcode.SubtitleParams{
+			User: user, InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
+		})
+		if extractErr != nil {
+			s.writeSubtitlePreparationError(w, r, streamID, extractErr)
+			return
+		}
+		file.AbsPath = path
 	}
 
 	contentType, known := subtitleContentTypes[file.Format]
 	if !known {
 		contentType = "text/plain; charset=utf-8"
 	}
+	if embedded {
+		if file.Format == "pgs" || file.Format == "dvdsub" {
+			contentType = "application/x-matroska"
+		}
+		// Preparation may outlive a token or permission; re-authorize before delivery.
+		s.streamAuthorized(func(w http.ResponseWriter, fresh *http.Request, scope *id.ID) {
+			if s.canReadSubtitle(w, fresh, scope, versionID, libraryID) {
+				s.serveFile(w, fresh, file, contentType)
+			}
+		}).ServeHTTP(w, r)
+		return
+	}
 	s.serveFile(w, r, file, contentType)
+}
+
+// writeSubtitlePreparationError answers a preparation that is not finished. Busy means the
+// extraction runs on: the client repeats after Retry-After and joins it. A server going down
+// is no failure of this track, so the repeat is also the right answer there.
+func (s *Server) writeSubtitlePreparationError(w http.ResponseWriter, r *http.Request, streamID id.ID, err error) {
+	if errors.Is(err, transcode.ErrBusy) || errors.Is(err, transcode.ErrStopped) {
+		w.Header().Set("Retry-After", subtitleRetryAfterSeconds)
+		writeError(w, s.log, CodeTranscodeBusy, "the subtitle is still being prepared", nil)
+		return
+	}
+	if r.Context().Err() == nil {
+		s.log.Warn("subtitle extraction failed", "stream", streamID.String(), "error", err.Error())
+	}
+	writeError(w, s.log, CodeTranscodeFailed, "the subtitle could not be prepared", nil)
+}
+
+func (s *Server) canReadSubtitle(w http.ResponseWriter, r *http.Request, versionScope *id.ID, versionID, libraryID id.ID) bool {
+	if versionScope != nil {
+		if *versionScope != versionID {
+			writeError(w, s.log, CodeNotFound, "not found", nil)
+			return false
+		}
+		return true
+	}
+	return s.authorizeLibrary(w, r, libraryID)
 }
 
 // serveFile levert de bytes van één bestand van de read-only mount.
@@ -192,10 +235,7 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, file catalog.
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if _, err := io.Copy(w, f); err != nil {
-		s.log.Warn("bestand leveren afgebroken",
-			"path", filepath.Base(file.AbsPath), "error", err.Error())
-	}
+	s.copyRange(w, r, f, 0, info.Size(), file.AbsPath)
 }
 
 func shortHash(v string) string {

@@ -23,6 +23,15 @@ import 'pleya_server_auth_service.dart';
 /// else awaits the same future. Pleya Web landed on the same rule for the same
 /// reason.
 ///
+/// ## A throttled refresh is not a lost session
+///
+/// `429 auth.rate_limited` answers before the server rotates anything, so the
+/// stored token is still good. The session waits what the server asked for and
+/// tries again inside the same single-flight future, so every caller waits with
+/// it instead of starting a second attempt. After [refreshLimitAttempts] it gives
+/// up on this round and hands the caller a [PleyaRateLimitedException]; the token
+/// stays and [isRevoked] stays false, so the next request simply tries again.
+///
 /// ## What survives a restart
 ///
 /// Only the refresh token, in the connection row. An access token is short
@@ -41,17 +50,28 @@ class PleyaServerSession {
     required PleyaServerAuthService auth,
     this.onTokensRotated,
     DateTime Function()? now,
+    Future<void> Function(Duration wait)? delay,
   }) : _connection = connection,
        _auth = auth,
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now,
+       _delay = delay ?? Future<void>.delayed;
 
   /// Refresh this long before the access token actually expires. A token that
   /// is valid for another two seconds is not worth starting a request with:
   /// the request would outlive it and come back 401.
   static const Duration refreshMargin = Duration(seconds: 30);
 
+  /// How many times one refresh may be answered with a 429 before it gives up.
+  /// The server asks for two seconds at most, so this stays under five seconds.
+  static const int refreshLimitAttempts = 3;
+
+  /// Longer than this is not worth holding every caller for. Our server never
+  /// asks for it, a proxy in front of it might.
+  static const Duration refreshLimitMaxWait = Duration(seconds: 30);
+
   final PleyaServerAuthService _auth;
   final DateTime Function() _now;
+  final Future<void> Function(Duration wait) _delay;
 
   /// Called with the connection carrying the rotated refresh token, before the
   /// new access token is handed to anyone. Persisting must happen first: a
@@ -87,6 +107,12 @@ class PleyaServerSession {
   /// The connection itself is only ever removed by the user.
   bool get isRevoked => _revoked;
   bool _revoked = false;
+
+  bool _closed = false;
+
+  /// Stop retrying a throttled refresh. A connection removed during the wait
+  /// must not rotate its token afterwards: that would write it back.
+  void close() => _closed = true;
 
   /// The current access token, minting or refreshing one when needed.
   ///
@@ -163,6 +189,23 @@ class PleyaServerSession {
   }
 
   Future<String> _performRefresh() async {
+    for (var attempt = 1; ; attempt++) {
+      try {
+        return await _refreshAttempt();
+      } on PleyaRateLimitedException catch (e) {
+        final wait = Duration(milliseconds: e.retryAfterMs ?? 1000);
+        if (attempt >= refreshLimitAttempts || wait > refreshLimitMaxWait) rethrow;
+        await _delay(wait);
+        // A sign-in may have landed during the wait; it owns the session now.
+        final token = _accessToken;
+        final expiry = _accessTokenExpiry;
+        if (token != null && expiry != null && _now().isBefore(expiry.subtract(refreshMargin))) return token;
+        if (_closed) rethrow;
+      }
+    }
+  }
+
+  Future<String> _refreshAttempt() async {
     final refreshToken = _connection.refreshToken;
     if (refreshToken.isEmpty) {
       _revoked = true;
@@ -178,7 +221,8 @@ class PleyaServerSession {
       rethrow;
     } on MediaServerAuthException catch (e) {
       // A 401 or 403 means this token did not work. That is a reason to stop
-      // spending it for now, not a reason to destroy it.
+      // spending it for now, not a reason to destroy it. A 429 says nothing
+      // about the token at all.
       if (e.statusCode == 401 || e.statusCode == 403) {
         _revoked = true;
       }

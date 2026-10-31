@@ -49,7 +49,8 @@ const APITokenPrefix = "plyat1_"
 type APITokenScope string
 
 const (
-	// APIScopeRead mag lezen wat de eigenaar mag lezen, en niets beheren.
+	// APIScopeRead mag lezen wat de eigenaar mag lezen, niets beheren en geen
+	// geschiedenis of lijsten schrijven (17c.2).
 	APIScopeRead APITokenScope = "read"
 	// APIScopeMaintenance is gereserveerd voor de operationele handelingen die
 	// S25 maakt (back-up, onderhoudsmodus, herstel). Vandaag bestaat geen enkele

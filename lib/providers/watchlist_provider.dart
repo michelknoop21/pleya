@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../media/ids.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../services/api_cache.dart';
@@ -51,6 +52,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     this.isServerOnline = _noServersOnline,
     this.hasDownload = _noDownloads,
     this.seerrConfigured = false,
+    this.onScopeChanged,
   });
 
   /// Rebuilt on every profile switch, so a stale repository cannot serve the
@@ -66,6 +68,7 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   bool Function(String globalKey) hasDownload;
 
   bool seerrConfigured;
+  final VoidCallback? onScopeChanged;
 
   static bool _noServersOnline(ServerId _) => false;
   static bool _noDownloads(String _) => false;
@@ -107,6 +110,11 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
   String? _attachedProfileId;
   WatchlistSourceFactory? _factory;
+  int _generation = 0;
+  Object? _pendingBinding;
+  Object? _plexScopeCheck;
+  Map<String, MediaServerClient> _clients = {};
+  Map<String, ({MediaServerClient client, bool favorites})> _sourceClients = {};
 
   /// Bind the provider to the active profile's connections.
   ///
@@ -116,6 +124,17 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   /// scope checks) hangs off the profile, so serving one user's list from a
   /// repository built for another would be the exact failure this design is
   /// shaped to prevent.
+  ///
+  /// Within a profile only the clients that contribute a source count. A
+  /// change there builds a new repository next to the old one and swaps it in
+  /// when it is ready: nulling it first makes [hasWatchlist] false for that
+  /// window, and the main screen then moves the viewer off the Kijklijst tab.
+  ///
+  /// The Plex source hangs off the account, not off a client, so it is the one
+  /// source no client comparison can see arrive. Any other client change
+  /// re-reads its scope and rebuilds only when that differs from what is bound:
+  /// a Plex account added mid-session, or a Home binder finishing after the
+  /// first build. A server merely going offline leaves the same scope.
   void attach({
     required String? profileId,
     required PlexAccountAuthResolver resolvePlexAuth,
@@ -130,34 +149,84 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
       repository = null;
       resolver = null;
       _attachedProfileId = null;
+      _clients = {};
+      _sourceClients = {};
+      reset();
       return;
     }
 
+    final clients = clientsById();
+    final sourceClients = {
+      for (final entry in clients.entries)
+        if (WatchlistSourceFactory.contributesSource(entry.value))
+          entry.key: (client: entry.value, favorites: entry.value.capabilities.serverFavorites),
+    };
+    final clientsChanged = !mapEquals(_clients, clients);
+    final sourcesChanged = !mapEquals(_sourceClients, sourceClients);
     if (_attachedProfileId != profileId) {
       _factory?.dispose();
       _factory = null;
+      repository = null;
       reset();
     }
     _attachedProfileId = profileId;
+    _clients = clients;
+    _sourceClients = sourceClients;
 
     resolver ??= WatchlistAvailabilityResolver(profileId: profileId, serversFor: serversFor, cache: cache);
-    if (_factory != null) return;
 
-    unawaited(() async {
-      final factory = WatchlistSourceFactory(
-        profileId: profileId,
-        resolvePlexAuth: resolvePlexAuth,
-        clientIdentifier: await clientIdentifier(),
-        clientsById: clientsById,
-      );
-      if (_attachedProfileId != profileId) {
-        factory.dispose();
-        return;
-      }
-      _factory = factory;
-      repository = WatchlistRepository(sources: await factory.build());
-      safeNotifyListeners();
-    }());
+    void rebuild() {
+      final generation = _generation;
+      final binding = _pendingBinding = Object();
+      _plexScopeCheck = null;
+      bool superseded() =>
+          _generation != generation || !identical(_pendingBinding, binding) || _attachedProfileId != profileId;
+      unawaited(() async {
+        final factory = WatchlistSourceFactory(
+          profileId: profileId,
+          resolvePlexAuth: resolvePlexAuth,
+          clientIdentifier: await clientIdentifier(),
+          clientsById: clientsById,
+        );
+        if (superseded()) {
+          factory.dispose();
+          return;
+        }
+        final sources = await factory.build();
+        if (superseded()) {
+          factory.dispose();
+          return;
+        }
+        final retired = _factory;
+        _pendingBinding = null;
+        _factory = factory;
+        repository = WatchlistRepository(sources: sources);
+        retired?.dispose();
+        // Held through the rebuild, but a title no remaining source vouches for
+        // must not outlive it: the replaced source may have been another user's.
+        final scopes = sources.map((s) => s.scope).toSet();
+        _entries = _entries.where((e) => e.memberships.any((m) => scopes.contains(m.scope))).toList();
+        _isLoading = false;
+        _hasLoaded = false;
+        safeNotifyListeners();
+      }());
+    }
+
+    final building = _pendingBinding != null;
+    if (sourcesChanged || (_factory == null && !building) || (building && clientsChanged)) {
+      rebuild();
+    } else if (clientsChanged) {
+      final check = _plexScopeCheck = Object();
+      unawaited(() async {
+        final scope = await PlexAccountWatchlistSource.resolveScope(resolveAuth: resolvePlexAuth, profileId: profileId);
+        if (identical(_plexScopeCheck, check) && scope != _boundPlexScope) rebuild();
+      }());
+    }
+  }
+
+  WatchlistScopeId? get _boundPlexScope {
+    final sources = repository?.sources ?? const <WatchlistSource>[];
+    return sources.map((s) => s.scope).where((scope) => scope.backend == MediaBackend.plex).firstOrNull;
   }
 
   /// Priority per source, derived from the repository's own order. The
@@ -184,12 +253,17 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
   /// Load the list: snapshot first so something is on screen, then the network.
   Future<void> load({bool offline = false}) async {
+    final generation = _generation;
+    final repository = this.repository;
+    // A rebind within the profile swaps the repository without a reset.
+    bool isCurrent() => _generation == generation && identical(this.repository, repository);
     _isLoading = true;
     _error = null;
     safeNotifyListeners();
 
     final scopes = repository?.sources.map((s) => s.scope).toList() ?? const <WatchlistScopeId>[];
     final restored = await _readSnapshots(scopes);
+    if (!isCurrent()) return;
     if (restored != null) {
       _entries = restored;
       _hasSnapshot = true;
@@ -206,19 +280,24 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     }
 
     try {
-      final result = await repository!.fetch();
+      final result = await repository.fetch();
+      if (!isCurrent()) return;
       _entries = result.entries;
       _complete = result.complete;
       _offline = false;
-      await _writeSnapshots(result);
+      await _writeSnapshots(result, repository.sources);
+      if (!isCurrent()) return;
       _hasSnapshot = true;
     } catch (e, st) {
+      if (!isCurrent()) return;
       appLogger.w('Watchlist load failed', error: e, stackTrace: st);
       _error = friendlyError(e);
     } finally {
-      _isLoading = false;
-      _hasLoaded = true;
-      safeNotifyListeners();
+      if (isCurrent()) {
+        _isLoading = false;
+        _hasLoaded = true;
+        safeNotifyListeners();
+      }
     }
   }
 
@@ -321,14 +400,18 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     final key = watchlistKeyForItem(item, externalIds: externalIds);
     if (key == null) return WatchlistOutcome.unsupported;
 
+    final generation = _generation;
+    bool isCurrent() => !isDisposed && _generation == generation && identical(this.repository, repository);
     WatchlistMembership? created;
     final outcome = await WatchlistActions.add(
       repository: repository,
       item: item,
       isOffline: isOffline,
+      isCurrent: isCurrent,
       onAdded: (membership) => created = membership,
     );
 
+    if (!isCurrent()) return outcome;
     final membership = created;
     if (outcome != WatchlistOutcome.added || membership == null) return outcome;
 
@@ -362,8 +445,16 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     final repository = this.repository;
     if (repository == null) return WatchlistOutcome.unsupported;
 
-    final outcome = await WatchlistActions.remove(sources: repository.sources, entry: entry, isOffline: isOffline);
+    final generation = _generation;
+    bool isCurrent() => !isDisposed && _generation == generation && identical(this.repository, repository);
+    final outcome = await WatchlistActions.remove(
+      sources: repository.sources,
+      entry: entry,
+      isOffline: isOffline,
+      isCurrent: isCurrent,
+    );
 
+    if (!isCurrent()) return outcome;
     switch (outcome) {
       case WatchlistOutcome.removed:
         _entries = _entries.where((e) => e.key != entry.key).toList();
@@ -378,6 +469,12 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
 
   /// Drop everything and rebind. Called on a profile switch.
   void reset() {
+    _generation++;
+    _pendingBinding = null;
+    _plexScopeCheck = null;
+    onScopeChanged?.call();
+    _isLoading = false;
+    resolver = null;
     _entries = const [];
     _hasLoaded = false;
     _complete = true;
@@ -413,10 +510,10 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
   ///
   /// Overwriting a failed source's snapshot with nothing would delete the last
   /// good offline copy on the strength of a timeout.
-  Future<void> _writeSnapshots(WatchlistFetchResult result) async {
+  Future<void> _writeSnapshots(WatchlistFetchResult result, List<WatchlistSource> sources) async {
     final failed = result.failed.map((s) => s.scope).toSet();
     final bySource = <WatchlistScopeId, List<WatchlistEntry>>{};
-    for (final source in repository?.sources ?? const <WatchlistSource>[]) {
+    for (final source in sources) {
       if (failed.contains(source.scope)) continue;
       bySource[source.scope] = <WatchlistEntry>[];
     }

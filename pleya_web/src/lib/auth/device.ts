@@ -18,6 +18,18 @@ import { t } from '../i18n';
 
 export const DEVICE_ID_KEY = 'pleya.device_id';
 
+/** De plaatshouder uit `handlers_auth.go` voor een sessie zonder toestelnaam. */
+export const UNKNOWN_DEVICE_NAME = 'Unknown device';
+
+/**
+ * De naam van het toestel, of null als de server die niet kent. De plaatshouder is
+ * Engels en vast, dus hij hoort niet in beeld: elke plek kiest zijn eigen woord.
+ */
+export function knownDeviceName(name: string | null | undefined): string | null {
+  const trimmed = name?.trim();
+  return trimmed && trimmed !== UNKNOWN_DEVICE_NAME ? trimmed : null;
+}
+
 /**
  * Bovengrens voor de toestelnaam. Het schema `DeviceName` noemt alleen een
  * minimum; 64 is de grens van `server_name`, en een naam die langer is past in
@@ -39,7 +51,7 @@ function defaultStorage(): DeviceStorage | null {
 }
 
 /** Een UUID v4 uit getRandomValues: randomUUID bestaat alleen in een secure context, en http://nas:8832 is dat niet. */
-function randomId(): string {
+export function randomId(): string {
   const bytes = new Uint8Array(16);
   try {
     crypto.getRandomValues(bytes);

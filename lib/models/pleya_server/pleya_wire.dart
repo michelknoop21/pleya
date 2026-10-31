@@ -148,10 +148,16 @@ class PleyaCapabilities {
     required this.artwork,
     required this.watchState,
     this.playbackPlan = false,
+    this.playbackQuality = false,
+    this.playbackAudioSelection = false,
+    this.embeddedSubtitles = false,
+    this.playbackSubtitles = false,
     this.history = false,
     this.favorites = false,
     this.ratings = false,
     this.trackPreferences = false,
+    this.collections = false,
+    this.playlists = false,
     this.itemActivity = false,
     this.assistantMemory = false,
     this.transcode = false,
@@ -186,6 +192,10 @@ class PleyaCapabilities {
   final bool artwork;
   final bool watchState;
   final bool playbackPlan;
+  final bool playbackQuality;
+  final bool playbackAudioSelection;
+  final bool embeddedSubtitles;
+  final bool playbackSubtitles;
 
   /// The personal layer of S20: play history, favorites and ratings on items,
   /// and the remembered audio and subtitle choice per title.
@@ -193,6 +203,12 @@ class PleyaCapabilities {
   final bool favorites;
   final bool ratings;
   final bool trackPreferences;
+
+  /// S19, chapter 14c: the `/collections` resource.
+  final bool collections;
+
+  /// S19, chapter 14c: the `/playlists` resource.
+  final bool playlists;
 
   /// `GET /items/{id}/activity` and the opt-out under
   /// `/users/me/activity-sharing`, which always come together.
@@ -252,10 +268,16 @@ class PleyaCapabilities {
     artwork: boolean(json, 'artwork'),
     watchState: boolean(json, 'watch_state'),
     playbackPlan: booleanOr(json, 'playback_plan', orElse: false),
+    playbackQuality: booleanOr(json, 'playback_quality', orElse: false),
+    playbackAudioSelection: booleanOr(json, 'playback_audio_selection', orElse: false),
+    embeddedSubtitles: booleanOr(json, 'embedded_subtitles', orElse: false),
+    playbackSubtitles: booleanOr(json, 'playback_subtitles', orElse: false),
     history: booleanOr(json, 'history', orElse: false),
     favorites: booleanOr(json, 'favorites', orElse: false),
     ratings: booleanOr(json, 'ratings', orElse: false),
     trackPreferences: booleanOr(json, 'track_preferences', orElse: false),
+    collections: booleanOr(json, 'collections', orElse: false),
+    playlists: booleanOr(json, 'playlists', orElse: false),
     itemActivity: booleanOr(json, 'item_activity', orElse: false),
     assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),

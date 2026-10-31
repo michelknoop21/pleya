@@ -7,6 +7,7 @@
 <script lang="ts">
   import AdminIcon from '../components/AdminIcon.svelte';
   import StatTile from '../components/StatTile.svelte';
+  import { knownDeviceName } from '../auth/device';
   import { t } from '../i18n';
   import { formatBytes, formatCount, formatRelative } from '../util/format';
   import {
@@ -61,7 +62,7 @@
     sub:
       data.streams.length === 0
         ? t('admin.tile.watchingNone')
-        : data.streams.map((s) => s.device_name ?? s.username).join(' · ')
+        : data.streams.map((s) => knownDeviceName(s.device_name) ?? s.username).join(' · ')
   });
 </script>
 

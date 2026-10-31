@@ -732,6 +732,9 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Audio';
 	@override String get subtitlesLabel => 'Ondertitels';
+	@override String get subtitlesPreparing => 'Ondertitels voorbereiden';
+	@override String get subtitlesPrepareFailed => 'Ondertitels konden niet worden voorbereid';
+	@override String get subtitlesPrepareRetry => 'Opnieuw';
 	@override String get resetToZero => 'Reset naar 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -1594,6 +1597,7 @@ class _TranslationsPlaylistsNl extends TranslationsPlaylistsEn {
 	@override String get errorLoading => 'Fout bij laden afspeellijsten';
 	@override String get errorAdding => 'Fout bij toevoegen aan afspeellijst';
 	@override String get errorReordering => 'Fout bij herschikken van afspeellijstitem';
+	@override String get changedElsewhere => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.';
 	@override String get errorRemoving => 'Fout bij verwijderen uit afspeellijst';
 }
 
@@ -5125,6 +5129,9 @@ extension on TranslationsNl {
 			_ => null,
 		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
+			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
+			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
+			'videoControls.subtitlesPrepareRetry' => 'Opnieuw',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -5633,11 +5640,11 @@ extension on TranslationsNl {
 			'about.viewLicensesDescription' => 'Bekijk licenties van third-party bibliotheken',
 			'about.sourceCode' => 'Broncode',
 			'about.sourceCodeDescription' => 'Bijbehorende broncode van deze build (GPL-3.0)',
+			_ => null,
+		} ?? switch (path) {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
-			_ => null,
-		} ?? switch (path) {
 			'about.licence' => 'Licentie',
 			'about.sources' => 'Bronnen',
 			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.',
@@ -5843,6 +5850,7 @@ extension on TranslationsNl {
 			'playlists.errorLoading' => 'Fout bij laden afspeellijsten',
 			'playlists.errorAdding' => 'Fout bij toevoegen aan afspeellijst',
 			'playlists.errorReordering' => 'Fout bij herschikken van afspeellijstitem',
+			'playlists.changedElsewhere' => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.',
 			'playlists.errorRemoving' => 'Fout bij verwijderen uit afspeellijst',
 			'watchTogether.title' => 'Samen Kijken',
 			'watchTogether.description' => 'Kijk synchroon met vrienden en familie',
@@ -6146,12 +6154,12 @@ extension on TranslationsNl {
 			'externalPlayer.customPlayers' => 'Aangepaste spelers',
 			'externalPlayer.systemDefault' => 'Systeemstandaard',
 			'externalPlayer.addCustomPlayer' => 'Aangepaste speler toevoegen',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.playerName' => 'Spelernaam',
 			'externalPlayer.playerNameHint' => 'Mijn speler',
 			'externalPlayer.playerCommand' => 'Commando',
 			'externalPlayer.playerPackage' => 'Pakketnaam',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL-schema',
 			'externalPlayer.off' => 'Uit',
 			'externalPlayer.launchFailed' => 'Kan externe speler niet openen',
@@ -6660,12 +6668,12 @@ extension on TranslationsNl {
 			'unifiedCatalog.jumpTo' => 'Spring naar',
 			'unifiedCatalog.loadMore' => 'Meer laden',
 			'unifiedCatalog.loadingMore' => 'Meer laden…',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.sort.title' => 'Sorteren',
 			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
@@ -7174,12 +7182,12 @@ extension on TranslationsNl {
 			'assistant.examples.recentlyAdded.0' => 'Wat is er deze week toegevoegd?',
 			'assistant.examples.recentlyAdded.1' => 'Welke series zijn onlangs toegevoegd?',
 			'assistant.examples.describe.0' => 'Zoek een film over de ruimte.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.describe.1' => 'Ik wil een trage detectiveserie voor een regenachtige zondag.',
 			'assistant.examples.trending.0' => 'Wat is er nu populair?',
 			'assistant.examples.trending.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.examples.request.0' => 'Welke thrillers van dit jaar kan ik aan mijn bibliotheek toevoegen?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Zoek een sciencefictionserie die het aanvragen waard is.',
 			'assistant.examples.trakt.0' => 'Welke titels van mijn Trakt-kijklijst kan ik hier vanavond kijken?',
 			'assistant.examples.history.0' => 'Wat heb ik de laatste tijd gekeken?',

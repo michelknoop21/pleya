@@ -58,6 +58,7 @@ class WatchlistScreen extends StatefulWidget {
 
 class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableTab {
   bool _requestedLoad = false;
+  bool _loadScheduled = false;
   WatchlistFilterSelection _selection = WatchlistFilterSelection.none;
   WatchlistSort _sort = WatchlistSort.recentlyAdded;
 
@@ -80,15 +81,19 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_requestedLoad) return;
-    _requestedLoad = true;
     final provider = context.read<WatchlistProvider?>();
     // Already loaded for this profile: returning to the tab should not put a
     // spinner over a list that is already right.
-    if (provider?.hasLoaded ?? false) return;
+    if (provider == null || provider.hasLoaded || provider.isLoading || _loadScheduled) return;
+    // A rebind clears hasLoaded on an open screen; wait for the repository it is
+    // still building, or the empty gap would load as offline.
+    if (_requestedLoad && provider.repository == null) return;
+    _requestedLoad = true;
+    _loadScheduled = true;
     final isOffline = _isOffline;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) provider?.load(offline: isOffline);
+      _loadScheduled = false;
+      if (mounted) provider.load(offline: isOffline);
     });
   }
 

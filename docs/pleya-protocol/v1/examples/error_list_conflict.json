@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "library.list_conflict",
+    "message": "the list changed since it was read",
+    "retryable": false,
+    "details": {
+      "revision": 9
+    }
+  }
+}

@@ -105,7 +105,7 @@ class DownloadArtworkService {
         await file.delete();
       }
 
-      await http.downloadFile(spec.url, filePath);
+      await http.downloadFile(spec.url, filePath, headers: await spec.headersSupplier?.call());
 
       if (!await isUsableArtworkFile(file)) {
         if (await file.exists()) await file.delete();

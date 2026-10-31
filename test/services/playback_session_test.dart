@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -8,9 +10,9 @@ import 'package:pleya/services/playback_context.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 import 'package:pleya/services/playback_session.dart';
 
-PlaybackContext _context(PlaybackInitializationResult result) {
+PlaybackContext _context(PlaybackInitializationResult result, {MediaBackend backend = MediaBackend.plex}) {
   return PlaybackContext(
-    metadata: MediaItem(id: 'item-1', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 'srv'),
+    metadata: MediaItem(id: 'item-1', backend: backend, kind: MediaKind.movie, serverId: 'srv'),
     result: result,
     sourceKind: result.usesLocalMedia ? PlaybackSourceKind.localFile : PlaybackSourceKind.remoteDirect,
     reportingMode: PlaybackReportingMode.online,
@@ -19,6 +21,41 @@ PlaybackContext _context(PlaybackInitializationResult result) {
 }
 
 void main() {
+  group('a failed reload on a server-held conversion', () {
+    PlaybackSession session(MediaBackend backend, String? playMethod, {bool isOffline = false}) =>
+        PlaybackSession.fromContext(
+          _context(
+            PlaybackInitializationResult(
+              availableVersions: const [],
+              videoUrl: 'u',
+              playMethod: playMethod,
+              isOffline: isOffline,
+            ),
+            backend: backend,
+          ),
+          requestedQualityPreset: TranscodeQualityPreset.original,
+        );
+
+    test('only a Pleya Server conversion dies with its stop report', () {
+      expect(session(MediaBackend.pleyaServer, 'Transcode').holdsServerConversion, isTrue);
+      expect(session(MediaBackend.pleyaServer, 'DirectStream').holdsServerConversion, isTrue);
+      expect(session(MediaBackend.pleyaServer, 'DirectPlay').holdsServerConversion, isFalse);
+      expect(session(MediaBackend.pleyaServer, 'Transcode', isOffline: true).holdsServerConversion, isFalse);
+      expect(session(MediaBackend.plex, 'Transcode').holdsServerConversion, isFalse);
+      expect(session(MediaBackend.jellyfin, 'Transcode').holdsServerConversion, isFalse);
+    });
+
+    test('the rollback reopens it once and otherwise resumes as before', () {
+      final source = File('lib/screens/video_player/parts/episode_navigation.dart').readAsStringSync();
+      final rollback = source.substring(source.indexOf('if (!didOpenReplacement) {'));
+
+      expect(rollback, contains('holdsServerConversion'));
+      expect(rollback, contains('!reopeningFailedReload'));
+      expect(rollback, contains('_playWithPlaybackIntent(currentPlayer)'));
+      expect(rollback, contains('reopeningFailedReload: true'));
+    });
+  });
+
   group('PlaybackSession.fromContext', () {
     test('keeps the requested preset when no fallback occurred', () {
       final session = PlaybackSession.fromContext(

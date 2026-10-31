@@ -25,6 +25,13 @@ import '../../focus/focus_memory_tracker.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/pleya_profile_language_preferences.dart';
 import '../../media/track_language_choice.dart';
+import '../../media/media_backend.dart';
+import '../../media/ids.dart';
+import '../../providers/multi_server_provider.dart';
+import '../../services/pleya_server_client.dart';
+import '../../services/storage_service.dart';
+import '../../utils/app_logger.dart';
+import '../../utils/snackbar_helper.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../services/pleya_profile_language_preference_store.dart';
@@ -181,10 +188,44 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
 
   /// Open the sheet of mockup 31 B for one stored preference.
   Future<void> _openSeries(SeriesLanguagePreference entry, PleyaProfileLanguagePreferences global) async {
+    final storage = await StorageService.getInstance();
+    final scope = storage.activeUserScope();
+    if (!mounted) return;
     final cleared = await showSeriesLanguageSheet(context, entry: entry, global: global);
-    if (cleared != true) return;
-    await TrackPreferenceStore.clearKey(entry.key);
-    await _load();
+    if (cleared != true || !mounted || storage.activeUserScope() != scope) return;
+    final provenance = entry.choice.provenance;
+    final manager = context.read<MultiServerProvider?>()?.serverManager;
+    final serverId = provenance?.serverId;
+    final client = serverId == null ? null : manager?.getClient(ServerId(serverId));
+    final account = provenance?.serverAccountId;
+    // Older app versions never mirrored these choices to a Pleya account.
+    final remote = account != null && (client is PleyaServerClient || provenance?.backend == MediaBackend.pleyaServer);
+    try {
+      await TrackPreferenceStore.clearKey(
+        entry.key,
+        clearRemote: remote
+            ? () async {
+                if (client is! PleyaServerClient ||
+                    client.connection.accountUserId != account ||
+                    !client.capabilities.trackPreferencePersistence ||
+                    !identical(manager?.getClient(ServerId(serverId!)), client)) {
+                  throw StateError('Server preference is unavailable');
+                }
+                if (storage.activeUserScope() != scope) throw StateError('Profile changed');
+                if (!await client.clearItemTrackPreference(
+                  provenance?.serverItemId ?? entry.key,
+                  expectedAccountId: account,
+                )) {
+                  throw StateError('Server preference could not be cleared');
+                }
+              }
+            : null,
+      );
+      if (mounted && storage.activeUserScope() == scope) await _load();
+    } catch (e) {
+      appLogger.w('Failed to clear server language preference', error: e);
+      if (mounted && storage.activeUserScope() == scope) showErrorSnackBar(context, t.states.errorTitle);
+    }
   }
 
   // ── Value lines ────────────────────────────────────────────────────

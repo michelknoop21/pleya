@@ -225,6 +225,7 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
         externalSubtitlePlan = _prepareExternalSubtitleOpenPlan(
           player: currentPlayer,
           externalSubtitles: result.externalSubtitles,
+          deferredSubtitle: result.deferredSubtitle,
         );
         final shouldAutoPlay =
             !shouldHoldPlaybackStart && !wtOwnsStart && externalSubtitlePlan.canStartBeforeTrackSetup;
@@ -267,6 +268,7 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
         externalSubtitlePlan = _prepareExternalSubtitleOpenPlan(
           player: currentPlayer,
           externalSubtitles: result.externalSubtitles,
+          deferredSubtitle: result.deferredSubtitle,
           waitForFileLoaded: false,
         );
       }

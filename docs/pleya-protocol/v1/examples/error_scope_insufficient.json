@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "auth.scope_insufficient",
+    "message": "this token cannot change personal data",
+    "retryable": false,
+    "details": {
+      "scope": "read"
+    }
+  }
+}

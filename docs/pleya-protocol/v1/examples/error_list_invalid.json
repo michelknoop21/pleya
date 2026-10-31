@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "library.list_invalid",
+    "message": "list is not valid",
+    "retryable": false,
+    "details": {
+      "field": "item_ids"
+    }
+  }
+}

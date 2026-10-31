@@ -151,6 +151,29 @@ void main() {
     provider.dispose();
   });
 
+  test('Pleya Server collections load once per server, and only behind the flag', () async {
+    const offered = ServerCapabilities(serverSideCollections: true, serverSidePlaylists: true);
+    final pleya = _Client(id: 'pleya', backend: MediaBackend.pleyaServer, capabilities: offered)
+      ..collections['films'] = [_collection('pleya', 'c1', 'Klassiek', MediaBackend.pleyaServer)];
+    final old = _Client(id: 'old', backend: MediaBackend.pleyaServer, capabilities: const ServerCapabilities());
+    manager
+      ..debugRegisterClientForTesting(pleya)
+      ..debugRegisterClientForTesting(old);
+    libraries.debugSetLibraries([
+      _library('pleya', 'films', 'Films', MediaBackend.pleyaServer),
+      _library('pleya', 'series', 'Series', MediaBackend.pleyaServer),
+      _library('old', 'old-films', 'Oud', MediaBackend.pleyaServer),
+    ]);
+
+    final provider = PersonalMediaProvider(multiServer: multiServer, libraries: libraries);
+    await provider.load();
+
+    expect(provider.collections.map((entry) => entry.item.title), ['Klassiek']);
+    expect(pleya.collectionCalls, {'films': 1}, reason: 'the resource spans the server, not a library');
+    expect(old.collectionCalls, isEmpty, reason: 'a server without the flag has no such route');
+    provider.dispose();
+  });
+
   test('partial failures preserve successes and retry only failed scopes', () async {
     final plex = _Client(id: 'plex', backend: MediaBackend.plex, capabilities: ServerCapabilities.plex)
       ..collections['movies'] = [_collection('plex', 'c1', 'Oscar winners', MediaBackend.plex)]

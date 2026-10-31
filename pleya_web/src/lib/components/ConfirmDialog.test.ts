@@ -33,6 +33,17 @@ afterEach(() => {
 });
 
 describe('ConfirmDialog', () => {
+  it('escapes a page stacking context so fixed navigation cannot cover its actions', () => {
+    const host = document.createElement('div');
+    host.style.isolation = 'isolate';
+    document.body.append(host);
+    const { unmount } = render(ConfirmDialog, { target: host, props: { ...base, open: true, onconfirm: vi.fn() } });
+    const dialog = screen.getByRole('dialog');
+    expect(host.contains(dialog)).toBe(false);
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
+    unmount(); host.remove();
+    expect(dialog.isConnected).toBe(false);
+  });
   it('rendert niets zolang hij dicht is', () => {
     render(ConfirmDialog, { props: { ...base, onconfirm: vi.fn() } });
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -131,15 +142,15 @@ describe('ConfirmDialog', () => {
 
   it('sluit op een klik op de scrim maar niet tijdens bezig', async () => {
     const oncancel = vi.fn();
-    const { container, rerender } = render(ConfirmDialog, {
+    const { rerender } = render(ConfirmDialog, {
       props: { ...base, open: true, busy: true, onconfirm: vi.fn(), oncancel }
     });
-    await userEvent.click(container.querySelector('.cd__scrim')!);
+    await userEvent.click(document.body.querySelector('.cd__scrim')!);
     expect(oncancel).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
 
     await rerender({ busy: false });
-    await userEvent.click(container.querySelector('.cd__scrim')!);
+    await userEvent.click(document.body.querySelector('.cd__scrim')!);
     expect(oncancel).toHaveBeenCalledOnce();
   });
 

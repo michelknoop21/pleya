@@ -68,6 +68,16 @@ void main() {
   // Singleton + reset
   // ============================================================
 
+  test('stable subtitle IDs stay in one filename and preserve numeric legacy names', () async {
+    final storage = DownloadStorageService.instance;
+    await storage.initialize(await SettingsService.getInstance());
+    final path = await storage.getSubtitlePath(ServerId('srv'), 'movie', 2, 'srt', sourceStreamId: '../sidecar/name');
+    expect(p.basename(path), '..%2Fsidecar%2Fname.srt');
+    expect(p.basename(p.dirname(path)), 'subtitles');
+    final legacy = await storage.getSubtitlePath(ServerId('srv'), 'movie', 2, 'srt');
+    expect(p.basename(legacy), '2.srt');
+  });
+
   group('singleton', () {
     test('instance returns same object across calls', () {
       final a = DownloadStorageService.instance;

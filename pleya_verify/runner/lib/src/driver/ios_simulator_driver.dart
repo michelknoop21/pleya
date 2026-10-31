@@ -227,11 +227,15 @@ class IosSimulatorDriver implements VerificationDriver {
     }
   }
 
+  // Reinstalling an ad-hoc Verify copy is not a cold restart (same boundary as tvOS).
+  bool _installed = false;
+
   @override
   Future<void> installFresh() async {
     final udid = await _resolveDevice();
     await _boot(udid);
     await uninstallApp(udid: udid, bundleId: verifyBundleId, run: _run, log: _log);
+    _installed = false;
   }
 
   @override
@@ -242,10 +246,15 @@ class IosSimulatorDriver implements VerificationDriver {
     final udid = await _resolveDevice();
     await _boot(udid);
 
-    _log('installing ${isolatedAppDir.path} on $udid');
-    final install = await _run('xcrun', ['simctl', 'install', udid, isolatedAppDir.path]);
-    if (install.exitCode != 0) {
-      throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
+    if (!_installed) {
+      _log('installing ${isolatedAppDir.path} on $udid');
+      final install = await _run('xcrun', ['simctl', 'install', udid, isolatedAppDir.path]);
+      if (install.exitCode != 0) {
+        throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
+      }
+      _installed = true;
+    } else {
+      _log('relaunching $verifyBundleId on $udid (already installed this run)');
     }
 
     // Simulator networking shares the host's loopback stack — which is

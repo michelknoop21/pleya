@@ -53,14 +53,18 @@ type InfoAuth struct {
 
 // Capabilities is wat deze server werkelijk aanbiedt, en is altijd leidend.
 type Capabilities struct {
-	AssistantMemory bool `json:"assistant_memory"`
-	Browse          bool `json:"browse"`
-	Search          bool `json:"search"`
-	Artwork         bool `json:"artwork"`
-	WatchState      bool `json:"watch_state"`
-	PlaybackPlan    bool `json:"playback_plan"`
-	Transcode       bool `json:"transcode"`
-	Downloads       bool `json:"downloads"`
+	PlaybackSubtitles      bool `json:"playback_subtitles"`
+	EmbeddedSubtitles      bool `json:"embedded_subtitles"`
+	AssistantMemory        bool `json:"assistant_memory"`
+	Browse                 bool `json:"browse"`
+	Search                 bool `json:"search"`
+	Artwork                bool `json:"artwork"`
+	WatchState             bool `json:"watch_state"`
+	PlaybackQuality        bool `json:"playback_quality"`
+	PlaybackAudioSelection bool `json:"playback_audio_selection"`
+	PlaybackPlan           bool `json:"playback_plan"`
+	Transcode              bool `json:"transcode"`
+	Downloads              bool `json:"downloads"`
 	// Backups (venster 7, S25). Aan zodra de back-upservice en de wachtrij er
 	// zijn: GET/POST /backups, GET /backups/{id} en de hersteltest en restore
 	// eronder bestaan dan voor klasse admin.
@@ -85,6 +89,20 @@ type Capabilities struct {
 	Favorites        bool `json:"favorites"`
 	Ratings          bool `json:"ratings"`
 	TrackPreferences bool `json:"track_preferences"`
+
+	// Collections en Playlists (venster 6 deel 1, S19, DEC-XXX). Aan zodra de
+	// routes er zijn; de tabellen komen met de migraties mee, dus er is geen
+	// toestand waarin de server ze niet heeft. Twee vlaggen omdat het twee
+	// resources zijn en een client ze los toont.
+	Collections bool `json:"collections"`
+	Playlists   bool `json:"playlists"`
+
+	// PersonalData (DEC-XXX, S20.4). Aan zodra de persoonlijke opslag er is:
+	// DELETE /history, DELETE /history/{id}, kind op GET /history en GET /ratings
+	// bestaan. Eén vlag, omdat een client ze niet los hoeft te onderhandelen. Een
+	// eigen vlag naast history en ratings, omdat een oudere server met die twee
+	// vlaggen op waar kind stil negeert en de andere routes niet kent.
+	PersonalData bool `json:"personal_data"`
 
 	// ItemActivity (DEC-169, activiteit van het huishouden). Aan zodra de
 	// persoonlijke opslag er is: GET /items/{id}/activity en de opt-out onder
@@ -130,6 +148,10 @@ type Capabilities struct {
 	// credential_mode meestuurt een weigering krijgen van een oudere server in
 	// plaats van een veld dat stil wegvalt.
 	CookieAuth bool `json:"cookie_auth"`
+	// CookieUpgrade zegt dat POST /auth/refresh credential_mode cookie_upgrade kent. Een
+	// aparte vlag: cookie_auth bestaat al op servers die die waarde weigeren, en een
+	// browser die hem daar stuurt verliest zijn sessie.
+	CookieUpgrade bool `json:"cookie_upgrade"`
 
 	// Administration (J.2 rij 1). Aan sinds S1.6, en hij dekt wat S1.2 tot en
 	// met S1.5 hebben gebouwd: GET/PATCH /settings, de vier routes onder
@@ -226,6 +248,10 @@ type Library struct {
 	Title     string `json:"title"`
 	Kind      string `json:"kind"`
 	ItemCount int    `json:"item_count"`
+
+	// Permission is het eigen recht van de aanvrager (S23.4): view, download of
+	// manage. Alleen op GET /libraries.
+	Permission *string `json:"permission,omitempty"`
 
 	Managed             *string `json:"managed,omitempty"`
 	ScanIntervalSeconds **int   `json:"scan_interval_seconds,omitempty"`

@@ -140,6 +140,11 @@ paths:
         roteert bij elk gebruik en het oude vervalt onmiddellijk. Een tweede
         aanroep met hetzelfde token geeft auth.refresh_token_reused, en de
         server mag de hele keten dan ongeldig maken.
+
+        Een 429 is geen sessieverlies. De grens geldt per sessie, of per adres
+        voor een token zonder sessie, en staat vóór de rotatie: het token en
+        de cookie blijven geldig. Een client wacht `Retry-After` seconden en
+        probeert het opnieuw met zijn huidige token. Hij logt niet uit.
       security: []
       requestBody:
         required: true
@@ -156,6 +161,17 @@ paths:
         "403":
           description: |
             auth.origin_rejected. Alleen op het cookiepad; zie hoofdstuk 17d.4.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "429":
+          description: |
+            auth.rate_limited. Herhaalbaar; `details.retry_after_ms` draagt
+            dezelfde wachttijd in milliseconden.
+          headers:
+            Retry-After:
+              description: Hele seconden wachten, minstens 1.
+              schema: { type: integer, minimum: 1 }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -608,7 +624,8 @@ paths:
         (klasse `admin`) verandert niet. Voor een `restricted` gebruiker is aan
         de enige weg naar zichtbaar zijn; wie restricted wordt verliest een
         eerdere opt-in (`true`) en zet het opnieuw zelf aan; een eerdere
-        opt-out (`false`) blijft staan.
+        opt-out (`false`) blijft staan. Een API-token onder bereik `admin` krijgt
+        `403` met `auth.scope_insufficient` (17c.2).
       requestBody:
         required: true
         content:
@@ -626,6 +643,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "404":
           description: |
             `auth.user_not_found` als de gebruiker achter dit token niet meer
@@ -1714,6 +1732,15 @@ paths:
         `playback.transcode_busy`, ffmpeg die niets levert `502`
         `playback.transcode_failed`.
 
+        Met `playback_quality` accepteert de server optionele `quality`-limieten
+        en voert hij die uit via transcode zonder de bron te vergroten. Met
+        `playback_audio_selection` accepteert hij `audio_stream_id` binnen de
+        expliciete `version_id`; het gekozen spoor wordt vóór codecbeoordeling
+        geselecteerd en bereikt de uitvoer. De effectieve keuzes staan in
+        `effective_quality` en `selected_audio_stream_id`. Ongeldige limieten of
+        audio zonder versie zijn `400 playback.selection_invalid`; een
+        onvindbaar spoor is `404`. Deze keuzes vallen nooit stil terug op direct play.
+
         `reason` is de hoofdreden en het eerste element van `reasons`. Een reden
         is een domeincode met parameters, geen vertaalsleutel; een client die
         een code niet kent toont een generieke tekst en logt de code.
@@ -1728,6 +1755,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PlaybackPlan" }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409":
@@ -2135,6 +2163,16 @@ paths:
           in: query
           required: false
           schema: { type: string }
+        - name: kind
+          in: query
+          required: false
+          description: |
+            Alleen onder `capabilities.personal_data`. Beperkt de regels tot items
+            van deze soort. Zonder `kind` komt elke soort terug, en dat is het
+            oude gedrag. Een oudere server negeert de parameter stil, dus een
+            client stuurt hem pas wanneer de vlag waar is. Een cursor hoort bij
+            de `kind` waarmee hij is uitgegeven.
+          schema: { $ref: "#/components/schemas/ItemKind" }
       responses:
         "200":
           description: Een pagina geschiedenis.
@@ -2143,6 +2181,42 @@ paths:
               schema: { $ref: "#/components/schemas/HistoryPage" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: clearHistory
+      summary: Wis de hele eigen geschiedenis.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.personal_data`. Wist
+        alle regels van de aanvrager, ook die uit een bibliotheek die hij niet
+        meer mag zien. Alleen de geschiedenis gaat weg: positie, gezien en
+        Verder kijken staan in de kijkstatus en blijven. Herhalen is onschadelijk.
+        Een API-token onder bereik `admin` krijgt `403` met
+        `auth.scope_insufficient` (17c.2).
+      responses:
+        "204": { description: De geschiedenis is leeg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /history/{history_id}:
+    delete:
+      tags: [library]
+      operationId: deleteHistoryEntry
+      summary: Wis één regel uit de eigen geschiedenis.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.personal_data`. Een
+        regel van een ander is `404`, net als een regel die niet bestaat. De
+        kijkstatus blijft, zie `DELETE /history`. Een API-token onder bereik
+        `admin` krijgt `403` met `auth.scope_insufficient` (17c.2).
+      parameters:
+        - $ref: "#/components/parameters/HistoryId"
+      responses:
+        "204": { description: De regel is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /favorites:
@@ -2194,6 +2268,446 @@ paths:
         "204": { description: Het item is geen favoriet meer. }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /collections:
+    get:
+      tags: [library]
+      operationId: listCollections
+      summary: De verzamelingen die de aanvrager mag zien.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.collections`. `item_count`
+        en `artwork` tellen per kijker alleen items die hij mag zien.
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          description: De laatst gewijzigde eerst is de default.
+          schema:
+            type: string
+            enum: ["-updated_at", title]
+            x-unknown-safe: false
+        - name: owned
+          in: query
+          required: false
+          description: Alleen de eigen verzamelingen, voor "Toevoegen aan".
+          schema: { type: boolean, default: false }
+        - $ref: "#/components/parameters/Limit"
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina verzamelingen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollectionPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: createCollection
+      summary: Maak een verzameling met de aanvrager als eigenaar.
+      description: |
+        Een ongeldige titel of waarde is `400` met `library.list_invalid` en
+        `details.field`. Delen is voor `owner` en `admin`: een `member` of
+        `restricted` die een andere `visibility` dan `private` of `shared_with`
+        meestuurt krijgt `403` met `library.list_share_not_permitted`. Een API-token
+        onder bereik `admin` krijgt `403` met `auth.scope_insufficient` (17c.2), net
+        als op elke andere schrijfroute van verzamelingen en afspeellijsten.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCollectionRequest" }
+      responses:
+        "201":
+          description: De nieuwe verzameling.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Collection" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /collections/{collection_id}:
+    get:
+      tags: [library]
+      operationId: getCollection
+      summary: Eén verzameling.
+      description: Buiten zicht is `404`, hetzelfde antwoord als een id dat niet bestaat.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      responses:
+        "200":
+          description: De verzameling.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Collection" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [library]
+      operationId: updateCollection
+      summary: Wijzig een verzameling.
+      description: |
+        Alleen de eigenaar. Buiten zicht is `404`, zichtbaar en van een ander is `403`
+        met `library.list_not_owner`. Delen is voor `owner` en `admin`: een andere
+        `visibility` dan `private` of `shared_with` van een `member` of `restricted`
+        is `403` met `library.list_share_not_permitted`.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCollectionRequest" }
+      responses:
+        "200":
+          description: De gewijzigde verzameling.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Collection" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deleteCollection
+      summary: Verwijder een verzameling.
+      description: Alleen de eigenaar. De titels zelf blijven in de catalogus.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      responses:
+        "204": { description: De verzameling is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /collections/{collection_id}/items:
+    get:
+      tags: [library]
+      operationId: listCollectionItems
+      summary: De inhoud van een verzameling, in lijstvolgorde.
+      description: |
+        Een item buiten de bibliotheken van de aanvrager staat er niet in en telt
+        niet mee in `total_estimate`.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+        - $ref: "#/components/parameters/Limit"
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [library]
+      operationId: replaceCollectionItems
+      summary: Vervang de inhoud in één keer, en zet zo ook de volgorde.
+      description: |
+        Alleen de eigenaar. `item_ids` is de volledige lijst zoals hij hem ziet; de
+        aanvraag lukt helemaal of verandert niets. Een dubbel id is `400` met
+        `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is
+        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek. Met
+        `base_revision` geldt de aanvraag alleen als de lijst nog op die revisie staat;
+        anders is het `409` met `library.list_conflict`, de huidige revisie in
+        `details.revision`, en verandert er niets.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceListItemsRequest" }
+      responses:
+        "204": { description: De lijst is vervangen. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: addCollectionItems
+      summary: Zet items achteraan in de lijst.
+      description: |
+        Alleen de eigenaar. Wat er al in staat blijft op zijn plek, dus herhalen is
+        onschadelijk. Zelfde fouten als `PUT`. De route voor "Toevoegen aan": hij
+        vraagt niet om de hele lijst en verliest dus geen gelijktijdige toevoeging.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+      responses:
+        "204": { description: De items staan in de lijst. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /collections/{collection_id}/items/{item_id}:
+    delete:
+      tags: [library]
+      operationId: removeCollectionItem
+      summary: Haal één item uit de lijst.
+      description: Alleen de eigenaar. Een item buiten zicht is `404`, een zichtbaar item dat er niet in staat is geen fout.
+      parameters:
+        - $ref: "#/components/parameters/CollectionId"
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item staat niet meer in de lijst. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists:
+    get:
+      tags: [library]
+      operationId: listPlaylists
+      summary: De afspeellijsten die de aanvrager mag zien.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.playlists`. `item_count`
+        en `artwork` tellen per kijker alleen items die hij mag zien.
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          description: De laatst gewijzigde eerst is de default.
+          schema:
+            type: string
+            enum: ["-updated_at", title]
+            x-unknown-safe: false
+        - name: owned
+          in: query
+          required: false
+          description: Alleen de eigen afspeellijsten, voor "Toevoegen aan".
+          schema: { type: boolean, default: false }
+        - $ref: "#/components/parameters/Limit"
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina afspeellijsten.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlaylistPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: createPlaylist
+      summary: Maak een afspeellijst met de aanvrager als eigenaar.
+      description: |
+        Een ongeldige titel of waarde is `400` met `library.list_invalid` en
+        `details.field`. Een API-token onder bereik `admin` krijgt `403` met
+        `auth.scope_insufficient` (17c.2), net als op elke andere schrijfroute
+        van verzamelingen en afspeellijsten.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePlaylistRequest" }
+      responses:
+        "201":
+          description: De nieuwe afspeellijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists/{playlist_id}:
+    get:
+      tags: [library]
+      operationId: getPlaylist
+      summary: Eén afspeellijst.
+      description: Buiten zicht is `404`, hetzelfde antwoord als een id dat niet bestaat.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      responses:
+        "200":
+          description: De afspeellijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [library]
+      operationId: updatePlaylist
+      summary: Wijzig een afspeellijst.
+      description: Alleen de eigenaar. Buiten zicht is `404`, zichtbaar en van een ander is `403` met `library.list_not_owner`.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdatePlaylistRequest" }
+      responses:
+        "200":
+          description: De gewijzigde afspeellijst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deletePlaylist
+      summary: Verwijder een afspeellijst.
+      description: Alleen de eigenaar. De titels zelf blijven in de catalogus.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      responses:
+        "204": { description: De afspeellijst is weg. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists/{playlist_id}/items:
+    get:
+      tags: [library]
+      operationId: listPlaylistItems
+      summary: De inhoud van een afspeellijst, in lijstvolgorde.
+      description: |
+        Een item buiten de bibliotheken van de aanvrager staat er niet in en telt
+        niet mee in `total_estimate`.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+        - $ref: "#/components/parameters/Limit"
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      tags: [library]
+      operationId: replacePlaylistItems
+      summary: Vervang de inhoud in één keer, en zet zo ook de volgorde.
+      description: |
+        Alleen de eigenaar. `item_ids` is de volledige lijst zoals hij hem ziet; de
+        aanvraag lukt helemaal of verandert niets. Een dubbel id is `400` met
+        `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is
+        `404`. Rijen die de eigenaar niet meer mag zien blijven op hun plek. Met
+        `base_revision` geldt de aanvraag alleen als de lijst nog op die revisie staat;
+        anders is het `409` met `library.list_conflict`, de huidige revisie in
+        `details.revision`, en verandert er niets.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceListItemsRequest" }
+      responses:
+        "204": { description: De lijst is vervangen. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: addPlaylistItems
+      summary: Zet items achteraan in de lijst.
+      description: |
+        Alleen de eigenaar. Wat er al in staat blijft op zijn plek, dus herhalen is
+        onschadelijk. Zelfde fouten als `PUT`. De route voor "Toevoegen aan": hij
+        vraagt niet om de hele lijst en verliest dus geen gelijktijdige toevoeging.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListItemsRequest" }
+      responses:
+        "204": { description: De items staan in de lijst. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /playlists/{playlist_id}/items/{item_id}:
+    delete:
+      tags: [library]
+      operationId: removePlaylistItem
+      summary: Haal één item uit de lijst.
+      description: Alleen de eigenaar. Een item buiten zicht is `404`, een zichtbaar item dat er niet in staat is geen fout.
+      parameters:
+        - $ref: "#/components/parameters/PlaylistId"
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "204": { description: Het item staat niet meer in de lijst. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /ratings:
+    get:
+      tags: [library]
+      operationId: listRatings
+      summary: De gewaardeerde titels van de aanvrager, de laatst gewaardeerde eerst.
+      description: Klasse `authenticated`, alleen onder `capabilities.personal_data`. Beperkt tot de bibliotheken die de aanvrager mag zien. Elk item draagt `rating`.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Een pagina items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemPage" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /ratings/{item_id}:
@@ -2491,6 +3005,23 @@ paths:
       tags: [playback]
       operationId: getSubtitle
       summary: Een ondertitelbestand.
+      description: |
+        Sidecars blijven rechtstreeks beschikbaar. Met `embedded_subtitles`
+        levert dezelfde route ook een gecatalogiseerd ingebed spoor, na
+        begrensde extractie. Tekst behoudt SRT/ASS/SSA/VTT; PGS/DVDsub levert
+        één subtitle-only Matroska-resource. Identiteit en bibliotheekrechten
+        worden voor voorbereiding en opnieuw voor levering gecontroleerd;
+        de bestaande token-/sessiescope blijft gelden. Voorbereiding loopt los
+        van de aanvraag door, is begrensd tot 10 minuten en één werker, en
+        antwoordt binnen 30 s: `200`, of `503 playback.transcode_busy` met
+        `Retry-After: 5` zolang het spoor niet klaar of de werker bezet is. Een
+        herhaling sluit aan op de lopende voorbereiding en houdt zijn plek in de
+        wachtrij; de werker gaat om de beurt naar een andere gebruiker, en een
+        gebruiker heeft hoogstens twee sporen tegelijk in behandeling. Komt er
+        15 s na de laatste aanvraag geen herhaling, dan stopt de voorbereiding.
+        Hetzelfde geldt voor de ondertitelvoorbereiding in `POST /playback/plan`.
+        Maximaal 4 MiB tekst of 64 MiB bitmapuitvoer, binnen een afgeleide cache
+        van 512 MiB die een herstart overleeft.
       security:
         - bearerAuth: []
         - streamToken: []
@@ -2506,8 +3037,11 @@ paths:
             application/x-subrip: { schema: { type: string } }
             text/x-ssa: { schema: { type: string } }
             text/vtt: { schema: { type: string } }
+            application/x-matroska: { schema: { type: string, format: binary } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /stream/{version_id}:
@@ -2739,6 +3273,21 @@ components:
       schema: { $ref: "#/components/schemas/Id" }
     DownloadId:
       name: download_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    HistoryId:
+      name: history_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    CollectionId:
+      name: collection_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    PlaylistId:
+      name: playlist_id
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
@@ -2976,6 +3525,10 @@ components:
         artwork: { type: boolean }
         watch_state: { type: boolean }
         playback_plan: { type: boolean, default: false }
+        playback_quality: { type: boolean, default: false }
+        embedded_subtitles: { type: boolean, default: false }
+        playback_subtitles: { type: boolean, default: false }
+        playback_audio_selection: { type: boolean, default: false }
         transcode: { type: boolean, default: false }
         downloads: { type: boolean, default: false }
         backups:
@@ -2991,6 +3544,24 @@ components:
         favorites: { type: boolean, default: false }
         ratings: { type: boolean, default: false }
         track_preferences: { type: boolean, default: false }
+        collections:
+          type: boolean
+          default: false
+          description: |
+            Venster 6 deel 1, S19. De server kent `/collections` en alles eronder.
+        playlists:
+          type: boolean
+          default: false
+          description: |
+            Venster 6 deel 1, S19. De server kent `/playlists` en alles eronder.
+        personal_data:
+          type: boolean
+          default: false
+          description: |
+            De server kent `DELETE /history`, `DELETE /history/{id}`, `kind` op
+            `GET /history` en `GET /ratings`. Eén vlag voor de vier, naast
+            `history` en `ratings`: een server van vóór dit venster zet die twee
+            ook op waar, negeert `kind` stil en kent de andere routes niet.
         item_activity:
           type: boolean
           default: false
@@ -3065,6 +3636,14 @@ components:
             POST /auth/refresh (RB-29, hoofdstuk 17d) en zet het refreshcredential
             desgevraagd in een HttpOnly-cookie. Bedoeld voor browsers; een client
             zonder cookiejar heeft er niets aan en laat het veld weg.
+        cookie_upgrade:
+          type: boolean
+          default: false
+          description: |
+            POST /auth/refresh kent `credential_mode: cookie_upgrade`: een browser
+            met een refreshtoken uit de tijd van vóór de cookie stapt over zonder
+            opnieuw in te loggen (17d.1). Een eigen vlag, want `cookie_auth` staat
+            ook aan op servers die die waarde weigeren.
         administration:
           type: boolean
           default: false
@@ -3303,10 +3882,23 @@ components:
         `credential_mode: cookie` komt het credential uit de cookie
         `pleya_refresh` en hoort `refresh_token` er niet bij; staan ze er
         allebei, dan weigert de server met `auth.token_invalid`, want dan zijn er
-        twee bronnen en geen manier om te weten welke bedoeld is.
+        twee bronnen en geen manier om te weten welke bedoeld is. Met
+        `credential_mode: cookie_upgrade` is `refresh_token` verplicht en is dat
+        het credential, ook als er een oude cookie meekomt; het nieuwe gaat de
+        cookie in (17d.1).
       properties:
         refresh_token: { type: string, minLength: 1 }
-        credential_mode: { $ref: "#/components/schemas/CredentialMode" }
+        credential_mode: { $ref: "#/components/schemas/RefreshCredentialMode" }
+
+    RefreshCredentialMode:
+      type: string
+      description: |
+        `CredentialMode` plus `cookie_upgrade`, dat alleen op refresh bestaat en
+        alleen te sturen is wanneer `capabilities.cookie_upgrade` waar is. Een
+        server zonder die vlag weigert de waarde met `auth.token_invalid`, en een
+        browser die dat voor een oordeel over zijn token houdt, logt uit.
+      enum: [token, cookie, cookie_upgrade]
+      x-unknown-safe: false
 
     CredentialMode:
       type: string
@@ -3508,6 +4100,12 @@ components:
         title: { type: string }
         kind: { $ref: "#/components/schemas/LibraryKind" }
         item_count: { type: integer, minimum: 0 }
+        permission:
+          allOf: [{ $ref: "#/components/schemas/Permission" }]
+          description: |
+            Het eigen recht van de aanvrager op deze bibliotheek. Alleen op
+            `GET /libraries`; owner en admin krijgen `manage`. Een oudere server
+            laat het veld weg, en dan zegt zijn afwezigheid niets over het recht.
         managed:
           allOf: [{ $ref: "#/components/schemas/LibraryManaged" }]
           description: Alleen voor klasse admin (S2.2, J.3).
@@ -3997,14 +4595,61 @@ components:
             is_local: { $ref: "#/components/schemas/CapabilityBool" }
             max_bitrate_kbps: { $ref: "#/components/schemas/CapabilityInt" }
 
+    PlaybackQuality:
+      type: object
+      additionalProperties: false
+      required: [max_video_bitrate_kbps, max_height]
+      properties:
+        max_video_bitrate_kbps: { type: integer, minimum: 1, maximum: 100000 }
+        max_height: { type: integer, minimum: 1, maximum: 4320 }
+
+    PlaybackSubtitleSelection:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: { type: string, enum: ["off", external, burn], x-unknown-safe: false }
+        stream_id: { $ref: "#/components/schemas/Id" }
+      if:
+        properties: { mode: { const: "off" } }
+      then:
+        not: { required: [stream_id] }
+      else:
+        required: [stream_id]
+
+    PlaybackSubtitlePlan:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: ["off", external, embed, burn], x-unknown-safe: true }
+        stream_id: { $ref: "#/components/schemas/Id" }
+        url: { type: string, description: Geautoriseerd pad op dezelfde server. }
+        format: { type: string }
+
     PlaybackPlanRequest:
       type: object
       required: [item_id]
       additionalProperties: false
+      dependentRequired:
+        audio_stream_id: [version_id]
+      if:
+        required: [subtitle]
+        properties:
+          subtitle:
+            properties: { mode: { enum: [external, burn], x-unknown-safe: false } }
+      then:
+        required: [version_id]
       properties:
+        subtitle: { $ref: "#/components/schemas/PlaybackSubtitleSelection" }
         item_id: { $ref: "#/components/schemas/Id" }
         version_id: { $ref: "#/components/schemas/Id" }
         capabilities: { $ref: "#/components/schemas/DeviceCapabilities" }
+        quality:
+          description: Alleen met playback_quality; afwezig behoudt het bestaande plannerbeleid.
+          $ref: "#/components/schemas/PlaybackQuality"
+        audio_stream_id:
+          description: Alleen met playback_audio_selection; vereist version_id. Afwezig behoudt het bestaande audiobeleid.
+          $ref: "#/components/schemas/Id"
 
     PlaybackDeliveryMode:
       type: string
@@ -4034,6 +4679,9 @@ components:
       type: object
       required: [item_id, version_id, delivery_mode, stream_url, container, video, audio, seekable, session_id, reason, reasons]
       properties:
+        subtitle: { $ref: "#/components/schemas/PlaybackSubtitlePlan" }
+        effective_quality: { $ref: "#/components/schemas/PlaybackQuality" }
+        selected_audio_stream_id: { $ref: "#/components/schemas/Id" }
         item_id: { $ref: "#/components/schemas/Id" }
         version_id: { $ref: "#/components/schemas/Id" }
         delivery_mode: { $ref: "#/components/schemas/PlaybackDeliveryMode" }
@@ -4158,6 +4806,12 @@ components:
         sha256: { type: [string, "null"], description: Hexadecimale SHA-256, null zolang de download preparing is. }
         file_url: { type: string, description: Pad naar de bytes, relatief aan de serverroot. }
         created_at: { type: string, format: date-time }
+        device_name:
+          type: [string, "null"]
+          description: |
+            Het toestel dat de download aanvroeg. Null als dat niet bekend is: een
+            download van vóór dit veld, een sessie die weg is, of een sessie zonder
+            naam. Een oudere server laat het veld weg.
 
     DownloadList:
       type: object
@@ -4420,6 +5074,183 @@ components:
           description: |
             Expliciet een schatting, zodat een UI een scrollbar kan tekenen
             zonder dat de server per pagina telt. Nooit als exact aantal tonen.
+
+    ListUser:
+      type: object
+      description: |
+        Een gebruiker zoals een lijst hem noemt. Als `owner` staat dit in elk
+        antwoord aan wie de lijst ziet, ook aan een lid: de naam van degene die een
+        lijst deelt is zichtbaar (hoofdstuk 14c).
+      required: [id, username]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        username: { type: string }
+
+    CollectionVisibility:
+      type: string
+      enum: [private, everyone, users]
+      x-unknown-safe: true
+      description: |
+        Wie een verzameling ziet: alleen de eigenaar, elke gebruiker van de server,
+        of de eigenaar plus `shared_with`. Alleen `owner` en `admin` zetten iets
+        anders dan `private`; een `member` of `restricted` krijgt daarop `403` met
+        `library.list_share_not_permitted`. Er mag binnen v1 een waarde bij komen. Een
+        client die de waarde niet kent toont de verzameling als gedeeld, stuurt de
+        waarde nooit terug en laat de zichtbaarheid bij het bewerken ongemoeid.
+
+    Collection:
+      type: object
+      required: [id, title, owner, is_owner, visibility, item_count, artwork, created_at, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        owner: { $ref: "#/components/schemas/ListUser" }
+        is_owner:
+          type: boolean
+          description: De aanvrager is de eigenaar en mag dus schrijven.
+        visibility: { $ref: "#/components/schemas/CollectionVisibility" }
+        shared_with:
+          type: array
+          description: Alleen voor de eigenaar en alleen bij `visibility` `users`.
+          items: { $ref: "#/components/schemas/ListUser" }
+        item_count:
+          type: integer
+          minimum: 0
+          description: Telt per kijker alleen items die hij mag zien.
+        artwork:
+          type: array
+          maxItems: 4
+          description: Posters van de eerste items die de kijker mag zien, voor het vierluik.
+          items: { $ref: "#/components/schemas/Id" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        revision:
+          type: integer
+          format: int64
+          description: |
+            Loopt op bij elke schrijfactie van een client op de rijen van de lijst, en niet
+            bij een nieuwe titel of bij een item dat uit de catalogus verdwijnt: `PUT` met dat
+            id geeft `404`. Alleen om terug te sturen als `base_revision` op `PUT .../items`.
+
+    CollectionPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Collection" }
+
+    CreateCollectionRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        visibility:
+          allOf: [{ $ref: "#/components/schemas/CollectionVisibility" }]
+          description: Zonder dit veld `private`.
+        shared_with:
+          type: array
+          description: Gebruiker-ids, alleen bij `visibility` `users` en alleen van `owner` of `admin`. Een onbekend id is `400`.
+          items: { $ref: "#/components/schemas/Id" }
+
+    UpdateCollectionRequest:
+      type: object
+      additionalProperties: false
+      description: Een veld dat ontbreekt blijft zoals het is. Een andere zichtbaarheid dan `users` wist `shared_with`.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        visibility: { $ref: "#/components/schemas/CollectionVisibility" }
+        shared_with:
+          type: array
+          items: { $ref: "#/components/schemas/Id" }
+
+    Playlist:
+      type: object
+      required: [id, title, item_count, duration_ms, artwork, created_at, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        item_count:
+          type: integer
+          minimum: 0
+          description: Telt alleen items die de eigenaar nu mag zien.
+        duration_ms:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Som van `duration_ms` over diezelfde rijen.
+        artwork:
+          type: array
+          maxItems: 4
+          items: { $ref: "#/components/schemas/Id" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        revision:
+          type: integer
+          format: int64
+          description: |
+            Loopt op bij elke schrijfactie van een client op de rijen van de lijst, en niet
+            bij een nieuwe titel of bij een item dat uit de catalogus verdwijnt: `PUT` met dat
+            id geeft `404`. Alleen om terug te sturen als `base_revision` op `PUT .../items`.
+
+    PlaylistPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Playlist" }
+
+    CreatePlaylistRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+
+    UpdatePlaylistRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+
+    ReplaceListItemsRequest:
+      type: object
+      additionalProperties: false
+      required: [item_ids]
+      description: |
+        De body van `PUT .../items`. Zonder `base_revision` is vervangen
+        onvoorwaardelijk, zoals eerst. `capabilities.collections` en
+        `capabilities.playlists` dekken het veld: beide zijn tegelijk met dit veld
+        ontstaan, dus geen server met die vlag wijst het af.
+      properties:
+        item_ids:
+          type: array
+          maxItems: 5000
+          description: In de gewenste volgorde, zonder dubbele ids.
+          items: { $ref: "#/components/schemas/Id" }
+        base_revision:
+          type: integer
+          format: int64
+          description: De `revision` die de client las, vóór hij de rijen las.
+
+    ListItemsRequest:
+      type: object
+      additionalProperties: false
+      required: [item_ids]
+      properties:
+        item_ids:
+          type: array
+          maxItems: 5000
+          description: |
+            In de gewenste volgorde, zonder dubbele ids. Een afspeellijst neemt alleen
+            `movie` en `episode` aan; een client zet van een serie de afleveringen erin.
+          items: { $ref: "#/components/schemas/Id" }
 
     ItemPage:
       allOf:

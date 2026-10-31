@@ -1,0 +1,13 @@
+{
+  "item_id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a",
+  "version_id": "01a15487-0a11-7000-9b3a-5c1d2e3f4a5b",
+  "audio_stream_id": "01a15487-0a12-7000-9b3a-5c1d2e3f4a5b",
+  "quality": {
+    "max_video_bitrate_kbps": 2000,
+    "max_height": 720
+  },
+  "subtitle": {
+    "mode": "burn",
+    "stream_id": "01a15487-0a13-7000-9b3a-5c1d2e3f4a5b"
+  }
+}

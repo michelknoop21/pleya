@@ -13,10 +13,17 @@ const all: Capabilities = {
   filters: false,
   watch_state: false,
   playback_plan: false,
+  playback_quality: false,
+  playback_audio_selection: false,
+  embedded_subtitles: false,
+  playback_subtitles: false,
   history: false,
   favorites: false,
   ratings: false,
   track_preferences: false,
+  personal_data: false,
+  collections: false,
+  playlists: false,
   item_activity: false,
   transcode: false,
   downloads: false,
@@ -29,6 +36,7 @@ const all: Capabilities = {
   sessions: false,
   api_tokens: false,
   cookie_auth: false,
+  cookie_upgrade: false,
   administration: false,
   mcp: false
 };
@@ -77,15 +85,15 @@ describe('de vijf slots volgen capabilities en bibliotheken', () => {
 });
 
 describe('waar een slot heen wijst', () => {
-  it('wijst naar de enige bibliotheek van de soort', () => {
+  it('wijst naar de eigen landing voor elke videosoort', () => {
     const items = navItems(all, [films, series]);
-    expect(items.find((i) => i.id === 'films')?.href).toBe('/libraries/lib-films');
-    expect(items.find((i) => i.id === 'series')?.href).toBe('/libraries/lib-series');
+    expect(items.find((i) => i.id === 'films')?.href).toBe('/films');
+    expect(items.find((i) => i.id === 'series')?.href).toBe('/series');
   });
 
-  it('wijst naar het overzicht bij meer dan één bibliotheek van de soort', () => {
+  it('houdt de films-landing bij meerdere bibliotheken', () => {
     const items = navItems(all, [films, kids, series]);
-    expect(items.find((i) => i.id === 'films')?.href).toBe('/libraries');
+    expect(items.find((i) => i.id === 'films')?.href).toBe('/films');
   });
 
   it('wijst mijn pleya naar het serveroverzicht, tot S8 een eigen landing geeft', () => {
@@ -106,8 +114,10 @@ describe('welk slot actief is', () => {
     expect(activeItemId(items, '/libraries/lib-series', libs)).toBe('series');
   });
 
-  it('kiest films op het overzicht wanneer films daar naartoe wijst', () => {
-    expect(activeItemId(items, '/libraries', libs)).toBe('films');
+  it('kiest de landing en houdt het algemene overzicht neutraal', () => {
+    expect(activeItemId(items, '/films', libs)).toBe('films');
+    expect(activeItemId(items, '/series', libs)).toBe('series');
+    expect(activeItemId(items, '/libraries', libs)).toBeNull();
   });
 
   it('kiest mijn pleya op het serveroverzicht', () => {

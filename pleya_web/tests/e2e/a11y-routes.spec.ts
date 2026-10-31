@@ -193,6 +193,11 @@ async function discoverTargets(page: Page, locale: Locale): Promise<Target[]> {
   }
   targets.push({ name: 'zoeken zonder treffers', path: `/search?q=${NO_HITS}` });
   targets.push({ name: 'server', path: '/server' });
+  targets.push({ name: 'kijkgeschiedenis', path: '/server/history' });
+  targets.push({ name: 'downloads', path: '/server/downloads' });
+  targets.push({ name: 'favorieten', path: '/server/favorites' });
+  targets.push({ name: 'verzamelingen', path: '/server/collections' });
+  targets.push({ name: 'afspeellijsten', path: '/server/playlists' });
 
   // Een ontbrekend doel is geen rode cel maar een gat in de matrix, en dat
   // hoort in de uitvoer te staan in plaats van stil weg te vallen.

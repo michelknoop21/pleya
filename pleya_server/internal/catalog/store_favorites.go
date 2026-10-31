@@ -13,11 +13,22 @@ import (
 // tot de bibliotheken die de aanvrager mag zien, zodat een ingetrokken
 // bibliotheekrecht de favorieten onzichtbaar maakt zonder ze te wissen.
 func (s *Store) Favorites(ctx context.Context, q HubQuery) (Page, error) {
+	return s.markedItems(ctx, q, SortFavoritedDesc, "favorites", "f")
+}
+
+// Ratings levert de gewaardeerde titels van deze identiteit, de laatst
+// gewaardeerde eerst, met dezelfde begrenzing als Favorites.
+func (s *Store) Ratings(ctx context.Context, q HubQuery) (Page, error) {
+	return s.markedItems(ctx, q, SortRatedDesc, "ratings", "r")
+}
+
+// markedItems leest de items waar een persoonlijke tabel een rij voor heeft.
+func (s *Store) markedItems(ctx context.Context, q HubQuery, sort Sort, table, alias string) (Page, error) {
 	limit := ClampLimit(q.Limit)
-	key := SortFavoritedDesc.keyExpression()
+	key := sort.keyExpression()
 
 	args := []any{q.Subject}
-	where := []string{"f.user_id = $1"}
+	where := []string{alias + ".user_id = $1"}
 	where = append(where, hubFilter(q, "i", &args)...)
 
 	clause, err := hubCursor(q, key, &args)
@@ -31,14 +42,14 @@ func (s *Store) Favorites(ctx context.Context, q HubQuery) (Page, error) {
 	args = append(args, limit+1)
 	sql := fmt.Sprintf(`
 		SELECT %s, %s::text
-		FROM favorites f
-		JOIN media_items i ON i.id = f.item_id
+		FROM %s %s
+		JOIN media_items i ON i.id = %s.item_id
 		WHERE %s
 		ORDER BY %s DESC, i.id DESC
 		LIMIT $%d`,
-		itemColumns, key, strings.Join(where, " AND "), key, len(args))
+		itemColumns, key, table, alias, alias, strings.Join(where, " AND "), key, len(args))
 
-	return s.itemPage(ctx, sql, args, SortFavoritedDesc, limit, q.Cursor, "")
+	return s.itemPage(ctx, sql, args, sort, limit, q.Cursor, "")
 }
 
 // ItemsByIDs geeft de items met hun versies, sporen en artwork, in de volgorde

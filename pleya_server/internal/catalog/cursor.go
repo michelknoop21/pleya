@@ -53,6 +53,19 @@ const (
 	// SortFavoritedDesc ordent favorieten op wanneer ze zijn toegevoegd,
 	// aflopend (S20). Ook geen aanvraagwaarde.
 	SortFavoritedDesc Sort = "-favorited_at"
+	// SortRatedDesc ordent waarderingen op wanneer ze zijn gegeven, aflopend.
+	// Ook geen aanvraagwaarde.
+	SortRatedDesc Sort = "-rated_at"
+	// SortListPosition ordent de inhoud van een verzameling of afspeellijst op
+	// zijn plek in die lijst (S19). Ook geen aanvraagwaarde.
+	SortListPosition Sort = "list_position"
+)
+
+// De sorteringen van GET /collections en GET /playlists zelf (S19). Ze horen bij
+// de rijen van een lijst en niet bij items, dus ParseSort kent ze niet.
+const (
+	SortListUpdatedDesc Sort = "-updated_at"
+	SortListTitle       Sort = "list_title"
 )
 
 // ParseSort leest de sort-parameter. Leeg levert de default.
@@ -109,6 +122,14 @@ func (s Sort) keyExpression() string {
 		return "a.activity_at"
 	case SortFavoritedDesc:
 		return "f.created_at"
+	case SortRatedDesc:
+		return "r.updated_at"
+	case SortListPosition:
+		return "li.position"
+	case SortListUpdatedDesc:
+		return "l.updated_at"
+	case SortListTitle:
+		return "lower(l.title)"
 	default:
 		return "coalesce(i.sort_title, i.title)"
 	}
@@ -156,9 +177,9 @@ func (s Sort) castSuffix() string {
 	switch s {
 	case SortLastPlayed, SortLastPlayedDesc:
 		return "::timestamptz"
-	case SortDuration, SortDurationDesc:
+	case SortDuration, SortDurationDesc, SortListPosition:
 		return "::bigint"
-	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc, SortFavoritedDesc:
+	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc, SortFavoritedDesc, SortRatedDesc, SortListUpdatedDesc:
 		return "::timestamptz"
 	case SortYear, SortYearDesc, SortIndex:
 		return "::integer"
@@ -246,7 +267,7 @@ func (s Sort) keyValid(key string) bool {
 	case SortYear, SortYearDesc, SortIndex:
 		_, err := strconv.Atoi(key)
 		return err == nil
-	case SortDuration, SortDurationDesc:
+	case SortDuration, SortDurationDesc, SortListPosition:
 		_, err := strconv.ParseInt(key, 10, 64)
 		return err == nil
 	case SortLastPlayed, SortLastPlayedDesc:

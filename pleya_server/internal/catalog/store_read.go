@@ -576,6 +576,29 @@ func (s *Store) SubtitleFile(ctx context.Context, streamID id.ID) (FileOnDisk, i
 	return f, versionID, libraryID, err
 }
 
+// EmbeddedSubtitleFile resolves only catalogued embedded subtitles, before extraction.
+func (s *Store) EmbeddedSubtitleFile(ctx context.Context, streamID id.ID) (FileOnDisk, id.ID, id.ID, int, error) {
+	var f FileOnDisk
+	var versionID, libraryID id.ID
+	var index int
+	err := s.pool.QueryRow(ctx, `
+  SELECT st.file_id, l.root_path || '/' || fl.relative_path, fl.generation,
+         coalesce(st.subtitle_format, ''), coalesce(st.language, ''), st.version_id, i.library_id, st.stream_index
+  FROM media_streams st
+  JOIN media_files fl ON fl.id = st.file_id
+  JOIN storage_locations l ON l.id = fl.storage_location_id
+  JOIN media_versions v ON v.id = st.version_id
+  JOIN media_items i ON i.id = v.item_id
+  WHERE st.id = $1 AND st.kind = 'subtitle' AND NOT st.is_external
+        AND st.stream_index IS NOT NULL AND fl.missing_since IS NULL`, streamID).
+		Scan(&f.ID, &f.AbsPath, &f.Generation, &f.Format, &f.Language, &versionID, &libraryID, &index)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = ErrNotFound
+	}
+	f.Role = RoleMedia
+	return f, versionID, libraryID, index, err
+}
+
 // ErrVersionMultifile betekent dat de versie uit meer dan één bestand bestaat.
 //
 // Een geldige toestand in het domeinmodel, en het protocol doet niet alsof het

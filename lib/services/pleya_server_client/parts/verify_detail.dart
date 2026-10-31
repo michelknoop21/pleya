@@ -7,7 +7,8 @@ part of '../../pleya_server_client.dart';
 /// a scenario can walk the page as a viewer on Plex sees it. `kPleyaVerify` is a
 /// compile-time constant: everywhere else every override below is the one
 /// `super` call, and the protocol stays what `openapi.yaml` says it is.
-mixin _PleyaVerifyDetailMethods on _PleyaServerRequests, _PleyaServerBrowseMethods, _PleyaServerUnsupportedMethods {
+mixin _PleyaVerifyDetailMethods
+    on _PleyaServerRequests, _PleyaServerBrowseMethods, _PleyaServerPlaybackMethods, _PleyaServerUnsupportedMethods {
   PleyaServerConnection get connection;
 
   Future<Map<String, dynamic>?> _verifyDetail(String id) => _getJson('/verify/detail/${Uri.encodeComponent(id)}');

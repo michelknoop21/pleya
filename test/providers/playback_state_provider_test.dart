@@ -267,6 +267,58 @@ void main() {
       expect(p.isItemInActiveQueue(outsider), isFalse);
     });
 
+    test('a fresh copy of the current title stays in a local queue, a copy of another title does not', () {
+      final p = PlaybackStateProvider();
+      addTearDown(p.dispose);
+
+      MediaItem item(String id) =>
+          MediaItem(id: id, backend: MediaBackend.jellyfin, kind: MediaKind.movie, serverId: 'server_1');
+      final first = item('first');
+      final second = item('second');
+      p.setPlaybackFromLocalQueue(
+        LocalPlayQueue(id: 'jellyfin:p', items: [first, second], currentIndex: 0, backendId: 'jellyfin'),
+        contextKey: 'p',
+      );
+
+      expect(p.playQueueItemIdFor(first.copyWith()), 0);
+      expect(p.isItemInActiveQueue(first.copyWith()), isTrue);
+      expect(p.playQueueItemIdFor(second.copyWith()), isNull, reason: 'a start from elsewhere, not a queue step');
+      expect(p.isItemInActiveQueue(first.copyWith(serverId: 'server_2')), isFalse, reason: 'ids are per server');
+    });
+
+    test('a title that stands twice in a queue keeps its own row', () async {
+      final p = PlaybackStateProvider();
+      addTearDown(p.dispose);
+
+      MediaItem item(String id) => MediaItem(id: id, backend: MediaBackend.jellyfin, kind: MediaKind.movie);
+      final items = [item('a'), item('b'), item('a'), item('c')];
+      p.setPlaybackFromLocalQueue(
+        LocalPlayQueue(id: 'jellyfin:p', items: items, currentIndex: 0, backendId: 'jellyfin'),
+        contextKey: 'p',
+      );
+
+      p.setCurrentItem(items[2]);
+      expect(p.currentPlayQueueItemID, 2);
+      p.setCurrentItem(items[2].copyWith());
+      expect(p.currentPlayQueueItemID, 2, reason: 'a fresh copy must not jump back to the first row');
+      expect((await p.getNextEpisode('a'))?.id, 'c');
+      expect(p.playQueueItemIdFor(items[0]), 0, reason: 'the queue sheet highlights one row, not both');
+    });
+
+    test('a Plex item without a queue id only matches the title the queue stands on', () async {
+      final p = PlaybackStateProvider();
+      addTearDown(p.dispose);
+
+      await p.setPlaybackFromPlayQueue(
+        _queue(playQueueID: 7, selectedItemID: 500, totalCount: 2, items: [_item('a', 500), _item('b', 501)]),
+        'playlist-1',
+      );
+
+      expect(p.playQueueItemIdFor(PlexMediaItem(id: 'a', kind: MediaKind.episode)), 500);
+      expect(p.isItemInActiveQueue(PlexMediaItem(id: 'b', kind: MediaKind.episode)), isFalse);
+      expect(p.isItemInActiveQueue(PlexMediaItem(id: 'other', kind: MediaKind.episode)), isFalse);
+    });
+
     test('isItemInActiveQueue keeps Plex playlist/collection queues alive', () async {
       // Anchor (Plex side): `_ensurePlayQueue` in episode_queue.dart gates
       // its "preserve vs. clobber" decision on `isItemInActiveQueue`. A

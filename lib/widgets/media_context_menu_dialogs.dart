@@ -9,6 +9,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_text_field.dart';
 import '../i18n/strings.g.dart';
+import '../media/collection_ownership.dart';
 import '../media/media_item.dart';
 import '../media/media_playlist.dart';
 import '../media/media_server_client.dart';
@@ -184,7 +185,8 @@ class _CollectionSelectionDialogState extends State<CollectionSelectionDialog> w
   String? _errorMessage;
   int? _totalCount;
 
-  bool get _hasMore => _totalCount == null || _collections.length < _totalCount!;
+  int _fetchedCount = 0;
+  bool get _hasMore => _totalCount == null || _fetchedCount < _totalCount!;
 
   @override
   void initState() {
@@ -220,17 +222,20 @@ class _CollectionSelectionDialogState extends State<CollectionSelectionDialog> w
       while (mounted && _hasMore) {
         final page = await widget.client.fetchCollectionsPage(
           widget.libraryId,
-          start: _collections.length,
+          start: _fetchedCount,
           size: _pageSize,
           abort: _abortController,
         );
         if (!mounted) return;
+        // Offer only collections a write can land on.
+        final own = page.items.where((collection) => collection.isOwnCollection).toList();
         setState(() {
-          _collections.addAll(page.items);
+          _collections.addAll(own);
+          _fetchedCount += page.items.length;
           _totalCount = page.totalCount;
           _applyFilter(_filterController.text);
         });
-        if (_filterController.text.isEmpty || page.items.isEmpty) break;
+        if (page.items.isEmpty || (_filterController.text.isEmpty && own.isNotEmpty)) break;
       }
       if (!mounted) return;
       setState(() {

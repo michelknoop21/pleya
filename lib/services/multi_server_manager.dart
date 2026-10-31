@@ -198,6 +198,15 @@ class MultiServerManager {
   /// Get client for specific server.
   MediaServerClient? getClient(ServerId serverId) => _clients[serverId];
 
+  /// A queued account scope must never fall back to another active account.
+  MediaServerClient? getClientForScope(ServerId serverId, {String? clientScopeId}) {
+    final active = getClient(serverId);
+    if (clientScopeId == null || clientScopeId.isEmpty) return active;
+    final jellyfin = getJellyfinClientByCompoundId(clientScopeId);
+    if (jellyfin != null && jellyfin.serverId == serverId) return jellyfin;
+    return active?.cacheServerId == clientScopeId ? active : null;
+  }
+
   /// Server ids visible to the active profile; `null` means no restriction.
   /// Owned here rather than on `MultiServerProvider` so non-UI consumers
   /// (the download client resolver) apply the same filter the UI does —
@@ -210,16 +219,13 @@ class MultiServerManager {
 
   bool isServerVisible(ServerId serverId) => _visibleServerIds?.contains(serverId) ?? true;
 
-  /// Resolve the client for a queued download: scope-aware (Jellyfin compound
+  /// Resolve the client for a queued download: scope-aware (Jellyfin and Pleya account
   /// connection ids) and restricted to servers visible to the active profile,
   /// so background downloads never run against another profile's server
   /// during or after a profile switch.
   MediaServerClient? resolveDownloadClient(ServerId serverId, {String? clientScopeId}) {
     if (!isServerVisible(serverId)) return null;
-    if (clientScopeId != null && clientScopeId.isNotEmpty) {
-      return getJellyfinClientByCompoundId(clientScopeId) ?? getClient(serverId);
-    }
-    return getClient(serverId);
+    return getClientForScope(serverId, clientScopeId: clientScopeId);
   }
 
   /// Get the [PlexClient] for a server, or `null` if the server is Jellyfin
@@ -247,6 +253,7 @@ class MultiServerManager {
   /// server) is refused.
   void _wireServerAuthority(ServerAuthorityGuard client, ServerId serverId) {
     client.canManageServerMetadata = () => identical(_clients[serverId], client) && canManageServerMetadata(serverId);
+    client.canManageCollections = () => identical(_clients[serverId], client) && canManageCollections(serverId);
     client.canAdministerServer = () => identical(_clients[serverId], client) && canAdministerServer(serverId);
   }
 
@@ -376,8 +383,8 @@ class MultiServerManager {
   ///     holds metadata rights server-side, so every admin counts as owner
   ///     (owner decision, 25 Sep 2026). A borrowed row never inherits it.
   ///   - Pleya Server: `false`. The client has no canonical metadata write
-  ///     path there; server administration (scans, jobs, users) goes
-  ///     through [canAdministerServer] instead.
+  ///     path there; collections go through [canManageCollections], server
+  ///     administration (scans, jobs, users) through [canAdministerServer].
   ///   - A borrowed connection (any backend): `false`.
   ///   - Unknown server: `false`.
   bool canManageServerMetadata(ServerId serverId) {
@@ -391,6 +398,25 @@ class MultiServerManager {
       return client.connection.isAdministrator;
     }
     return false;
+  }
+
+  /// May the active profile manage canonical collections on [serverId]:
+  /// create one, change its membership, delete it?
+  ///
+  ///   - Plex, Jellyfin, Emby: exactly [canManageServerMetadata].
+  ///   - Pleya Server: the signed-in role is `owner`. An admin passes
+  ///     [canAdministerServer] and not this one, and a member keeps his own
+  ///     personal playlists, which are not canonical and have no such check.
+  ///   - A borrowed connection (any backend): `false`.
+  ///   - Unknown server: `false`.
+  ///
+  /// Reads the last known role. The client re-reads the role right before a
+  /// Pleya Server write.
+  bool canManageCollections(ServerId serverId) {
+    if (_restrictedServerIds.contains(serverId)) return false;
+    final client = _clients[serverId];
+    if (client is PleyaServerClient) return client.connection.isServerOwner;
+    return canManageServerMetadata(serverId);
   }
 
   /// May the active profile administer [serverId]: scans, jobs, users and
@@ -488,11 +514,14 @@ class MultiServerManager {
   /// Check whether the active or scoped client for [serverId] is online.
   bool isClientOnline(ServerId serverId, {String? clientScopeId}) {
     if (clientScopeId != null && clientScopeId.isNotEmpty) {
-      final health = _jellyfinHealthByCompoundId[clientScopeId];
-      if (health != null) return health == HealthStatus.online;
+      final client = getClientForScope(serverId, clientScopeId: clientScopeId);
+      if (client == null) return false;
+      if (identical(_jellyfinByCompoundId[clientScopeId], client)) {
+        return _jellyfinHealthByCompoundId[clientScopeId] == HealthStatus.online;
+      }
       // Only Jellyfin keeps health per connection. Pleya Server has a scope too,
       // and one connection per server: there the server's answer is the scope's.
-      if (_clients[serverId] is JellyfinClient) return false;
+      if (client is JellyfinClient) return false;
     }
     return isServerOnline(serverId);
   }

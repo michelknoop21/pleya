@@ -262,6 +262,21 @@ void main() {
     expect(find.text('Big Buck Bunny'), findsOneWidget);
   });
 
+  testWidgets('an open screen loads again when the provider is rebound', (tester) async {
+    await pumpScreen(tester, [entry(key: 'a', title: 'Sintel')]);
+
+    final rebound = _StubSource([entry(key: 'b', title: 'Big Buck Bunny')]);
+    provider.repository = WatchlistRepository(sources: [rebound]);
+    provider.reset();
+    await tester.pump();
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pump();
+
+    expect(rebound.fetchCount, 1);
+    expect(find.text('Big Buck Bunny'), findsOneWidget);
+  });
+
   testWidgets('an empty watchlist and a filter that hides everything say different things', (tester) async {
     await pumpScreen(tester, []);
     expect(find.text(t.watchlist.empty), findsOneWidget);

@@ -1689,6 +1689,15 @@ class TranslationsVideoControlsEn {
 	/// en: 'Subtitles'
 	String get subtitlesLabel => 'Subtitles';
 
+	/// en: 'Preparing subtitles'
+	String get subtitlesPreparing => 'Preparing subtitles';
+
+	/// en: 'Subtitles could not be prepared'
+	String get subtitlesPrepareFailed => 'Subtitles could not be prepared';
+
+	/// en: 'Retry'
+	String get subtitlesPrepareRetry => 'Retry';
+
 	/// en: 'Reset to 0ms'
 	String get resetToZero => 'Reset to 0ms';
 
@@ -3807,6 +3816,9 @@ class TranslationsPlaylistsEn {
 
 	/// en: 'Failed to reorder playlist item'
 	String get errorReordering => 'Failed to reorder playlist item';
+
+	/// en: 'This playlist changed elsewhere. It has been reloaded, so make your move again.'
+	String get changedElsewhere => 'This playlist changed elsewhere. It has been reloaded, so make your move again.';
 
 	/// en: 'Failed to remove from playlist'
 	String get errorRemoving => 'Failed to remove from playlist';
@@ -10990,6 +11002,9 @@ extension on Translations {
 			_ => null,
 		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Subtitles',
+			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
+			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
+			'videoControls.subtitlesPrepareRetry' => 'Retry',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -11498,11 +11513,11 @@ extension on Translations {
 			'about.viewLicensesDescription' => 'View licenses of third-party libraries',
 			'about.sourceCode' => 'Source code',
 			'about.sourceCodeDescription' => 'Corresponding source for this build (GPL-3.0)',
+			_ => null,
+		} ?? switch (path) {
 			'about.basedOnPlezy' => 'Based on Plezy',
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
-			_ => null,
-		} ?? switch (path) {
 			'about.licence' => 'Licence',
 			'about.sources' => 'Sources',
 			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.',
@@ -11708,6 +11723,7 @@ extension on Translations {
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
+			'playlists.changedElsewhere' => 'This playlist changed elsewhere. It has been reloaded, so make your move again.',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
 			'watchTogether.description' => 'Watch content in sync with friends and family',
@@ -12011,12 +12027,12 @@ extension on Translations {
 			'externalPlayer.customPlayers' => 'Custom Players',
 			'externalPlayer.systemDefault' => 'System Default',
 			'externalPlayer.addCustomPlayer' => 'Add Custom Player',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.playerName' => 'Player Name',
 			'externalPlayer.playerNameHint' => 'My Player',
 			'externalPlayer.playerCommand' => 'Command',
 			'externalPlayer.playerPackage' => 'Package Name',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL Scheme',
 			'externalPlayer.off' => 'Off',
 			'externalPlayer.launchFailed' => 'Failed to open external player',
@@ -12525,12 +12541,12 @@ extension on Translations {
 			'unifiedCatalog.jumpTo' => 'Jump to',
 			'unifiedCatalog.loadMore' => 'Load more',
 			'unifiedCatalog.loadingMore' => 'Loading more…',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.sort.title' => 'Sort',
 			'unifiedCatalog.sort.titleAsc' => 'Title A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Title Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recently added',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oldest added',
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
@@ -13039,12 +13055,12 @@ extension on Translations {
 			'assistant.examples.recentlyAdded.0' => 'What was added this week?',
 			'assistant.examples.recentlyAdded.1' => 'Which series were added recently?',
 			'assistant.examples.describe.0' => 'Find me a film about space.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.describe.1' => 'I want a slow detective series for a rainy Sunday.',
 			'assistant.examples.trending.0' => 'What is popular right now?',
 			'assistant.examples.trending.1' => 'Which popular new movies don\'t I have yet?',
 			'assistant.examples.request.0' => 'Which thrillers from this year could I add to my library?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Find a science fiction series worth requesting.',
 			'assistant.examples.trakt.0' => 'Which titles on my Trakt watchlist can I watch here tonight?',
 			'assistant.examples.history.0' => 'What did I watch lately?',

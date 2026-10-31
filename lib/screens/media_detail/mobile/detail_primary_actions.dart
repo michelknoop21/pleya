@@ -151,6 +151,7 @@ class _ActionButton extends StatelessWidget {
       id: AutomationIds.mediaDetailAction,
       instance: key is ValueKey<String> ? key.value.split('.').last : null,
       role: 'button',
+      state: () => {'selected': action.active},
       child: Semantics(
         button: true,
         selected: action.active,

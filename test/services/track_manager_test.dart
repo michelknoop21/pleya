@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/track_language_choice.dart';
+import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/media/playback_language_intent.dart';
 import 'package:pleya/media/playback_language_notice.dart';
@@ -167,6 +169,186 @@ void main() {
   // ============================================================
   // Construction
   // ============================================================
+
+  group('server language preference wiring', () {
+    final item = MediaItem(
+      id: 'ep',
+      backend: MediaBackend.pleyaServer,
+      kind: MediaKind.episode,
+      grandparentId: 'show',
+      serverId: 'srv',
+    );
+    TrackManager manager(
+      _FakePlayer player, {
+      Future<TrackLanguageChoice?> Function(String)? read,
+      Future<void> Function(String, TrackLanguageChoice)? write,
+    }) => TrackManager(
+      player: player,
+      isActive: () => true,
+      metadata: item,
+      getProfileSettings: () => null,
+      waitForProfileSettings: () async {},
+      readServerLanguage: read,
+      persistServerLanguage: write,
+    );
+    _FakePlayer player() => _FakePlayer(
+      tracks: const Tracks(
+        audio: [
+          AudioTrack(id: '1', language: 'eng'),
+          AudioTrack(id: '2', language: 'nld'),
+        ],
+        subtitle: [
+          SubtitleTrack(id: 's1', language: 'eng'),
+          SubtitleTrack(id: 's2', language: 'nld'),
+        ],
+      ),
+    );
+
+    setUp(() async {
+      await SettingsService.getInstance();
+      PleyaProfileLanguagePreferenceStore.resetForTesting();
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(audioLanguage: 'eng', seeded: true),
+      );
+    });
+
+    test('server choice precedes global preferences without rewriting fallback', () async {
+      var writes = 0;
+      final p = player();
+      final m = manager(
+        p,
+        read: (_) async => const TrackLanguageChoice(audioLanguage: 'nld', subtitlesOff: true, updatedAt: 1),
+        write: (_, _) async {
+          writes++;
+        },
+      );
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.single.language, 'nld');
+      expect(p.selectedSubtitle.last.id, 'no');
+      expect(writes, 0);
+    });
+
+    test('a subtitle that arrives later stays out of the post-open selection', () async {
+      final p = player();
+      final m = manager(p, read: (_) async => null, write: (_, _) async {})..subtitleArrivesLater = true;
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio, isNotEmpty);
+      expect(p.selectedSubtitle, isEmpty);
+    });
+
+    test('source preflight uses the same server preference without touching player or writing fallback', () async {
+      var writes = 0;
+      final p = player();
+      final m = manager(
+        p,
+        read: (_) async => const TrackLanguageChoice(audioLanguage: 'nld', subtitlesOff: true, updatedAt: 1),
+        write: (_, _) async {
+          writes++;
+        },
+      );
+      addTearDown(m.dispose);
+      final choice = await m.selectSourceTracks(
+        MediaSourceInfo(
+          videoUrl: '',
+          chapters: [],
+          audioTracks: [
+            MediaAudioTrack(id: 1, languageCode: 'eng', selected: true),
+            MediaAudioTrack(id: 7, languageCode: 'nld', selected: false),
+          ],
+          subtitleTracks: [MediaSubtitleTrack(id: 3, languageCode: 'eng', selected: true, forced: false)],
+        ),
+      );
+      expect(choice.audioStreamId, 7);
+      expect(choice.subtitleStreamId, 0);
+      expect(p.selectedAudio, isEmpty);
+      expect(p.selectedSubtitle, isEmpty);
+      expect(writes, 0);
+    });
+
+    test('a preference read from another device is available in language management', () async {
+      final m = manager(player(), read: (_) async => const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1));
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      final rows = await TrackPreferenceStore.readAllForActiveScope();
+      expect(rows, hasLength(1));
+      expect(rows.single.choice.provenance?.serverId, 'srv');
+    });
+
+    test('a cached remote choice refreshes instead of becoming an explicit override', () async {
+      String? remote = 'nld';
+      final p = player();
+      final m = manager(
+        p,
+        read: (_) async => remote == null ? null : TrackLanguageChoice(audioLanguage: remote, updatedAt: 1),
+      );
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.last.language, 'nld');
+      final cached = (await TrackPreferenceStore.readAllForActiveScope()).single;
+      expect(cached.choice.fromServer, isTrue);
+      remote = 'eng';
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.last.language, 'eng');
+      remote = null;
+      await m.applyTrackSelection();
+      expect(await TrackPreferenceStore.readAllForActiveScope(), isEmpty);
+    });
+
+    test('local explicit override precedes server choice', () async {
+      await TrackPreferenceStore.saveAudio(item, language: 'eng');
+      final p = player();
+      final m = manager(p, read: (_) async => const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1));
+      addTearDown(m.dispose);
+      await m.applyTrackSelection();
+      expect(p.selectedAudio.single.language, 'eng');
+    });
+
+    test('manual choices persist language and subtitle-off on the series', () async {
+      final writes = <(String, TrackLanguageChoice)>[];
+      final m = manager(
+        player(),
+        write: (id, choice) async {
+          writes.add((id, choice));
+        },
+      );
+      addTearDown(m.dispose);
+      await m.onAudioTrackChanged(const AudioTrack(id: '17', language: 'nld'));
+      await m.onSubtitleTrackChanged(const SubtitleTrack(id: 'no'));
+      expect(writes, hasLength(2));
+      expect(writes.last.$1, 'show');
+      expect(writes.last.$2.audioLanguage, 'nld');
+      expect(writes.last.$2.subtitlesOff, isTrue);
+      await PleyaProfileLanguagePreferenceStore.write(
+        const PleyaProfileLanguagePreferences(rememberPerSeries: false, seeded: true),
+      );
+      await m.onAudioTrackChanged(const AudioTrack(id: '99', language: 'eng'));
+      expect(writes, hasLength(2));
+    });
+
+    test('a profile switch discards a server response before it reaches the player', () async {
+      final storage = await StorageService.getInstance();
+      await storage.setActiveProfileId('one');
+      final started = Completer<void>();
+      final answer = Completer<TrackLanguageChoice?>();
+      final p = player();
+      final m = manager(
+        p,
+        read: (_) {
+          started.complete();
+          return answer.future;
+        },
+      );
+      addTearDown(m.dispose);
+      final applying = m.applyTrackSelection();
+      await started.future.timeout(const Duration(seconds: 2));
+      await storage.setActiveProfileId('two');
+      answer.complete(const TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 1));
+      await applying;
+      expect(p.selectedAudio, isEmpty);
+    });
+  });
 
   group('constructor', () {
     test('initialises mutable fields with the provided values', () {
@@ -569,6 +751,52 @@ void main() {
       expect(mgr.waitingForExternalSubsTrackSelection, isFalse);
     });
 
+    test('waits for the complete native external-track update before resolving a same-language choice', () async {
+      const sidecar = SubtitleTrack(
+        id: '1',
+        title: 'Pleya sidecar',
+        language: 'eng',
+        isExternal: true,
+        uri: 'https://example/sidecar.srt',
+      );
+      const embedded = SubtitleTrack(
+        id: '2',
+        title: 'Pleya embedded',
+        language: 'eng',
+        isExternal: true,
+        uri: 'https://example/embedded.srt',
+      );
+      final p = _FakePlayer(
+        tracks: const Tracks(
+          audio: [AudioTrack(id: '1', language: 'eng')],
+          subtitle: [sidecar],
+        ),
+      );
+      final m = _make(player: p);
+      addTearDown(m.dispose);
+      m.sessionIntent = const PlaybackLanguageIntent(
+        origin: PlaybackIntentOrigin.session,
+        subtitleLanguage: 'eng',
+        subtitleTitle: 'Pleya embedded',
+      );
+      m.waitingForExternalSubsTrackSelection = true;
+      await m.addExternalSubtitles([
+        SubtitleTrack.uri(sidecar.uri!, title: sidecar.title, language: 'eng'),
+        SubtitleTrack.uri(embedded.uri!, title: embedded.title, language: 'eng'),
+      ]);
+      m.onPlaybackRestart();
+      await _drainAsync();
+      expect(p.selectedSubtitle, isEmpty, reason: 'sub-add completion can precede the track-list event');
+      p.emitTracks(
+        const Tracks(
+          audio: [AudioTrack(id: '1', language: 'eng')],
+          subtitle: [sidecar, embedded],
+        ),
+      );
+      await _drainAsync();
+      expect(p.selectedSubtitle.last.title, 'Pleya embedded');
+    });
+
     test('keeps selection pending while external subtitle add is in flight', () async {
       final player = _FakePlayer();
       final mgr = _make(player: player);
@@ -595,6 +823,52 @@ void main() {
       expect(player.addSubtitleCalls, hasLength(1));
     });
   });
+
+  test(
+    'at-open subtitles wait for every declared native URI before choosing the desired same-language track',
+    () async {
+      const sidecar = SubtitleTrack(
+        id: '1',
+        title: 'Pleya sidecar',
+        language: 'eng',
+        isExternal: true,
+        uri: 'https://example/sidecar.srt',
+      );
+      const embedded = SubtitleTrack(
+        id: '2',
+        title: 'Pleya embedded',
+        language: 'eng',
+        isExternal: true,
+        uri: 'https://example/embedded.srt',
+      );
+      final p = _FakePlayer(
+        attachesExternalSubtitlesAtOpen: true,
+        tracks: const Tracks(
+          audio: [AudioTrack(id: '1', language: 'eng')],
+          subtitle: [sidecar],
+        ),
+      );
+      final m = _make(player: p);
+      addTearDown(m.dispose);
+      m.sessionIntent = const PlaybackLanguageIntent(
+        origin: PlaybackIntentOrigin.session,
+        subtitleLanguage: 'eng',
+        subtitleTitle: 'Pleya embedded',
+      );
+      m.cacheExternalSubtitles([sidecar, embedded]);
+      m.applyTrackSelectionWhenReady();
+      await _drainAsync();
+      expect(p.selectedSubtitle, isEmpty);
+      p.emitTracks(
+        const Tracks(
+          audio: [AudioTrack(id: '1', language: 'eng')],
+          subtitle: [sidecar, embedded],
+        ),
+      );
+      await _drainAsync();
+      expect(p.selectedSubtitle.last.title, 'Pleya embedded');
+    },
+  );
 
   group('onBackendSwitched', () {
     test('re-adds cached external subtitles for post-open fallback backends', () async {

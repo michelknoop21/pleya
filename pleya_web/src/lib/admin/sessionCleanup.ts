@@ -13,12 +13,12 @@
  *   zegt achteraf wat lukte en wat niet.
  */
 import { ApiError } from '../api/errors';
+import { knownDeviceName, UNKNOWN_DEVICE_NAME } from '../auth/device';
 import type { UserSession } from '../api/adminUsers';
 import { t } from '../i18n';
 import { formatDate } from '../util/format';
 
-/** De plaatshouder uit `handlers_auth.go` voor een sessie zonder toestelnaam. */
-export const UNKNOWN_DEVICE_NAME = 'Unknown device';
+export { UNKNOWN_DEVICE_NAME };
 
 export const CLEANUP_PERIODS = [30, 60, 90] as const;
 export type CleanupPeriod = (typeof CLEANUP_PERIODS)[number];
@@ -32,8 +32,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * dan het enige dat twee zulke rijen uit elkaar houdt.
  */
 export function isUnnamed(session: Pick<UserSession, 'device_name'>): boolean {
-  const name = session.device_name.trim();
-  return name === '' || name === UNKNOWN_DEVICE_NAME;
+  return knownDeviceName(session.device_name) === null;
 }
 
 export function deviceLabel(session: Pick<UserSession, 'device_name' | 'created_at'>, withDate = false): string {

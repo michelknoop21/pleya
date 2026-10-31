@@ -162,8 +162,8 @@ adminklasse ook wanneer de rol hem wel haalt.
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
 afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer die nog niet gebouwd is. Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
-`watch_state_ownership`, `stream_sessions`, `users`, `sessions`, `api_tokens`, `cookie_auth` en
-`administration` staan op `true`, en capabilities is leidend. `administration` staat aan sinds S1.6,
+`watch_state_ownership`, `stream_sessions`, `users`, `sessions`, `api_tokens`, `cookie_auth`,
+`cookie_upgrade` en `administration` staan op `true`, en capabilities is leidend. `administration` staat aan sinds S1.6,
 voor het beheeroppervlak van S1.2 tot en met S1.5; `cookie_auth` sinds S1.8.
 
 Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een

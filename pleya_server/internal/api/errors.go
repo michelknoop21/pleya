@@ -87,6 +87,12 @@ const (
 	// beheerder die de rol van zijn gebruikers sowieso ziet in GET /users.
 	CodeScopeExceedsRole = "auth.scope_exceeds_role"
 
+	// CodeScopeInsufficient is het antwoord op een route die eigen gegevens
+	// onomkeerbaar wijzigt, wanneer een API-token onder bereik admin hem aanroept
+	// (17c.2). Geen 404 zoals bij de adminklasse: de route bestaat voor deze
+	// gebruiker, alleen dit credential mag er niet door.
+	CodeScopeInsufficient = "auth.scope_insufficient"
+
 	// CodeOriginRejected is het antwoord op een aanvraag in cookiemodus vanaf
 	// een origin die deze server niet toestaat, of zonder Origin-header
 	// (J.2 rij 16, K rij 20). Alleen op POST /auth/login en POST /auth/refresh,
@@ -153,9 +159,10 @@ const (
 	// client vroeg.
 	CodeFilterInvalid = "library.filter_invalid"
 
-	CodeVersionUnavailable  = "playback.version_unavailable"
-	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
-	CodeNotPlayable         = "playback.not_playable"
+	CodeVersionUnavailable       = "playback.version_unavailable"
+	CodeRangeNotSatisfiable      = "playback.range_not_satisfiable"
+	CodePlaybackSelectionInvalid = "playback.selection_invalid"
+	CodeNotPlayable              = "playback.not_playable"
 
 	// CodeTranscodeBusy: alle omzetsessies zijn bezet (venster 5 deel 2, S18).
 	// Retryable: een sessie die stopt maakt ruimte.
@@ -167,6 +174,22 @@ const (
 	// CodePersonalInvalid: een waardering of spoorvoorkeur die de server niet
 	// kan bewaren (S20). details.field noemt het veld.
 	CodePersonalInvalid = "library.personal_invalid"
+
+	// Verzamelingen en afspeellijsten (S19). Invalid is een lijst of aanvraag die
+	// niet te bewaren is, details.field noemt het veld. NotOwner is een 403 omdat
+	// de lijst wel zichtbaar is; buiten zicht blijft het library.not_found.
+	CodeListInvalid  = "library.list_invalid"
+	CodeListNotOwner = "library.list_not_owner"
+
+	// CodeListShareNotPermitted is het antwoord op een zichtbaarheid anders dan
+	// private, of op shared_with, van een member of restricted. Niet
+	// list_not_owner: de aanvrager kan juist wel de eigenaar van zijn lijst zijn,
+	// en die code zou dan iets onwaars zeggen.
+	CodeListShareNotPermitted = "library.list_share_not_permitted"
+
+	// CodeListConflict is het antwoord op een PUT .../items waarvan base_revision niet
+	// meer de huidige is. details.revision is de huidige.
+	CodeListConflict = "library.list_conflict"
 
 	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
 	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
@@ -283,6 +306,7 @@ var errorTable = map[string]struct {
 	CodeSessionNotFound:      {http.StatusNotFound, false},
 	CodePermissionNotAllowed: {http.StatusConflict, false},
 	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
+	CodeScopeInsufficient:    {http.StatusForbidden, false},
 	CodeOriginRejected:       {http.StatusForbidden, false},
 
 	CodeNotFound:                {http.StatusNotFound, false},
@@ -299,15 +323,20 @@ var errorTable = map[string]struct {
 	CodeFilterInvalid:           {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 
-	CodeVersionUnavailable:   {http.StatusConflict, true},
-	CodeRangeNotSatisfiable:  {http.StatusRequestedRangeNotSatisfiable, false},
-	CodeNotPlayable:          {http.StatusUnsupportedMediaType, false},
-	CodeTranscodeBusy:        {http.StatusServiceUnavailable, true},
-	CodeTranscodeFailed:      {http.StatusBadGateway, false},
-	CodePersonalInvalid:      {http.StatusBadRequest, false},
-	CodeDownloadNotPermitted: {http.StatusForbidden, false},
-	CodeDownloadNotReady:     {http.StatusConflict, true},
-	CodeDownloadChanged:      {http.StatusConflict, false},
+	CodeVersionUnavailable:       {http.StatusConflict, true},
+	CodeRangeNotSatisfiable:      {http.StatusRequestedRangeNotSatisfiable, false},
+	CodePlaybackSelectionInvalid: {http.StatusBadRequest, false},
+	CodeNotPlayable:              {http.StatusUnsupportedMediaType, false},
+	CodeTranscodeBusy:            {http.StatusServiceUnavailable, true},
+	CodeTranscodeFailed:          {http.StatusBadGateway, false},
+	CodePersonalInvalid:          {http.StatusBadRequest, false},
+	CodeListInvalid:              {http.StatusBadRequest, false},
+	CodeListNotOwner:             {http.StatusForbidden, false},
+	CodeListShareNotPermitted:    {http.StatusForbidden, false},
+	CodeListConflict:             {http.StatusConflict, false},
+	CodeDownloadNotPermitted:     {http.StatusForbidden, false},
+	CodeDownloadNotReady:         {http.StatusConflict, true},
+	CodeDownloadChanged:          {http.StatusConflict, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},

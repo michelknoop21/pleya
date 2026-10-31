@@ -75,6 +75,7 @@ case "${1:-up}" in
 
     echo "export PLEYA_E2E_BASE_URL='${BASE}'"
     echo "export PLEYA_E2E_SETUP_CODE='$($COMPOSE logs pleya-server 2>/dev/null | grep -o 'Setupcode: [A-Z0-9-]*' | tail -1 | cut -d' ' -f2)'"
+    echo "export PLEYA_E2E_SERVER_ID='$(curl -fsS -m 5 "$BASE/pleya/v1/info" | sed -E 's/.*"server":\{"id":"([^"]+)".*/\1/')'"
     ;;
   seed-large)
     # Vijfhonderd items met een echte poster ernaast, voor de artworkmeting uit

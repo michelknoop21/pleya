@@ -12,6 +12,7 @@
   import TabBar from '#lib/components/TabBar.svelte';
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import UnreachableState from '#lib/components/UnreachableState.svelte';
+  import AddToListDialog from '#lib/components/lists/AddToListDialog.svelte';
   import { activeItemId, navItems } from '#lib/components/navItems.js';
   import { adminBackHref, isAdminPath } from '#lib/admin/sections.js';
   import { isPlayerPath } from '#lib/player/route.js';
@@ -41,6 +42,17 @@
         : null
       : session.capabilities
   );
+  // Geen afgeleide: localStorage is niet reactief, en een ander tabblad kan uitloggen terwijl deze staat open is.
+  let stillSignedIn = $state(false);
+  $effect(() => {
+    if (!unreachable) return;
+    const read = () => {
+      stillSignedIn = session.client.tokens.signedIn;
+    };
+    read();
+    window.addEventListener('storage', read);
+    return () => window.removeEventListener('storage', read);
+  });
   const items = $derived(navItems(navCapabilities, navLibraries));
   const activeId = $derived(activeItemId(items, page.url.pathname, navLibraries));
   // Zoeken vraagt de server; zolang die niet antwoordt, staat de actie er niet.
@@ -168,7 +180,7 @@
           name={session.lastContact?.name ?? page.url.host}
           host={page.url.host}
           lastContactAt={session.lastContact?.at ?? null}
-          signedIn={session.client.tokens.refreshToken !== null}
+          signedIn={stillSignedIn}
           onRetry={() => session.start()}
         />
       {:else}
@@ -180,6 +192,7 @@
       <TabBar {items} {activeId} />
     {/if}
   </div>
+  {#if !unreachable}<AddToListDialog />{/if}
 {/if}
 
 <style>

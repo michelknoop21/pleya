@@ -349,6 +349,8 @@ class PleyaItem {
     this.artwork = PleyaArtwork.none,
     this.versions = const [],
     this.userState,
+    this.favorite = false,
+    this.rating,
   });
 
   final String id;
@@ -395,6 +397,8 @@ class PleyaItem {
   final PleyaArtwork artwork;
   final List<PleyaVersion> versions;
   final PleyaUserState? userState;
+  final bool favorite;
+  final int? rating;
 
   factory PleyaItem.fromJson(Map<String, dynamic> json) {
     final artwork = json['artwork'];
@@ -405,6 +409,8 @@ class PleyaItem {
       kind: PleyaItemKind.tryParse(strOrNull(json, 'kind')),
       title: str(json, 'title'),
       addedAt: timestamp(json, 'added_at'),
+      favorite: json['favorite'] == null ? false : boolean(json, 'favorite'),
+      rating: integerOrNull(json, 'rating'),
       sortTitle: strOrNull(json, 'sort_title'),
       year: integerOrNull(json, 'year'),
       summary: strOrNull(json, 'summary'),

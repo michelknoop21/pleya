@@ -136,6 +136,12 @@ describe('laatst actief', () => {
     expect(text).not.toContain('Apple TV');
   });
 
+  it('toont de plaatshouder van de server niet', () => {
+    const text = lastActiveText([userSession('a', 'Unknown device', { last_seen_at: '2026-10-26T08:08:00Z' })], now);
+    expect(text).toContain('Onbekend toestel');
+    expect(text).not.toContain('Unknown device');
+  });
+
   it('zegt "nog nooit" zonder sessies en "onbekend" als ze niet te lezen waren', () => {
     expect(lastActiveText([], now)).toBe('nog nooit');
     expect(lastActiveText(null, now)).toBe('onbekend');

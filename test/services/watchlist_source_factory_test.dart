@@ -3,10 +3,11 @@ import 'package:http/testing.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/plex_watchlist_client.dart';
-import 'package:pleya/services/watchlist/jellyfin_favorites_source.dart';
+import 'package:pleya/services/watchlist/server_favorites_source.dart';
 import 'package:pleya/services/watchlist/plex_account_watchlist_source.dart';
 import 'package:pleya/services/watchlist/watchlist_source_factory.dart';
 
+import '../pleya_server/pleya_fake_server.dart';
 import 'fake_favorites_client.dart';
 
 typedef PlexAuth = ({String token, String profileId, String accountId, String userId, bool isUserScoped});
@@ -51,7 +52,33 @@ void main() {
   test('skips a client that is not a Jellyfin server', () async {
     final sources = await factoryWith(noAuth: true, clients: {'s1': FakeFavoritesClient(favorites: const [])}).build();
 
-    expect(sources.whereType<JellyfinFavoritesSource>(), isEmpty);
+    expect(sources.whereType<ServerFavoritesSource>(), isEmpty);
+  });
+
+  group('contributesSource', () {
+    test('needs a server type the factory builds favorites for', () {
+      expect(WatchlistSourceFactory.contributesSource(FakeFavoritesClient(favorites: const [])), isFalse);
+    });
+
+    test('follows the favorites capability of a Pleya Server', () async {
+      final server = PleyaFakeServer();
+      final client = server.client();
+      addTearDown(client.close);
+      await client.refreshCapabilities();
+      expect(WatchlistSourceFactory.contributesSource(client), isFalse);
+
+      server.personalCapability = true;
+      await client.refreshCapabilities();
+      expect(WatchlistSourceFactory.contributesSource(client), isTrue);
+    });
+
+    test('a Verify build reads the fixture kijklijst without the capability', () async {
+      final client = PleyaFakeServer().client();
+      addTearDown(client.close);
+      await client.refreshCapabilities();
+
+      expect(WatchlistSourceFactory.contributesSource(client, verifyWatchlist: true), isTrue);
+    });
   });
 
   test('the Plex source comes first, so its newest-first order survives the merge', () async {

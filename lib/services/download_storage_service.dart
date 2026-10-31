@@ -205,9 +205,18 @@ class DownloadStorageService {
     return subtitlesDir;
   }
 
-  Future<String> getSubtitlePath(ServerId serverId, String ratingKey, int trackId, String extension) async {
+  Future<String> getSubtitlePath(
+    ServerId serverId,
+    String ratingKey,
+    int trackId,
+    String extension, {
+    String? sourceStreamId,
+  }) async {
     final subtitlesDir = await getSubtitlesDirectory(serverId, ratingKey);
-    return path.join(subtitlesDir.path, '$trackId.$extension');
+    return path.join(
+      subtitlesDir.path,
+      '${sourceStreamId == null ? trackId : Uri.encodeComponent(sourceStreamId)}.$extension',
+    );
   }
 
   /// Sanitize a filename by removing invalid filesystem characters
@@ -312,9 +321,18 @@ class DownloadStorageService {
   }
 
   /// [showYear]: Pass the show's premiere year (not episode year)
-  Future<String> getEpisodeSubtitlePath(MediaItem episode, int trackId, String extension, {int? showYear}) async {
+  Future<String> getEpisodeSubtitlePath(
+    MediaItem episode,
+    int trackId,
+    String extension, {
+    int? showYear,
+    String? sourceStreamId,
+  }) async {
     final subsDir = await getEpisodeSubtitlesDirectory(episode, showYear: showYear);
-    return path.join(subsDir.path, '$trackId.$extension');
+    return path.join(
+      subsDir.path,
+      '${sourceStreamId == null ? trackId : Uri.encodeComponent(sourceStreamId)}.$extension',
+    );
   }
 
   Future<Directory> getMovieSubtitlesDirectory(MediaItem movie) async {
@@ -323,9 +341,12 @@ class DownloadStorageService {
     return _ensureDirectoryExists(Directory(path.join(movieDir.path, '${baseName}_subs')));
   }
 
-  Future<String> getMovieSubtitlePath(MediaItem movie, int trackId, String extension) async {
+  Future<String> getMovieSubtitlePath(MediaItem movie, int trackId, String extension, {String? sourceStreamId}) async {
     final subsDir = await getMovieSubtitlesDirectory(movie);
-    return path.join(subsDir.path, '$trackId.$extension');
+    return path.join(
+      subsDir.path,
+      '${sourceStreamId == null ? trackId : Uri.encodeComponent(sourceStreamId)}.$extension',
+    );
   }
 
   /// Convert an absolute file path to a relative path (for database storage)

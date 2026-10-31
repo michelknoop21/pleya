@@ -55,6 +55,9 @@ eigen levensduur en vertrouwensmodel; zie
 
 ---
 
+Broncontrole 29 oktober 2026: de beheerregels hieronder verwijzen naar de al gebouwde S10-schermen.
+Detailstatus en bewijs blijven uitsluitend in de masterlijst; "gebouwd" sluit toestel- en NAS-acceptatie niet.
+
 ## 2. Wat een Plex-off blocker is
 
 Een capability is een blocker wanneer een normaal huishouden hem bij dagelijks gebruik mist zodra
@@ -130,8 +133,8 @@ waaraan je ziet dat hij klaar is.
 | Technische eigenschappen per bestand | Plex-analyse plus `includeStreams=1` | (A) ffprobe met `detectionStatus` en `source`, [7.4](pleya-server-architecture.md#74-wat-ffprobe-wel-en-niet-betrouwbaar-zegt) | PS-2 | Technisch gereed | nee | PS-2 criterium 1 |
 | Verandersdetectie bij herscan | Plex-scanner | (A) drie lagen, [7.3](pleya-server-architecture.md#73-wat-de-scanner-elke-ronde-doet) | PS-2 | Technisch gereed | nee | PS-2 criterium 2: tweede scan draait ffprobe nul keer |
 | Hernoemen en verplaatsen zonder identiteitsverlies | Plex maakt hier een dubbele entry | (A) inode, plus scan-signature tussen mounts | PS-2 | Technisch gereed | ja | PS-2 criterium 3; poort 4 is dicht en de signature draagt geen `ETag`-belofte meer (DEC-050) |
-| Bibliotheek toevoegen en verwijderen | Plex Web, niet vanuit Pleya | (A) beheerscherm in de client | geen | **Roadmap gap** | ja | een nieuwe bibliotheek is zonder SSH aan te maken |
-| Scan starten vanuit de client | `GET /library/sections/{id}/refresh` | (A) beheer-endpoint plus knop | PS-11 deels | **Roadmap gap** | ja | scan start en de voortgang is zichtbaar |
+| Bibliotheek toevoegen en verwijderen | Plex Web, niet vanuit Pleya | (A) beheerscherm in de client | S10.2 | Gebouwd; acceptatie open | ja | een nieuwe bibliotheek is zonder SSH aan te maken |
+| Scan starten vanuit de client | `GET /library/sections/{id}/refresh` | (A) beheer-endpoint plus knop | S10.3 / S14 | Gebouwd; acceptatie open | ja | scan start en de voortgang is zichtbaar |
 | Metadata forceren te verversen | `GET /library/sections/{id}/refresh?force=1` | (A) job opnieuw inplannen | PS-7, PS-11 | **Roadmap gap** | ja | een verkeerd gematchte titel is opnieuw te laten ophalen |
 | Lopende serverklussen zien | `GET /activities`, `DELETE /activities/{uuid}` | (A) jobstatus plus scanvoortgang | PS-11 deels | **Roadmap gap** | ja | beheerder ziet wat er draait en kan het afbreken |
 | Media analyseren als losse actie | `GET /library/sections/{id}/analyze` | (B) valt samen met de scanner: analyse gebeurt bij binnenkomst en bij wijziging | PS-2 | Technisch gereed | nee | geen aparte knop nodig |
@@ -184,16 +187,16 @@ waaraan je ziet dat hij klaar is.
 
 ### 5.5 Verzamelingen en afspeellijsten
 
-Dit hele domein komt in geen enkele fase voor, terwijl de client er vandaag volledige lees- en
-schrijfondersteuning voor heeft.
+Dit domein is PS-9C (S19). Server, contract en web staan, de app volgt met S19.4; de client heeft er
+vandaag volledige lees- en schrijfondersteuning voor bij Plex en Jellyfin.
 
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
-| Verzamelingen lezen en doorbladeren | `GET /library/sections/{id}/collections`, `/library/collections/{id}/children` | (A) eigen resource | geen | **Roadmap gap** | ja | het tabblad Verzamelingen is gevuld |
-| Verzameling maken, vullen, opschonen, verwijderen | `POST`, `PUT`, `DELETE /library/collections` | (A) eigen schrijfoppervlak | geen | **Roadmap gap** | ja | een verzameling overleeft een herstart |
-| Afspeellijsten lezen | `GET /playlists`, `/playlists/{id}/items` | (A) eigen resource | geen | **Roadmap gap** | ja | het tabblad Afspeellijsten is gevuld |
-| Afspeellijst maken, vullen, verwijderen | `POST /playlists`, `PUT /playlists/{id}/items` | (A) eigen schrijfoppervlak | geen | **Roadmap gap** | ja | een afspeellijst overleeft een herstart |
-| Afspeellijst herordenen | `PUT /playlists/{id}/items/{itemId}/move?after=` | (A) stabiele positie per item | geen | **Roadmap gap** | nee | slepen bewaart de volgorde |
+| Verzamelingen lezen en doorbladeren | `GET /library/sections/{id}/collections`, `/library/collections/{id}/children` | (A) eigen resource | PS-9C | Server en web gebouwd, app open (S19.4) | ja | het tabblad Verzamelingen is gevuld |
+| Verzameling maken, vullen, opschonen, verwijderen | `POST`, `PUT`, `DELETE /library/collections` | (A) eigen schrijfoppervlak | PS-9C | Server en web gebouwd, app open (S19.4) | ja | een verzameling overleeft een herstart |
+| Afspeellijsten lezen | `GET /playlists`, `/playlists/{id}/items` | (A) eigen resource | PS-9C | Server en web gebouwd, app open (S19.4) | ja | het tabblad Afspeellijsten is gevuld |
+| Afspeellijst maken, vullen, verwijderen | `POST /playlists`, `PUT /playlists/{id}/items` | (A) eigen schrijfoppervlak | PS-9C | Server en web gebouwd, app open (S19.4) | ja | een afspeellijst overleeft een herstart |
+| Afspeellijst herordenen | `PUT /playlists/{id}/items/{itemId}/move?after=` | (A) stabiele positie per item | PS-9C | Server en web gebouwd, app open (S19.4) | nee | slepen bewaart de volgorde |
 | Slimme afspeellijsten en slimme verzamelingen | Plex `smart=1`, alleen lezen in de client | Productbesluit nodig | geen | **Productbesluit nodig** | nee | zie [8](#8-open-productbesluiten) |
 | Serverzijdige afspeelwachtrij | `POST /playQueues` | (B) client-side wachtrij zoals bij Jellyfin, want de wachtrij hoort bij een kijksessie en niet bij de catalogus | PS-4 | Ontworpen | nee | volgende aflevering en wachtrijsheet werken zonder serverresource |
 
@@ -301,12 +304,12 @@ mediaserver is niet volwaardig omdat een film op het gelukkige pad afspeelt.
 | Capability | Vandaag bij Plex | Pleya Server-doel | Fase | Status | Blocker | Bewijs |
 | --- | --- | --- | --- | --- | --- | --- |
 | Eerste installatie | installer plus webwizard | (A) container plus setup-code | PS-2, PS-11 | Deels in roadmap | ja | een nieuwe server draait zonder handmatige SQL |
-| Bibliotheek toevoegen en verwijderen | Plex Web | (A) beheerscherm in de client | geen | **Roadmap gap** | ja | zie 5.1 |
-| Scan starten en de voortgang volgen | `refresh` plus `/activities` | (A) beheer-endpoint plus voortgang | PS-11 deels | **Roadmap gap** | ja | zie 5.1 |
-| Scanfouten begrijpen zonder logs | Plex Web toont ze | (A) foutlijst in het beheerdersoverzicht | PS-11 | In roadmap | ja | PS-11 stopcriterium |
+| Bibliotheek toevoegen en verwijderen | Plex Web | (A) beheerscherm in de client | S10.2 | Gebouwd; acceptatie open | ja | zie 5.1 |
+| Scan starten en de voortgang volgen | `refresh` plus `/activities` | (A) beheer-endpoint plus voortgang | S10.3 / S14 | Gebouwd; acceptatie open | ja | zie 5.1 |
+| Scanfouten begrijpen zonder logs | Plex Web toont ze | (A) foutlijst in het beheerdersoverzicht | S10.8 | Gebouwd; acceptatie open | ja | PS-11 stopcriterium |
 | Actieve sessies zien | `GET /status/sessions` | (A) beheerdersoverzicht | PS-11 | In roadmap | nee | het overzicht toont een lopende sessie |
 | Een sessie beëindigen | Plex-beheerfunctie | (A) sessie intrekken | geen | **Roadmap gap** | nee | een vastgelopen stream is af te breken |
-| Opslagstatus zien | Plex Web | (A) vrije ruimte per `storage_location` | geen | **Roadmap gap** | nee | een volle schijf is zichtbaar voordat hij vol is |
+| Opslagstatus zien | Plex Web | (A) vrije ruimte per `storage_location` | S10.3 | Gebouwd; acceptatie open | nee | een volle schijf is zichtbaar voordat hij vol is |
 | Databasemigraties bij het opstarten | Plex intern | (A) voorwaartse migraties, [17.3](pleya-server-architecture.md#173-migraties) | PS-2 | Technisch gereed | nee | PS-2 criterium 5 |
 | Back-up maken | Plex-datamap kopiëren | (A) opdracht of knop met een controleerbare uitkomst | geen | **Roadmap gap** | ja | een back-up is terug te zetten op een lege server |
 | Back-up terugzetten | datamap terugplaatsen | (A) restoreprocedure | geen | **Roadmap gap** | ja | catalogus en kijkstatus komen ongeschonden terug |

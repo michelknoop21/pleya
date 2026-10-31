@@ -55,6 +55,7 @@ import '../utils/plex_season_display.dart';
 import '../diagnostics/select_trace.dart';
 import '../diagnostics/select_trace_recorder.dart';
 import '../media/media_item.dart';
+import '../media/media_backend.dart';
 import '../media/episode_collection.dart';
 import '../media/unified/unified_route_context.dart';
 import '../theme/mono_theme.dart';

@@ -223,3 +223,86 @@ func TestANewDownloadReplacesTheEarlierOneOfTheSameVersion(t *testing.T) {
 		t.Fatalf("de eerdere download bestaat nog: %d", rec.Code)
 	}
 }
+
+func TestDownloadCarriesTheDeviceOfTheSessionThatAskedForIt(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease")
+
+	login := e.do(http.MethodPost, "/pleya/v1/auth/login", map[string]any{
+		"username": "michel", "password": "een-lang-genoeg-wachtwoord", "device_id": "tv-1", "device_name": "Apple TV",
+	}, withoutAuth)
+	if login.Code != http.StatusOK {
+		t.Fatalf("inloggen gaf %d: %s", login.Code, login.Body.String())
+	}
+	var pair api.TokenPair
+	e.decodeInto(login, &pair)
+
+	d := e.startDownload(movie.ID, asUser(pair.AccessToken))
+	if d.DeviceName == nil || *d.DeviceName != "Apple TV" {
+		t.Fatalf("aanmaken gaf toestel %v", d.DeviceName)
+	}
+	e.runDigest(d.ID)
+	var read api.DownloadWire
+	e.getJSON("/pleya/v1/downloads/"+d.ID, "Download", http.StatusOK, &read)
+	if read.DeviceName == nil || *read.DeviceName != "Apple TV" {
+		t.Fatalf("lezen gaf toestel %v", read.DeviceName)
+	}
+	var list api.DownloadList
+	e.getJSON("/pleya/v1/downloads", "DownloadList", http.StatusOK, &list)
+	if len(list.Items) != 1 || list.Items[0].DeviceName == nil || *list.Items[0].DeviceName != "Apple TV" {
+		t.Fatalf("lijst %+v", list.Items)
+	}
+
+	// Een download van vóór 0025 heeft geen sessie: null, en geen fout.
+	if _, err := e.pool.Exec(context.Background(), `UPDATE downloads SET auth_session_id = NULL WHERE id = $1`, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.getJSON("/pleya/v1/downloads/"+d.ID, "Download", http.StatusOK, &read)
+	if read.DeviceName != nil {
+		t.Fatalf("zonder sessie gaf de download toestel %q", *read.DeviceName)
+	}
+}
+
+// De plaatshouder van een sessie zonder naam is geen toestelnaam.
+func TestDownloadOfASessionWithoutANameHasNoDevice(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	d := e.startDownload(e.findMovie("Grease").ID)
+	if d.DeviceName != nil {
+		t.Fatalf("toestel %q, verwacht null", *d.DeviceName)
+	}
+}
+
+func TestLibrariesCarryTheOwnPermission(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movies := e.libraryByKind("movies")
+	shows := e.libraryByKind("shows")
+
+	permissions := func(opts ...func(*http.Request)) map[string]string {
+		t.Helper()
+		var list api.LibraryList
+		e.decodeInto(e.do(http.MethodGet, "/pleya/v1/libraries", nil, opts...), &list)
+		out := map[string]string{}
+		for _, l := range list.Items {
+			if l.Permission == nil {
+				t.Fatalf("bibliotheek %s zonder recht", l.Title)
+			}
+			out[l.ID] = *l.Permission
+		}
+		return out
+	}
+
+	got := permissions()
+	if got[movies.ID.String()] != "manage" || got[shows.ID.String()] != "manage" {
+		t.Fatalf("eigenaar %v", got)
+	}
+
+	member := e.createUser("member", "huisgenoot")
+	e.grantLibrary(member, movies.ID, "download")
+	theirs := permissions(asUser(e.tokenFor(member)))
+	if len(theirs) != 1 || theirs[movies.ID.String()] != "download" {
+		t.Fatalf("lid %v", theirs)
+	}
+}

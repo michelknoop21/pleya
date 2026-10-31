@@ -209,6 +209,7 @@ class MobileMediaRail extends StatelessWidget {
                     id: itemAutomationId,
                     instance: '$_railInstance.$index',
                     role: 'grid.item',
+                    state: () => {'item_id': group.representativeSource.item.id},
                     child: _RailCardCell(
                       group: group,
                       shape: shape,

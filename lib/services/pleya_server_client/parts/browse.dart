@@ -102,6 +102,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     MediaKind? libraryKind,
     AbortController? abort,
     bool strictSnapshot = false,
+    bool Function(PleyaItem)? itemFilter,
   }) async {
     if (!wireCapabilities.browse) {
       if (strictSnapshot) throw StateError('Browse capability is not available for a snapshot');
@@ -261,6 +262,11 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // without an owner, so its progress would never be stored.
       _watchLedger.remember(item.id, item.userState?.revision);
       _rememberExternalIds([item]);
+      try {
+        await cache.put(ServerId(connection.id), PleyaServerApiCache.itemEndpoint(id), json);
+      } catch (e) {
+        appLogger.d('PleyaServerClient: optional metadata cache write failed', error: e);
+      }
       final ancestors = await _ancestorsOf(item);
       return PleyaServerMappers.mediaItem(
         item,
@@ -362,6 +368,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     int? size,
     AbortController? abort,
     bool strictSnapshot = false,
+    bool Function(PleyaItem)? itemFilter,
   }) async {
     if (!wireCapabilities.browse) {
       if (strictSnapshot) throw StateError('Browse capability is not available for a snapshot');
@@ -618,6 +625,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     String? parentId,
     AbortController? abort,
     bool strictSnapshot = false,
+    bool Function(PleyaItem)? itemFilter,
   }) async {
     final pageSize = limit <= 0 ? 100 : (limit > _maxPageSize ? _maxPageSize : limit);
     var position = offset <= 0 ? 0 : _cursors.nearestKnownOffset(ledgerKey, offset);
@@ -625,8 +633,13 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     final collected = <PleyaItem>[];
     var walked = 0;
     var restarted = false;
+    var exhausted = false;
+    final seenCursors = <String>{};
 
     while (true) {
+      if (itemFilter != null && cursor != null && !seenCursors.add(cursor)) {
+        throw StateError('Listing repeated its cursor');
+      }
       final answer = await _getJsonDetailed(
         path,
         queryParameters: {'limit': '$pageSize', ...extraQuery, 'cursor': ?cursor},
@@ -644,29 +657,33 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
         position = 0;
         cursor = null;
         collected.clear();
+        seenCursors.clear();
         walked = 0;
         continue;
       }
       final json = answer.json;
       if (json == null) {
-        if (strictSnapshot) throw StateError('Snapshot page was not received');
+        if (strictSnapshot || itemFilter != null) throw StateError('Listing page was not received');
         break;
       }
       final PleyaItemPage page;
       try {
         page = PleyaItemPage.fromJson(json);
       } on PleyaWireFormatException catch (e) {
-        if (strictSnapshot) rethrow;
+        if (strictSnapshot || itemFilter != null) rethrow;
         appLogger.w('PleyaServerClient: $path did not match the contract', error: e);
         break;
       }
       if (strictSnapshot && page.items.length != page.knownItems.length) {
         throw StateError('Snapshot contains unsupported items');
       }
+      final visible = itemFilter == null ? page.knownItems : page.knownItems.where(itemFilter).toList();
+      final count = itemFilter == null ? page.items.length : visible.length;
+      exhausted = page.nextCursor == null;
       _cursors.recordPage(
         ledgerKey,
         offset: position,
-        count: page.items.length,
+        count: count,
         nextCursor: page.nextCursor,
         totalEstimate: page.totalEstimate,
       );
@@ -674,10 +691,10 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // Items before the requested offset belong to an earlier window and are
       // dropped rather than returned; the walk only exists to reach the window.
       final skipInThisPage = offset > position ? offset - position : 0;
-      if (skipInThisPage < page.knownItems.length) {
-        collected.addAll(page.knownItems.skip(skipInThisPage));
+      if (skipInThisPage < visible.length) {
+        collected.addAll(visible.skip(skipInThisPage));
       }
-      position += page.items.length;
+      position += count;
 
       if (collected.length >= limit || page.nextCursor == null || page.items.isEmpty) break;
       // The walk bound counts *fruitless* pages, not pages. Counting every
@@ -689,9 +706,9 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // the catalogue was finished. A page that contributed something is
       // progress, so it resets the count; the bound still stops a long stretch
       // of pages that give this window nothing.
-      if (skipInThisPage < page.knownItems.length) {
+      if (skipInThisPage < visible.length) {
         walked = 0;
-      } else if (++walked >= _maxCursorWalk) {
+      } else if (itemFilter == null && ++walked >= _maxCursorWalk) {
         appLogger.d('PleyaServerClient: stopped walking $path after $_maxCursorWalk unproductive pages');
         break;
       }
@@ -709,7 +726,15 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     );
     final estimate = _cursors.totalEstimate(ledgerKey);
     if (strictSnapshot && estimate == null) throw StateError('Snapshot count is unavailable');
-    return LibraryPage(items: items, totalCount: estimate ?? (offset + items.length), offset: offset);
+    return LibraryPage(
+      items: items,
+      totalCount: itemFilter != null
+          ? exhausted
+                ? position
+                : position + 1
+          : estimate ?? (offset + items.length),
+      offset: offset,
+    );
   }
 
   // ---------------------------------------------------------------------------

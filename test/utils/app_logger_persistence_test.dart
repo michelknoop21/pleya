@@ -5,6 +5,17 @@ import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/persistent_log_store.dart';
 
 void main() {
+  test('Verify keeps debug diagnostics even when the product logging preference is off', () {
+    MemoryLogOutput.clearLogs();
+    setLoggerLevel(false);
+    addTearDown(() => setLoggerLevel(true));
+    appLogger.d('verify diagnostic marker');
+    expect(
+      MemoryLogOutput.getLogs().any((e) => e.message == 'verify diagnostic marker'),
+      const bool.fromEnvironment('PLEYA_VERIFY'),
+    );
+  });
+
   test('restores recent diagnostics, redacts secrets and persists new logs and clearing', () async {
     final directory = await Directory.systemTemp.createTemp('pleya-logger-test-');
     try {

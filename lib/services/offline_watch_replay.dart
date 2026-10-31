@@ -144,7 +144,9 @@ Future<bool> replayOfflineWatchAction(
         final position = action.shouldMarkWatched && duration != null
             ? duration
             : Duration(milliseconds: action.viewOffset!);
-        if (!action.shouldMarkWatched || client.backend != MediaBackend.plex) {
+        // Pleya backlog must never acquire live ownership before replay.
+        if (client.backend != MediaBackend.pleyaServer &&
+            (!action.shouldMarkWatched || client.backend != MediaBackend.plex)) {
           try {
             await client.reportPlaybackStarted(itemId: action.ratingKey, position: position, duration: duration);
           } catch (e) {

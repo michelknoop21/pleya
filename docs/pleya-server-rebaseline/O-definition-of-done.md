@@ -48,7 +48,7 @@ die samen "af" betekenen. Beide moeten groen zijn.
       de NAS-stagingdataset: een geïsoleerde stagingdatabase met een dump vooraf, media
       alleen-lezen of via snapshot, eigen config en secrets, en geen enkele journey die
       productie-media kan verwijderen of verplaatsen.
-- [ ] De `PLEX_OFFLINE_REPLACEMENT_GATE` (matrix hoofdstuk 9) slaagt met de Plex-container gestopt, in de categorieën catalogus, playback, persoonlijke state, remote, offline en beheer; migratie staat als keuze.
+- [ ] De `PLEX_OFFLINE_REPLACEMENT_GATE` (matrix hoofdstuk 9) slaagt op de geïsoleerde testinstance terwijl Plex blijft draaien (DEC-151), in de categorieën catalogus, playback, persoonlijke state, remote, offline en beheer; migratie staat als keuze.
 - [ ] PS-4E, PS-4W, PS-6, PS-7, PS-7N, PS-7A, PS-7F, PS-8, PS-9C, PS-9P, PS-9T, PS-10, PS-11, PS-11A,
       PS-11B, PS-11R, PS-14 en het servergedeelte van PS-15 halen elk hun eigen acceptatiecriteria;
       per fase een Roadmap Drift Check in `STATUS.md`.
@@ -93,7 +93,7 @@ die samen "af" betekenen. Beide moeten groen zijn.
       schema's van de PS-2-leeskant telt niet als contractdekking (poort P9).
 - [ ] `scripts/check_authority_merge.sh` groen: geen authority-bestand is bij een merge
       teruggezet naar één ouder.
-- [ ] Migratietest op de NAS-fixture groen; de NAS draait schema 19 met een dump van vóór 0008.
+- [ ] Migratietest op de NAS-fixture groen; het geteste schema en de bron- en doelschema’s staan bij het bewijs. Schema 19 en de dump van vóór 0008 blijven historische testgegevens, geen actuele deployclaim.
 - [ ] Elke capability-vlag hangt aan gedrag (test per vlag).
 - [ ] Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/`.
 - [ ] Geen bestand in `pleya_web/src` of `pleya_server/internal/api` boven 500 regels.

@@ -103,7 +103,7 @@ extension _VideoPlayerMediaControlsMethods on VideoPlayerScreenState {
     if (!mounted || !PlatformDetector.isAppleTV()) return;
     final tracks = _systemSubtitleTracks();
     final sourceTracks = _sourceSubtitleTracksForControls();
-    final useSource = _isTranscoding && sourceTracks.isNotEmpty && _currentMetadata.backend == MediaBackend.plex;
+    final useSource = _canSwitchSourceSubtitles && sourceTracks.isNotEmpty;
     try {
       await _mediaControlsManager?.updateSubtitleOptions(
         [
@@ -141,7 +141,7 @@ extension _VideoPlayerMediaControlsMethods on VideoPlayerScreenState {
         _playbackSession?.metadata.globalKey == session?.metadata.globalKey;
     bool isCurrent() => sameItem() && _playbackGeneration == generation;
     final sourceTracks = _sourceSubtitleTracksForControls();
-    if (_isTranscoding && sourceTracks.isNotEmpty && _currentMetadata.backend == MediaBackend.plex) {
+    if (_canSwitchSourceSubtitles && sourceTracks.isNotEmpty) {
       final id = event.enabled ? int.tryParse(event.id?.replaceFirst('source:', '') ?? '') : 0;
       if (id == null || (id != 0 && !sourceTracks.any((track) => track.id == id))) return;
       if (event.enabled) {

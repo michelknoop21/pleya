@@ -230,6 +230,7 @@ extension on MediaContextMenuState {
     // Download options (for episodes, movies, shows, and seasons).
     // Apple TV has no user-accessible file storage, skip entirely.
     if (!PlatformDetector.isAppleTV() &&
+        (mediaClient?.capabilities.clientDownloads ?? (itemBackend != MediaBackend.pleyaServer)) &&
         (mediaKind == MediaKind.episode ||
             mediaKind == MediaKind.movie ||
             mediaKind == MediaKind.show ||

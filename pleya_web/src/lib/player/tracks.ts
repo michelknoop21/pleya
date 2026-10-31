@@ -1,20 +1,4 @@
-/**
- * De sporen die de spoorkiezer toont, uit de `Version` van het item.
- *
- * Ondertitels: alleen een extern WebVTT-bestand komt als `<track>` in de
- * speler. Een browser leest geen SRT, ASS of beeldondertitels (PGS, DVD), en
- * ingebedde sporen leveren vraagt extractie op de server. Beide horen bij S13.4
- * (ondertitelconversie naar WebVTT); tot die er is laat de kiezer ze weg en
- * zegt hij hoeveel het er zijn.
- *
- * Het bestand komt via `GET /subtitles/{id}` met de bearer in de header en gaat
- * als `blob:`-URL aan de `<track>`, net als artwork: een `<track src>` kan geen
- * header zetten en een querytoken zou het token in een URL zetten.
- *
- * Audio: het contract heeft geen spoorkeuze in het plan, en de omzetter neemt
- * het eerste audiospoor. Wisselen kan dus alleen bij direct play in een browser
- * met `HTMLMediaElement.audioTracks` (Safari).
- */
+/** Browser track labels and bounded SRT/WebVTT delivery through the existing authenticated route. */
 import type { AudioStream, SubtitleStream, Version } from '../api/types';
 import { formatLanguage } from '../util/format';
 import { t } from '../i18n';
@@ -33,16 +17,16 @@ function label(
   return text || t('player.trackUnnamed', { index: index + 1 });
 }
 
-export function isBrowserSubtitle(s: SubtitleStream): boolean {
-  return s.format === 'vtt' && s.is_external;
+export function isBrowserSubtitle(s: SubtitleStream, embedded = false): boolean {
+  return (s.format === 'vtt' || s.format === 'srt') && (s.is_external || embedded);
 }
 
-export function subtitleOptions(version: Version | undefined): {
+export function subtitleOptions(version: Version | undefined, embedded = false): {
   usable: TrackOption[];
   skipped: number;
 } {
   const all = version?.subtitle_streams ?? [];
-  const usable = all.filter(isBrowserSubtitle).map((s, i) => ({
+  const usable = all.filter((stream) => isBrowserSubtitle(stream, embedded)).map((s, i) => ({
     id: s.id,
     label: label(
       [
@@ -77,9 +61,9 @@ export function defaultAudioIndex(options: TrackOption[]): number {
 
 /** Laadt een WebVTT-bestand als `blob:`-URL; `revoke` ruimt hem op. */
 export async function subtitleBlobUrl(
-  text: () => Promise<string>
+  text: () => Promise<string>, format = 'vtt'
 ): Promise<{ url: string; revoke: () => void }> {
-  const body = await text();
+  const body = subtitleWebVtt(await text(), format);
   const url = URL.createObjectURL(new Blob([body], { type: 'text/vtt' }));
   return { url, revoke: () => URL.revokeObjectURL(url) };
 }
@@ -90,4 +74,37 @@ export function cueText(cues: ArrayLike<{ text?: string }> | null | undefined): 
     .map((c) => (c.text ?? '').replace(/<[^>]*>/g, '').trim())
     .filter(Boolean)
     .join('\n');
+}
+
+/** Converts bounded plain text; ASS/bitmap styling requires the server burn path. */
+export function subtitleWebVtt(source: string, format: string): string {
+  if (source.length > 4 * 1024 * 1024 || new TextEncoder().encode(source).length > 4 * 1024 * 1024) throw new Error('Subtitle too large');
+  const body = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  if (format === 'vtt') {
+    if (!/^WEBVTT(?:[ \t][^\n]*)?(?:\n|$)/.test(body)) throw new Error('Invalid WebVTT');
+    return body;
+  }
+  if (format !== 'srt') throw new Error('Unsupported subtitle format');
+  if (!body.trim()) throw new Error('Invalid SRT');
+  // One broken cue is one missing line, not a film without subtitles. Only a file without a single
+  // usable cue is not SRT.
+  const cues = body.trim().split(/\n[ \t]*\n+/).map(srtCue).filter((cue) => cue !== null);
+  if (cues.length === 0) throw new Error('Invalid SRT');
+  return `WEBVTT\n\n${cues.join('\n\n')}\n`;
+}
+
+function srtCue(block: string): string | null {
+  const lines = block.split('\n');
+  const identifier = /^\d+$/.test(lines[0]?.trim() ?? '') ? lines.shift()!.trim() : null;
+  const timing = lines.shift()?.match(/^(\d{2,}:[0-5]\d:[0-5]\d[,.]\d{3})[ \t]+-->[ \t]+(\d{2,}:[0-5]\d:[0-5]\d[,.]\d{3})[ \t]*$/);
+  if (!timing || lines.length === 0) return null;
+  const start = subtitleTime(timing[1]!);
+  const end = subtitleTime(timing[2]!);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end <= start) return null;
+  return `${identifier === null ? '' : identifier + '\n'}${timing[1]!.replace(',', '.')} --> ${timing[2]!.replace(',', '.')}\n${lines.join('\n')}`;
+}
+
+function subtitleTime(stamp: string): number {
+  const [hours, minutes, seconds, milliseconds] = stamp.split(/[:,.]/).map(Number);
+  return ((hours! * 60 + minutes!) * 60 + seconds!) * 1000 + milliseconds!;
 }

@@ -18,6 +18,9 @@
   import type { Snippet } from 'svelte';
   import Artwork from './Artwork.svelte';
   import MediaCardBadges from './MediaCardBadges.svelte';
+  import { addToList } from '../stores/addToList.svelte';
+  import { session } from '../stores/session.svelte';
+  import { t } from '../i18n';
   import type { Item } from '../api/types';
   import {
     artworkAspect,
@@ -71,6 +74,8 @@
   const watched = $derived(isWatched(item));
   const progress = $derived(itemProgress(item));
   const subtitle = $derived(subtitleOverride ?? cardSubtitle(item));
+  // S19: het kaartmenu "Toevoegen aan". Zuster van de link, net als de acties.
+  const canAdd = $derived(session.capabilities?.collections === true || session.capabilities?.playlists === true);
 </script>
 
 <div class="card" data-kind={item.kind} data-shape={shape}>
@@ -117,6 +122,19 @@
     <div class="card__over" class:card__over--wide={shape === 'wide'}>
       <div class="card__actions">{@render actions()}</div>
     </div>
+  {/if}
+  {#if canAdd}
+    <button
+      type="button"
+      class="card__add"
+      aria-label={t('lists.add.menu', { title: item.title })}
+      aria-haspopup="dialog"
+      onclick={() => addToList.open(item)}
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor">
+        <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
+      </svg>
+    </button>
   {/if}
 </div>
 
@@ -224,6 +242,53 @@
     .card__link:focus-visible .card__art {
       outline: var(--ring) solid CanvasText;
       outline-offset: 3px;
+    }
+  }
+
+  /*
+   * Het kaartmenu ligt rechtsboven op het beeld. Op een aanraakscherm staat hij er
+   * altijd, want daar is geen hover; met een muis verschijnt hij bij hover en bij
+   * toetsenbordfocus, zodat een rij kaarten rustig blijft.
+   */
+  .card__add {
+    position: absolute;
+    top: calc(var(--space-quarter) + 6px);
+    right: 6px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--art-shade) 70%, transparent);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  /* Het raakvlak is 44, ook al tekent de knop 32. */
+  .card__add::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  .card__add:focus-visible {
+    outline: var(--ring) solid #fff;
+    outline-offset: 1px;
+  }
+
+  @media (hover: hover) {
+    .card__add {
+      opacity: 0;
+      transition: opacity var(--dur-fast) var(--ease);
+    }
+
+    .card:hover .card__add,
+    .card__add:focus-visible {
+      opacity: 1;
     }
   }
 

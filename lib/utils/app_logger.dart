@@ -278,7 +278,7 @@ String logNoticeError(String context, Object error, {StackTrace? stackTrace}) {
 /// Update the logger's level dynamically based on debug setting
 /// Recreates the logger instance to ensure it works in release mode
 void setLoggerLevel(bool debugEnabled) {
-  final newLevel = debugEnabled ? Level.debug : Level.info;
+  final newLevel = debugEnabled || const bool.fromEnvironment('PLEYA_VERIFY') ? Level.debug : Level.info;
 
   _productionFilter.setLevel(newLevel);
 

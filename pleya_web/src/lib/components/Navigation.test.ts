@@ -18,10 +18,17 @@ const caps: Capabilities = {
   filters: false,
   watch_state: false,
   playback_plan: false,
+  playback_quality: false,
+  playback_audio_selection: false,
+  embedded_subtitles: false,
+  playback_subtitles: false,
   history: false,
   favorites: false,
   ratings: false,
   track_preferences: false,
+  personal_data: false,
+  collections: false,
+  playlists: false,
   item_activity: false,
   transcode: false,
   downloads: false,
@@ -34,6 +41,7 @@ const caps: Capabilities = {
   sessions: false,
   api_tokens: false,
   cookie_auth: false,
+  cookie_upgrade: false,
   administration: false,
   mcp: false
 };
@@ -52,7 +60,7 @@ describe('de bovenbalk', () => {
 
   it('markeert het actieve slot met aria-current', () => {
     render(TopNav, { props: { items, activeId: 'films' } });
-    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/libraries/f');
+    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/films');
   });
 
   it('toont zoeken als actie, alleen wanneer de server het aanbiedt', () => {
@@ -90,7 +98,7 @@ describe('de tabbalk', () => {
   it('draagt dezelfde slots als de bovenbalk', () => {
     render(TabBar, { props: { items, activeId: 'series' } });
     expect(screen.getAllByRole('link')).toHaveLength(items.length);
-    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/libraries/s');
+    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/series');
   });
 
   it('toont een leesbaar label naast het icoon', () => {

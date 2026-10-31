@@ -22,6 +22,7 @@ const (
 
 type sessionSweeper interface {
 	SweepIdleSessions(ctx context.Context, now time.Time, idle time.Duration) ([]id.ID, error)
+	PurgeStreamSessions(ctx context.Context, now time.Time) (int64, error)
 }
 
 type sessionRevoker interface {
@@ -56,12 +57,32 @@ func sweepSessionsOnce(ctx context.Context, store sessionSweeper, revocations se
 	return len(swept)
 }
 
+// purgeStreamSessionsOnce ruimt de verlopen en ingetrokken browserstreamsessies
+// op (S15.1). Na de sessieronde, zodat de streams van wat die ronde intrekt
+// meteen meegaan.
+func purgeStreamSessionsOnce(ctx context.Context, store sessionSweeper, now time.Time, log *slog.Logger) int64 {
+	purged, err := store.PurgeStreamSessions(ctx, now)
+	if err != nil {
+		log.Warn("streamsessies opruimen mislukt", slog.String("error", err.Error()))
+		return 0
+	}
+	if purged > 0 {
+		log.Info("verlopen streamsessies opgeruimd", slog.Int64("count", purged), slog.String("source", "system"))
+	}
+	return purged
+}
+
 // scheduleSessionSweep draait de ronde meteen bij het opstarten en daarna
 // elke dag op het vaste tijdstip. Het opstarten wacht er niet op: deze functie
 // draait in haar eigen goroutine.
 func scheduleSessionSweep(ctx context.Context, store sessionSweeper, revocations sessionRevoker,
 	ttl func() time.Duration, log *slog.Logger) {
-	sweepSessionsOnce(ctx, store, revocations, ttl, time.Now().UTC(), log)
+	round := func() {
+		now := time.Now().UTC()
+		sweepSessionsOnce(ctx, store, revocations, ttl, now, log)
+		purgeStreamSessionsOnce(ctx, store, now, log)
+	}
+	round()
 	for {
 		next := nextBackup(time.Now(), sessionSweepHour, sessionSweepMinute)
 		timer := time.NewTimer(time.Until(next))
@@ -71,6 +92,6 @@ func scheduleSessionSweep(ctx context.Context, store sessionSweeper, revocations
 			return
 		case <-timer.C:
 		}
-		sweepSessionsOnce(ctx, store, revocations, ttl, time.Now().UTC(), log)
+		round()
 	}
 }

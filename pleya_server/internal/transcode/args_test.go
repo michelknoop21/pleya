@@ -136,3 +136,47 @@ func TestTranscodeWithoutAudioCodecCopiesTheAudio(t *testing.T) {
 		t.Fatal("direct stream zonder audiocodec werd niet geweigerd")
 	}
 }
+
+func TestExplicitQualityAndAudioReachFFmpeg(t *testing.T) {
+	j := job(transcode.ModeTranscode)
+	j.MaxVideoBitrateKbps, j.MaxHeight = 2000, 720
+	index := 3
+	j.AudioStreamIndex = &index
+	args, err := transcode.BuildArgs(j)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	for _, want := range []string{"-map 0:3", "-maxrate 2000k", "-bufsize 4000k", "min(ih,720)"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %q in %s", want, joined)
+		}
+	}
+}
+
+func TestQualityRejectsInvalidLimits(t *testing.T) {
+	for _, height := range []int{-1, 4321} {
+		j := job(transcode.ModeTranscode)
+		j.MaxHeight, j.MaxVideoBitrateKbps = height, 2000
+		if _, err := transcode.BuildArgs(j); err == nil {
+			t.Fatalf("accepted height %d", height)
+		}
+	}
+}
+
+func TestSubtitleBurnUsesAControlledFilterFilename(t *testing.T) {
+	j := job(transcode.ModeTranscode)
+	j.SubtitlePath = "/cache/a'b:c,[x];/caption.srt"
+	args, err := transcode.BuildArgs(j)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "subtitles=subtitle") || strings.Contains(joined, j.SubtitlePath) {
+		t.Fatalf("source path entered the filter: %s", joined)
+	}
+	j.Mode = transcode.ModeRemux
+	if _, err := transcode.BuildArgs(j); err == nil {
+		t.Fatal("burn silently accepted in remux")
+	}
+}

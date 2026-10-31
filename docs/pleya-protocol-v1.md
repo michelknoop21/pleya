@@ -126,7 +126,7 @@ Een gesloten enum in een antwoord is een belofte: de client kent elke waarde die
 mag er een keuze op bouwen zonder restgeval. Die belofte is bruikbaar, en daarom kost hij ook iets.
 Een waarde toevoegen aan een gesloten enum breekt precies de clients die de belofte serieus namen.
 
-Deze zes velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
+Deze zeven velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
 de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 
 | Veld | Waar | Bij een onbekende waarde |
@@ -137,6 +137,7 @@ de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 | `SubtitleStream.format` | itemdetail | het spoor niet aanbieden |
 | `Scan.state` | scanlijst en scandetail (venster 2, DEC-138) | de scan tonen als "onbekend" |
 | `Job.state` | joblijst (venster 2, DEC-138) | de job tonen als "onbekend" |
+| `Collection.visibility` | verzamelingen (venster 6 deel 1, S19) | de verzameling tonen als gedeeld, de waarde nooit terugsturen en de zichtbaarheid bij bewerken ongemoeid laten |
 
 In `openapi.yaml` draagt elk enum-veld `x-unknown-safe`, met `true` of `false`, en
 `scripts/check_protocol.sh` weigert een enum zonder die markering. Een nieuw enum-veld dwingt zo een
@@ -199,6 +200,7 @@ Precies daarom staat er zo weinig in.
     "sessions": true,
     "api_tokens": true,
     "cookie_auth": true,
+    "cookie_upgrade": true,
     "administration": true,
     "mcp": false,
     "playback_plan": false,
@@ -307,6 +309,11 @@ Klasse: **`public`**.
 Een onbekende gebruiker en een verkeerd wachtwoord geven hetzelfde antwoord, `auth.invalid_credentials`,
 zodat het bestaan van een account niet lekt.
 
+Inloggen kan `429 auth.rate_limited` geven. De grens per gebruikersnaam noemt de wachttijd in
+`details.retry_after_ms`. Komt de aanvraag niet bij de wachtwoordcontrole omdat haar clientadres zijn grens
+raakte, of omdat er binnen 3 seconden geen plek vrijkwam, dan staat ook `Retry-After` in het antwoord; bij de
+wachttijdgrens is dat geen oordeel over het wachtwoord, en een client die later terugkomt wordt gewoon bediend.
+
 **`device_id` en `device_name` zijn optioneel op zowel `/auth/login` als `/auth/setup`**, en alleen te
 sturen wanneer `capabilities.sessions` waar is (hoofdstuk 17):
 
@@ -335,9 +342,44 @@ Het antwoord is een nieuw paar. **Het refreshtoken roteert bij elk gebruik** en 
 onmiddellijk. Een tweede aanroep met hetzelfde refreshtoken geeft `auth.refresh_token_reused`, en de
 server mag de hele keten dan ongeldig maken.
 
+**Twee aanvragen tegelijk zijn geen hergebruik.** Komt een net geroteerd token binnen het respijtvenster
+terug terwijl zijn opvolger nooit gebruikt is, dan was dat een verloren antwoord of een tweede tabblad: de
+aanvrager krijgt een nieuw paar en de ongebruikte opvolger vervalt. Die vervallen opvolger kan zelf nog bij
+de client aankomen, als zijn antwoord later binnenkomt dan dat van de herhaling. Hij is dan nooit
+aangeboden, dus zolang de keten niet verder is, is zijn eerste aanbieding geen hergebruik, ook niet na het
+venster: hij krijgt een nieuw paar en de kop die daarvoor wijkt vervalt definitief. Die aanbieding start één
+keer een eigen venster. Een herhaling daarbinnen levert ook een nieuw paar, maar schuift het venster niet op,
+en wat ervoor wijkt vervalt eveneens definitief. Daarna is een tweede aanbieding `auth.refresh_token_reused`.
+De uitzondering geldt zo één generatie: een token dat voor een vervangen token wijkt, krijgt haar niet. Is de
+keten wel verder, of biedt iemand een geweken kop aan, dan dragen twee partijen de sessie, en dan is het
+`auth.refresh_token_reused`, ook binnen het venster. Twee tabbladen die een laat token samen aanbieden en de
+antwoorden in omgekeerde volgorde ontvangen, houden zo een geweken kop over en loggen opnieuw in. Dit
+verandert geen veld en geen code; het beperkt wanneer een bestaande uitkomst valt.
+
 Ook hier bestaat `credential_mode`. Draagt de aanvraag `{"credential_mode": "cookie"}`, dan komt het
 oude refreshcredential uit de cookie en gaat het nieuwe er weer in, en blijft `refresh_token` uit
-lichaam en antwoord. Zie 17d.
+lichaam en antwoord. Met `cookie_upgrade` komt het oude uit het lichaam en gaat het nieuwe de cookie
+in. Zie 17d.
+
+**`429 auth.rate_limited` is geen sessieverlies.** De grens staat vóór de rotatie: er is niets
+geroteerd of ingetrokken, het token en de cookie blijven geldig. Het antwoord draagt `Retry-After` in
+hele seconden en `details.retry_after_ms`. Een client wacht die tijd en probeert het opnieuw met zijn
+huidige token; hij logt niet uit en toont geen inlogscherm. De grens telt per sessie, zodat een lus in
+één client geen ander toestel achter dezelfde NAT of tunnel raakt. Een al ingetrokken token telt per
+token, want wie de kop van de keten houdt kan de emmer van de sessie leeg houden, en een dood token moet
+`auth.refresh_token_reused` kunnen bereiken. Een token zonder sessie telt op het
+clientadres, en dat komt alleen achter een vertrouwde proxy uit `X-Forwarded-For`
+(`PLEYA_SERVER_TRUSTED_PROXIES`), rechts gelezen tot de eerste hop die geen proxy is. Bovenop die drie
+telt de server per account de rijen die rotaties en herhalingen schrijven, elk in een eigen emmer: 120
+achter elkaar en daarna twee per seconde, ongeacht het aantal sessies. Raakt een aanvraag die grens, dan
+is het antwoord dezelfde 429 en is er niets geroteerd. Hergebruik van een token waarvan de opvolger al
+gebruikt is schrijft geen rij en telt niet mee, dus `auth.refresh_token_reused` blijft daar bereikbaar.
+Een herhaling telt wel mee. Zijn de herhalingen van het account op, dan krijgt ook een client die alleen
+zijn antwoord kwijtraakte 429, en na het respijtvenster is zijn token hergebruik en sluit de sessie. Een
+vervangen, nooit aangeboden token heeft geen respijtvenster en houdt 429 tot er weer ruimte is.
+
+De wachttijd van één 429 blijft onder het respijtvenster van de rotatie: wie zijn antwoord kwijtraakte en
+eerst een enkele 429 krijgt, valt na het wachten nog binnen dat venster. Bij herhaalde 429's geldt dat niet.
 
 ### 6.4 `POST /pleya/v1/auth/stream-token`
 
@@ -533,7 +575,7 @@ contract keurt ze af.
 | `auth.setup_required` | 409 | nee | er is nog geen eigenaar aangemaakt |
 | `auth.setup_already_completed` | 409 | nee | er is al een eigenaar |
 | `auth.setup_code_invalid` | 401 | nee | de setupcode klopt niet |
-| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details` |
+| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details`; `POST /auth/refresh` zet daarnaast `Retry-After`, zie 6.3, en `POST /auth/login` alleen in de twee gevallen uit 6.2 |
 | `library.not_found` | 404 | nee | bibliotheek, item of versie bestaat niet, of niet voor u |
 | `library.scan_in_progress` | 409 | ja | de gevraagde bewerking botst met een lopende scan |
 | `library.cursor_invalid` | 400 | nee | de cursor is onleesbaar of hoort bij een andere sortering |
@@ -542,6 +584,7 @@ contract keurt ze af.
 | `playback.version_unavailable` | 409 | ja | het bestand is er wel maar nu niet te lezen |
 | `playback.range_not_satisfiable` | 416 | nee | de gevraagde range valt buiten het bestand |
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
+| `playback.selection_invalid` | 400 | nee | de gevraagde kwaliteit, audio of ondertitel past niet bij deze versie |
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
 | `memory.invalid` | 400 | nee | ongeldige geheugensnapshot, geen inhoud in foutbody |
@@ -553,6 +596,10 @@ contract keurt ze af.
 | `memory.limit_reached` | 409 | nee | meer dan 200 feiten |
 | `memory.duplicate` | 409 | nee | dubbele id of valueKey in de snapshot |
 | `library.personal_invalid` | 400 | nee | een waardering, spoorvoorkeur of keuze voor activiteit die niet te bewaren is, zie `details.field` |
+| `library.list_invalid` | 400 | nee | een verzameling, afspeellijst of itemlijst die niet te bewaren is, zie `details.field` |
+| `library.list_not_owner` | 403 | nee | de lijst is zichtbaar, maar alleen de eigenaar mag hem wijzigen |
+| `library.list_share_not_permitted` | 403 | nee | alleen `owner` en `admin` delen een verzameling |
+| `library.list_conflict` | 409 | nee | `base_revision` op `PUT .../items` is niet meer de huidige revisie; die staat in `details.revision` |
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
@@ -571,6 +618,7 @@ contract keurt ze af.
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
 | `auth.permission_not_allowed` | 409 | nee | de rol van het doel verbiedt deze trede: `restricted` krijgt nooit `manage`. `details` draagt `permission` en `role` |
 | `auth.scope_exceeds_role` | 400 | nee | het gevraagde bereik van een API-token komt boven de rol van de eigenaar uit; `details` draagt `scope` en `role`. `400` en geen `409`: er is geen toestand die dit verzoek in de weg zit en later anders kan zijn, het verzoek zelf klopt niet |
+| `auth.scope_insufficient` | 403 | nee | een API-token onder bereik `admin` op een route die eigen geschiedenis of lijsten wijzigt, zie 17c.2; `details.scope` noemt het bereik van het token |
 | `auth.origin_rejected` | 403 | nee | een aanvraag in cookiemodus komt van een origin die deze server niet toestaat, of draagt helemaal geen `Origin`. Alleen op `POST /auth/login` en `POST /auth/refresh`, en alleen op het cookiepad; zie 17d.4 |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
@@ -660,11 +708,16 @@ Klasse: **`authenticated`**. Niet gepagineerd; een huishouden heeft er een handv
 ```json
 {
   "items": [
-    { "id": "0198f2a1-...", "title": "Films", "kind": "movies", "item_count": 14 },
-    { "id": "0198f2a2-...", "title": "Series", "kind": "shows", "item_count": 112 }
+    { "id": "0198f2a1-...", "title": "Films", "kind": "movies", "item_count": 14, "permission": "download" },
+    { "id": "0198f2a2-...", "title": "Series", "kind": "shows", "item_count": 112, "permission": "view" }
   ]
 }
 ```
+
+`permission` is het eigen recht van de aanvrager, een waarde uit de gesloten ladder `view`, `download`,
+`manage`; owner en admin krijgen `manage`. Een optioneel veld: een oudere server laat het weg, en dan
+zegt de afwezigheid niets over het recht. Een client gebruikt het om een knop weg te laten, de server
+toetst het recht bij elke aanvraag zelf.
 
 ### 9.3 `GET /pleya/v1/libraries/{library_id}/items`
 
@@ -977,6 +1030,16 @@ Klasse: **`authenticated`**, met de bibliotheekautorisatie van het item (matrixr
 `capabilities` in de vorm van `DeviceCapabilities` (de vier lagen uit het PS-5-model, met per veld
 `{value, confidence, overridden}`).
 
+Het op 29 oktober vrijgegeven selectievenster voegt optionele `quality`
+(`max_video_bitrate_kbps`, `max_height`) achter `playback_quality` en
+`audio_stream_id` achter `playback_audio_selection` toe. Audio vereist een
+expliciete `version_id` en een spoor binnen die versie. Afwezig behoudt bestaand
+beleid; onbekende vlag betekent geen nieuwe velden. Limieten zijn respectievelijk
+1–100000 en 1–4320; ongeldige selectie is `400 playback.selection_invalid`.
+De planner/ffmpeg voeren de keuze uit; het antwoord bevestigt optioneel
+`effective_quality` en `selected_audio_stream_id`. Een onuitvoerbare expliciete
+keuze geeft een fout, geen stille direct-play/defaultaudio-terugval.
+
 ```json
 {
   "item_id": "01a15486-...",
@@ -1160,10 +1223,19 @@ niet en komt er ook niet in; een offline backlog doet dat wel, want dat is preci
 moet bewaren. Elke regel draagt het volledige `Item`, de naam van het toestel (`null` als de inlogsessie
 al weg is) en is beperkt tot de bibliotheken die de aanvrager mag zien.
 
+Onder `capabilities.personal_data` is de geschiedenis ook te beperken en te wissen. `kind` op
+`GET /history` levert alleen regels van die soort; een oudere server negeert de parameter stil, dus een
+client stuurt hem pas als de vlag waar is. `DELETE /history` wist alle eigen regels, ook die uit een
+bibliotheek die de aanvrager niet meer mag zien, en `DELETE /history/{history_id}` wist er één; een regel
+van een ander is `404`, net als een regel die niet bestaat. Wissen raakt alleen de geschiedenis: positie,
+gezien en Verder kijken staan in de kijkstatus en blijven. Speelt een sessie na het wissen door, dan maakt
+haar volgende melding een nieuwe regel.
+
 **Favorieten** zijn `GET /favorites` (een `ItemPage`, de laatst toegevoegde eerst), `PUT` en `DELETE
 /favorites/{item_id}`. Herhalen is onschadelijk. **Waarderingen** zijn `PUT /ratings/{item_id}` met een
 geheel cijfer van 1 tot en met 10 en `DELETE`; een cijfer erbuiten is `400` met `library.personal_invalid`
-en `details.field`. Beide staan ook op het `Item` zelf (`favorite`, `rating`), naast en niet in
+en `details.field`. `GET /ratings` (onder `capabilities.personal_data`) is een `ItemPage`, de laatst
+gewaardeerde eerst, met dezelfde begrenzing tot zichtbare bibliotheken. Beide staan ook op het `Item` zelf (`favorite`, `rating`), naast en niet in
 `user_state`, want een favoriet die nooit is gekeken heeft geen kijkstatus en `user_state: null` blijft
 "nooit geopend" betekenen.
 
@@ -1189,6 +1261,9 @@ SHA-256 in `Digest` en `Repr-Digest`. Hervatten werkt met `Range` en `If-Range` 
 een `If-Range` die niet klopt geeft het hele bestand, nooit een stuk van een ander bestand. Veranderde het
 bestand na het uitrekenen (grootte of wijzigingstijd), dan is het `409` met `library.download_changed` en vraagt
 de client een nieuwe download. `DELETE /downloads/{id}` haalt de download weg en laat het mediabestand staan.
+`device_name` op een `Download` is de naam van de inlogsessie die hem aanvroeg, dezelfde bron als bij een
+geschiedenisregel. Het is `null` als die onbekend is: een download van vóór dit veld, een sessie die weg is of
+een sessie zonder naam.
 Een versie van meer dan één bestand is `409` met `library.version_multifile`. De ladder (omgezette
 versies als downloadbron) en sidecar-ondertitels horen er niet bij.
 
@@ -1230,19 +1305,77 @@ Regel 2 gaat over wat een `restricted` gebruiker ziet en regel 3 over wie hem zi
 te delen verandert niets aan regel 2.
 
 Geen toestel, geen positie en geen sessie-id, en ook geen titel van iets anders: het antwoord zegt wie
-dit item keek en wanneer. Dit is ook de enige route waarop een `member` de naam van een andere
-gebruiker leest; `GET /users` blijft voor hem alleen zichzelf.
+dit item keek en wanneer. Naast `owner` op een verzameling die hij ziet (14c) is dit ook de enige
+route waarop een `member` de naam van een andere gebruiker leest; `GET /users` blijft voor hem alleen
+zichzelf.
 
 **`GET` en `PUT /pleya/v1/users/me/activity-sharing`** lezen en zetten die keuze, voor elke rol en
 altijd voor de aanvrager zelf. Het zijn eigen routes en geen veld op `User`, want dat schema staat ook
 in `GET /users` en in elke beheerhandeling. `PUT` neemt `{ "share_activity": false }` en antwoordt met
-dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`. `GET` geeft wat nu
+dezelfde vorm; een ontbrekend of ander veld is `400` met `library.personal_invalid`, en een API-token onder
+bereik `admin` krijgt `403` (17c.2). `GET` geeft wat nu
 geldt: de eigen keuze, of zonder keuze waar, en onwaar voor een `restricted` gebruiker. De keuze geldt
 meteen en werkt terug op wat er al in de geschiedenis staat. Wie restricted wordt verliest een eerdere
 opt-in (`true`) en zet delen opnieuw zelf aan; een eerdere opt-out (`false`) blijft staan, ook na
 herstel naar een andere rol. Een rol die de andere kant op gaat houdt de keuze, en zonder keuze
 volgt de nieuwe rol. De keuze raakt `GET /watch-history` niet: die route is klasse `admin` (17b.7) en
 beantwoordt een andere vraag.
+
+## 14c. Verzamelingen en afspeellijsten
+
+Een verzameling heeft een eigenaar en een zichtbaarheid; een afspeellijst is van één gebruiker en speelt
+op volgorde (venster 6 deel 1, S19, matrixregel 80 tot en met 97). Elke operatie is klasse
+**`authenticated`**. De twee resources hebben elk hun vlag, `capabilities.collections` en
+`capabilities.playlists`, en dezelfde negen operaties. Beide reizen met het account mee; een rol opent
+niets, dus ook `owner` en `admin` zien een privélijst van een ander niet.
+
+**Zichtbaarheid.** `private` is alleen de eigenaar, `everyone` is elke gebruiker van de server, `users` is
+de eigenaar plus `shared_with`. Dat laatste veld staat alleen in het antwoord aan de eigenaar. Een lijst
+buiten zicht is `404`, byte-gelijk aan een id dat niet bestaat, ook op elke schrijfroute. Een lijst die
+zichtbaar is maar van een ander geeft bij schrijven `403` met `library.list_not_owner`. De waarde is
+unknown-safe (3.2). `owner` noemt wie de lijst deelt: wie een lijst ziet, ziet id en gebruikersnaam van
+de eigenaar, ook als lid of `restricted` (beeld 17, "door Sanne"). Verder noemt geen route in dit hoofdstuk
+andere gebruikers aan een lid: `GET /users` blijft regel 14, dus alleen `owner` en `admin` hebben een bron
+om `shared_with` uit te vullen, en `shared_with` zelf gaat alleen naar de eigenaar.
+
+**Delen is voor `owner` en `admin`.** Een andere `visibility` dan `private` en `shared_with` mogen alleen zij
+zetten, bij aanmaken en bij wijzigen. Een `member` of `restricted` die een van beide meestuurt krijgt `403`
+met `library.list_share_not_permitted`, ook op zijn eigen verzameling, en houdt zijn verzamelingen dus privé.
+Die uitkomst hangt niet af van de lijst, dus een id buiten zicht verraadt niets. Terug naar `private` mag
+iedereen die de lijst bezit, ook met een lege `shared_with` erbij, en een aanvraag die de zichtbaarheid niet noemt valt buiten de regel: wie zijn rol
+verliest houdt wat hij deelde, kan het hernoemen en op `private` zetten, maar niet opnieuw delen. Een
+afspeellijst deelt nooit. Elke wijziging van wie een verzameling ziet staat in het auditlog (17c.3).
+
+**API-tokens.** Lezen mag met elk bereik. Elke schrijfroute van dit hoofdstuk vraagt bereik `admin` en
+geeft anders `403` met `auth.scope_insufficient` (17c.2). Delen vraagt daarbovenop rol `owner` of `admin`
+bij de eigenaar van het token.
+
+**Per kijker.** Een lijst kan titels bevatten uit een bibliotheek die de kijker niet mag zien. Die titels
+bestaan voor hem niet: `item_count`, `duration_ms`, `artwork`, `total_estimate` en de inhoud zijn alleen
+over items die hij mag zien berekend. `artwork` is het vierluik: de posters van de eerste items met een
+poster. `duration_ms` is de som van de rijen die hij ziet, dus een client hoeft na herordenen niets bij
+te werken.
+
+**Inhoud.** `PUT .../items` zet de volledige lijst in één transactie: de aanvraag lukt of er verandert
+niets. De volgorde in de aanvraag is de volgorde in de lijst, en één verplaatsing schrijft één rij. Een
+dubbel id is `400` met `library.list_invalid`, een item dat niet bestaat of buiten zicht valt is `404`.
+De lijst is de lijst zoals de eigenaar hem ziet. Rijen uit een bibliotheek die hij niet meer mag zien
+ontbreken daarin en blijven op hun plek staan, want een ingetrokken recht wist niets: komt het recht
+terug, dan staan ze er weer. `PUT` is onvoorwaardelijk, tenzij de aanvraag `base_revision` draagt: dan
+geldt ze alleen als `revision` op de lijst nog die waarde heeft, en anders is het `409` met
+`library.list_conflict` en de huidige revisie in `details.revision`, en verandert er niets. `revision` loopt
+op bij elke schrijfactie van een client op de rijen, niet bij een nieuwe titel, en `updated_at` kan dit werk
+niet doen: die staat in hele seconden op de lijn. Een client leest `revision` vóór hij de rijen leest, zodat een wijziging
+daartussen op de veilige kant valt. `POST .../items` zet items achteraan, en wat er al in staat blijft staan;
+`DELETE .../items/{item_id}` haalt er één uit. Die twee bestaan naast `PUT` omdat "Toevoegen aan" op een
+kaart anders de hele lijst moet lezen en een gelijktijdige toevoeging kan overschrijven. Een lijst telt
+hoogstens 5000 rijen. Een afspeellijst neemt alleen `movie` en `episode` aan: een client die een serie
+toevoegt zet de afleveringen erin. Een verzameling neemt elke soort aan.
+
+**Catalogus.** Een item dat uit de catalogus verdwijnt verdwijnt uit elke lijst, zonder gat dat een client
+merkt. `revision` blijft daarbij staan: er is geen client die een ander overschrijft, en een `PUT` met dat id
+geeft `404`. Een hernoemd of verplaatst bestand houdt zijn item-id en dus zijn plek. Een gebruiker die wordt
+verwijderd neemt zijn lijsten mee, ook wat hij met anderen deelde.
 
 ## 15. Home-bouwstenen
 
@@ -1480,7 +1613,28 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 73 | `POST /users/me/memory/clear` | eigen geheugen wissen en epoch roteren | als regel 71, geldige epoch en base_revision |
 | 74 | `GET /items/{item_id}/activity` | wie in het huishouden een item keek, met gebruikersnamen | elke rol antwoordt; item buiten bereik `404` zoals regel 3; `restricted` ziet alleen zichzelf; anderen alleen als ze delen (`restricted` is opt-in, de rest opt-out) en recht op de bibliotheek hebben (14b) |
 | 75 | `GET /users/me/activity-sharing` | de eigen keuze om te delen | klasse `authenticated`, geen id in het pad, dus er valt niets te raden |
-| 76 | `PUT /users/me/activity-sharing` | de eigen keuze zetten | als regel 75 |
+| 76 | `PUT /users/me/activity-sharing` | de eigen keuze zetten | als regel 75; een API-token onder bereik `admin` krijgt `403` (17c.2) |
+| 77 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft; een API-token onder bereik `admin` krijgt `403` (S20.4, 17c.2) |
+| 78 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 77, `404` voor een regel van een ander of die niet bestaat |
+| 79 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
+| 80 | `GET /collections` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
+| 81 | `POST /collections` | geen | klasse `authenticated`, de aanvrager wordt eigenaar; delen alleen `owner` en `admin` |
+| 82 | `GET /collections/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
+| 83 | `PATCH /collections/{id}` | direct id | als regel 82; zichtbaar en van een ander `403`; delen alleen `owner` en `admin` |
+| 84 | `DELETE /collections/{id}` | direct id | als regel 83 |
+| 85 | `GET /collections/{id}/items` | inhoud | als regel 82; een item buiten de bibliotheken van de kijker ontbreekt |
+| 86 | `PUT /collections/{id}/items` | item-ids in de body | als regel 83; een item buiten zicht is `404` |
+| 87 | `POST /collections/{id}/items` | item-ids in de body | als regel 86 |
+| 88 | `DELETE /collections/{id}/items/{item_id}` | direct id | als regel 86 |
+| 89 | `GET /playlists` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
+| 90 | `POST /playlists` | geen | klasse `authenticated`, de aanvrager wordt eigenaar |
+| 91 | `GET /playlists/{id}` | direct id | buiten zicht `404`, ook voor `owner` en `admin` |
+| 92 | `PATCH /playlists/{id}` | direct id | als regel 91; zichtbaar en van een ander `403` |
+| 93 | `DELETE /playlists/{id}` | direct id | als regel 92 |
+| 94 | `GET /playlists/{id}/items` | inhoud | als regel 91; een item buiten de bibliotheken van de kijker ontbreekt |
+| 95 | `PUT /playlists/{id}/items` | item-ids in de body | als regel 92; een item buiten zicht is `404` |
+| 96 | `POST /playlists/{id}/items` | item-ids in de body | als regel 95 |
+| 97 | `DELETE /playlists/{id}/items/{item_id}` | direct id | als regel 95 |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -1853,6 +2007,22 @@ mint alleen tokens wanneer het zelf bereik `admin` heeft.** Zonder die regel toe
 `admin`, en mint een leestoken een beheertoken. Dat is rechtenverhoging via het endpoint dat er juist
 een grens op moest zetten.
 
+**Eigen gegevens wissen en lijsten schrijven vraagt bereik `admin`.** `DELETE /history`,
+`DELETE /history/{history_id}`, `PUT /users/me/activity-sharing` en elke schrijfroute op `/collections` en
+`/playlists` (aanmaken, wijzigen, verwijderen, en de drie routes op `.../items`) geven een token onder
+`admin` `403` met `auth.scope_insufficient`, met het bereik in `details.scope`. De reden is wat een gelekt
+token kan aanrichten: een leestoken in de configuratie van Home Assistant hoort geen geschiedenis te kunnen
+wissen, want dat is niet terug te draaien, en geen lijst te kunnen leegmaken. De keuze om te delen is wel
+terug te draaien, maar hij bepaalt wie een `restricted` gebruiker in het huishouden ziet, en dat besluit
+hoort niet bij een credential dat alleen mag lezen. Geen `404` zoals bij de adminklasse:
+de route bestaat voor deze gebruiker, alleen dit credential mag er niet door. De weigering hangt niet af
+van het doel, dus een lijst buiten zicht verraadt niets. Een `member` kan geen token met bereik `admin`
+aanvragen, want dat vraagt rol `owner` of `admin`; zijn gewone sessie haalt deze routes wel. Een token dat
+vóór een degradatie gemaakt is blijft bestaan en behoudt zijn bereik, dus het schrijft na de degradatie nog
+de eigen gegevens van zijn eigenaar. Delen en de adminklasse lezen ook de rol en gaan dan dicht. Andere
+omkeerbare eigen staat (favorieten, waarderingen, spoorvoorkeuren) valt buiten deze regel, en `/users/me/memory`
+weigert elk API-token op eigen gronden.
+
 ### 17c.3 Het auditlog
 
 `GET /pleya/v1/audit?source=&limit=&cursor=`, klasse `admin`, nieuwste eerst.
@@ -1874,6 +2044,13 @@ sleutelrotatie, en de configuratie die de beveiliging raakt. Eruit: catalogusrea
 leesvoortgang. Een log dat alleen wijzigingen ziet, mist de vraag die na een incident als eerste
 gesteld wordt: wie is er wanneer binnengekomen, en met welk credential. Een log dat álles ziet wordt
 niet gelezen.
+
+Twee handelingen op eigen gegevens staan er ook in, omdat ze een lek zichtbaar moeten maken: een
+wijziging van wie een verzameling ziet (14c), en het wissen van geschiedenis. `DELETE /history` schrijft
+`clearHistory` zonder `target`, `DELETE /history/{history_id}` schrijft `deleteHistoryEntry` met de regel als
+`target`, allebei met de sessie van het credential en alleen wanneer er iets gewist is. Een geweigerde
+aanvraag en een `404` geven geen regel. De rest van de lijstroutes blijft buiten het log: een lijst is terug
+te bouwen, een gewiste geschiedenis niet.
 
 `operation` is de `operationId` uit dit contract en niet het pad. Een pad verandert mee met een
 route-refactor en breekt dan de leesbaarheid van een log dat jaren teruggaat.
@@ -1936,6 +2113,24 @@ antwoordschema.
 | 4, geen nieuw verplicht aanvraagveld | `credential_mode` is optioneel met een gedocumenteerde default (`token`) die het oude gedrag reproduceert. `RefreshRequest.refresh_token` gaat van verplicht naar optioneel, en dat is verruimen: een oude client blijft hem sturen en wordt bediend |
 | 5, gesloten aanvraagbody | precies daarom staat `credential_mode` achter `capabilities.cookie_auth`. Een oudere server wijst het veld af in plaats van het stil te laten vallen, en dat is de bedoeling: een client die om een cookie vraagt en er geen krijgt, hoort dat te weten |
 | 6, enumwaarde | `credential_mode` is een nieuw enum-veld in een **aanvraag**, dus gesloten aan de kant van de client (`x-unknown-safe: false`). Een derde waarde erbij zou geen enkele client breken, minder accepteren wel |
+
+**`cookie_upgrade`, voor een browser van vóór de cookie.** Een sessie uit de tijd van `localStorage`
+heeft een refreshtoken in JavaScript, en met alleen `token` en `cookie` kwam daar geen cookie voor in de
+plaats zonder opnieuw in te loggen. Onder `capabilities.cookie_upgrade` accepteert `POST /auth/refresh`
+daarom een derde waarde, naast hetzelfde `refresh_token`:
+
+```json
+{ "refresh_token": "...", "credential_mode": "cookie_upgrade" }
+```
+
+Het credential is het token in het lichaam, met dezelfde rotatie en hergebruikdetectie; het antwoord is
+dat van `cookie`, dus zonder `refresh_token` en met `Set-Cookie`, en dezelfde `Origin`-eis. Een oude cookie
+die meekomt telt niet: de aanvraag zegt zelf welk credential geldt, en daarom is dit een eigen waarde en
+geen versoepeling van de regel dat twee bronnen samen `auth.token_invalid` geven. Een geweigerde `Origin`
+raakt niets, dus het token blijft bruikbaar in `token`-modus en de client gaat daarmee door. Op login
+bestaat de waarde niet. Getoetst aan hoofdstuk 3: de vlag is een nieuw optioneel antwoordveld (regel 1), de
+waarde gaat alleen mee als de vlag aanstaat (regel 5), en `credential_mode` is een aanvraag-enum waar een
+waarde bij mag (regel 6). `cookie` en `token` betekenen hetzelfde als eerst (regel 3).
 
 De vorm die regel 2 het dichtst nadert is `TokenPair.refresh_token`. Een alternatief was een tweede
 antwoordschema achter een `oneOf`, en dat is afgewogen: het houdt `TokenPair` letterlijk ongemoeid,
@@ -2277,6 +2472,9 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/transcode-sessions` | `admin` | nee |
 | `DELETE /pleya/v1/transcode-sessions/{id}` | `admin` | ja |
 | `GET /pleya/v1/history` | `authenticated` | nee |
+| `DELETE /pleya/v1/history` | `authenticated` | nee |
+| `DELETE /pleya/v1/history/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/ratings` | `authenticated` | nee |
 | `GET /pleya/v1/favorites` | `authenticated` | nee |
 | `PUT /pleya/v1/favorites/{id}` | `authenticated` | nee |
 | `DELETE /pleya/v1/favorites/{id}` | `authenticated` | nee |
@@ -2295,12 +2493,30 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/backups/{id}` | `admin` | nee |
 | `POST /pleya/v1/backups/{id}/verify` | `admin` | nee |
 | `POST /pleya/v1/backups/{id}/restore` | `admin` | nee |
+| `GET /pleya/v1/collections` | `authenticated` | ja |
+| `POST /pleya/v1/collections` | `authenticated` | nee |
+| `GET /pleya/v1/collections/{id}` | `authenticated` | nee |
+| `PATCH /pleya/v1/collections/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/collections/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/collections/{id}/items` | `authenticated` | ja |
+| `PUT /pleya/v1/collections/{id}/items` | `authenticated` | nee |
+| `POST /pleya/v1/collections/{id}/items` | `authenticated` | nee |
+| `DELETE /pleya/v1/collections/{id}/items/{item_id}` | `authenticated` | nee |
+| `GET /pleya/v1/playlists` | `authenticated` | ja |
+| `POST /pleya/v1/playlists` | `authenticated` | nee |
+| `GET /pleya/v1/playlists/{id}` | `authenticated` | nee |
+| `PATCH /pleya/v1/playlists/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/playlists/{id}` | `authenticated` | nee |
+| `GET /pleya/v1/playlists/{id}/items` | `authenticated` | ja |
+| `PUT /pleya/v1/playlists/{id}/items` | `authenticated` | nee |
+| `POST /pleya/v1/playlists/{id}/items` | `authenticated` | nee |
+| `DELETE /pleya/v1/playlists/{id}/items/{item_id}` | `authenticated` | nee |
 | `GET /pleya/v1/items/{id}/activity` | `authenticated` | nee |
 | `GET /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
 | `PUT /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
 
-Drieëntachtig operaties. De drie laatste zijn de activiteit van het huishouden uit hoofdstuk 14b
-(DEC-169). De vijf daarvoor zijn back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Honderdvier operaties. De drie laatste zijn de activiteit van het huishouden uit hoofdstuk 14b
+(DEC-169), de achttien daarvoor verzamelingen en afspeellijsten uit hoofdstuk 14c (venster 6 deel 1, S19), de vijf daarvoor back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit

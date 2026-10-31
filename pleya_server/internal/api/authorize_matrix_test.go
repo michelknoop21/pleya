@@ -143,6 +143,16 @@ type matrixFixture struct {
 	readyDownload func() string
 	freshDownload func() string
 
+	// S20.4: een nieuwe geschiedenisregel van de owner, voor regel 78.
+	freshHistoryEntry func() string
+
+	// S19: een privélijst van de owner per soort, en een verse voor de probe die
+	// hem verwijdert.
+	collectionID    string
+	playlistID      string
+	freshCollection func() string
+	freshPlaylist   func() string
+
 	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
 	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
 	// herhaalbaar 409, retry laat hem ongemoeid en geeft 200).
@@ -172,6 +182,12 @@ const (
 func missingSession(tail string) func(*matrixFixture) string {
 	return func(*matrixFixture) string {
 		return "/pleya/v1/playback/sessions/" + id.New().String() + tail
+	}
+}
+
+func missingList(resource, tail string) func(*matrixFixture) string {
+	return func(*matrixFixture) string {
+		return "/pleya/v1/" + resource + "/" + id.New().String() + tail
 	}
 }
 
@@ -395,6 +411,80 @@ func matrixProbes() []matrixProbe {
 		// mag zien. Member en restricted hebben leesrecht op de fixturebibliotheek.
 		{row: 52, name: "GET /history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/history"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 77, name: "DELETE /history", method: http.MethodDelete,
+			path: fixedPath("/pleya/v1/history"), body: noBody, ok: http.StatusNoContent, expect: everyRole()},
+		{row: 78, name: "DELETE /history/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/history/" + f.freshHistoryEntry() },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(),
+			missing: func(*matrixFixture) string { return "/pleya/v1/history/" + id.New().String() }},
+		{row: 79, name: "GET /ratings", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/ratings"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		// Regel 80 tot en met 97: verzamelingen en afspeellijsten (S19). De lijsten in
+		// de fixture zijn privé en van de owner, dus zelfs een beheerder krijgt 404.
+		{row: 80, name: "GET /collections", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/collections"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 81, name: "POST /collections", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/collections"), body: func(*matrixFixture) any { return map[string]string{"title": "Nieuw"} },
+			ok: http.StatusCreated, expect: everyRole()},
+		{row: 82, name: "GET /collections/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/collections/" + f.collectionID },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingList("collections", "")},
+		{row: 83, name: "PATCH /collections/{id}", method: http.MethodPatch,
+			path: func(f *matrixFixture) string { return "/pleya/v1/collections/" + f.collectionID },
+			body: func(*matrixFixture) any { return map[string]string{"title": "Anders"} },
+			ok:   http.StatusOK, expect: ownerOnly(), missing: missingList("collections", "")},
+		{row: 85, name: "GET /collections/{id}/items", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/collections/" + f.collectionID + "/items" },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingList("collections", "/items")},
+		{row: 86, name: "PUT /collections/{id}/items", method: http.MethodPut,
+			path: func(f *matrixFixture) string { return "/pleya/v1/collections/" + f.collectionID + "/items" },
+			body: func(f *matrixFixture) any { return map[string][]string{"item_ids": {f.itemID}} },
+			ok:   http.StatusNoContent, expect: ownerOnly(), missing: missingList("collections", "/items")},
+		{row: 87, name: "POST /collections/{id}/items", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/collections/" + f.collectionID + "/items" },
+			body: func(f *matrixFixture) any { return map[string][]string{"item_ids": {f.itemID}} },
+			ok:   http.StatusNoContent, expect: ownerOnly(), missing: missingList("collections", "/items")},
+		{row: 88, name: "DELETE /collections/{id}/items/{item}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/collections/" + f.collectionID + "/items/" + f.itemID },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(),
+			missing: func(f *matrixFixture) string {
+				return "/pleya/v1/collections/" + id.New().String() + "/items/" + f.itemID
+			}},
+		{row: 84, name: "DELETE /collections/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/collections/" + f.freshCollection() },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingList("collections", "")},
+		{row: 89, name: "GET /playlists", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/playlists"), body: noBody, ok: http.StatusOK, expect: everyRole()},
+		{row: 90, name: "POST /playlists", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/playlists"), body: func(*matrixFixture) any { return map[string]string{"title": "Nieuw"} },
+			ok: http.StatusCreated, expect: everyRole()},
+		{row: 91, name: "GET /playlists/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playlists/" + f.playlistID },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingList("playlists", "")},
+		{row: 92, name: "PATCH /playlists/{id}", method: http.MethodPatch,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playlists/" + f.playlistID },
+			body: func(*matrixFixture) any { return map[string]string{"title": "Anders"} },
+			ok:   http.StatusOK, expect: ownerOnly(), missing: missingList("playlists", "")},
+		{row: 94, name: "GET /playlists/{id}/items", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playlists/" + f.playlistID + "/items" },
+			body: noBody, ok: http.StatusOK, expect: ownerOnly(), missing: missingList("playlists", "/items")},
+		{row: 95, name: "PUT /playlists/{id}/items", method: http.MethodPut,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playlists/" + f.playlistID + "/items" },
+			body: func(f *matrixFixture) any { return map[string][]string{"item_ids": {f.itemID}} },
+			ok:   http.StatusNoContent, expect: ownerOnly(), missing: missingList("playlists", "/items")},
+		{row: 96, name: "POST /playlists/{id}/items", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playlists/" + f.playlistID + "/items" },
+			body: func(f *matrixFixture) any { return map[string][]string{"item_ids": {f.itemID}} },
+			ok:   http.StatusNoContent, expect: ownerOnly(), missing: missingList("playlists", "/items")},
+		{row: 97, name: "DELETE /playlists/{id}/items/{item}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playlists/" + f.playlistID + "/items/" + f.itemID },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(),
+			missing: func(f *matrixFixture) string {
+				return "/pleya/v1/playlists/" + id.New().String() + "/items/" + f.itemID
+			}},
+		{row: 93, name: "DELETE /playlists/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/playlists/" + f.freshPlaylist() },
+			body: noBody, ok: http.StatusNoContent, expect: ownerOnly(), missing: missingList("playlists", "")},
 		{row: 53, name: "GET /favorites", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/favorites"), body: noBody, ok: http.StatusOK, expect: everyRole()},
 		{row: 54, name: "PUT /favorites/{id}", method: http.MethodPut,
@@ -570,6 +660,15 @@ func newMatrixFixture(e *env) *matrixFixture {
 		}
 		f.playbackSessionID = f.freshSession()
 	}
+	f.freshHistoryEntry = func() string {
+		entry := id.New()
+		if _, err := e.pool.Exec(ctx, `
+			INSERT INTO play_history (id, user_id, item_id, session_id, started_at, last_event_at, start_position_ms, end_position_ms)
+			SELECT $1, id, $2, $3, now(), now(), 0, 1000 FROM users WHERE role = 'owner'`, entry, f.itemID, entry.String()); err != nil {
+			e.t.Fatal(err)
+		}
+		return entry.String()
+	}
 	f.doneJobID = id.New().String()
 	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, state, finished_at) VALUES ($1, 'storage_recheck_roots', 'succeeded', now())`, f.doneJobID); err != nil {
 		e.t.Fatal(err)
@@ -586,6 +685,21 @@ func newMatrixFixture(e *env) *matrixFixture {
 			e.t.Fatal(err)
 		}
 	}
+	newList := func(resource string) func() string {
+		return func() string {
+			rec := e.do(http.MethodPost, "/pleya/v1/"+resource, map[string]string{"title": "Fixture"}, asUser(f.tokens[roleOwner]))
+			if rec.Code != http.StatusCreated {
+				e.t.Fatalf("fixturelijst maken gaf %d: %s", rec.Code, rec.Body.String())
+			}
+			var created struct {
+				ID string `json:"id"`
+			}
+			e.decodeInto(rec, &created)
+			return created.ID
+		}
+	}
+	f.freshCollection, f.freshPlaylist = newList("collections"), newList("playlists")
+	f.collectionID, f.playlistID = f.freshCollection(), f.freshPlaylist()
 	f.pendingJobID = id.New().String()
 	pendingArgs, _ := json.Marshal(api.ScanJobArgs{LibraryID: f.libraryID, Trigger: "manual"})
 	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, args, dedupe_key, run_at) VALUES ($1, 'scan_library', $2, $3, now() + interval '1 day')`,

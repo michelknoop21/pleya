@@ -115,6 +115,20 @@ func (s *Store) CreateStreamSession(ctx context.Context, subject id.ID, sid id.I
 	return StreamSession{ID: sessionID, Secret: secret, ExpiresAt: expires}, nil
 }
 
+// PurgeStreamSessions verwijdert de browserstreamsessies die nooit meer iets
+// kunnen openen: verlopen of ingetrokken. CreateStreamSession ruimt alleen op voor
+// het subject dat een nieuwe opent, dus wie niet meer kijkt laat zijn rijen anders
+// voorgoed staan. VerifyStreamSession en het stroomoverzicht lezen ze niet, en een
+// verdwenen rij is dezelfde weigering als een verlopen rij. Geeft het aantal.
+func (s *Store) PurgeStreamSessions(ctx context.Context, now time.Time) (int64, error) {
+	tag, err := s.pool.Exec(ctx,
+		`DELETE FROM stream_sessions WHERE expires_at <= $1 OR revoked_at IS NOT NULL`, now)
+	if err != nil {
+		return 0, fmt.Errorf("streamsessies opruimen: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
 // VerifyStreamSession controleert de vijf dingen uit DEC-051 en DEC-123 die
 // zonder een onafhankelijk bekend subject te toetsen zijn: de sessie bestaat,
 // het geheim klopt in een constant-time vergelijking, de binding aan de versie

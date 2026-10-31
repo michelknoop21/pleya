@@ -194,6 +194,8 @@ type Server struct {
 	opts                       Options
 	log                        *slog.Logger
 	limiter                    *limiter
+	refreshLimiter             *limiter
+	loginGuard                 *loginGuard
 	mux                        *http.ServeMux
 	now                        func() time.Time
 	missingTrustedProxyWarning sync.Once
@@ -228,18 +230,27 @@ func New(opts Options) *Server {
 		opts.Revocations = auth.NewRevocations(0)
 	}
 	s := &Server{
-		opts:    opts,
-		log:     opts.Logger,
-		limiter: newLimiter(),
-		mux:     http.NewServeMux(),
-		now:     time.Now,
+		opts:           opts,
+		log:            opts.Logger,
+		limiter:        newLimiter(),
+		refreshLimiter: newRefreshLimiter(),
+		loginGuard:     newLoginGuard(),
+		mux:            http.NewServeMux(),
+		now:            time.Now,
 	}
 	s.routes()
 	return s
 }
 
 // SetClock laat een test de tijd bepalen.
-func (s *Server) SetClock(now func() time.Time) { s.now = now }
+//
+// De grens op wat een account schrijft volgt hem, want die telt rijen in de tijd van de
+// sleutels die hij uitgeeft. Een test die uren in seconden afspeelt zou anders tegen een
+// grens lopen die in zijn eigen tijd nooit bereikt wordt.
+func (s *Server) SetClock(now func() time.Time) {
+	s.now = now
+	s.refreshLimiter.writes.setClock(now)
+}
 
 // settings geeft de set die op dit moment geldt.
 //
@@ -289,6 +300,43 @@ type sessionContextKey struct{}
 
 func withSessionID(ctx context.Context, sessionID id.ID) context.Context {
 	return context.WithValue(ctx, sessionContextKey{}, sessionID)
+}
+
+// streamSubjectKey draagt de gebruiker achter een streamtoken of -sessie. Beide
+// lopen buiten de bearer-Claims om, dus zonder dit is alleen hun versie bekend.
+type streamSubjectKey struct{}
+
+func withStreamSubject(ctx context.Context, subject id.ID) context.Context {
+	return context.WithValue(ctx, streamSubjectKey{}, subject)
+}
+
+func streamSubjectFromContext(ctx context.Context) (id.ID, bool) {
+	subject, ok := ctx.Value(streamSubjectKey{}).(id.ID)
+	return subject, ok
+}
+
+// streamRequester is de gebruiker achter een aanvraag op het streampad, met welk
+// van de drie credentials hij ook binnenkwam.
+func streamRequester(r *http.Request) (id.ID, bool) {
+	if subject, ok := streamSubjectFromContext(r.Context()); ok {
+		return subject, true
+	}
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		return id.Nil, false
+	}
+	subject, err := id.Parse(claims.Subject)
+	return subject, err == nil
+}
+
+// withClaimsAndSession zet ook de sid in de context, zodat copyRange op een
+// `authenticated`-route (zoals een download) stopt bij een ingetrokken sessie.
+func withClaimsAndSession(ctx context.Context, claims auth.Claims) context.Context {
+	ctx = withClaims(ctx, claims)
+	if sessionID, err := id.Parse(claims.Sid); err == nil {
+		ctx = withSessionID(ctx, sessionID)
+	}
+	return ctx
 }
 
 // sessionIDFromContext geeft de sid van deze aanvraag, of id.Nil. Gebruikt door
@@ -345,7 +393,7 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 		if !s.sessionLives(w, claims) {
 			return
 		}
-		next(w, r.WithContext(withClaims(r.Context(), claims)))
+		next(w, r.WithContext(withClaimsAndSession(r.Context(), claims)))
 	})
 }
 
@@ -391,8 +439,25 @@ func (s *Server) authenticatedByAPIToken(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	ctx := withAPIScope(withClaims(r.Context(), claims), identity.Scope)
+	ctx := withAPIScope(withClaimsAndSession(r.Context(), claims), identity.Scope)
 	next(w, r.WithContext(ctx))
+}
+
+// ownDataWrite is authenticated plus de grens uit 17c.2: een API-token onder
+// bereik admin wist of herschrijft geen eigen gegevens. Een gelekt leestoken
+// hoort geen geschiedenis te kunnen wissen of een lijst leeg te kunnen maken.
+//
+// De weigering hangt niet af van het doel, dus een lijst buiten zicht verraadt
+// hier niets. Een gewone sessie heeft geen bereik en loopt er ongemoeid door.
+func (s *Server) ownDataWrite(next http.HandlerFunc) http.Handler {
+	return s.authenticated(func(w http.ResponseWriter, r *http.Request) {
+		if scope, ok := apiScopeFromContext(r.Context()); ok && scope != auth.APIScopeAdmin {
+			writeError(w, s.log, CodeScopeInsufficient, "this token cannot change personal data",
+				map[string]any{"scope": string(scope)})
+			return
+		}
+		next(w, r)
+	})
 }
 
 // sessionLives is de O(1)-controle uit DEC-120: draagt dit credential een sid
@@ -447,11 +512,11 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 		}
 
 		if sessionID := strings.TrimSpace(r.URL.Query().Get("ss")); sessionID != "" {
-			scope, authSid, ok := s.streamSessionScope(w, r, sessionID)
+			scope, authSid, subject, ok := s.streamSessionScope(w, r, sessionID)
 			if !ok {
 				return
 			}
-			next(w, r.WithContext(withSessionID(r.Context(), authSid)), scope)
+			next(w, r.WithContext(withStreamSubject(withSessionID(r.Context(), authSid), subject)), scope)
 			return
 		}
 
@@ -485,7 +550,7 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 		if !s.authorizeVersionFor(w, r, subject, scope) {
 			return
 		}
-		ctx := r.Context()
+		ctx := withStreamSubject(r.Context(), subject)
 		if sessionID, err := id.Parse(claims.Sid); err == nil {
 			ctx = withSessionID(ctx, sessionID)
 		}
@@ -501,23 +566,31 @@ func (s *Server) streamAuthorized(next func(w http.ResponseWriter, r *http.Reque
 // iets. Een aanvraag zonder die cookie is daarmee net zo kansloos als een
 // aanvraag zonder token, en dat is precies de bedoeling: de id mag in
 // browsergeschiedenis en in logs staan.
-func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawSessionID string) (*id.ID, id.ID, bool) {
+func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawSessionID string) (*id.ID, id.ID, id.ID, bool) {
 	sessionID, err := id.Parse(rawSessionID)
 	if err != nil {
 		writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
-		return nil, id.Nil, false
+		return nil, id.Nil, id.Nil, false
 	}
 
 	cookie, err := r.Cookie(auth.StreamCookiePrefix + sessionID.String())
 	if err != nil || cookie.Value == "" {
 		writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
-		return nil, id.Nil, false
+		return nil, id.Nil, id.Nil, false
 	}
 
 	versionID, err := id.Parse(r.PathValue("version_id"))
+	if err != nil && s.opts.Transcode != nil {
+		// HLS routes carry a conversion id, not a version id (same ss scope).
+		if conversionID, parseErr := id.Parse(r.PathValue("session_id")); parseErr == nil {
+			if conversion, found := s.opts.Transcode.Get(conversionID); found {
+				versionID, err = conversion.VersionID, nil
+			}
+		}
+	}
 	if err != nil {
 		writeError(w, s.log, CodeNotFound, "not found", nil)
-		return nil, id.Nil, false
+		return nil, id.Nil, id.Nil, false
 	}
 
 	now := s.now().UTC()
@@ -525,17 +598,17 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 	if err != nil {
 		if errors.Is(err, auth.ErrStreamSessionInvalid) {
 			writeError(w, s.log, CodeTokenInvalid, "stream session is invalid", nil)
-			return nil, id.Nil, false
+			return nil, id.Nil, id.Nil, false
 		}
 		writeInternal(w, s.log, err)
-		return nil, id.Nil, false
+		return nil, id.Nil, id.Nil, false
 	}
 
 	// De databasecontrole hierboven leest sessions.revoked_at, maar het register
 	// is de snellere en de enige die tijdens een lopende stream nog meekijkt.
 	if s.opts.Revocations.IsRevoked(authSid) {
 		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
-		return nil, id.Nil, false
+		return nil, id.Nil, id.Nil, false
 	}
 
 	// Aanvraagpad, niet alleen mint-moment (DEC-126, hoofdstuk 16.4 regel 9):
@@ -544,7 +617,7 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 	// minuten zelfstandig na het minten, dus een ingetrokken recht moet hier
 	// meteen gelden.
 	if !s.authorizeVersionFor(w, r, subject, versionID) {
-		return nil, id.Nil, false
+		return nil, id.Nil, id.Nil, false
 	}
 
 	// Verlengen raakt uitsluitend deze sessie. Dat is de reden dat het model
@@ -552,7 +625,7 @@ func (s *Server) streamSessionScope(w http.ResponseWriter, r *http.Request, rawS
 	if _, err := s.opts.Auth.TouchStreamSession(r.Context(), sessionID, s.settings().StreamSessionTTL(), now); err != nil {
 		s.log.Warn("streamsessie verlengen mislukt", "error", err.Error())
 	}
-	return &versionID, authSid, true
+	return &versionID, authSid, subject, true
 }
 
 func (s *Server) writeTokenError(w http.ResponseWriter, err error) {

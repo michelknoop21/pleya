@@ -8,6 +8,8 @@ part of '../../pleya_server_client.dart';
 /// until it is there.
 mixin _PleyaServerRequests {
   ServerId get serverId;
+  ApiCache get cache;
+  bool get _closed;
   String? get serverName;
   PleyaServerConnection get connection;
   PleyaServerSession get _session;
@@ -18,6 +20,20 @@ mixin _PleyaServerRequests {
   /// on this: an endpoint the server says it does not have is not worth a
   /// round-trip, and the answer would be a 404 the UI has to interpret.
   PleyaCapabilities get wireCapabilities;
+
+  bool get isOfflineMode;
+
+  /// Re-read the signed-in role from the server. True when that worked.
+  Future<bool> _refreshRole();
+
+  Future<MediaServerResponse> _getSubtitle(String subtitleId, AbortController abort);
+
+  Future<Map<String, String>> _downloadHeaders() async {
+    if (_closed) throw StateError('The download connection is closed.');
+    final headers = await _session.authHeaders();
+    if (_closed) throw StateError('The download connection is closed.');
+    return headers;
+  }
 
   /// GET a protocol path and hand back its JSON object, or null.
   Future<Map<String, dynamic>?> _getJson(String path, {Map<String, dynamic>? queryParameters, Duration? timeout});

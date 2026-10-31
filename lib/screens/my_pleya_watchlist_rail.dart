@@ -39,13 +39,17 @@ class _WatchlistRail extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: _kMyPleyaInset),
             itemCount: entries.length,
             separatorBuilder: (context, _) => const SizedBox(width: _gap),
-            itemBuilder: (context, index) => _WatchlistPoster(
-              entry: entries[index],
-              match: myPleyaWatchlistTarget(provider, entries[index]),
-              width: width,
-              height: height,
-              onOpenAll: onOpenAll,
-            ),
+            itemBuilder: (context, index) {
+              final entry = entries[index];
+              final match = myPleyaWatchlistTarget(provider, entry);
+              return AutomationNode(
+                id: AutomationIds.myPleyaWatchlistItem,
+                instance: '$index',
+                role: 'grid.item',
+                state: () => <String, Object?>{'title': entry.item.displayTitle, 'playable': match != null},
+                child: _WatchlistPoster(entry: entry, match: match, width: width, height: height, onOpenAll: onOpenAll),
+              );
+            },
           ),
         );
       },
