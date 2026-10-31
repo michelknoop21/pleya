@@ -5,14 +5,38 @@ import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
 import '../utils/app_logger.dart';
+import '../utils/watch_state_notifier.dart';
 import 'trackers/tracker_coordinator.dart';
 
-/// Sync a single action to the server.
+/// The profile changed while a row was being replayed. The row stays: a Plex
+/// client takes the next profile's token in place, so anything sent now lands
+/// on that account.
+class ReplayInterrupted implements Exception {
+  const ReplayInterrupted();
+}
+
+/// Sync a single action to the server. Answers whether the server got it: a
+/// row can also turn out to have nothing to add.
+///
+/// [isCurrent] says the profile of this row is still the active one. Looked at
+/// right before every write, because each read before it can take seconds.
 ///
 /// Uses the neutral [MediaServerClient] surface so Jellyfin's
 /// `/UserPlayedItems/{id}` and `/Sessions/Playing*` endpoints receive
 /// the same queued state Plex's `/:/scrobble` and `/:/timeline` do.
-Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProgressItem action) async {
+Future<bool> replayOfflineWatchAction(
+  MediaServerClient client,
+  OfflineWatchProgressItem action, {
+  bool Function()? isCurrent,
+}) async {
+  void beforeWrite() {
+    if (isCurrent?.call() == false) throw const ReplayInterrupted();
+  }
+
+  if (action.actionType == OfflineActionType.mirroredProgress.id) {
+    return _replayCopyProgress(client, action, beforeWrite);
+  }
+
   // Fetch metadata so trackers (and the stop-path watch event) get enough
   // context — external ids, parent chain, library section. The plain
   // watched/unwatched replays deliberately emit no WatchStateEvent: the
@@ -26,9 +50,7 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
       action.actionType == OfflineActionType.mirroredWatched.id ||
       action.actionType == OfflineActionType.mirroredUnwatched.id ||
       action.actionType == OfflineActionType.removedFromContinueWatching.id ||
-      ((action.actionType == OfflineActionType.progress.id ||
-              action.actionType == OfflineActionType.mirroredProgress.id) &&
-          action.shouldMarkWatched);
+      (action.actionType == OfflineActionType.progress.id && action.shouldMarkWatched);
   MediaItem? item;
   if (needsRichItem) {
     try {
@@ -40,6 +62,7 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
   final resolvedItem =
       item ??
       MediaItem(id: action.ratingKey, backend: client.backend, kind: MediaKind.unknown, serverId: action.serverId);
+  beforeWrite();
 
   switch (action.actionType) {
     case 'watched':
@@ -54,10 +77,12 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
 
     case 'mirroredWatched':
       await client.markWatched(resolvedItem);
+      _announceCopy(client, resolvedItem, watched: true);
       break;
 
     case 'mirroredUnwatched':
       await client.markUnwatched(resolvedItem);
+      _announceCopy(client, resolvedItem, watched: false);
       break;
 
     case 'removeFromContinueWatching':
@@ -75,30 +100,35 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
       // reconnect. Drop it: there is nothing for the server to do.
       if (!client.capabilities.continueWatchingRemoval) {
         appLogger.i('Dropping queued Continue Watching removal for ${action.ratingKey}: unsupported on this server');
-        break;
+        return false;
       }
       await client.removeFromContinueWatching(resolvedItem);
       break;
 
-    case 'progress' || 'mirroredProgress':
+    case 'progress':
       // Last-writer-wins guard: if another device produced newer watch state
       // (marked watched, or viewed more recently than this queued offline
       // action), replaying our stale viewOffset would clobber it. Best-effort:
       // if the state fetch fails we proceed with the replay as before.
       try {
-        final server = await client.fetchItem(action.ratingKey);
+        // Watched as it stands now: `viewCount` on a plain read is `play_count`
+        // on Pleya Server, and that outlives a mark as unwatched.
+        final server = client is CopyStateClient
+            ? await client.readCopyState(action.ratingKey)
+            : await client.fetchItem(action.ratingKey);
         if (server != null) {
           final serverViewedMs = (server.lastViewedAt ?? 0) * 1000;
           final serverIsNewer =
               ((server.viewCount ?? 0) > 0 && !action.shouldMarkWatched) || serverViewedMs > action.updatedAt;
           if (serverIsNewer) {
             appLogger.i('Skipping stale offline progress for ${action.ratingKey}: server state is newer');
-            return;
+            return false;
           }
         }
       } catch (e) {
         appLogger.d('Offline progress: pre-replay state check failed (continuing)', error: e);
       }
+      beforeWrite();
       // Push resumable progress, or a completed offline playback. Jellyfin's
       // `/Sessions/Playing/Stopped` ignores events without an open session
       // row, so non-Plex backends still get a lightweight Started call.
@@ -111,12 +141,16 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
           try {
             await client.reportPlaybackStarted(itemId: action.ratingKey, position: position, duration: duration);
           } catch (e) {
+            // Without an open session Jellyfin and Emby accept the stop and
+            // keep nothing: the row would go and the position with it.
+            if (client.backend != MediaBackend.plex) rethrow;
             // Plex sometimes 5xxs the start when nothing follows; treat as
             // best-effort and continue to the stop call which is the one
             // that actually persists the resume position.
             appLogger.d('Offline progress: started call failed (continuing)', error: e);
           }
         }
+        beforeWrite();
         await client.reportPlaybackStopped(
           itemId: action.ratingKey,
           position: position,
@@ -132,18 +166,78 @@ Future<void> replayOfflineWatchAction(MediaServerClient client, OfflineWatchProg
       // emits the local watch event — an explicit markWatched would
       // double-scrobble via the Trakt plugin (#1287).
       if (action.shouldMarkWatched) {
-        if (action.actionType == OfflineActionType.mirroredProgress.id) {
-          // The source that played told the trackers. This write only has
-          // to reach the server, so no watched event either: Trakt keys on
-          // that one and would count the viewing twice.
-          if (!client.marksWatchedOnPlaybackStopped) await client.markWatched(resolvedItem);
-        } else {
-          await client.markWatchedFromPlaybackStop(resolvedItem);
-          await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
-        }
+        beforeWrite();
+        await client.markWatchedFromPlaybackStop(resolvedItem);
+        await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(resolvedItem, client));
       }
       break;
   }
+  return true;
+}
+
+/// A viewing on another server, written to this copy. Never with the playback
+/// reports: nobody is watching here (see [CopyStateClient]). The state of the
+/// copy is read first, because a row can wait a long time. Only a server saying
+/// the copy is gone ends the row; without an answer the write would be blind, so
+/// the row stays.
+Future<bool> _replayCopyProgress(
+  MediaServerClient client,
+  OfflineWatchProgressItem action,
+  void Function() beforeWrite,
+) async {
+  if (client is! CopyStateClient) return false;
+  final finished = action.shouldMarkWatched;
+  final MediaItem? copy;
+  try {
+    copy = await client.readCopyState(action.ratingKey);
+  } catch (e) {
+    // Whatever went wrong, it says nothing about the copy: the refusals that
+    // end a row are for a write, and a rejected token or a failed token round
+    // on this read is not one.
+    throw StateError('No answer about ${action.ratingKey}: $e');
+  }
+  // Before the row can end: this answer may be the next profile's.
+  beforeWrite();
+  if (copy == null || _copyHasNothingToGain(client, copy, action)) {
+    appLogger.i('Skipping mirrored progress for ${action.ratingKey}: nothing to add');
+    return false;
+  }
+  final duration = action.duration == null ? null : Duration(milliseconds: action.duration!);
+  final position = finished && duration != null ? duration : Duration(milliseconds: action.viewOffset ?? 0);
+  final landed = await client.writeCopyState(copy, position: position, duration: duration, watched: finished);
+  if (landed) {
+    // The source that played told the trackers, so this write only has to
+    // reach the server. A copy event and no plain one: Trakt keys on that and
+    // would count the viewing twice.
+    if (finished) _announceCopy(client, copy, watched: true);
+    return true;
+  }
+  // A viewing holds the title, and what it reports is newer than this position.
+  // A finished viewing is not: that one waits for its turn.
+  if (finished) throw StateError('${action.ratingKey} is being played elsewhere');
+  return false;
+}
+
+bool _copyHasNothingToGain(CopyStateClient client, MediaItem copy, OfflineWatchProgressItem action) {
+  if ((copy.lastViewedAt ?? 0) * 1000 > action.updatedAt) return true;
+  final seen = (copy.viewCount ?? 0) > 0;
+  // One viewing counts once: a stop that failed brings the same one back when
+  // its own row lands, and a server's plugin would scrobble the second write. A
+  // position still on the copy is a rewatch, and that one gets to finish.
+  if (action.shouldMarkWatched) return seen && (copy.viewOffsetMs ?? 0) == 0;
+  if (seen && !client.movesCopyWithoutViewing) return true;
+  return (copy.viewOffsetMs ?? 0) >= (action.viewOffset ?? 0);
+}
+
+/// The copy changed: surfaces and the download cache hear it, and a later pull
+/// finds no transition to report as a viewing of its own.
+void _announceCopy(MediaServerClient client, MediaItem item, {required bool watched}) {
+  WatchStateNotifier().notifyWatched(
+    item: item,
+    isNowWatched: watched,
+    cacheServerId: client.cacheServerId,
+    isCopy: true,
+  );
 }
 
 /// Tracker scrobbles are best-effort: a tracker-only failure must not

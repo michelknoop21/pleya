@@ -26,6 +26,25 @@ DEC-XXX (Eén titel over servers heen), Roadmap A-07, op branch `feat/unified-on
   bewezen identiteit. Eén markering telt één kijkbeurt. Herkijken op de eigen server blijft staan.
   Jellyfin- en Emby-placeholders tellen niet als aanwezig. Een verwijderde gekozen kopie verdwijnt van
   de pagina. Het posterhashen na een scan draait buiten de UI-thread.
+- Fixronde na de build: een stop na een profielwissel schrijft niets meer onder het nieuwe profiel, en de
+  replay-lus stopt bij een wissel. Een spiegeling verlaagt een kopie nooit, behalve als gekeken, ook niet
+  bij een rij die lang wachtte. Specials krijgen geen kopie, markeringen krijgen de runtimecontrole, en
+  een serie- of seizoenmarkering raakt alleen seizoenen op beide servers. `agents.none` en `local://`
+  bewijzen niets. Gekeken volgt de drempel, ook bij een gemiste stop, en offline afgekeken sessies
+  bereiken alsnog de kopieën. De nieuwste actie per item wint en de interface wacht niet op kopieën.
+  Een replay meldt zich als kopie, zodat de pull geen tweede Trakt-telling maakt. Rijen zonder pogingen
+  krijgen elke zes uur een nieuwe ronde. Spiegelen en zoeken alleen op servers die de kijker zelf beheert.
+- Tweede challenge: een schrijfactie vraagt gedeeld id-bewijs, ook naar bronnen van de kaart. Een spiegeling
+  pakt op Pleya Server een lopende sessie de lease niet af (`reclaim`). Een mislukte start bewaart de rij
+  op Jellyfin, Emby en Pleya Server. Een herkijkpositie bereikt een eerder gekeken kopie. De verse positie
+  op de gekozen server wint van de meegenomen. Pleya Server geeft alle afleveringen van een lange serie,
+  ook boven 500. Offline kijken bereikt de kopieën na de replay, ook een deel. Een onderbroken wissen van
+  de lokale bibliotheek wordt bij de volgende start afgemaakt.
+- Eindreview: een kopie krijgt geen start en stop meer, want een start telt op Jellyfin als kijkbeurt en
+  haalt op 10.x gekeken weg. Jellyfin en Emby via `UserData`, Plex via `/:/progress`, Pleya Server via
+  `reclaim` zonder positie op een gekeken kopie (`CopyStateClient`). Een afgekeken stand telt één keer.
+  Een rechtstreekse markering ruimt een wachtende rij op. Een server die niet verbonden is, valt niet af.
+  De markering in het TV-menu valt op een eigen bron. Specials ook daar niet op nummer.
 - Grenzen: downloaden op de detailpagina blijft op de hoofdbron, een externe speler schrijft niet door.
 
 ## [2026-10-29] Unified: Pleya Server voegt mee op bewezen TMDB-nummers

@@ -98,6 +98,94 @@ void main() {
   });
 
   group('watch state on the wire', () {
+    test('a copy of a play elsewhere does not take the title from a session on it', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true)..ownedByThisSession = false;
+      final item = movie(server);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(
+        item,
+        position: const Duration(minutes: 5),
+        duration: const Duration(minutes: 90),
+        watched: false,
+      );
+
+      expect(landed, isFalse);
+      final event = server.watchEvents.single;
+      expect(event['cause'], 'reclaim', reason: 'user_started would take over regardless of the lease');
+    });
+
+    test('a copy that is free moves, in a tick of its own that is no backlog', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(
+        item,
+        position: const Duration(minutes: 5),
+        duration: const Duration(minutes: 90),
+        watched: false,
+      );
+
+      expect(landed, isTrue);
+      expect(server.watchEvents.map((e) => e['cause']), ['reclaim', null]);
+      expect(server.watchEvents.last['backlog'], isNot(true), reason: 'a backlog does not move a known title');
+    });
+
+    test('every copy write is the same session: the lease of the last one is its own', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+
+      for (final minutes in const [5, 6]) {
+        await client.writeCopyState(item, position: Duration(minutes: minutes), watched: false);
+      }
+
+      expect(server.watchEvents.map((e) => e['session_id']).toSet(), hasLength(1));
+    });
+
+    test('a mark on the title leaves no session behind that stops a copy', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+      await client.markUnwatched(item);
+
+      final landed = await client.writeCopyState(item, position: const Duration(minutes: 5), watched: false);
+
+      expect(landed, isTrue);
+    });
+
+    test('a viewing on this device keeps its own session', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+      await client.reportPlaybackStarted(itemId: item.id, position: Duration.zero);
+      final viewing = server.watchEvents.single['session_id'];
+
+      await client.writeCopyState(item, position: const Duration(minutes: 5), watched: false);
+      await client.reportPlaybackProgress(
+        itemId: item.id,
+        position: const Duration(minutes: 1),
+        duration: const Duration(minutes: 90),
+      );
+
+      expect(server.watchEvents.last['session_id'], viewing);
+      expect(server.watchEvents[1]['session_id'], isNot(viewing));
+    });
+
+    test('a copy does not move on what this client last saw', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+      await client.reportPlaybackStarted(itemId: item.id, position: Duration.zero);
+      await client.reportPlaybackStopped(itemId: item.id, position: Duration.zero);
+      final before = server.watchEvents.length;
+
+      await client.writeCopyState(item, position: const Duration(minutes: 5), watched: false);
+
+      expect(server.watchEvents.skip(before).map((e) => e.containsKey('base_revision')), everyElement(isFalse));
+    });
+
     test('playback_started acquires, with a cause and a session', () async {
       server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
       final item = movie(server);

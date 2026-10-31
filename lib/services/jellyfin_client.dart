@@ -110,6 +110,7 @@ class JellyfinClient
     implements
         MediaServerClient,
         FreshMediaItemClient,
+        CopyStateClient,
         SeasonEpisodePagingClient,
         ScopedMediaServerClient,
         PersonSearchClient,

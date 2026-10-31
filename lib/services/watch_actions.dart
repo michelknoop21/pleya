@@ -5,8 +5,12 @@ import 'package:provider/provider.dart';
 
 import '../exceptions/media_server_exceptions.dart';
 import '../media/ids.dart';
+import '../media/episode_collection.dart';
 import '../media/media_item.dart';
+import '../media/media_item_types.dart';
 import '../media/media_server_client.dart';
+import '../media/unified/unified_media_source.dart';
+import '../media/unified/unified_watch_state.dart';
 import '../profiles/active_profile_provider.dart';
 import '../providers/continue_watching_hidden_provider.dart';
 import '../providers/multi_server_provider.dart';
@@ -20,7 +24,9 @@ import 'trackers/tracker_coordinator.dart';
 import 'multi_server_manager.dart';
 import 'unified_catalog/unified_title_discovery.dart';
 import 'unified_catalog/unified_title_playback.dart';
+import 'unified_catalog/unified_copy_proof.dart';
 import 'unified_catalog/unified_title_scope.dart';
+import 'unified_catalog/watch_mark_order.dart';
 
 enum WatchMarkOutcome {
   /// Queued for later sync: the item's own server could not take the write.
@@ -73,32 +79,50 @@ class WatchActions {
     Haptics.selection();
     final known = unifiedTitle ?? UnifiedTitleScope.maybeOf(context);
     final discovery = offline == true ? null : UnifiedTitleDiscovery.of(context);
-    final copies = _CopyWriter.of(context);
+    final copies = WatchCopyWriter.of(context);
+    final stamp = WatchMarkOrder.next(item.globalKey);
     final outcome = await _setOne(context, item, watched: watched, offline: offline);
     if (outcome == WatchMarkOutcome.skipped) return outcome;
-    final reached = {item.globalKey, ...reachedElsewhere};
-    if (known != null && known.holds(item)) await copies.reachOtherSources(known, item, reached, watched: watched);
-    if (discovery != null) unawaited(_reachFound(copies, discovery, item, reached, watched: watched));
+    // Nobody waits for the copies: a hung server must not hold the mark, and a
+    // newer mark on this item stops what is still on its way.
+    final reaching = _reachCopies(
+      copies,
+      known != null && known.holds(item) ? known : null,
+      discovery,
+      item,
+      {item.globalKey, ...reachedElsewhere},
+      watched: watched,
+      isCurrent: (copy) =>
+          WatchMarkOrder.isLatest(item.globalKey, stamp) && !WatchMarkOrder.markedAfter(copy.globalKey, stamp),
+    );
+    _reaching.add(reaching);
+    unawaited(reaching.whenComplete(() => _reaching.remove(reaching)));
     return outcome;
   }
 
-  static Future<void> _reachFound(
-    _CopyWriter copies,
-    UnifiedTitleDiscovery discovery,
+  static final Set<Future<void>> _reaching = {};
+
+  /// Done when the copies of every mark so far are.
+  @visibleForTesting
+  static Future<void> copiesReached() => Future.wait(_reaching.toList());
+
+  static Future<void> _reachCopies(
+    WatchCopyWriter copies,
+    UnifiedTitlePlayback? known,
+    UnifiedTitleDiscovery? discovery,
     MediaItem item,
     Set<String> reached, {
     required bool watched,
+    required bool Function(MediaItem copy) isCurrent,
   }) async {
-    final title = await discovery.titleOf(item);
-    if (title != null) await copies.reachOtherSources(title, item, reached, watched: watched);
+    try {
+      if (known != null) await copies.reachOtherSources(known, item, reached, watched: watched, isCurrent: isCurrent);
+      final found = await discovery?.titleOf(item);
+      if (found != null) await copies.reachOtherSources(found, item, reached, watched: watched, isCurrent: isCurrent);
+    } catch (e, st) {
+      appLogger.w('Could not reach the other sources of ${item.globalKey}', error: e, stackTrace: st);
+    }
   }
-
-  /// The mark on one more copy of a title that was marked already: the server
-  /// gets it, Trakt, the trackers and the interactions do not. One mark is one
-  /// viewing, however many servers hold the title. Falls back to the queue, so
-  /// this does not throw for a server that refuses.
-  static Future<WatchMarkOutcome> markCopy(BuildContext context, MediaItem item, {required bool watched}) =>
-      _CopyWriter.of(context).write(item, watched: watched);
 
   static Future<WatchMarkOutcome> _setOne(
     BuildContext context,
@@ -142,11 +166,14 @@ class WatchActions {
     final authRejected = manager.authErrorServerIds.contains(serverId);
     if (!authRejected && !manager.isServerOnline(id)) return queueForLater();
 
+    final queue = context.read<OfflineWatchProvider?>();
+    final profileId = queue?.activeProfileId;
     if (watched) {
       await client.markWatched(item);
     } else {
       await client.markUnwatched(item);
     }
+    await queue?.forgetHeldCopy(client, item, serverId: id, profileId: profileId);
     WatchStateNotifier().notifyWatched(item: item, isNowWatched: watched, cacheServerId: client.cacheServerId);
     unawaited(
       watched
@@ -185,12 +212,31 @@ class WatchActions {
   }
 }
 
-/// Marks the other copies of a title. Holds on to what it reads from the
-/// context: a lookup can outlast the screen that started the mark.
-class _CopyWriter {
-  _CopyWriter(this._manager, this._queue, this._profiles) : _profileId = _profiles?.activeId;
+/// What became of a mark on another copy.
+enum WatchCopyOutcome {
+  /// The server took it.
+  written,
 
-  factory _CopyWriter.of(BuildContext context) => _CopyWriter(
+  /// Waiting in the queue for a server that can take it.
+  held,
+
+  /// Not for this copy: another cut, or a server someone else runs.
+  leftAlone,
+
+  /// It should have landed and did not, and waiting will not help.
+  skipped,
+}
+
+/// Marks the other copies of a title: the server gets it, Trakt, the trackers
+/// and the interactions do not. One mark is one viewing, however many servers
+/// hold the title. Holds on to what it reads from the context: a lookup can
+/// outlast the screen that started the mark.
+class WatchCopyWriter {
+  WatchCopyWriter(this._manager, this._queue, this._profiles)
+    : _profileId = _profiles?.activeId,
+      _queueProfileId = _queue?.activeProfileId;
+
+  factory WatchCopyWriter.of(BuildContext context) => WatchCopyWriter(
     context.read<MultiServerProvider?>()?.serverManager,
     context.read<OfflineWatchProvider?>(),
     context.read<ActiveProfileProvider?>(),
@@ -203,27 +249,70 @@ class _CopyWriter {
   /// Who marked it. A lookup can outlast a profile switch, and the next
   /// profile's token has no business writing this mark.
   final String? _profileId;
+  final String? _queueProfileId;
 
   /// The mark on [item] already landed: nothing a second server does undoes it
-  /// or reaches the caller. Adds what it wrote to to [reached].
+  /// or reaches the caller. Adds what it wrote to to [reached], and leaves a
+  /// copy alone when [isCurrent] says a newer mark took over.
   Future<void> reachOtherSources(
     UnifiedTitlePlayback title,
     MediaItem item,
     Set<String> reached, {
     required bool watched,
+    required bool Function(MediaItem copy) isCurrent,
   }) async {
-    try {
-      for (final copy in await title.copiesOf(item)) {
-        if (reached.add(copy.globalKey)) await write(copy, watched: watched);
-      }
-    } catch (e, st) {
-      appLogger.w('Could not reach the other sources of ${item.globalKey}', error: e, stackTrace: st);
+    for (final copy in await title.copiesOf(item)) {
+      if (!isCurrent(copy)) continue;
+      if (reached.add(copy.globalKey) && runtimesAreComparable(item, copy)) await write(copy, watched: watched);
     }
   }
 
-  Future<WatchMarkOutcome> write(MediaItem copy, {required bool watched}) async {
+  /// Whether viewing data may go to [source]. Not when its server is known to be
+  /// someone else's. One that is down stays in: the queue holds its write.
+  bool isOwn(UnifiedMediaSource source) => !(_manager?.isSomeoneElsesServer(source.serverId) ?? false);
+
+  static bool _isSpecial(MediaItem copy) =>
+      (copy.isEpisode && isSpecialSeasonNumber(copy.parentIndex)) ||
+      (copy.isSeason && isSpecialSeasonNumber(copy.index));
+
+  /// The mark of [origin] on [copy], for a caller that fans out itself. Follows
+  /// what [UnifiedTitlePlayback.copiesOf] does for a title: a card can hold two
+  /// titles on title and year, another cut stays as it is, a Special has no
+  /// copy, and a series only gets the seasons both sides hold.
+  Future<WatchCopyOutcome> writeFor(
+    UnifiedMediaSource origin,
+    UnifiedMediaSource target, {
+    required bool watched,
+  }) async {
+    final copy = target.item;
+    if (!runtimesAreComparable(origin.item, copy) || !isOwn(target) || _isSpecial(copy)) {
+      return WatchCopyOutcome.leftAlone;
+    }
+    final manager = _manager;
+    if (manager == null) return WatchCopyOutcome.skipped;
+    if (!await _proof.sameTitle(origin, target)) return WatchCopyOutcome.leftAlone;
+    if (!copy.isShow) return write(copy, watched: watched);
+    final seasons = await seasonsInCommon(origin.item, copy, clientFor: manager.getClient);
+    var outcome = WatchCopyOutcome.skipped;
+    for (final season in seasons) {
+      final written = await write(season, watched: watched);
+      if (outcome != WatchCopyOutcome.written) outcome = written;
+    }
+    return outcome;
+  }
+
+  late final _proof = UnifiedCopyProof(
+    (id) => (_manager?.isServerOnline(id) ?? false) ? _manager?.getClient(id) : null,
+  );
+
+  Future<WatchCopyOutcome> write(MediaItem copy, {required bool watched}) async {
     final serverId = copy.serverId;
-    if (serverId == null || _profiles?.activeId != _profileId) return WatchMarkOutcome.skipped;
+    if (serverId == null || _profiles?.activeId != _profileId) return WatchCopyOutcome.skipped;
+    if (_manager?.isSomeoneElsesServer(ServerId(serverId)) ?? true) return WatchCopyOutcome.leftAlone;
+    // A rejected token: a reconnect does not fix it, and a row would replay
+    // under whoever signs in next.
+    if (_manager?.authErrorServerIds.contains(serverId) ?? false) return WatchCopyOutcome.skipped;
+    WatchMarkOrder.next(copy.globalKey);
     final id = ServerId(serverId);
     final client = _manager?.getClient(id);
     if (client != null && (_manager?.isServerOnline(id) ?? false)) {
@@ -233,29 +322,29 @@ class _CopyWriter {
         } else {
           await client.markUnwatched(copy);
         }
+        await _queue?.forgetHeldCopy(client, copy, serverId: id, profileId: _queueProfileId);
         WatchStateNotifier().notifyWatched(
           item: copy,
           isNowWatched: watched,
           cacheServerId: client.cacheServerId,
           isCopy: true,
         );
-        return WatchMarkOutcome.marked;
+        return WatchCopyOutcome.written;
       } catch (e, st) {
         appLogger.w('Could not mark ${copy.globalKey}', error: e, stackTrace: st);
         // Waiting does not fix a refusal, and a row would replay under whoever
         // signs in next (hoofdstuk 13.2).
-        if (!isRetryableServerWriteFailure(e)) return WatchMarkOutcome.skipped;
+        if (!isRetryableServerWriteFailure(e)) return WatchCopyOutcome.skipped;
       }
     }
-    // The failed write took time: a row belongs to the profile that marked.
-    if (_profiles?.activeId != _profileId) return WatchMarkOutcome.skipped;
+    if (_profiles?.activeId != _profileId) return WatchCopyOutcome.skipped;
     try {
-      await _queue?.markCopy(serverId: id, itemId: copy.id, watched: watched);
+      final held = await _queue?.markCopy(serverId: id, itemId: copy.id, watched: watched, profileId: _queueProfileId);
+      return held == true ? WatchCopyOutcome.held : WatchCopyOutcome.skipped;
     } catch (e, st) {
       appLogger.w('Could not keep the mark on ${copy.globalKey}', error: e, stackTrace: st);
-      return WatchMarkOutcome.skipped;
+      return WatchCopyOutcome.skipped;
     }
-    return WatchMarkOutcome.queuedOffline;
   }
 }
 

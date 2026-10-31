@@ -291,6 +291,15 @@ void main() {
       }
     }
 
+    test('a series longer than one page keeps every episode', () async {
+      addSeasonOfClips(620);
+      client = await connected(server);
+
+      final leaves = await client.fetchPlayableDescendants('show-clips');
+
+      expect(leaves, hasLength(620));
+    });
+
     test('a stale cursor restarts the walk from the top instead of ending the list', () async {
       addSeasonOfClips(130);
       client = await connected(server);

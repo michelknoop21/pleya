@@ -23,6 +23,7 @@ import '../../media/watch_progress.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import 'source_episode_index.dart';
+import 'unified_copy_proof.dart';
 import 'source_resolver.dart';
 
 /// What this profile may do with a server, read live at every decision: a
@@ -33,6 +34,7 @@ class UnifiedSourceGate {
     required this.isOnline,
     required this.isAuthRejected,
     required this.isVisible,
+    required this.isOwn,
     required this.hiddenLibraryKeys,
     required this.isRestrictedProfile,
     this.fresh,
@@ -42,6 +44,10 @@ class UnifiedSourceGate {
   final bool Function(ServerId serverId) isOnline;
   final bool Function(ServerId serverId) isAuthRejected;
   final bool Function(ServerId serverId) isVisible;
+
+  /// A server this viewer runs themselves. Viewing data stays off a server
+  /// someone else runs: a mirrored play shows up on their dashboard.
+  final bool Function(ServerId serverId) isOwn;
   final Set<String> Function() hiddenLibraryKeys;
 
   /// A children's profile. It keeps to the source it chose and the one the page
@@ -69,8 +75,10 @@ class UnifiedSourceGate {
   /// Whether a write may be addressed to [source]. A server that is merely
   /// offline stays in: the queue holds the write. A rejected token does not: a
   /// reconnect does not fix it, and a queued row would replay under whoever
-  /// signs in next.
-  bool mayWrite(UnifiedMediaSource source) => _inView(source) && !isAuthRejected(source.serverId);
+  /// signs in next. Only the viewer's own servers: playing from someone else's
+  /// is fine, telling it about a play elsewhere is not.
+  bool mayWrite(UnifiedMediaSource source) =>
+      _inView(source) && !isAuthRejected(source.serverId) && isOwn(source.serverId);
 }
 
 /// The concrete item a play starts, and where, when the position lives on
@@ -89,8 +97,10 @@ class UnifiedTitlePlayback {
     required this.gate,
     SourceEpisodeIndex? index,
     this.secondaryWait = const Duration(seconds: 3),
+    this.identityProven = false,
   }) : sources = List.unmodifiable(sources),
-       index = index ?? SourceEpisodeIndex();
+       index = index ?? SourceEpisodeIndex(),
+       _proof = UnifiedCopyProof((id) => gate.isOnline(id) ? gate.clientFor(id) : null);
 
   /// The route this play came from, so a nested page keeps the chosen source.
   final UnifiedMediaRouteContext routeContext;
@@ -99,6 +109,11 @@ class UnifiedTitlePlayback {
   final List<UnifiedMediaSource> sources;
   final UnifiedSourceGate gate;
   final SourceEpisodeIndex index;
+
+  /// Every source got here on a guid or provider number, as a lookup finds them.
+  /// A title from a card may be one on title and year alone.
+  final bool identityProven;
+  final UnifiedCopyProof _proof;
   final Duration secondaryWait;
 
   String get chosenSourceKey => routeContext.sourceKey;
@@ -299,14 +314,19 @@ class UnifiedTitlePlayback {
   }
 
   /// [item] on every other source this profile may write to: the targets of a
-  /// watch-state write (besluit 3). Never the item itself.
+  /// watch-state write (besluit 3). Never the item itself. A series comes back
+  /// as its seasons, and only those both sides hold: marking A's series must
+  /// not mark seasons on B that the viewer never saw there. Specials are left
+  /// out: two servers number them differently, and a write would hit whichever
+  /// episode shares the number.
   Future<List<MediaItem>> copiesOf(MediaItem item) async {
-    final targets = sources.where(gate.mayWrite).toList();
+    final targets = await _provenTargets(item);
     final copies = switch (item.kind) {
-      MediaKind.movie || MediaKind.show => [
+      MediaKind.movie => [
         for (final s in targets)
           if (s.item.kind == item.kind) s.item,
       ],
+      MediaKind.show => await _showCopies(item, targets),
       MediaKind.episode => await _episodeCopies(item, targets),
       MediaKind.season => await _seasonCopies(item, targets),
       _ => const <MediaItem>[],
@@ -317,9 +337,42 @@ class UnifiedTitlePlayback {
     ];
   }
 
+  Future<List<UnifiedMediaSource>> _provenTargets(MediaItem item) async {
+    final writable = sources.where(gate.mayWrite).toList();
+    if (identityProven) return writable;
+    final own = _ownSource(item);
+    if (own == null) return const [];
+    final proven = await Future.wait(writable.map((s) => s == own ? Future.value(false) : _proof.sameTitle(own, s)));
+    return [
+      for (var i = 0; i < writable.length; i++)
+        if (proven[i]) writable[i],
+    ];
+  }
+
+  /// The source [item] came from: itself, or the series it is part of.
+  UnifiedMediaSource? _ownSource(MediaItem item) {
+    final server = item.serverId;
+    for (final source in sources) {
+      if (source.sourceKey == item.globalKey) return source;
+    }
+    for (final source in sources) {
+      if (source.serverId.value == server) return source;
+    }
+    return null;
+  }
+
+  Future<List<MediaItem>> _showCopies(MediaItem show, List<UnifiedMediaSource> targets) async {
+    final found = await Future.wait(
+      targets
+          .where((s) => s.item.isShow && s.sourceKey != show.globalKey && gate.mayRead(s))
+          .map((s) => seasonsInCommon(show, s.item, clientFor: gate.clientFor)),
+    );
+    return [for (final seasons in found) ...seasons];
+  }
+
   Future<List<MediaItem>> _episodeCopies(MediaItem item, List<UnifiedMediaSource> targets) async {
     final coordinate = episodeCoordinateOf(item);
-    if (coordinate == null) return const [];
+    if (coordinate == null || isSpecialSeasonNumber(coordinate.season)) return const [];
     final found = await Future.wait(
       targets.map((source) async {
         final direct = episodeCoordinateOf(source.item) == coordinate ? source.item : null;
@@ -332,7 +385,7 @@ class UnifiedTitlePlayback {
 
   Future<List<MediaItem>> _seasonCopies(MediaItem item, List<UnifiedMediaSource> targets) async {
     final number = item.index;
-    if (number == null) return const [];
+    if (number == null || isSpecialSeasonNumber(number)) return const [];
     final found = await Future.wait(
       targets.where(gate.mayRead).map((source) async {
         final seriesId = seriesIdOf(source);

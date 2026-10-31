@@ -66,6 +66,15 @@ class _Client implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _FreshClient extends _Client implements FreshMediaItemClient {
+  _FreshClient(super.id, super.episodes, {required this.fresh});
+
+  final MediaItem fresh;
+
+  @override
+  Future<MediaItem?> fetchFreshItem(String id) async => fresh;
+}
+
 /// Answers the widget the route would build, then drops the route: a real
 /// player would spin up mpv.
 class _RouteSpy extends NavigatorObserver {
@@ -126,17 +135,25 @@ void main() {
         isOnline: manager.isServerOnline,
         isAuthRejected: (_) => false,
         isVisible: (_) => true,
+        isOwn: (_) => true,
         hiddenLibraryKeys: () => const {},
         isRestrictedProfile: () async => false,
       ),
     );
   }
 
-  Future<(BuildContext, _RouteSpy, UnifiedTitlePlayback)> pumpHost(WidgetTester tester, {bool scoped = false}) async {
+  Future<(BuildContext, _RouteSpy, UnifiedTitlePlayback)> pumpHost(
+    WidgetTester tester, {
+    bool scoped = false,
+    MediaItem? freshOnChosen,
+  }) async {
     await SettingsService.getInstance();
+    final chosen = freshOnChosen == null
+        ? _Client('chosen', [_episode('chosen')])
+        : _FreshClient('chosen', [_episode('chosen')], fresh: freshOnChosen);
     final manager = MultiServerManager()
       ..debugRegisterClientForTesting(_Client('page', [_episode('page', viewOffsetMs: 600000, lastViewedAt: 2000)]))
-      ..debugRegisterClientForTesting(_Client('chosen', [_episode('chosen')]));
+      ..debugRegisterClientForTesting(chosen);
     final title = titleOver(manager);
     final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
     final db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -202,6 +219,18 @@ void main() {
     expect(player.metadata.globalKey, 'chosen:ep-chosen');
     expect(player.startPosition, const Duration(milliseconds: 600000));
     expect(player.unifiedTitle, same(title));
+  });
+
+  testWidgets('a position the chosen server turns out to have beats the carried one', (tester) async {
+    final fresh = _episode('chosen', viewOffsetMs: 900000).copyWith(serverId: 'chosen');
+    final (context, spy, title) = await pumpHost(tester, freshOnChosen: fresh);
+
+    await tester.runAsync(() => navigateToVideoPlayer(context, metadata: requested, unifiedTitle: title));
+    await tester.pump();
+
+    final player = playerOf(context, spy);
+    expect(player.startPosition, isNull, reason: 'the fresh position plays, as it does for any other start');
+    expect(player.metadata.viewOffsetMs, 900000);
   });
 
   testWidgets('a play from below a page finds the title without being told', (tester) async {

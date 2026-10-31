@@ -99,6 +99,7 @@ UnifiedTitlePlayback _title(MultiServerManager manager) {
       isOnline: manager.isServerOnline,
       isAuthRejected: (_) => false,
       isVisible: (_) => true,
+      isOwn: (_) => true,
       hiddenLibraryKeys: () => const {},
       isRestrictedProfile: () async => false,
     ),

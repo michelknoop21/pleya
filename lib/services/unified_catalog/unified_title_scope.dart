@@ -44,6 +44,10 @@ UnifiedSourceGate? unifiedSourceGateOf(BuildContext context) {
     isOnline: manager.isServerOnline,
     isAuthRejected: (serverId) => manager.authErrorServerIds.contains(serverId.value),
     isVisible: manager.isServerVisible,
+    // The one owner rule per backend: Plex `owned`, Jellyfin and Emby
+    // `IsAdministrator`, Pleya Server role owner or admin. A borrowed connection
+    // never counts, and a server that is down stays in until it proves otherwise.
+    isOwn: (id) => !manager.isSomeoneElsesServer(id),
     hiddenLibraryKeys: () => hiddenLibraries?.hiddenLibraryKeys ?? const {},
     isRestrictedProfile: () => assistantIsKidsProfile(profiles?.active),
     fresh: fresh,

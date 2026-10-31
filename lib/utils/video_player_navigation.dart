@@ -182,6 +182,10 @@ Future<bool?> navigateToVideoPlayer(
         )
       : null;
 
+  // What another server knows about this title. Only for a source that turns
+  // out to have no position of its own, so it waits for the fresh read below.
+  Duration? carriedResume;
+
   try {
     final candidateTitle = isOffline ? null : unifiedTitle ?? UnifiedTitleScope.maybeOf(context);
     final title = candidateTitle != null && candidateTitle.holds(metadata) ? candidateTitle : null;
@@ -190,7 +194,7 @@ Future<bool?> navigateToVideoPlayer(
       final target = await title.targetFor(metadata);
       if (!context.mounted) return null;
       metadata = resolveWatchState ? target.item : target.item.copyWith(viewOffsetMs: 0);
-      if (resolveWatchState) startPosition ??= target.carriedResume;
+      if (resolveWatchState) carriedResume = target.carriedResume;
     }
     if (resolveWatchState) {
       metadata = context.readFreshWatchState(metadata);
@@ -240,6 +244,7 @@ Future<bool?> navigateToVideoPlayer(
       }
     }
     if (!context.mounted) return null;
+    if ((metadata.viewOffsetMs ?? 0) <= 0) startPosition ??= carriedResume;
 
     final mediaIndex = selectedMediaIndex ?? await savedMediaVersionIndexFor(metadata) ?? 0;
     if (markedInFlight && selectedMediaIndex == null) {

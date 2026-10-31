@@ -22,6 +22,43 @@ mixin _JellyfinWatchStateMethods on MediaServerCacheMixin {
     throwIfHttpError(response);
   }
 
+  bool get movesCopyWithoutViewing => true;
+
+  /// `UserData` and not `/Sessions/Playing`: a start adds to `PlayCount`, and on
+  /// Jellyfin 10.x it clears `Played` as well. Jellyfin only writes the fields a
+  /// body carries. Emby does not say what it does with the others, so it gets
+  /// its own values back.
+  Future<bool> writeCopyState(
+    MediaItem item, {
+    required Duration position,
+    Duration? duration,
+    required bool watched,
+  }) async {
+    if (watched) {
+      await markWatched(item);
+      return true;
+    }
+    final ticks = msToJellyfinTicks(position.inMilliseconds);
+    final response = await _http.post(
+      connection.userDataPath(item.id),
+      queryParameters: connection.isEmby ? null : {'userId': connection.userId},
+      body: connection.isEmby
+          ? {...await _embyUserData(item.id), 'PlaybackPositionTicks': ticks}
+          : {'PlaybackPositionTicks': ticks},
+    );
+    throwIfHttpError(response);
+    return true;
+  }
+
+  Future<Map<String, dynamic>> _embyUserData(String itemId) async {
+    final response = await _http.get('/Users/${_segment(connection.userId)}/Items/${_segment(itemId)}');
+    throwIfHttpError(response);
+    final data = response.data;
+    final userData = data is Map<String, dynamic> ? data['UserData'] : null;
+    if (userData is! Map<String, dynamic>) throw StateError('No user data for $itemId');
+    return userData;
+  }
+
   /// Only Emby can: `HideFromResume`. Jellyfin has no equivalent, which is
   /// why its capabilities keep the menu entry hidden.
   @override

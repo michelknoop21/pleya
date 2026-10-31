@@ -183,4 +183,50 @@ void main() {
     expect(reopened.items, isEmpty);
     expect(reopened.enabled, isFalse);
   });
+
+  test('a clear the app did not finish is finished on the next start', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    await store.setOptions(enabled: true);
+    await store.saveLibrary(library, [film('kept')], complete: true, isCurrent: () => true);
+    // What a stop halfway leaves behind: the marker, and files still there.
+    await store.clearMarker.writeAsString('');
+    await store.setOptions(enabled: false);
+
+    final reopened = LocalLibraryStore(root);
+    await reopened.load();
+
+    expect(reopened.items, isEmpty);
+    expect(reopened.libraries, isEmpty);
+    expect(await reopened.clearMarker.exists(), isFalse);
+    final left = await root.list(recursive: true).where((e) => e is File).map((e) => e.path.split('/').last).toList();
+    expect(left, ['options.json']);
+  });
+
+  test('a finished clear leaves no marker', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    await store.saveLibrary(library, [film('gone')], complete: true, isCurrent: () => true);
+
+    await store.clear();
+
+    expect(await store.clearMarker.exists(), isFalse);
+  });
+
+  test('a clear that dies on its very first write is finished on the next start as well', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    await store.setOptions(enabled: true);
+    await store.saveLibrary(library, [film('kept')], complete: true, isCurrent: () => true);
+    final blocked = Directory('${root.path}/options.json.pending');
+    await blocked.create();
+
+    await expectLater(store.clear(), throwsA(isA<FileSystemException>()));
+    await blocked.delete();
+    final reopened = LocalLibraryStore(root);
+    await reopened.load();
+
+    expect(reopened.items, isEmpty);
+    expect(reopened.enabled, isFalse);
+  });
 }

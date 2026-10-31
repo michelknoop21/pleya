@@ -231,6 +231,38 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     );
   }
 
+  /// The protocol has no write without a session: a backlog never moves a title
+  /// that has a state (rule 6) and a passive tick needs the lease (rule 2). The
+  /// history counts this as a play, so a watched copy stays out of it.
+  bool get movesCopyWithoutViewing => false;
+
+  /// `reclaim` and not `user_started`: nobody pressed play, so the lease of a
+  /// session that is watching stands (rule 1). One session for every copy, kept
+  /// apart from the viewings in the ledger, so the lease of the previous copy
+  /// write is its own, and no revision claim: this client did not act on what it
+  /// saw of this title.
+  Future<bool> writeCopyState(
+    MediaItem item, {
+    required Duration position,
+    Duration? duration,
+    required bool watched,
+  }) async {
+    Future<bool> report({String action = 'none', String? cause, bool completed = false}) => _applyWatchState(
+      itemId: item.id,
+      sessionId: _copySessionId,
+      position: position,
+      duration: duration,
+      action: action,
+      cause: cause,
+      completed: completed,
+      claimsRevision: false,
+    );
+    if (!await report(action: 'playback_started', cause: 'reclaim')) return false;
+    return report(completed: watched);
+  }
+
+  late final String _copySessionId = _mintSessionId();
+
   /// A passive progress tick. Never acquires ownership; a device that is not
   /// the owner reports into the void by design, and the answer tells it so.
   Future<void> reportPlaybackProgress({
@@ -362,7 +394,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// Every caller goes through here so the three ownership fields are decided
   /// in one place. Scattering them would make "does this event acquire the
   /// lease" a property of the call site instead of of the action.
-  Future<void> _applyWatchState({
+  /// Answers whether this session may write: false when another one holds the
+  /// title.
+  Future<bool> _applyWatchState({
     required String itemId,
     required String sessionId,
     required Duration position,
@@ -371,8 +405,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     String? cause,
     bool completed = false,
     bool backlog = false,
+    bool claimsRevision = true,
   }) async {
-    if (!wireCapabilities.watchState) return;
+    if (!wireCapabilities.watchState) return true;
 
     final event = PleyaWatchStateEvent(
       itemId: itemId,
@@ -387,12 +422,12 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       // Only under the capability, and the type drops it again when the flag is
       // off: the request schema is closed, so sending it to a server that
       // predates DEC-049 fails the whole call rather than dropping the field.
-      baseRevision: wireCapabilities.watchStateOwnership ? _watchLedger.revisionOf(itemId) : null,
+      baseRevision: wireCapabilities.watchStateOwnership && claimsRevision ? _watchLedger.revisionOf(itemId) : null,
     );
 
     final body = event.toJson(ownership: wireCapabilities.watchStateOwnership);
     final json = await _postJson('/watch-state', body);
-    if (json == null) return;
+    if (json == null) return true;
     try {
       final state = PleyaUserState.fromJson(json);
       _watchLedger.remember(itemId, state.revision);
@@ -401,10 +436,12 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         // holds the lease, and this client keeps reporting so it can take over
         // when the lease runs out.
         appLogger.d('PleyaServerClient: another session owns $itemId');
+        return false;
       }
     } on PleyaWireFormatException catch (e) {
       appLogger.w('PleyaServerClient: watch-state answer did not match the contract', error: e);
     }
+    return true;
   }
 
   String _mintSessionId() => const Uuid().v4();

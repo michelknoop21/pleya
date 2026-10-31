@@ -388,7 +388,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// explicit; a season at a time keeps a long-running series from becoming one
   /// unbounded request.
   Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async {
-    final page = await fetchPlayableDescendantsPage(parentId, start: 0, size: _maxPageSize);
+    final page = await fetchPlayableDescendantsPage(parentId);
     return page.items;
   }
 
@@ -398,12 +398,11 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     int? size,
     AbortController? abort,
   }) async {
-    final direct = await fetchChildrenPage(parentId, start: 0, size: _maxPageSize, abort: abort);
+    final direct = await _everyChild(parentId, abort);
     final leaves = <MediaItem>[];
-    for (final child in direct.items) {
+    for (final child in direct) {
       if (child.kind == MediaKind.season || child.kind == MediaKind.show) {
-        final grandchildren = await fetchChildrenPage(child.id, start: 0, size: _maxPageSize, abort: abort);
-        leaves.addAll(grandchildren.items.where((item) => item.kind.isPlayable));
+        leaves.addAll((await _everyChild(child.id, abort)).where((item) => item.kind.isPlayable));
       } else if (child.kind.isPlayable) {
         leaves.add(child);
       }
@@ -411,6 +410,16 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     final offset = start ?? 0;
     final window = leaves.skip(offset).take(size ?? leaves.length).toList();
     return LibraryPage(items: window, totalCount: leaves.length, offset: offset);
+  }
+
+  /// A long-running series has more episodes than one page holds.
+  Future<List<MediaItem>> _everyChild(String parentId, AbortController? abort) async {
+    final children = <MediaItem>[];
+    while (true) {
+      final page = await fetchChildrenPage(parentId, start: children.length, size: _maxPageSize, abort: abort);
+      children.addAll(page.items);
+      if (page.items.isEmpty || children.length >= page.totalCount) return children;
+    }
   }
 
   /// Null hands the caller back to the generic episode-queue path, which builds

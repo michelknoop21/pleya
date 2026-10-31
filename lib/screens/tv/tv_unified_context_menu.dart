@@ -481,22 +481,33 @@ Future<void> _applyToSources(
       : <UnifiedMediaSource>[];
 
   final isMark = action == UnifiedGroupAction.markWatched || action == UnifiedGroupAction.markUnwatched;
+  final watched = action == UnifiedGroupAction.markWatched;
+  final copies = WatchCopyWriter.of(context);
+  // The mark lands on a server of the viewer's own. Only a card that has nothing
+  // else gets it on someone else's: there it is what the viewer chose.
+  final anyOwn = isMark && [...sources, ...toQueue].any(copies.isOwn);
+  final reachable = anyOwn ? sources.where(copies.isOwn).toList() : sources;
   // One mark is one viewing: the first membership it lands on reports it, the
   // others only get the server write (DEC-XXX "Eén titel over servers heen").
-  var reported = false;
+  UnifiedMediaSource? reported;
   var done = 0;
   var queuedCopies = 0;
-  for (final source in sources) {
+  var leftAlone = sources.length - reachable.length;
+  for (final source in reachable) {
     if (!context.mounted) return;
     try {
-      if (isMark && reported) {
-        final outcome = await WatchActions.markCopy(
-          context,
-          source.item,
-          watched: action == UnifiedGroupAction.markWatched,
-        );
-        if (outcome == WatchMarkOutcome.queuedOffline) queuedCopies++;
-        if (outcome == WatchMarkOutcome.marked) done++;
+      final origin = reported;
+      if (isMark && origin != null) {
+        switch (await copies.writeFor(origin, source, watched: watched)) {
+          case WatchCopyOutcome.written:
+            done++;
+          case WatchCopyOutcome.held:
+            queuedCopies++;
+          case WatchCopyOutcome.leftAlone:
+            leftAlone++;
+          case WatchCopyOutcome.skipped:
+            break;
+        }
         continue;
       }
       await _applyToOneSource(
@@ -507,7 +518,7 @@ Future<void> _applyToSources(
           for (final member in [...sources, ...deferredSources, ...unreachableSources]) member.sourceKey,
         },
       );
-      reported = true;
+      reported = source;
       done++;
     } catch (e, st) {
       appLogger.w('Unified context action ${action.name} failed on ${source.sourceKey}', error: e, stackTrace: st);
@@ -533,12 +544,17 @@ Future<void> _applyToSources(
     }
   }
 
-  final queued = queuedCopies + await _queueDeferred(offlineWatch, action, toQueue, reported: reported);
+  // After the fan-out: a write that failed above joined the list.
+  final held = anyOwn ? toQueue.where(copies.isOwn).toList() : toQueue;
+  final deferred = await _queueDeferred(offlineWatch, action, held, reported: reported, copies: copies);
+  final queued = queuedCopies + deferred.queued;
+  leftAlone += toQueue.length - held.length + deferred.leftAlone;
 
   if (!context.mounted) return;
   if (done > 0 || queued > 0) onChanged?.call();
 
-  final message = unifiedActionOutcomeMessage(done: done, total: total, queued: queued);
+  // A cut or a server the mark is not for is no failure to report.
+  final message = unifiedActionOutcomeMessage(done: done, total: total - leftAlone, queued: queued);
   if (message != null) showAppSnackBar(context, message);
 }
 
@@ -630,40 +646,40 @@ UnifiedMediaSource _ratingOrigin(BuildContext context, List<UnifiedMediaSource> 
 /// suppression that takes the card off the shelf now, while a held
 /// watched/unwatched row is the watch state itself, which is why it goes
 /// through the same [OfflineWatchProvider] entry points offline mode uses.
-Future<int> _queueDeferred(
+Future<({int queued, int leftAlone})> _queueDeferred(
   OfflineWatchProvider? offlineWatch,
   UnifiedGroupAction action,
   List<UnifiedMediaSource> sources, {
-  required bool reported,
+  required UnifiedMediaSource? reported,
+  required WatchCopyWriter copies,
 }) async {
-  if (offlineWatch == null || sources.isEmpty) return 0;
+  if (offlineWatch == null || sources.isEmpty) return (queued: 0, leftAlone: 0);
 
   // Nothing landed yet: the first held row carries the report, the rest are
   // copies of it.
-  var isCopy = reported;
+  var origin = reported;
   var queued = 0;
+  var leftAlone = 0;
   for (final source in sources) {
     final serverId = source.item.serverId;
     try {
       switch (action) {
         case UnifiedGroupAction.removeFromContinueWatching:
           await offlineWatch.queueRemoveFromContinueWatching(source.item);
-        case UnifiedGroupAction.markWatched:
+        case UnifiedGroupAction.markWatched || UnifiedGroupAction.markUnwatched:
           if (serverId == null || serverId.isEmpty) continue;
-          if (isCopy) {
-            await offlineWatch.markCopy(serverId: ServerId(serverId), itemId: source.item.id, watched: true);
-          } else {
+          final watched = action == UnifiedGroupAction.markWatched;
+          final from = origin;
+          if (from != null) {
+            final outcome = await copies.writeFor(from, source, watched: watched);
+            if (outcome == WatchCopyOutcome.leftAlone) leftAlone++;
+            if (outcome != WatchCopyOutcome.held && outcome != WatchCopyOutcome.written) continue;
+          } else if (watched) {
             await offlineWatch.markAsWatched(serverId: ServerId(serverId), itemId: source.item.id);
-          }
-          isCopy = true;
-        case UnifiedGroupAction.markUnwatched:
-          if (serverId == null || serverId.isEmpty) continue;
-          if (isCopy) {
-            await offlineWatch.markCopy(serverId: ServerId(serverId), itemId: source.item.id, watched: false);
           } else {
             await offlineWatch.markAsUnwatched(serverId: ServerId(serverId), itemId: source.item.id);
           }
-          isCopy = true;
+          origin = source;
         case UnifiedGroupAction.addToWatchlist:
         case UnifiedGroupAction.removeFromWatchlist:
         case UnifiedGroupAction.rate:
@@ -676,7 +692,7 @@ Future<int> _queueDeferred(
       appLogger.w('Could not queue ${action.name} for ${source.sourceKey}', error: e, stackTrace: st);
     }
   }
-  return queued;
+  return (queued: queued, leftAlone: leftAlone);
 }
 
 Future<void> _applyToOneSource(

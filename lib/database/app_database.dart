@@ -36,9 +36,9 @@ enum OfflineActionType {
   removedFromContinueWatching,
 
   /// A progress or watched state that happened on another source of the same
-  /// title (besluit 3 of DEC-XXX "Eén titel over servers heen"). Replays like
-  /// [progress], without the trackers: the source that played reported it, and
-  /// a second report would count the same viewing twice.
+  /// title (besluit 3 of DEC-XXX "Eén titel over servers heen"). Replays through
+  /// `CopyStateClient`, not like [progress]: nobody watched on this copy, and
+  /// the source that played already reported the viewing.
   mirroredProgress,
 
   /// A watched or unwatched mark on another copy of the same title. Replays
@@ -1054,11 +1054,16 @@ class AppDatabase extends _$AppDatabase {
 
       final keep = existing.isEmpty ? null : existing.first;
       if (keep != null) {
+        // A mirrored row only moves forward: a short play after a long one, or
+        // after a finished one, says nothing about the copy that is waiting. A
+        // real unwatched mark clears the row (see [insertWatchAction]).
+        final mirrored = actionType == OfflineActionType.mirroredProgress;
+        final held = keep.viewOffset ?? 0;
         await (update(offlineWatchProgress)..where((t) => t.id.equals(keep.id))).write(
           OfflineWatchProgressCompanion(
-            viewOffset: Value(viewOffset),
+            viewOffset: Value(mirrored && held > viewOffset ? held : viewOffset),
             duration: Value(duration),
-            shouldMarkWatched: Value(shouldMarkWatched),
+            shouldMarkWatched: Value(shouldMarkWatched || (mirrored && keep.shouldMarkWatched)),
             profileId: Value(profileId),
             clientScopeId: Value(clientScopeId),
             updatedAt: Value(now),
@@ -1127,6 +1132,29 @@ class AppDatabase extends _$AppDatabase {
   /// Delete a specific watch action after successful sync
   Future<void> deleteWatchAction(int id) {
     return (delete(offlineWatchProgress)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Delete what waits for [globalKey] as a copy of a viewing or a mark.
+  Future<void> deleteCopyActions(String globalKey, {required String? profileId}) {
+    return (delete(offlineWatchProgress)..where(
+          (t) =>
+              t.globalKey.equals(globalKey) &
+              _nullableTextPredicate(t.profileId, profileId) &
+              t.actionType.isIn([
+                OfflineActionType.mirroredProgress.id,
+                OfflineActionType.mirroredWatched.id,
+                OfflineActionType.mirroredUnwatched.id,
+              ]),
+        ))
+        .go();
+  }
+
+  /// Delete [action] unless it moved while it was being replayed: an upsert
+  /// keeps the row's id, so a newer position would go with the old one.
+  Future<void> deleteReplayedWatchAction(OfflineWatchProgressItem action) {
+    return (delete(
+      offlineWatchProgress,
+    )..where((t) => t.id.equals(action.id) & t.updatedAt.equals(action.updatedAt))).go();
   }
 
   /// Update sync attempt count and error message

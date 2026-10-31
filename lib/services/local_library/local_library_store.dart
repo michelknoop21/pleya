@@ -50,6 +50,9 @@ class LocalLibraryStore {
   static const _encodeBatch = 500;
 
   File get _optionsFile => File('${directory.path}/options.json');
+
+  /// Written before a clear starts and removed when it is done.
+  File get clearMarker => File('${directory.path}/clearing');
   File _libraryFile(String key) => File('${directory.path}/library-${digest(key)}.json');
 
   Future<T> _serial<T>(Future<T> Function() action) {
@@ -74,6 +77,12 @@ class LocalLibraryStore {
       for (final entry in (data['libraryAccess'] as Map<String, dynamic>? ?? {}).entries) {
         libraryAccess[entry.key] = (entry.value as List).cast<String>().toSet();
       }
+    }
+    if (await clearMarker.exists()) {
+      enabled = false;
+      await _atomic(_optionsFile, jsonEncode(_options), () => true);
+      await _removeContent();
+      return;
     }
     await for (final entity in directory.list()) {
       if (entity is! File || !entity.path.endsWith('.json') || !entity.uri.pathSegments.last.startsWith('library-'))
@@ -316,6 +325,10 @@ class LocalLibraryStore {
   });
 
   Future<void> clear() => _serial(() async {
+    // The files go one at a time, and what a crash leaves behind would load as
+    // content on the next start: [load] finishes what this marker says. First,
+    // so no moment exists with the option off and the files without a marker.
+    await clearMarker.writeAsString('', flush: true);
     enabled = false;
     // Persist off before removing data; a crash must not restart the download.
     await _atomic(_optionsFile, jsonEncode(_options), () => true);
@@ -323,8 +336,13 @@ class LocalLibraryStore {
     _items.clear();
     _completed.clear();
     _posters.clear();
-    await for (final entity in directory.list(followLinks: false)) {
-      if (entity.path != _optionsFile.path) await entity.delete(recursive: true);
-    }
+    await _removeContent();
   });
+
+  Future<void> _removeContent() async {
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity.path != _optionsFile.path && entity.path != clearMarker.path) await entity.delete(recursive: true);
+    }
+    await clearMarker.delete();
+  }
 }
