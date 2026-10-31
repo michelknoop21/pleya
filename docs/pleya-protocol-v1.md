@@ -365,12 +365,16 @@ token, want wie de kop van de keten houdt kan de emmer van de sessie leeg houden
 `auth.refresh_token_reused` kunnen bereiken. Een token zonder sessie telt op het
 clientadres, en dat komt alleen achter een vertrouwde proxy uit `X-Forwarded-For`
 (`PLEYA_SERVER_TRUSTED_PROXIES`), rechts gelezen tot de eerste hop die geen proxy is. Bovenop die drie
-telt de server per account de rijen die rotaties en herhalingen schrijven: 150 achter elkaar en daarna
-2,5 per seconde, ongeacht het aantal sessies. Raakt een aanvraag die grens, dan is het antwoord
-dezelfde 429 en is er niets geroteerd. Hergebruik schrijft geen rij en telt niet mee, dus
-`auth.refresh_token_reused` blijft bereikbaar, ook als de grens op is. De wachttijd blijft
-onder het respijtvenster van de rotatie: wie zijn antwoord kwijtraakte en eerst een 429 krijgt, valt na het
-wachten nog binnen dat venster.
+telt de server per account de rijen die rotaties en herhalingen schrijven, elk in een eigen emmer: 120
+achter elkaar en daarna twee per seconde, ongeacht het aantal sessies. Raakt een aanvraag die grens, dan
+is het antwoord dezelfde 429 en is er niets geroteerd. Hergebruik van een token waarvan de opvolger al
+gebruikt is schrijft geen rij en telt niet mee, dus `auth.refresh_token_reused` blijft daar bereikbaar.
+Een herhaling telt wel mee. Zijn de herhalingen van het account op, dan krijgt ook een client die alleen
+zijn antwoord kwijtraakte 429, en na het respijtvenster is zijn token hergebruik en sluit de sessie. Een
+vervangen, nooit aangeboden token heeft geen respijtvenster en houdt 429 tot er weer ruimte is.
+
+De wachttijd van één 429 blijft onder het respijtvenster van de rotatie: wie zijn antwoord kwijtraakte en
+eerst een enkele 429 krijgt, valt na het wachten nog binnen dat venster. Bij herhaalde 429's geldt dat niet.
 
 ### 6.4 `POST /pleya/v1/auth/stream-token`
 

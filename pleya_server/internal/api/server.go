@@ -241,7 +241,14 @@ func New(opts Options) *Server {
 }
 
 // SetClock laat een test de tijd bepalen.
-func (s *Server) SetClock(now func() time.Time) { s.now = now }
+//
+// De grens op wat een account schrijft volgt hem, want die telt rijen in de tijd van de
+// sleutels die hij uitgeeft. Een test die uren in seconden afspeelt zou anders tegen een
+// grens lopen die in zijn eigen tijd nooit bereikt wordt.
+func (s *Server) SetClock(now func() time.Time) {
+	s.now = now
+	s.refreshLimiter.writes.setClock(now)
+}
 
 // settings geeft de set die op dit moment geldt.
 //

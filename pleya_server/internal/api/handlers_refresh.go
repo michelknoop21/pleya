@@ -81,9 +81,9 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	var writeWait time.Duration
 	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshTokenGated(r.Context(),
 		presentedHash, newHash, now.Add(s.settings().RefreshTokenTTL()), now,
-		s.opts.RefreshGraceWindow, func(user id.ID) bool {
+		s.opts.RefreshGraceWindow, func(user id.ID, write auth.RefreshWrite) bool {
 			var allowed bool
-			allowed, writeWait = s.refreshLimiter.writes.allow(user.String())
+			allowed, writeWait = s.refreshLimiter.writes.allow(refreshWriteBucket(user, write))
 			return allowed
 		})
 	if err != nil {
@@ -192,7 +192,7 @@ func (s *Server) writeRefreshLimited(w http.ResponseWriter, limiter string, wait
 // Een dood token telt daarom op een eigen emmer. Die kan de kop niet leegmaken, en
 // een aanbieding die erdoorheen komt is hergebruik of een herhaling binnen het
 // respijt. Deze emmers begrenzen geen rijen: elke herhaling maakt een token met een
-// eigen emmer. Dat doet de grens per account, zie refreshWriteBurst. Dat dode tokens
+// eigen emmer. Dat doen de emmers per account, zie refreshWriteBurst. Dat dode tokens
 // elk een emmer krijgen vraagt voor het geheugen geen eigen grens: de kaart van de
 // limiter is begrensd op limiterMaxBuckets, en een verdrongen emmer begint weer vol.
 //
@@ -213,6 +213,14 @@ func (s *Server) refreshLimiterKey(ctx context.Context, r *http.Request, present
 		return usedTokenBucket(presentedHash), nil
 	}
 	return "session:" + sessionID.String(), nil
+}
+
+// refreshWriteBucket is de emmer van wat een account schrijft, zie refreshWriteBurst.
+func refreshWriteBucket(user id.ID, write auth.RefreshWrite) string {
+	if write == auth.RefreshWriteReplay {
+		return user.String() + ":replay"
+	}
+	return user.String()
 }
 
 // usedTokenBucket is de emmer van één al ingetrokken token. De sleutel draagt de

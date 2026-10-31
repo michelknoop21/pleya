@@ -5406,13 +5406,22 @@ handler over HTTP: de lus van hierboven houdt 16 rijen per seconde vol, de eerde
 30 seconden met de burst erin, en de boom haalde 67 per seconde op één sessie en 145 op vier, waar de database de grens
 was en niet de limiter. Bij die vier sessies liep een gewone `GET /libraries` van 9 naar 311 ms, met de pool vol
 wachtend op sessieslots. Sessies zijn niet begrensd, dus een account kan dit vermenigvuldigen. Rotaties en herhalingen
-vragen nu vlak voor het schrijven een emmer per account: 150 achter elkaar, daarna 2,5 per seconde. Die staat in een
-eigen kaart, want de sleutels in de andere kaart kiest de client. De beslissing valt in de transactie, omdat alleen die
-weet of er een rij komt: hergebruik schrijft er geen en vraagt de grens niet, dus de detectie kan er niet op wachten,
-en een geweigerde herhaling is na het respijt hergebruik. Onder dezelfde aanval bleef `GET /libraries` op 4,6 ms en
-kwamen er per account twee rijen per seconde bij, gemeten met de eerste waarden 120 en 2. Die zijn opgehoogd omdat
-`TestTwoTokensWithOneHeadNeverAnswer500` 125 rijen in 2,5 seconde schrijft op één account. Inloggen schrijft een tokenrij buiten deze grens om; dat kost een
-wachtwoord en Argon2 per rij en staat als open punt in het rapport van 30 oktober.
+vragen nu vlak voor het schrijven een emmer per account, elk een eigen: 120 achter elkaar, daarna twee per seconde. Die
+emmers staan in een eigen kaart, want de sleutels in de andere kaart kiest de client. De beslissing valt in de
+transactie, omdat alleen die weet of er een rij komt. Hergebruik van een token met een gebruikte opvolger schrijft er
+geen en vraagt de grens niet. Een geweigerde herhaling houdt 429 zolang de emmer leeg is: daarna is een gewoon token na
+het respijt hergebruik, en een vervangen, nooit aangeboden token heeft geen respijt en blijft wachten. Onder dezelfde
+aanval bleef `GET /libraries` op 4,6 ms en kwamen er twee rijen per seconde bij, gemeten met één emmer van 120 en 2.
+
+Eén emmer voor beide bleek fout: een gestolen token van een stilstaand toestel maakt hem leeg met herhalingen, en dan
+krijgt elke andere sessie 429 op haar gewone rotatie, zonder einde als dat toestel uit blijft. Daarom hebben rotaties en
+herhalingen elk een sleutel. Eén token haalt op de kop 0,5 per seconde en kan die emmer niet leegmaken. Wat blijft: een
+verloren antwoord op hetzelfde account tijdens zo'n aanval krijgt 429 tot het respijt om is, en dan sluit zijn sessie;
+vóór deze grens slaagde die herhaling. De som per account is daarmee hoogstens vier rijen per seconde, en die 4 is
+gerekend, niet gemeten. Inloggen schrijft een tokenrij buiten deze grens om; dat kost een wachtwoord en Argon2 per rij.
+
+Dat de grens eerst op 150 en 2,5 stond kwam door een test met een nepklok: de limiter volgde die klok niet, dus 125 rijen
+over ruim twee uur testtijd vielen in 2,5 seconde. `SetClock` zet nu ook de klok van deze emmers.
 
 Migratie 0030 zet indexen op `session_id` en `replaced_by`. `replaced_by` is een foreign key op de eigen tabel, dus de
 opruiming zocht per verwijderde rij de hele tabel door: 500 ms per rij bij een miljoen synthetische rijen, gemeten in

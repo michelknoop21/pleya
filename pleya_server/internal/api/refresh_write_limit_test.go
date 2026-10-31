@@ -11,7 +11,7 @@ import (
 // client maakt zelf nieuwe sleutels: elke herhaling laat een vervangen token achter met
 // een eigen emmer, en elke login een sessie. Deze tests lopen daar precies langs.
 
-const refreshWriteBurst = 150
+const refreshWriteBurst = 120
 
 func (e *env) tokenRows() int {
 	e.t.Helper()
@@ -57,7 +57,7 @@ func TestRefreshReplayTreeStopsAtTheAccountBound(t *testing.T) {
 		e.presentUntilRefused(superseded)
 	}
 
-	// De klok loopt door tijdens de test; 2,5 rijen per seconde is de bijvulling.
+	// De klok loopt door tijdens de test; twee rijen per seconde is de bijvulling.
 	if wrote := e.tokenRows() - before; wrote > refreshWriteBurst+20 {
 		t.Fatalf("%d rijen geschreven, de grens is %d", wrote, refreshWriteBurst)
 	}
@@ -86,8 +86,72 @@ func TestRefreshWritesAreBoundedAcrossSessionsOfOneAccount(t *testing.T) {
 	}
 }
 
-// Een geweigerde rij kost niets: de detectie vraagt de grens niet, en wie hem leeg trok
-// houdt het slachtoffer dus niet van zijn 401 af.
+// rotateUntilRefused ververst de kop tot de server weigert en geeft het aantal rotaties.
+func (e *env) rotateUntilRefused(head string) int {
+	e.t.Helper()
+	rotations := 0
+	for {
+		rec := e.refreshWith(head)
+		if rec.Code != http.StatusOK {
+			if rec.Code != http.StatusTooManyRequests {
+				e.t.Fatalf("gaf %d: %s", rec.Code, rec.Body.String())
+			}
+			return rotations
+		}
+		head = decodePair(e.t, rec).RefreshToken
+		rotations++
+	}
+}
+
+// Rotaties hebben hun eigen emmer: wie ze wil opmaken heeft meerdere sessies nodig.
+func TestRefreshRotationsAreBoundedAcrossSessionsOfOneAccount(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	before := e.tokenRows()
+
+	logins := 0
+	for {
+		logins++
+		if logins > 10 {
+			t.Fatalf("na %d sessies nog geen grens", logins-1)
+		}
+		if e.rotateUntilRefused(e.login("sessie-"+strconv.Itoa(logins)).RefreshToken) < refreshBurst {
+			break
+		}
+	}
+	if wrote := e.tokenRows() - before - logins; wrote > refreshWriteBurst+20 {
+		t.Fatalf("%d rijen geschreven over %d sessies", wrote, logins)
+	}
+}
+
+// Herhalingen zijn het enige wat één token kan opmaken, en dat raakt de kop van een
+// andere sessie niet. Dit is waarom ze een eigen emmer hebben.
+func TestDrainingTheReplayBucketDoesNotStopAnotherSession(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	stilltoestel := e.login("stilstaand").RefreshToken
+	telefoon := e.login("telefoon").RefreshToken
+
+	if rec := e.refreshWith(stilltoestel); rec.Code != http.StatusOK {
+		t.Fatalf("de dief roteerde niet: %d", rec.Code)
+	}
+	issued := e.presentUntilRefused(stilltoestel)
+	for _, superseded := range issued[:len(issued)-1] {
+		e.presentUntilRefused(superseded)
+	}
+	assertWriteLimited(t, e, issued[0])
+
+	for range 3 {
+		rec := e.refreshWith(telefoon)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("de andere sessie gaf %d: %s", rec.Code, rec.Body.String())
+		}
+		telefoon = decodePair(t, rec).RefreshToken
+	}
+}
+
+// Een geweigerde rij kost niets: de detectie vraagt de grens niet, en wie de herhalingen
+// opmaakte houdt het slachtoffer dus niet van zijn 401 af, en de kop niet van zijn rotatie.
 func TestRefreshWriteBoundDoesNotKeepTheVictimFromTheDetection(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
@@ -109,8 +173,8 @@ func TestRefreshWriteBoundDoesNotKeepTheVictimFromTheDetection(t *testing.T) {
 			break
 		}
 	}
-	if rec := e.refreshWith(head); rec.Code != http.StatusTooManyRequests {
-		t.Fatalf("de grens is niet bereikt: de kop gaf %d", rec.Code)
+	if rec := e.refreshWith(head); rec.Code != http.StatusOK {
+		t.Fatalf("de kop van een andere sessie gaf %d: %s", rec.Code, rec.Body.String())
 	}
 
 	victim := e.refreshWith(stolen)

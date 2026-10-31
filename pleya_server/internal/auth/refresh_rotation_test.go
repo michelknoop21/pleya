@@ -327,8 +327,8 @@ func TestASupersededTokenExpiresLikeAnyOther(t *testing.T) {
 // De grens op rijen: een geweigerde rotatie of herhaling verandert niets, en hergebruik
 // vraagt de grens niet, zodat de detectie er niet op kan wachten.
 func TestRefreshWriteGate(t *testing.T) {
-	deny := func(id.ID) bool { return false }
-	offer := func(r *rotation, token string, allow func(id.ID) bool) auth.RefreshOutcome {
+	deny := func(id.ID, auth.RefreshWrite) bool { return false }
+	offer := func(r *rotation, token string, allow func(id.ID, auth.RefreshWrite) bool) auth.RefreshOutcome {
 		t.Helper()
 		outcome, _, _, err := r.store.RotateRefreshTokenGated(r.ctx, auth.HashOpaque(token), auth.HashOpaque(r.fresh()),
 			r.now.Add(30*24*time.Hour), r.now, rotationGrace, allow)
@@ -358,11 +358,50 @@ func TestRefreshWriteGate(t *testing.T) {
 		}
 	})
 
+	t.Run("de kop en een herhaling vragen elk hun eigen soort", func(t *testing.T) {
+		r, first := newRotation(t)
+		var asked []auth.RefreshWrite
+		record := func(_ id.ID, write auth.RefreshWrite) bool {
+			asked = append(asked, write)
+			return true
+		}
+		offer(r, first, record)
+		offer(r, first, record)
+		if len(asked) != 2 || asked[0] != auth.RefreshWriteRotation || asked[1] != auth.RefreshWriteReplay {
+			t.Fatalf("gevraagd: %v", asked)
+		}
+	})
+
+	t.Run("een geweigerde herhaling is na het respijt hergebruik", func(t *testing.T) {
+		r, first := newRotation(t)
+		r.present(first, auth.RefreshOK)
+		if got := offer(r, first, deny); got != auth.RefreshWriteLimited {
+			t.Fatalf("uitkomst %v", got)
+		}
+		r.wait(rotationGrace + time.Second)
+		if got := offer(r, first, deny); got != auth.RefreshReused {
+			t.Fatalf("uitkomst %v", got)
+		}
+		r.sessionMustBeRevoked()
+	})
+
+	t.Run("een vervangen token heeft geen respijt en blijft 429 houden", func(t *testing.T) {
+		r, first := newRotation(t)
+		superseded := r.present(first, auth.RefreshOK)
+		r.present(first, auth.RefreshReplayed)
+		r.wait(time.Hour)
+		if got := offer(r, superseded, deny); got != auth.RefreshWriteLimited {
+			t.Fatalf("uitkomst %v", got)
+		}
+		r.sessionMustLive()
+		r.present(superseded, auth.RefreshReplayed)
+	})
+
 	t.Run("hergebruik vraagt de grens niet", func(t *testing.T) {
 		r, first := newRotation(t)
 		head := r.present(first, auth.RefreshOK)
 		r.present(head, auth.RefreshOK)
-		if got := offer(r, first, func(id.ID) bool { t.Fatal("hergebruik vroeg de grens"); return false }); got != auth.RefreshReused {
+		if got := offer(r, first, func(id.ID, auth.RefreshWrite) bool { t.Fatal("hergebruik vroeg de grens"); return false }); got != auth.RefreshReused {
 			t.Fatalf("uitkomst %v", got)
 		}
 		if r.isOpen() {
