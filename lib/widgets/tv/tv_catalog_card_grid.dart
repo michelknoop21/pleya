@@ -47,6 +47,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../focus/directional_focus_history.dart';
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 import '../../services/settings_service.dart';
@@ -529,19 +530,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final target = (index + direction * columns).clamp(0, ids.length - 1);
     if (target == index) return;
     final node = _nodes[ids[target]];
-    if (node != null && node.canRequestFocus) _focusCard(node);
-  }
-
-  /// Moves the focus to [node] from outside the directional traversal.
-  ///
-  /// LEFT and RIGHT go through that traversal, which keeps a history and answers
-  /// the opposite direction by popping it. The history belongs to the row just
-  /// left: kept, it sends the next LEFT back to a card rows away.
-  void _focusCard(FocusNode node) {
-    final context = node.context;
-    final scope = node.nearestScope;
-    if (context != null && scope != null) FocusTraversalGroup.maybeOf(context)?.invalidateScopeData(scope);
-    node.requestFocus();
+    if (node != null && node.canRequestFocus) requestFocusClearingDirectionalHistory(node);
   }
 
   /// Asks for the next page once the focus is within
@@ -575,7 +564,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   void focusGrid() {
     final remembered = _focusedId ?? _restoredId();
     final node = (remembered != null ? _nodes[remembered] : null) ?? _nodes[widget.itemIds.firstOrNull];
-    if (node != null && node.canRequestFocus) _focusCard(node);
+    if (node != null && node.canRequestFocus) requestFocusClearingDirectionalHistory(node);
   }
 
   /// Focuses the very first card, whatever was remembered, for a choice that
@@ -593,7 +582,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final node = _nodes[id];
     if (node == null || !node.canRequestFocus) return false;
     _focusedId = id;
-    _focusCard(node);
+    requestFocusClearingDirectionalHistory(node);
     return true;
   }
 
@@ -660,7 +649,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
       if (!mounted || _focusedId != replacement) return;
       final node = replacement == null ? null : _nodes[replacement];
       if (node != null && node.canRequestFocus) {
-        _focusCard(node);
+        requestFocusClearingDirectionalHistory(node);
       } else {
         // Nothing survived — an empty result after a filter change. Focus goes
         // back up to the controls, which is the only thing left to operate.

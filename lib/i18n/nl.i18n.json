@@ -109,6 +109,13 @@
     "checkFailed": "Kon niet controleren op updates"
   },
   "settings": {
+    "privacy": "Privacy",
+    "showTraktDiscussions": "Discussies van Trakt tonen",
+    "shareActivity": "Mijn activiteit delen",
+    "shareActivityDescription": "Anderen in het huishouden zien wat jij keek",
+    "shareActivityServer": "Mijn activiteit delen op ${server}",
+    "shareActivitySaveFailed": "Opslaan lukte niet. Er is niets gewijzigd.",
+    "shareActivityUnreadable": "Deze instelling is niet te lezen. Druk om het opnieuw te proberen.",
     "searchHint": "Zoek in instellingen",
     "urlLabel": "URL",
     "title": "Instellingen",
@@ -481,6 +488,8 @@
     "more": "Meer"
   },
   "mediaMenu": {
+    "addToPlaylistOrCollection": "Toevoegen aan afspeellijst / collectie",
+    "addToPlaylist": "Toevoegen aan afspeellijst",
     "watch": "Kijken",
     "manage": "Beheren",
     "moreWaysToWatch": "Meer manieren om te kijken",
@@ -848,6 +857,16 @@
     "reauthRequired": "Opnieuw aanmelden vereist"
   },
   "discover": {
+    "discussions": "Discussies",
+    "seasonBadge": "S${number}",
+    "commentLikes": {
+      "one": "${n} like",
+      "other": "${n} likes"
+    },
+    "moreActions": "Meer acties",
+    "audioStream": "Audiostream",
+    "subtitlesRow": "Ondertitels",
+    "manageTitle": "Beheren",
     "title": "Ontdekken",
     "forYou": "Voor jou",
     "switchProfile": "Wissel van profiel",
@@ -910,6 +929,8 @@
     "statsWatchTime": "${duration} bekeken",
     "statsRecent": "${count} in de laatste 30 dagen",
     "watchingSeriesBy": "Kijken deze serie: ${names}",
+    "activityBy": "Activiteit van ${names}",
+    "activityByYou": "jou",
     "activityPlays": "${count}× afgespeeld",
     "activityViewers": "${count} kijkers",
     "activityOwnProgress": "Jij bent bij S${season} A${episode}",
@@ -931,6 +952,13 @@
     "scoreRtCritics": "Rotten Tomatoes, critici",
     "scoreRtAudience": "Rotten Tomatoes, publiek",
     "scoreCommunity": "Communityscore",
+    "castAndCrew": "Cast & Crew",
+    "ratingsAndReviews": "Ratings & Reviews",
+    "seriesTab": "Serie",
+    "episodeBadge": "A${number}",
+    "directedBy": "Geregisseerd door ${names}",
+    "trailer": "Trailer",
+    "extra": "Extra",
     "reviews": "Recensies",
     "reviewOpenSource": "Lees bij de bron"
   },

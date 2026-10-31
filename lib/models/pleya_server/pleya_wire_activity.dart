@@ -53,3 +53,16 @@ class PleyaItemActivity {
     items: objectList(json['items'], 'items').map(PleyaItemActivityEntry.fromJson).toList(growable: false),
   );
 }
+
+/// `ActivitySharing`: whether this user shows up for the rest of the household.
+class PleyaActivitySharing {
+  const PleyaActivitySharing({required this.shareActivity});
+
+  final bool shareActivity;
+
+  factory PleyaActivitySharing.fromJson(Map<String, dynamic> json) =>
+      PleyaActivitySharing(shareActivity: boolean(json, 'share_activity'));
+
+  /// `ActivitySharingRequest` has the same one field and is a closed schema.
+  Map<String, dynamic> toRequest() => {'share_activity': shareActivity};
+}

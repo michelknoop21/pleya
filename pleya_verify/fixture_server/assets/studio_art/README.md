@@ -22,6 +22,10 @@ Studio. Ze stonden al in deze repo onder `docs/assets/ios-unified/detail-2026/`
 | `coffeerun-poster.jpg` | Coffee Run (2020) | Blender Studio | CC BY 4.0 | bijgesneden tot 532x798 |
 | `tears-backdrop.jpg`, `spring-backdrop.jpg`, `charge-backdrop.jpg`, `coffeerun-backdrop.jpg` | als de poster | als de poster | als de poster | 16:9-uitsnede uit het midden van de poster, opgeschaald naar 1280x720 |
 
+`charge-logo.png` is geen filmbeeld maar een titel in Impact op een transparante
+ondergrond, 600x164, gemaakt voor `catalog.detail-series.v1`: de fixture heeft een
+logo nodig om het seizoenscherm te tonen zoals de northstar het doet.
+
 Voor vier films bestaat in de repo geen breed beeld, vandaar de uitsnede uit de
 poster. Die is zachter dan een echte still; Sintel en Big Buck Bunny staan
 daarom vooraan in de rijen die de Studio-kop en de Home-hero lezen.

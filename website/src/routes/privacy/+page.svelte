@@ -403,6 +403,7 @@
               <li>Trakt is not available on children's profiles</li>
               <li>You can disconnect under Settings &gt; Trakt, which revokes the token at Trakt when Trakt can be reached</li>
             </ul>
+            <p>On a TV, a title's page can show public reactions from Trakt, with or without a Trakt account. Pleya asks Trakt with its own app key once you move down the page: Trakt receives the title's public IMDb or TMDB identifier and your IP address, never your account. Reactions are not shown on children's profiles. You can switch this off under Settings &gt; Advanced &gt; Privacy.</p>
             <p>Trakt's own privacy policy applies: <a href="https://trakt.tv/privacy" target="_blank" rel="noopener noreferrer">trakt.tv/privacy</a>. We do not control Trakt's data practices.</p>
           </div>
           <div class="well">
@@ -442,6 +443,7 @@
             <li>Plex services for authentication and media server communication, when signing in with Plex (as required for the app to function)</li>
             <li>Your self-hosted Jellyfin server, when signing in with Jellyfin (as required for the app to function)</li>
             <li>Trakt, if you connect your Trakt account and allow Pleya to send your watching</li>
+            <li>Trakt, when a title's page on a TV shows public reactions: the title's public identifier and your IP address, never your account</li>
             <li>MyAnimeList, AniList or Simkl, if you connect one: what you watch or mark as watched and the ratings you give</li>
             <li>Discord, when Discord Rich Presence is on: the title you are playing and how far along you are</li>
             <li>The AI provider you set up for Big P, as described under Big P, the Assistant</li>

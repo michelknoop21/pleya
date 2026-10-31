@@ -279,7 +279,14 @@ extension on MediaContextMenuState {
             mediaKind == MediaKind.movie ||
             mediaKind == MediaKind.show ||
             mediaKind == MediaKind.season)) {
-      menuActions.add(MediaMenuAction(value: 'add_to', icon: Symbols.add_rounded, label: t.common.addTo));
+      menuActions.add(
+        MediaMenuAction(
+          value: 'add_to',
+          icon: Symbols.add_rounded,
+          label: t.common.addTo,
+          panelLabel: canManageCollections ? t.mediaMenu.addToPlaylistOrCollection : t.mediaMenu.addToPlaylist,
+        ),
+      );
     }
 
     // Delete media item (for episodes, movies, shows, and seasons), admin

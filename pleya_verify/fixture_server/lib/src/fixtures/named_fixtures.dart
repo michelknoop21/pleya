@@ -9,6 +9,8 @@ import '../tautulli_fake_server.dart';
 import 'deterministic_png.dart';
 import 'studio_art.dart';
 
+part 'detail_fixtures.dart';
+
 /// The named fixtures Pleya Verify scenarios seed by name (`seed {fixture}`
 /// in the control plane — see `FixtureHttpServer`). Unknown names are the
 /// caller's problem, not this function's: it returns `false` rather than
@@ -62,6 +64,12 @@ bool applyNamedFixture(
       return true;
     case 'catalog.studio-art.v1':
       _applyCatalogStudioArtV1(server);
+      return true;
+    case 'catalog.detail-movie.v1':
+      _applyCatalogDetailMovieV1(server);
+      return true;
+    case 'catalog.detail-series.v1':
+      _applyCatalogDetailSeriesV1(server);
       return true;
     case 'watchlist.studio.v1':
       return _applyWatchlistStudioV1(server);

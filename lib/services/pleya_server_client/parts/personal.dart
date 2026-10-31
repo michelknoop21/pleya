@@ -71,6 +71,39 @@ mixin _PleyaServerPersonalMethods on _PleyaServerRequests {
     }
   }
 
+  /// [fetchItemActivity] in the shape every activity line reads, in the
+  /// server's own order.
+  Future<List<ItemWatcher>> fetchHouseholdActivity(String itemId) async => [
+    for (final entry in await fetchItemActivity(itemId))
+      ItemWatcher(
+        id: entry.userId,
+        displayName: entry.username,
+        initials: entry.initials,
+        viewedAt: entry.lastWatchedAt.millisecondsSinceEpoch ~/ 1000,
+        plays: entry.playCount,
+        isSelf: entry.isSelf,
+      ),
+  ];
+
+  Future<bool?> fetchActivitySharing() async {
+    if (!wireCapabilities.itemActivity) return null;
+    final json = await _getJson('/users/me/activity-sharing');
+    if (json == null) return null;
+    try {
+      return PleyaActivitySharing.fromJson(json).shareActivity;
+    } on PleyaWireFormatException catch (e) {
+      appLogger.d('PleyaServerClient: activity sharing is unreadable', error: e);
+      return null;
+    }
+  }
+
+  Future<bool> saveActivitySharing(bool share) async {
+    final body = PleyaActivitySharing(shareActivity: share).toRequest();
+    final json = await _adminSend('PUT', '/users/me/activity-sharing', body: body);
+    if (json == null) throw StateError('activity-sharing: no answer');
+    return PleyaActivitySharing.fromJson(json).shareActivity;
+  }
+
   /// The Pleya Verify fixture's kijklijst (`watchlist.studio.v1`): item ids,
   /// newest first. Only `WatchlistSourceFactory` in a `PLEYA_VERIFY` build
   /// asks; a real Pleya Server has no such route, and its 404 reads as empty.

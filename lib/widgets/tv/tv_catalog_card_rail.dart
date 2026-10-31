@@ -23,6 +23,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../focus/directional_focus_history.dart';
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_catalog_card_grid.dart';
@@ -46,6 +47,7 @@ class TvCatalogCardRail extends StatefulWidget {
     this.onBack,
     this.nodeDebugLabel = 'TvCatalogRailCard',
     this.cardWidthFactor = 1,
+    this.grid,
   });
 
   /// One stable id per card, in display order.
@@ -95,6 +97,11 @@ class TvCatalogCardRail extends StatefulWidget {
   /// Widens the cards beyond the poster grid's column width: a 16:9 card in a
   /// poster-wide slot is too small to read at three metres.
   final double cardWidthFactor;
+
+  /// A row with a card of its own instead of the catalog's poster column: film
+  /// detail runs portraits, review cards and trailers on one page. Null resolves
+  /// [TvCatalogGrid.forWidth], as every catalog surface does.
+  final TvCatalogGrid? grid;
 
   /// How close to the end the focus has to get before the next page is asked
   /// for, in cards.
@@ -153,7 +160,11 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     if (removed.isEmpty) return;
 
     final focusedId = _focusedId;
-    final losesFocus = focusedId != null && removed.contains(focusedId);
+    // [_focusedId] is also the memory of a rail the focus has left: a card that
+    // goes away from under a rail the remote is not on takes nothing with it,
+    // and rescuing it would pull the focus into this rail.
+    final losesFocus = focusedId != null && removed.contains(focusedId) && _nodes[focusedId]!.hasFocus;
+    if (focusedId != null && removed.contains(focusedId) && !losesFocus) _focusedId = null;
     // Measured against the *old* list: the neighbour a viewer expects is the
     // card that was next to theirs before the update, and the new list no
     // longer contains the position to measure from.
@@ -235,6 +246,33 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     return true;
   }
 
+  /// Puts the remote on the card [id], or reports that this rail does not have
+  /// it. The way back from a route that card opened (HERO7).
+  bool focusItem(String id) {
+    final index = widget.itemIds.indexOf(id);
+    return index >= 0 && focusColumn(index);
+  }
+
+  /// The built card nearest to [dx], a global x position, for a vertical step
+  /// between rows that do not share a column pitch. "Same index" is LAND4's
+  /// geometry rule only on one pitch: the second portrait sits under nothing
+  /// like the second review card.
+  bool focusNearest(double dx) {
+    FocusNode? nearest;
+    var best = double.infinity;
+    for (final node in _nodes.values) {
+      if (node.parent == null || !node.canRequestFocus) continue;
+      final distance = (node.rect.center.dx - dx).abs();
+      if (distance < best) {
+        best = distance;
+        nearest = node;
+      }
+    }
+    if (nearest == null) return false;
+    requestFocusClearingDirectionalHistory(nearest);
+    return true;
+  }
+
   bool get hasFocusableCard => _nodes.values.any((node) => node.canRequestFocus);
 
   /// LAND4's destination for a vertical step that left column [column].
@@ -269,16 +307,28 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     // this, LAND4 would hold only for the part of a rail that happens to be on
     // screen, which is the half of the bug that is hardest to see.
     if (!_controller.hasClients || _pitch <= 0) return false;
+    _jumpToColumn(target, attemptsLeft: 3);
+    return true;
+  }
+
+  /// A lazy list only estimates its extent from what it has built, so on a long
+  /// row the first jump can fall short of a far card: it is clamped to a maximum
+  /// that grows as the row gets built. Each frame then knows more.
+  void _jumpToColumn(int target, {required int attemptsLeft}) {
     final position = _controller.position;
     // At the row's inset, where [_reveal] keeps a card: no slide after the jump.
     final wanted = (target * _pitch).clamp(position.minScrollExtent, position.maxScrollExtent);
     _controller.jumpTo(wanted);
+    WidgetsBinding.instance.scheduleFrame();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || !_controller.hasClients || target >= widget.itemIds.length) return;
       final built = _nodes[widget.itemIds[target]];
-      if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
+      if (built != null && built.parent != null && built.canRequestFocus) {
+        built.requestFocus();
+      } else if (attemptsLeft > 0) {
+        _jumpToColumn(target, attemptsLeft: attemptsLeft - 1);
+      }
     });
-    return true;
   }
 
   void _focusIndex(int index) {
@@ -328,7 +378,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
     final width = MediaQuery.sizeOf(context).width;
-    final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
+    final grid = widget.grid ?? TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
     final cardWidth = grid.cardWidth * widget.cardWidthFactor;
     final cardHeight = widget.cardHeight(cardWidth);
     // The same reservation the grid pays above its first row, on both sides:

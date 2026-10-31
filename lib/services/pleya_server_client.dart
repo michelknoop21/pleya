@@ -6,12 +6,15 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
+import '../automation/pleya_verify.dart';
 import '../utils/continue_watching_merge.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
+import '../media/external_rating.dart';
 import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../media/ids.dart';
+import '../media/item_watcher.dart';
 import '../media/library_filter_result.dart';
 import '../media/media_filter.dart';
 import '../media/library_first_character.dart';
@@ -26,6 +29,8 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_playlist.dart';
+import '../media/media_review.dart';
+import '../media/media_role.dart';
 import '../media/media_server_client.dart';
 import '../media/media_sort.dart';
 import '../media/media_source_info.dart';
@@ -69,6 +74,7 @@ part 'pleya_server_client/parts/memory.dart';
 part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
+part 'pleya_server_client/parts/verify_detail.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
 ///
@@ -109,8 +115,9 @@ class PleyaServerClient
         _PleyaServerDownloadMethods,
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
+        _PleyaVerifyDetailMethods,
         ServerAuthorityGuard
-    implements MediaServerClient, FreshMediaItemClient, ScopedMediaServerClient, GracefullyCloseable {
+    implements FreshMediaItemClient, HouseholdActivityClient, ScopedMediaServerClient, GracefullyCloseable {
   @override
   Future<MediaItem?> fetchFreshItem(String id) async {
     if (!wireCapabilities.watchState) return null;

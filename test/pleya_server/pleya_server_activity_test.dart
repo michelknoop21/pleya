@@ -80,4 +80,60 @@ void main() {
 
     expect(await client.fetchItemActivity('movie-1'), isEmpty);
   });
+
+  test('the detail page reads the same answer as watchers, initials and all', () async {
+    final server = PleyaFakeServer(watchState: true)
+      ..itemActivityCapability = true
+      ..itemActivityByItem['movie-1'] = [entry('sam'), entry('michel', self: true)];
+    client = await connected(server);
+
+    final watchers = await client.fetchHouseholdActivity('movie-1');
+
+    expect(watchers.map((w) => w.displayName), ['sam', 'michel']);
+    expect(watchers.first.initials, 'S');
+    expect(watchers.first.plays, 2);
+    expect(watchers.first.viewedAt, DateTime.utc(2026, 10, 29, 20, 42).millisecondsSinceEpoch ~/ 1000);
+    expect(watchers.last.isSelf, isTrue);
+  });
+
+  group('activity sharing', () {
+    test('reads the choice, and a write sends the closed request and takes the answer', () async {
+      final server = PleyaFakeServer(watchState: true)
+        ..itemActivityCapability = true
+        ..activitySharing = false;
+      client = await connected(server);
+
+      expect(await client.fetchActivitySharing(), isFalse);
+      expect(await client.saveActivitySharing(true), isTrue);
+      expect(server.activitySharingWrites, [true]);
+      expect(await client.fetchActivitySharing(), isTrue);
+    });
+
+    test('a server without the flag is not read', () async {
+      final server = PleyaFakeServer(watchState: true);
+      client = await connected(server);
+
+      expect(await client.fetchActivitySharing(), isNull);
+    });
+
+    test('a read that fails is unknown, not off', () async {
+      final server = PleyaFakeServer(watchState: true)
+        ..itemActivityCapability = true
+        ..activitySharingReadFailureStatus = 500;
+      client = await connected(server);
+
+      expect(await client.fetchActivitySharing(), isNull);
+    });
+
+    test('a write that fails throws, and the server keeps what it had', () async {
+      final server = PleyaFakeServer(watchState: true)
+        ..itemActivityCapability = true
+        ..activitySharingWriteFailureStatus = 500;
+      client = await connected(server);
+
+      await expectLater(client.saveActivitySharing(false), throwsA(anything));
+      expect(server.activitySharing, isTrue);
+      expect(server.activitySharingWrites, isEmpty);
+    });
+  });
 }

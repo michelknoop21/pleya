@@ -51,9 +51,6 @@ void main() {
     // S20: de geschiedenispagina is een scherm voor later; favorieten, waardering
     // en spoorvoorkeur hebben wel een lezer.
     'HistoryPage',
-    // De opt-out krijgt een Dart-type met de instelling in de app (A-25).
-    'ActivitySharing',
-    'ActivitySharingRequest',
     'MetadataCoverage',
     'MetadataAlternative',
     'MetadataAttentionState',
@@ -176,6 +173,10 @@ void main() {
     'Library': (json) => PleyaLibrary.fromJson(json),
     'Item': (json) => PleyaItem.fromJson(json),
     'ItemActivity': (json) => PleyaItemActivity.fromJson(json),
+    'ActivitySharing': (json) => PleyaActivitySharing.fromJson(json),
+    'ActivitySharingRequest': (json) {
+      expect(PleyaActivitySharing.fromJson(json).toRequest(), json);
+    },
     'ItemPage': (json) => PleyaItemPage.fromJson(json),
     'UserState': (json) => PleyaUserState.fromJson(json),
     'WatchStatePage': (json) => PleyaWatchStateEntry.pageFromJson(json),

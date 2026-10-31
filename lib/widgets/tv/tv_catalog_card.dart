@@ -67,6 +67,8 @@ class TvCatalogCard extends StatefulWidget {
     this.aspectRatio = TvCatalogLayout.posterAspectRatio,
     this.titleLines = 2,
     this.overlay,
+    this.autoScroll = true,
+    this.centerFooter = false,
   });
 
   /// Resolved by the grid from the viewport, never assumed: see
@@ -150,6 +152,15 @@ class TvCatalogCard extends StatefulWidget {
   /// ([TvCatalogLayout.wideCardHeight]).
   final Widget? overlay;
 
+  /// Whether the focus scrolls the page to this card. Off where the page anchors
+  /// its rows itself: two owners of one scroll offset end wherever the last one
+  /// happened to land.
+  final bool autoScroll;
+
+  /// The two lines under the artwork centred and at regular weight, as film
+  /// detail draws them, instead of the catalog's left-aligned title.
+  final bool centerFooter;
+
   @override
   State<TvCatalogCard> createState() => _TvCatalogCardState();
 }
@@ -180,6 +191,7 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
         onSelect: widget.onSelect,
         onLongPress: widget.onContextMenu,
         enableLongPress: widget.onContextMenu != null,
+        autoScroll: widget.autoScroll,
         onFocusChange: (focused) {
           setState(() => _isFocused = focused);
           widget.onFocusChange?.call(focused);
@@ -273,6 +285,7 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
                     meta: widget.meta,
                     tertiary: widget.tertiary,
                     titleLines: widget.titleLines,
+                    centered: widget.centerFooter,
                     scale: scale,
                     tk: tk,
                   ),
@@ -313,12 +326,14 @@ class _Footer extends StatelessWidget {
     required this.meta,
     required this.tertiary,
     required this.titleLines,
+    required this.centered,
     required this.scale,
     required this.tk,
   });
 
   final String title;
   final int titleLines;
+  final bool centered;
 
   /// PB-10 (MOC-20): "titels onder posters" aan of uit. When off, the title
   /// line and its gap collapse rather than sitting blank, so meta and
@@ -344,7 +359,7 @@ class _Footer extends StatelessWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
           if (showTitle) ...[
             // Hoofdstuk 10.2: at most two lines — and always the height of two,
@@ -359,9 +374,10 @@ class _Footer extends StatelessWidget {
                 title,
                 maxLines: titleLines,
                 overflow: TextOverflow.ellipsis,
+                textAlign: centered ? TextAlign.center : null,
                 style: TextStyle(
                   fontSize: TvCatalogLayout.cardTitleFontSize * scale,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: centered ? FontWeight.w400 : FontWeight.w600,
                   color: tk.text.withValues(alpha: TvCatalogLayout.inkPrimary),
                   height: TvCatalogLayout.cardTitleLineHeight,
                 ),

@@ -57,7 +57,9 @@ class _WatchlistPanelState extends State<_WatchlistPanel> {
   Rect? _viewport() {
     final rail = _railKey.currentContext?.findRenderObject();
     if (rail is! RenderBox || !rail.attached || !rail.hasSize) return null;
-    return rail.localToGlobal(Offset.zero) & rail.size;
+    // Global, like the focus nodes it is compared with: under `_AppleTvScale` an
+    // offset and a size only meet after both went through the transform.
+    return MatrixUtils.transformRect(rail.getTransformTo(null), Offset.zero & rail.size);
   }
 
   /// Scrolls poster [index] into the rail when it is not built, the least
@@ -87,13 +89,15 @@ class _WatchlistPanelState extends State<_WatchlistPanel> {
   /// on the poster's own focus box, ring room included, against the rail.
   void _reveal(FocusNode node) {
     final rail = _railKey.currentContext?.findRenderObject();
-    if (!_controller.hasClients || rail is! RenderBox || !rail.hasSize) return;
-    final view = rail.localToGlobal(Offset.zero) & rail.size;
-    final poster = node.rect;
+    final box = node.context?.findRenderObject();
+    if (!_controller.hasClients || rail is! RenderBox || !rail.hasSize || box is! RenderBox) return;
+    // In the rail's own logical pixels, the units of [jumpTo]. Global ones carry
+    // `_AppleTvScale` and overshoot by it.
+    final poster = box.localToGlobal(Offset.zero, ancestor: rail) & box.size;
     final position = _controller.position;
     var delta = 0.0;
-    if (poster.right > view.right) delta = poster.right - view.right;
-    if (poster.left < view.left) delta = poster.left - view.left;
+    if (poster.right > rail.size.width) delta = poster.right - rail.size.width;
+    if (poster.left < 0) delta = poster.left;
     final target = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((target - position.pixels).abs() < 0.5) return;
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {

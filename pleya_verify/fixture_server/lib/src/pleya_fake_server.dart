@@ -74,6 +74,14 @@ class PleyaFakeServer {
   final List<String> itemActivityRequests = [];
   int? itemActivityFailureStatus;
 
+  /// `/users/me/activity-sharing`, under the same flag: what the requester
+  /// chose, each value a `PUT` sent, and the status a read or a write fails
+  /// with.
+  bool activitySharing = true;
+  final List<bool> activitySharingWrites = [];
+  int? activitySharingReadFailureStatus;
+  int? activitySharingWriteFailureStatus;
+
   /// BP-08b is opt-in so existing fixtures retain their old-server behavior.
   bool assistantMemoryCapability = false;
   final Map<String, String> _memoryAccessUsers = {};
@@ -189,6 +197,17 @@ class PleyaFakeServer {
   /// fixed bytes from [artworkById].
   final Map<String, List<int> Function(int width)> resizableArtwork = {};
 
+  /// What a real server cannot say over the protocol yet, per item or person
+  /// id: scores, reviews, portraits, a logo, extras, rows and tracks. Served at
+  /// `GET /verify/detail/{id}`, a route only a Verify build of the app asks for
+  /// (`lib/services/pleya_server_client/parts/verify_detail.dart`). It stays out
+  /// of the item itself so every item answer remains what the contract says.
+  final Map<String, Map<String, dynamic>> verifyDetail = {};
+
+  /// Trakt's answers, by path: `movies/{id}/comments/likes`, `search/tmdb/{id}`.
+  /// Served at `GET /verify/trakt/{path}`, where a Verify build reads them.
+  final Map<String, Object> verifyTrakt = {};
+
   /// version id -> playable bytes, auto-populated by [addItem] for every
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
@@ -293,6 +312,9 @@ class PleyaFakeServer {
     versionBytes.clear();
     seededIds.clear();
     verifyWatchlistIds.clear();
+    verifyDetail.clear();
+    verifyTrakt.clear();
+    itemActivityByItem.clear();
   }
 
   /// Clears every mutable field back to a fresh instance's state. Used by
@@ -306,9 +328,12 @@ class PleyaFakeServer {
     playbackPlanCapability = false;
     personalCapability = false;
     itemActivityCapability = false;
-    itemActivityByItem.clear();
     itemActivityRequests.clear();
     itemActivityFailureStatus = null;
+    activitySharing = true;
+    activitySharingWrites.clear();
+    activitySharingReadFailureStatus = null;
+    activitySharingWriteFailureStatus = null;
     assistantMemoryCapability = false;
     _memoryAccessUsers.clear();
     _memoryRefreshUsers.clear();
@@ -640,6 +665,13 @@ class PleyaFakeServer {
       }
       return _json(_mintTokenPair());
     }
+    // Trakt is read with an app key and no account, so these answer without a
+    // token: a client that sends one is the bug the scenario would miss.
+    if (path.startsWith('/verify/trakt/')) {
+      if (request.headers.containsKey('Authorization')) return _json(_error('auth.invalid_token'), status: 401);
+      final body = verifyTrakt[path.substring('/verify/trakt/'.length)];
+      return body == null ? _json(_error('library.not_found'), status: 404) : _json(body);
+    }
     final bearer = request.headers['Authorization'];
     final memoryUsername = _memoryAccessUsers[bearer];
     final expected = rejectCurrentAccessTokens ? null : 'Bearer at-$refreshCount';
@@ -722,6 +754,23 @@ class PleyaFakeServer {
       return _json({'items': itemActivityByItem[activityMatch.group(1)] ?? const []});
     }
 
+    if (path == '/users/me/activity-sharing') {
+      final write = request.method == 'PUT';
+      final failure = !itemActivityCapability
+          ? 404
+          : write
+          ? activitySharingWriteFailureStatus
+          : activitySharingReadFailureStatus;
+      if (failure != null) return _json(_error('library.not_found'), status: failure);
+      if (write) {
+        final share = (jsonDecode(request.body) as Map<String, dynamic>)['share_activity'];
+        if (share is! bool) return _json(_error('library.personal_invalid'), status: 400);
+        activitySharing = share;
+        activitySharingWrites.add(share);
+      }
+      return _json({'share_activity': activitySharing});
+    }
+
     if (personalCapability) {
       final personal = _personal(request, path);
       if (personal != null) return personal;
@@ -757,6 +806,10 @@ class PleyaFakeServer {
       });
     }
     if (path == '/verify/watchlist') return _json({'item_ids': verifyWatchlistIds});
+    if (path.startsWith('/verify/detail/')) {
+      final detail = verifyDetail[Uri.decodeComponent(path.substring('/verify/detail/'.length))];
+      return detail == null ? _json(_error('library.not_found'), status: 404) : _json(detail);
+    }
     if (path.startsWith('/artwork/')) {
       final id = Uri.decodeComponent(path.substring('/artwork/'.length));
       // A resizable artwork honours `?width=`, the way a real server does.

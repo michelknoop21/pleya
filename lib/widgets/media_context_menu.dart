@@ -208,7 +208,6 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     _isContextMenuOpen = true;
 
     final previousFocus = FocusManager.instance.primaryFocus;
-    bool didNavigate = false;
 
     final facts = _buildMenuFacts(context);
     final useBottomSheet = Platform.isIOS || Platform.isAndroid;
@@ -254,6 +253,27 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       );
     }
 
+    await _runThenRestoreFocus(context, selected, facts, previousFocus);
+  }
+
+  /// What the menu offers for its item, for a surface that draws the same rows
+  /// itself, such as Meer acties on TV.
+  List<MediaMenuAction> menuActions(BuildContext context) => _buildMenuFacts(context).actions;
+
+  /// Runs one of [menuActions] by its [MediaMenuAction.value], and hands the
+  /// focus back to [previousFocus] unless the action navigated.
+  Future<void> runMenuAction(BuildContext context, String? selected, {FocusNode? previousFocus}) async {
+    if (!context.mounted) return;
+    await _runThenRestoreFocus(context, selected, _buildMenuFacts(context), previousFocus);
+  }
+
+  Future<void> _runThenRestoreFocus(
+    BuildContext context,
+    String? selected,
+    _MenuFacts facts,
+    FocusNode? previousFocus,
+  ) async {
+    bool didNavigate = false;
     try {
       if (!context.mounted) return;
 

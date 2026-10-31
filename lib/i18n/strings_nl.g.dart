@@ -268,6 +268,13 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get privacy => 'Privacy';
+	@override String get showTraktDiscussions => 'Discussies van Trakt tonen';
+	@override String get shareActivity => 'Mijn activiteit delen';
+	@override String get shareActivityDescription => 'Anderen in het huishouden zien wat jij keek';
+	@override String shareActivityServer({required Object server}) => 'Mijn activiteit delen op ${server}';
+	@override String get shareActivitySaveFailed => 'Opslaan lukte niet. Er is niets gewijzigd.';
+	@override String get shareActivityUnreadable => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.';
 	@override String get searchHint => 'Zoek in instellingen';
 	@override String get urlLabel => 'URL';
 	@override String get title => 'Instellingen';
@@ -634,6 +641,8 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get addToPlaylistOrCollection => 'Toevoegen aan afspeellijst / collectie';
+	@override String get addToPlaylist => 'Toevoegen aan afspeellijst';
 	@override String get watch => 'Kijken';
 	@override String get manage => 'Beheren';
 	@override String get moreWaysToWatch => 'Meer manieren om te kijken';
@@ -1039,6 +1048,16 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get discussions => 'Discussies';
+	@override String seasonBadge({required Object number}) => 'S${number}';
+	@override String commentLikes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '${n} like',
+		other: '${n} likes',
+	);
+	@override String get moreActions => 'Meer acties';
+	@override String get audioStream => 'Audiostream';
+	@override String get subtitlesRow => 'Ondertitels';
+	@override String get manageTitle => 'Beheren';
 	@override String get title => 'Ontdekken';
 	@override String get forYou => 'Voor jou';
 	@override String get switchProfile => 'Wissel van profiel';
@@ -1095,6 +1114,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
 	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+	@override String activityBy({required Object names}) => 'Activiteit van ${names}';
+	@override String get activityByYou => 'jou';
 	@override String activityPlays({required Object count}) => '${count}× afgespeeld';
 	@override String activityViewers({required Object count}) => '${count} kijkers';
 	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
@@ -1116,6 +1137,13 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get scoreRtCritics => 'Rotten Tomatoes, critici';
 	@override String get scoreRtAudience => 'Rotten Tomatoes, publiek';
 	@override String get scoreCommunity => 'Communityscore';
+	@override String get castAndCrew => 'Cast & Crew';
+	@override String get ratingsAndReviews => 'Ratings & Reviews';
+	@override String get seriesTab => 'Serie';
+	@override String episodeBadge({required Object number}) => 'A${number}';
+	@override String directedBy({required Object names}) => 'Geregisseerd door ${names}';
+	@override String get trailer => 'Trailer';
+	@override String get extra => 'Extra';
 	@override String get reviews => 'Recensies';
 	@override String get reviewOpenSource => 'Lees bij de bron';
 }
@@ -4679,6 +4707,13 @@ extension on TranslationsNl {
 			'update.viewRelease' => 'Bekijk release',
 			'update.latestVersion' => 'Je hebt de nieuwste versie',
 			'update.checkFailed' => 'Kon niet controleren op updates',
+			'settings.privacy' => 'Privacy',
+			'settings.showTraktDiscussions' => 'Discussies van Trakt tonen',
+			'settings.shareActivity' => 'Mijn activiteit delen',
+			'settings.shareActivityDescription' => 'Anderen in het huishouden zien wat jij keek',
+			'settings.shareActivityServer' => ({required Object server}) => 'Mijn activiteit delen op ${server}',
+			'settings.shareActivitySaveFailed' => 'Opslaan lukte niet. Er is niets gewijzigd.',
+			'settings.shareActivityUnreadable' => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.',
 			'settings.searchHint' => 'Zoek in instellingen',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Instellingen',
@@ -5033,6 +5068,8 @@ extension on TranslationsNl {
 			'detailActions.watched' => 'Bekeken',
 			'detailActions.download' => 'Downloaden',
 			'detailActions.more' => 'Meer',
+			'mediaMenu.addToPlaylistOrCollection' => 'Toevoegen aan afspeellijst / collectie',
+			'mediaMenu.addToPlaylist' => 'Toevoegen aan afspeellijst',
 			'mediaMenu.watch' => 'Kijken',
 			'mediaMenu.manage' => 'Beheren',
 			'mediaMenu.moreWaysToWatch' => 'Meer manieren om te kijken',
@@ -5085,6 +5122,8 @@ extension on TranslationsNl {
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
@@ -5094,8 +5133,6 @@ extension on TranslationsNl {
 			'videoControls.noOffset' => 'Geen offset',
 			'videoControls.letterbox' => 'Letterbox',
 			'videoControls.fillScreen' => 'Vul scherm',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.stretch' => 'Uitrekken',
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
@@ -5374,6 +5411,13 @@ extension on TranslationsNl {
 			'connections.disconnectServer' => 'Verbinding verbreken',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Verbinding met "${name}" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.',
 			'connections.reauthRequired' => 'Opnieuw aanmelden vereist',
+			'discover.discussions' => 'Discussies',
+			'discover.seasonBadge' => ({required Object number}) => 'S${number}',
+			'discover.commentLikes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '${n} like', other: '${n} likes', ), 
+			'discover.moreActions' => 'Meer acties',
+			'discover.audioStream' => 'Audiostream',
+			'discover.subtitlesRow' => 'Ondertitels',
+			'discover.manageTitle' => 'Beheren',
 			'discover.title' => 'Ontdekken',
 			'discover.forYou' => 'Voor jou',
 			'discover.switchProfile' => 'Wissel van profiel',
@@ -5434,6 +5478,8 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'discover.activityBy' => ({required Object names}) => 'Activiteit van ${names}',
+			'discover.activityByYou' => 'jou',
 			'discover.activityPlays' => ({required Object count}) => '${count}× afgespeeld',
 			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
@@ -5449,6 +5495,13 @@ extension on TranslationsNl {
 			'discover.scoreRtCritics' => 'Rotten Tomatoes, critici',
 			'discover.scoreRtAudience' => 'Rotten Tomatoes, publiek',
 			'discover.scoreCommunity' => 'Communityscore',
+			'discover.castAndCrew' => 'Cast & Crew',
+			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.seriesTab' => 'Serie',
+			'discover.episodeBadge' => ({required Object number}) => 'A${number}',
+			'discover.directedBy' => ({required Object names}) => 'Geregisseerd door ${names}',
+			'discover.trailer' => 'Trailer',
+			'discover.extra' => 'Extra',
 			'discover.reviews' => 'Recensies',
 			'discover.reviewOpenSource' => 'Lees bij de bron',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
@@ -5583,6 +5636,8 @@ extension on TranslationsNl {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
+			_ => null,
+		} ?? switch (path) {
 			'about.licence' => 'Licentie',
 			'about.sources' => 'Bronnen',
 			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.',
@@ -5608,8 +5663,6 @@ extension on TranslationsNl {
 			'logs.clearLogs' => 'Wis logs',
 			'logs.copyLogs' => 'Kopieer logs',
 			'logs.uploadLogs' => 'Logs uploaden',
-			_ => null,
-		} ?? switch (path) {
 			'logs.refreshLogs' => 'Verversen',
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
@@ -6097,6 +6150,8 @@ extension on TranslationsNl {
 			'externalPlayer.playerNameHint' => 'Mijn speler',
 			'externalPlayer.playerCommand' => 'Commando',
 			'externalPlayer.playerPackage' => 'Pakketnaam',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL-schema',
 			'externalPlayer.off' => 'Uit',
 			'externalPlayer.launchFailed' => 'Kan externe speler niet openen',
@@ -6122,8 +6177,6 @@ extension on TranslationsNl {
 			'metadataEdit.selectPoster' => 'Poster selecteren',
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
@@ -6611,6 +6664,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
@@ -6636,8 +6691,6 @@ extension on TranslationsNl {
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
 			'unifiedCatalog.filters.title' => 'Filters',
 			'unifiedCatalog.filters.status' => 'Status',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Jaar',
 			'unifiedCatalog.filters.contentRating' => 'Leeftijd',
@@ -7125,6 +7178,8 @@ extension on TranslationsNl {
 			'assistant.examples.trending.0' => 'Wat is er nu populair?',
 			'assistant.examples.trending.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.examples.request.0' => 'Welke thrillers van dit jaar kan ik aan mijn bibliotheek toevoegen?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Zoek een sciencefictionserie die het aanvragen waard is.',
 			'assistant.examples.trakt.0' => 'Welke titels van mijn Trakt-kijklijst kan ik hier vanavond kijken?',
 			'assistant.examples.history.0' => 'Wat heb ik de laatste tijd gekeken?',
@@ -7150,8 +7205,6 @@ extension on TranslationsNl {
 			'assistant.working.busy' => 'Bezig met je vraag…',
 			'assistant.working.stillChecking' => 'Tot nu toe gevonden. Big P controleert nog…',
 			'assistant.steps.withServer' => ({required Object server, required Object step}) => '${server} · ${step}',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.steps.listServers' => 'Servers controleren',
 			'assistant.steps.listLibraries' => 'Bibliotheken ophalen',
 			'assistant.steps.findMedia' => 'Titel zoeken',

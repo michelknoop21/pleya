@@ -10,6 +10,7 @@ class MediaMenuAction {
     this.destructive = false,
     this.subtitle,
     this.active = false,
+    this.panelLabel,
   });
 
   final String value;
@@ -20,4 +21,8 @@ class MediaMenuAction {
 
   /// The state this row switches off is on: already on the watchlist.
   final bool active;
+
+  /// What a side panel says where a row has room for more than the menu's
+  /// [label].
+  final String? panelLabel;
 }

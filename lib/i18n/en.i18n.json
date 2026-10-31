@@ -109,6 +109,13 @@
     "checkFailed": "Failed to check for updates"
   },
   "settings": {
+    "privacy": "Privacy",
+    "showTraktDiscussions": "Show discussions from Trakt",
+    "shareActivity": "Share my activity",
+    "shareActivityDescription": "Others in the household see what you watched",
+    "shareActivityServer": "Share my activity on ${server}",
+    "shareActivitySaveFailed": "Could not save this. Nothing changed.",
+    "shareActivityUnreadable": "Could not read this setting. Press to try again.",
     "searchHint": "Search settings",
     "urlLabel": "URL",
     "title": "Settings",
@@ -481,6 +488,8 @@
     "more": "More"
   },
   "mediaMenu": {
+    "addToPlaylistOrCollection": "Add to Playlist / Collection",
+    "addToPlaylist": "Add to Playlist",
     "watch": "Watch",
     "manage": "Manage",
     "moreWaysToWatch": "More Ways to Watch",
@@ -848,6 +857,16 @@
     "reauthRequired": "Sign-in required"
   },
   "discover": {
+    "discussions": "Discussions",
+    "seasonBadge": "S${number}",
+    "commentLikes": {
+      "one": "${n} like",
+      "other": "${n} likes"
+    },
+    "moreActions": "More actions",
+    "audioStream": "Audio stream",
+    "subtitlesRow": "Subtitles",
+    "manageTitle": "Manage",
     "title": "Discover",
     "forYou": "For you",
     "switchProfile": "Switch Profile",
@@ -910,6 +929,8 @@
     "statsWatchTime": "${duration} watched",
     "statsRecent": "${count} in the last 30 days",
     "watchingSeriesBy": "Watching this show: ${names}",
+    "activityBy": "Activity by ${names}",
+    "activityByYou": "you",
     "activityPlays": "Played ${count}×",
     "activityViewers": "${count} viewers",
     "activityOwnProgress": "You're at S${season} E${episode}",
@@ -931,6 +952,13 @@
     "scoreRtCritics": "Rotten Tomatoes critics",
     "scoreRtAudience": "Rotten Tomatoes audience",
     "scoreCommunity": "Community score",
+    "castAndCrew": "Cast & Crew",
+    "ratingsAndReviews": "Ratings & Reviews",
+    "seriesTab": "Series",
+    "episodeBadge": "E${number}",
+    "directedBy": "Directed by ${names}",
+    "trailer": "Trailer",
+    "extra": "Extra",
     "reviews": "Reviews",
     "reviewOpenSource": "Read at source"
   },
