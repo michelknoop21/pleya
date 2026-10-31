@@ -64,7 +64,6 @@ mixin _PleyaServerUnsupportedMethods {
   /// Related titles need genres and people, which arrive in PS-7.
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => const [];
 
-
   /// Media mounts are read-only from v1 on, by design and by threat model.
   /// This is not a missing phase; it is a decision.
   Future<bool> deleteMediaItem(MediaItem item) async => false;

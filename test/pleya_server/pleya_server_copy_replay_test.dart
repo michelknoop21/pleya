@@ -26,7 +26,10 @@ void main() {
   late OfflineWatchSyncService queue;
   const length = 6720000;
 
-  Future<void> connect({Map<String, dynamic>? userState}) async {
+  Future<void> connect({
+    Map<String, dynamic>? userState,
+    http.Client Function(PleyaFakeServer server)? transport,
+  }) async {
     server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
     server.addLibrary(id: 'lib-films', title: 'Films', kind: 'movies');
     server.addItem(
@@ -37,7 +40,9 @@ void main() {
       durationMs: length,
       userState: userState,
     );
-    client = server.client();
+    client = transport == null
+        ? server.client()
+        : PleyaServerClient.create(server.connection(), httpClientFactory: () => transport(server));
     await client.refreshCapabilities();
     addTearDown(client.close);
     manager
@@ -329,9 +334,9 @@ void main() {
       ('a 409', 409, 'conflict'),
     ]) {
       test('$name keeps the row', () async {
-        await connect();
+        // On every refresh: the session waits out a single 429 itself.
+        await connect(transport: (server) => _FailingRefresh(server, status, code));
         await mirrored(watched: true);
-        server.queueFailure(pathPrefix: '/auth/refresh', status: status, errorCode: code);
 
         await queue.syncPendingItems();
 
