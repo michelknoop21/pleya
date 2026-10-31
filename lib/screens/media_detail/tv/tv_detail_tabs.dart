@@ -49,8 +49,9 @@ extension _MediaDetailTvTabs on _MediaDetailScreenState {
           focusNode: _seasonTabFocusNodes[i],
           seasonIndex: i,
         )
-    // A first load that failed still needs a tab: the way back is under it.
-    else if (_episodes.isNotEmpty || _episodeListPageError)
+    // A first load that failed still needs a tab, the way back is under it, and
+    // so does the next try while it runs: the focus stands on that tab.
+    else if (_episodes.isNotEmpty || _episodeListPageError || _allEpisodes.isInitialLoading)
       _TvDetailTab(
         id: _tvDetailEpisodesTabId,
         label: t.libraries.groupings.episodes,
@@ -71,7 +72,13 @@ extension _MediaDetailTvTabs on _MediaDetailScreenState {
       _tvDetailFocusedEpisode = null;
     });
     final seasonIndex = tab.seasonIndex;
-    if (seasonIndex == null || seasonIndex == _selectedSeasonIndex) return;
+    if (seasonIndex == null) return;
+    if (seasonIndex == _selectedSeasonIndex) {
+      // Back on the same season, by way of Serie. A page that never came gets
+      // its next try here.
+      if (_episodes.isEmpty) unawaited(_fetchSeasonEpisodes(seasonIndex));
+      return;
+    }
     // The list goes with the tab: until the first page is in, nothing under this
     // tab may be an episode of the season before it, for Select and Play alike.
     setStateIfMounted(() {

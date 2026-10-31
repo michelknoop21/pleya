@@ -36,7 +36,7 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     final pt = TvHig.of(context);
     final iconSize = TvHig.body * pt;
     final play = model.of(_DetailActionKind.play)!;
-    final onPlay = _tvDetailSeasonPending(metadata) ? null : play.onPressed;
+    final onPlay = _tvDetailPlayAction(metadata, play.onPressed);
     // A series resumes into an episode, so that is what the ring reads.
     final target = _tvDetailResumeTarget(metadata);
     final resumable = (target?.viewOffsetMs ?? 0) > 0;
@@ -158,10 +158,18 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     );
   }
 
-  /// A season tab whose first page is still on its way. Play has nothing of this
-  /// season to start yet, and its fallback is the first episode of the series.
-  bool _tvDetailSeasonPending(MediaItem target) =>
+  /// A season tab with no episode of its own in hand, for whatever reason. Play
+  /// must not fall back here: that fallback is the first episode of the series.
+  bool _tvDetailSeasonHasNoEpisode(MediaItem target) =>
       target.isSeason && target.id != _metadata.id && _seasonNextEpisode == null;
+
+  /// Off while the page is on its way or its retry card stands in the row, both
+  /// of which say so themselves. A season that really is empty says why.
+  VoidCallback? _tvDetailPlayAction(MediaItem target, VoidCallback? play) {
+    if (!_tvDetailSeasonHasNoEpisode(target)) return play;
+    if (_isLoadingSeasonEpisodes || _seasonEpisodesFirstPageError) return null;
+    return () => showAppSnackBar(context, t.messages.noEpisodesFoundGeneral);
+  }
 
   /// What Play starts, for the ring and the restart button.
   MediaItem? _tvDetailResumeTarget(MediaItem metadata) {

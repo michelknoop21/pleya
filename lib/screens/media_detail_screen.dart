@@ -2037,18 +2037,20 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
           start: 0,
           size: _episodesPageSize,
         );
-        if (!mounted || generation != _episodesLoadGeneration) return;
+        if (!mounted || !_seasonPageStillAwaited(seasonId, generation)) return;
         _completeSeasonEpisodesLoad(
           seasonIndex: seasonIndex,
           seasonId: seasonId,
           episodes: page.items,
           total: page.totalCount,
-          generation: generation,
+          generation: _episodesLoadGeneration,
         );
       }
     } catch (e, st) {
       appLogger.w('Season episodes load failed', error: e, stackTrace: st);
-      if (mounted && generation == _episodesLoadGeneration && _isSelectedSeason(seasonIndex, seasonId)) {
+      // Whoever started it: this season was left waiting for this answer, and a
+      // tab that stays on "loading" has no retry.
+      if (mounted && _isSelectedSeason(seasonIndex, seasonId)) {
         setStateIfMounted(() {
           _seasonEpisodePager.failFirstPage(seasonId);
         });
@@ -2057,6 +2059,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       _seasonEpisodePager.endFirstPageLoad(seasonId);
     }
   }
+
+  /// Whether an answer may still land. A newer generation only overtakes a season
+  /// that has something to show: one still on its first page is waiting for
+  /// exactly this answer, and walking the tabs fast must not leave it empty.
+  bool _seasonPageStillAwaited(String seasonId, int generation) =>
+      generation == _episodesLoadGeneration || _seasonEpisodePager.stateFor(seasonId).isInitialLoading;
 
   /// TV-only quality-of-life prefetch: warm just the first page of the adjacent
   /// seasons so horizontal season rail changes feel instant without reverting to
