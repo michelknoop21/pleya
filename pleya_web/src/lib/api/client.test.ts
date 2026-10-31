@@ -1227,6 +1227,98 @@ describe('een oude websessie stapt over op de cookie', () => {
     expect(server.seen).toEqual([]);
   });
 
+  /** De overstap blijft onderweg tot `answer()`, en logout gaat zoals `logout` zegt. */
+  function pendingUpgrade(persistent: TokenStorage, logout: () => Promise<Response>) {
+    const seen: { path: string; auth: string | null }[] = [];
+    let answer = () => {};
+    const answered = new Promise<void>((resolve) => { answer = resolve; });
+    const tokens = new TokenStore(persistent, memoryStorage());
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks: null,
+      fetch: (async (input: RequestInfo | URL) => {
+        const request = input as Request;
+        const path = new URL(request.url).pathname.replace('/pleya/v1', '');
+        if (path === '/info') return json({ capabilities });
+        seen.push({ path, auth: request.headers.get('Authorization') });
+        if (path === '/auth/logout') return logout();
+        await answered;
+        return json({ access_token: 'A2', token_type: 'bearer', expires_in_ms: 900_000 });
+      }) as FetchLike
+    });
+    return { client, tokens, seen, answer };
+  }
+
+  it('afmelden tijdens de overstap sluit de sessie die de cookie nog kreeg', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const { client, seen, answer } = pendingUpgrade(persistent, async () => new Response(null, { status: 204 }));
+    await client.info();
+    const restoring = client.restore();
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+
+    await client.signOut({ remote: true });
+    answer();
+    await expect(restoring).resolves.toBe(false);
+
+    await vi.waitFor(() => expect(seen[1]).toEqual({ path: '/auth/logout', auth: 'Bearer A2' }));
+  });
+
+  it('ook als die afmelding niet aankomt, logt een herlaadbeurt niet stil weer in', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const { client, seen, answer } = pendingUpgrade(persistent, async () => { throw new TypeError('Failed to fetch'); });
+    await client.info();
+    const restoring = client.restore();
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    await client.signOut({ remote: true });
+    answer();
+    await restoring;
+    await vi.waitFor(() => expect(seen).toHaveLength(2));
+
+    const server = refreshServer();
+    const reloaded = tab(persistent, server);
+    await reloaded.client.info();
+    await expect(reloaded.client.restore()).resolves.toBe(false);
+    expect(server.seen).toEqual([]);
+  });
+
+  it('een nieuwe login tijdens de overstap wordt niet afgemeld door het late antwoord', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const { client, tokens, seen, answer } = pendingUpgrade(persistent, async () => new Response(null, { status: 204 }));
+    await client.info();
+    const restoring = client.restore();
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    await client.signOut();
+    tokens.set({ access_token: 'nieuwe-login', expires_in_ms: 900_000 });
+
+    answer();
+    await restoring;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    expect(seen.map((call) => call.path)).toEqual(['/auth/refresh']);
+  });
+
+  it('een overstap die mislukte telt niet meer mee bij afmelden', async () => {
+    const tokens = new TokenStore(memoryStorage({ 'pleya.refresh_token': 'R1' }), memoryStorage());
+    const client = new PleyaClient({
+      baseUrl: BASE, tokens, locks: null,
+      fetch: (async (input: RequestInfo | URL) => (input as Request).url.endsWith('/info')
+        ? json({ capabilities })
+        : json({ error: { code: 'server.internal', message: 'stuk', retryable: true } }, 503)) as FetchLike
+    });
+    await client.info();
+    await expect(client.restore()).resolves.toBe(false);
+
+    await client.signOut();
+
+    expect(tokens.signedOut).toBe(false);
+  });
+
+  it('afmelden zonder overstap onderweg zet geen marker, in tokenmodus is er niets te bewaken', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const { client, tokens } = pendingUpgrade(persistent, async () => new Response(null, { status: 204 }));
+    await client.signOut();
+    expect(tokens.signedOut).toBe(false);
+  });
+
   it('valt terug op het token als deze origin geen cookie mag: de sessie werkte al zonder', async () => {
     const seen: Record<string, unknown>[] = [];
     const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });

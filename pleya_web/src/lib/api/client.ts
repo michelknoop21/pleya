@@ -275,7 +275,9 @@ export class PleyaClient {
     // In cookiemodus is een verlopen accesstoken geen reden om de sessie te laten leven: de cookie is
     // voor JavaScript niet te wissen, en de volgende herlaadbeurt zou er weer mee inloggen.
     if (options.remote && this.#cookieAuth && !this.tokens.accessToken) await this.bearer();
-    let closed = !this.#cookieAuth;
+    // Een overstap die nog onderweg is zet zo meteen een cookie. Hem afmelden kan pas met zijn antwoord,
+    // dus de marker blijft staan, ook als die afmelding niet aankomt.
+    let closed = !this.#cookieAuth && !this.#refresher.upgrading;
     if (options.remote && this.tokens.accessToken) {
       try {
         const { response } = await this.#raw.POST('/auth/logout', {});

@@ -90,6 +90,7 @@ export class TokenRefresher {
   #unavailable = false;
   #refused: ApiError | null = null;
   #upgradeRefused = false;
+  #upgrades = 0;
 
   constructor(host: RefreshHost) {
     this.#host = host;
@@ -99,6 +100,9 @@ export class TokenRefresher {
   get unavailable(): boolean { return this.#unavailable; }
   /** De server weigerde deze verversing om iets dat herhalen niet oplost, zoals `auth.origin_rejected`. De sessie bestaat nog. */
   get refused(): ApiError | null { return this.#refused; }
+
+  /** Er loopt een `cookie_upgrade`: de browser kan zo een cookie krijgen, al staat deze client nog op een token. */
+  get upgrading(): boolean { return this.#upgrades > 0; }
 
   /** Een oordeel over een vorige ronde zegt niets over de volgende. */
   clearFailure(): void {
@@ -203,8 +207,13 @@ export class TokenRefresher {
     }
     const upgrade = !host.cookieAuth && host.supportsUpgrade && !this.#upgradeRefused;
     const body = this.#body(upgrade);
-    const { data, error, response } = await withTimeout(host.timeoutMs, (signal) => host.raw.POST('/auth/refresh', { body, signal }));
-    if (generation !== host.generation) return false;
+    if (upgrade) this.#upgrades += 1;
+    const { data, error, response } = await withTimeout(host.timeoutMs, (signal) => host.raw.POST('/auth/refresh', { body, signal }))
+      .finally(() => { if (upgrade) this.#upgrades -= 1; });
+    if (generation !== host.generation) {
+      if (upgrade && data) this.#closeAbandoned(data.access_token);
+      return false;
+    }
     if (response.status === 429) {
       // Geen sessieverlies: de server heeft niets geroteerd en het token is nog goed. Tokens blijven
       // staan, ook als deze ronde opgeeft; de aanvraag die erop wachtte faalt en de volgende probeert het.
@@ -244,6 +253,17 @@ export class TokenRefresher {
     }
     host.tokens.set(data);
     return true;
+  }
+
+  /**
+   * De overstap kwam aan nadat deze client de sessie verliet. De cookie staat dan al in de browser,
+   * en die is na een herlaadbeurt weer een sessie. Met een token van een nieuwe login in de client
+   * blijft dit achterwege: de middleware zou dan die sessie afmelden en niet deze.
+   */
+  #closeAbandoned(accessToken: string): void {
+    const { raw, tokens } = this.#host;
+    if (tokens.accessToken) return;
+    void raw.POST('/auth/logout', { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => undefined);
   }
 
   // Elke poging leest het token opnieuw: een ander tabblad kan het tijdens het wachten geroteerd hebben.
