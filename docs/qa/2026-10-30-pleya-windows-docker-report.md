@@ -2,7 +2,32 @@
 
 Status: lokaal bewijs op een tijdelijke stack. Geen push, merge, deployment of echte migratie. De NAS, productie en Plex zijn niet aangeraakt.
 
-De eindstand staat onder "Review van de volledige branch". De tabellen daarvoor beschrijven de eerste ronde op `84174b1bb`, voor zover daar niet anders staat.
+De eindstand staat onder "Eindstand op 4848e0724". De tabellen daarvoor beschrijven de eerste ronde op `84174b1bb`, voor zover daar niet anders staat.
+
+## Eindstand op 4848e0724
+
+Eindbewijs op `4848e07246f92c0b312b55d9613e7539f4e276c5`, lokaal, niet gepusht, gemerged of gedeployed. Image `pleya-server:cand-4848e0724`, `sha256:9a16b9ef6c27181f89d302d82b1ce6749ab1a56dd5220ce0cd29989aa429be7b`, linux/amd64, ffmpeg 5.1.9, pg_dump 18.6. De commit met dit document wijzigt daarna alleen documenten, dus het bewijs hieronder geldt ook voor de code daarvan.
+
+| Onderdeel | Uitkomst |
+|---|---|
+| Go, wegwerp-Postgres 18.6, `-p 1 -count=1` | 1637 PASS, 0 SKIP, 0 FAIL, 29 pakketten |
+| Web | `bun run check` 959 bestanden, 0 fouten, 0 waarschuwingen; vitest 111 bestanden, 1206 tests groen |
+| Contract | `scripts/check_protocol.sh` en `bun run api:check` groen |
+| E2E, Chromium, verse stack met `PLEYA_E2E_PERSONAL=1` | 90 geslaagd, 0 gefaald, 1 overgeslagen (eerste setup in `auth.spec.ts`, alleen geldig op een stack zonder eigenaar; op een eerdere verse stack geslaagd). `unreachable.spec.ts:26` en `:70` groen |
+| Journey 11 | Playwright en live Flutter groen |
+| `scripts/ci_checks.sh` (echte hook) | 6 PASS, 3 SKIP (boombrede `dart_code_linter`-scans, draaien in CI) |
+| `flutter test` (volledig) | 13310 geslaagd, ongeveer 245 overgeslagen, 89 gefaald |
+
+**Goldens.** De 89 fouten zijn allemaal `Pixel test failed` bij een golden-vergelijking op macOS. Dezelfde 17 testbestanden op de merge-base `def94ab2d` geven exact dezelfde 89 goldens met dezelfde percentages en pixelaantallen (`diff` van 0 regels). Deze branch verandert die uitkomst dus niet. Niet bewezen: dat het allemaal macOS-tegen-Linux-rendering is. CI op Linux is niet gedraaid.
+
+**Sinds `86b608937`.** Vijf correcties: een dood refreshtoken telt op een eigen emmer en niet op die van de sessie, een rotatie neemt eerst de sessie en dan de tokens (geen `deadlock detected` meer), "Je bent nog ingelogd" werkt ook voor een cookiesessie, Opnieuw op een ondertitel wacht bewust de 15 s uit en vraagt daarna meteen, en de plaatshouder `Unknown device` komt vertaald in beeld. De laatste commit is een commentaarcorrectie in `handlers_refresh.go`. Hoofdstuk 6.3 van `docs/pleya-protocol-v1.md` zegt daarom dat een ingetrokken token per token telt; `openapi.yaml` is niet geraakt.
+
+**Open punten uit de laatste review.**
+- Een lus op een dood token kan tot ongeveer 45 rijen per seconde in de tabel schrijven (90 herhalingen in het respijt, de sessie-emmer levert elke 2 s een nieuw dood token) in plaats van 0,5. Geen uitlog; de rijen blijven tot `expires_at`. Het commentaar zegt dit nu eerlijk.
+- Twee tabbladgevallen rond "Je bent nog ingelogd": een verlaten tabblad wist bij `loseSession` de aantekening van een nieuwe login in een ander tabblad, en na uitloggen in tab A toont tab B bij een storing nog "nog ingelogd" tot zijn accesstoken verloopt.
+- `PurgeExpiredRefreshTokens` neemt tokenrijen zonder sessieslot. Niet aangetoond; het gevolg is hooguit één mislukte aanvraag.
+
+**Niet gedraaid.** Playwright-project `mobile`, de live NAS, toestellen, Windows op deze commit, een echte browser op het tabbladslot, de `dart_code_linter`-scans en Flutter-goldens op Linux. `deferred_subtitle_loader_test.dart` viel één keer tijdens een parallelle Go-run en daarna niet meer, ook niet op deze commit. Tijdgevoelig vermoed, niet aangetoond.
 
 ## Wat er getest is
 
@@ -136,7 +161,7 @@ Pleya Server en Pleya Web zijn niet gewijzigd sinds `5e64a1dab`, dus de Go- en w
 
 ### Main
 
-`origin/main` (`d9edacc88`) staat vier commits voor. Ze raken Plex Home-profielen, `notice.dart`, `pubspec.yaml`, de releasenotes en `docs/tvos-fysieke-correctieronde.md`. Geen enkel bestand overlapt met deze branch, en `git merge-tree` geeft geen conflict. Er is niet gerebased of gemerged. Na integratie moet het Plex Home-pad wel samen getest worden: main wijzigt daar de wisselfout en deze branch de kijklijstbinding.
+`origin/main` is `d62a5369a` en staat 2 commits voor deze branch. `git merge-tree` geeft één conflict, in `pleya_verify/fixture_server/test/named_fixtures_test.dart`: beide kanten voegen daar een test toe. `docs/DECISIONS.md`, `docs/ROADMAP.md`, `lib/automation/automation_server.dart`, `named_fixtures.dart` en `ios_simulator_driver.dart` voegen automatisch samen. Het conflict is nog niet opgelost en er is niet gerebased of gemerged; dat wacht op akkoord. Na integratie moet het Plex Home-pad samen getest worden: main wijzigt daar de wisselfout en deze branch de kijklijstbinding.
 
 ### Ondertitels op grote bestanden
 
