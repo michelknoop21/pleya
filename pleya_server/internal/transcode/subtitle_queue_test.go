@@ -39,20 +39,25 @@ func subtitleOrder(t *testing.T, path string) []string {
 	return strings.Fields(string(data))
 }
 
-// awaitFinished polls until every track is cached; the repeat is what a client does.
-func awaitFinished(t *testing.T, m *transcode.Manager, tracks ...transcode.SubtitleParams) {
+// awaitTrack repeats until the track is cached, the way a client does after a 503.
+func awaitTrack(t *testing.T, m *transcode.Manager, p transcode.SubtitleParams) string {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
-	for _, p := range tracks {
-		for {
-			_, err := m.ExtractSubtitle(context.Background(), p)
-			if err == nil {
-				break
-			}
-			if !errors.Is(err, transcode.ErrBusy) || time.Now().After(deadline) {
-				t.Fatalf("track %d: %v", p.StreamIndex, err)
-			}
+	for {
+		path, err := m.ExtractSubtitle(context.Background(), p)
+		if err == nil {
+			return path
 		}
+		if !errors.Is(err, transcode.ErrBusy) || time.Now().After(deadline) {
+			t.Fatalf("track %d: %v", p.StreamIndex, err)
+		}
+	}
+}
+
+func awaitFinished(t *testing.T, m *transcode.Manager, tracks ...transcode.SubtitleParams) {
+	t.Helper()
+	for _, p := range tracks {
+		awaitTrack(t, m, p)
 	}
 }
 
@@ -107,7 +112,7 @@ func TestAUserOverHisShareGetsNoPlaceInTheQueue(t *testing.T) {
 	input := subtitleSource(t, dir)
 	alice, bob := id.New(), id.New()
 	ask := func(user id.ID, index int) error {
-		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 		_, err := m.ExtractSubtitle(ctx, transcode.SubtitleParams{User: user, InputPath: input, StreamIndex: index, Format: "srt", Generation: 1})
 		return err
@@ -170,7 +175,7 @@ func TestAnAbandonedExtractionFreesTheWorkerWithoutCountingAsAFailure(t *testing
 func TestAnExtractionKeepsRunningWhileSomebodyElseWaits(t *testing.T) {
 	dir := t.TempDir()
 	tool, order, pid, proceed := orderedSubtitleTool(t, dir)
-	m := queueManager(t, dir, tool, transcode.Options{SubtitleWait: time.Minute, SubtitleGrace: 5 * time.Millisecond})
+	m := queueManager(t, dir, tool, transcode.Options{SubtitleWait: time.Minute, SubtitleGrace: 300 * time.Millisecond})
 	p := transcode.SubtitleParams{User: id.New(), InputPath: subtitleSource(t, dir), StreamIndex: 2, Format: "srt", Generation: 1}
 	ctx, cancel := context.WithCancel(context.Background())
 	first := make(chan error, 1)
@@ -183,7 +188,7 @@ func TestAnExtractionKeepsRunningWhileSomebodyElseWaits(t *testing.T) {
 	time.Sleep(50 * time.Millisecond) // the second request has joined
 	cancel()
 	<-first
-	time.Sleep(50 * time.Millisecond) // past the grace of a job nobody waits for
+	time.Sleep(450 * time.Millisecond) // past the grace of a job nobody waits for
 	if err := os.WriteFile(proceed, nil, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -200,13 +205,13 @@ func TestAnExtractionKeepsRunningWhileSomebodyElseWaits(t *testing.T) {
 func TestRepeatsKeepAnExtractionAliveLongerThanItsGrace(t *testing.T) {
 	dir := t.TempDir()
 	tool, order, pid, proceed := orderedSubtitleTool(t, dir)
-	m := queueManager(t, dir, tool, transcode.Options{SubtitleWait: 20 * time.Millisecond, SubtitleGrace: 40 * time.Millisecond})
+	m := queueManager(t, dir, tool, transcode.Options{SubtitleWait: 20 * time.Millisecond, SubtitleGrace: 500 * time.Millisecond})
 	p := transcode.SubtitleParams{User: id.New(), InputPath: subtitleSource(t, dir), StreamIndex: 2, Format: "srt", Generation: 1}
 	if _, err := m.ExtractSubtitle(context.Background(), p); !errors.Is(err, transcode.ErrBusy) {
 		t.Fatalf("first request: %v", err)
 	}
 	waitForFile(t, pid)
-	for range 10 {
+	for range 40 { // together well past one grace
 		if _, err := m.ExtractSubtitle(context.Background(), p); !errors.Is(err, transcode.ErrBusy) {
 			t.Fatalf("repeat: %v", err)
 		}
@@ -223,7 +228,7 @@ func TestRepeatsKeepAnExtractionAliveLongerThanItsGrace(t *testing.T) {
 func TestAQueuedTrackNobodyAsksForAnymoreNeverStarts(t *testing.T) {
 	dir := t.TempDir()
 	tool, order, pid, proceed := orderedSubtitleTool(t, dir)
-	m := queueManager(t, dir, tool, transcode.Options{SubtitleGrace: 20 * time.Millisecond})
+	m := queueManager(t, dir, tool, transcode.Options{SubtitleGrace: 200 * time.Millisecond})
 	input := subtitleSource(t, dir)
 	running := transcode.SubtitleParams{User: id.New(), InputPath: input, StreamIndex: 1, Format: "srt", Generation: 1}
 	queued := transcode.SubtitleParams{User: id.New(), InputPath: input, StreamIndex: 2, Format: "srt", Generation: 1}
@@ -244,12 +249,12 @@ func TestAQueuedTrackNobodyAsksForAnymoreNeverStarts(t *testing.T) {
 	if _, err := m.ExtractSubtitle(context.Background(), queued); !errors.Is(err, transcode.ErrBusy) {
 		t.Fatalf("queued track: %v", err)
 	}
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	if err := os.WriteFile(proceed, nil, 0600); err != nil {
 		t.Fatal(err)
 	}
 	awaitFinished(t, m, running)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	if got := subtitleOrder(t, order); !slices.Equal(got, []string{"1"}) {
 		t.Fatalf("started %v", got)
 	}

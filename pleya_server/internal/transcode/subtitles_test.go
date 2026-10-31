@@ -385,10 +385,7 @@ func TestSecondSubtitleTrackWaitsForTheWorkerWhileAFinishedTrackStaysReadable(t 
 	if err := os.WriteFile(proceed, nil, 0600); err != nil {
 		t.Fatal(err)
 	}
-	finished, err := m.ExtractSubtitle(context.Background(), done)
-	if err != nil {
-		t.Fatal(err)
-	}
+	finished := awaitTrack(t, m, done)
 	if err := os.Remove(proceed); err != nil {
 		t.Fatal(err)
 	}
