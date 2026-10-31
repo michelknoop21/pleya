@@ -2,6 +2,7 @@ import '../database/app_database.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/media_backend.dart';
 import '../media/media_item.dart';
+import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
@@ -201,8 +202,13 @@ bool _copyMovedOn(MediaItem copy, OfflineWatchProgressItem action) =>
     (copy.lastViewedAt ?? 0) * 1000 > action.updatedAt;
 
 /// A mark that waited for this copy. A mark rewrites what stands there: it clears
-/// a viewing on Jellyfin and Emby, and sets the position to zero on Pleya Server.
-/// So it reads first, like a position does.
+/// a viewing on Plex, Jellyfin and Emby, and sets the position to zero on Pleya
+/// Server. So it reads first, like a position does.
+///
+/// Only a single item can have moved on. On a season or a series Plex reports the
+/// last viewing of any episode, and the row of an episode that lands just before
+/// this one moves it. That says nothing about the mark, so it goes out, and like a
+/// direct mark it can clear a later viewing of an episode (hoofdstuk 13.2).
 Future<bool> _replayCopyMark(
   MediaServerClient client,
   OfflineWatchProgressItem action,
@@ -212,7 +218,7 @@ Future<bool> _replayCopyMark(
   final copy = await _readCopy(client, action);
   // Before the row can end: this answer may be the next profile's.
   beforeWrite();
-  if (copy == null || _copyMovedOn(copy, action)) {
+  if (copy == null || (!copy.isSeason && !copy.isShow && _copyMovedOn(copy, action))) {
     appLogger.i('Skipping held mark for ${action.ratingKey}: the copy moved on');
     return false;
   }

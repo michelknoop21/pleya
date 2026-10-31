@@ -7,12 +7,47 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/offline_watch_sync_service.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 
 import '../test_helpers/mirror_server.dart';
 import '../test_helpers/prefs.dart';
+
+/// Plex's aggregate: a season and a series report the last viewing of any of
+/// their episodes as their own `lastViewedAt`. The copy of an episode that lands
+/// moves it, and in a test that runs in the same second as the mark it has to
+/// land visibly later.
+class _SeasonServer extends MirrorServer {
+  _SeasonServer(this.kind) : super('other');
+
+  final MediaKind kind;
+  int? aggregateViewedAt;
+
+  @override
+  Future<MediaItem?> readCopyState(String id) async => MediaItem(
+    id: id,
+    backend: MediaBackend.plex,
+    kind: id == 'parent' ? kind : MediaKind.episode,
+    serverId: 'other',
+    durationMs: mirrorHour,
+    lastViewedAt: id == 'parent' ? aggregateViewedAt : null,
+  );
+
+  @override
+  Future<bool> writeCopyState(
+    MediaItem item, {
+    required Duration position,
+    Duration? duration,
+    required bool watched,
+  }) async {
+    final landed = await super.writeCopyState(item, position: position, duration: duration, watched: watched);
+    if (watched) aggregateViewedAt = DateTime(2100).millisecondsSinceEpoch ~/ 1000;
+    return landed;
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -353,6 +388,49 @@ void main() {
         expect(await queue.getPendingSyncCount(), 0);
       });
     }
+
+    for (final kind in const [MediaKind.season, MediaKind.show]) {
+      for (final watched in const [true, false]) {
+        test('on a ${kind.id} lands after an episode came back and moved its aggregate (watched: $watched)', () async {
+          final server = _SeasonServer(kind);
+          manager.debugRegisterClientForTesting(server);
+          await queue.queueMirroredProgress(
+            serverId: ServerId('other'),
+            itemId: 'e3',
+            viewOffset: mirrorHour,
+            duration: mirrorHour,
+            watched: true,
+            profileId: queue.activeProfileId,
+          );
+          await queue.queueCopyMark(
+            serverId: ServerId('other'),
+            itemId: 'parent',
+            watched: watched,
+            profileId: queue.activeProfileId,
+          );
+
+          await queue.syncPendingItems();
+
+          expect(server.watched, contains('e3'), reason: 'the episode came first and moved the aggregate');
+          expect(watched ? server.watched : server.unwatched, contains('parent'));
+          expect(await queue.getPendingSyncCount(), 0);
+        });
+      }
+    }
+
+    test('on an episode keeps the check: that lastViewedAt is its own', () async {
+      final other = MirrorServer(
+        'other',
+        item: mirrorFilm('other').copyWith(kind: MediaKind.episode, lastViewedAt: afterTheMark),
+      );
+      manager.debugRegisterClientForTesting(other);
+      await heldMark(watched: false);
+
+      await queue.syncPendingItems();
+
+      expect(other.tokens, isEmpty);
+      expect(await queue.getPendingSyncCount(), 0);
+    });
 
     test('a read that outlasts a profile switch sends nothing under the next token', () async {
       queue.setActiveProfileId('adult');
