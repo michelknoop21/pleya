@@ -293,12 +293,16 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// zijn eigen wachtwoord vijf keer verkeerd typt de login van een
 	// huisgenoot blokkeert. De gebruikersnaam hoeft hier niet te bestaan; de
 	// sleutel is een emmer, geen claim.
-	limiterKey := "login:" + loginName(req.Username)
+	limiterKey := "login:" + cutLoginText(req.Username)
 	if !s.rateLimit(w, limiterKey) {
-		// Een geweigerde poging staat in het auditlog en niet alleen in de
-		// emmer van de limiter: de limiter vergeet, het log niet, en het
-		// patroon over een nacht is precies wat een beheerder wil zien.
-		s.auditLoginDenied(r, req.Username, "rate_limited")
+		// Een geweigerde poging staat tot de grens in loginDenialBurst in het
+		// auditlog en niet alleen in de emmer van de limiter: de limiter vergeet,
+		// het log niet, en het patroon over een nacht is precies wat een beheerder
+		// wil zien. Daarboven staat hij in het log.
+		s.auditLoginDenied(r, map[string]any{"username": cutLoginText(req.Username), "reason": "rate_limited"})
+		return
+	}
+	if !s.allowLoginAttempt(w, r, req.Username) {
 		return
 	}
 
@@ -331,9 +335,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ok, needsRehash, verifyErr := s.verifyPassword(r.Context(), req.Password, storedHash)
-	if verifyErr != nil && r.Context().Err() != nil {
-		// De client liep weg terwijl hij op een plek wachtte; dit is geen fout van de server.
-		writeError(w, s.log, CodeRateLimited, "too many attempts", nil)
+	if errors.Is(verifyErr, errLoginBusy) {
+		// Geen fout van de server en geen oordeel over het wachtwoord: geen plek, of de
+		// client liep weg. Eén seconde is ongeveer één controle.
+		s.writeRefreshLimited(w, "login", time.Second)
 		return
 	}
 	if verifyErr != nil {
@@ -347,7 +352,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// bijna goed typen, inclusief hun echte wachtwoord met één tikfout.
 		//
 		// user_id blijft leeg, ook wanneer de naam bestaat: zie auditAnonymous.
-		s.auditLoginDenied(r, req.Username, "invalid_credentials")
+		s.auditWrongPassword(r, req.Username, known)
 		writeError(w, s.log, CodeInvalidCredentials, "invalid credentials", nil)
 		return
 	}
@@ -558,13 +563,12 @@ func (s *Server) credentialMode(w http.ResponseWriter, r *http.Request, raw, bad
 	// voor browsers, en een browser zet Origin op elke POST, ook op een
 	// same-origin POST. Een aanvraag zonder die header komt dus niet van een
 	// browser, en toelaten zou de controle in één regel curl te omzeilen maken.
-	detail := map[string]any{"origin": origin}
+	detail := map[string]any{"origin": cutLoginText(origin)}
 	if origin == "" {
 		detail["origin"] = "(afwezig)"
 	}
 	if operation != "" {
-		s.auditAnonymous(r, operation, audit.OutcomeDenied,
-			map[string]any{"reason": "origin_rejected", "origin": detail["origin"]})
+		s.auditLoginDenied(r, map[string]any{"reason": "origin_rejected", "origin": detail["origin"]})
 	}
 	s.log.Warn("cookiemodus geweigerd op een niet-toegestane origin",
 		"path", r.URL.Path, "origin", detail["origin"])

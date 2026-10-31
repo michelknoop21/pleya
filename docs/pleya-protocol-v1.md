@@ -570,7 +570,7 @@ contract keurt ze af.
 | `auth.setup_required` | 409 | nee | er is nog geen eigenaar aangemaakt |
 | `auth.setup_already_completed` | 409 | nee | er is al een eigenaar |
 | `auth.setup_code_invalid` | 401 | nee | de setupcode klopt niet |
-| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details`; `POST /auth/refresh` zet daarnaast `Retry-After`, zie 6.3 |
+| `auth.rate_limited` | 429 | ja | te veel pogingen, zie `retry_after_ms` in `details`; `POST /auth/refresh` en een `POST /auth/login` die geen wachtwoordcontrole krijgt zetten daarnaast `Retry-After`, zie 6.3 |
 | `library.not_found` | 404 | nee | bibliotheek, item of versie bestaat niet, of niet voor u |
 | `library.scan_in_progress` | 409 | ja | de gevraagde bewerking botst met een lopende scan |
 | `library.cursor_invalid` | 400 | nee | de cursor is onleesbaar of hoort bij een andere sortering |

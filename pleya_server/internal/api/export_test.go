@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -12,6 +13,9 @@ import (
 func (s *Server) SetPasswordVerifier(verify func(string, string, auth.Argon2Params) (bool, bool, error)) {
 	s.loginGuard.verify = verify
 }
+
+// SetLoginSlotWait vervangt de wachttijd op een plek, zodat een test er niet op hoeft te wachten.
+func (s *Server) SetLoginSlotWait(wait time.Duration) { s.loginGuard.slotWait = wait }
 
 // ListSharingProbe raakt allowListSharing zonder ownDataWrite ervoor. Op de echte
 // routes weigert die laatste een beperkt token al eerder, en dan zou een test niet

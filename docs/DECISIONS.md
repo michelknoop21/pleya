@@ -5426,9 +5426,14 @@ over ruim twee uur testtijd vielen in 2,5 seconde. `SetClock` zet nu ook de klok
 `POST /auth/login` had hetzelfde gat zonder wachtwoord. Elke geweigerde aanvraag schreef een auditregel, met de naam
 ongeknipt tot 8 KiB, 90 dagen bewaard, en elke verzonnen naam kreeg vijf keer Argon2 tegen de owner-hash, 64 MiB per stuk
 zonder grens op gelijktijdigheid. De auditregel bleef bewust: het patroon over een nacht is wat een beheerder wil zien.
-De naam wordt nu op 64 tekens geknipt vóór sleutel en regel, per proces krijgen 12 geweigerde logins plus één per vijf
-seconden een regel en de rest alleen een logregel zonder naam, en er lopen hoogstens twee controles tegelijk. Wie op een
-plek wacht en wegloopt krijgt 429. Onder een vloed wacht ook een echte login op zijn beurt. Hoe lang is niet gemeten.
+Een afgewezen `Origin` deed hetzelfde vóór de limiter, tot 1 MiB per regel. Naam en Origin worden nu op 64 tekens geknipt.
+Verzonnen namen, volle emmers en afgewezen origins krijgen per proces 12 regels plus één per vijf seconden, de rest
+alleen een logregel zonder naam. Een fout wachtwoord op een bestaande naam gaat buiten die emmer om: anders verbergt een
+vloed op verzonnen namen de poging waar een beheerder naar zoekt, en die regel is al per naam begrensd. Er lopen hoogstens
+twee controles tegelijk, een poging wacht maximaal 3 seconden op een plek en krijgt dan 429 met `Retry-After`, en per
+clientadres komen 60 pogingen plus één per seconde bij die stap. Restrisico: een vloed op de login kan echte logins een
+429 geven, en login is de uitweg voor wie zijn sessie kwijt is. Zonder `PLEYA_SERVER_TRUSTED_PROXIES` delen tunnelclients
+hun adres. `login:<naam>` is zonder wachtwoord leeg te houden met één aanvraag per 12 seconden; dat bestond al.
 
 Migratie 0030 zet indexen op `session_id` en `replaced_by`. `replaced_by` is een foreign key op de eigen tabel, dus de
 opruiming zocht per verwijderde rij de hele tabel door: 500 ms per rij bij een miljoen synthetische rijen, gemeten in

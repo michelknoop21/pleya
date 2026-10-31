@@ -162,6 +162,141 @@ func TestLoginGivesUpWaitingWhenTheClientLeaves(t *testing.T) {
 	}
 }
 
+// Een vol slot wordt binnen de grens een 429 met een wachttijd, en daarna werkt inloggen.
+func TestLoginAnswers429WhenNoSlotComesFree(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	e.server.SetLoginSlotWait(150 * time.Millisecond)
+
+	release := make(chan struct{})
+	var running atomic.Int32
+	e.server.SetPasswordVerifier(func(string, string, auth.Argon2Params) (bool, bool, error) {
+		running.Add(1)
+		<-release
+		return false, false, nil
+	})
+	var wg sync.WaitGroup
+	for i := range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			e.tryLogin("bezet-" + strconv.Itoa(i))
+		}()
+	}
+	for running.Load() < 2 {
+		time.Sleep(time.Millisecond)
+	}
+
+	started := time.Now()
+	rec := e.do(http.MethodPost, loginPath, map[string]string{"username": "derde", "password": "verkeerd"}, withoutAuth)
+	elapsed := time.Since(started)
+	close(release)
+	wg.Wait()
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, "auth.rate_limited")
+	if rec.Header().Get("Retry-After") == "" || !strings.Contains(rec.Body.String(), "retry_after_ms") {
+		t.Fatalf("geen wachttijd: %v %s", rec.Header(), rec.Body.String())
+	}
+	if elapsed > 2*time.Second {
+		t.Fatalf("wachtte %s", elapsed)
+	}
+
+	e.server.SetPasswordVerifier(auth.VerifyPassword)
+	e.login("na-het-vrijgeven")
+}
+
+// Eén adres kan de Argon2-stap niet alleen vullen, en een ander adres merkt er niets van.
+func TestLoginCountsAttemptsPerAddress(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	var checks atomic.Int32
+	e.server.SetPasswordVerifier(func(string, string, auth.Argon2Params) (bool, bool, error) {
+		checks.Add(1)
+		return false, false, nil
+	})
+	from := func(address string) func(*http.Request) {
+		return func(r *http.Request) { r.RemoteAddr = address }
+	}
+
+	refused := 0
+	for i := range 80 {
+		if e.tryLogin("adres-"+strconv.Itoa(i), from("203.0.113.9:4000")) == http.StatusTooManyRequests {
+			refused++
+		}
+	}
+	if refused < 15 || checks.Load() > 65 {
+		t.Fatalf("%d geweigerd, %d controles", refused, checks.Load())
+	}
+	if code := e.tryLogin("ander-adres", from("203.0.113.10:4000")); code != http.StatusUnauthorized {
+		t.Fatalf("een ander adres gaf %d", code)
+	}
+}
+
+// Zonder wachtwoord en zonder emmer was dit één regel per aanvraag, met de hele header.
+func TestARejectedOriginStaysInsideTheAuditBoundAndIsCut(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	long := "https://" + strings.Repeat("a", 4000) + ".example"
+
+	var body string
+	for range 30 {
+		rec := e.do(http.MethodPost, loginPath,
+			map[string]string{"username": "x", "password": "y", "credential_mode": "cookie"},
+			withoutAuth, withHeader("Origin", long))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("gaf %d", rec.Code)
+		}
+		body = rec.Body.String()
+	}
+	if strings.Contains(body, long) {
+		t.Fatal("de hele Origin staat in het antwoord")
+	}
+
+	rows, err := e.pool.Query(context.Background(), `
+		SELECT detail->>'origin' FROM admin_audit WHERE operation = 'login' AND outcome = 'denied'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	count := 0
+	for rows.Next() {
+		var origin string
+		if err := rows.Scan(&origin); err != nil {
+			t.Fatal(err)
+		}
+		count++
+		if utf8.RuneCountInString(origin) > 64 {
+			t.Fatalf("Origin van %d tekens in het auditlog", utf8.RuneCountInString(origin))
+		}
+	}
+	if count == 0 || count > loginAuditBurst+3 {
+		t.Fatalf("%d auditregels, de grens is %d", count, loginAuditBurst)
+	}
+}
+
+// Wie de emmer vult met namen die niet bestaan, verbergt daarmee geen poging op een echt account.
+func TestAWrongPasswordOnARealAccountIsAuditedWithTheBoundSpent(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	for i := range loginAuditBurst + 5 {
+		e.tryLogin("verzonnen-" + strconv.Itoa(i))
+	}
+
+	if code := e.tryLogin("michel"); code != http.StatusUnauthorized {
+		t.Fatalf("gaf %d", code)
+	}
+	found := false
+	for _, name := range e.deniedLoginNames() {
+		found = found || name == "michel"
+	}
+	if !found {
+		t.Fatal("de poging op het echte account staat niet in het auditlog")
+	}
+}
+
 func TestLoginStillWorksWithTheAuditBoundSpent(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())

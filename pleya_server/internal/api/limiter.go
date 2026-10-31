@@ -85,9 +85,8 @@ const (
 )
 
 // limiterIdleTTL is de tijd waarna een emmer, ongeacht zijn stand bij het
-// stilvallen, gegarandeerd weer vol is. Voor alle drie de tempo's 60 seconden:
-// limiterBurst / limiterRefill, refreshLimiterBurst / refreshLimiterRefill en
-// refreshWriteBurst / refreshWriteRefill.
+// stilvallen, gegarandeerd weer vol is. Voor elk tempo in dit pakket 60 seconden:
+// burst gedeeld door refill, hier en in login_guard.go.
 const limiterIdleTTL = time.Duration(limiterBurst/limiterRefill) * time.Second
 
 // limiterSweepInterval bepaalt hoe vaak allow() de opruiming probeert. Elke
