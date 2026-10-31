@@ -8,6 +8,10 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/source_coverage_state.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/media/unified/unified_route_context.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/offline_mode_provider.dart';
@@ -18,6 +22,8 @@ import 'package:pleya/services/download_storage_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/offline_watch_sync_service.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/unified_catalog/unified_title_playback.dart';
+import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
 import 'package:pleya/services/watch_actions.dart';
 import 'package:provider/provider.dart';
 
@@ -94,6 +100,14 @@ class _HealthyClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Answers, and refuses every write.
+class _RefusingClient extends _HealthyClient {
+  _RefusingClient(super.id);
+
+  @override
+  Future<void> markWatched(MediaItem item) async => throw Exception('403');
+}
+
 MediaItem _itemOn(String serverId, String id) =>
     MediaItem(id: id, backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Dune', serverId: serverId);
 
@@ -163,6 +177,106 @@ void main() {
     );
     return ctx;
   }
+
+  group('a mark on a title with more sources', () {
+    UnifiedTitlePlayback titleOf(List<MediaItem> copies) {
+      final sources = [for (final copy in copies) UnifiedMediaSource.fromItem(copy)];
+      return UnifiedTitlePlayback(
+        routeContext: UnifiedMediaRouteContext(
+          groupId: 'g',
+          identity: CanonicalMediaIdentity.movie(title: 'Dune', year: 2021),
+          sourceKey: sources.first.sourceKey,
+          titleSources: sources,
+          availableSourceKeys: [for (final s in sources) s.sourceKey],
+          coverage: SourceCoverageState.none,
+          intent: UnifiedActivationIntent.details,
+        ),
+        sources: sources,
+        gate: UnifiedSourceGate(
+          clientFor: serverManager.getClient,
+          isOnline: serverManager.isServerOnline,
+          isAuthRejected: serverManager.authErrorServerIds.map(ServerId.new).contains,
+          isVisible: (_) => true,
+          hiddenLibraryKeys: () => const {},
+          isRestrictedProfile: () async => false,
+        ),
+      );
+    }
+
+    Future<BuildContext> scoped(WidgetTester tester, BuildContext tree, UnifiedTitlePlayback title) async {
+      late BuildContext inside;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
+            ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineMode),
+            ChangeNotifierProvider<OfflineWatchProvider>.value(value: offlineWatch),
+          ],
+          child: MaterialApp(
+            home: UnifiedTitleScope(
+              title: title,
+              child: Builder(
+                builder: (context) {
+                  inside = context;
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      return inside;
+    }
+
+    testWidgets('reaches every other source of the title', (tester) async {
+      final other = _HealthyClient('b');
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(other);
+      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+
+      await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
+
+      expect(other.writes, [(itemId: 'dune', watched: true)]);
+    });
+
+    testWidgets('a source that refuses is the caller\'s problem no more than a log line', (tester) async {
+      final first = _HealthyClient('a');
+      serverManager
+        ..debugRegisterClientForTesting(first)
+        ..debugRegisterClientForTesting(_RefusingClient('b'));
+      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+
+      final outcome = await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
+
+      expect(outcome, WatchMarkOutcome.marked);
+      expect(first.writes, hasLength(1));
+    });
+
+    testWidgets('a source that is down keeps the mark in the queue', (tester) async {
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(_HealthyClient('b'), online: false);
+      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+
+      await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'dune'), watched: true));
+
+      final action = await tester.runAsync(() => db.getLatestWatchAction('b:dune'));
+      expect(action?.actionType, 'watched');
+    });
+
+    testWidgets('another title on the same page stays alone', (tester) async {
+      final other = _HealthyClient('b');
+      serverManager
+        ..debugRegisterClientForTesting(_HealthyClient('a'))
+        ..debugRegisterClientForTesting(other);
+      final ctx = await scoped(tester, await pumpTree(tester), titleOf([_itemOn('a', 'dune'), _itemOn('b', 'dune')]));
+
+      await tester.runAsync(() => WatchActions.setWatched(ctx, _itemOn('a', 'blade-runner'), watched: true));
+
+      expect(other.writes, isEmpty);
+    });
+  });
 
   group('a mark on an unreachable server stays durable', () {
     testWidgets('one server down while another is up still queues the mark', (tester) async {

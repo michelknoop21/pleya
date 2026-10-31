@@ -10,10 +10,13 @@ import '../providers/continue_watching_hidden_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/offline_watch_provider.dart';
+import '../utils/app_logger.dart';
 import '../utils/haptics.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/watch_state_notifier.dart';
 import 'trackers/tracker_coordinator.dart';
+import 'unified_catalog/unified_title_playback.dart';
+import 'unified_catalog/unified_title_scope.dart';
 
 enum WatchMarkOutcome {
   /// Queued for later sync: the item's own server could not take the write.
@@ -49,13 +52,56 @@ class WatchActions {
   /// where [ProviderExtensions.tryGetMediaClientForServer] hands back the
   /// registered client regardless of health, and the write was lost. The same
   /// mark with every server down was queued and synced later.
+  ///
+  /// [unifiedTitle] is the title [item] belongs to, read from the
+  /// [UnifiedTitleScope] above [context] when omitted: the mark then reaches
+  /// every other source of it.
   static Future<WatchMarkOutcome> setWatched(
     BuildContext context,
     MediaItem item, {
     required bool watched,
     bool? offline,
+    UnifiedTitlePlayback? unifiedTitle,
   }) async {
     Haptics.selection();
+    final title = unifiedTitle ?? UnifiedTitleScope.maybeOf(context);
+    final outcome = await _setOne(context, item, watched: watched, offline: offline);
+    if (title != null && title.holds(item) && outcome != WatchMarkOutcome.skipped) {
+      await _reachOtherSources(context, title, item, watched: watched, offline: offline);
+    }
+    return outcome;
+  }
+
+  /// The same mark on every other source of the title on this page (besluit 3
+  /// of DEC-XXX "Eén titel over servers heen"), the way the TV menu fans out
+  /// (hoofdstuk 13.5). The mark on [item] already landed; one that a second
+  /// server refuses does not undo it and does not reach the caller.
+  static Future<void> _reachOtherSources(
+    BuildContext context,
+    UnifiedTitlePlayback title,
+    MediaItem item, {
+    required bool watched,
+    bool? offline,
+  }) async {
+    try {
+      for (final copy in await title.copiesOf(item)) {
+        if (!context.mounted) return;
+        await _setOne(context, copy, watched: watched, offline: offline).catchError((Object e, StackTrace st) {
+          appLogger.w('Could not mark ${copy.globalKey}', error: e, stackTrace: st);
+          return WatchMarkOutcome.skipped;
+        });
+      }
+    } catch (e, st) {
+      appLogger.w('Could not reach the other sources of ${item.globalKey}', error: e, stackTrace: st);
+    }
+  }
+
+  static Future<WatchMarkOutcome> _setOne(
+    BuildContext context,
+    MediaItem item, {
+    required bool watched,
+    bool? offline,
+  }) async {
     final serverId = item.serverId;
     if (serverId == null) return WatchMarkOutcome.skipped;
     final id = ServerId(serverId);
