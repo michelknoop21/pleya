@@ -9,7 +9,7 @@ import 'unified_catalog_query.dart';
 /// An enum rather than a free (field, direction) pair because the pair has
 /// combinations the contract does not offer — "oudst bekeken" is expressible
 /// and meaningless — and because a stored preference needs a stable name to
-/// serialise on. The scores are here since DEC-XXX replaced the condition of
+/// serialise on. The scores are here since DEC-170 replaced the condition of
 /// hoofdstuk 10.5: they share one scale before the merge
 /// (`media/catalog_score.dart`), and a unified score sort knowingly compares two
 /// different sources.

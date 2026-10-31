@@ -834,7 +834,7 @@ gebruikt. Die blijven in Mijn Pleya ▸ Bibliotheken.
 Eerste betrouwbare set: Titel A–Z; Titel Z–A; Recent toegevoegd; Oudst toegevoegd; Nieuwste release;
 Oudste release; Recent bekeken.
 
-Michel heeft de voorwaarde voor rating-sortering op 30 oktober 2026 vervangen (DEC-XXX, de volle-
+Michel heeft de voorwaarde voor rating-sortering op 30 oktober 2026 vervangen (DEC-170, de volle-
 breedte-catalogus). Scores gaan vóór de merge naar één schaal van 0 tot 100, en een unified
 score-sortering vergelijkt bewust twee verschillende bronnen: een Plex-criticusscore kan IMDb zijn
 waar Jellyfin Rotten Tomatoes geeft. De volledige lijst staat in `lib/media/library_menu_definition.dart`

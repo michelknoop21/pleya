@@ -6,7 +6,7 @@
 /// servers, so the scale has to be settled before an item reaches the
 /// comparator. What this does not settle is whether two scores mean the same
 /// thing: a Plex critic score can be IMDb while Jellyfin's is Rotten Tomatoes.
-/// DEC-XXX accepts that comparison on purpose.
+/// DEC-170 accepts that comparison on purpose.
 library;
 
 import 'external_rating.dart';

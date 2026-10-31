@@ -1,6 +1,6 @@
 # Rapport: Alle films en Alle series vol in beeld
 
-De catalogus op Apple TV toont zes kolommen bij twee hele rijen, zonder kop en zonder zichtbare balk. Bron, filters, sortering en Spring naar zitten in één paneel dat van links over het raster schuift. Het besluit staat in DEC-XXX, de roadmapregel is A-06c.
+De catalogus op Apple TV toont zes kolommen bij twee hele rijen, zonder kop en zonder zichtbare balk. Bron, filters, sortering en Spring naar zitten in één paneel dat van links over het raster schuift. Het besluit staat in DEC-170, de roadmapregel is A-06c.
 
 ## Waar het beeld afwijkt en waarom
 

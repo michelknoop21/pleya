@@ -17,7 +17,7 @@
 /// the card it came from. Menu and LEFT go back one page, and Menu on the
 /// overview closes. Choosing closes the panel too, and the screen puts the ring
 /// on the first card: the choice changed the wall, so there is nothing to go
-/// back to. DEC-XXX replaces CAT17's "focus stays on the rail" on this route.
+/// back to. DEC-170 replaces CAT17's "focus stays on the rail" on this route.
 library;
 
 import 'dart:async';
