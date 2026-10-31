@@ -225,7 +225,10 @@ export class TokenRefresher {
       return wait;
     }
     if (host.replaced || (error !== undefined && isSessionRejected(toApiError(response.status, error)))) {
+      // Een ander tabblad meldde af of wisselde van account, dus niemand anders sluit deze overstap af.
+      // In deze volgorde: een accesstoken van vóór de overstap zou #closeAbandoned anders tegenhouden.
       host.loseSession();
+      if (upgrade && data) this.#closeAbandoned(data.access_token);
       return false;
     }
     if (error !== undefined || !data) {
@@ -256,7 +259,7 @@ export class TokenRefresher {
   }
 
   /**
-   * De overstap kwam aan nadat deze client de sessie verliet. De cookie staat dan al in de browser,
+   * De overstap kwam aan nadat deze client of een ander tabblad de sessie verliet. De cookie staat dan al in de browser,
    * en die is na een herlaadbeurt weer een sessie. Met een token van een nieuwe login in de client
    * blijft dit achterwege: de middleware zou dan die sessie afmelden en niet deze.
    */

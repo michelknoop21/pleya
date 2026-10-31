@@ -838,6 +838,8 @@ describe('existing cookie-auth contract', () => {
     tab.tokens.clear();
     expect(await tab.client.restore()).toBe(false);
     expect(tab.tokens.accessToken).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(tab.seen.some(request => request.path === '/auth/logout')).toBe(false);
   });
   it('requests cookie login and restores without a JavaScript refresh credential', async () => {
     const { client, seen, tokens, persistent, session } = cookieServer();
@@ -1239,6 +1241,7 @@ describe('een oude websessie stapt over op de cookie', () => {
         const request = input as Request;
         const path = new URL(request.url).pathname.replace('/pleya/v1', '');
         if (path === '/info') return json({ capabilities });
+        if (path === '/users/me') return new Response(null, { status: 401 });
         seen.push({ path, auth: request.headers.get('Authorization') });
         if (path === '/auth/logout') return logout();
         await answered;
@@ -1260,6 +1263,40 @@ describe('een oude websessie stapt over op de cookie', () => {
     await expect(restoring).resolves.toBe(false);
 
     await vi.waitFor(() => expect(seen[1]).toEqual({ path: '/auth/logout', auth: 'Bearer A2' }));
+  });
+
+  it('afmelden in een ander tabblad tijdens de overstap sluit de sessie die de cookie nog kreeg', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const { client, seen, answer } = pendingUpgrade(persistent, async () => new Response(null, { status: 204 }));
+    const other = tab(persistent, refreshServer());
+    await client.info();
+    await other.client.info();
+    const restoring = client.restore();
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+
+    await other.client.signOut({ remote: true });
+    answer();
+    await expect(restoring).resolves.toBe(false);
+
+    await vi.waitFor(() => expect(seen[1]).toEqual({ path: '/auth/logout', auth: 'Bearer A2' }));
+  });
+
+  it('een accesstoken van vóór de overstap houdt die afmelding niet tegen', async () => {
+    const persistent = memoryStorage({ 'pleya.refresh_token': 'R1' });
+    const { client, tokens, seen, answer } = pendingUpgrade(persistent, async () => new Response(null, { status: 204 }));
+    const other = tab(persistent, refreshServer());
+    await client.info();
+    await other.client.info();
+    tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 900_000 });
+    const asking = client.me().catch(() => undefined);
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+
+    await other.client.signOut({ remote: true });
+    answer();
+    await asking;
+
+    await vi.waitFor(() => expect(seen[1]).toEqual({ path: '/auth/logout', auth: 'Bearer A2' }));
+    expect(tokens.accessToken).toBeNull();
   });
 
   it('ook als die afmelding niet aankomt, logt een herlaadbeurt niet stil weer in', async () => {
