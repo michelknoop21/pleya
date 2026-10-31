@@ -557,6 +557,11 @@
       "file": "error_list_share_not_permitted.json",
       "schema": "ErrorEnvelope",
       "note": "S19: een member of restricted deelt een verzameling"
+    },
+    {
+      "file": "error_scope_insufficient.json",
+      "schema": "ErrorEnvelope",
+      "note": "17c.2: een API-token onder admin op een schrijfroute van eigen gegevens"
     }
   ]
 }

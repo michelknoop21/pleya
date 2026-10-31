@@ -420,6 +420,13 @@ func TestOnlyOwnerAndAdminShareACollection(t *testing.T) {
 	if rec := e.do(http.MethodPatch, path, map[string]any{"title": "Nog steeds van Ada"}, admin); rec.Code != http.StatusOK {
 		t.Fatalf("hernoemen na degradatie gaf %d", rec.Code)
 	}
+
+	// Intrekken blijft mogen, ook zonder rol; de weg terug is er dan niet meer.
+	rec := e.do(http.MethodPatch, path, map[string]any{"visibility": "private"}, admin)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"visibility":"private"`) {
+		t.Fatalf("privé zetten na degradatie gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	refused(t, e.do(http.MethodPatch, path, map[string]any{"visibility": "everyone"}, admin))
 }
 
 func TestCapabilitiesAnnounceListsAndUnknownVisibilityIsRefused(t *testing.T) {

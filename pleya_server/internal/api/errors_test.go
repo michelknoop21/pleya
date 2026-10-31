@@ -37,6 +37,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"auth.session_not_found":           {404, false},
 		"auth.permission_not_allowed":      {409, false},
 		"auth.scope_exceeds_role":          {400, false},
+		"auth.scope_insufficient":          {403, false},
 		"auth.origin_rejected":             {403, false},
 		"library.not_found":                {404, false},
 		"library.scan_in_progress":         {409, true},

@@ -293,6 +293,29 @@ def check_error_domains(document: dict) -> None:
         report(PASS, f"alle {len(expected)} foutdomeinen komen door het patroon")
 
 
+def check_list_limits(document: dict) -> None:
+    """De pagineerde S19- en S20-lijsten delen de grens van hoofdstuk 8.
+
+    catalog.ClampLimit brengt terug naar 500. Een eigen maximum van 200 in het
+    schema noemt een aanvraag ongeldig die de server gewoon beantwoordt.
+    """
+    wanted = {"listCollections", "listCollectionItems", "listPlaylists", "listPlaylistItems", "listRatings"}
+    found = set()
+    for item in document["paths"].values():
+        for operation in item.values():
+            if not isinstance(operation, dict) or operation.get("operationId") not in wanted:
+                continue
+            refs = [p.get("$ref") for p in operation.get("parameters", [])]
+            own = [p for p in operation.get("parameters", []) if p.get("name") == "limit"]
+            if "#/components/parameters/Limit" in refs and not own:
+                found.add(operation["operationId"])
+    missing = sorted(wanted - found)
+    if missing:
+        report(FAIL, f"limit wijkt af van de gedeelde parameter op: {', '.join(missing)}")
+    else:
+        report(PASS, f"{len(wanted)} lijstoperaties gebruiken de gedeelde parameter Limit")
+
+
 def main() -> int:
     document = load_openapi()
     check_structure(document)
@@ -301,6 +324,7 @@ def main() -> int:
     check_fixtures(document)
     check_validator_bites(document)
     check_error_domains(document)
+    check_list_limits(document)
 
     print()
     if failures:

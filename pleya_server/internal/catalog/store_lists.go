@@ -272,11 +272,18 @@ func (s *Store) CreateList(ctx context.Context, kind ListKind, viewer ListViewer
 	if err != nil {
 		return List{}, err
 	}
-	return s.List(ctx, kind, viewer, listID)
+	list, err := s.List(ctx, kind, viewer, listID)
+	list.ShareChanged = list.Visibility != VisibilityPrivate
+	return list, err
 }
 
 // UpdateList wijzigt titel, zichtbaarheid en delen. Alleen de eigenaar.
+//
+// De vergelijking voor ShareChanged staat onder de vergrendeling: bewaren zonder
+// wijziging stuurt dezelfde zichtbaarheid mee en hoort geen auditregel te geven,
+// en twee schrijvers tegelijk mogen elkaars wijziging niet verbergen.
 func (s *Store) UpdateList(ctx context.Context, kind ListKind, viewer ListViewer, listID id.ID, in ListInput) (List, error) {
+	var shareChanged bool
 	err := s.editList(ctx, kind, viewer, listID, func(tx pgx.Tx) error {
 		if in.Title != nil {
 			title, err := validListTitle(*in.Title)
@@ -294,6 +301,11 @@ func (s *Store) UpdateList(ctx context.Context, kind ListKind, viewer ListViewer
 		if err := tx.QueryRow(ctx, `SELECT visibility FROM collections WHERE id = $1`, listID).Scan(&visibility); err != nil {
 			return err
 		}
+		visibilityBefore := visibility
+		sharesBefore, err := listShareKey(ctx, tx, listID)
+		if err != nil {
+			return err
+		}
 		if in.Visibility != nil {
 			visibility = *in.Visibility
 			if !validVisibility(visibility) {
@@ -303,12 +315,31 @@ func (s *Store) UpdateList(ctx context.Context, kind ListKind, viewer ListViewer
 				return err
 			}
 		}
-		return setListShares(ctx, tx, listID, viewer.User, visibility, in.SharedWith)
+		if err := setListShares(ctx, tx, listID, viewer.User, visibility, in.SharedWith); err != nil {
+			return err
+		}
+		sharesAfter, err := listShareKey(ctx, tx, listID)
+		if err != nil {
+			return err
+		}
+		shareChanged = visibility != visibilityBefore || sharesAfter != sharesBefore
+		return nil
 	})
 	if err != nil {
 		return List{}, err
 	}
-	return s.List(ctx, kind, viewer, listID)
+	list, err := s.List(ctx, kind, viewer, listID)
+	list.ShareChanged = shareChanged
+	return list, err
+}
+
+// listShareKey leest de ontvangers als één vergelijkbare waarde.
+func listShareKey(ctx context.Context, tx pgx.Tx, listID id.ID) (string, error) {
+	var key string
+	err := tx.QueryRow(ctx, `
+		SELECT coalesce(string_agg(user_id::text, ',' ORDER BY user_id), '')
+		FROM collection_users WHERE collection_id = $1`, listID).Scan(&key)
+	return key, err
 }
 
 // setListShares brengt collection_users in lijn met de zichtbaarheid. Rijen

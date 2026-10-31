@@ -581,6 +581,7 @@ contract keurt ze af.
 | `auth.session_not_found` | 404 | nee | de sessie bestaat niet, of niet voor u; zie hoofdstuk 17 |
 | `auth.permission_not_allowed` | 409 | nee | de rol van het doel verbiedt deze trede: `restricted` krijgt nooit `manage`. `details` draagt `permission` en `role` |
 | `auth.scope_exceeds_role` | 400 | nee | het gevraagde bereik van een API-token komt boven de rol van de eigenaar uit; `details` draagt `scope` en `role`. `400` en geen `409`: er is geen toestand die dit verzoek in de weg zit en later anders kan zijn, het verzoek zelf klopt niet |
+| `auth.scope_insufficient` | 403 | nee | een API-token onder bereik `admin` op een route die eigen geschiedenis of lijsten wijzigt, zie 17c.2; `details.scope` noemt het bereik van het token |
 | `auth.origin_rejected` | 403 | nee | een aanvraag in cookiemodus komt van een origin die deze server niet toestaat, of draagt helemaal geen `Origin`. Alleen op `POST /auth/login` en `POST /auth/refresh`, en alleen op het cookiepad; zie 17d.4 |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
@@ -1216,15 +1217,22 @@ niets, dus ook `owner` en `admin` zien een privélijst van een ander niet.
 de eigenaar plus `shared_with`. Dat laatste veld staat alleen in het antwoord aan de eigenaar. Een lijst
 buiten zicht is `404`, byte-gelijk aan een id dat niet bestaat, ook op elke schrijfroute. Een lijst die
 zichtbaar is maar van een ander geeft bij schrijven `403` met `library.list_not_owner`. De waarde is
-unknown-safe (3.2). Geen enkele route noemt andere gebruikers aan een lid: `GET /users` blijft regel 14,
-dus alleen `owner` en `admin` hebben een bron om `shared_with` uit te vullen.
+unknown-safe (3.2). `owner` noemt wie de lijst deelt: wie een lijst ziet, ziet id en gebruikersnaam van
+de eigenaar, ook als lid of `restricted` (beeld 17, "door Sanne"). Verder noemt geen route in dit hoofdstuk
+andere gebruikers aan een lid: `GET /users` blijft regel 14, dus alleen `owner` en `admin` hebben een bron
+om `shared_with` uit te vullen, en `shared_with` zelf gaat alleen naar de eigenaar.
 
 **Delen is voor `owner` en `admin`.** Een andere `visibility` dan `private` en `shared_with` mogen alleen zij
 zetten, bij aanmaken en bij wijzigen. Een `member` of `restricted` die een van beide meestuurt krijgt `403`
 met `library.list_share_not_permitted`, ook op zijn eigen verzameling, en houdt zijn verzamelingen dus privé.
 Die uitkomst hangt niet af van de lijst, dus een id buiten zicht verraadt niets. Terug naar `private` mag
 iedereen die de lijst bezit, en een aanvraag die de zichtbaarheid niet noemt valt buiten de regel: wie zijn rol
-verliest houdt wat hij deelde en kan het hernoemen, maar niet opnieuw delen. Een afspeellijst deelt nooit.
+verliest houdt wat hij deelde, kan het hernoemen en op `private` zetten, maar niet opnieuw delen. Een
+afspeellijst deelt nooit. Elke wijziging van wie een verzameling ziet staat in het auditlog (17c.3).
+
+**API-tokens.** Lezen mag met elk bereik. Elke schrijfroute van dit hoofdstuk vraagt bereik `admin` en
+geeft anders `403` met `auth.scope_insufficient` (17c.2). Delen vraagt daarbovenop rol `owner` of `admin`
+bij de eigenaar van het token.
 
 **Per kijker.** Een lijst kan titels bevatten uit een bibliotheek die de kijker niet mag zien. Die titels
 bestaan voor hem niet: `item_count`, `duration_ms`, `artwork`, `total_estimate` en de inhoud zijn alleen
@@ -1480,7 +1488,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 71 | `GET /users/me/memory` | eigen Big P-geheugen | eigen sessiebearer, owner/admin/member; restricted en elk API-token 403 `memory.not_permitted` |
 | 72 | `PUT /users/me/memory` | volledige eigen geheugensnapshot met CAS | als regel 71, geen user-id in de body |
 | 73 | `POST /users/me/memory/clear` | eigen geheugen wissen en epoch roteren | als regel 71, geldige epoch en base_revision |
-| 74 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft (S20.4) |
+| 74 | `DELETE /history` | de eigen geschiedenis wissen | klasse `authenticated`, alleen de eigen regels; de kijkstatus blijft; een API-token onder bereik `admin` krijgt `403` (S20.4, 17c.2) |
 | 75 | `DELETE /history/{id}` | één eigen geschiedenisregel wissen | als regel 74, `404` voor een regel van een ander of die niet bestaat |
 | 76 | `GET /ratings` | de gewaardeerde titels van de aanvrager | als regel 52 |
 | 77 | `GET /collections` | lijst van lijsten | alleen wat de aanvrager mag zien; aantallen en artwork per kijker |
@@ -1872,6 +1880,18 @@ mint alleen tokens wanneer het zelf bereik `admin` heeft.** Zonder die regel toe
 `auth.scope_exceeds_role` het bereik tegen de rol, is de rol van een leestoken van een beheerder
 `admin`, en mint een leestoken een beheertoken. Dat is rechtenverhoging via het endpoint dat er juist
 een grens op moest zetten.
+
+**Eigen gegevens wissen en lijsten schrijven vraagt bereik `admin`.** `DELETE /history`,
+`DELETE /history/{history_id}` en elke schrijfroute op `/collections` en `/playlists` (aanmaken, wijzigen,
+verwijderen, en de drie routes op `.../items`) geven een token onder `admin` `403` met
+`auth.scope_insufficient`, met het bereik in `details.scope`. De reden is wat een gelekt token kan
+aanrichten: een leestoken in de configuratie van Home Assistant hoort geen geschiedenis te kunnen wissen,
+want dat is niet terug te draaien, en geen lijst te kunnen leegmaken. Geen `404` zoals bij de adminklasse:
+de route bestaat voor deze gebruiker, alleen dit credential mag er niet door. De weigering hangt niet af
+van het doel, dus een lijst buiten zicht verraadt niets. Omdat `admin` rol `owner` of `admin` vraagt, kan
+een `member` deze routes niet met een token bereiken; zijn gewone sessie wel. Omkeerbare eigen staat
+(favorieten, waarderingen, spoorvoorkeuren) valt buiten deze regel, en `/users/me/memory` weigert elk
+API-token op eigen gronden.
 
 ### 17c.3 Het auditlog
 

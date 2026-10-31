@@ -197,9 +197,12 @@ type HistoryPage struct {
 	NextCursor string
 }
 
+// historyCursor hoort bij de kind waarmee hij is uitgegeven: met een ander filter
+// zou een pagina midden in een andere reeks beginnen.
 type historyCursor struct {
-	T  string `json:"t"`
-	ID string `json:"i"`
+	T    string `json:"t"`
+	ID   string `json:"i"`
+	Kind string `json:"k,omitempty"`
 }
 
 // History geeft de afspeelgeschiedenis van een gebruiker, de laatste sessie
@@ -223,7 +226,7 @@ func (s *Store) History(ctx context.Context, user id.ID, visible []id.ID, kind s
 			return HistoryPage{}, ErrCursorInvalid
 		}
 		var c historyCursor
-		if err := json.Unmarshal(raw, &c); err != nil {
+		if err := json.Unmarshal(raw, &c); err != nil || c.Kind != kind {
 			return HistoryPage{}, ErrCursorInvalid
 		}
 		cid, err := id.Parse(c.ID)
@@ -265,7 +268,7 @@ func (s *Store) History(ctx context.Context, user id.ID, visible []id.ID, kind s
 	}
 	if len(page.Entries) > limit {
 		last := page.Entries[limit-1]
-		raw, _ := json.Marshal(historyCursor{T: last.LastEventAt.UTC().Format(time.RFC3339Nano), ID: last.ID.String()})
+		raw, _ := json.Marshal(historyCursor{T: last.LastEventAt.UTC().Format(time.RFC3339Nano), ID: last.ID.String(), Kind: kind})
 		page.NextCursor = base64.RawURLEncoding.EncodeToString(raw)
 		page.Entries = page.Entries[:limit]
 	}

@@ -407,6 +407,23 @@ func (s *Server) authenticatedByAPIToken(w http.ResponseWriter, r *http.Request,
 	next(w, r.WithContext(ctx))
 }
 
+// ownDataWrite is authenticated plus de grens uit 17c.2: een API-token onder
+// bereik admin wist of herschrijft geen eigen gegevens. Een gelekt leestoken
+// hoort geen geschiedenis te kunnen wissen of een lijst leeg te kunnen maken.
+//
+// De weigering hangt niet af van het doel, dus een lijst buiten zicht verraadt
+// hier niets. Een gewone sessie heeft geen bereik en loopt er ongemoeid door.
+func (s *Server) ownDataWrite(next http.HandlerFunc) http.Handler {
+	return s.authenticated(func(w http.ResponseWriter, r *http.Request) {
+		if scope, ok := apiScopeFromContext(r.Context()); ok && scope != auth.APIScopeAdmin {
+			writeError(w, s.log, CodeScopeInsufficient, "this token cannot change personal data",
+				map[string]any{"scope": string(scope)})
+			return
+		}
+		next(w, r)
+	})
+}
+
 // sessionLives is de O(1)-controle uit DEC-120: draagt dit credential een sid
 // die is ingetrokken, dan is het credential dood, ongeacht zijn eigen
 // vervalmoment.

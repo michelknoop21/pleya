@@ -5296,3 +5296,24 @@ De server leest de accountrol per aanvraag. Een gedegradeerde beheerder houdt wa
 de aanvraag en niet naar de bestaande rij, en een ingetrokken recht wist niets. In de app is dit de enige
 uitzondering op de eis uit het plan om `canAdministerServer` niet te gebruiken: delen gaat over `owner` of
 `admin` met de rol vers vóór de aanvraag, en beheer van een canonieke verzameling blijft bij de `owner`.
+
+**Aanvulling van 31 oktober 2026, reviewronde op S19: de naam van een deler is zichtbaar.** `Collection.owner`
+blijft verplicht en gaat ook naar `member` en `restricted`. Wie een lijst ziet, ziet door wie hij gedeeld is;
+beeld 17 toont dat als "door Sanne", en een gedeelde lijst zonder afzender leest als iets dat de server zelf
+aanbiedt. Dit is de enige uitzondering op regel 14 in hoofdstuk 14b en geldt alleen voor lijsten die de kijker
+al ziet: `GET /users` blijft zoals het was en `shared_with` gaat alleen naar de eigenaar. De zin in 14b is
+aangepast. Een lid dat zijn rol verloor mag een lijst die nog gedeeld staat wel op `private` zetten.
+
+**Aanvulling van 31 oktober 2026, reviewronde op S19: schrijven met een API-token vraagt bereik `admin`.**
+`allowListSharing` gebruikt `canAdminister` en niet de accountrol alleen, want een `read`-token van de owner
+kon een privélijst op `everyone` zetten. `DELETE /history`, `DELETE /history/{history_id}` en de schrijfroutes
+op `/collections` en `/playlists` geven een token onder `admin` `403` met de nieuwe code
+`auth.scope_insufficient`, vastgelegd in 17c.2. Beide routes op `/history` en de hele resource zijn nog niet
+uitgebracht, dus een extra `403` raakt geen bestaande client en de regels van hoofdstuk 3 worden niet geraakt.
+`POST /playlists`, `DELETE /history` en `DELETE /history/{history_id}` kregen die `403` in het schema.
+Favorieten, waarderingen en spoorvoorkeuren vallen erbuiten: die zijn terug te zetten en bestonden al. Een
+wijziging van `visibility` of `shared_with` schrijft een auditregel met de `operationId`; bewaren zonder
+wijziging niet, want de web stuurt de zichtbaarheid bij elke hernoeming mee. De overige correcties raken het
+contract niet in betekenis: `limit` op de vijf lijstoperaties verwijst naar de gedeelde parameter met maximum
+500, wat de server al deed, en een cursor van `GET /history` weigert nu aantoonbaar een andere `kind`, wat het
+schema al beloofde.

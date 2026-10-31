@@ -159,8 +159,10 @@ func (s *Server) allowRefresh(w http.ResponseWriter, r *http.Request, presentedH
 // client in een lus zou dan steeds een volle emmer krijgen.
 //
 // Een token zonder sessie is verzonnen of opgeruimd, en dat kan geen rechtmatige
-// client helpen. Die aanvragen tellen op het adres, zodat ze de database niet
-// onbeperkt raken en toch geen enkele sessie kunnen blokkeren.
+// client helpen. Die aanvragen tellen op het adres, zodat ze geen enkele sessie
+// kunnen blokkeren. Deze keuze begrenst de rotatie en niet de lookup: de query
+// hierboven levert de sleutel en draait dus vóór de limiter, ook na een 429. De
+// prijs is één geïndexeerde lookup per aanvraag.
 func (s *Server) refreshLimiterKey(ctx context.Context, r *http.Request, presentedHash []byte) (string, error) {
 	sessionID, known, err := s.opts.Auth.RefreshTokenSession(ctx, presentedHash)
 	if err != nil {

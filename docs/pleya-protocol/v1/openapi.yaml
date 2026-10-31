@@ -2114,9 +2114,12 @@ paths:
         alle regels van de aanvrager, ook die uit een bibliotheek die hij niet
         meer mag zien. Alleen de geschiedenis gaat weg: positie, gezien en
         Verder kijken staan in de kijkstatus en blijven. Herhalen is onschadelijk.
+        Een API-token onder bereik `admin` krijgt `403` met
+        `auth.scope_insufficient` (17c.2).
       responses:
         "204": { description: De geschiedenis is leeg. }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
@@ -2128,12 +2131,14 @@ paths:
       description: |
         Klasse `authenticated`, alleen onder `capabilities.personal_data`. Een
         regel van een ander is `404`, net als een regel die niet bestaat. De
-        kijkstatus blijft, zie `DELETE /history`.
+        kijkstatus blijft, zie `DELETE /history`. Een API-token onder bereik
+        `admin` krijgt `403` met `auth.scope_insufficient` (17c.2).
       parameters:
         - $ref: "#/components/parameters/HistoryId"
       responses:
         "204": { description: De regel is weg. }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
@@ -2210,10 +2215,7 @@ paths:
           required: false
           description: Alleen de eigen verzamelingen, voor "Toevoegen aan".
           schema: { type: boolean, default: false }
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 200 }
+        - $ref: "#/components/parameters/Limit"
         - name: cursor
           in: query
           required: false
@@ -2235,7 +2237,9 @@ paths:
         Een ongeldige titel of waarde is `400` met `library.list_invalid` en
         `details.field`. Delen is voor `owner` en `admin`: een `member` of
         `restricted` die een andere `visibility` dan `private` of `shared_with`
-        meestuurt krijgt `403` met `library.list_share_not_permitted`.
+        meestuurt krijgt `403` met `library.list_share_not_permitted`. Een API-token
+        onder bereik `admin` krijgt `403` met `auth.scope_insufficient` (17c.2), net
+        als op elke andere schrijfroute van verzamelingen en afspeellijsten.
       requestBody:
         required: true
         content:
@@ -2320,10 +2324,7 @@ paths:
         niet mee in `total_estimate`.
       parameters:
         - $ref: "#/components/parameters/CollectionId"
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 200 }
+        - $ref: "#/components/parameters/Limit"
         - name: cursor
           in: query
           required: false
@@ -2422,10 +2423,7 @@ paths:
           required: false
           description: Alleen de eigen afspeellijsten, voor "Toevoegen aan".
           schema: { type: boolean, default: false }
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 200 }
+        - $ref: "#/components/parameters/Limit"
         - name: cursor
           in: query
           required: false
@@ -2443,7 +2441,11 @@ paths:
       tags: [library]
       operationId: createPlaylist
       summary: Maak een afspeellijst met de aanvrager als eigenaar.
-      description: Een ongeldige titel of waarde is `400` met `library.list_invalid` en `details.field`.
+      description: |
+        Een ongeldige titel of waarde is `400` met `library.list_invalid` en
+        `details.field`. Een API-token onder bereik `admin` krijgt `403` met
+        `auth.scope_insufficient` (17c.2), net als op elke andere schrijfroute
+        van verzamelingen en afspeellijsten.
       requestBody:
         required: true
         content:
@@ -2457,6 +2459,7 @@ paths:
               schema: { $ref: "#/components/schemas/Playlist" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /playlists/{playlist_id}:
@@ -2523,10 +2526,7 @@ paths:
         niet mee in `total_estimate`.
       parameters:
         - $ref: "#/components/parameters/PlaylistId"
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 200 }
+        - $ref: "#/components/parameters/Limit"
         - name: cursor
           in: query
           required: false
@@ -2610,10 +2610,7 @@ paths:
       summary: De gewaardeerde titels van de aanvrager, de laatst gewaardeerde eerst.
       description: Klasse `authenticated`, alleen onder `capabilities.personal_data`. Beperkt tot de bibliotheken die de aanvrager mag zien. Elk item draagt `rating`.
       parameters:
-        - name: limit
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 200 }
+        - $ref: "#/components/parameters/Limit"
         - name: cursor
           in: query
           required: false
@@ -4837,6 +4834,10 @@ components:
 
     ListUser:
       type: object
+      description: |
+        Een gebruiker zoals een lijst hem noemt. Als `owner` staat dit in elk
+        antwoord aan wie de lijst ziet, ook aan een lid: de naam van degene die een
+        lijst deelt is zichtbaar (hoofdstuk 14b).
       required: [id, username]
       properties:
         id: { $ref: "#/components/schemas/Id" }

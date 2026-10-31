@@ -2,11 +2,11 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -130,6 +130,7 @@ func (s *Server) handleCreateList(codec listCodec) http.HandlerFunc {
 			s.writeListError(w, err)
 			return
 		}
+		s.auditListShare(r, auditCreateCollection, list)
 		writeJSON(w, http.StatusCreated, codec.one(list))
 	}
 }
@@ -164,6 +165,7 @@ func (s *Server) handleUpdateList(codec listCodec) http.HandlerFunc {
 			s.writeListError(w, err)
 			return
 		}
+		s.auditListShare(r, auditUpdateCollection, list)
 		writeJSON(w, http.StatusOK, codec.one(list))
 	}
 }
@@ -267,11 +269,12 @@ func (s *Server) handleRemoveListItem(codec listCodec) http.HandlerFunc {
 // private mag iedereen, en een aanvraag die de zichtbaarheid niet noemt raakt
 // deze regel niet, dus een gedegradeerde beheerder kan zijn lijst nog hernoemen.
 //
-// De accountrol en niet canAdminister: delen is geen beheerroute, en een
-// API-token van de eigenaar blijft hier de eigenaar. De rol wordt per aanvraag
-// gelezen, de uitkomst hangt niet af van het lijst-id en lekt dus niets over
-// een lijst buiten zicht. Een afspeellijst komt hier nooit met een van beide
-// velden aan, want zijn aanvraagschema kent ze niet.
+// canAdminister en niet de accountrol alleen: delen wijzigt wat anderen zien, dus
+// een beperkt API-token van een beheerder mag dat niet. ownDataWrite weigert zo'n
+// token op deze routes al eerder; dit is de regel zelf en niet de volgorde van
+// twee controles. De rol wordt per aanvraag gelezen, de uitkomst hangt niet af
+// van het lijst-id en lekt dus niets over een lijst buiten zicht. Een afspeellijst
+// komt hier nooit met een van beide velden aan, want zijn aanvraagschema kent ze niet.
 func (s *Server) allowListSharing(w http.ResponseWriter, r *http.Request, in catalog.ListInput) bool {
 	if in.SharedWith == nil && (in.Visibility == nil || *in.Visibility == catalog.VisibilityPrivate) {
 		return true
@@ -280,11 +283,25 @@ func (s *Server) allowListSharing(w http.ResponseWriter, r *http.Request, in cat
 	if !ok {
 		return false
 	}
-	if !req.isAdmin() {
+	if !req.canAdminister() {
 		writeError(w, s.log, CodeListShareNotPermitted, "only an owner or admin can share a collection", nil)
 		return false
 	}
 	return true
+}
+
+// auditListShare legt vast welk credential veranderde wie een verzameling ziet.
+// Een afspeellijst deelt nooit en komt hier dus niet langs met ShareChanged.
+func (s *Server) auditListShare(r *http.Request, operation string, list catalog.List) {
+	if !list.ShareChanged {
+		return
+	}
+	recipients := make([]string, 0, len(list.SharedWith))
+	for _, user := range list.SharedWith {
+		recipients = append(recipients, user.ID.String())
+	}
+	s.auditEvent(r, operation, list.ID.String(), audit.OutcomeOK,
+		map[string]any{"visibility": list.Visibility, "shared_with": recipients})
 }
 
 // listTarget is de kop van elke route op één lijst.
@@ -295,93 +312,4 @@ func (s *Server) listTarget(w http.ResponseWriter, r *http.Request, codec listCo
 	}
 	viewer, ok := s.listViewer(w, r)
 	return viewer, listID, ok
-}
-
-func parseIDs(raw []string) ([]id.ID, bool) {
-	out := make([]id.ID, 0, len(raw))
-	for _, v := range raw {
-		parsed, err := id.Parse(v)
-		if err != nil {
-			return nil, false
-		}
-		out = append(out, parsed)
-	}
-	return out, true
-}
-
-func (s *Server) decodeCreateCollection(w http.ResponseWriter, r *http.Request) (catalog.ListInput, bool) {
-	var req CreateCollectionRequest
-	if !s.decodeBody(w, r, &req, CodeListInvalid) {
-		return catalog.ListInput{}, false
-	}
-	in := catalog.ListInput{Title: &req.Title, Visibility: req.Visibility}
-	if req.SharedWith != nil {
-		shares, ok := parseIDs(*req.SharedWith)
-		if !ok {
-			writeError(w, s.log, CodeListInvalid, "shared_with is not valid", map[string]any{"field": "shared_with"})
-			return catalog.ListInput{}, false
-		}
-		in.SharedWith = &shares
-	}
-	return in, true
-}
-
-func (s *Server) decodeCreatePlaylist(w http.ResponseWriter, r *http.Request) (catalog.ListInput, bool) {
-	var req CreatePlaylistRequest
-	if !s.decodeBody(w, r, &req, CodeListInvalid) {
-		return catalog.ListInput{}, false
-	}
-	return catalog.ListInput{Title: &req.Title}, true
-}
-
-// patchString leest een veld dat afwezig mag zijn maar niet null.
-func (s *Server) patchString(w http.ResponseWriter, raw json.RawMessage, field string) (*string, bool) {
-	if raw == nil {
-		return nil, true
-	}
-	var v *string
-	if err := json.Unmarshal(raw, &v); err != nil || v == nil {
-		writeError(w, s.log, CodeListInvalid, field+" is not valid", map[string]any{"field": field})
-		return nil, false
-	}
-	return v, true
-}
-
-func (s *Server) decodeUpdateCollection(w http.ResponseWriter, r *http.Request) (catalog.ListInput, bool) {
-	var req UpdateCollectionRequest
-	if !s.decodeBody(w, r, &req, CodeListInvalid) {
-		return catalog.ListInput{}, false
-	}
-	title, ok := s.patchString(w, req.Title, "title")
-	if !ok {
-		return catalog.ListInput{}, false
-	}
-	visibility, ok := s.patchString(w, req.Visibility, "visibility")
-	if !ok {
-		return catalog.ListInput{}, false
-	}
-	in := catalog.ListInput{Title: title, Visibility: visibility}
-	if req.SharedWith != nil {
-		var raw []string
-		err := json.Unmarshal(req.SharedWith, &raw)
-		shares, parsed := parseIDs(raw)
-		if err != nil || raw == nil || !parsed {
-			writeError(w, s.log, CodeListInvalid, "shared_with is not valid", map[string]any{"field": "shared_with"})
-			return catalog.ListInput{}, false
-		}
-		in.SharedWith = &shares
-	}
-	return in, true
-}
-
-func (s *Server) decodeUpdatePlaylist(w http.ResponseWriter, r *http.Request) (catalog.ListInput, bool) {
-	var req UpdatePlaylistRequest
-	if !s.decodeBody(w, r, &req, CodeListInvalid) {
-		return catalog.ListInput{}, false
-	}
-	title, ok := s.patchString(w, req.Title, "title")
-	if !ok {
-		return catalog.ListInput{}, false
-	}
-	return catalog.ListInput{Title: title}, true
 }

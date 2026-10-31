@@ -87,6 +87,12 @@ const (
 	// beheerder die de rol van zijn gebruikers sowieso ziet in GET /users.
 	CodeScopeExceedsRole = "auth.scope_exceeds_role"
 
+	// CodeScopeInsufficient is het antwoord op een route die eigen gegevens
+	// onomkeerbaar wijzigt, wanneer een API-token onder bereik admin hem aanroept
+	// (17c.2). Geen 404 zoals bij de adminklasse: de route bestaat voor deze
+	// gebruiker, alleen dit credential mag er niet door.
+	CodeScopeInsufficient = "auth.scope_insufficient"
+
 	// CodeOriginRejected is het antwoord op een aanvraag in cookiemodus vanaf
 	// een origin die deze server niet toestaat, of zonder Origin-header
 	// (J.2 rij 16, K rij 20). Alleen op POST /auth/login en POST /auth/refresh,
@@ -296,6 +302,7 @@ var errorTable = map[string]struct {
 	CodeSessionNotFound:      {http.StatusNotFound, false},
 	CodePermissionNotAllowed: {http.StatusConflict, false},
 	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
+	CodeScopeInsufficient:    {http.StatusForbidden, false},
 	CodeOriginRejected:       {http.StatusForbidden, false},
 
 	CodeNotFound:                {http.StatusNotFound, false},

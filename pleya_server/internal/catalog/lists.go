@@ -73,6 +73,9 @@ type List struct {
 	Artwork    []id.ID
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	// ShareChanged zegt dat deze schrijfactie veranderde wie de lijst ziet. Alleen
+	// gezet door CreateList en UpdateList; het hoort in het auditlog, niet op de lijn.
+	ShareChanged bool
 }
 
 // ListViewer is de aanvrager: wie hij is en welke bibliotheken hij mag zien, in
@@ -165,6 +168,10 @@ func validListTitle(raw string) (string, error) {
 	}
 	if utf8.RuneCountInString(title) > maxListTitle {
 		return "", &ListInvalidError{Field: "title", Reason: "te lang"}
+	}
+	// Postgres weigert een NUL in text, en dat zou anders een 500 worden.
+	if strings.ContainsRune(title, 0) {
+		return "", &ListInvalidError{Field: "title", Reason: "bevat een NUL"}
 	}
 	return title, nil
 }

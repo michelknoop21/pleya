@@ -135,8 +135,8 @@ func (s *Server) routeTable() []route {
 		// Alles klasse authenticated, over de aanvrager zelf; een item buiten de
 		// bibliotheken van de aanvrager is een 404.
 		{"GET " + p + "/history", s.authenticated(s.handleHistory)},
-		{"DELETE " + p + "/history", s.authenticated(s.handleClearHistory)},
-		{"DELETE " + p + "/history/{history_id}", s.authenticated(s.handleDeleteHistoryEntry)},
+		{"DELETE " + p + "/history", s.ownDataWrite(s.handleClearHistory)},
+		{"DELETE " + p + "/history/{history_id}", s.ownDataWrite(s.handleDeleteHistoryEntry)},
 		{"GET " + p + "/favorites", s.authenticated(s.handleListFavorites)},
 		{"PUT " + p + "/favorites/{item_id}", s.authenticated(s.handleSetFavorite)},
 		{"DELETE " + p + "/favorites/{item_id}", s.authenticated(s.handleClearFavorite)},
@@ -150,23 +150,23 @@ func (s *Server) routeTable() []route {
 		// Verzamelingen en afspeellijsten (venster 6 deel 1, S19, matrixregels 77 tot en
 		// met 94). Klasse authenticated; zicht en eigendom beslist de store.
 		{"GET " + p + "/collections", s.authenticated(s.handleLists(collectionCodec))},
-		{"POST " + p + "/collections", s.authenticated(s.handleCreateList(collectionCodec))},
+		{"POST " + p + "/collections", s.ownDataWrite(s.handleCreateList(collectionCodec))},
 		{"GET " + p + "/collections/{collection_id}", s.authenticated(s.handleGetList(collectionCodec))},
-		{"PATCH " + p + "/collections/{collection_id}", s.authenticated(s.handleUpdateList(collectionCodec))},
-		{"DELETE " + p + "/collections/{collection_id}", s.authenticated(s.handleDeleteList(collectionCodec))},
+		{"PATCH " + p + "/collections/{collection_id}", s.ownDataWrite(s.handleUpdateList(collectionCodec))},
+		{"DELETE " + p + "/collections/{collection_id}", s.ownDataWrite(s.handleDeleteList(collectionCodec))},
 		{"GET " + p + "/collections/{collection_id}/items", s.authenticated(s.handleListItems(collectionCodec))},
-		{"PUT " + p + "/collections/{collection_id}/items", s.authenticated(s.handleReplaceListItems(collectionCodec))},
-		{"POST " + p + "/collections/{collection_id}/items", s.authenticated(s.handleAddListItems(collectionCodec))},
-		{"DELETE " + p + "/collections/{collection_id}/items/{item_id}", s.authenticated(s.handleRemoveListItem(collectionCodec))},
+		{"PUT " + p + "/collections/{collection_id}/items", s.ownDataWrite(s.handleReplaceListItems(collectionCodec))},
+		{"POST " + p + "/collections/{collection_id}/items", s.ownDataWrite(s.handleAddListItems(collectionCodec))},
+		{"DELETE " + p + "/collections/{collection_id}/items/{item_id}", s.ownDataWrite(s.handleRemoveListItem(collectionCodec))},
 		{"GET " + p + "/playlists", s.authenticated(s.handleLists(playlistCodec))},
-		{"POST " + p + "/playlists", s.authenticated(s.handleCreateList(playlistCodec))},
+		{"POST " + p + "/playlists", s.ownDataWrite(s.handleCreateList(playlistCodec))},
 		{"GET " + p + "/playlists/{playlist_id}", s.authenticated(s.handleGetList(playlistCodec))},
-		{"PATCH " + p + "/playlists/{playlist_id}", s.authenticated(s.handleUpdateList(playlistCodec))},
-		{"DELETE " + p + "/playlists/{playlist_id}", s.authenticated(s.handleDeleteList(playlistCodec))},
+		{"PATCH " + p + "/playlists/{playlist_id}", s.ownDataWrite(s.handleUpdateList(playlistCodec))},
+		{"DELETE " + p + "/playlists/{playlist_id}", s.ownDataWrite(s.handleDeleteList(playlistCodec))},
 		{"GET " + p + "/playlists/{playlist_id}/items", s.authenticated(s.handleListItems(playlistCodec))},
-		{"PUT " + p + "/playlists/{playlist_id}/items", s.authenticated(s.handleReplaceListItems(playlistCodec))},
-		{"POST " + p + "/playlists/{playlist_id}/items", s.authenticated(s.handleAddListItems(playlistCodec))},
-		{"DELETE " + p + "/playlists/{playlist_id}/items/{item_id}", s.authenticated(s.handleRemoveListItem(playlistCodec))},
+		{"PUT " + p + "/playlists/{playlist_id}/items", s.ownDataWrite(s.handleReplaceListItems(playlistCodec))},
+		{"POST " + p + "/playlists/{playlist_id}/items", s.ownDataWrite(s.handleAddListItems(playlistCodec))},
+		{"DELETE " + p + "/playlists/{playlist_id}/items/{item_id}", s.ownDataWrite(s.handleRemoveListItem(playlistCodec))},
 
 		// Downloads voor offline kijken (venster 5 deel 3, S23, matrixregel 61 tot en
 		// met 65). Alles klasse authenticated en van de eigenaar; de trede download
