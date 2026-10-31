@@ -5150,16 +5150,19 @@ of externe/publicatie naar App Review.
 
 **Keuze (Michel, 30 oktober 2026): optie 1, volledig venster.** Het scoped venster staat open voor het veld `Item.external_ids`, de parameter `external_id` en de capability `external_id_lookup`, en voor niets anders. De twee alternatieven (alleen het antwoordveld, of geen venster) vervallen daarmee. De kandidaat gaat na de toestelproef naar de normale merge.
 
-## DEC-XXX: Eén gezicht per film, voortgang loopt door tussen bronnen
+## DEC-XXX: Eén titel over servers heen
 
-**Status:** accepted (Michel Knoop, 30 oktober 2026)
+**Status:** accepted (Michel Knoop, 30 en 31 oktober 2026)
+**Roadmap:** A-07
 
-**Context:** Op de Apple TV begon 21 Jump Street op Plex vanaf nul terwijl dezelfde film op Pleya Server op 50 minuten stond, en wisselden afbeeldingen en gegevens mee met de gekozen bron. Hoofdstuk 13.2 en 15 van `docs/tvos-unified-experience.md` en besluit 5 van de Pleya Server-unified-beslissing hielden voortgang en pagina op de concrete bron.
+**Context:** Op de Apple TV begon 21 Jump Street op Plex vanaf nul terwijl dezelfde film op Pleya Server op 50 minuten stond, en wisselden afbeeldingen en gegevens mee met de gekozen bron. Hoofdstuk 13.2 en 15 van `docs/tvos-unified-experience.md` en besluit 5 van de Pleya Server-unified-beslissing hielden voortgang en pagina op de concrete bron. Series bleven daarna achter: de pagina wisselde mee, en voortgang op de ene server bestond op de andere niet.
 
 **Besluit:**
-1. Een bron zonder eigen positie start op de positie van de bron die de voortgang van de groep draagt, zolang de runtimes vergelijkbaar zijn. Er wordt niets naar de andere bron geschreven.
-2. De detailpagina van een film toont altijd de representatieve bron van de groep, dezelfde die de kaart gebruikt. De keuze van een bron verandert alleen wat Afspelen start.
-3. Series blijven op de gekozen bron, omdat seizoenen en afleveringen per bron bestaan.
+1. Een film of serie houdt één pagina: de hoofdbron (`group.representativeSource`, rangorde 4.7) levert beschrijving, afbeeldingen en de afleveringslijst. De keuze van een bron verandert alleen wat Afspelen start.
+2. Afspelen koppelt een aflevering op seizoen- en afleveringsnummer aan de gekozen server, de voortgang loopt door. Een bron zonder eigen positie start op de positie van de bron die de voortgang draagt, zolang de runtimes vergelijkbaar zijn.
+3. Ontbreekt een aflevering op de gekozen server, dan speelt Pleya zonder melding af vanaf een server die hem wel heeft. Geldt ook voor de volgende aflevering in de speler; daarna keert de speler terug naar de gekozen server.
+4. Kijkvoortgang en gekeken-status gaan naar alle servers met die titel. Bij niet-vergelijkbare runtimes (`runtimesAreComparable`, G7) blijft het op de spelende bron. Dit herroept hoofdstuk 4.6 alleen hiervoor. De schrijfactie loopt via de bestaande kijkstatuswachtrij, zodat een fout op een tweede server de speler en de spelende bron niet raakt.
+5. Technische gegevens en spoorkeuze op de detailpagina komen van de gekozen server. Beschrijving en afbeeldingen blijven van de hoofdbron. De extra ophaalactie gebeurt bij het kiezen van de bron.
+6. Dit geldt voor Apple TV, iPhone, iPad en desktop, en voor Plex, Jellyfin, Emby en Pleya Server. Lokale mappen en Pleya Share worden niet samengevoegd (Pleya Server-unified-beslissing, besluit 1) en hebben dus geen tweede bron.
 
-**Gevolg:** De technische gegevens op een filmpagina horen bij de getoonde bron en niet per se bij de bron die speelt.
-
+**Gevolg:** Wijzigen op de detailpagina vervangt de route niet meer zolang de hoofdbron de pagina houdt. Menu-acties op die pagina (verwijderen, metadata) werken op de gekozen bron, want de bron die de pagina toont is niet per se de bron die de kijker koos. Rechten worden per beslissing getoetst: een verborgen server, een verborgen bibliotheek of een auth-fout wordt niet aangesproken, en een kinderprofiel komt voor een ontbrekende aflevering niet bij een derde server. Downloaden op de detailpagina blijft op de hoofdbron; een externe speler schrijft niet door naar andere bronnen. Regels staan in hoofdstuk 4.6, 13.2 en 15. **Unified impact:** gedeelde eigenaar is `UnifiedTitlePlayback` met `SourceEpisodeIndex`, `UnifiedProgressMirror` en de wachtrijrij `mirroredProgress`; gekoppeld zijn alle `MediaServerClient`-backends via `fetchPlayableDescendants`, zonder protocolwijziging.

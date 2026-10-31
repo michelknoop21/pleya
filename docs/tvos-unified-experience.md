@@ -296,11 +296,14 @@ hoofdstuk 31.8 als bestemming.
 ### 4.6 Writes zijn standaard brongebonden
 
 Lezen mag gegroepeerd worden. Mutaties mogen nooit per ongeluk de representatieve artworkbron raken.
-Afspelen: gekozen bron. Details: gekozen bron. Metadata-refresh: gekozen library. Verwijderen:
-gekozen bron. Markeer bekeken en onbekeken: alle bronnen (hoofdstuk 13.5, DEC-071). Rate: alle
-bronnen (hoofdstuk 13.8, DEC-075); een bron die op dat moment onbereikbaar is wordt gemeld, niet
-vastgehouden, want een cijfer heeft geen wachtrij. Verwijder uit Verder kijken: expliciet logisch
-groepscontract, beschreven in hoofdstuk 13.
+Afspelen: gekozen bron. Details: hoofdbron, technische gegevens en sporen van de gekozen bron
+(hoofdstuk 15). Metadata-refresh: gekozen library. Verwijderen: gekozen bron; het menu op een
+detailpagina die de hoofdbron toont werkt daarom op de gekozen bron. Markeer bekeken en onbekeken:
+alle bronnen (hoofdstuk 13.5, DEC-071). Kijkvoortgang en de gekeken-status uit een afspeelsessie:
+alle bronnen met die titel, behalve bij niet-vergelijkbare runtimes (hoofdstuk 13.2, DEC-XXX "Eén
+titel over servers heen"). Rate: alle bronnen (hoofdstuk 13.8, DEC-075); een bron die op dat moment
+onbereikbaar is wordt gemeld, niet vastgehouden, want een cijfer heeft geen wachtrij. Verwijder uit
+Verder kijken: expliciet logisch groepscontract, beschreven in hoofdstuk 13.
 
 Het onderscheid dat deze paragraaf maakt is niet "brongebonden versus groepsbreed" maar "per ongeluk
 versus expliciet". Een groepsactie die in hoofdstuk 13 als zodanig is vastgelegd is geen uitzondering
@@ -309,7 +312,8 @@ landt omdat die toevallig de representatieve was.
 
 > Gewijzigd door [DEC-071](DECISIONS.md#dec-071) en [DEC-075](DECISIONS.md#dec-075). Tot 1 september
 > 2026 stond hier "Markeer bekeken: gekozen bron, of expliciet Alle bronnen", en Rate stond er als
-> brongebonden actie in hoofdstuk 23.
+> brongebonden actie in hoofdstuk 23. Kijkvoortgang werd tot 31 oktober 2026 alleen naar de spelende
+> bron geschreven; DEC-XXX "Eén titel over servers heen" draait dat om, en alleen dat.
 
 ### 4.7 Geen willekeur op basis van responssnelheid
 
@@ -1039,9 +1043,19 @@ editions met een groot runtimeverschil blijft progress brongebonden; de source p
 bron apart.
 
 Start een bron zonder eigen positie terwijl een andere bron van dezelfde titel er wel een heeft, dan
-begint hij op die positie, zolang de runtimes vergelijkbaar zijn. Dat geldt alleen voor de start:
-er wordt niets naar de andere bron geschreven, en wat de speler daarna meldt landt op de bron die
-speelt. Een bron met een eigen positie houdt die, want de picker belooft hem op de rij.
+begint hij op die positie, zolang de runtimes vergelijkbaar zijn. Voor een aflevering geldt dat per
+seizoen- en afleveringsnummer. Een bron met een eigen positie houdt die, want de picker belooft hem
+op de rij.
+
+De positie waarop een sessie eindigt en het moment waarop hij als bekeken telt, gaan naar alle andere
+bronnen met die titel (`UnifiedProgressMirror`). Een kopie met een niet-vergelijkbare runtime
+(`runtimesAreComparable`, G7) slaat de speler over: die houdt zijn eigen stand. De schrijfactie loopt
+altijd via de kijkstatuswachtrij als rij `mirroredProgress`, ook als de server online is. Een server
+die laat antwoordt of weigert probeert het daardoor opnieuw zoals elke rij in die wachtrij, en raakt
+de speler en de spelende bron niet. De replay houdt de last-writer-wins-controle van de wachtrij en
+slaat de trackers over: de bron die speelde heeft de kijkbeurt al gemeld, en Trakt telt watched-events
+per kijkbeurt. Een bron met een auth-fout krijgt niets, ook geen rij: inloggen herstelt dat, niet een
+reconnect, en een rij zou onder de volgende login worden afgespeeld.
 
 ### 13.3 Verder kijken
 
@@ -1292,40 +1306,53 @@ Profiel verwijderen wist ook deze voorkeur (hoofdstuk 22).
 
 ## 15. Detailpagina en source switching
 
-Een film houdt één pagina: de pagina toont altijd de representatieve bron, en een andere bron
-kiezen verandert alleen wat Afspelen start (besluit van Michel, 30 oktober 2026). Is die bron niet
-bereikbaar, dan toont de pagina de gekozen bron. Series blijven hieronder vallen, omdat seizoenen
-en afleveringen per bron bestaan.
+Een film of serie houdt één pagina: de pagina toont de hoofdbron (`group.representativeSource`,
+rangorde 4.7) met beschrijving, afbeeldingen en bij een serie de afleveringslijst. Een andere bron
+kiezen verandert alleen wat Afspelen start (besluiten van Michel, 30 en 31 oktober 2026). Is de
+hoofdbron niet bereikbaar, of kon de pagina hem niet laden, dan toont de pagina de gekozen bron. Een
+aflevering die los uit Verder kijken komt, blijft op de gekozen bron.
 
-De detailpagina blijft brongebonden, maar ontvangt optioneel een `UnifiedMediaRouteContext`. Wanneer
-meer dan één bron bestaat:
+De detailpagina ontvangt optioneel een `UnifiedMediaRouteContext`. Wanneer meer dan één bron bestaat:
 
 ```
 Bron: NAS • Films 4K              [ Wijzigen ]
 ```
 
-Regels: Wijzigen opent dezelfde source picker in detailsmodus. Nieuwe bron vervangt de concrete
-metadata binnen een nieuwe detailroute of veilige route-replacement. Geen half gemergede detailpagina
-met seasons van server A en metadata van server B. Bij series wordt het hele seizoen-/afleveringspad
-van de gekozen bron gebruikt. De huidige selectie wordt onthouden voor latere Play. Back na
-bronwijziging keert niet door alle eerder gekozen bronnen heen: de route wordt vervangen, niet
-gestapeld.
+Regels: Wijzigen opent dezelfde source picker in detailsmodus. Blijft de hoofdbron de pagina, dan
+geeft de picker de nieuwe keuze terug aan de open pagina: er wordt niets herladen, de route blijft
+staan en de focus keert terug op Wijzigen. Alleen technische gegevens en sporen wisselen mee; die
+komen van de bron die gaat spelen, en de nieuwste aanvraag wint, zodat sporen van de vorige server
+niet alsnog op de pagina landen. Verandert de keuze de pagina zelf, dan wordt de route vervangen,
+niet gestapeld. De positie bij een wissel komt uit de watch-state van de sessie, niet uit de groep
+die de route vasthoudt: die groep dateert van vóór de laatste play.
 
-Playback blijft op de gekozen bron. Wanneer playbackinitialisatie mislukt en alternatieve bronnen
-bestaan:
+**Afleveringen.** Afspelen koppelt de aflevering op seizoen- en afleveringsnummer aan de gekozen
+server (`UnifiedTitlePlayback`). Twee rijen met dezelfde code tellen als afwezig (hoofdstuk 11.8).
+Ontbreekt de aflevering daar, dan speelt Pleya zonder melding af vanaf de eerstvolgende bron die hem
+heeft. Waar een serie staat volgt de bron die het verst is, niet alleen de hoofdbron.
+
+**Volgende aflevering.** De wachtrij van de spelende server beslist zolang dat de gekozen server is
+en die de volgende aflevering heeft. Ontbreekt die, of speelt een geleende aflevering, dan bepaalt
+de samengevoegde volgorde van alle bronnen wat volgt, en de speler keert terug naar de gekozen server
+zodra die de aflevering heeft. Specials van een andere server tellen niet als gat. Shuffle, een
+afspeellijst en Samen kijken houden hun eigen volgorde.
+
+**Rechten.** Elke bron wordt per beslissing getoetst (`UnifiedSourceGate`): een verborgen server, een
+verborgen bibliotheek, een auth-fout of een offline server wordt voor een aflevering niet aangesproken.
+Een kinderprofiel gebruikt voor een ontbrekende aflevering alleen de gekozen bron, de bron van de
+pagina en de server van het verzoek, nooit een derde server. Kan het profiel niet gelezen worden, dan
+telt het als kinderprofiel.
+
+**Film.** Een film blijft op de gekozen bron staan. Wanneer playbackinitialisatie mislukt en
+alternatieve bronnen bestaan:
 
 ```
 Deze bron kon niet worden afgespeeld.
 [ Andere bron kiezen ]   [ Sluiten ]
 ```
 
-Geen stille fallback, omdat een andere bron een andere edition, trackset of progress kan hebben.
-
-**Volgende aflevering.** Een gekozen seriesource blijft sticky voor de afspeelsessie. Next Episode
-komt van dezelfde server en queue. Pleya springt niet stil naar een andere server. Wanneer de gekozen
-bron geen volgende aflevering heeft en een andere bron exact die aflevering wel heeft, kan na het
-einde een expliciet aanbod verschijnen: "Volgende aflevering is beschikbaar op NAS. Overschakelen?"
-Alleen bij een sterke episode-identiteitsmatch. Afwijzen beëindigt de sessie normaal.
+Geen stille fallback, omdat een andere bron een andere edition of trackset kan hebben. Die stille
+fallback bestaat alleen voor een aflevering die op de gekozen bron ontbreekt.
 
 ---
 

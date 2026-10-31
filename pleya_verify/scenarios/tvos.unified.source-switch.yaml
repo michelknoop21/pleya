@@ -1,0 +1,103 @@
+name: tvos.unified.source-switch
+target: tvos-sim
+# One series on two servers, on Apple TV (DEC-XXX "Eén titel over servers
+# heen"). Two Pleya-protocol fixture servers as in `ios.unified.two-servers`:
+# A holds Severance under one title, B under another, both TMDB 95396.
+#
+# What this proves:
+#   1. the picker lists both servers and a choice of B opens the page of the
+#      main source, with B as the source Play starts from;
+#   2. Wijzigen on the page keeps the page: the same screen, no reload, the
+#      ring back on the control that opened the picker, and the source line on
+#      the other server;
+#   3. a second switch works from the context of the first: the page holds its
+#      own route rather than the one it was opened with;
+#   4. Play after a switch starts the player, and Menu comes back on the page.
+# Not in this scenario: the fixture has no second copy with a gap, and no Plex.
+# The episode mapping, the fallback, the mirror and the rights are proven in
+# `unified_title_playback_test`, `unified_progress_mirror_test` and
+# `media_detail_screen_test`.
+setup:
+  - reset_app
+  - seed: unified.pair.a.v1
+  - seed_second: unified.pair.b.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - connections_seed: {base_url: "{{fixture_second}}", server_id: srv-2, server_name: "NAS B", user_name: verify-owner, refresh_token: rt-seeded}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: right, expect: [nav.series], timeout: 40000, settle: 800}
+  - press: select
+  - settle: 1500
+  - press: down
+  - settle: 1500
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[series]", timeout: 20000}
+  - wait_until: {id: "tv.catalog.grid.item[series.2]", timeout: 20000}
+  - settle: 1500
+  - snapshot: 00-catalog
+
+  # Severance is the card with both sources: the third of three.
+  - press: right
+  - settle: 500
+  - press: right
+  - settle: 500
+  - assert: {id: "tv.catalog.grid.item[series.2]", focused: true}
+  - press: select
+  - wait_until: {id: sheet.source_picker, timeout: 10000}
+  - assert: {id: "sheet.source_picker.row[0]", state: {usable: true}}
+  - assert: {id: "sheet.source_picker.row[1]", state: {usable: true}}
+  - settle: 800
+  - snapshot: 01-picker
+
+  - press: down
+  - settle: 500
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - wait_until: {id: media-detail.source, timeout: 10000}
+  - settle: 1500
+  - snapshot: 02-detail-main-page
+
+  # The ring opens on the episode rail: up to Play, down onto the source line.
+  - press: up
+  - settle: 800
+  - assert: {id: media-detail.play, focused: true}
+  - press: down
+  - wait_until: {focused: media-detail.source, timeout: 5000}
+  - settle: 800
+  - snapshot: 03-ring-on-source
+
+  - press: select
+  - wait_until: {id: sheet.source_picker, timeout: 10000}
+  - settle: 800
+  - press: down
+  - settle: 500
+  - press: select
+  # The page stays: focus comes back to the control, not to the first row.
+  - wait_until: {focused: media-detail.source, timeout: 8000}
+  - settle: 1000
+  - snapshot: 04-after-switch
+
+  - press: select
+  - wait_until: {id: sheet.source_picker, timeout: 10000}
+  - settle: 800
+  - press: down
+  - settle: 500
+  - press: select
+  - wait_until: {focused: media-detail.source, timeout: 8000}
+  - settle: 1000
+  - snapshot: 05-after-second-switch
+
+  - press: up
+  - wait_until: {focused: media-detail.play, timeout: 5000}
+  - press: select
+  - wait_until: {id: player.surface, timeout: 30000}
+  - settle: 3000
+  - snapshot: 06-player
+  - press: menu
+  - settle: 1500
+  - press: menu
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 1500
+  - snapshot: 07-back-on-page
