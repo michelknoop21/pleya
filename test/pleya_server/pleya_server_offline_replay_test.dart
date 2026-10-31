@@ -250,6 +250,18 @@ void main() {
       expect(await row(), isNull);
       expect(heard, [true]);
     });
+
+    test('what was watched comes from that read, so a tracker can place it', () async {
+      await connect(
+        userState: state(at: longAgo),
+        transport: _FlakyReads.new,
+      );
+      await playedOffline(finished: true);
+
+      await sync();
+
+      expect(told.single.mediaType, 'movie');
+    });
   });
 
   group('a profile that changes once the write is out', () {
@@ -270,6 +282,72 @@ void main() {
         expect(told, isEmpty);
       });
     }
+  });
+
+  group('the copies hear only the profile that watched', () {
+    var binding = false;
+
+    Future<void> adultPlayed({required bool finished}) async {
+      queue.setActiveProfileId('adult');
+      await db.upsertProgressAction(
+        profileId: 'adult',
+        serverId: ServerId(client.serverId),
+        clientScopeId: client.scopedServerId,
+        ratingKey: 'movie-1',
+        viewOffset: finished ? length : 1800000,
+        duration: length,
+        shouldMarkWatched: finished,
+      );
+    }
+
+    setUp(() {
+      binding = false;
+      queue.isProfileBinding = () => binding;
+    });
+
+    for (final (name, change) in <(String, void Function())>[
+      ('a switch', () => queue.setActiveProfileId('kid')),
+      ('a bind', () => binding = true),
+    ]) {
+      test('$name during the write of a position: nobody hears of it', () async {
+        await connect(transport: (server) => _AfterWrite(server, '"backlog":true', change));
+        await adultPlayed(finished: false);
+
+        await sync();
+
+        expect(heard, isEmpty);
+      });
+
+      test('$name while the trackers run: the copies hear nothing', () async {
+        await connect();
+        await adultPlayed(finished: true);
+        final subscription = WatchStateNotifier().stream.listen((_) => change());
+        addTearDown(subscription.cancel);
+
+        await sync();
+
+        expect(told, isNotEmpty);
+        expect(heard, isEmpty);
+      });
+
+      test('$name while the item for the copies comes in: nobody hears of it', () async {
+        await connect(transport: (server) => _AfterWrite(server, '', change, onlyAfterAWrite: true));
+        await adultPlayed(finished: false);
+
+        await sync();
+
+        expect(heard, isEmpty);
+      });
+    }
+
+    test('nothing changes, and they hear of it', () async {
+      await connect();
+      await adultPlayed(finished: false);
+
+      await sync();
+
+      expect(heard, [false]);
+    });
   });
 
   group('the session of a row', () {
@@ -368,19 +446,28 @@ class _FlakyReads extends http.BaseClient {
   }
 }
 
-/// Runs [then] once a write carrying [marker] was answered.
+/// Runs [then] once a write carrying [marker] was answered, or with
+/// [onlyAfterAWrite] once a read after a write was.
 class _AfterWrite extends http.BaseClient {
-  _AfterWrite(PleyaFakeServer server, this.marker, this.then) : inner = server.asHttpClient();
+  _AfterWrite(PleyaFakeServer server, this.marker, this.then, {this.onlyAfterAWrite = false})
+    : inner = server.asHttpClient();
 
   final http.Client inner;
   final String marker;
   final void Function() then;
+  final bool onlyAfterAWrite;
+  bool _wrote = false;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final body = request is http.Request ? request.body : '';
     final response = await inner.send(request);
-    if (body.contains(marker)) then();
+    if (onlyAfterAWrite) {
+      if (_wrote && request.method == 'GET') then();
+      if (request.url.path.endsWith('/watch-state')) _wrote = true;
+    } else if (body.contains(marker)) {
+      then();
+    }
     return response;
   }
 }

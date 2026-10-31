@@ -14,6 +14,7 @@ import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_identity.dart';
 import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/playback_report_metadata.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_coverage_state.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
@@ -473,6 +474,45 @@ void main() {
       expect(heard, isFalse);
     });
 
+    group('a change while the last write goes out, on any backend', () {
+      var binding = false;
+
+      setUp(() {
+        binding = false;
+        queue.isProfileBinding = () => binding;
+      });
+
+      for (final (name, change) in <(String, void Function())>[
+        ('a switch', () => queue.setActiveProfileId('kid')),
+        ('a bind', () => binding = true),
+      ]) {
+        for (final finished in const [false, true]) {
+          test('$name (finished: $finished) tells nobody', () async {
+            manager.debugRegisterClientForTesting(
+              _ChangesDuringTheWrite('other', change, finished: finished, item: mirrorFilm('other')),
+            );
+            var heard = false;
+            queue.onOwnPlayReplayed = (_, _, _, {required watched}) => heard = true;
+            queue.setActiveProfileId('adult');
+            await db.upsertProgressAction(
+              profileId: 'adult',
+              serverId: ServerId('other'),
+              clientScopeId: null,
+              ratingKey: 'film',
+              viewOffset: length.inMilliseconds,
+              duration: length.inMilliseconds,
+              shouldMarkWatched: finished,
+            );
+
+            await queue.syncPendingItems();
+            await pumpEventQueue();
+
+            expect(heard, isFalse);
+          });
+        }
+      }
+    });
+
     test('a profile that took over while the item came in hears nothing', () async {
       final answer = Completer<MediaItem?>();
       manager.debugRegisterClientForTesting(_AnswersLater('other', mirrorFilm('other'), answer.future));
@@ -722,6 +762,34 @@ class _Hidden extends ChangeNotifier implements HiddenLibrariesProvider {
 class _Mounted extends Fake implements BuildContext {
   @override
   bool get mounted => true;
+}
+
+/// [change] happens during the last write of a row: the stop of a position, or
+/// the mark of a finished viewing.
+class _ChangesDuringTheWrite extends MirrorServer {
+  _ChangesDuringTheWrite(super.id, this.change, {required this.finished, super.item});
+
+  final void Function() change;
+  final bool finished;
+
+  @override
+  Future<void> reportPlaybackStopped({
+    required String itemId,
+    required Duration position,
+    Duration? duration,
+    String? playSessionId,
+    String? mediaSourceId,
+    PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
+  }) async {
+    await super.reportPlaybackStopped(itemId: itemId, position: position, duration: duration, report: report);
+    if (!finished) change();
+  }
+
+  @override
+  Future<void> markWatched(MediaItem item) async {
+    await super.markWatched(item);
+    if (finished) change();
+  }
 }
 
 class _AnswersLater extends MirrorServer {

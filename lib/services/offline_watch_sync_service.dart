@@ -605,16 +605,13 @@ class OfflineWatchSyncService extends ChangeNotifier {
           continue;
         }
 
+        bool isCurrent() => profileId == _activeProfileId && isProfileBinding?.call() != true;
         final synced = await _withOnlineClientForAction(action, (client) async {
           try {
-            final landed = await replayOfflineWatchAction(
-              client,
-              action,
-              isCurrent: () => profileId == _activeProfileId && isProfileBinding?.call() != true,
-            );
+            final landed = await replayOfflineWatchAction(client, action, isCurrent: isCurrent);
             await _database.deleteReplayedWatchAction(action);
             appLogger.d('Successfully synced action ${action.id}: ${action.actionType} for ${action.ratingKey}');
-            if (landed) _announceOwnPlay(client, action);
+            if (landed) _announceOwnPlay(client, action, isCurrent);
           } on ReplayInterrupted {
             appLogger.d('Profile changed or binding during the replay of ${action.id}; it stays queued');
           } catch (e) {
@@ -648,18 +645,21 @@ class OfflineWatchSyncService extends ChangeNotifier {
       action.actionType == OfflineActionType.mirroredWatched.id ||
       action.actionType == OfflineActionType.mirroredUnwatched.id;
 
-  void _announceOwnPlay(MediaServerClient client, OfflineWatchProgressItem action) {
+  /// [isCurrent] says the profile of this row is still the active one and settled.
+  /// The copies get a row under whoever is active, so a viewing of the profile
+  /// before a switch or a bind stays with that profile.
+  void _announceOwnPlay(MediaServerClient client, OfflineWatchProgressItem action, bool Function() isCurrent) {
     final listener = onOwnPlayReplayed;
     final position = action.viewOffset;
     final duration = action.duration;
     if (listener == null || position == null || duration == null) return;
     if (action.actionType != OfflineActionType.progress.id) return;
-    final profileId = _activeProfileId;
+    if (!isCurrent()) return;
     unawaited(
       client
           .fetchItem(action.ratingKey)
           .then((item) {
-            if (item == null || profileId != _activeProfileId) return;
+            if (item == null || !isCurrent()) return;
             listener(
               item.copyWith(serverId: action.serverId),
               Duration(milliseconds: position),

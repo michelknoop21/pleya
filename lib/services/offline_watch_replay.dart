@@ -215,6 +215,7 @@ Future<bool> _replayOwnPleyaViewing(
   if (state == null) throw StateError('No answer about ${action.ratingKey}');
   final landed = state.positionMs == position.inMilliseconds;
   if (!action.shouldMarkWatched) return landed;
+  var viewed = item;
   if (!landed || !state.watched) {
     beforeWrite();
     final copy = await _readCopy(client, action);
@@ -224,10 +225,12 @@ Future<bool> _replayOwnPleyaViewing(
     if (!state.watched && !await client.markWatchedUnlessHeld(copy)) {
       throw StateError('${action.ratingKey} is being played elsewhere');
     }
+    // A failed first read left a bare item, and a tracker cannot place that.
+    if (viewed.kind == MediaKind.unknown) viewed = copy;
   }
   beforeWrite();
-  await client.markWatchedFromPlaybackStop(item);
-  await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(item, client));
+  await client.markWatchedFromPlaybackStop(viewed);
+  await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(viewed, client));
   return true;
 }
 

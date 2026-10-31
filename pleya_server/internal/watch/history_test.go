@@ -100,4 +100,36 @@ func TestBacklogIsHistoryButARefusedEventIsNot(t *testing.T) {
 	}
 }
 
+// Een herhaalde backlog van dezelfde sessie is dezelfde kijkbeurt, ook als de
+// server hem weigert omdat de titel een stand heeft. Een andere sessie is een
+// andere kijkbeurt.
+func TestARetriedBacklogStaysOneHistoryRow(t *testing.T) {
+	pool, store, itemID, subject := fixture(t)
+	ctx := context.Background()
+
+	if _, err := store.Apply(ctx, subject, itemID, watch.Event{
+		SessionID: "tv", Action: watch.ActionPlaybackStarted, Cause: watch.CauseUserStarted,
+	}, when, watch.MinLease); err != nil {
+		t.Fatal(err)
+	}
+	for attempt, session := range []string{"offline", "offline", "offline", "later"} {
+		out, err := store.Apply(ctx, subject, itemID, watch.Event{
+			SessionID: session, PositionMs: 6_720_000, DurationMs: ptr(int64(6_720_000)), Completed: true, Backlog: true,
+		}, when.Add(time.Duration(attempt+1)*time.Minute), watch.MinLease)
+		if err != nil || out.Accepted {
+			t.Fatalf("poging %d: %+v, %v", attempt, out, err)
+		}
+	}
+
+	for session, want := range map[string]int{"offline": 1, "later": 1} {
+		var n int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM play_history WHERE user_id = $1 AND session_id = $2`, subject, session).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != want {
+			t.Fatalf("sessie %s: %d rijen, verwacht %d", session, n, want)
+		}
+	}
+}
+
 func ptr[T any](v T) *T { return &v }
