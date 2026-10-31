@@ -918,7 +918,10 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
               availableProfileCount: activeProfile.profiles.length,
             );
 
-            _offlineWatchSyncService.isProfileBinding = () => activeProfile.isBinding;
+            // A bind that failed left the clients and merged rights of the last
+            // profile behind; only the next good one settles them.
+            _offlineWatchSyncService.isProfileBinding = () =>
+                activeProfile.isBinding || !activeProfile.lastBindingSucceeded;
 
             // Offline-sync drain replays a batch of queued watch actions without
             // per-item data, so we can't target rules — force a full pass.

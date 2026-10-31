@@ -44,8 +44,8 @@ class OfflineWatchSyncService extends ChangeNotifier {
   bool _isBidirectionalSyncing = false;
   bool _isShutDown = false;
 
-  /// A pass ended while a bind ran. Nothing else starts the next one soon: the
-  /// startup sync runs once, and a TV can stay in the app for days.
+  /// A pass ended while [isProfileBinding] said so. Nothing else starts the next
+  /// one soon: the startup sync runs once, and a TV can stay in the app for days.
   bool _stoppedForBind = false;
   DateTime? _lastSyncTime;
   bool _hasPerformedStartupSync = false;
@@ -95,7 +95,8 @@ class OfflineWatchSyncService extends ChangeNotifier {
   /// How long a row that ran out of attempts waits for a new round.
   static const Duration exhaustedRetryInterval = Duration(hours: 6);
 
-  /// Whether the active profile is being bound to its servers right now.
+  /// Whether the active profile is not settled on its servers: it is being bound
+  /// right now, or the last bind failed.
   bool Function()? isProfileBinding;
 
   /// What the viewer just marked on [item] says more than a copy waiting for it:
@@ -585,8 +586,8 @@ class OfflineWatchSyncService extends ChangeNotifier {
           appLogger.d('Profile changed during the sync; leaving the rest for that profile');
           break;
         }
-        // During a bind the clients and their rights are still those of the
-        // last profile. The rows stay for the pass after it.
+        // Until a bind settles, the clients and their rights are still those of
+        // the last profile. The rows stay for the pass after it.
         if (isProfileBinding?.call() == true) {
           appLogger.d('Profile binding during the sync; leaving the rest for the next pass');
           break;

@@ -2,16 +2,24 @@
 /// goes when the position landed, or when there is nothing left to add.
 library;
 
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/profiles/active_profile_provider.dart';
+import 'package:pleya/profiles/plex_home_service.dart';
+import 'package:pleya/profiles/profile_connection_registry.dart';
+import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/offline_watch_sync_service.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/storage_service.dart';
 
 import '../test_helpers/mirror_server.dart';
 import '../test_helpers/prefs.dart';
@@ -593,6 +601,124 @@ void main() {
       await untilQuiet();
 
       expect(other.tokens, isEmpty);
+    });
+  });
+
+  group('a bind that failed', () {
+    late ActiveProfileProvider active;
+
+    Future<void> rowFor(String server) => queue.queueMirroredProgress(
+      serverId: ServerId(server),
+      itemId: 'film',
+      viewOffset: 60000,
+      duration: mirrorHour,
+      watched: false,
+      profileId: queue.activeProfileId,
+    );
+
+    Future<void> untilQuiet() async {
+      await pumpEventQueue();
+      while (queue.isSyncing) {
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+      }
+    }
+
+    void bindFinishes({required bool success}) => active
+      ..markBindingStarted()
+      ..markBindingFinished(success: success);
+
+    /// What the provider tree does when the bind notifies.
+    void providerTreeHearsIt() => queue.setActiveProfileId(queue.activeProfileId);
+
+    setUp(() async {
+      final connections = ConnectionRegistry(db);
+      final plexHome = PlexHomeService(
+        connections: connections,
+        profileConnections: ProfileConnectionRegistry(db),
+        storage: await StorageService.getInstance(),
+        plexHomeUserFetcher: (_) async => const [],
+      );
+      active = ActiveProfileProvider(registry: ProfileRegistry(db), plexHome: plexHome, connections: connections);
+      addTearDown(() async {
+        await active.resetForTesting();
+        active.dispose();
+        await plexHome.dispose();
+      });
+      queue.isProfileBinding = () => active.isBinding || !active.lastBindingSucceeded;
+    });
+
+    test('counts as a running one where the service is wired up', () {
+      expect(
+        File('lib/main.dart').readAsStringSync().replaceAll(RegExp(r'\s+'), ' '),
+        contains('isProfileBinding = () => activeProfile.isBinding || !activeProfile.lastBindingSucceeded;'),
+      );
+    });
+
+    test('sends nothing under the merged rights of the last profile', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      bindFinishes(success: false);
+
+      await queue.syncPendingItems();
+
+      expect(other.tokens, isEmpty);
+      expect((await db.getLatestWatchAction('other:film'))?.syncAttempts, 0);
+    });
+
+    test('drops no row for a server whose owner it cannot know yet', () async {
+      manager.debugRegisterClientForTesting(MirrorServer('friend'));
+      await rowFor('friend');
+      bindFinishes(success: false);
+
+      await queue.syncPendingItems();
+
+      expect(await db.getLatestWatchAction('friend:film'), isNotNull);
+    });
+
+    test('hands a stopped pass to the next bind that succeeds: no row stays behind', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      bindFinishes(success: false);
+      await queue.syncPendingItems();
+
+      bindFinishes(success: true);
+      providerTreeHearsIt();
+      await untilQuiet();
+
+      expect(other.positions, [60000]);
+      expect(await queue.getPendingSyncCount(), 0);
+    });
+
+    test('keeps holding through a second bind that fails, and lets go after the third', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      bindFinishes(success: false);
+      await queue.syncPendingItems();
+
+      bindFinishes(success: false);
+      providerTreeHearsIt();
+      await untilQuiet();
+      expect(other.tokens, isEmpty);
+
+      bindFinishes(success: true);
+      providerTreeHearsIt();
+      await untilQuiet();
+      expect(other.positions, [60000]);
+    });
+
+    test('leaves a pass that starts after a good bind alone, also when none was stopped', () async {
+      final other = MirrorServer('other');
+      manager.debugRegisterClientForTesting(other);
+      await rowFor('other');
+      bindFinishes(success: false);
+      bindFinishes(success: true);
+
+      await queue.syncPendingItems();
+
+      expect(other.positions, [60000]);
     });
   });
 
