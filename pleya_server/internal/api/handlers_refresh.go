@@ -177,7 +177,10 @@ func (s *Server) allowRefresh(w http.ResponseWriter, r *http.Request, presentedH
 // van de andere houder is de enige aanvraag die de sessie kan sluiten (DEC-123).
 // Een dood token telt daarom op een eigen emmer. Die kan de kop niet leegmaken, en
 // een aanbieding die erdoorheen komt is hergebruik of een herhaling binnen het
-// respijt, dus een lus met zo'n token blijft even hard begrensd. Dat dode tokens
+// respijt. Dat is niet even hard begrensd als de kop: wie zijn sessie zelf houdt,
+// kan tot ongeveer 45 rijen per seconde schrijven, want per dood token mogen tot
+// 90 herhalingen in het respijt en de sessie-emmer levert elke 2 s een nieuw dood
+// token. Dat dode tokens
 // elk een emmer krijgen vraagt geen eigen grens: de kaart van de limiter is
 // begrensd op limiterMaxBuckets, en een verdrongen emmer begint weer vol.
 //
