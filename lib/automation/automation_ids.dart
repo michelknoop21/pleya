@@ -505,6 +505,7 @@ class AutomationIds {
   static const String libraryFilterMore = 'library.filter.more';
   static const String libraryFilterCount = 'library.filter.count';
   static const String sheetLibrarySort = 'sheet.library_sort';
+  static const String sheetLibraryFilter = 'sheet.library_filter';
 
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
@@ -943,6 +944,7 @@ class AutomationIds {
     {'id': libraryFilterMore, 'role': 'button', 'instanceable': false},
     {'id': libraryFilterCount, 'role': 'region', 'instanceable': false},
     {'id': sheetLibrarySort, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetLibraryFilter, 'role': 'sheet', 'instanceable': false},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterFilters, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},

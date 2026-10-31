@@ -71,9 +71,23 @@ class LibraryPhoneMetrics {
 
   /// Rows of the floating sheets: 46 pt apart, text 16 pt from the sheet edge.
   static const double sheetRowHeight = 46;
+
+  /// A list tile lays its text out in 56 pt whatever the box around it: this
+  /// makes that 46, or the text sits 5 pt below the middle of the row.
+  static const VisualDensity sheetRowDensity = VisualDensity(vertical: -2.5);
   static const double sortRowInset = 16;
   static const double sortRowFontSize = 16;
   static const double sortGlyphSize = 22;
+  static const double sheetHeadingFontSize = 18;
+
+  /// Keeps a centred heading clear of a back button or a clear action.
+  static const double sheetHeadingActionInset = 88;
+  static const double sheetIconSize = 22;
+  static const double sheetIconGap = 16;
+  static const double sheetListBottomInset = 32;
+
+  /// The first row sits directly under the heading, 46 pt from its centre.
+  static const EdgeInsets sheetListPadding = EdgeInsets.only(bottom: sheetListBottomInset);
 
   /// The reference sets every text of the look with no tracking, where the
   /// theme's text styles add some.

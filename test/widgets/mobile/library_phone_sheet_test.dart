@@ -10,7 +10,10 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_sort.dart';
 import 'package:pleya/screens/libraries/sort_bottom_sheet.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/mobile/library_phone_look.dart';
 import 'package:pleya/widgets/mobile/library_phone_sheet.dart';
+import 'package:pleya/widgets/mobile/library_sort_glyph.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet_geometry.dart';
 
@@ -147,6 +150,22 @@ void main() {
         final y1 = tester.getCenter(find.text('Sort 1')).dy;
         expect(y1 - y0, closeTo(46, 0.5));
         expect(tester.getRect(find.text('Sort 0')).left - rect.left, closeTo(16, 0.5));
+      });
+
+      testWidgets('the first row hangs 46 pt under the heading, text in the middle of the row', (tester) async {
+        await open(tester, size, (_) => sortSheet(6));
+        final heading = tester.getCenter(find.text(t.libraries.sortBy)).dy;
+        expect(tester.getCenter(find.text('Sort 0')).dy - heading, closeTo(LibraryPhoneMetrics.sheetRowHeight, 1));
+        final rowBox = tester.getRect(find.ancestor(of: find.text('Sort 0'), matching: find.byType(SizedBox)).first);
+        expect(tester.getCenter(find.text('Sort 0')).dy, closeTo(rowBox.center.dy, 0.5));
+      });
+
+      testWidgets('the active row carries the direction in the accent colour, no other row does', (tester) async {
+        await open(tester, size, (_) => sortSheet(6));
+        final glyph = tester.widget<LibrarySortGlyph>(find.byType(LibrarySortGlyph));
+        expect(glyph.color, tokens(tester.element(find.text('Sort 0'))).accent);
+        expect(glyph.descending, isFalse);
+        expect(find.byType(LibrarySortGlyph), findsOneWidget);
       });
     });
   }

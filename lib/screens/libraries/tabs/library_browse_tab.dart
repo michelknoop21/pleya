@@ -965,7 +965,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
         LibraryPhoneSheetHeading(title: t.libraries.groupings.title),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 8, bottom: 16),
+            padding: LibraryPhoneMetrics.sheetListPadding,
             child: Column(
               mainAxisSize: .min,
               children: [
@@ -1055,6 +1055,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
 
   Widget _buildFiltersBottomSheet({VoidCallback? onBack}) {
     return FiltersBottomSheet(
+      phoneStyle: _phoneLook && onBack == null,
       filters: _filters,
       selectedFilters: _selectedFilters,
       serverId: widget.library.serverId!,

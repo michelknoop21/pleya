@@ -13,6 +13,7 @@ import '../../utils/scroll_utils.dart';
 import '../../widgets/bottom_sheet_header.dart';
 import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/mobile/library_phone_look.dart';
+import '../../widgets/mobile/library_phone_sheet.dart';
 import '../../widgets/mobile/library_sort_glyph.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../theme/mono_tokens.dart';
@@ -126,7 +127,11 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
       mainAxisSize: .min,
       children: [
         if (widget.phoneStyle)
-          _PhoneSortHeading(clearAction: clearAction)
+          AutomationNode(
+            id: AutomationIds.sheetLibrarySort,
+            role: 'sheet',
+            child: LibraryPhoneSheetHeading(title: t.libraries.sortBy, action: clearAction),
+          )
         else
           BottomSheetHeader(title: t.libraries.sortBy, onBack: widget.onBack, action: clearAction),
         Flexible(
@@ -134,7 +139,7 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
             controller: _scrollController,
             primary: false,
             shrinkWrap: true,
-            padding: EdgeInsets.only(top: 8, bottom: widget.phoneStyle ? 16 : 8),
+            padding: widget.phoneStyle ? LibraryPhoneMetrics.sheetListPadding : const EdgeInsets.symmetric(vertical: 8),
             itemCount: widget.sortOptions.length,
             itemBuilder: (context, index) {
               final sort = widget.sortOptions[index];
@@ -159,7 +164,9 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
                 },
                 child: FocusableListTile(
                   dense: !widget.phoneStyle,
-                  visualDensity: widget.phoneStyle ? VisualDensity.standard : const VisualDensity(vertical: -3),
+                  visualDensity: widget.phoneStyle
+                      ? LibraryPhoneMetrics.sheetRowDensity
+                      : const VisualDensity(vertical: -3),
                   focusNode: (widget.selectedSort?.key == sort.key || (widget.selectedSort == null && index == 0))
                       ? _initialFocusNode
                       : null,
@@ -225,36 +232,6 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
           size: LibraryPhoneMetrics.sortGlyphSize,
         )
       : null;
-}
-
-/// Centred heading without a rule. The sheet closes with the drag handle or a
-/// tap outside it; clearing the sort stays available on the right.
-class _PhoneSortHeading extends StatelessWidget {
-  final Widget? clearAction;
-
-  const _PhoneSortHeading({required this.clearAction});
-
-  @override
-  Widget build(BuildContext context) {
-    final action = clearAction;
-    return AutomationNode(
-      id: AutomationIds.sheetLibrarySort,
-      role: 'sheet',
-      child: SizedBox(
-        // Full width: the sheet's Column is centred, so without it the Stack
-        // shrinks to the heading and the action lands on top of it.
-        width: double.infinity,
-        height: kMinInteractiveDimension,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Text(t.libraries.sortBy, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            if (action != null) PositionedDirectional(end: 8, child: action),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _SortDirectionIcon extends StatelessWidget {
