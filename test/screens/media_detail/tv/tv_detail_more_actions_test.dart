@@ -18,6 +18,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/media/media_version.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_coverage_state.dart';
@@ -516,6 +517,26 @@ void main() {
       final menus = find.byType(MediaContextMenu);
       expect(tester.widgetList<MediaContextMenu>(menus).map((menu) => (menu.item as MediaItem).id), contains('copy'));
       expect(find.textContaining(t.common.resume), findsOneWidget);
+    });
+
+    testWidgets('the file line names what Play starts, not the copy on the page', (tester) async {
+      final page = _movie().copyWith(
+        mediaVersions: const [MediaVersion(id: 'page', videoResolution: '4k')],
+      );
+      await pumpDetail(
+        tester,
+        _Client(page),
+        unified: playsElsewhere(
+          page,
+          copy().copyWith(
+            mediaVersions: const [MediaVersion(id: 'copy', videoResolution: '1080')],
+          ),
+        ),
+        onChangeSource: (_, _, {pageFailed = false}) async => null,
+      );
+
+      expect(find.text('1080p'), findsOneWidget);
+      expect(find.text('4K'), findsNothing);
     });
 
     testWidgets('a pick that keeps the page reaches the row, and the page stays', (tester) async {
