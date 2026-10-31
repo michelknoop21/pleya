@@ -15,6 +15,7 @@ export type PlaybackReason = S['PlaybackReason'];
 export type StreamSession = S['StreamSession'];
 export type StreamToken = S['StreamToken'];
 
-// The generator makes defaults required; backlog is optional on the wire.
-export type WatchStateEvent = Omit<S['WatchStateEvent'], 'backlog'> & Partial<Pick<S['WatchStateEvent'], 'backlog'>>;
+// The generator makes defaults required; backlog is optional on the wire. copy
+// stays out: nothing here is a copy, and it needs capabilities.watch_state_copy.
+export type WatchStateEvent = Omit<S['WatchStateEvent'], 'backlog' | 'copy'> & Partial<Pick<S['WatchStateEvent'], 'backlog'>>;
 export type UserState = S['UserState'];

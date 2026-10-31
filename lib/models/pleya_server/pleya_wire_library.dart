@@ -483,6 +483,7 @@ class PleyaWatchStateEvent {
     this.cause,
     this.baseRevision,
     this.backlog = false,
+    this.copy = false,
   });
 
   final String itemId;
@@ -505,6 +506,10 @@ class PleyaWatchStateEvent {
   /// ownership and never moves a newer canonical state.
   final bool backlog;
 
+  /// The state of another source of this title: nobody watched here. Only
+  /// sendable when the server advertises `watch_state_copy`.
+  final bool copy;
+
   /// The body as the contract wants it.
   ///
   /// [ownership] is the server's `watch_state_ownership` flag. When it is false
@@ -522,6 +527,7 @@ class PleyaWatchStateEvent {
     if (ownership && cause != null && action == 'playback_started') 'cause': cause,
     if (ownership && backlog) 'backlog': true,
     if (ownership && baseRevision != null) 'base_revision': baseRevision,
+    if (copy) 'copy': true,
   };
 
   factory PleyaWatchStateEvent.fromJson(Map<String, dynamic> json) => PleyaWatchStateEvent(
@@ -535,6 +541,7 @@ class PleyaWatchStateEvent {
     cause: strOrNull(json, 'cause'),
     baseRevision: integerOrNull(json, 'base_revision'),
     backlog: booleanOr(json, 'backlog', orElse: false),
+    copy: booleanOr(json, 'copy', orElse: false),
   );
 
   /// RFC 3339 in UTC with a `Z` suffix, per chapter 2 of the specification.

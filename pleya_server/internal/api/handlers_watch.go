@@ -51,6 +51,10 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		writeError(w, s.log, CodeSessionInvalid, "cause is not valid for this explicit_action", nil)
 		return
 	}
+	if req.Copy && (action != watch.ActionNone || req.Backlog) {
+		writeError(w, s.log, CodeSessionInvalid, "copy goes with explicit_action none and without backlog", nil)
+		return
+	}
 
 	userID, err := s.subjectID(r)
 	if err != nil {
@@ -85,6 +89,7 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		Cause:        cause,
 		BaseRevision: req.BaseRevision,
 		Backlog:      req.Backlog,
+		Copy:         req.Copy,
 	}
 	// De inlogsessie geeft de geschiedenis de naam van het toestel.
 	if claims, ok := claimsFromContext(r.Context()); ok {

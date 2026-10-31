@@ -32,6 +32,7 @@ const all: Capabilities = {
   realtime: false,
   users: false,
   watch_state_ownership: false,
+  watch_state_copy: false,
   stream_sessions: false,
   sessions: false,
   api_tokens: false,

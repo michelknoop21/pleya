@@ -1074,10 +1074,25 @@ Op een kopie kijkt niemand, dus een rij gebruikt nooit de start en stop van een 
 | Jellyfin 10.9+ | `POST /UserItems/{id}/UserData` met alleen `PlaybackPositionTicks` | `POST /UserPlayedItems/{id}` | `Played`, `PlayCount` en `LastPlayedDate` blijven staan: de server schrijft alleen meegestuurde velden |
 | Emby | `POST /Users/{u}/Items/{id}/UserData` met de eigen `UserData` terug en een nieuwe positie | `POST /Users/{u}/PlayedItems/{id}` | Emby documenteert niet wat het met weggelaten velden doet, dus die gaan mee |
 | Plex | `/:/progress` met `state=stopped` | `/:/scrobble` | Onbewezen: Plex documenteert dit niet, en niets is op een echte server gedraaid. Open zijn `viewCount`, `lastViewedAt` en wat een positie vlak bij het einde doet |
-| Pleya Server | Niet: elke weg voor een positie telt als kijkbeurt, dus de rij eindigt zonder verzoek | `mark_watched` | Geen rij in `play_history`. Een gekeken kopie blijft zoals hij is |
+| Pleya Server met `capabilities.watch_state_copy` | één melding met `copy: true` | dezelfde melding met `completed` | Geen rij in `play_history`, geen drempel, `last_played_at` blijft staan. Een gekeken kopie weigert een positie |
+| Pleya Server zonder die vlag | Niet: elke weg voor een positie telt als kijkbeurt, dus de rij eindigt zonder verzoek | `mark_watched`, niet vlak na een schrijfactie | Geen rij in `play_history`. Een gekeken kopie blijft zoals hij is |
 
 Jellyfin vóór 10.9 kent de route niet: die rij eindigt op een 404. Op Pleya Server is een kopie geen
-kijkactie, en dat bepaalt de tabelregel. `playback_started` zet een rij in `play_history`, schuift
+kijkactie (voorstel DEC-XXX, kopie zonder kijkactie, in afwachting van Michels besluit). Met
+`capabilities.watch_state_copy` gaat er één melding met `copy: true`, en die verwerft niets. Zo'n
+server kent per titel één schrijver (DEC-049) en wijst een kopie af zolang een kijksessie de titel
+vasthoudt. Een positie vervalt dan, want die sessie is nieuwer. Een afgekeken stand blijft in de rij:
+tikte de sessie door, dan laat de volgende ronde hem vervallen en blijft de kopie ongezien, want de
+nieuwste wint, en anders landt hij alsnog. Of de kopie landde leest de client aan de stand in het
+antwoord (`watched` bij een afgekeken stand, anders `position_ms`). `owned_by_this_session` zegt op een
+kopie niets: een kopie verwerft niets, en een weigering onder de eigen lease antwoordt waar. Elke
+kopieschrijfactie van een client is dezelfde sessie. Een afgekeken kopie telt `play_count` op zoals
+`mark_watched`, omdat de app gezien op een gewone lezing daaruit afleidt. Hij staat daarna ook in Recent
+bekeken, en een positie staat in Verder kijken van die server, bovenaan: die twee lezen `updated_at`,
+en die beweegt wel.
+
+Zonder die vlag, zoals op de NAS nu, bereikt een positie een Pleya Server-kopie niet.
+`playback_started` zet een rij in `play_history`, schuift
 `last_played_at` en zet vanaf 90 procent `watched`, ook met `completed: false`. Een backlog verplaatst
 de stand van een bekende titel niet (regel 6) en een passieve melding heeft de lease nodig (regel 2).
 Een positie bereikt een Pleya Server-kopie dus niet. De rij eindigt zonder verzoek, en wie daar
