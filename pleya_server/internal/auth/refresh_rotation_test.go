@@ -20,6 +20,7 @@ type rotation struct {
 	ctx     context.Context
 	store   *auth.Store
 	session id.ID
+	user    id.ID
 	now     time.Time
 	next    int
 	isOpen  func() bool
@@ -42,7 +43,7 @@ func newRotation(t *testing.T) (*rotation, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := &rotation{t: t, ctx: ctx, store: store, session: session, now: now}
+	r := &rotation{t: t, ctx: ctx, store: store, session: session, user: user, now: now}
 	r.isOpen = func() bool {
 		var revoked *time.Time
 		if err := pool.QueryRow(ctx, `SELECT revoked_at FROM sessions WHERE id = $1`, session).Scan(&revoked); err != nil {
@@ -157,9 +158,20 @@ func TestALostAnswerInsideTheGraceWindowKeepsTheSession(t *testing.T) {
 }
 
 // Na een race verversen twee tabbladen later opnieuw tegelijk, met het token dat er
-// overbleef. Dat is dezelfde race, geen tweede houder.
-func TestTwoTabsPresentingTheLateTokenTogetherKeepTheSession(t *testing.T) {
-	for name, answer := range map[string]int{"eerste antwoord blijft over": 0, "tweede antwoord blijft over": 1} {
+// overbleef. Houdt de browser het tweede antwoord over, dan gaat alles goed. Houdt hij
+// het eerste over, dan logt hij opnieuw in: dat antwoord is de kop die wijkt, en die
+// mag geen tweede uitzondering krijgen, want dan kan wie een token één keer zag de
+// sessie houden. Zie refresh_thief_test.go. Dit is de prijs, zonder Web Locks en alleen
+// bij omgekeerde aankomst, dezelfde klasse als de race die het DEC accepteert.
+func TestTwoTabsPresentingTheLateTokenTogether(t *testing.T) {
+	cases := map[string]struct {
+		answer int
+		want   auth.RefreshOutcome
+	}{
+		"eerste antwoord blijft over": {0, auth.RefreshReused},
+		"tweede antwoord blijft over": {1, auth.RefreshOK},
+	}
+	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			r, first := newRotation(t)
 			late := r.present(first, auth.RefreshOK)
@@ -167,12 +179,14 @@ func TestTwoTabsPresentingTheLateTokenTogetherKeepTheSession(t *testing.T) {
 
 			r.wait(15 * time.Minute)
 			answers := []string{r.present(late, auth.RefreshReplayed), r.present(late, auth.RefreshReplayed)}
-			want := auth.RefreshReplayed
-			if answer == 1 {
-				want = auth.RefreshOK
-			}
+			r.sessionMustLive()
+
 			r.wait(15 * time.Minute)
-			r.present(answers[answer], want)
+			r.present(answers[c.answer], c.want)
+			if c.want == auth.RefreshReused {
+				r.sessionMustBeRevoked()
+				return
+			}
 			r.sessionMustLive()
 		})
 	}
@@ -256,6 +270,35 @@ func TestASupersededTokenPresentedTwiceIsReuse(t *testing.T) {
 	if r.isOpen() {
 		t.Fatal("echt hergebruik hoort de sessie in te trekken")
 	}
+}
+
+// Ook als de keten stilstaat: na zijn eigen respijt is een tweede aanbieding hergebruik.
+func TestASecondPresentationAfterItsOwnGraceIsReuse(t *testing.T) {
+	r, first := newRotation(t)
+	late := r.present(first, auth.RefreshOK)
+	r.present(first, auth.RefreshReplayed)
+
+	r.wait(time.Hour)
+	r.present(late, auth.RefreshReplayed)
+	r.wait(rotationGrace + time.Second)
+	r.present(late, auth.RefreshReused)
+	r.sessionMustBeRevoked()
+}
+
+// Het respijt van een vervangen token loopt vanaf zijn eerste aanbieding. Herhalingen
+// binnen dat venster schuiven het niet op.
+func TestRepeatingASupersededTokenDoesNotStretchItsGrace(t *testing.T) {
+	r, first := newRotation(t)
+	late := r.present(first, auth.RefreshOK)
+	r.present(first, auth.RefreshReplayed)
+
+	r.wait(time.Hour)
+	r.present(late, auth.RefreshReplayed)
+	r.wait(100 * time.Second)
+	r.present(late, auth.RefreshReplayed)
+	r.wait(100 * time.Second)
+	r.present(late, auth.RefreshReused)
+	r.sessionMustBeRevoked()
 }
 
 // De kern van hergebruikdetectie blijft staan: een token dat echt gebruikt is.

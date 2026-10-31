@@ -72,18 +72,21 @@ func (s *Store) RefreshTokenSession(ctx context.Context, hash []byte) (sessionID
 // (DEC-123): sessie-scoped sinds PS-9, want zonder apparaatkolom zou
 // hergebruik door één toestel elk toestel van dezelfde gebruiker uitloggen.
 //
-// Het venster rekt niet op: revoked_at van het oude token blijft de
-// oorspronkelijke rotatie, dus herhalingen zijn alleen mogelijk binnen
-// [grace] van dat ene moment.
+// Het venster rekt niet op: herhalingen schuiven revoked_at van het oude token
+// niet op, dus ze zijn alleen mogelijk binnen [grace] van de rotatie zelf.
 //
 // Een opvolger die zo'n herhaling verving is een geval apart. Zijn antwoord kan nog
 // onderweg zijn en na dat van de herhaling aankomen, en dan is hij wat de browser
 // overhoudt. Hij is nooit aangeboden, dus zijn eerste aanbieding telt zolang de keten
-// niet verder is als een herhaling, ook na het venster. Die uitzondering geldt één
-// generatie: de kop die daarvoor wijkt krijgt geen markering en geen wijzer, en wie
-// hem daarna aanbiedt is een tweede houder. Twee houders die om en om roteren komen
-// zo in hun tweede beurt op RefreshReused uit, hoe snel ze ook wisselen. Is de keten
-// wel verder, dan draagt iemand anders de sessie, en dat is hetzelfde signaal.
+// niet verder is als een herhaling, ook na het venster. Dat is de enige keer dat
+// revoked_at nog verschuift: superseded_at blijft staan, en revoked_at = superseded_at
+// betekent dus "nooit aangeboden". Vanaf die aanbieding loopt zijn eigen [grace], één
+// keer, zodat twee tabbladen die hem samen aanbieden elkaar niet uitloggen. Die
+// uitzondering geldt één generatie: wat ervoor wijkt krijgt geen markering en geen
+// wijzer, ook bij een herhaling binnen dat tweede venster, en wie dat daarna aanbiedt
+// is een tweede houder. Twee houders die om en om roteren komen zo in hun tweede beurt
+// op RefreshReused uit, hoe snel ze ook wisselen. Is de keten wel verder, dan draagt
+// iemand anders de sessie, en dat is hetzelfde signaal.
 //
 // Geeft naast de uitkomst de sid en de gebruiker van de sessie terug waarbij
 // dit token hoort, zodat de aanroeper het volgende accesstoken met dezelfde
@@ -118,12 +121,13 @@ func (s *Store) RotateRefreshToken(ctx context.Context, oldHash, newHash []byte,
 	}
 
 	if revokedAt != nil {
-		neverPresented := supersededAt != nil && sessionRevokedAt == nil
+		onceSuperseded := supersededAt != nil && sessionRevokedAt == nil
+		neverPresented := onceSuperseded && revokedAt.Equal(*supersededAt)
 		if neverPresented && now.After(expiresAt) {
 			return RefreshExpired, id.Nil, id.Nil, nil
 		}
 		if replacedBy != nil && (neverPresented || (grace > 0 && now.Sub(*revokedAt) <= grace)) {
-			outcome, sid, uid, err := s.replayLostRotation(ctx, tx, oldHash, replacedBy, newHash, newExpires, now, sessionID, neverPresented)
+			outcome, sid, uid, err := s.replayLostRotation(ctx, tx, oldHash, replacedBy, newHash, newExpires, now, sessionID, onceSuperseded)
 			if err != nil || outcome == RefreshReplayed {
 				return outcome, sid, uid, err
 			}
@@ -250,11 +254,13 @@ func (s *Store) replayLostRotation(ctx context.Context, tx pgx.Tx, oldHash, succ
 		WHERE replaced_by = $2 OR token_hash = $3 OR (token_hash = $2 AND $4)`, newHash, successorHash, oldHash, !presentedSuperseded); err != nil {
 		return RefreshUnknown, id.Nil, id.Nil, err
 	}
-	// Nu is het oude token wél aangeboden, en dit is zijn rotatie: het respijt telt
-	// vanaf hier, en een tweede aanbieding daarna is gewoon hergebruik.
+	// Was het oude token nog nooit aangeboden, dan is dit zijn rotatie en telt het
+	// respijt vanaf hier, één keer. superseded_at blijft staan: ging die leeg, dan telde
+	// een herhaling hierna als die van een gewoon token, en dan maakt elke herhaling van
+	// de actuele kop weer een vervangen token, ook van die van het slachtoffer.
 	if _, err := tx.Exec(ctx, `
-		UPDATE auth_refresh_tokens SET revoked_at = $1, superseded_at = NULL
-		WHERE token_hash = $2 AND superseded_at IS NOT NULL`, now, oldHash); err != nil {
+		UPDATE auth_refresh_tokens SET revoked_at = $1
+		WHERE token_hash = $2 AND superseded_at IS NOT NULL AND revoked_at = superseded_at`, now, oldHash); err != nil {
 		return RefreshUnknown, id.Nil, id.Nil, err
 	}
 	if _, err := tx.Exec(ctx,

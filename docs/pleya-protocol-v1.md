@@ -342,10 +342,14 @@ terug terwijl zijn opvolger nooit gebruikt is, dan was dat een verloren antwoord
 aanvrager krijgt een nieuw paar en de ongebruikte opvolger vervalt. Die vervallen opvolger kan zelf nog bij
 de client aankomen, als zijn antwoord later binnenkomt dan dat van de herhaling. Hij is dan nooit
 aangeboden, dus zolang de keten niet verder is, is zijn eerste aanbieding geen hergebruik, ook niet na het
-venster: hij krijgt een nieuw paar en de kop die daarvoor wijkt vervalt definitief. Die uitzondering geldt
-één generatie. Is de keten wel verder, of biedt iemand de geweken kop aan, dan dragen twee partijen de
-sessie, en dan is het `auth.refresh_token_reused`, ook binnen het venster. Dit verandert geen veld en geen
-code; het beperkt wanneer een bestaande uitkomst valt.
+venster: hij krijgt een nieuw paar en de kop die daarvoor wijkt vervalt definitief. Die aanbieding start één
+keer een eigen venster. Een herhaling daarbinnen levert ook een nieuw paar, maar schuift het venster niet op,
+en wat ervoor wijkt vervalt eveneens definitief. Daarna is een tweede aanbieding `auth.refresh_token_reused`.
+De uitzondering geldt zo één generatie: een token dat voor een vervangen token wijkt, krijgt haar niet. Is de
+keten wel verder, of biedt iemand een geweken kop aan, dan dragen twee partijen de sessie, en dan is het
+`auth.refresh_token_reused`, ook binnen het venster. Twee tabbladen die een laat token samen aanbieden en de
+antwoorden in omgekeerde volgorde ontvangen, houden zo een geweken kop over en loggen opnieuw in. Dit
+verandert geen veld en geen code; het beperkt wanneer een bestaande uitkomst valt.
 
 Ook hier bestaat `credential_mode`. Draagt de aanvraag `{"credential_mode": "cookie"}`, dan komt het
 oude refreshcredential uit de cookie en gaat het nieuwe er weer in, en blijft `refresh_token` uit

@@ -5346,8 +5346,8 @@ PGS-spoor alles. Die grens stond als zin in het contract en is daar meegewijzigd
 **Refreshketen.** Een opvolger die door een herhaling vervangen werd is nooit aangeboden. Bood een client hem later
 toch aan, omdat zijn antwoord als laatste binnenkwam, dan telde dat als hergebruik en ging de sessie eruit. Hij krijgt
 nu een eigen markering (`superseded_at`, migratie 0028): zijn eerste aanbieding levert een nieuw paar zolang de keten
-niet verder is, ook na het respijt. Een tweede aanbieding is gewoon hergebruik. Geen nieuwe code en geen veld, dus de
-regels van hoofdstuk 3 worden niet geraakt.
+niet verder is, ook na het respijt. Een tweede aanbieding buiten zijn eigen respijt is gewoon hergebruik. Geen nieuwe
+code en geen veld, dus de regels van hoofdstuk 3 worden niet geraakt.
 
 Deze alinea zei eerst dat een vervangen token na een doorgeroteerde keten `auth.token_invalid` kreeg, zonder intrekking.
 Dat is op 31 oktober teruggedraaid, op de review van `19720e15a`, omdat twee houders van één token er ongemerkt mee
@@ -5362,6 +5362,35 @@ een vervangen token komt daar alleen terug als de keten nog op hem wacht.
 De prijs is een smalle race zonder Web Locks of met een verlopen slot: drie verversingen die elkaar overlappen, waarbij
 het antwoord dat een tweede herhaling verdrong als allerlaatste binnenkomt. Die browser logt dan opnieuw in. Dat is de
 kant waarop dit hoort te falen, en een eigen kolom voor dat geval weegt er niet tegenop.
+
+"Eén generatie" klopte daarna nog niet. De review van `02ac4148c` liet een dief op een echte Postgres 24 uur naast het
+slachtoffer roteren: 3060 rotaties tegenover 95 verversingen, en de sessie leefde nog. `superseded_at` ging bij de eerste
+aanbieding leeg, terwijl `replaced_by` bleef staan en het respijt opnieuw begon. De tweede aanbieding telde daardoor als
+die van een gewoon token en markeerde de actuele kop, ook die van het slachtoffer. Wie één token zag kon zo elke kop in
+een vervangen token veranderen en kwam nooit op de kop zonder markering uit, en daar zit de detectie.
+
+`superseded_at` blijft nu staan. De eerste aanbieding is te herkennen aan `revoked_at = superseded_at`: alleen die verzet
+`revoked_at`, dus het eigen respijt start één keer en herhalingen schuiven het niet op. Een herhaling binnen dat respijt
+geeft nog een nieuw paar, want anders loggen twee tabbladen die een laat token samen aanbieden elkaar in beide volgordes
+uit, maar wat ervoor wijkt krijgt geen markering en geen wijzer. Na dat respijt geeft een tweede aanbieding
+`auth.refresh_token_reused`. Een grens per token sluit het gat niet: de oogst uit het respijt van het oorspronkelijke
+token levert tientallen reserves op.
+
+Wat dit bereikt, gemeten in `refresh_thief_test.go`: de dief uit de review valt in zijn eerste tik, wie ook begint. Een
+zorgvuldigere dief die elke reserve één keer gebruikt komt verder, maar niet voorbij de tweede verversing van het
+slachtoffer, want elke aanbieding laat de kop onherroepelijk vallen en een nieuwe markering vraagt een gewoon token dat
+korter dan het respijt geleden roteerde. Roteert hij zelf gewoon, dan wees het token van het slachtoffer al naar de oude
+kop en valt dat op hergebruik uit. Zolang het slachtoffer niet terugkomt ziet de server niets, en dat geldt voor elke
+refreshketen.
+
+De prijs is dezelfde klasse als hierboven, zonder Web Locks en alleen bij omgekeerde aankomst: twee tabbladen die samen
+een laat token aanbieden en het antwoord van de eerste aanbieding overhouden, loggen opnieuw in. Dat antwoord is de kop
+die wijkt, en die uitzondering is precies wat de dief gebruikte. De subtest `eerste antwoord blijft over` legt dat nu
+vast. Verloren antwoorden binnen 2 minuten, zes aanvragen tegelijk, een ander toestel en de app raken dit niet: de app
+biedt zelf geen vervangen token aan.
+
+De kolomcomment in migratie 0028 zegt nog "Leeg na de eerste aanbieding". Die migratie is niet gewijzigd; de betekenis
+staat op `RotateRefreshToken`.
 
 **`cookie_upgrade`.** Een browser met een token in `localStorage` kon alleen via een nieuwe login op de cookie komen.
 `POST /auth/refresh` kent daarom onder de nieuwe vlag `capabilities.cookie_upgrade` de waarde
