@@ -21,6 +21,7 @@ import (
 // Store is wat de ronde van de catalogus nodig heeft.
 type Store interface {
 	MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error)
+	MarkSidecarChecked(ctx context.Context, itemID id.ID) error
 	SaveCandidate(ctx context.Context, c catalog.MetadataCandidate) error
 	ApplyMetadata(ctx context.Context, itemID id.ID, provider string, d catalog.MetadataDetails) error
 	LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdrop bool, err error)
@@ -180,8 +181,13 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		st.SidecarApplied++
 		return nil
 	}
+	// Zonder provider is er geen kandidaat die dit item afvinkt, ook niet als er
+	// geen .nfo naast staat. Mislukt het toepassen, dan blijft het aan de beurt.
 	if r.provider == nil {
-		return applySidecar()
+		if err := applySidecar(); err != nil {
+			return err
+		}
+		return r.store.MarkSidecarChecked(ctx, t.ID)
 	}
 
 	state, chosen, how, results, err := r.decide(ctx, t, side)

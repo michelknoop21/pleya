@@ -25,12 +25,13 @@ type fakeStore struct {
 	attempts   map[id.ID]int
 	applyErr   error
 	onApply    func(source string)
+	checked    map[id.ID]bool
 }
 
 func newFakeStore(ts ...catalog.MetadataTarget) *fakeStore {
 	return &fakeStore{targets: ts, candidates: map[id.ID]catalog.MetadataCandidate{},
 		applied: map[id.ID]catalog.MetadataDetails{}, art: map[string]catalog.ProviderArtwork{},
-		localPost: map[id.ID]bool{}, attempts: map[id.ID]int{}}
+		localPost: map[id.ID]bool{}, attempts: map[id.ID]int{}, checked: map[id.ID]bool{}}
 }
 
 func (f *fakeStore) MetadataDue(_ context.Context, _ string, _ int, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error) {
@@ -40,11 +41,15 @@ func (f *fakeStore) MetadataDue(_ context.Context, _ string, _ int, exclude []id
 	}
 	var out []catalog.MetadataTarget
 	for _, t := range f.targets {
-		if _, done := f.candidates[t.ID]; !done && !skip[t.ID] && len(out) < limit {
+		if _, done := f.candidates[t.ID]; !done && !skip[t.ID] && !f.checked[t.ID] && len(out) < limit {
 			out = append(out, t)
 		}
 	}
 	return out, nil
+}
+func (f *fakeStore) MarkSidecarChecked(_ context.Context, item id.ID) error {
+	f.checked[item] = true
+	return nil
 }
 func (f *fakeStore) SaveCandidate(_ context.Context, c catalog.MetadataCandidate) error {
 	f.attempts[c.ItemID]++
@@ -508,6 +513,26 @@ func TestSidecarOnlyWithoutProviderAppliesNFOWithoutProviderCandidates(t *testin
 	}
 }
 
+func TestWithoutAProviderAnItemIsHandledOnce(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Met nfo"}
+	b := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Zonder nfo"}
+	st := newFakeStore(a, b)
+	applied := 0
+	st.onApply = func(string) { applied++ }
+	runner := testRunner(st, nil, t.TempDir()).WithSidecar(fakeSidecar{a.ID: {Summary: "Lokaal"}})
+	for range 3 {
+		if _, err := runner.Round(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if applied != 1 || !st.checked[a.ID] || !st.checked[b.ID] {
+		t.Fatalf("toegepast %d keer, nagelopen %v", applied, st.checked)
+	}
+	if len(st.candidates) != 0 {
+		t.Fatalf("een ronde zonder provider schreef kandidaten: %+v", st.candidates)
+	}
+}
+
 func TestSidecarOnlyFailureDoesNotWriteAProviderCandidate(t *testing.T) {
 	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Local"}
 	st := newFakeStore(a)
@@ -518,5 +543,8 @@ func TestSidecarOnlyFailureDoesNotWriteAProviderCandidate(t *testing.T) {
 	}
 	if len(st.candidates) != 0 {
 		t.Fatalf("local error wrote a provider candidate: %+v", st.candidates)
+	}
+	if st.checked[a.ID] {
+		t.Fatal("a failed item must stay due")
 	}
 }

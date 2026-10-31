@@ -94,6 +94,10 @@ type MetadataCandidate struct {
 //
 // Eén kandidaatrij per item, ongeacht de provider: M2a kent er één. Een tweede
 // provider vraagt een sleutel op (item_id, provider) in een eigen migratie.
+//
+// Zonder provider (SourceNFO) telt alleen sidecar_checked_at: die ronde heeft geen
+// kandidaten. Eens per sidecarRecheck komt een item terug, zodat een bijgewerkte .nfo
+// binnen een week doorkomt.
 func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]MetadataTarget, error) {
 	if exclude == nil {
 		// Een NULL-array maakt van NOT (id = ANY(NULL)) een NULL en daarmee een lege pagina.
@@ -123,14 +127,17 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		    WHERE s.parent_id = i.id AND i.kind = 'show'
 		    ORDER BY f.relative_path LIMIT 1) sp ON true
 		WHERE i.kind IN ('movie', 'show')
-		  AND (c.item_id IS NULL
-		       OR (c.state <> 'rejected'
-		           AND (c.pass < $4
-		                OR (c.state IN ('unmatched', 'failed', 'matched')
-		                    AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now()))))
+		  AND CASE WHEN $1 = 'nfo'
+		      THEN i.sidecar_checked_at IS NULL OR i.sidecar_checked_at <= now() - $5::interval
+		      ELSE c.item_id IS NULL
+		           OR (c.state <> 'rejected'
+		               AND (c.pass < $4
+		                    OR (c.state IN ('unmatched', 'failed', 'matched')
+		                        AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now())))
+		      END
 		  AND NOT (i.id = ANY($3))
 		ORDER BY i.added_at, i.id
-		LIMIT $2`, provider, limit, exclude, pass)
+		LIMIT $2`, provider, limit, exclude, pass, sidecarRecheck)
 	if err != nil {
 		return nil, fmt.Errorf("metadata-werk lezen: %w", err)
 	}
@@ -145,6 +152,17 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		out = append(out, t)
 	}
 	return out, rows.Err()
+}
+
+// sidecarRecheck is hoe lang een item zonder provider met rust gelaten wordt.
+const sidecarRecheck = 7 * 24 * time.Hour
+
+// MarkSidecarChecked legt vast dat een ronde zonder provider dit item naliep.
+func (s *Store) MarkSidecarChecked(ctx context.Context, itemID id.ID) error {
+	if _, err := s.pool.Exec(ctx, `UPDATE media_items SET sidecar_checked_at = now() WHERE id = $1`, itemID); err != nil {
+		return fmt.Errorf("sidecarronde vastleggen: %w", err)
+	}
+	return nil
 }
 
 // SaveCandidate legt de uitkomst van een poging vast. Het canonieke record blijft
@@ -185,7 +203,8 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 
 // ApplyMetadata zet providerwaarden op het item, per veld en alleen waar niemand
 // met voorrang het veld al heeft gezet. Een veld dat een eerdere providerronde
-// zette wordt wel ververst; een veld met een andere bron blijft staan.
+// zette wordt wel ververst; een veld met een andere bron blijft staan. Een waarde die
+// er al staat raakt de rij niet: updated_at is wat clients op verversen zetten.
 func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string, d MetadataDetails) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -214,19 +233,19 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 	}
 
 	if d.Summary != "" && free("summary") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET summary = $2, updated_at = now() WHERE id = $1`, itemID, d.Summary); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET summary = $2, updated_at = now() WHERE id = $1 AND summary IS DISTINCT FROM $2`, itemID, d.Summary); err != nil {
 			return err
 		}
 		sources["summary"] = provider
 	}
 	if len(d.Genres) > 0 && free("genres") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET genres = $2, updated_at = now() WHERE id = $1`, itemID, d.Genres); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET genres = $2, updated_at = now() WHERE id = $1 AND genres IS DISTINCT FROM $2`, itemID, d.Genres); err != nil {
 			return err
 		}
 		sources["genres"] = provider
 	}
 	if d.ContentRating != "" && free("content_rating") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET content_rating = $2, updated_at = now() WHERE id = $1`, itemID, d.ContentRating); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET content_rating = $2, updated_at = now() WHERE id = $1 AND content_rating IS DISTINCT FROM $2`, itemID, d.ContentRating); err != nil {
 			return err
 		}
 		sources["content_rating"] = provider
@@ -237,7 +256,7 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET people = $2, updated_at = now() WHERE id = $1`, itemID, raw); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET people = $2, updated_at = now() WHERE id = $1 AND people IS DISTINCT FROM $2`, itemID, raw); err != nil {
 			return err
 		}
 		sources["people"] = provider
@@ -247,7 +266,7 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1`, itemID, out); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1 AND metadata_sources IS DISTINCT FROM $2`, itemID, out); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -549,7 +568,7 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1`, itemID, out); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1 AND metadata_sources IS DISTINCT FROM $2`, itemID, out); err != nil {
 		return nil, err
 	}
 
