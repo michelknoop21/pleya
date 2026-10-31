@@ -13,6 +13,7 @@
 /// - assert: {id: discover.hero.play, minimumTapTarget: 44}
 /// - assert: {id: discover.hero, notOverlapping: sidebar.rail}
 /// - assert: {id: library.grid, below: library.filters}
+/// - assert: {id: discover.continue_watching, peeksAbove: nav.bar}
 /// ```
 ///
 /// Unary predicates take `true` (or a number, where one is meaningful);
@@ -32,6 +33,7 @@ const Set<String> binaryGeometryPredicates = {
   'notClipped',
   'below',
   'above',
+  'peeksAbove',
   'leftOf',
   'rightOf',
   'sameRow',
@@ -162,6 +164,8 @@ GeometryVerdict _evaluateBinary(String predicate, GeoRect subject, GeoRect other
       return below(subject, other);
     case 'above':
       return above(subject, other);
+    case 'peeksAbove':
+      return peeksAbove(subject, other);
     case 'leftOf':
       return leftOf(subject, other);
     case 'rightOf':

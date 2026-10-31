@@ -52,6 +52,10 @@ bool applyNamedFixture(
     case 'catalog.alphabet-500.v1':
       _applyCatalogAlphabet500V1(server);
       return true;
+    case 'catalog.hero-recent.v1':
+      server.resetCatalog();
+      if (jellyfin != null) _applyCatalogHeroRecentV1(jellyfin);
+      return jellyfin != null;
     case 'catalog.scores.v1':
       server.resetCatalog();
       if (jellyfin != null) _applyCatalogScoresV1(jellyfin);
@@ -545,6 +549,19 @@ void _applyCatalogAlphabet500V1(PleyaFakeServer server) {
 
 /// A Jellyfin library for the score sorts (A-06c): the top of `03.png`, then
 /// titles without a score, so a scenario sees them sink in both directions.
+/// Three films released inside the 90-day window of DEC-097, on the one fake
+/// backend whose protocol carries a release date, so Home's hero pool fills
+/// through the real mapper and aggregation and rotates over more than one slide.
+void _applyCatalogHeroRecentV1(JellyfinFakeServer jellyfin) {
+  jellyfin.movies
+    ..clear()
+    ..addAll(const [
+      JellyfinFakeMovie(id: 'hr-01', title: 'Northern Crossing', year: 2026, releasedDaysAgo: 10),
+      JellyfinFakeMovie(id: 'hr-02', title: 'Salt Harbour', year: 2026, releasedDaysAgo: 30),
+      JellyfinFakeMovie(id: 'hr-03', title: 'The Long Thaw', year: 2026, releasedDaysAgo: 60),
+    ]);
+}
+
 void _applyCatalogScoresV1(JellyfinFakeServer jellyfin) {
   jellyfin.movies
     ..clear()

@@ -1,7 +1,59 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/utils/platform_detector.dart';
 
 void main() {
+  group('isIPad', () {
+    tearDown(() {
+      TvDetectionService.debugSetAppleTVOverride(null);
+      TvDetectionService.debugSetIOSAppOnMacOverride(null);
+    });
+
+    Future<bool> isIPad(WidgetTester tester, TargetPlatform platform, Size size, double ratio) async {
+      late bool answer;
+      await tester.pumpWidget(
+        MediaQuery(
+          data: MediaQueryData(size: size, devicePixelRatio: ratio),
+          child: Theme(
+            data: ThemeData(platform: platform),
+            child: Builder(
+              builder: (context) {
+                answer = PlatformDetector.isIPad(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      return answer;
+    }
+
+    testWidgets('an iPad is one, in either orientation', (tester) async {
+      expect(await isIPad(tester, TargetPlatform.iOS, const Size(834, 1194), 2), isTrue);
+      expect(await isIPad(tester, TargetPlatform.iOS, const Size(1194, 834), 2), isTrue);
+    });
+
+    testWidgets('a narrow iPad window is still an iPad, not a phone', (tester) async {
+      expect(await isIPad(tester, TargetPlatform.iOS, const Size(320, 1100), 2), isTrue);
+    });
+
+    testWidgets('an iPhone is not', (tester) async {
+      expect(await isIPad(tester, TargetPlatform.iOS, const Size(393, 852), 3), isFalse);
+    });
+
+    testWidgets('the iOS app on a Mac is not', (tester) async {
+      TvDetectionService.debugSetIOSAppOnMacOverride(true);
+      expect(await isIPad(tester, TargetPlatform.iOS, const Size(1194, 834), 2), isFalse);
+    });
+
+    testWidgets('Apple TV, an Android tablet and a Mac are not', (tester) async {
+      expect(await isIPad(tester, TargetPlatform.android, const Size(1194, 834), 2), isFalse);
+      expect(await isIPad(tester, TargetPlatform.macOS, const Size(1194, 834), 2), isFalse);
+      TvDetectionService.debugSetAppleTVOverride(true);
+      expect(await isIPad(tester, TargetPlatform.iOS, const Size(1920, 1080), 2), isFalse);
+    });
+  });
+
   group('detectAndroidTvFromSystemFeatures', () {
     test('detects leanback devices', () {
       final detection = detectAndroidTvFromSystemFeatures([

@@ -129,6 +129,7 @@ void main() {
     bool autoplayEnabled = true,
     bool reduceMotion = false,
     bool hideSpoilers = false,
+    bool touchInput = false,
     GlobalKey<TvHeroBillboardCarouselState>? key,
     VoidCallback? onNavigateDown,
     VoidCallback? onNavigateUp,
@@ -153,6 +154,7 @@ void main() {
                       size: size,
                       autoplayEnabled: autoplayEnabled,
                       hideSpoilers: hideSpoilers,
+                      touchInput: touchInput,
                       onActivate: (group, {required intent, required playDirectly}) =>
                           calls.add((group: group, intent: intent, playDirectly: playDirectly)),
                       onNavigateDown: onNavigateDown,
@@ -184,6 +186,84 @@ void main() {
     await tester.sendKeyUpEvent(key);
     await tester.pump();
   }
+
+  // A-17: the iPad held sideways draws this same carousel under a finger.
+  group('touch input', () {
+    Future<void> drop(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 3));
+    }
+
+    testWidgets('a swipe moves one slide and stops at the end, like LEFT and RIGHT', (tester) async {
+      await pump(tester, [_group('g1', 'First'), _group('g2', 'Second')], touchInput: true, autoplayEnabled: false);
+
+      await tester.drag(find.byType(TvHeroBillboardCard), const Offset(-200, 0));
+      await tester.pump();
+      expect(shownTitle(tester), 'Second');
+
+      await tester.drag(find.byType(TvHeroBillboardCard), const Offset(-200, 0));
+      await tester.pump();
+      expect(shownTitle(tester), 'Second');
+
+      await tester.drag(find.byType(TvHeroBillboardCard), const Offset(200, 0));
+      await tester.pump();
+      expect(shownTitle(tester), 'First');
+      await drop(tester);
+    });
+
+    testWidgets('a short drag is not a swipe', (tester) async {
+      await pump(tester, [_group('g1', 'First'), _group('g2', 'Second')], touchInput: true, autoplayEnabled: false);
+
+      await tester.timedDrag(find.byType(TvHeroBillboardCard), const Offset(-30, 0), const Duration(seconds: 1));
+      await tester.pump();
+      expect(shownTitle(tester), 'First');
+      await drop(tester);
+    });
+
+    testWidgets('a finger reaches both CTAs and the picture opens the title', (tester) async {
+      final calls = await pump(tester, [_group('g1', 'First')], touchInput: true, autoplayEnabled: false);
+
+      await tester.tap(find.byKey(const ValueKey('tvHeroCta.play.fill')));
+      await tester.pump();
+      expect(calls.single.intent, UnifiedActivationIntent.play);
+      expect(calls.single.playDirectly, isTrue);
+
+      await tester.tap(find.byKey(const ValueKey('tvHeroCta.info.fill')));
+      await tester.pump();
+      expect(calls.last.intent, UnifiedActivationIntent.details);
+      expect(calls.last.playDirectly, isFalse);
+
+      await tester.tapAt(tester.getTopRight(find.byType(TvHeroBillboardCard)) + const Offset(-40, 40));
+      await tester.pump();
+      expect(calls, hasLength(3));
+      expect(calls.last.intent, UnifiedActivationIntent.details);
+      await drop(tester);
+    });
+
+    testWidgets('the CTAs are at least a finger tall', (tester) async {
+      await pump(tester, [_group('g1', 'First')], touchInput: true, autoplayEnabled: false);
+
+      expect(tester.getSize(find.byKey(const ValueKey('tvHeroCta.play.fill'))).height, greaterThanOrEqualTo(44));
+      expect(tester.getSize(find.byKey(const ValueKey('tvHeroCta.info.fill'))).height, greaterThanOrEqualTo(44));
+      await drop(tester);
+    });
+
+    testWidgets('off, the billboard takes no pointer at all, as on a TV', (tester) async {
+      final calls = await pump(tester, [_group('g1', 'First'), _group('g2', 'Second')], autoplayEnabled: false);
+
+      await tester.tap(find.byKey(const ValueKey('tvHeroCta.play.fill')), warnIfMissed: false);
+      await tester.drag(find.byType(TvHeroBillboardCard), const Offset(-200, 0), warnIfMissed: false);
+      await tester.pump();
+
+      expect(calls, isEmpty);
+      expect(shownTitle(tester), 'First');
+      expect(
+        find.descendant(of: find.byType(TvHeroBillboardCarousel), matching: find.byType(GestureDetector)),
+        findsNothing,
+      );
+      await drop(tester);
+    });
+  });
 
   group('activation boundary (hoofdstuk 4.4)', () {
     testWidgets('Afspelen hands over the whole group, never the representative source', (tester) async {

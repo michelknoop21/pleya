@@ -45,10 +45,16 @@ of ongeldige invoer geeft 400.
 
 ### `POST /v1/window`
 
-macOS-only verification endpoint. Body `{"width": 1280, "height": 800}`
-resizes the app window in logical pixels and returns the applied dimensions.
-Other targets and non-positive or missing dimensions return 400. Triggert geen
-events.
+Verification endpoint for a target's view. On macOS, body
+`{"width": 1280, "height": 800}` resizes the app window in logical pixels and
+returns the applied dimensions; other targets and non-positive or missing
+dimensions return 400. On iOS, body `{"orientation": "landscapeLeft"}` (or
+`portrait`, `landscapeRight`) locks the app to that orientation through iOS and
+returns `{"ok": true, "orientation": ...}`; other targets and unknown names return
+400. An answer is a request, not evidence: the runner measures `/v1/viewport`. On
+iPad, iOS honors the request because the driver's isolated app copy sets
+`UIRequiresFullScreen`.
+Triggert geen events.
 
 ### `GET /v1/health`
 

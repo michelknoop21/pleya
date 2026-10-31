@@ -53,10 +53,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
-import '../../focus/focus_theme.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/focusable_wrapper.dart';
-import '../../focus/input_mode_tracker.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
@@ -66,10 +64,9 @@ import '../../media/unified/unified_route_context.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
-import '../../utils/tv_hig.dart';
-import '../app_icon.dart';
 import 'tv_hero_artwork.dart';
 import 'tv_hero_billboard_card.dart';
+import 'tv_hero_billboard_controls.dart';
 import 'tv_unified_layout.dart';
 import 'tv_unified_media_card.dart' show resumeFractionFor;
 
@@ -84,6 +81,7 @@ class TvHeroBillboardCarousel extends StatefulWidget {
     this.textOpacity = 1.0,
     this.textBottom = 0,
     this.hideSpoilers = false,
+    this.touchInput = false,
     this.initialGroupId,
     this.onActiveGroupChanged,
     this.onNavigateDown,
@@ -120,6 +118,13 @@ class TvHeroBillboardCarousel extends StatefulWidget {
 
   final bool hideSpoilers;
 
+  /// This billboard sits on a touch screen, the iPad held sideways. A swipe
+  /// does what LEFT and RIGHT do, a tap on the picture opens the title, and the
+  /// CTAs take a finger, because `FocusableButton` itself only hears Select. A
+  /// hardware keyboard keeps every focus path below. Off on TV, where none of
+  /// this is built.
+  final bool touchInput;
+
   /// Restoration (hoofdstuk 7.6/19): the slide to come back to after a
   /// destination switch. Ignored when that group is no longer in [groups] — a
   /// title that left the recent-films pool cannot be restored, and slide zero
@@ -140,6 +145,11 @@ class TvHeroBillboardCarousel extends StatefulWidget {
   @override
   State<TvHeroBillboardCarousel> createState() => TvHeroBillboardCarouselState();
 }
+
+/// A finger's target; the ten-foot pill alone comes to 34 on an iPad.
+const double _touchTargetHeight = 44;
+const double _swipeMinDistance = 48;
+const double _swipeFlickVelocity = 300;
 
 class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
   final _playFocus = FocusNode(debugLabel: 'tvHeroPlay');
@@ -164,6 +174,9 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
   /// (hoofdstuk 7.3: "Up vanaf de eerste rij gaat terug naar de laatst
   /// gebruikte hero-CTA").
   bool _lastCtaWasInfo = false;
+
+  /// How far the current swipe has travelled; see [_endSwipe].
+  double _swipeDistance = 0;
 
   @override
   void initState() {
@@ -305,6 +318,15 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
     });
   }
 
+  /// A swipe left brings the next slide in both directionalities, the way LEFT
+  /// and RIGHT stay tied to the visual direction, and stops at the ends like
+  /// [_move] does. A flick counts as much as a long drag.
+  void _endSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final travel = velocity.abs() >= _swipeFlickVelocity ? velocity : _swipeDistance;
+    if (travel.abs() >= _swipeMinDistance || velocity.abs() >= _swipeFlickVelocity) _move(travel < 0 ? 1 : -1);
+  }
+
   void _notifyActive() {
     final group = activeGroup;
     if (group != null) widget.onActiveGroupChanged?.call(group.groupId);
@@ -347,6 +369,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
       // HERO6: whether the title and CTAs are drawn, read off the value the
       // card renders from, so a scenario can tell "mounted" from "visible".
       state: () => {
+        'activeTitle': heroTitleFor(group),
         'textVisible': widget.textOpacity > 0,
         'watchStatus': heroWatchStatusValueFor(group),
         if (watchProgressPercent != null) 'watchProgressPercent': watchProgressPercent,
@@ -358,39 +381,60 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
                   '${t.unifiedCatalog.discovery.semantics.position(position: _index + 1, count: widget.groups.length)}, '
                   '${heroWatchStatusLabelFor(group)}'
             : '${t.unifiedCatalog.home.featured}: ${heroTitleFor(group)}, ${heroWatchStatusLabelFor(group)}',
-        child: Stack(
-          children: [
-            TvHeroBillboardCard(
-              group: group,
-              size: widget.size,
-              client: client,
-              hideSpoilers: widget.hideSpoilers,
-              textOpacity: widget.textOpacity,
-              textBottom: widget.textBottom,
-              // `instanceOrNull`, not `.instance`: this carousel is built by
-              // widget tests that never bootstrap the settings singleton, and
-              // the pref's own default (`true`, unchanged behavior) is the
-              // right answer for "not initialized yet" regardless.
-              showClearLogo: SettingsService.instanceOrNull?.read(SettingsService.tvHeroClearLogo) ?? true,
-              artwork: AnimatedSwitcher(
-                duration: reduceMotion(context, TvHomeLayout.heroCrossfade),
-                // Both layers on screen at once during the fade, the outgoing one
-                // underneath: the default `AnimatedSwitcher` layout stacks them,
-                // which is exactly the dissolve 33.1 asks for and not the
-                // fade-to-background-and-back a `SizeTransition` would give.
-                child: TvHeroArtwork(key: ValueKey(group.groupId), item: item, size: widget.size, client: client),
+        onIncrease: widget.touchInput ? () => _move(1) : null,
+        onDecrease: widget.touchInput ? () => _move(-1) : null,
+        child: _touchSurface(
+          Stack(
+            children: [
+              TvHeroBillboardCard(
+                group: group,
+                size: widget.size,
+                client: client,
+                hideSpoilers: widget.hideSpoilers,
+                textOpacity: widget.textOpacity,
+                textBottom: widget.textBottom,
+                // `instanceOrNull`, not `.instance`: this carousel is built by
+                // widget tests that never bootstrap the settings singleton, and
+                // the pref's own default (`true`, unchanged behavior) is the
+                // right answer for "not initialized yet" regardless.
+                showClearLogo: SettingsService.instanceOrNull?.read(SettingsService.tvHeroClearLogo) ?? true,
+                artwork: AnimatedSwitcher(
+                  duration: reduceMotion(context, TvHomeLayout.heroCrossfade),
+                  // Both layers on screen at once during the fade, the outgoing one
+                  // underneath: the default `AnimatedSwitcher` layout stacks them,
+                  // which is exactly the dissolve 33.1 asks for and not the
+                  // fade-to-background-and-back a `SizeTransition` would give.
+                  child: TvHeroArtwork(key: ValueKey(group.groupId), item: item, size: widget.size, client: client),
+                ),
+                actions: _actions(context, group, scale),
               ),
-              actions: _actions(context, group, scale),
-            ),
-            if (_showIndicator && widget.groups.length > 1)
-              Positioned(
-                right: TvDiscoveryLayout.pageInset * scale,
-                bottom: widget.textBottom,
-                child: _SegmentIndicator(count: widget.groups.length, active: _index, scale: scale),
-              ),
-          ],
+              if (_showIndicator && widget.groups.length > 1)
+                Positioned(
+                  right: TvDiscoveryLayout.pageInset * scale,
+                  bottom: widget.textBottom,
+                  child: TvHeroSegmentIndicator(count: widget.groups.length, active: _index, scale: scale),
+                ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  /// [billboard] as it is on TV, or under a finger with [touchInput]. The CTAs
+  /// sit deeper in the tree, so their own tap wins over the one here.
+  Widget _touchSurface(Widget billboard) {
+    if (!widget.touchInput) return billboard;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _activate(intent: UnifiedActivationIntent.details, playDirectly: false),
+      onHorizontalDragStart: (_) {
+        _swipeDistance = 0;
+        _noteInteraction();
+      },
+      onHorizontalDragUpdate: (details) => _swipeDistance += details.primaryDelta ?? 0,
+      onHorizontalDragEnd: _endSwipe,
+      child: billboard,
     );
   }
 
@@ -461,8 +505,12 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
                 onNavigateLeft: _stepFrom(rendered, _playFocus, -1),
                 onNavigateRight: _stepFrom(rendered, _playFocus, 1),
                 onBack: widget.onBack,
-                child: _HeroPill(
+                child: TvHeroPill(
                   focusNode: _playFocus,
+                  onTap: widget.touchInput
+                      ? () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true)
+                      : null,
+                  minHeight: widget.touchInput ? _touchTargetHeight : 0,
                   icon: Symbols.play_arrow_rounded,
                   label: resume != null ? t.common.resume : t.common.play,
                   scale: scale,
@@ -492,8 +540,12 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
               onNavigateLeft: _stepFrom(rendered, _infoFocus, -1),
               onNavigateRight: _stepFrom(rendered, _infoFocus, 1),
               onBack: widget.onBack,
-              child: _HeroPill(
+              child: TvHeroPill(
                 focusNode: _infoFocus,
+                onTap: widget.touchInput
+                    ? () => _activate(intent: UnifiedActivationIntent.details, playDirectly: false)
+                    : null,
+                minHeight: widget.touchInput ? _touchTargetHeight : 0,
                 icon: Symbols.info_rounded,
                 label: t.mediaMenu.viewDetails,
                 scale: scale,
@@ -507,185 +559,6 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
           ],
         );
       },
-    );
-  }
-}
-
-/// One CTA. 33.1: a white `▶ Afspelen` capsule and a dark `Meer info` one, and
-/// white is reserved for focus — so the secondary pill inverts to white when
-/// focused and the primary, already white, gains the ring instead.
-class _HeroPill extends StatefulWidget {
-  const _HeroPill({
-    required this.focusNode,
-    required this.icon,
-    required this.label,
-    required this.scale,
-    required this.primary,
-    required this.onGainedFocus,
-    this.progress,
-  });
-
-  final FocusNode focusNode;
-  final IconData icon;
-  final String label;
-  final double scale;
-  final bool primary;
-  final VoidCallback onGainedFocus;
-
-  /// Resume fraction, drawn as a slim bar inside the primary pill when the
-  /// featured title has real progress.
-  final double? progress;
-
-  @override
-  State<_HeroPill> createState() => _HeroPillState();
-}
-
-class _HeroPillState extends State<_HeroPill> {
-  bool _wasFocused = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.focusNode.addListener(_onFocus);
-  }
-
-  @override
-  void dispose() {
-    widget.focusNode.removeListener(_onFocus);
-    super.dispose();
-  }
-
-  void _onFocus() {
-    final has = widget.focusNode.hasFocus;
-    if (has && !_wasFocused) widget.onGainedFocus();
-    _wasFocused = has;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    final scale = widget.scale;
-
-    return ListenableBuilder(
-      listenable: widget.focusNode,
-      builder: (context, _) {
-        final showFocus = widget.focusNode.hasFocus && InputModeTracker.isKeyboardMode(context);
-        // The primary is white at rest already, so focus cannot be "turn
-        // white"; it is the ring. The secondary is dark at rest and inverts.
-        final filled = widget.primary || showFocus;
-        final bg = filled ? tk.text : tk.text.withValues(alpha: TvHomeLayout.heroSecondaryFillAlpha);
-        final fg = filled ? tk.bg : tk.text;
-
-        final radius = TvHomeLayout.heroActionRadius * scale;
-        final motion = reduceMotion(context, FocusTheme.getAnimationDuration(context));
-
-        // VIS-0925-E: one focus contract for the CTAs, the same as every other
-        // TV control. The white ring (never `tk.text`, which is black in Light
-        // and drew a black-and-white double rim) stands a small clear band
-        // outside the fill, with the Light separator line from [FocusTheme],
-        // plus the focus scale. The fill itself starts on the text column's
-        // x, the halo goes outward.
-        return AnimatedScale(
-          scale: showFocus ? FocusTheme.focusScale : 1,
-          duration: motion,
-          curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            key: ValueKey(widget.primary ? 'tvHeroCta.play.fill' : 'tvHeroCta.info.fill'),
-            duration: motion,
-            curve: Curves.easeOutCubic,
-            foregroundDecoration: FocusTheme.shapeFocusRing(
-              context,
-              isFocused: showFocus,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
-              // The same clear band as the category rail (D1): in Dark a
-              // focused CTA is a white fill, and a white ring against it
-              // would vanish without one.
-              gap: TvMyPleyaLayout.tileFocusRingGap * TvHig.of(context),
-            ),
-            height: TvHomeLayout.heroActionHeight * scale,
-            padding: EdgeInsets.symmetric(horizontal: TvHomeLayout.heroActionPaddingHorizontal * scale),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(radius),
-              boxShadow: showFocus
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: TvDiscoveryLayout.cardFocusShadowAlpha),
-                        blurRadius: TvDiscoveryLayout.cardFocusShadowBlur * scale,
-                        offset: Offset(0, TvDiscoveryLayout.cardFocusShadowOffsetY * scale),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(widget.icon, fill: 1, size: TvHomeLayout.heroActionIconSize * scale, color: fg),
-                SizedBox(width: TvHomeLayout.heroActionIconLabelGap * scale),
-                if (widget.progress != null) ...[
-                  Container(
-                    width: 40 * scale,
-                    height: 4 * scale,
-                    decoration: BoxDecoration(
-                      color: fg.withValues(alpha: 0.28),
-                      borderRadius: BorderRadius.circular(2 * scale),
-                    ),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: widget.progress,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(color: fg, borderRadius: BorderRadius.circular(2 * scale)),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: TvHomeLayout.heroActionIconLabelGap * scale),
-                ],
-                Text(
-                  widget.label,
-                  // VIS-0925-G (DEC-139): the CTA label in Body (29 pt), not 25.
-                  style: TextStyle(color: fg, fontSize: TvHig.body * TvHig.of(context), fontWeight: .w600),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Hoofdstuk 9.6: "Geen permanente reeks kleine webachtige dots. Tijdens
-/// handmatig wisselen verschijnt optioneel een korte segmentindicator, die na
-/// twee seconden verdwijnt." Segments rather than dots, and excluded from
-/// semantics — the slide position is already on the carousel's own label, and
-/// announcing eight anonymous bars after it would be noise.
-class _SegmentIndicator extends StatelessWidget {
-  const _SegmentIndicator({required this.count, required this.active, required this.scale});
-
-  final int count;
-  final int active;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    return ExcludeSemantics(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < count; i++) ...[
-            if (i > 0) SizedBox(width: TvHomeLayout.heroSegmentIndicatorGap * scale),
-            Container(
-              width: TvHomeLayout.heroSegmentIndicatorWidth * scale,
-              height: TvHomeLayout.heroSegmentIndicatorHeight * scale,
-              decoration: BoxDecoration(
-                color: tk.text.withValues(alpha: i == active ? 1 : TvHomeLayout.heroSegmentIndicatorIdleAlpha),
-                borderRadius: BorderRadius.circular(TvHomeLayout.heroSegmentIndicatorHeight * scale),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

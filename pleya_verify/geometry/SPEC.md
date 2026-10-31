@@ -28,6 +28,7 @@ same shape `/v1/ui_tree`'s `bounds` and `/v1/viewport` use.
 | `insideViewport` | `rect`, `viewport` |
 | `notClipped` | `rect`, `clipBounds` |
 | `notOverlapping`, `below`, `above`, `leftOf`, `rightOf` | `a`, `b` |
+| `peeksAbove` | `a`, `b`, optional `minPeek` (default 60.0) |
 | `minimumTapTarget` | `rect`, optional `minSize` (default 44.0) |
 | `sameRow`, `sameColumn` | `a`, `b`, optional `tolerance` (default 1.0) |
 

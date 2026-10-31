@@ -5222,3 +5222,17 @@ of externe/publicatie naar App Review.
 6. Dit geldt voor Apple TV, iPhone, iPad en desktop, en voor Plex, Jellyfin, Emby en Pleya Server. Lokale mappen en Pleya Share worden niet samengevoegd (Pleya Server-unified-beslissing, besluit 1) en hebben dus geen tweede bron.
 
 **Gevolg:** Wijzigen op de detailpagina vervangt de route niet meer zolang de hoofdbron de pagina houdt. Menu-acties op die pagina (verwijderen, metadata) werken op de gekozen bron, want de bron die de pagina toont is niet per se de bron die de kijker koos. Rechten worden per beslissing getoetst: een verborgen server, een verborgen bibliotheek of een auth-fout wordt niet aangesproken, en een kinderprofiel komt voor een ontbrekende aflevering niet bij een derde server. Downloaden op de detailpagina blijft op de hoofdbron; een externe speler schrijft niet door naar andere bronnen. Regels staan in hoofdstuk 4.6, 13.2 en 15. **Unified impact:** gedeelde eigenaar is `UnifiedTitlePlayback` met `SourceEpisodeIndex`, `UnifiedProgressMirror`, `UnifiedTitleDiscovery` en de wachtrijrijen `mirroredProgress`, `mirroredWatched` en `mirroredUnwatched`; gekoppeld zijn alle `MediaServerClient`-backends via `fetchPlayableDescendants`, zonder protocolwijziging.
+
+## DEC-XXX: iPad Home krijgt liggend de tvOS-billboard en staand de iPhone-kaart
+
+**Date:** 2026-10-31
+**Status:** accepted (Michel, 31 oktober 2026)
+**Roadmap:** A-17.
+**Context:** Michel meldde dat de hero op iPad weg was. Op de iPad-simulator bleef `discover.hero` weg zodra de pool van films uit de laatste 90 dagen leeg was (DEC-097), in beide standen; met drie recente films stond hij er wel. tvOS toont in dat geval een vervangende slide, de bestaande iPad-tak had die niet. Pleya Server, Share en lokale mappen leveren geen releasedatum en voeden die pool nooit. Build 428 en Michels eigen bibliotheek zijn niet gemeten: de oorzaak is bewezen op de fixture en aannemelijk voor zijn toestel.
+**Decision:**
+1. iPad liggend toont `TvHeroBillboardCarousel` met touchbediening, iPad staand toont `MobileHeroCard`. Beide lezen dezelfde lijst slides, zodat draaien de huidige slide bewaart.
+2. De keuze van slides is die van tvOS en staat in `homeBillboardGroups`. Bij een lege pool volgt iPad de vervangende slide van tvOS, ook staand.
+3. Dit vervangt voor de iPad-hero het deel van DEC-103 dat de iPad zijn bestaande presentatie houdt. De rijen onder de hero en de rest van die tak blijven zoals ze waren.
+4. De iPhone behoudt zijn gedrag: bij een lege pool blijft zijn hero weg. iPad staand wijkt daar bewust van af.
+
+**Consequences:** De pauzeknop en de stippen van de oude iPad-hero vervallen; liggend heeft geen stippen meer, staand die van de iPhone-kaart. Bij een lege pool zonder Verder kijken en zonder eigen rijen kan de vervangende slide een Nu op tv-zender zijn, en die route heeft geen test. De iOS-app op een Mac telt niet als iPad (`PlatformDetector.isIPad`).
