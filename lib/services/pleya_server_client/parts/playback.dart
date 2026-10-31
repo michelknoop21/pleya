@@ -559,7 +559,16 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     Duration? duration,
     required bool watched,
   }) async {
-    if (!watched || _writtenJustNow(item)) return false;
+    if (!watched) return false;
+    return markWatchedUnlessHeld(item);
+  }
+
+  /// `mark_watched` for a viewing that happened somewhere else: another source,
+  /// or offline. It ignores the lease (rule 5) and sets the position to zero, so
+  /// right after a write it does not go out. Answers whether the server now says
+  /// watched: anything else says nothing about the mark.
+  Future<bool> markWatchedUnlessHeld(MediaItem item) async {
+    if (_writtenJustNow(item)) return false;
     final state = await _markWatched(item);
     return state?.watched ?? false;
   }
@@ -598,13 +607,37 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     String? mediaSourceId,
     PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
   }) async {
+    await _reportStopped(itemId: itemId, position: position, duration: duration, report: report);
+  }
+
+  /// A viewing that ran offline, with the answer: a backlog on a title that has a
+  /// state is history (rule 6), and that is a 200 like any other. Null when there
+  /// is no usable answer.
+  Future<PleyaUserState?> reportOfflineViewing({
+    required String itemId,
+    required Duration position,
+    Duration? duration,
+    required DateTime recordedAt,
+  }) => _reportStopped(
+    itemId: itemId,
+    position: position,
+    duration: duration,
+    report: PlaybackReportMetadata.offlineReplay(recordedAt: recordedAt),
+  );
+
+  Future<PleyaUserState?> _reportStopped({
+    required String itemId,
+    required Duration position,
+    Duration? duration,
+    required PlaybackReportMetadata report,
+  }) async {
     final completed =
         duration != null &&
         duration.inMilliseconds > 0 &&
         position.inMilliseconds >= _watchedFraction * duration.inMilliseconds;
 
     await _releaseTranscodeSession(itemId);
-    await _applyWatchState(
+    final state = await _applyWatchState(
       itemId: itemId,
       sessionId: _watchLedger.sessionFor(itemId, _mintSessionId),
       position: position,
@@ -617,6 +650,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       occurredAt: report.isOfflineReplay ? report.recordedAt : null,
     );
     _watchLedger.closeSession(itemId);
+    return state;
   }
 
   // ---------------------------------------------------------------------------

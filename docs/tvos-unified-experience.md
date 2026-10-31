@@ -1122,7 +1122,11 @@ een positie, dan is dat een herkijkbeurt, en die mag eindigen.
 
 Of een sessie gekeken telt volgt de drempel van de spelende server, ook als die server de stop niet
 ontving. Een sessie die offline liep bereikt de kopieën zodra zijn eigen rij echt is afgespeeld, met
-positie of als gekeken; een rij die de eigen server al had ingehaald meldt niets. Een rij van een
+positie of als gekeken; een rij die de eigen server al had ingehaald meldt niets. Op Pleya Server is
+die rij een backlog, en de server weigert een backlog met een 200 zodra de titel een stand heeft
+(regel 6). Een afgekeken rij gaat dan alsnog uit als `mark_watched`, met dezelfde wachttijd van 180
+seconden als een markering voor een kopie; lukt dat niet, dan blijft de rij staan en hoort niemand
+iets, ook de trackers niet. Een rij met alleen een positie vervalt dan, en meldt niets. Een rij van een
 kopie vervalt ook als de server de schrijfactie zelf weigert op een manier die wachten niet oplost.
 Een mislukte tokenronde op Pleya Server is geen weigering: de schrijfactie is dan niet verstuurd, en
 de rij blijft staan tot er weer een token is, onder hetzelfde account. Op die client komt elke

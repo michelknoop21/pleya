@@ -310,7 +310,7 @@ void main() {
     expect(server.watchEvents.single['explicit_action'], 'mark_watched');
   });
 
-  test('a viewing that ran offline on a title set back to unwatched still lands', () async {
+  test('a position that ran offline on a title set back to unwatched ends its row', () async {
     await connect(userState: _unwatchedTwice);
     await db.upsertProgressAction(
       serverId: ServerId(client.serverId),
@@ -323,7 +323,7 @@ void main() {
 
     await queue.syncPendingItems();
 
-    expect(server.watchEvents.first['position_ms'], 1800000);
+    expect(server.watchEvents.single['backlog'], isTrue);
     expect(await queue.getPendingSyncCount(), 0);
   });
 

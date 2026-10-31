@@ -144,6 +144,9 @@ Future<bool> replayOfflineWatchAction(
         final position = action.shouldMarkWatched && duration != null
             ? duration
             : Duration(milliseconds: action.viewOffset!);
+        if (client is PleyaServerClient) {
+          return _replayOwnPleyaViewing(client, action, resolvedItem, position, duration, beforeWrite);
+        }
         // Pleya backlog must never acquire live ownership before replay.
         if (client.backend != MediaBackend.pleyaServer &&
             (!action.shouldMarkWatched || client.backend != MediaBackend.plex)) {
@@ -181,6 +184,43 @@ Future<bool> replayOfflineWatchAction(
       }
       break;
   }
+  return true;
+}
+
+/// A viewing that ran offline on this Pleya Server. It goes out as a backlog, and
+/// the answer says what became of it: on a title with a state the server turns a
+/// backlog down with a 200 (rule 6). A finished viewing then needs a mark (rule 5),
+/// which waits for a session the way a mark for a copy does. Without that mark the
+/// row stays. A position has no such way in, so its row ends. Only what landed is
+/// reported: answers true when it did, and trackers and copies hear of nothing else.
+Future<bool> _replayOwnPleyaViewing(
+  PleyaServerClient client,
+  OfflineWatchProgressItem action,
+  MediaItem item,
+  Duration position,
+  Duration? duration,
+  void Function() beforeWrite,
+) async {
+  final state = await client.reportOfflineViewing(
+    itemId: action.ratingKey,
+    position: position,
+    duration: duration,
+    recordedAt: DateTime.fromMillisecondsSinceEpoch(action.updatedAt),
+  );
+  if (state == null) throw StateError('No answer about ${action.ratingKey}');
+  if (!action.shouldMarkWatched) return state.positionMs == position.inMilliseconds;
+  if (!state.watched) {
+    beforeWrite();
+    final copy = await _readCopy(client, action);
+    // Before the row can end: this answer may be the next profile's.
+    beforeWrite();
+    if (copy == null) return false;
+    if (!await client.markWatchedUnlessHeld(copy)) {
+      throw StateError('${action.ratingKey} is being played elsewhere');
+    }
+  }
+  await client.markWatchedFromPlaybackStop(item);
+  await _scrobbleBestEffort(() => TrackerCoordinator.instance.markWatched(item, client));
   return true;
 }
 

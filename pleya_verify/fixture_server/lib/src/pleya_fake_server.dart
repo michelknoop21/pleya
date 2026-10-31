@@ -45,7 +45,8 @@ class PleyaFakeServer {
 
   /// Canonical state per item, the way the server keeps it. Deliberately thin:
   /// the six rules are tested against the real Go implementation, and repeating
-  /// them here would test the fake.
+  /// them here would test the fake. Rule 6 is the exception: the client reads from
+  /// the answer whether a backlog landed.
   final Map<String, Map<String, dynamic>> watchStates = {};
 
   /// The session that holds each title. `playback_started` and the explicit
@@ -894,6 +895,12 @@ class PleyaFakeServer {
       final raw = watchStateRawAnswer;
       if (raw != null) return http.Response(raw, 200, headers: {'content-type': 'application/json'});
       final itemId = event['item_id'] as String;
+      // Rule 6: a backlog is history once a title has a state. A 200 with that
+      // state, and nothing moved.
+      final current = watchStates[itemId] ?? (items[itemId]?['user_state'] as Map<String, dynamic>?);
+      if (event['backlog'] == true && ((current?['revision'] as int?) ?? 0) > 0) {
+        return _json({...current!, 'owned_by_this_session': false});
+      }
       if (event['explicit_action'] != 'none') watchLeases[itemId] = event['session_id'] as String;
       final previous = watchStates[itemId];
       final revision = ((previous?['revision'] as int?) ?? 0) + 1;
