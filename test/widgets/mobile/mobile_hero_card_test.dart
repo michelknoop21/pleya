@@ -62,6 +62,53 @@ void main() {
     await tester.pump();
   }
 
+  // A-17: the iPad swaps this card for the billboard on a turn and keeps the slide.
+  testWidgets('opens on the group it is told to, and falls back to the first', (tester) async {
+    final groups = [group('i1', title: 'One'), group('i2', title: 'Two')];
+    MobileHeroCard card(String id) => MobileHeroCard(
+      key: ValueKey(id),
+      groups: groups,
+      width: 361,
+      height: 220,
+      initialGroupId: id,
+      onPlay: (_) {},
+      onSecondaryAction: (_) {},
+    );
+
+    await pump(tester, card('i2'));
+    expect(tester.widget<PageView>(find.byType(PageView)).controller?.initialPage, 1);
+    expect(find.text('Two'), findsOneWidget);
+
+    await pump(tester, card('gone'));
+    expect(tester.widget<PageView>(find.byType(PageView)).controller?.initialPage, 0);
+    expect(find.text('One'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('reports the slide it lands on', (tester) async {
+    final seen = <String>[];
+    await pump(
+      tester,
+      MobileHeroCard(
+        groups: [
+          group('i1', title: 'One'),
+          group('i2', title: 'Two'),
+        ],
+        width: 361,
+        height: 220,
+        onActiveGroupChanged: seen.add,
+        onPlay: (_) {},
+        onSecondaryAction: (_) {},
+      ),
+    );
+
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1500);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(seen, ['i2']);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('sizes the card to exactly what the caller hands in, radius 14', (tester) async {
     await pump(
       tester,

@@ -1,0 +1,34 @@
+name: ipados.home.hero-fallback
+target: ios-sim
+# A-17, the report itself: the hero pool is empty (the Pleya fixture carries no
+# release date, DEC-097 point 2), so tvOS shows the DEC-097 point 3 stand-in and
+# the old iPad tree showed nothing at all. Both iPad orientations now show the
+# stand-in. Run with PLEYA_VERIFY_IOS_UDID on an iPad simulator.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - wait_until: {id: discover.continue_watching, timeout: 30000}
+  - settle: 3500
+  - configure_view: {orientation: portrait}
+  - assert_viewport: {orientation: portrait}
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - assert: {id: discover.continue_watching, state: {hero_visible: true}}
+  - assert: {id: discover.hero, insideViewport: true, leftInset: 16}
+  - assert: {id: discover.continue_watching, below: discover.hero}
+  - assert: {id: nav.bar, insideViewport: true}
+  - assert: {id: nav.search, insideViewport: true}
+  - snapshot: 00-portrait
+  - configure_view: {orientation: landscapeLeft}
+  - assert_viewport: {orientation: landscape}
+  - settle: 900
+  - assert: {id: discover.continue_watching, state: {hero_visible: true}}
+  - assert: {id: discover.hero, leftInset: 0, state: {textVisible: true}}
+  - assert: {id: discover.hero.play, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: discover.continue_watching, below: discover.hero, peeksAbove: nav.bar}
+  - assert: {id: nav.bar, insideViewport: true}
+  - assert: {id: nav.search, insideViewport: true}
+  - snapshot: 01-landscape
