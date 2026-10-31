@@ -180,6 +180,7 @@ import '../widgets/scroll_crown/scroll_crown.dart';
 part 'media_detail/action_buttons.dart';
 part 'media_detail/audio_selector.dart';
 part 'media_detail/detail_actions.dart';
+part 'media_detail/detail_download_button.dart';
 part 'media_detail/detail_household_activity.dart';
 part 'media_detail/mobile_detail_info.dart';
 part 'media_detail/mobile_detail_view.dart';

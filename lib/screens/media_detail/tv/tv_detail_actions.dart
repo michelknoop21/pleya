@@ -131,13 +131,7 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
           AppIcon(metadata.isWatched ? Symbols.remove_done_rounded : Symbols.check_rounded, fill: 1, size: iconSize),
           tooltip: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
         ),
-        if (download != null)
-          round(
-            _DetailActionKind.download.name,
-            download.onPressed,
-            AppIcon(Symbols.download_rounded, fill: 1, size: iconSize),
-            tooltip: t.downloads.downloadNow,
-          ),
+        if (download != null) _tvDetailDownloadAction(metadata, iconSize),
         if (more != null)
           FocusableAction(
             debugLabel: 'detail_more',
