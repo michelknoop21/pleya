@@ -289,6 +289,94 @@ void main() {
     expect(await db.getLatestWatchAction('other:film'), isNotNull);
   });
 
+  group('a mark held for a copy', () {
+    final afterTheMark = DateTime(2100).millisecondsSinceEpoch ~/ 1000;
+
+    Future<void> heldMark({required bool watched, String? profileId}) => queue.queueCopyMark(
+      serverId: ServerId('other'),
+      itemId: 'film',
+      watched: watched,
+      profileId: profileId ?? queue.activeProfileId,
+    );
+
+    for (final watched in const [true, false]) {
+      test('stays away from a copy viewed after the mark (watched: $watched)', () async {
+        final other = MirrorServer(
+          'other',
+          item: mirrorFilm('other').copyWith(lastViewedAt: afterTheMark, viewOffsetMs: 3000000),
+          backend: MediaBackend.jellyfin,
+        );
+        manager.debugRegisterClientForTesting(other);
+        await heldMark(watched: watched);
+
+        await queue.syncPendingItems();
+
+        expect(other.tokens, isEmpty, reason: 'nothing was sent');
+        expect(other.position, 3000000);
+        expect(await queue.getPendingSyncCount(), 0);
+      });
+
+      test('lands on a copy last viewed before the mark (watched: $watched)', () async {
+        final other = MirrorServer(
+          'other',
+          item: mirrorFilm('other').copyWith(lastViewedAt: 1000),
+          backend: MediaBackend.jellyfin,
+        );
+        manager.debugRegisterClientForTesting(other);
+        await heldMark(watched: watched);
+
+        await queue.syncPendingItems();
+
+        expect(watched ? other.watched : other.unwatched, ['film']);
+        expect(await queue.getPendingSyncCount(), 0);
+      });
+
+      test('stays in the queue when the read has no answer (watched: $watched)', () async {
+        final other = MirrorServer('other', onRead: () => throw StateError('offline'));
+        manager.debugRegisterClientForTesting(other);
+        await heldMark(watched: watched);
+
+        await queue.syncPendingItems();
+
+        expect(other.tokens, isEmpty);
+        expect((await db.getLatestWatchAction('other:film'))?.syncAttempts, 1);
+      });
+
+      test('ends when the server says the copy is gone (watched: $watched)', () async {
+        final other = MirrorServer('other', gone: true);
+        manager.debugRegisterClientForTesting(other);
+        await heldMark(watched: watched);
+
+        await queue.syncPendingItems();
+
+        expect(other.tokens, isEmpty);
+        expect(await queue.getPendingSyncCount(), 0);
+      });
+    }
+
+    test('a read that outlasts a profile switch sends nothing under the next token', () async {
+      queue.setActiveProfileId('adult');
+      late MirrorServer other;
+      other = MirrorServer(
+        'other',
+        gone: true,
+        onRead: () {
+          other.token = 'kid';
+          queue.setActiveProfileId('kid');
+        },
+      );
+      manager.debugRegisterClientForTesting(other);
+      await heldMark(watched: true, profileId: 'adult');
+
+      await queue.syncPendingItems();
+
+      expect(other.tokens, isEmpty);
+      final row = await db.getLatestWatchAction('other:film');
+      expect(row?.profileId, 'adult', reason: 'a 404 for the next account says nothing about this one');
+      expect(row?.syncAttempts, 0);
+    });
+  });
+
   group('a viewing holds the title', () {
     test('a position is gone: what that viewing reports is newer', () async {
       final other = MirrorServer('other', holdsTitle: true);

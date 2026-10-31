@@ -349,6 +349,106 @@ void main() {
       });
     }
 
+    group('a held mark', () {
+      const afterTheMark = '2100-01-01T00:00:00Z';
+      final afterTheMarkSeconds = DateTime.parse(afterTheMark).millisecondsSinceEpoch ~/ 1000;
+
+      Future<void> heldMark({required bool watched}) => queue.queueCopyMark(
+        serverId: ServerId('srv-1'),
+        itemId: 'film',
+        watched: watched,
+        profileId: queue.activeProfileId,
+      );
+
+      Map<String, Object?> plexFilm({int? lastViewedAt}) => {
+        'MediaContainer': {
+          'size': 1,
+          'Metadata': [
+            {'ratingKey': 'film', 'type': 'movie', 'title': 'Sintel', 'lastViewedAt': ?lastViewedAt},
+          ],
+        },
+      };
+
+      Map<String, Object?> jellyfinFilm({String? lastPlayed}) => {
+        'Id': 'film',
+        'Type': 'Movie',
+        'Name': 'Sintel',
+        'UserData': {'Played': false, 'PlaybackPositionTicks': 18000000000, 'LastPlayedDate': ?lastPlayed},
+      };
+
+      final viewedLater = <String, (void Function(http.Response Function(http.Request)), Object)>{
+        'Plex': (plexAnswering, plexFilm(lastViewedAt: afterTheMarkSeconds)),
+        'Jellyfin': (jellyfinAnswering, jellyfinFilm(lastPlayed: afterTheMark)),
+        'Emby': ((answer) => jellyfinAnswering(answer, isEmby: true), jellyfinFilm(lastPlayed: afterTheMark)),
+      };
+
+      for (final MapEntry(key: name, value: (connect, film)) in viewedLater.entries) {
+        for (final watched in const [true, false]) {
+          test('$name: reads and writes nothing on a copy viewed after it (watched: $watched)', () async {
+            final requests = <http.Request>[];
+            connect((request) {
+              requests.add(request);
+              return ok(film);
+            });
+            await heldMark(watched: watched);
+
+            await queue.syncPendingItems();
+
+            expect(requests, hasLength(1), reason: 'the read and nothing else: ${requests.map((r) => r.url.path)}');
+            expect(requests.single.method, 'GET');
+            expect(await queue.getPendingSyncCount(), 0);
+          });
+        }
+      }
+
+      final viewedBefore = <String, (void Function(http.Response Function(http.Request)), Object, String)>{
+        'Plex': (plexAnswering, plexFilm(lastViewedAt: 1000), 'scrobble'),
+        'Jellyfin': (jellyfinAnswering, jellyfinFilm(lastPlayed: '2001-01-01T00:00:00Z'), 'PlayedItems'),
+        'Emby': (
+          (answer) => jellyfinAnswering(answer, isEmby: true),
+          jellyfinFilm(lastPlayed: '2001-01-01T00:00:00Z'),
+          'PlayedItems',
+        ),
+      };
+
+      for (final MapEntry(key: name, value: (connect, film, route)) in viewedBefore.entries) {
+        for (final watched in const [true, false]) {
+          test('$name: lands on what the read gave it (watched: $watched)', () async {
+            final requests = <http.Request>[];
+            connect((request) {
+              requests.add(request);
+              return ok(requests.length == 1 ? film : {});
+            });
+            await heldMark(watched: watched);
+
+            await queue.syncPendingItems();
+
+            expect(requests.first.method, 'GET');
+            expect(requests.last.url.path, contains(route));
+            expect(await queue.getPendingSyncCount(), 0);
+          });
+        }
+      }
+
+      for (final MapEntry(key: name, value: connect) in backends.entries) {
+        for (final status in const [401, 403, 503]) {
+          test('$name: a $status on the read keeps the row and writes nothing', () async {
+            final requests = <http.Request>[];
+            connect((request) {
+              requests.add(request);
+              return http.Response('nope', status);
+            });
+            await heldMark(watched: true);
+
+            await queue.syncPendingItems();
+
+            expect(requests.where((r) => r.url.path.contains('layed') || r.url.path.contains('scrobble')), isEmpty);
+            expect((await db.getLatestWatchAction('srv-1:film'))?.syncAttempts, 1);
+          });
+        }
+      }
+    });
+
     test('Jellyfin: a 200 without an item keeps the row', () async {
       jellyfinAnswering((_) => ok({'error': 'maintenance'}));
       await row();

@@ -1090,7 +1090,10 @@ staan; alleen een gekeken sessie mag een kopie verlagen. Er is geen minimumduur:
 gaat tegen de stand van de kopie, en die stand wordt bij de replay opnieuw gelezen omdat een rij lang
 kan wachten (`readCopyState`). Bij die lezing beëindigt alleen een bewezen 404 de rij. Elk ander
 antwoord zegt niets over de kopie en houdt hem vast: een serverfout, offline, een pagina die geen item
-is, een geweigerd token of een mislukte tokenronde. Een titel
+is, een geweigerd token of een mislukte tokenronde. Een wachtende markering op een kopie leest die
+stand net zo. Een nieuwere `lastViewedAt` op de kopie laat de rij vervallen: de markering zou op
+Jellyfin en Emby een latere kijkbeurt wissen en op Pleya Server de positie op nul zetten. Zonder
+antwoord blijft de rij staan, en alleen een bewezen 404 beëindigt hem. Een titel
 op Pleya Server zonder `user_state` bestaat en is nooit gekeken. Gekeken volgt daar `watched`, niet
 `play_count`, want die blijft staan na een markering als ongezien; dat geldt voor rijen van kopieën en
 voor eigen offline rijen. De pull meldt een film alleen als er een eerdere stand in de cache staat.

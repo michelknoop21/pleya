@@ -281,6 +281,54 @@ void main() {
     });
   });
 
+  group('a mark held for a copy that moved on after it', () {
+    Map<String, dynamic> viewedLater({required bool watched}) => {
+      'position_ms': watched ? 0 : 3000000,
+      'watched': watched,
+      'play_count': 1,
+      'updated_at': DateTime.now().toUtc().add(const Duration(days: 2)).toIso8601String(),
+      'revision': 3,
+    };
+
+    Future<void> heldMark({required bool watched}) => queue.queueCopyMark(
+      serverId: ServerId(client.serverId),
+      itemId: 'movie-1',
+      watched: watched,
+      profileId: queue.activeProfileId,
+    );
+
+    test('as unwatched leaves a copy watched since', () async {
+      await connect(userState: viewedLater(watched: true));
+      await heldMark(watched: false);
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, isEmpty);
+      expect(await queue.getPendingSyncCount(), 0);
+    });
+
+    test('as watched does not set a newer position to zero', () async {
+      await connect(userState: viewedLater(watched: false));
+      await heldMark(watched: true);
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, isEmpty);
+      expect(await queue.getPendingSyncCount(), 0);
+    });
+
+    test('a read that gets a server error keeps the mark', () async {
+      await connect();
+      await heldMark(watched: true);
+      server.queueFailure(pathPrefix: '/items/movie-1', status: 503);
+
+      await queue.syncPendingItems();
+
+      expect(server.watchEvents, isEmpty);
+      expect((await db.getLatestWatchAction('${client.serverId}:movie-1'))?.syncAttempts, 1);
+    });
+  });
+
   group('the pull on a downloaded film', () {
     for (final (name, state) in const [
       ('watched', <String, dynamic>{..._watchedOnce}),

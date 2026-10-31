@@ -68,6 +68,7 @@ class MirrorServer implements MediaServerClient, CopyStateClient, FreshMediaItem
 
   final positions = <int>[];
   final watched = <String>[];
+  final unwatched = <String>[];
   final tokens = <String>[];
   var started = 0;
   var stopped = 0;
@@ -202,6 +203,15 @@ class MirrorServer implements MediaServerClient, CopyStateClient, FreshMediaItem
     watched.add(item.id);
     played = true;
     playCount++;
+  }
+
+  @override
+  Future<void> markUnwatched(MediaItem item) async {
+    _refuseIfAsked();
+    tokens.add(token);
+    unwatched.add(item.id);
+    played = false;
+    position = 0;
   }
 
   @override

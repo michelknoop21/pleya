@@ -36,6 +36,10 @@ Future<bool> replayOfflineWatchAction(
   if (action.actionType == OfflineActionType.mirroredProgress.id) {
     return _replayCopyProgress(client, action, beforeWrite);
   }
+  if (action.actionType == OfflineActionType.mirroredWatched.id ||
+      action.actionType == OfflineActionType.mirroredUnwatched.id) {
+    return _replayCopyMark(client, action, beforeWrite);
+  }
 
   // Fetch metadata so trackers (and the stop-path watch event) get enough
   // context — external ids, parent chain, library section. The plain
@@ -47,8 +51,6 @@ Future<bool> replayOfflineWatchAction(
   final needsRichItem =
       action.actionType == OfflineActionType.watched.id ||
       action.actionType == OfflineActionType.unwatched.id ||
-      action.actionType == OfflineActionType.mirroredWatched.id ||
-      action.actionType == OfflineActionType.mirroredUnwatched.id ||
       action.actionType == OfflineActionType.removedFromContinueWatching.id ||
       (action.actionType == OfflineActionType.progress.id && action.shouldMarkWatched);
   MediaItem? item;
@@ -73,16 +75,6 @@ Future<bool> replayOfflineWatchAction(
     case 'unwatched':
       await client.markUnwatched(resolvedItem);
       await _scrobbleBestEffort(() => TrackerCoordinator.instance.markUnwatched(resolvedItem, client));
-      break;
-
-    case 'mirroredWatched':
-      await client.markWatched(resolvedItem);
-      _announceCopy(client, resolvedItem, watched: true);
-      break;
-
-    case 'mirroredUnwatched':
-      await client.markUnwatched(resolvedItem);
-      _announceCopy(client, resolvedItem, watched: false);
       break;
 
     case 'removeFromContinueWatching':
@@ -175,11 +167,54 @@ Future<bool> replayOfflineWatchAction(
   return true;
 }
 
+/// The copy as its server has it now, for a row that may not write blind. Only a
+/// server saying the copy is gone ends the row: null, and the caller stops.
+/// Without an answer the row stays.
+Future<MediaItem?> _readCopy(CopyStateClient client, OfflineWatchProgressItem action) async {
+  try {
+    return await client.readCopyState(action.ratingKey);
+  } catch (e) {
+    // Whatever went wrong, it says nothing about the copy: the refusals that
+    // end a row are for a write, and a rejected token or a failed token round
+    // on this read is not one.
+    throw StateError('No answer about ${action.ratingKey}: $e');
+  }
+}
+
+/// Someone viewed the copy after this row was written. Newest wins, so the row
+/// has nothing to say any more.
+bool _copyMovedOn(MediaItem copy, OfflineWatchProgressItem action) =>
+    (copy.lastViewedAt ?? 0) * 1000 > action.updatedAt;
+
+/// A mark that waited for this copy. A mark rewrites what stands there: it clears
+/// a viewing on Jellyfin and Emby, and sets the position to zero on Pleya Server.
+/// So it reads first, like a position does.
+Future<bool> _replayCopyMark(
+  MediaServerClient client,
+  OfflineWatchProgressItem action,
+  void Function() beforeWrite,
+) async {
+  if (client is! CopyStateClient) return false;
+  final copy = await _readCopy(client, action);
+  // Before the row can end: this answer may be the next profile's.
+  beforeWrite();
+  if (copy == null || _copyMovedOn(copy, action)) {
+    appLogger.i('Skipping held mark for ${action.ratingKey}: the copy moved on');
+    return false;
+  }
+  final watched = action.actionType == OfflineActionType.mirroredWatched.id;
+  if (watched) {
+    await client.markWatched(copy);
+  } else {
+    await client.markUnwatched(copy);
+  }
+  _announceCopy(client, copy, watched: watched);
+  return true;
+}
+
 /// A viewing on another server, written to this copy. Never with the playback
 /// reports: nobody is watching here (see [CopyStateClient]). The state of the
-/// copy is read first, because a row can wait a long time. Only a server saying
-/// the copy is gone ends the row; without an answer the write would be blind, so
-/// the row stays.
+/// copy is read first, because a row can wait a long time.
 Future<bool> _replayCopyProgress(
   MediaServerClient client,
   OfflineWatchProgressItem action,
@@ -187,15 +222,7 @@ Future<bool> _replayCopyProgress(
 ) async {
   if (client is! CopyStateClient) return false;
   final finished = action.shouldMarkWatched;
-  final MediaItem? copy;
-  try {
-    copy = await client.readCopyState(action.ratingKey);
-  } catch (e) {
-    // Whatever went wrong, it says nothing about the copy: the refusals that
-    // end a row are for a write, and a rejected token or a failed token round
-    // on this read is not one.
-    throw StateError('No answer about ${action.ratingKey}: $e');
-  }
+  final copy = await _readCopy(client, action);
   // Before the row can end: this answer may be the next profile's.
   beforeWrite();
   if (copy == null || _copyHasNothingToGain(client, copy, action)) {
@@ -219,7 +246,7 @@ Future<bool> _replayCopyProgress(
 }
 
 bool _copyHasNothingToGain(CopyStateClient client, MediaItem copy, OfflineWatchProgressItem action) {
-  if ((copy.lastViewedAt ?? 0) * 1000 > action.updatedAt) return true;
+  if (_copyMovedOn(copy, action)) return true;
   final seen = (copy.viewCount ?? 0) > 0;
   // One viewing counts once: a stop that failed brings the same one back when
   // its own row lands, and a server's plugin would scrobble the second write. A
