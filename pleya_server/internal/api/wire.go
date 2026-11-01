@@ -80,7 +80,9 @@ type Capabilities struct {
 	// ExternalIDLookup (unified). Aan zodra /libraries/{id}/items de parameter
 	// external_id kent en Item.external_ids bestaat. Een server zonder de vlag
 	// negeert de parameter stil en levert de hele bibliotheek.
-	ExternalIDLookup bool `json:"external_id_lookup"`
+	ExternalIDLookup        bool `json:"external_id_lookup"`
+	AppliedExternalIdentity bool `json:"applied_external_identity"`
+	MetadataMatchStatus     bool `json:"metadata_match_status"`
 
 	// History, Favorites, Ratings en TrackPreferences (venster 6 deel 2, S20).
 	// Elk is aan zodra de persoonlijke opslag er is; ze belooft niets over
@@ -449,6 +451,8 @@ type Item struct {
 	// ExternalIDs staat er alleen als de server een bewezen providermatch heeft;
 	// anders null. Een client die het veld niet kent negeert het (regel 1, §3).
 	ExternalIDs *ExternalIDs `json:"external_ids"`
+	// AppliedExternalIDs is publicatiebewijs, ook tijdens een nieuwe pending/failure.
+	AppliedExternalIDs *ExternalIDs `json:"applied_external_ids"`
 
 	// Favorite en Rating zijn de aantekeningen van de aanvrager bij dit item
 	// (S20). Ze staan los van user_state: een favoriet die nooit is gekeken heeft
@@ -521,6 +525,7 @@ func mapItem(it catalog.Item) Item {
 		EpisodeCount:        it.EpisodeCount,
 		WatchedEpisodeCount: it.WatchedEpisodeCount,
 		ExternalIDs:         mapExternalIDs(it.ExternalIDs),
+		AppliedExternalIDs:  mapExternalIDs(it.AppliedExternalIDs),
 		Artwork: Artwork{
 			PosterID:   optID(it.PosterID),
 			BackdropID: optID(it.BackdropID),

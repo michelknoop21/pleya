@@ -69,7 +69,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
 			// ExternalIDLookup: de filterparameter external_id en het itemveld bestaan.
-			ExternalIDLookup: true,
+			ExternalIDLookup:        true,
+			AppliedExternalIdentity: true,
+			MetadataMatchStatus:     true,
 			// S20: de persoonlijke laag bestaat zodra de opslag er is.
 			History:          s.opts.Personal != nil,
 			Favorites:        s.opts.Personal != nil,

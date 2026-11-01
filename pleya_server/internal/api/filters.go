@@ -123,15 +123,26 @@ func parseItemFilters(q url.Values, subject string) (catalog.Filters, *filterErr
 		f.Resolutions = append(f.Resolutions, r)
 	}
 
-	if _, present := q["external_id"]; present {
-		provider, raw, ok := strings.Cut(q.Get("external_id"), ":")
-		n, err := strconv.Atoi(raw)
-		// Alleen tmdb bestaat, en alleen een positief geheel getal in kale cijfers
-		// (het patroon van het contract): geen spaties, plusteken of voorloopnul.
-		if !ok || provider != catalog.ProviderTMDB || !canonicalNumber.MatchString(raw) || err != nil || n <= 0 {
-			return f, &filterError{parameter: "external_id", value: q.Get("external_id")}
+	_, legacy := q["external_id"]
+	_, applied := q["applied_external_id"]
+	if legacy && applied {
+		return f, &filterError{parameter: "applied_external_id", value: q.Get("applied_external_id")}
+	}
+	for _, name := range []string{"external_id", "applied_external_id"} {
+		if _, present := q[name]; !present {
+			continue
 		}
-		f.ExternalID = &catalog.ExternalIDFilter{Provider: provider, Value: n}
+		provider, raw, ok := strings.Cut(q.Get(name), ":")
+		n, err := strconv.Atoi(raw)
+		if !ok || provider != catalog.ProviderTMDB || !canonicalNumber.MatchString(raw) || err != nil || n <= 0 || (name == "applied_external_id" && len(q[name]) != 1) {
+			return f, &filterError{parameter: name, value: q.Get(name)}
+		}
+		value := &catalog.ExternalIDFilter{Provider: provider, Value: n}
+		if name == "external_id" {
+			f.ExternalID = value
+		} else {
+			f.AppliedExternalID = value
+		}
 	}
 
 	if _, present := q["watch"]; present {

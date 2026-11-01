@@ -174,7 +174,7 @@ func (s *Store) attachListTotals(ctx context.Context, kind ListKind, viewer List
 }
 
 // attachListArtwork zet de eerste vier posters op de lijst. Een sidecar wint van
-// een provider, net als in attachArtwork; een item zonder poster slaat over.
+// een provider, net als in attachMetadata; een item zonder poster slaat over.
 func (s *Store) attachListArtwork(ctx context.Context, kind ListKind, viewer ListViewer, ids []id.ID, byID map[id.ID]*List) error {
 	args := []any{ids}
 	filter := visibleItemFilter(viewer, &args)

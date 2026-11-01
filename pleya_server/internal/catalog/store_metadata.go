@@ -422,6 +422,10 @@ const genreGateTTL = 5 * time.Minute
 // pagina: dan tonen we de genres, want een ontbrekende meting is geen bewijs van
 // een slechte dekking.
 func (s *Store) genresVisible(ctx context.Context, libraryID id.ID) bool {
+	return s.genresVisibleRead(ctx, s.pool, libraryID)
+}
+
+func (s *Store) genresVisibleRead(ctx context.Context, reader itemReader, libraryID id.ID) bool {
 	s.genres.mu.Lock()
 	if e, ok := s.genres.entries[libraryID]; ok && time.Since(e.at) < genreGateTTL {
 		s.genres.mu.Unlock()
@@ -429,7 +433,7 @@ func (s *Store) genresVisible(ctx context.Context, libraryID id.ID) bool {
 	}
 	s.genres.mu.Unlock()
 
-	cov, err := s.MetadataCoverage(ctx, libraryID)
+	cov, err := s.metadataCoverageRead(ctx, reader, libraryID)
 	if err != nil {
 		return true
 	}
@@ -442,30 +446,57 @@ func (s *Store) genresVisible(ctx context.Context, libraryID id.ID) bool {
 	return cov.GateMet
 }
 
-// attachMetadata vult samenvatting, genres en kijkwijzer per pagina in één query.
-func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, summary, content_rating, genres, people
-		FROM media_items
-		WHERE id = ANY($1) AND (summary IS NOT NULL OR content_rating IS NOT NULL OR genres IS NOT NULL
-		                        OR people IS NOT NULL)`, ids)
+// attachMetadata leest beschrijving, artwork en identiteitsbewijs in één
+// SQL-snapshot. Een publicatie tussen losse reads mag nooit A-velden met B-id
+// vormen. De lokale afbeelding wint per rol, met dezelfde stabiele padvolgorde.
+func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item) error {
+	rows, err := reader.Query(ctx, `
+        SELECT i.id, i.summary, i.content_rating, i.genres, i.people,
+               art.poster, art.backdrop, c.state, c.provider, c.external_id,
+               c.applied_provider, c.applied_external_id
+        FROM media_items i
+        LEFT JOIN metadata_candidates c ON c.item_id=i.id AND i.kind IN ('movie','show')
+        LEFT JOIN LATERAL (
+            SELECT (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
+                        FILTER (WHERE a.kind='poster'))[1] AS poster,
+                   (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
+                        FILTER (WHERE a.kind='backdrop'))[1] AS backdrop
+            FROM (
+                SELECT f.id,f.artwork_kind AS kind,0 AS priority,f.relative_path AS path,''::text AS provider
+                FROM media_files f WHERE f.item_id=i.id AND f.role='artwork' AND f.missing_since IS NULL
+                UNION ALL
+                SELECT p.id,p.kind,1,''::text,p.provider FROM provider_artwork p WHERE p.item_id=i.id
+            ) a
+        ) art ON true
+        WHERE i.id=ANY($1)`, ids)
 	if err != nil {
 		return fmt.Errorf("metadata lezen: %w", err)
 	}
 	defer rows.Close()
-
 	for rows.Next() {
 		var itemID id.ID
-		var summary, rating *string
+		var summary, rating, state, provider, external, appliedProvider, applied *string
+		var poster, backdrop *id.ID
 		var genres []string
 		var rawPeople []byte
-		if err := rows.Scan(&itemID, &summary, &rating, &genres, &rawPeople); err != nil {
+		if err := rows.Scan(&itemID, &summary, &rating, &genres, &rawPeople, &poster, &backdrop,
+			&state, &provider, &external, &appliedProvider, &applied); err != nil {
 			return err
 		}
 		if it := byID[itemID]; it != nil {
 			it.Summary, it.ContentRating, it.Genres = summary, rating, genres
+			it.PosterID, it.BackdropID = poster, backdrop
+			it.People = nil
 			if len(rawPeople) > 0 {
-				_ = json.Unmarshal(rawPeople, &it.People) // een onleesbare lijst is geen reden de pagina te weigeren
+				_ = json.Unmarshal(rawPeople, &it.People)
+			}
+			it.ExternalIDs = ExternalIDs{}
+			it.AppliedExternalIDs = ExternalIDs{}
+			if state != nil && *state == CandidateMatched {
+				it.ExternalIDs = metadataExternalIDs(provider, external)
+			}
+			if applied != nil && canonicalMetadataID(*applied) {
+				it.AppliedExternalIDs = metadataExternalIDs(appliedProvider, applied)
 			}
 		}
 	}
@@ -473,11 +504,10 @@ func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]
 		return err
 	}
 	rows.Close()
-
-	// De poort van B2: genres alleen in een bibliotheek die er genoeg van heeft.
-	// Pas na het sluiten van de rijen, want het meten gebruikt een eigen query.
+	// De bestaande genrepoort blijft buiten de gesloten snapshotrijen: hij
+	// bepaalt alleen zichtbaarheid, nooit een andere metadata-identiteit.
 	for _, it := range byID {
-		if len(it.Genres) > 0 && !s.genresVisible(ctx, it.LibraryID) {
+		if len(it.Genres) > 0 && !s.genresVisibleRead(ctx, reader, it.LibraryID) {
 			it.Genres = nil
 		}
 	}
@@ -487,49 +517,15 @@ func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]
 // ProviderTMDB is de naam waaronder metadata_candidates een TMDB-match bewaart.
 const ProviderTMDB = "tmdb"
 
-// attachExternalIDs vult per pagina in één query het TMDB-nummer van elk item
-// dat een geslaagde match heeft. Een item zonder match, of met een match die
-// ambigu, mislukt of afgewezen is, krijgt niets: een nummer dat niet bewezen is
-// hoort niet als identiteit de deur uit (unified, DEC-XXX).
-func (s *Store) attachExternalIDs(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
-	// Alleen films en series kunnen een nummer dragen. Een pagina met seizoenen
-	// of afleveringen kost dus geen query.
-	titles := make([]id.ID, 0, len(ids))
-	for _, itemID := range ids {
-		if it := byID[itemID]; it != nil && (it.Kind == "movie" || it.Kind == "show") {
-			titles = append(titles, itemID)
-		}
+func metadataExternalIDs(provider, raw *string) ExternalIDs {
+	if provider == nil || *provider != ProviderTMDB || raw == nil {
+		return ExternalIDs{}
 	}
-	if len(titles) == 0 {
-		return nil
+	n, err := strconv.Atoi(*raw)
+	if err != nil || n <= 0 {
+		return ExternalIDs{}
 	}
-	ids = titles
-	rows, err := s.pool.Query(ctx, `
-		SELECT c.item_id, c.external_id
-		FROM metadata_candidates c
-		JOIN media_items i ON i.id = c.item_id AND i.kind IN ('movie', 'show')
-		WHERE c.item_id = ANY($1) AND c.state = $2 AND c.provider = $3 AND c.external_id IS NOT NULL`,
-		ids, CandidateMatched, ProviderTMDB)
-	if err != nil {
-		return fmt.Errorf("externe ids lezen: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var itemID id.ID
-		var raw string
-		if err := rows.Scan(&itemID, &raw); err != nil {
-			return err
-		}
-		n, err := strconv.Atoi(raw)
-		if err != nil || n <= 0 {
-			continue // een onleesbaar nummer is geen bewijs
-		}
-		if it := byID[itemID]; it != nil {
-			it.ExternalIDs.TMDB = &n
-		}
-	}
-	return rows.Err()
+	return ExternalIDs{TMDB: &n}
 }
 
 // ProviderArtworkFile zoekt een gecachede afbeelding op id. cacheDir komt van de
@@ -786,8 +782,12 @@ type Coverage struct {
 // MetadataCoverage meet de dekking van één bibliotheek. De poort gaat over
 // genres: Ratio is het aandeel titels met genres.
 func (s *Store) MetadataCoverage(ctx context.Context, libraryID id.ID) (Coverage, error) {
+	return s.metadataCoverageRead(ctx, s.pool, libraryID)
+}
+
+func (s *Store) metadataCoverageRead(ctx context.Context, reader itemReader, libraryID id.ID) (Coverage, error) {
 	var exists bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM libraries WHERE id = $1)`, libraryID).Scan(&exists); err != nil {
+	if err := reader.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM libraries WHERE id = $1)`, libraryID).Scan(&exists); err != nil {
 		return Coverage{}, err
 	}
 	if !exists {
@@ -797,7 +797,7 @@ func (s *Store) MetadataCoverage(ctx context.Context, libraryID id.ID) (Coverage
 	// with_sidecar telt titels waar een sidecar iets aan bijdroeg. Cast komt
 	// alleen uit een .nfo, dus een titel met cast of met een veld waarvan de bron
 	// de .nfo is, heeft een sidecar gehad.
-	err := s.pool.QueryRow(ctx, `
+	err := reader.QueryRow(ctx, `
 		SELECT count(*),
 		       count(*) FILTER (WHERE people IS NOT NULL OR metadata_sources @> '{"summary":"nfo"}'
 		                        OR metadata_sources @> '{"genres":"nfo"}' OR metadata_sources @> '{"content_rating":"nfo"}'),
@@ -890,4 +890,10 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// canonicalMetadataID voorkomt dat beschadigde toegepaste IDs bewijs worden.
+func canonicalMetadataID(raw string) bool {
+	n, err := strconv.Atoi(raw)
+	return err == nil && n > 0 && strconv.Itoa(n) == raw
 }

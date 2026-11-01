@@ -1286,16 +1286,43 @@ paths:
         "500": { $ref: "#/components/responses/InternalError" }
 
   /items/{item_id}/metadata-match:
+    get:
+      tags: [administration]
+      operationId: getMetadataMatchStatus
+      summary: Lees gekozen en werkelijk toegepaste metadata-identiteit afzonderlijk.
+      description: |
+        Klasse `admin`, alleen onder `capabilities.metadata_match_status`.
+        Alleen films en series. Zonder kandidaat is de toestand unknown.
+        De monotone updated_at is de kandidaatgeneratie, null zonder kandidaat.
+        Een pending/failed nieuwe keuze laat eerdere applied-identiteit intact;
+        reject trekt het bewijs in. Geen providerfouttekst of bestandspaden.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: Eén coherente duurzame status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataMatchStatus" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found voor niet-admin, library.not_found voor ontbrekend of verkeerd itemsoort.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
     put:
       tags: [administration]
       operationId: setMetadataMatch
       summary: Kies welke titel van de provider bij dit item hoort.
       description: |
         Klasse `admin` (S22.5). Alleen een film of een serie. De keuze gaat voor
-        op een id uit een sidecar en op zoeken; de server haalt de gegevens van
-        die titel meteen op en past ze toe (antwoord `202`). Kiezen na een
-        afwijzing heft de afwijzing op. Een `external_id` die geen positief
-        geheel getal is geeft `library.invalid_match`.
+        op een id uit een sidecar en op zoeken. Antwoord `202` bevestigt alleen
+        dat de keuze duurzaam ontvangen is; de achtergrondronde haalt metadata
+        op en past die toe. Onder `capabilities.metadata_match_status` leest de
+        client met GET op dit pad pending, applied of failed afzonderlijk.
+        Kiezen na een afwijzing heft de afwijzing op. Een `external_id` die geen
+        positief geheel getal is geeft `library.invalid_match`.
       parameters:
         - $ref: "#/components/parameters/ItemId"
       requestBody:
@@ -1613,6 +1640,17 @@ paths:
             Geen titel of jaar nodig. Een lege lijst betekent dat deze server
             de titel in deze bibliotheek niet heeft of niet bewezen heeft. Een
             waarde die geen providernummer is geeft `library.filter_invalid`.
+          schema: { type: string, pattern: "^tmdb:[1-9][0-9]*$" }
+        - name: applied_external_id
+          in: query
+          required: false
+          description: |
+            Alleen onder `capabilities.applied_external_identity`. Zelfde vorm
+            als external_id, uitsluitend daadwerkelijk gepubliceerde identiteit.
+            Eerder applied A blijft vindbaar tijdens pending/failed keuze B.
+            Samen met external_id (ook leeg) is library.filter_invalid (400).
+            Herhaling is niet toegestaan. Cursor bindt filtersoort en waarde.
+            Leeg betekent geen bewezen kopie, niet bewezen afwezigheid.
           schema: { type: string, pattern: "^tmdb:[1-9][0-9]*$" }
         - name: watch
           in: query
@@ -3628,6 +3666,19 @@ components:
             vlag stuurt een client de parameter niet: een oudere server negeert
             hem stil en levert dan de hele bibliotheek. De vlag zegt niets over
             de dekking van de matches.
+        applied_external_identity:
+          type: boolean
+          default: false
+          description: |
+            Item.applied_external_ids en applied_external_id-lookup zijn samen
+            beschikbaar. Bewijst publicatie, geen volledige catalogusdekking.
+            Bij true gebruikt een nieuwe client uitsluitend applied-identiteit;
+            ontbrekend/null/ongeldig mag nooit terugvallen op external_ids of
+            oude ongekwalificeerde cacheclaims. Zonder vlag blijft legacy gelden.
+        metadata_match_status:
+          type: boolean
+          default: false
+          description: GET /items/{id}/metadata-match bestaat voor klasse admin.
         api_tokens:
           type: boolean
           default: false
@@ -4453,6 +4504,16 @@ components:
             zolang geen geslaagde match bestaat, en bij een server die het veld
             nog niet kent. Een client behandelt afwezig als "geen bewijs" en
             nooit als "geen overeenkomst".
+        applied_external_ids:
+          oneOf:
+            - { $ref: "#/components/schemas/ExternalIds" }
+            - { type: "null" }
+          description: |
+            Optioneel publicatiebewijs, alleen voor film en serie. Beschrijvende
+            velden en gekozen artwork worden uit dezelfde SQL-snapshot gelezen.
+            Oude matched/manual/details zonder echte publicatie blijven onbekend.
+            Pending/failed bewaart eerder applied bewijs; reject verwijdert het.
+            Null/afwezig/ongeldig is onbekend, geen intentie- of afwezigheidsbewijs.
         favorite:
           type: boolean
           description: |
@@ -5008,6 +5069,30 @@ components:
         item_id: { $ref: "#/components/schemas/Id" }
         state: { $ref: "#/components/schemas/MetadataMatchState" }
         external_id: { type: [string, "null"] }
+
+    MetadataApplicationState:
+      type: string
+      enum: [unknown, pending, applied, failed]
+      x-unknown-safe: true
+      description: Onbekende waarden behandelt de client als unknown, zonder succesclaim.
+    MetadataMatchStatus:
+      type: object
+      required: [item_id, requested_external_ids, applied_external_ids, application_state, error_code, updated_at]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        requested_external_ids:
+          oneOf:
+            - { $ref: "#/components/schemas/ExternalIds" }
+            - { type: "null" }
+        applied_external_ids:
+          oneOf:
+            - { $ref: "#/components/schemas/ExternalIds" }
+            - { type: "null" }
+        application_state: { $ref: "#/components/schemas/MetadataApplicationState" }
+        error_code:
+          type: [string, "null"]
+          description: Vaste veilige categorie application_failed bij failed; anders null. Nooit providertekst.
+        updated_at: { type: [string, "null"], format: date-time }
 
     ScanState:
       type: string

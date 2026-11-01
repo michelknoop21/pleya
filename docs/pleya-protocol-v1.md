@@ -126,7 +126,7 @@ Een gesloten enum in een antwoord is een belofte: de client kent elke waarde die
 mag er een keuze op bouwen zonder restgeval. Die belofte is bruikbaar, en daarom kost hij ook iets.
 Een waarde toevoegen aan een gesloten enum breekt precies de clients die de belofte serieus namen.
 
-Deze zeven velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
+Deze velden zijn **unknown-safe**. Daar mag binnen v1 een waarde bij komen, en een client die
 de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 
 | Veld | Waar | Bij een onbekende waarde |
@@ -135,6 +135,7 @@ de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 | `Library.kind` | bibliotheeklijst | de bibliotheek niet tonen |
 | `Item.kind` | items, zoekresultaten, hubs | het item niet tonen |
 | `SubtitleStream.format` | itemdetail | het spoor niet aanbieden |
+| `MetadataMatchStatus.application_state` | matchstatus (9.4b) | behandelen als unknown zonder succesclaim |
 | `Scan.state` | scanlijst en scandetail (venster 2, DEC-138) | de scan tonen als "onbekend" |
 | `Job.state` | joblijst (venster 2, DEC-138) | de job tonen als "onbekend" |
 | `Collection.visibility` | verzamelingen (venster 6 deel 1, S19) | de verzameling tonen als gedeeld, de waarde nooit terugsturen en de zichtbaarheid bij bewerken ongemoeid laten |
@@ -748,6 +749,7 @@ EN.
 | `watch` | `unwatched`, `in_progress`, `watched` | voor de aanvrager; `unwatched` bevat ook wat half bekeken is, `in_progress` is de deelverzameling met voortgang. Bij een serie telt de som van haar afleveringen: alle gezien is `watched`, een deel gezien of begonnen is `in_progress`, en `unwatched` is elke serie die niet helemaal gezien is, ook een serie zonder afleveringen |
 | `content_rating` | herhaalbaar, tekst | kijkwijzer zoals op `Item`, zonder hoofdletters |
 | `audio_language` | herhaalbaar, twee of drie letters | `nl`, `nld` en `dut` zijn dezelfde taal; de server zet om naar ISO 639-2/B zoals de facetten (`dut`, `eng`), `und` en onbekende codes zijn een fout; een film telt mee met een geluidsspoor van een van zijn versies, een serie met een spoor van een van haar afleveringen |
+| `applied_external_id` | `tmdb:<getal>` | alleen onder `capabilities.applied_external_identity`; uitsluitend werkelijk gepubliceerde identiteit (9.4b), nooit tegelijk met `external_id` (400); cursor bindt filtersoort en waarde, lege uitkomst is geen bewezen afwezigheid |
 | `external_id` | `tmdb:<getal>` | de titels met dit bewezen providernummer (9.4a); alleen onder `capabilities.external_id_lookup`, een oudere server negeert de parameter stil en levert de hele bibliotheek. Telt een film in een `movies`- en een serie in een `shows`-bibliotheek, dus de rechten van de bibliotheek gelden gewoon |
 | `resolution` | herhaalbaar, `sd`, `hd`, `fhd`, `uhd` | de klasse van het videospoor, op breedte of hoogte: `uhd` vanaf 3200 of 2000, `fhd` vanaf 1800 of 1000, `hd` vanaf 1200 of 700, anders `sd`. Een letterboxfilm van 1920x804 is dus `fhd` |
 
@@ -869,6 +871,43 @@ Regels:
 5. Opzoeken op nummer kan met de filterparameter `external_id=tmdb:<getal>` van 9.3, onder `capabilities.external_id_lookup`. Een client die de vlag niet ziet, vraagt het niet en weet dan alleen dat hij het niet kan controleren.
 6. Een nieuwe provider (`imdb`, `tvdb`) komt als nieuwe optionele sleutel in hetzelfde object.
    Daarvoor is nu geen serverbron; de sleutels bestaan dus nog niet.
+
+### 9.4b Toegepaste providermetadata en matchstatus
+
+Binnen het op 1 november 2026 expliciet geopende metadata-venster zijn
+`capabilities.applied_external_identity` en `metadata_match_status` optioneel,
+met default false. Legacy `external_ids` en `external_id` behouden 9.4a ongewijzigd.
+De eerste nieuwe vlag belooft zowel `Item.applied_external_ids` (zelfde ExternalIds-vorm)
+als query `applied_external_id=tmdb:<positief canoniek getal>` op de bibliotheeklijst.
+Geen nieuwe verplichte aanvraagvelden of bestaande enumwijzigingen.
+
+Applied wordt uitsluitend bij echte guarded Details-publicatie atomair vastgelegd
+met beschrijving, bronbindingen en artwork. Een Item leest beschrijvende velden,
+artwork en applied-ID onder één SQL-snapshot, op alle Item-oppervlakken. Een oude
+matched/manual/details-rij wordt niet als bewijs teruggevuld. Nieuwe keuze B of
+dezelfde-ID-refresh is pending; bij failure blijft eerder applied A bruikbaar.
+Reject verwijdert applied. Alleen film en serie dragen providernummers.
+
+Bij de nieuwe vlag gebruikt een nieuwe client uitsluitend applied, ook voor
+lookup, Unified en opgeslagen/cacheclaims. Null, afwezig of ongeldig is onbekend;
+nooit terugvallen op intentie/legacycache. Zonder vlag blijft het bestaande pad.
+Een lege applied-lookup bewijst alleen geen bewezen kopie, geen titelafwezigheid:
+de vlag belooft geen volledige dekking. Beide IDfilters tegelijk (ook leeg) en
+ongeldige/herhaalde applied-filter geven 400 `library.filter_invalid`. Bestaande
+cursorfingerprints blijven geldig; een appliedcursor bindt eigen soort en waarde.
+
+`GET /items/{id}/metadata-match` is klasse **admin**, alleen onder
+`capabilities.metadata_match_status`, met verse rol-/tokenscopecontrole zoals de
+bestaande PUT. Andere rollen/bereiken krijgen de canonieke 404. Alleen bestaande
+film/serie; ander soort of ontbrekend item 404 `library.not_found`.
+Het antwoord bevat `item_id`, nullable `requested_external_ids` en
+`applied_external_ids`, `application_state` (unknown/pending/applied/failed),
+nullable `error_code` en nullable `updated_at`. Zonder kandidaat: unknown met
+nullparen/tijd/fout. De tijd is de bestaande strikt monotone kandidaatgeneratie,
+waarmee een client late antwoorden kan negeren. `application_state` is een nieuwe
+unknown-safe enum; onbekende waarde behandelen als unknown. Alleen vaste veilige
+foutcategorie `application_failed` bij failure, nooit logtekst, sleutel of pad.
+Een bestaande PUT-202 betekent uitsluitend ontvangst, geen applied-succes.
 
 ### 9.5 `GET /pleya/v1/items/{item_id}/children`
 
@@ -1682,6 +1721,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 95 | `PUT /playlists/{id}/items` | item-ids in de body | als regel 92; een item buiten zicht is `404` |
 | 96 | `POST /playlists/{id}/items` | item-ids in de body | als regel 95 |
 | 97 | `DELETE /playlists/{id}/items/{item_id}` | direct id | als regel 95 |
+| 98 | `GET /items/{id}/metadata-match` | gekozen en toegepaste metadata-identiteit/status | klasse `admin`, verse scope/rol; canonieke `404` voor de rest; film/serie, anders `library.not_found`; metadata_match_status (9.4b) |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2512,6 +2552,7 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/watch-history` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/metadata-coverage` | `admin` | nee |
 | `GET /pleya/v1/metadata/attention` | `admin` | nee |
+| `GET /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `PUT /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `DELETE /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `GET /pleya/v1/libraries/{id}/facets` | `authenticated` | nee |

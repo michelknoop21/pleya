@@ -612,6 +612,51 @@
       "file": "activity_sharing_request.json",
       "schema": "ActivitySharingRequest",
       "note": "DEC-169: gesloten aanvraag"
+    },
+    {
+      "file": "info_applied_false.json",
+      "schema": "Info",
+      "note": "Nieuwe vlaggen expliciet false; oude ontbrekende vlaggen blijven geldig."
+    },
+    {
+      "file": "info_applied_true.json",
+      "schema": "Info",
+      "note": "Applied Item en lookup samen, aparte adminstatus; geen dekkingclaim."
+    },
+    {
+      "file": "item_movie_applied.json",
+      "schema": "Item",
+      "note": "Keuze B, werkelijk toegepaste identiteit A."
+    },
+    {
+      "file": "item_movie_applied_unknown.json",
+      "schema": "Item",
+      "note": "Oude matched/manual-details bewijzen geen applied identiteit."
+    },
+    {
+      "file": "metadata_match_status_unknown.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Geldige film zonder kandidaat."
+    },
+    {
+      "file": "metadata_match_status_pending.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Duurzame toepassingsstatus, geen ruwe providerfout."
+    },
+    {
+      "file": "metadata_match_status_applied.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Duurzame toepassingsstatus, geen ruwe providerfout."
+    },
+    {
+      "file": "metadata_match_status_failed.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Duurzame toepassingsstatus, geen ruwe providerfout."
+    },
+    {
+      "file": "error_applied_filter_invalid.json",
+      "schema": "ErrorEnvelope",
+      "note": "Gemengde of ongeldige applied-filter: HTTP400."
     }
   ]
 }

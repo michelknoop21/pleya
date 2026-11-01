@@ -60,6 +60,8 @@ void main() {
     'SetMetadataMatchRequest',
     'MetadataMatchState',
     'MetadataMatch',
+    // Additief metadata-venster: adminstatus is voor het web, geen Flutter-UI.
+    'MetadataMatchStatus',
     'Scan',
     'Job',
     'UserList',
@@ -241,8 +243,8 @@ void main() {
       );
     });
 
-    test('covers the 127 fixtures the contract ships', () {
-      expect(fixtures, hasLength(127));
+    test('covers the 136 fixtures the contract ships', () {
+      expect(fixtures, hasLength(136));
     });
 
     for (final fixture in fixtures) {

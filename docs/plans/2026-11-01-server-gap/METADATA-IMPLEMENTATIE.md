@@ -22,7 +22,7 @@ Gebruik bestaande gepinde testimage en eigen synthetische wegwerp-Postgres, geen
 
 ## Task 2: Applied wire, coherente Item-lezing, status en lookup
 
-Consumeer Task1. Additief Item.applied_external_ids, applied_external_id-query, capabilities en adminstatusroute, scoped OpenAPI/fixtures/protocoltekst/generated types. Legacy blijft geldig. Lees metadatawaarden en applied-ID onder hetzelfde database-snapshot: later los attachen mag geen A-velden/B-identiteit vormen. Beide lookupfilters tegelijk zijn 400; oude cursorfingerprints blijven stabiel, nieuwe filter bindt aan eigen cursor. Pas capability true als de volledige nieuwe servergrens klopt. Concrete uitvoerbrief volgt vóór schrijven.
+Consumeer Task1. Additief Item.applied_external_ids, applied_external_id-query, capabilities en adminstatusroute, scoped OpenAPI/fixtures/protocoltekst/generated types. Legacy blijft geldig. Lees metadatawaarden en applied-ID onder hetzelfde database-snapshot: later los attachen mag geen A-velden/B-identiteit vormen. Beide lookupfilters tegelijk zijn 400; oude cursorfingerprints blijven stabiel, nieuwe filter bindt aan eigen cursor. Pas capability true als de volledige nieuwe servergrens klopt. Uitgevoerd op A1-basis 0b4446887: één gebundelde metadata/artwork/ID-read, alleen appliedlookup met korte readonly repeatable-read over selectie/hydratatie en alle queries via één verbinding. Zie [A2-bewijs](../../qa/2026-11-01-server-gap-applied-api.md); onafhankelijke review I1/M1 hersteld en verse scopedreview akkoord; normale hooks volgen bij lokale commit. Flutterconsumptie blijft Task3.
 
 ## Task 3: Flutter, cache en opgeslagen bewijs
 

@@ -116,6 +116,9 @@ type Item struct {
 	// zolang niemand het item gematcht heeft.
 	ExternalIDs ExternalIDs
 
+	// AppliedExternalIDs bewijst uitsluitend daadwerkelijk gepubliceerde metadata.
+	AppliedExternalIDs ExternalIDs
+
 	// Afgeleid en niet opgeslagen. Ze staan hier omdat het wire-type ze draagt
 	// en de leeslaag ze per pagina in één keer ophaalt.
 	DurationMs          *int64

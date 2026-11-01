@@ -140,6 +140,16 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		LIMIT $%d`,
 		itemColumns, key, strings.Join(where, " AND "), key, direction, tieOrder(q.Sort, direction), direction, len(args))
 
+	if q.Filters.AppliedExternalID != nil {
+		// Selectie en publicatiebewijs moeten dezelfde toestand zien: anders
+		// kan een lookup van A na een concurrente publicatie een Item B geven.
+		tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+		if err != nil {
+			return Page{}, fmt.Errorf("applied snapshot openen: %w", err)
+		}
+		defer tx.Rollback(ctx)
+		return s.itemPageRead(ctx, tx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()))
+	}
 	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()))
 }
 
@@ -164,7 +174,17 @@ const itemColumns = `i.id, i.library_id, i.parent_id, i.kind, i.title,
 // itemPage voert een query uit die itemColumns plus een sorteersleutel levert,
 // knipt de pagina op limit, zet de volgende cursor en hydrateert.
 func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort, limit int, cursor *Cursor, filter string) (Page, error) {
-	rows, err := s.pool.Query(ctx, sql, args...)
+	return s.itemPageRead(ctx, s.pool, sql, args, sort, limit, cursor, filter)
+}
+
+// itemReader is uitsluitend de Query die selectie en metadatahydratatie delen.
+type itemReader interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func (s *Store) itemPageRead(ctx context.Context, reader itemReader, sql string, args []any, sort Sort, limit int, cursor *Cursor, filter string) (Page, error) {
+	rows, err := reader.Query(ctx, sql, args...)
 	if err != nil {
 		return Page{}, cursorOrWrap(cursor, err, "items lezen")
 	}
@@ -187,7 +207,7 @@ func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort,
 		page.Items = page.Items[:limit]
 	}
 
-	if err := s.hydrate(ctx, page.Items); err != nil {
+	if err := s.hydrateRead(ctx, reader, page.Items); err != nil {
 		return Page{}, err
 	}
 	return page, nil
@@ -240,6 +260,10 @@ func (s *Store) Item(ctx context.Context, itemID id.ID) (Item, error) {
 
 // hydrate vult versies, sporen, artwork en de afgeleide aantallen aan.
 func (s *Store) hydrate(ctx context.Context, items []Item) error {
+	return s.hydrateRead(ctx, s.pool, items)
+}
+
+func (s *Store) hydrateRead(ctx context.Context, reader itemReader, items []Item) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -251,23 +275,17 @@ func (s *Store) hydrate(ctx context.Context, items []Item) error {
 		byID[items[i].ID] = &items[i]
 	}
 
-	if err := s.attachVersions(ctx, ids, byID); err != nil {
+	if err := s.attachVersions(ctx, reader, ids, byID); err != nil {
 		return err
 	}
-	if err := s.attachArtwork(ctx, ids, byID); err != nil {
+	if err := s.attachMetadata(ctx, reader, ids, byID); err != nil {
 		return err
 	}
-	if err := s.attachMetadata(ctx, ids, byID); err != nil {
-		return err
-	}
-	if err := s.attachExternalIDs(ctx, ids, byID); err != nil {
-		return err
-	}
-	return s.attachCounts(ctx, ids, byID)
+	return s.attachCounts(ctx, reader, ids, byID)
 }
 
-func (s *Store) attachVersions(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
-	rows, err := s.pool.Query(ctx, `
+func (s *Store) attachVersions(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item) error {
+	rows, err := reader.Query(ctx, `
 		SELECT v.id, v.item_id, v.container, v.duration_ms, coalesce(v.edition, ''), v.bitrate_bps,
 		       (SELECT count(*) FROM media_files f
 		         WHERE f.version_id = v.id AND f.role = 'media' AND f.missing_since IS NULL)
@@ -327,7 +345,7 @@ func (s *Store) attachVersions(ctx context.Context, ids []id.ID, byID map[id.ID]
 		return nil
 	}
 
-	streamRows, err := s.pool.Query(ctx, `
+	streamRows, err := reader.Query(ctx, `
 		SELECT s.id, s.version_id, s.file_id, s.kind, s.stream_index, s.ordinal,
 		       coalesce(s.codec, ''), coalesce(s.profile, ''), s.width, s.height,
 		       s.bit_depth, s.frame_rate, s.channels, coalesce(s.channel_layout, ''),
@@ -359,81 +377,8 @@ func (s *Store) attachVersions(ctx context.Context, ids []id.ID, byID map[id.ID]
 	return streamRows.Err()
 }
 
-func (s *Store) attachArtwork(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
-	// Artwork hangt aan het item zelf, of aan het item waar een versie van dit
-	// item bij hoort. Een poster naast het mediabestand telt dus ook.
-	rows, err := s.pool.Query(ctx, `
-		SELECT f.item_id, f.artwork_kind, f.id
-		FROM media_files f
-		WHERE f.role = 'artwork' AND f.missing_since IS NULL AND f.item_id = ANY($1)
-		ORDER BY f.item_id, f.artwork_kind, f.relative_path, f.id`, ids)
-	if err != nil {
-		return fmt.Errorf("artwork lezen: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var itemID, fileID id.ID
-		var kind string
-		if err := rows.Scan(&itemID, &kind, &fileID); err != nil {
-			return err
-		}
-		item := byID[itemID]
-		if item == nil {
-			continue
-		}
-		art := fileID
-		switch kind {
-		case "poster":
-			if item.PosterID == nil {
-				item.PosterID = &art
-			}
-		case "backdrop":
-			if item.BackdropID == nil {
-				item.BackdropID = &art
-			}
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	// Voorrang per veld: een sidecar naast de media wint van wat een provider
-	// ophaalde. Alleen waar de schijf niets heeft, vult de cache aan.
-	cached, err := s.pool.Query(ctx, `
-		SELECT item_id, kind, id FROM provider_artwork
-		WHERE item_id = ANY($1) ORDER BY item_id, kind, provider`, ids)
-	if err != nil {
-		return fmt.Errorf("providerartwork lezen: %w", err)
-	}
-	defer cached.Close()
-	for cached.Next() {
-		var itemID, artID id.ID
-		var kind string
-		if err := cached.Scan(&itemID, &kind, &artID); err != nil {
-			return err
-		}
-		item := byID[itemID]
-		if item == nil {
-			continue
-		}
-		art := artID
-		switch kind {
-		case "poster":
-			if item.PosterID == nil {
-				item.PosterID = &art
-			}
-		case "backdrop":
-			if item.BackdropID == nil {
-				item.BackdropID = &art
-			}
-		}
-	}
-	return cached.Err()
-}
-
-func (s *Store) attachCounts(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
-	rows, err := s.pool.Query(ctx, `
+func (s *Store) attachCounts(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item) error {
+	rows, err := reader.Query(ctx, `
 		SELECT parent_id, count(*) FROM media_items
 		WHERE parent_id = ANY($1) GROUP BY parent_id`, ids)
 	if err != nil {
@@ -458,7 +403,7 @@ func (s *Store) attachCounts(ctx context.Context, ids []id.ID, byID map[id.ID]*I
 
 	// Afleveringen van een serie hangen een niveau dieper: serie, seizoen,
 	// aflevering. episode_count telt dus over twee stappen.
-	epRows, err := s.pool.Query(ctx, `
+	epRows, err := reader.Query(ctx, `
 		SELECT season.parent_id, count(*)
 		FROM media_items episode
 		JOIN media_items season ON season.id = episode.parent_id
