@@ -124,7 +124,13 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 				continue
 			} else if err != nil {
 				st.Failed++
-				consecutive++
+				if errors.Is(err, catalog.ErrMetadataFallbackUnavailable) {
+					// Details slaagde: deze lokale bronfout onderbreekt een reeks
+					// providerfouten en mag de rest van de ronde niet blokkeren.
+					consecutive = 0
+				} else {
+					consecutive++
+				}
 				r.log.Warn("metadata ophalen mislukt",
 					slog.String("title", t.Title), slog.String("error", err.Error()))
 				if ctx.Err() == nil && r.provider != nil {
@@ -168,7 +174,13 @@ func withBackoff[T any](ctx context.Context, r *Runner, call func() (T, error)) 
 func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundStats) error {
 	var side *nfo.Result
 	if r.sidecar != nil {
-		side = r.sidecar.Read(t)
+		if checked, ok := r.sidecar.(interface {
+			ReadChecked(catalog.MetadataTarget) (*nfo.Result, error)
+		}); ok && r.provider != nil {
+			side, t.SidecarReadError = checked.ReadChecked(t)
+		} else {
+			side = r.sidecar.Read(t)
+		}
 	}
 
 	// ApplyMetadata bewaart de bronrang, ook bij een latere ronde zonder provider.
@@ -380,7 +392,7 @@ func (r *Runner) recordFailure(ctx context.Context, t catalog.MetadataTarget) {
 	}
 	next := time.Now().Add(wait)
 	if err := r.store.CommitMetadata(ctx, t, catalog.MetadataCandidate{Pass: currentPass,
-		ItemID: t.ID, Provider: r.name, State: catalog.CandidateFailed, NextAttempt: &next}, nil, nil, nil); err != nil && !errors.Is(err, catalog.ErrMetadataSuperseded) {
+		ItemID: t.ID, Provider: r.name, State: catalog.CandidateFailed, ExternalID: t.ManualExternalID, NextAttempt: &next}, nil, nil, nil); err != nil && !errors.Is(err, catalog.ErrMetadataSuperseded) {
 		r.log.Warn("mislukte poging vastleggen mislukt", slog.String("error", err.Error()))
 	}
 }

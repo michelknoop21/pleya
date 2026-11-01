@@ -51,6 +51,11 @@ type MetadataTarget struct {
 	// CandidateUpdatedAt is de verwachte duurzame generatie van deze poging.
 	// nil betekent dat er bij het lezen nog geen kandidaat bestond.
 	CandidateUpdatedAt *time.Time
+
+	// SidecarReadError is uitsluitend voorbereidingscontext van deze poging,
+	// nooit opgeslagen of via de API verstuurd. Alleen het intrekken van een
+	// bestaande eigen providerwaarde heeft dan geen bewezen actuele fallback.
+	SidecarReadError error `json:"-"`
 }
 
 // Alternative is een mogelijke treffer die een beheerder kan kiezen.
@@ -838,6 +843,9 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 		return ErrMetadataSuperseded
 	}
 	if details != nil {
+		if err := clearMissingProviderFields(ctx, tx, target, c.Provider, *details); err != nil {
+			return err
+		}
 		if err := applyMetadata(ctx, tx, target.ID, c.Provider, *details); err != nil {
 			return err
 		}
@@ -849,6 +857,11 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 	}
 	for _, a := range artwork {
 		if err := upsertProviderArtwork(ctx, tx, a); err != nil {
+			return err
+		}
+	}
+	if details != nil {
+		if err := reconcileProviderArtwork(ctx, tx, target.ID, c.Provider, *details); err != nil {
 			return err
 		}
 	}

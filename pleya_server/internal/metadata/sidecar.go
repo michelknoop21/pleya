@@ -1,7 +1,11 @@
 package metadata
 
 import (
+	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/nfo"
@@ -39,6 +43,58 @@ func (FSSidecar) Read(t catalog.MetadataTarget) *nfo.Result {
 		}
 	}
 	return nil
+}
+
+// ReadChecked onderscheidt echt ontbreken van een onzekere actuele fallback.
+// Alleen providerpublicatie gebruikt dit strengere pad; de bestaande losse
+// sidecarronde blijft onleesbare sidecars overslaan.
+func (FSSidecar) ReadChecked(t catalog.MetadataTarget) (*nfo.Result, error) {
+	if t.MediaPath == "" || t.MediaRoot == "" {
+		return nil, nil
+	}
+	abs := filepath.Join(t.MediaRoot, t.MediaPath)
+	var paths []string
+	wantKind := "movie"
+	switch t.Kind {
+	case "movie":
+		paths = nfo.MoviePath(abs)
+	case "show":
+		wantKind = "tvshow"
+		root, dir := filepath.Clean(t.MediaRoot), filepath.Dir(abs)
+		for i := 0; i < 3; i++ {
+			paths = append(paths, filepath.Join(dir, "tvshow.nfo"))
+			parent := filepath.Dir(dir)
+			if parent == dir || len(parent) < len(root) || !strings.HasPrefix(parent, root) {
+				break
+			}
+			dir = parent
+		}
+	default:
+		return nil, nil
+	}
+	var readErr error
+	for _, path := range paths {
+		r, err := nfo.ParseFile(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err == nil && r.Kind != wantKind {
+			err = fmt.Errorf("%w: verwacht %s", nfo.ErrNotNFO, wantKind)
+		}
+		if err != nil {
+			if t.Kind != "movie" {
+				return nil, err
+			}
+			// Films proberen beide bestaande paden: een geldige movie.nfo
+			// blijft bruikbaar als de bestandsgebonden NFO kapot is.
+			if readErr == nil {
+				readErr = err
+			}
+			continue
+		}
+		return &r, nil
+	}
+	return nil, readErr
 }
 
 // sidecarDetails zet een .nfo om in onze eigen vorm. Afbeeldingsverwijzingen
