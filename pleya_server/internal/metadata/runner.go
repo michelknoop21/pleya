@@ -243,9 +243,6 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	}
 	var retry *time.Time
 	var prepared []preparedArtwork
-	// Ook bij annulering alleen eigen bestanden opruimen. Bij een onzekere DB-commit
-	// blijft een bestand staan zolang de rij ernaar verwijst (of DB-controle faalt).
-	defer func() { r.cleanupPrepared(ctx, t.ID, prepared) }()
 	for _, a := range []struct {
 		kind  string
 		ref   string
@@ -274,11 +271,19 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	for _, a := range prepared {
 		artwork = append(artwork, a.row)
 	}
-	if err := r.store.CommitMetadata(ctx, t, catalog.MetadataCandidate{Pass: currentPass,
+	commitErr := r.store.CommitMetadata(ctx, t, catalog.MetadataCandidate{Pass: currentPass,
 		ItemID: t.ID, Provider: r.name, State: state,
 		ExternalID: fmt.Sprint(chosen.ID), Details: &details, NextAttempt: retry,
-	}, &details, sideDetails, artwork); err != nil {
-		return err
+	}, &details, sideDetails, artwork)
+	// Een gewone fout kan terugkomen terwijl COMMIT nog loopt. Een MVCC-read
+	// ziet dan mogelijk de oude rij: dat is geen bewijs dat deze bytes vrij zijn.
+	// Alleen succes of expliciete supersession geeft directe cleanup vrij.
+	// Andere fouten behouden ook mogelijk ongebruikte bytes voor de bestaande GC.
+	if commitErr == nil || errors.Is(commitErr, catalog.ErrMetadataSuperseded) {
+		r.cleanupPrepared(ctx, t.ID, prepared)
+	}
+	if commitErr != nil {
+		return commitErr
 	}
 	st.ArtworkSaved += len(prepared)
 	if sideDetails != nil {
