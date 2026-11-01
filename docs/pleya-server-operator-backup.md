@@ -140,3 +140,7 @@ De volledige actuele-productiegrens (schema 24 naar 30 en terug met de bijpassen
 | bronbestand kapot | `playback.file_corrupt` (422) | `POST /playback/plan` als ook een tweede analyse van het bestand mislukt |
 
 De test `TestFailurePathsEachHaveTheirOwnCode` laat alle vier met een echte oorzaak optreden: `/dev/full` als schijf, een database op een poort waar niets luistert, een ffmpeg die aan een segfault sterft en een bestand vol rommel.
+
+## Lokale versiegrensproef
+
+De synthetische [schema-24/30-rehearsal](qa/2026-11-01-server-gap-rollback.md) bewijst echte versleutelde backup, upgrade, datamutaties en restore van database plus config. De versieguard weigert 24 op 30, accepteert de teruggezette 24 en de nieuwe versie migreert daarna opnieuw vooruit. Dit is geen oude-image- of productieherstelproef. Gebruik deze uitkomst niet als toestemming om zonder bewezen image-/herstartprocedure een NAS-rollback te doen.
