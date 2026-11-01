@@ -9,6 +9,7 @@ import 'screenshot_probe.dart';
 import 'verification_driver.dart';
 import 'bounded_process.dart';
 import 'simulator_boot.dart';
+import 'ios_bundle_runpaths.dart';
 
 /// Drives a local iOS-simulator build of Pleya via `xcrun simctl`.
 ///
@@ -206,11 +207,12 @@ class IosSimulatorDriver implements VerificationDriver {
       throw StateError('marking the app full screen failed (exit ${fullScreen.exitCode}): ${fullScreen.stderr}');
     }
 
-    _log('codesign --force --deep --sign - ${isolatedAppDir.path}');
-    final sign = await _run('codesign', ['--force', '--deep', '--sign', '-', isolatedAppDir.path]);
-    if (sign.exitCode != 0) {
-      throw StateError('codesign failed on the isolated app copy (exit ${sign.exitCode}): ${sign.stderr}');
-    }
+    await signIsolatedIosBundle(
+      app: isolatedAppDir,
+      packageFrameworks: Directory('${repoRoot.path}/build/ios/Debug-iphonesimulator/PackageFrameworks'),
+      run: _run,
+      log: _log,
+    );
   }
 
   /// Reads the identifier back — a zero exit from `plutil -replace` says the
