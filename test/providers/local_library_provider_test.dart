@@ -35,6 +35,7 @@ void main() {
   late Directory root;
   late ChangeNotifier changes;
   late LocalLibraryProvider provider;
+  late Client client;
   var wifi = false;
   var visible = true;
   setUp(() async {
@@ -42,11 +43,12 @@ void main() {
     changes = ChangeNotifier();
     wifi = false;
     visible = true;
+    client = Client();
     provider = LocalLibraryProvider(
       profileId: 'a',
       directory: root,
       librariesForSync: () => [library],
-      clientFor: (_) => Client(),
+      clientFor: (_) => client,
       mayReadServer: (_) => visible,
       mayReadLibrary: (_) => true,
       networkConnected: () => true,
@@ -236,12 +238,12 @@ void main() {
     await provider.setEnabled(false);
     final revision = provider.revision;
     DeletionNotifier().notifyDeletedItem(item: film('a'));
-    await until(provider, () => provider.revision > revision);
+    await until(provider, () => provider.revision > revision && provider.libraries.isNotEmpty);
     expect(provider.items.map((i) => i.id), ['b']);
     expect(provider.posterPath('one', '/shared-poster'), isNotNull);
     final after = provider.revision;
     DeletionNotifier().notifyDeletedItem(item: film('b'));
-    await until(provider, () => provider.revision > after);
+    await until(provider, () => provider.revision > after && provider.libraries.isNotEmpty);
     expect(provider.items, isEmpty);
     expect(provider.posterPath('one', '/shared-poster'), isNull);
   });
@@ -263,5 +265,54 @@ void main() {
     ], complete: true);
     await store.removeConfirmed('one', 'same');
     expect(store.items.single.serverId, 'two');
+  });
+
+  test('clear retracts local reads before disk persistence completes', () async {
+    wifi = true;
+    await provider.setEnabled(true);
+    await until(provider, () => provider.state == LocalLibraryState.ready);
+    final clear = provider.clear();
+    addTearDown(() => clear);
+    expect(provider.items, isEmpty);
+    expect(provider.item('one', 'a'), isNull);
+    expect(provider.posterPath('one', '/shared-poster'), isNull);
+    expect(provider.page(library.globalKey, const LibraryQuery()), isNull);
+    await clear;
+    expect(provider.items, isEmpty);
+  });
+
+  test('confirmed deletion retracts local reads when the event is delivered', () async {
+    wifi = true;
+    await provider.setEnabled(true);
+    await until(provider, () => provider.state == LocalLibraryState.ready);
+    await provider.setEnabled(false);
+    final delivered = DeletionNotifier().stream.first;
+    addTearDown(() => provider.setEnabled(false));
+    final before = provider.revision;
+    DeletionNotifier().notifyDeletedItem(item: film('a'));
+    await delivered;
+    expect(provider.item('one', 'a'), isNull);
+    expect(provider.page(library.globalKey, const LibraryQuery())?.items.map((i) => i.id), isNot(contains('a')));
+    await until(provider, () => provider.revision > before && provider.items.any((i) => i.id == 'b'));
+  });
+
+  test('content sync and network changes keep the read boundary; access loss advances it', () async {
+    wifi = true;
+    await provider.setEnabled(true);
+    await until(provider, () => provider.state == LocalLibraryState.ready);
+    final boundary = provider.readBoundaryRevision;
+    final revision = provider.revision;
+    client.rows = [film('a'), film('b'), film('c')];
+    await provider.synchronize();
+    expect(provider.items.map((item) => item.id), ['a', 'b', 'c']);
+    expect(provider.revision, greaterThan(revision));
+    expect(provider.readBoundaryRevision, boundary);
+    wifi = false;
+    changes.notifyListeners();
+    expect(provider.readBoundaryRevision, boundary);
+    visible = false;
+    changes.notifyListeners();
+    expect(provider.readBoundaryRevision, greaterThan(boundary));
+    expect(provider.items, isEmpty);
   });
 }

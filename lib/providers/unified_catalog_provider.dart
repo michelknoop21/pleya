@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
+import '../media/unified/unified_media_group.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/unified_catalog/catalog_service.dart';
 import '../services/unified_catalog/source_cursor.dart';
@@ -147,15 +148,22 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// `UnifiedCatalogService.loadMore`, with [isLoadingMore] layered around it.
   /// Starts the merge first if [ensureStarted] was never called.
   Future<void> loadMore() async {
+    if (isDisposed) return;
     if (_service == null) return ensureStarted();
-    if (_isLoadingMore) return;
+    if (_isLoadingMore || _loadState == UnifiedCatalogLoadState.loading) return;
+    final restartId = _restartId;
+    final service = _service!;
     _isLoadingMore = true;
     safeNotifyListeners();
     try {
-      _snapshot = await _service!.loadMore();
+      final snapshot = await service.loadMore();
+      if (isDisposed || restartId != _restartId) return;
+      _snapshot = _preserveOrder ? _inVisibleOrder(snapshot) : snapshot;
     } finally {
-      _isLoadingMore = false;
-      safeNotifyListeners();
+      if (!isDisposed && restartId == _restartId) {
+        _isLoadingMore = false;
+        safeNotifyListeners();
+      }
     }
   }
 
@@ -175,7 +183,8 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// provider" (a hero pool, a different projection).
   Future<bool> refreshItem(String globalKey, Future<MediaItem?> Function() fetchItem) async {
     final service = _service;
-    if (service == null) return false;
+    final restartId = _restartId;
+    if (isDisposed || service == null) return false;
     if (!service.snapshot.groups.any((g) => g.sources.any((s) => s.sourceKey == globalKey))) return false;
     final MediaItem? updated;
     try {
@@ -185,10 +194,10 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
       appLogger.d('UnifiedCatalogProvider: refresh of $globalKey failed', error: e);
       return false;
     }
-    if (updated == null || isDisposed) return false;
+    if (updated == null || isDisposed || restartId != _restartId) return false;
     final applied = service.applyUpdatedSourceItem(updated);
     if (applied) {
-      _snapshot = service.snapshot;
+      _snapshot = _preserveOrder ? _inVisibleOrder(service.snapshot) : service.snapshot;
       safeNotifyListeners();
     }
     return applied;
@@ -218,10 +227,17 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// answers with the query that fits. Only the newest may load and report.
   int _restartId = 0;
 
-  Future<void> _restart() async {
+  bool _preserveOrder = false;
+
+  Future<void> _restart({bool retainVisible = false}) async {
+    if (isDisposed) return;
+    final previousCount = retainVisible ? _snapshot.groups.length : 0;
+    _preserveOrder = retainVisible;
     final restartId = ++_restartId;
     final eligible = _eligibleLibraries();
     _lastSeenLibraryKeys = _libraryKeys(eligible);
+    _lastLocalRevision = _localLibrary?.revision;
+    _lastReadBoundaryRevision = _localLibrary?.readBoundaryRevision;
     final service = _service;
     if (service == null) {
       _service = UnifiedCatalogService(
@@ -241,21 +257,38 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     // awaiting) relies on that, matching every other transient-state provider
     // in this codebase. So the preference read, which needs a await, happens
     // after this point rather than before it.
-    _snapshot = _service!.snapshot;
-    _loadState = UnifiedCatalogLoadState.loading;
+    _snapshot = retainVisible ? UnifiedCatalogSnapshot(groups: _snapshot.groups) : _service!.snapshot;
+    _isLoadingMore = retainVisible;
+    _loadState = retainVisible ? UnifiedCatalogLoadState.loaded : UnifiedCatalogLoadState.loading;
     safeNotifyListeners();
     try {
       // Re-read on every restart rather than once at construction: the
       // choices keep being made while this provider lives, and a snapshot
       // frozen at construction would never see a later one (I19/tier 4).
       _rememberedSourceKeys = await SourcePreferenceStore.readAllForActiveScope();
-      if (restartId != _restartId) return;
-      final snapshot = await _service!.loadMore();
-      if (restartId != _restartId) return;
-      _snapshot = snapshot;
+      if (isDisposed || restartId != _restartId) return;
+      var snapshot = await _service!.loadMore();
+      if (isDisposed || restartId != _restartId) return;
+      // Rebuild only the already-visible prefix, using the existing bounded
+      // rounds. Never fetch a second complete catalog to refresh a viewport.
+      while (retainVisible &&
+          snapshot.groups.length < previousCount &&
+          !snapshot.isComplete &&
+          snapshot.failedLibraryIds.isEmpty) {
+        final count = snapshot.groups.length;
+        snapshot = await _service!.loadMore();
+        if (isDisposed || restartId != _restartId) return;
+        if (snapshot.groups.length == count) break;
+      }
+      _snapshot = retainVisible ? _inVisibleOrder(snapshot) : snapshot;
+      _isLoadingMore = false;
       _loadState = UnifiedCatalogLoadState.loaded;
     } catch (_) {
-      if (restartId != _restartId) return;
+      if (isDisposed || restartId != _restartId) return;
+      _isLoadingMore = false;
+      if (retainVisible) {
+        _snapshot = UnifiedCatalogSnapshot(groups: _snapshot.groups, failedLibraryIds: _lastSeenLibraryKeys);
+      }
       // UnifiedCatalogService.loadMore never lets a per-library failure
       // escape — that lands in snapshot.failedLibraryIds instead. This only
       // guards against a genuinely unexpected error, so isInitialLoading
@@ -263,6 +296,46 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
       _loadState = UnifiedCatalogLoadState.error;
     }
     safeNotifyListeners();
+  }
+
+  /// Content can arrive ahead of the viewport, or change a title's sort
+  /// data. Both update cards in their existing positions; only an explicit
+  /// refresh/query change applies the new global order. Match memberships as
+  /// well as group ids so changed identity facts retain the session's keys.
+  UnifiedCatalogSnapshot _inVisibleOrder(UnifiedCatalogSnapshot fresh) {
+    final remaining = {for (final group in fresh.groups) group.groupId: group};
+    final bySource = {
+      for (final group in fresh.groups)
+        for (final source in group.sources) source.sourceKey: group,
+    };
+    final groups = <UnifiedMediaGroup>[];
+    final used = <String>{};
+    for (final old in _snapshot.groups) {
+      final updated =
+          remaining[old.groupId] ?? old.sources.map((source) => bySource[source.sourceKey]).nonNulls.firstOrNull;
+      if (updated == null) {
+        if (!fresh.isComplete || fresh.failedLibraryIds.isNotEmpty) groups.add(old);
+        continue;
+      }
+      if (!used.add(updated.groupId)) continue;
+      remaining.remove(updated.groupId);
+      groups.add(
+        UnifiedMediaGroup(
+          groupId: old.groupId,
+          identity: updated.identity,
+          sources: updated.sources,
+          representativeSourceKey: updated.representativeSourceKey,
+          watchState: updated.watchState,
+        ),
+      );
+    }
+    groups.addAll(remaining.values);
+    return UnifiedCatalogSnapshot(
+      groups: List.unmodifiable(groups),
+      failedLibraryIds: fresh.failedLibraryIds,
+      initialLoadFailed: groups.isEmpty && fresh.initialLoadFailed,
+      isComplete: fresh.isComplete && fresh.failedLibraryIds.isEmpty,
+    );
   }
 
   List<CatalogLibrary> _eligibleLibraries() {
@@ -276,12 +349,18 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   };
 
   int? _lastLocalRevision;
+  int? _lastReadBoundaryRevision;
   void _onDependenciesChanged() {
+    if (isDisposed) return;
     final revision = _localLibrary?.revision;
-    if (_lastLocalRevision != revision) {
+    final boundary = _localLibrary?.readBoundaryRevision;
+    final hardBoundary = boundary != _lastReadBoundaryRevision;
+    _lastReadBoundaryRevision = boundary;
+    if (hardBoundary || _lastLocalRevision != revision) {
       _lastLocalRevision = revision;
       if (_service != null) {
-        unawaited(_restart());
+        final sameLibraries = setEquals(_libraryKeys(_eligibleLibraries()), _lastSeenLibraryKeys);
+        unawaited(_restart(retainVisible: !hardBoundary && sameLibraries && _snapshot.groups.isNotEmpty));
         return;
       }
     }
@@ -300,6 +379,10 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
 
   @override
   void dispose() {
+    _restartId++;
+    _snapshot = const UnifiedCatalogSnapshot();
+    _isLoadingMore = false;
+    _loadState = UnifiedCatalogLoadState.initial;
     _localLibrary?.removeListener(_onDependenciesChanged);
     _libraries.removeListener(_onDependenciesChanged);
     _hiddenLibraries.removeListener(_onDependenciesChanged);

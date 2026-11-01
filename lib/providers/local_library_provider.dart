@@ -78,6 +78,13 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   bool _foreground = true;
   bool initialized = false;
   int revision = 0;
+  int _readBoundaryRevision = 0;
+
+  /// Changes that invalidate previously authorized reads, even with equal
+  /// library keys. Ordinary sync/progress revisions leave this boundary alone.
+  int get readBoundaryRevision => _readBoundaryRevision;
+  String? _lastReadSignature;
+  int _pendingReadInvalidations = 0;
   int done = 0;
   String currentTitle = '';
   int bytes = 0;
@@ -113,6 +120,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   bool canReadLibrary(MediaLibrary library) => _allowedLibrary(library);
 
   bool _allowedLibrary(MediaLibrary l) =>
+      !isDisposed &&
+      _pendingReadInvalidations == 0 &&
       l.serverId != null &&
       mayReadServer(l.serverId!) &&
       _store?.serverAccess[l.serverId] != false &&
@@ -145,6 +154,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       bytes = await store.storageBytes();
       initialized = true;
       _lastDependencySignature = _dependencySignature;
+      _lastReadSignature = _readSignature;
       revision++;
       _timer = Timer.periodic(const Duration(minutes: 10), (_) => unawaited(synchronize()));
       safeNotifyListeners();
@@ -178,7 +188,10 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   /// user explicitly selects refill. Clearing never touches another profile.
   Future<void> clear() async {
     _generation++;
+    _beginReadInvalidation();
     await _store?.clear();
+    if (isDisposed) return;
+    _pendingReadInvalidations--;
     revision++;
     _refreshReadIndex();
     _queryCache.clear();
@@ -193,9 +206,11 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     final store = _store;
     if (store == null || event.isDownloadOnly || !mayReadServer(event.serverId)) return;
     _generation++;
+    _beginReadInvalidation();
     try {
       await store.removeConfirmed(event.serverId, event.itemId, isCurrent: () => !isDisposed);
       if (isDisposed) return;
+      _pendingReadInvalidations--;
       revision++;
       _refreshReadIndex();
       _queryCache.clear();
@@ -206,6 +221,33 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       appLogger.w('Local library removal could not be persisted', error: error, stackTrace: stack);
       safeNotifyListeners();
     }
+  }
+
+  // Fail closed during persistence: a restarted catalog cannot read the
+  // just-cleared/deleted cache or fall back to an old in-flight response.
+  void _beginReadInvalidation() {
+    _pendingReadInvalidations++;
+    _readBoundaryRevision++;
+    revision++;
+    _queryCache.clear();
+    _refreshReadIndex();
+    safeNotifyListeners();
+  }
+
+  String get _readSignature {
+    // Ignore IO blocking here: only access policy belongs to this signature.
+    final libraries = {
+      for (final l in [...?_store?.libraries, ...librariesForSync()])
+        if (l.serverId != null) l.globalKey: l,
+    };
+    final keys = libraries.keys.toList()..sort();
+    return [
+      for (final key in keys)
+        '$key:${mayReadServer(libraries[key]!.serverId!)}:'
+            '${_store?.serverAccess[libraries[key]!.serverId]}:'
+            '${libraries[key]!.hidden}:${mayReadLibrary(libraries[key]!)}:'
+            '${_store?.libraryAccess[libraries[key]!.serverId]?.contains(key)}',
+    ].join('|');
   }
 
   String get _dependencySignature => [
@@ -238,8 +280,12 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   void _changed() {
     // Update the in-memory access boundary synchronously before notifying reads.
     unawaited(_updateAccess());
+    final readSignature = _readSignature;
+    final readChanged = readSignature != _lastReadSignature;
+    _lastReadSignature = readSignature;
     final signature = _dependencySignature;
-    if (signature == _lastDependencySignature) return;
+    if (!readChanged && signature == _lastDependencySignature) return;
+    if (readChanged) _readBoundaryRevision++;
     _lastDependencySignature = signature;
     revision++;
     _generation++;
@@ -298,6 +344,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
         }
         try {
           final priorDone = done;
+          final priorKeys = store.libraryItems(library.globalKey).map((item) => item.globalKey).toSet();
           await LocalLibrarySync(
             store: store,
             mayContinue: space,
@@ -317,6 +364,12 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
           if (!valid()) throw LocalLibraryPaused();
           revision++;
           _refreshReadIndex();
+          // A completed scan may prove removals as well as append content.
+          // Such membership loss is a hard boundary, never a retained row.
+          if (!store.libraryItems(library.globalKey).map((item) => item.globalKey).toSet().containsAll(priorKeys)) {
+            _readBoundaryRevision++;
+          }
+          _lastReadSignature = _readSignature;
           _queryCache.clear();
           safeNotifyListeners();
         } on LocalLibraryPaused {
