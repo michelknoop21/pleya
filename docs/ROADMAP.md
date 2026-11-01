@@ -444,3 +444,9 @@ Any proposal to change roadmap scope/order/priority must show:
 4. what is deferred or displaced;
 5. Michel's decision when it is a product choice;
 6. an independent substantive review of the roadmap diff before merge.
+
+### C-05, uitvoering server-gapplan van 1 november 2026
+
+Michel gaf opdracht het volledige gapplan te ontwikkelen. De lokale uitvoering begint bij S25 herstel/upgrade/baseline, daarna S4/S22 metadata/artwork, S13/S17/S18 playback/hervatten/credentialverloop, bibliotheekcorrectheid/cache/setup, rechten/clientacceptatie en S21/S16. Dit is de gekozen volgorde binnen C-05, met behoud van de bestaande afhankelijkheden, WIP-limiet, protocol- en hardwarepoorten. [Uitvoeringskaart](plans/2026-11-01-server-gap/UITVOERINGSKAART.md), [volledig gapplan](plans/2026-11-01-server-gap/GAPPLAN.md) en [herbruikbare opdracht](plans/2026-11-01-server-gap/PROMPT-ALS-MICHEL.md) bewaren scope en grenzen. Geen push, merge, NAS-/productiewijziging of release vrijgegeven. De canonieke detailstatus blijft in de masterlijst; lokaal gestart betekent geen afgeronde acceptatie.
+
+S16 hergebruikt het aparte Big P/MCP-plan op branch `docs/bigp-mcp-roadmap`, commit `1d66b211fb2f62160660d5ef8880735fdcfff970`, in `docs/plans/2026-11-01-big-p-server-mcp/`. Die documentregistratie is nog niet in deze basis gemerged en wordt bij latere integratie inhoudelijk behouden, zonder vervangende S16-lijst.

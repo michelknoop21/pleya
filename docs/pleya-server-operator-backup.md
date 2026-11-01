@@ -104,9 +104,8 @@ Een restore zet de database en `/config` terug naar het moment van de back-up. A
 ```sh
 # De zin staat in restore_confirmation van de back-up en moet letterlijk terug.
 curl -s -H "Authorization: Bearer $A" $B/backups/<id> | jq -r .restore_confirmation
-curl -s -X POST -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
-  -d '{"confirm":"herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren"}' \
-  $B/backups/<id>/restore
+# Lees en beoordeel de volledige zin hierboven voordat je hem gebruikt.
+# Zet die exacte actuele tekst als confirm in de aanvraagbody; neem geen oude voorbeeldzin over.
 ```
 
 Wat er dan gebeurt:
@@ -125,7 +124,11 @@ Zonder Pleya kan het ook: `tar -xf <back-up>.tar database.sql.gz` en `zcat datab
 
 Een nieuwe image die migraties meebrengt, maakt vóór de eerste migratie zelf een back-up (`trigger: upgrade`). Lukt die niet, bijvoorbeeld omdat `/backups` niet gemount of niet beschrijfbaar is, dan start de server niet en zegt het log waarom. Dat is opzet: migraties lopen alleen vooruit, en zonder back-up is er geen weg terug.
 
-Start je een oudere image op een database die een nieuwere image al gemigreerd heeft, dan weigert de server te starten met de melding dat de database nieuwer is dan de binary. Terug naar de oude versie gaat alleen door de upgrade-back-up terug te zetten met die oude versie, of door de nieuwe image weer te starten.
+Start je een oudere image op een database die een nieuwere image al gemigreerd heeft, dan weigert de server te starten met de melding dat de database nieuwer is dan de binary. Die weigering betekent ook dat je de restore-API van die oude image niet kunt gebruiken om de nieuwere database eerst terug te zetten.
+
+Een rollback omvat de upgrade-back-up van de database, de bijbehorende `/config` en de passende oude image. Voorkom dat na herstel de nieuwe image automatisch opnieuw start: die zou de teruggezette database meteen weer vooruit migreren. Kies vooraf een gevalideerde herstelroute met gestopte server en passende versie, of een afzonderlijk bewezen procedure die de nieuwe server na de restore laat stoppen zonder automatische herstart. Het gewone Terugzetten op een container met `restart: unless-stopped` is daarom op zichzelf geen versie-rollback.
+
+De volledige actuele-productiegrens (schema 24 naar 30 en terug met de bijpassende image) is nog niet als complete herstelronde bewezen. De lokale uitvoering onder C-05/S25 bouwt daarvoor synthetisch bewijs; dat is geen toestemming om deze stappen op de NAS uit te voeren. Wijzigingen na het tijdstip van de teruggezette back-up gaan bij rollback verloren.
 
 ## Vier foutcodes
 
