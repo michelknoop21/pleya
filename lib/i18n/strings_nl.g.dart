@@ -1217,6 +1217,11 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get cinemaVisible => 'Zichtbaar';
+	@override String get cinemaHidden => 'Verborgen in dit profiel';
+	@override String get cinemaOptionsHint => 'Select voor bibliotheekopties';
+	@override String get cinemaSummaryTitle => 'Eén bibliotheek.';
+	@override String get cinemaSummaryHint => 'Alle mogelijkheden bij Select.';
 	@override String get alphabetScrubber => 'Alfabetisch bladeren';
 	@override String get title => 'Bibliotheken';
 	@override String get fallbackTitle => 'Bibliotheek';
@@ -5543,6 +5548,11 @@ extension on TranslationsNl {
 			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
 			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
 			'notices.playbackServerErrorBody' => 'De server liep vast tijdens het transcoderen',
+			'libraries.cinemaVisible' => 'Zichtbaar',
+			'libraries.cinemaHidden' => 'Verborgen in dit profiel',
+			'libraries.cinemaOptionsHint' => 'Select voor bibliotheekopties',
+			'libraries.cinemaSummaryTitle' => 'Eén bibliotheek.',
+			'libraries.cinemaSummaryHint' => 'Alle mogelijkheden bij Select.',
 			'libraries.alphabetScrubber' => 'Alfabetisch bladeren',
 			'libraries.title' => 'Bibliotheken',
 			'libraries.fallbackTitle' => 'Bibliotheek',
@@ -5635,13 +5645,13 @@ extension on TranslationsNl {
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
 			'about.title' => 'Over',
 			'about.openSourceLicenses' => 'Open Source licenties',
+			_ => null,
+		} ?? switch (path) {
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
 			'about.viewLicensesDescription' => 'Bekijk licenties van third-party bibliotheken',
 			'about.sourceCode' => 'Broncode',
 			'about.sourceCodeDescription' => 'Bijbehorende broncode van deze build (GPL-3.0)',
-			_ => null,
-		} ?? switch (path) {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
@@ -6149,13 +6159,13 @@ extension on TranslationsNl {
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'Externe speler',
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
 			'externalPlayer.customPlayers' => 'Aangepaste spelers',
 			'externalPlayer.systemDefault' => 'Systeemstandaard',
 			'externalPlayer.addCustomPlayer' => 'Aangepaste speler toevoegen',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playerName' => 'Spelernaam',
 			'externalPlayer.playerNameHint' => 'Mijn speler',
 			'externalPlayer.playerCommand' => 'Commando',
@@ -6663,13 +6673,13 @@ extension on TranslationsNl {
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
 			'unifiedCatalog.oneSeason' => '1 seizoen',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
 			'unifiedCatalog.jumpTo' => 'Spring naar',
 			'unifiedCatalog.loadMore' => 'Meer laden',
 			'unifiedCatalog.loadingMore' => 'Meer laden…',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.title' => 'Sorteren',
 			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
@@ -7177,13 +7187,13 @@ extension on TranslationsNl {
 			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
 			'assistant.examples.recentlyAdded.0' => 'Wat is er deze week toegevoegd?',
 			'assistant.examples.recentlyAdded.1' => 'Welke series zijn onlangs toegevoegd?',
 			'assistant.examples.describe.0' => 'Zoek een film over de ruimte.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.describe.1' => 'Ik wil een trage detectiveserie voor een regenachtige zondag.',
 			'assistant.examples.trending.0' => 'Wat is er nu populair?',
 			'assistant.examples.trending.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',

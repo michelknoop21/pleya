@@ -2907,6 +2907,21 @@ class TranslationsLibrariesEn {
 
 	// Translations
 
+	/// en: 'Visible'
+	String get cinemaVisible => 'Visible';
+
+	/// en: 'Hidden in this profile'
+	String get cinemaHidden => 'Hidden in this profile';
+
+	/// en: 'Select for library options'
+	String get cinemaOptionsHint => 'Select for library options';
+
+	/// en: 'One library.'
+	String get cinemaSummaryTitle => 'One library.';
+
+	/// en: 'All options with Select.'
+	String get cinemaSummaryHint => 'All options with Select.';
+
 	/// en: 'Browse alphabetically'
 	String get alphabetScrubber => 'Browse alphabetically';
 
@@ -11416,6 +11431,11 @@ extension on Translations {
 			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
 			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
 			'notices.playbackServerErrorBody' => 'The server hit an error while transcoding',
+			'libraries.cinemaVisible' => 'Visible',
+			'libraries.cinemaHidden' => 'Hidden in this profile',
+			'libraries.cinemaOptionsHint' => 'Select for library options',
+			'libraries.cinemaSummaryTitle' => 'One library.',
+			'libraries.cinemaSummaryHint' => 'All options with Select.',
 			'libraries.alphabetScrubber' => 'Browse alphabetically',
 			'libraries.title' => 'Libraries',
 			'libraries.fallbackTitle' => 'Library',
@@ -11508,13 +11528,13 @@ extension on Translations {
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
 			'about.title' => 'About',
 			'about.openSourceLicenses' => 'Open Source Licenses',
+			_ => null,
+		} ?? switch (path) {
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
 			'about.viewLicensesDescription' => 'View licenses of third-party libraries',
 			'about.sourceCode' => 'Source code',
 			'about.sourceCodeDescription' => 'Corresponding source for this build (GPL-3.0)',
-			_ => null,
-		} ?? switch (path) {
 			'about.basedOnPlezy' => 'Based on Plezy',
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
@@ -12022,13 +12042,13 @@ extension on Translations {
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'External Player',
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
 			'externalPlayer.customPlayers' => 'Custom Players',
 			'externalPlayer.systemDefault' => 'System Default',
 			'externalPlayer.addCustomPlayer' => 'Add Custom Player',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playerName' => 'Player Name',
 			'externalPlayer.playerNameHint' => 'My Player',
 			'externalPlayer.playerCommand' => 'Command',
@@ -12536,13 +12556,13 @@ extension on Translations {
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
 			'unifiedCatalog.oneSeason' => '1 season',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
 			'unifiedCatalog.jumpTo' => 'Jump to',
 			'unifiedCatalog.loadMore' => 'Load more',
 			'unifiedCatalog.loadingMore' => 'Loading more…',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.title' => 'Sort',
 			'unifiedCatalog.sort.titleAsc' => 'Title A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Title Z–A',
@@ -13050,13 +13070,13 @@ extension on Translations {
 			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
 			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
 			'assistant.examples.recentlyAdded.0' => 'What was added this week?',
 			'assistant.examples.recentlyAdded.1' => 'Which series were added recently?',
 			'assistant.examples.describe.0' => 'Find me a film about space.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.describe.1' => 'I want a slow detective series for a rainy Sunday.',
 			'assistant.examples.trending.0' => 'What is popular right now?',
 			'assistant.examples.trending.1' => 'Which popular new movies don\'t I have yet?',

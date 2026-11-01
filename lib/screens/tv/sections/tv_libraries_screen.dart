@@ -23,12 +23,16 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../../automation/automation_ids.dart';
 import '../../../assistant/assistant_controller.dart';
 import '../../../assistant/assistant_tool_context.dart';
 import '../../../focus/focus_memory_tracker.dart';
+import '../../../focus/key_event_utils.dart';
+import '../../../focus/dpad_navigator.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/library_query.dart';
 import '../../../media/media_backend.dart';
@@ -44,14 +48,13 @@ import '../../../providers/unified_catalogs.dart';
 import '../../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/app_logger.dart';
-import '../../../utils/content_utils.dart';
 import '../../../utils/dialogs.dart';
 import '../../../utils/layout_constants.dart';
 import '../../../utils/library_grouping.dart';
 import '../../../utils/provider_extensions.dart';
 import '../../../utils/snackbar_helper.dart';
-import '../../../widgets/tv/tv_catalog_sort_panel.dart';
-import '../../../widgets/tv/tv_menu_grid.dart';
+import '../../../widgets/tv/tv_cinema_libraries.dart';
+import '../../../utils/tv_hig.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
 import '../../../widgets/tv/tv_panel_primitives.dart';
 import '../assistant/tv_assistant_screen.dart';
@@ -72,10 +75,11 @@ enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, a
 /// actually browses.
 List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library, {required bool canManage, bool canAskBigP = false}) {
   final isCatalogable = library.kind == MediaKind.movie || library.kind == MediaKind.show;
-  final isPlex = canManage && library.backend == MediaBackend.plex;
+  final canMaintain = canManage && (library.serverId?.isNotEmpty ?? false);
+  final isPlex = canMaintain && library.backend == MediaBackend.plex;
   return [
     if (isCatalogable) TvLibraryAction.openInCatalog,
-    if (canManage) TvLibraryAction.refreshMetadata,
+    if (canMaintain) TvLibraryAction.refreshMetadata,
     if (isPlex) TvLibraryAction.scan,
     TvLibraryAction.toggleVisibility,
     if (isPlex) TvLibraryAction.analyze,
@@ -104,6 +108,44 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
   final Map<String, int> _counts = {};
 
   bool _reordering = false;
+  bool _consumeReorderBackRelease = false;
+
+  void _setReordering(bool value) {
+    setState(() => _reordering = value);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (value) {
+        _reorderNode.requestFocus();
+      } else {
+        final focused = _nodes.nodeFor(_nodes.lastFocusedKey ?? '');
+        if (focused?.hasFocus == true && focused?.context != null) {
+          Scrollable.ensureVisible(focused!.context!, alignment: .5);
+        }
+      }
+    });
+  }
+
+  KeyEventResult _handleReorderBack(FocusNode node, KeyEvent event) {
+    // The Apple TV helper dismisses on down. Consume its matching release
+    // after rebuilding the normal list so the shell cannot also pop it.
+    if (event.logicalKey.isBackKey && event is KeyUpEvent && _consumeReorderBackRelease) {
+      _consumeReorderBackRelease = false;
+      return KeyEventResult.handled;
+    }
+    if (event is KeyDownEvent) _consumeReorderBackRelease = false;
+    if (!_reordering) return KeyEventResult.ignored;
+    return handleBackKeyAction(event, () {
+      _consumeReorderBackRelease = event is KeyDownEvent;
+      _setReordering(false);
+    });
+  }
+
+  String? _selectedLibraryKey;
+  Set<String> _knownKeys = {};
+
+  void _selectLibrary(String key) {
+    if (_selectedLibraryKey != key) setState(() => _selectedLibraryKey = key);
+  }
 
   /// Set by [loadLibraryByKey], consumed by the very next
   /// [focusActiveTabIfReady]. `main_screen.dart`'s `_selectLibrary` calls both
@@ -328,123 +370,206 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
     }
   }
 
-  String _countLabel(MediaLibrary library) {
-    final count = _counts[library.globalKey];
-    if (count == null) return '…';
-    return count == 1 ? t.libraries.oneItem : t.libraries.itemCount(count: count);
-  }
-
   @override
   Widget build(BuildContext context) {
     final libraries = context.watch<LibrariesProvider>().libraries;
     final hiddenKeys = context.watch<HiddenLibrariesProvider>().hiddenLibraryKeys;
+    final currentKeys = libraries.map((library) => library.globalKey).toSet();
+    if (!setEquals(_knownKeys, currentKeys)) {
+      final lostFocus = _nodes.hasFocus && !currentKeys.contains(_nodes.lastFocusedKey);
+      _knownKeys = currentKeys;
+      _counts.removeWhere((key, _) => !currentKeys.contains(key));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _nodes.pruneExcept(_currentLibraries().map((library) => library.globalKey).toSet());
+        if (lostFocus) focusActiveTabIfReady();
+      });
+    }
 
     if (libraries.isEmpty) {
       return TvPageSurface(
         title: t.libraries.title,
         automationInstance: 'libraries',
+        trailing: TvPanelButton(
+          scale: TvLayoutConstants.scaleOf(context),
+          label: t.libraries.refreshAllLibraries,
+          icon: Symbols.refresh_rounded,
+          primary: false,
+          focusNode: _refreshAllNode,
+          automationId: AutomationIds.myPleyaSectionTile,
+          automationInstance: 'libraries.refresh',
+          onPressed: refresh,
+        ),
         children: [Text(t.libraries.noLibrariesFound, style: TextStyle(color: tokens(context).textMuted))],
       );
     }
 
-    if (_reordering) {
-      final reorderGroups = groupLibrariesByFirstAppearance(libraries);
-      return TvPageSurface(
-        title: t.libraries.title,
-        automationInstance: 'libraries.reorder',
-        trailing: TvPanelButton(
-          scale: TvLayoutConstants.scaleOf(context),
-          label: t.unifiedCatalog.homeRows.done,
-          icon: Symbols.check_rounded,
-          primary: false,
-          focusNode: _reorderNode,
-          onNavigateDown: () => _nodes.get(_firstRowKey(reorderGroups)!).requestFocus(),
-          onPressed: () => setState(() => _reordering = false),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(t.libraries.reorderIntro, style: TextStyle(color: tokens(context).textMuted)),
-          ),
-          _TvLibraryReorderList(
-            // Server-grouped, not the provider's raw order: `_groupBounds`
-            // clamps a move to a contiguous run of the same `serverId`, and
-            // the provider's own order is not guaranteed contiguous (a
-            // library discovered after initial load is appended at the end,
-            // interleaving servers). Seeding from the same grouping the
-            // normal list already displays keeps every server's libraries
-            // adjacent, so the clamp bounds mean what the numbering shows.
-            libraries: [for (final serverKey in reorderGroups.serverOrder) ...reorderGroups.byServer[serverKey]!],
-            hiddenKeys: hiddenKeys,
-            nodes: _nodes,
-            onExitUp: () => _reorderNode.requestFocus(),
-            onReorder: (reordered) => context.read<LibrariesProvider>().updateLibraryOrder(reordered),
-          ),
-        ],
-      );
-    }
-
     final groups = groupLibrariesByFirstAppearance(libraries);
+    final ordered = [for (final key in groups.serverOrder) ...groups.byServer[key]!];
+    final selected = ordered.firstWhere(
+      (library) => library.globalKey == _selectedLibraryKey,
+      orElse: () => ordered.first,
+    );
     final scale = TvLayoutConstants.scaleOf(context);
+    final hig = TvHig.of(context);
 
-    return TvPageSurface(
-      title: t.libraries.title,
-      automationInstance: 'libraries',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TvPanelButton(
-            scale: scale,
-            label: t.libraries.refreshAllLibraries,
-            icon: Symbols.refresh_rounded,
-            primary: false,
-            focusNode: _refreshAllNode,
-            onNavigateRight: libraries.length > 1 ? () => _reorderNode.requestFocus() : null,
-            onNavigateDown: () => _nodes.get(_firstRowKey(groups)!).requestFocus(),
-            onPressed: refresh,
-          ),
-          if (libraries.length > 1) ...[
-            const SizedBox(width: 12),
-            TvPanelButton(
-              scale: scale,
-              label: t.libraries.reorder,
-              icon: Symbols.swap_vert_rounded,
-              primary: false,
-              focusNode: _reorderNode,
-              onNavigateLeft: () => _refreshAllNode.requestFocus(),
-              onNavigateDown: () => _nodes.get(_firstRowKey(groups)!).requestFocus(),
-              onPressed: () => setState(() => _reordering = true),
-            ),
-          ],
-        ],
-      ),
-      children: [
-        TvMenuGrid(
-          nodes: _nodes,
-          columns: 1,
-          automationInstance: 'libraries',
-          onExitUp: () => _refreshAllNode.requestFocus(),
-          sections: [
-            for (final serverKey in groups.serverOrder)
-              TvMenuSection(
-                label: groups.byServer[serverKey]!.first.serverName ?? t.libraries.fallbackTitle,
-                items: [
-                  for (final library in groups.byServer[serverKey]!)
-                    TvMenuItem(
-                      key: library.globalKey,
-                      icon: ContentTypeHelper.getLibraryIcon(library.kind.id),
-                      title: library.title,
-                      toggled: !hiddenKeys.contains(library.globalKey),
-                      value: hiddenKeys.contains(library.globalKey)
-                          ? '${_countLabel(library)} · ${t.unifiedCatalog.homeRows.hiddenNote}'
-                          : _countLabel(library),
-                      onSelect: () => _openActionSheet(library, isHidden: hiddenKeys.contains(library.globalKey)),
+    return Focus(
+      onKeyEvent: _handleReorderBack,
+      child: TvCinemaLibraryBackdrop(
+        child: TvPageSurface(
+          title: t.libraries.title,
+          eyebrow: t.navigation.myPleya,
+          automationInstance: _reordering ? 'libraries.reorder' : 'libraries',
+          trailing: _reordering
+              ? TvPanelButton(
+                  scale: scale,
+                  label: t.unifiedCatalog.homeRows.done,
+                  icon: Symbols.check_rounded,
+                  primary: false,
+                  focusNode: _reorderNode,
+                  automationId: AutomationIds.myPleyaSectionTile,
+                  automationInstance: 'libraries.done',
+                  onNavigateDown: () => _nodes.get(ordered.first.globalKey).requestFocus(),
+                  onPressed: () => _setReordering(false),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TvPanelButton(
+                      scale: scale,
+                      label: t.libraries.refreshAllLibraries,
+                      icon: Symbols.refresh_rounded,
+                      primary: false,
+                      focusNode: _refreshAllNode,
+                      automationId: AutomationIds.myPleyaSectionTile,
+                      automationInstance: 'libraries.refresh',
+                      onNavigateRight: libraries.length > 1 ? () => _reorderNode.requestFocus() : null,
+                      onNavigateDown: () => _nodes.get(ordered.first.globalKey).requestFocus(),
+                      onPressed: refresh,
                     ),
+                    if (libraries.length > 1) ...[
+                      SizedBox(width: 20 * hig),
+                      TvPanelButton(
+                        scale: scale,
+                        label: t.libraries.reorder,
+                        icon: Symbols.swap_vert_rounded,
+                        primary: false,
+                        focusNode: _reorderNode,
+                        automationId: AutomationIds.myPleyaSectionTile,
+                        automationInstance: 'libraries.reorder',
+                        onNavigateLeft: () => _refreshAllNode.requestFocus(),
+                        onNavigateDown: () => _nodes.get(ordered.first.globalKey).requestFocus(),
+                        onPressed: () => _setReordering(true),
+                      ),
+                    ],
+                  ],
+                ),
+          children: const [],
+          expanded: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: 584 * hig,
+                      child: TvCinemaLibraryPane(
+                        child: _reordering
+                            ? _TvLibraryReorderList(
+                                libraries: ordered,
+                                hiddenKeys: hiddenKeys,
+                                counts: _counts,
+                                nodes: _nodes,
+                                onFocused: _selectLibrary,
+                                onExitUp: () => _reorderNode.requestFocus(),
+                                onReorder: (reordered) =>
+                                    context.read<LibrariesProvider>().updateLibraryOrder(reordered),
+                              )
+                            : _LibraryRowsScroll(
+                                padding: EdgeInsets.all(8 * hig),
+                                children: [
+                                  for (final key in groups.serverOrder) ...[
+                                    Padding(
+                                      padding: EdgeInsets.fromLTRB(22 * hig, 16 * hig, 22 * hig, 20 * hig),
+                                      child: Text(
+                                        (groups.byServer[key]!.first.serverName ?? t.libraries.fallbackTitle)
+                                            .toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 22 * hig,
+                                          letterSpacing: 2 * hig,
+                                          color: tokens(context).textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                    for (final library in groups.byServer[key]!)
+                                      Padding(
+                                        key: ValueKey(library.globalKey),
+                                        padding: EdgeInsets.only(bottom: 12 * hig),
+                                        child: TvCinemaLibraryRow(
+                                          key: ValueKey(library.globalKey),
+                                          library: library,
+                                          count: _counts[library.globalKey],
+                                          hidden: hiddenKeys.contains(library.globalKey),
+                                          selected: library.globalKey == selected.globalKey,
+                                          moving: false,
+                                          focusNode: _nodes.get(library.globalKey, debugLabel: library.globalKey),
+                                          onFocusChange: (focused) {
+                                            if (focused) _selectLibrary(library.globalKey);
+                                          },
+                                          onNavigateUp: () {
+                                            final index = ordered.indexOf(library);
+                                            if (index == 0) {
+                                              _refreshAllNode.requestFocus();
+                                            } else {
+                                              _nodes.get(ordered[index - 1].globalKey).requestFocus();
+                                            }
+                                          },
+                                          onNavigateDown: () {
+                                            final index = ordered.indexOf(library);
+                                            if (index + 1 < ordered.length)
+                                              _nodes.get(ordered[index + 1].globalKey).requestFocus();
+                                          },
+                                          onPressed: () => _openActionSheet(
+                                            library,
+                                            isHidden: hiddenKeys.contains(library.globalKey),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ],
+                              ),
+                      ),
+                    ),
+                    SizedBox(width: 90 * hig),
+                    Expanded(
+                      child: TvCinemaLibrarySummary(
+                        library: selected,
+                        count: _counts[selected.globalKey],
+                        hidden: hiddenKeys.contains(selected.globalKey),
+                        reordering: _reordering,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20 * hig),
+              Row(
+                children: [
+                  Icon(Symbols.check_rounded, size: 25 * hig, color: tokens(context).textMuted),
+                  SizedBox(width: 16 * hig),
+                  Expanded(
+                    child: Text(
+                      t.libraries.cinemaOptionsHint,
+                      style: TextStyle(fontSize: 25 * hig, color: tokens(context).textMuted),
+                    ),
+                  ),
                 ],
               ),
-          ],
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -465,6 +590,8 @@ class _TvLibraryReorderList extends StatefulWidget {
   const _TvLibraryReorderList({
     required this.libraries,
     required this.hiddenKeys,
+    required this.counts,
+    required this.onFocused,
     required this.nodes,
     required this.onReorder,
     required this.onExitUp,
@@ -472,6 +599,8 @@ class _TvLibraryReorderList extends StatefulWidget {
 
   final List<MediaLibrary> libraries;
   final Set<String> hiddenKeys;
+  final Map<String, int> counts;
+  final ValueChanged<String> onFocused;
   final FocusMemoryTracker nodes;
   final ValueChanged<List<MediaLibrary>> onReorder;
   final VoidCallback onExitUp;
@@ -482,7 +611,7 @@ class _TvLibraryReorderList extends StatefulWidget {
 
 class _TvLibraryReorderListState extends State<_TvLibraryReorderList> {
   late List<MediaLibrary> _order = List.of(widget.libraries);
-  int? _movingIndex;
+  String? _movingKey;
 
   @override
   void didUpdateWidget(_TvLibraryReorderList oldWidget) {
@@ -490,7 +619,10 @@ class _TvLibraryReorderListState extends State<_TvLibraryReorderList> {
     // The provider is the source of truth; a move outside this list (another
     // session, a profile switch) must not leave this screen showing a stale
     // order. A move made *by* this list already matches by the time this runs.
-    if (!listEquals(oldWidget.libraries, widget.libraries)) _order = List.of(widget.libraries);
+    if (!listEquals(oldWidget.libraries, widget.libraries)) {
+      _order = List.of(widget.libraries);
+      if (!_order.any((library) => library.globalKey == _movingKey)) _movingKey = null;
+    }
   }
 
   ({int start, int end}) _groupBounds(int index) {
@@ -512,7 +644,7 @@ class _TvLibraryReorderListState extends State<_TvLibraryReorderList> {
     setState(() {
       final item = _order.removeAt(index);
       _order.insert(target, item);
-      _movingIndex = target;
+      _movingKey = item.globalKey;
     });
     widget.onReorder(_order);
   }
@@ -520,8 +652,8 @@ class _TvLibraryReorderListState extends State<_TvLibraryReorderList> {
   @override
   Widget build(BuildContext context) {
     final groups = groupLibrariesByFirstAppearance(_order);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return _LibraryRowsScroll(
+      padding: EdgeInsets.all(8 * TvHig.of(context)),
       children: [
         for (final serverKey in groups.serverOrder) ...[
           TvPageGroupLabel(groups.byServer[serverKey]!.first.serverName ?? ''),
@@ -535,19 +667,25 @@ class _TvLibraryReorderListState extends State<_TvLibraryReorderList> {
     final index = _order.indexOf(library);
     final position = _order.sublist(_groupBounds(index).start, index).length + 1;
     final isHidden = widget.hiddenKeys.contains(library.globalKey);
-    final isMoving = _movingIndex == index;
+    final isMoving = _movingKey == library.globalKey;
     return Padding(
+      key: ValueKey(library.globalKey),
       padding: const EdgeInsets.only(bottom: 8),
-      child: TvCatalogOptionRow(
+      child: TvCinemaLibraryRow(
         key: ValueKey(library.globalKey),
-        label: library.title,
-        secondary: isHidden ? t.unifiedCatalog.homeRows.hiddenNote : '$position',
-        isSelected: isMoving,
-        scale: TvLayoutConstants.scaleOf(context),
+        library: library,
+        count: widget.counts[library.globalKey],
+        hidden: isHidden,
+        selected: widget.nodes.lastFocusedKey == library.globalKey,
+        moving: isMoving,
+        position: position,
+        onFocusChange: (focused) {
+          if (focused) widget.onFocused(library.globalKey);
+        },
         focusNode: widget.nodes.get(library.globalKey, debugLabel: library.globalKey),
         onNavigateUp: isMoving ? () => _move(index, -1) : () => _focusNeighbour(index, -1),
         onNavigateDown: isMoving ? () => _move(index, 1) : () => _focusNeighbour(index, 1),
-        onPressed: () => setState(() => _movingIndex = isMoving ? null : index),
+        onPressed: () => setState(() => _movingKey = isMoving ? null : library.globalKey),
       ),
     );
   }
@@ -561,4 +699,20 @@ class _TvLibraryReorderListState extends State<_TvLibraryReorderList> {
     if (target >= _order.length) return;
     widget.nodes.get(_order[target].globalKey).requestFocus();
   }
+}
+
+/// Management rows have always remained mounted (LIB7). Unlike the media
+/// catalog, these rows have no posters or decodes. Keeping that contract in
+/// the bounded pane lets explicit library selection and focus recovery reveal
+/// any stable node, including rows outside the current viewport.
+class _LibraryRowsScroll extends StatelessWidget {
+  const _LibraryRowsScroll({required this.padding, required this.children});
+  final EdgeInsetsGeometry padding;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: padding,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+  );
 }

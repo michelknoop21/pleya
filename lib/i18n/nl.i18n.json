@@ -1004,6 +1004,11 @@
     "playbackServerErrorBody": "De server liep vast tijdens het transcoderen"
   },
   "libraries": {
+    "cinemaVisible": "Zichtbaar",
+    "cinemaHidden": "Verborgen in dit profiel",
+    "cinemaOptionsHint": "Select voor bibliotheekopties",
+    "cinemaSummaryTitle": "Eén bibliotheek.",
+    "cinemaSummaryHint": "Alle mogelijkheden bij Select.",
     "alphabetScrubber": "Alfabetisch bladeren",
     "title": "Bibliotheken",
     "fallbackTitle": "Bibliotheek",

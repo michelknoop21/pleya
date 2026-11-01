@@ -1004,6 +1004,11 @@
     "playbackServerErrorBody": "The server hit an error while transcoding"
   },
   "libraries": {
+    "cinemaVisible": "Visible",
+    "cinemaHidden": "Hidden in this profile",
+    "cinemaOptionsHint": "Select for library options",
+    "cinemaSummaryTitle": "One library.",
+    "cinemaSummaryHint": "All options with Select.",
     "alphabetScrubber": "Browse alphabetically",
     "title": "Libraries",
     "fallbackTitle": "Library",
