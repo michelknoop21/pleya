@@ -1,0 +1,2770 @@
+{
+  "run_id": "tvos-my-pleya-libraries-remote-hold-1793572668868",
+  "git_commit": "d8cd3c77e025887128cea625699be025a1ad19a0",
+  "dirty": false,
+  "target": "tvos-sim",
+  "device": {
+    "name": "Pleya Verify Apple TV 4K",
+    "id": "2B32D66F-268C-4550-8A6A-0AE5FC13A308",
+    "class": "tv",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.tvOS-27-0"
+  },
+  "os": "Version 27.0.1 (Build 26A434)",
+  "scenario_hash": "022a156a16177770d1fec7b0c501a3024cdd98b2f8f9555b209a3cfcef91b2c1",
+  "snapshot_hash": "12588e1248dbd83b990dbce2be71817db839d3e6d70ab253dd5ebf89744b6442",
+  "instance": {
+    "port": 47317,
+    "protocolVersion": 1,
+    "pid": 67196,
+    "source": "/Volumes/SSD/CoreSimulator/Devices/2B32D66F-268C-4550-8A6A-0AE5FC13A308/data/Containers/Data/Application/0D78C30B-6059-46AD-9B27-F51F346598B2/Library/Caches/pleya-verify/instance.json"
+  },
+  "result": "PASS",
+  "duration_ms": 39855,
+  "steps": [
+    {
+      "verb": "reset_app",
+      "line": 18,
+      "started_at_utc": "2026-11-01T22:37:49.528190Z",
+      "ok": true,
+      "duration_ms": 1061,
+      "finished_at_utc": "2026-11-01T22:37:50.589700Z"
+    },
+    {
+      "verb": "seed",
+      "line": 19,
+      "ok": true
+    },
+    {
+      "verb": "launch",
+      "line": 20,
+      "instance": {
+        "port": 47317,
+        "protocolVersion": 1,
+        "pid": 67196,
+        "source": "/Volumes/SSD/CoreSimulator/Devices/2B32D66F-268C-4550-8A6A-0AE5FC13A308/data/Containers/Data/Application/0D78C30B-6059-46AD-9B27-F51F346598B2/Library/Caches/pleya-verify/instance.json"
+      },
+      "ok": true
+    },
+    {
+      "verb": "sign_in",
+      "line": 21,
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 23,
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 24,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 25,
+      "input_route": "idb",
+      "key": "right",
+      "before": {
+        "focused_ids": [
+          "nav.discover"
+        ],
+        "focus": {
+          "label": "tvNav_home",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 7,
+          "bounds": {
+            "x": 520.9882928466795,
+            "y": 44.03,
+            "width": 140.61625976562505,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "nav.series"
+        ],
+        "focus": {
+          "label": "tvNav_series",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 8,
+          "bounds": {
+            "x": 700.9170526123046,
+            "y": 44.03,
+            "width": 145.82570800781252,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvNav_home",
+            "to": "tvNav_series"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 26,
+      "input_route": "idb",
+      "key": "right",
+      "before": {
+        "focused_ids": [
+          "nav.series"
+        ],
+        "focus": {
+          "label": "tvNav_series",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 8,
+          "bounds": {
+            "x": 700.9170526123046,
+            "y": 44.03,
+            "width": 145.82570800781252,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "nav.movies"
+        ],
+        "focus": {
+          "label": "tvNav_movies",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 9,
+          "bounds": {
+            "x": 886.0552606201171,
+            "y": 44.03,
+            "width": 133.90346069335942,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvNav_series",
+            "to": "tvNav_movies"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 27,
+      "input_route": "idb",
+      "key": "right",
+      "before": {
+        "focused_ids": [
+          "nav.movies"
+        ],
+        "focus": {
+          "label": "tvNav_movies",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 9,
+          "bounds": {
+            "x": 886.0552606201171,
+            "y": 44.03,
+            "width": 133.90346069335942,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "nav.myPleya"
+        ],
+        "focus": {
+          "label": "tvNav_myPleya",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 10,
+          "bounds": {
+            "x": 1059.2712213134764,
+            "y": 44.03,
+            "width": 191.95985717773442,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvNav_movies",
+            "to": "tvNav_myPleya"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 28,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 29,
+      "input_route": "idb",
+      "key": "select",
+      "before": {
+        "focused_ids": [
+          "nav.myPleya"
+        ],
+        "focus": {
+          "label": "tvNav_myPleya",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 10,
+          "bounds": {
+            "x": 1059.2712213134764,
+            "y": 44.03,
+            "width": 191.95985717773442,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "nav.myPleya"
+        ],
+        "focus": {
+          "label": "tvNav_myPleya",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 10,
+          "bounds": {
+            "x": 1059.2712213134764,
+            "y": 44.03,
+            "width": 191.95985717773442,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "route.changed",
+          "data": {
+            "destination": "myPleya"
+          }
+        },
+        {
+          "name": "navigation.tab_changed",
+          "data": {
+            "from": "discover",
+            "to": "myPleya"
+          }
+        },
+        {
+          "name": "route.changed",
+          "data": {
+            "tab": "myPleya"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 30,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 33,
+      "input_route": "idb",
+      "key": "down",
+      "before": {
+        "focused_ids": [
+          "nav.myPleya"
+        ],
+        "focus": {
+          "label": "tvNav_myPleya",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 10,
+          "bounds": {
+            "x": 1059.2712213134764,
+            "y": 44.03,
+            "width": 191.95985717773442,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.tile[assistant]"
+        ],
+        "focus": {
+          "label": "tvMyPleya_assistant",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 46,
+          "bounds": {
+            "x": 70.7625,
+            "y": 376.3125,
+            "width": 1778.4750000000001,
+            "height": 299.43499999999995
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvNav_myPleya",
+            "to": "Content"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "Content",
+            "to": "tvMyPleya_assistant"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 36,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 37,
+      "input_route": "idb",
+      "key": "down",
+      "before": {
+        "focused_ids": [
+          "my_pleya.tile[assistant]"
+        ],
+        "focus": {
+          "label": "tvMyPleya_assistant",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 46,
+          "bounds": {
+            "x": 70.7625,
+            "y": 376.3125,
+            "width": 1778.4750000000001,
+            "height": 299.43499999999995
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.tile[watchTogether]"
+        ],
+        "focus": {
+          "label": "tvMyPleya_watchTogether",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 3,
+          "bounds": {
+            "x": 70.7625,
+            "y": 748.3299999999999,
+            "width": 881.9549999999999,
+            "height": 157.43499999999995
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvMyPleya_assistant",
+            "to": "tvMyPleya_watchTogether"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 38,
+      "ok": true
+    },
+    {
+      "verb": "walk",
+      "line": 39,
+      "walk": "walk-39.json",
+      "stop": "stopAt",
+      "hops": [
+        {
+          "hop": 1,
+          "direction": "right",
+          "from": {
+            "node": 3,
+            "id": "my_pleya.tile[watchTogether]",
+            "label": "Samen kijken",
+            "bounds": {
+              "x": 70.7625,
+              "y": 748.3299999999999,
+              "width": 881.9549999999999,
+              "height": 157.43499999999995
+            }
+          },
+          "before": {
+            "focused_ids": [
+              "my_pleya.tile[watchTogether]"
+            ],
+            "focus": {
+              "label": "tvMyPleya_watchTogether",
+              "focused": true,
+              "canRequestFocus": true,
+              "node": 3,
+              "bounds": {
+                "x": 70.7625,
+                "y": 748.3299999999999,
+                "width": 881.9549999999999,
+                "height": 157.43499999999995
+              },
+              "_statusCode": 200
+            },
+            "screens": [
+              "screen.main",
+              "screen.discover",
+              "screen.libraries",
+              "screen.my_pleya"
+            ],
+            "route": {
+              "activeTab": "myPleya",
+              "tvDestination": "myPleya",
+              "tvNestedRoute": null,
+              "navigatorDepth": 1,
+              "navigatorStack": [
+                "/"
+              ],
+              "_statusCode": 200
+            }
+          },
+          "after": {
+            "focused_ids": [
+              "my_pleya.tile[libraries]"
+            ],
+            "focus": {
+              "label": "tvMyPleya_libraries",
+              "focused": true,
+              "canRequestFocus": true,
+              "node": 4,
+              "bounds": {
+                "x": 967.2824999999999,
+                "y": 748.3299999999999,
+                "width": 881.9549999999998,
+                "height": 157.43499999999995
+              },
+              "_statusCode": 200
+            },
+            "screens": [
+              "screen.main",
+              "screen.discover",
+              "screen.libraries",
+              "screen.my_pleya"
+            ],
+            "route": {
+              "activeTab": "myPleya",
+              "tvDestination": "myPleya",
+              "tvNestedRoute": null,
+              "navigatorDepth": 1,
+              "navigatorStack": [
+                "/"
+              ],
+              "_statusCode": 200
+            }
+          },
+          "changed": true,
+          "events": [
+            {
+              "name": "input.received",
+              "data": {
+                "source": "hardware",
+                "key": "Arrow Right"
+              }
+            },
+            {
+              "name": "focus.changed",
+              "data": {
+                "from": "tvMyPleya_watchTogether",
+                "to": "tvMyPleya_libraries"
+              }
+            },
+            {
+              "name": "input.received",
+              "data": {
+                "source": "hardware",
+                "key": "Arrow Right"
+              }
+            }
+          ],
+          "to": {
+            "node": 4,
+            "id": "my_pleya.tile[libraries]",
+            "label": "Bibliotheken",
+            "bounds": {
+              "x": 967.2824999999999,
+              "y": 748.3299999999999,
+              "width": 881.9549999999998,
+              "height": 157.43499999999995
+            }
+          },
+          "kind": "ok",
+          "message": "RIGHT from my_pleya.tile[watchTogether] at 71,748 882x157 to my_pleya.tile[libraries] at 967,748 882x157"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 41,
+      "input_route": "idb",
+      "key": "select",
+      "before": {
+        "focused_ids": [
+          "my_pleya.tile[libraries]"
+        ],
+        "focus": {
+          "label": "tvMyPleya_libraries",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 4,
+          "bounds": {
+            "x": 967.2824999999999,
+            "y": 748.3299999999999,
+            "width": 881.9549999999998,
+            "height": 157.43499999999995
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 430.5475,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "route.changed",
+          "data": {
+            "destination": "myPleya",
+            "nested": "tvMyPleya_libraries"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvMyPleya_libraries",
+            "to": "Content"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "Content",
+            "to": "srv-1:2d95c7c96f4e9f4d"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 42,
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 43,
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 44,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 45,
+      "input_route": "idb",
+      "key": "down",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 430.5475,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]"
+        ],
+        "focus": {
+          "label": "srv-1:c6fe01777910c423",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 72,
+          "bounds": {
+            "x": 98.48,
+            "y": 539.9975000000001,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "srv-1:2d95c7c96f4e9f4d",
+            "to": "srv-1:c6fe01777910c423"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 46,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 47,
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 48,
+      "input_route": "idb",
+      "key": "up",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]"
+        ],
+        "focus": {
+          "label": "srv-1:c6fe01777910c423",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 72,
+          "bounds": {
+            "x": 98.48,
+            "y": 539.9975000000001,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 430.5475,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "srv-1:c6fe01777910c423",
+            "to": "srv-1:2d95c7c96f4e9f4d"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 49,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 50,
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 51,
+      "input_route": "idb",
+      "key": "select",
+      "hold_ms": 650,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 430.5475,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [],
+        "focus": {
+          "label": "Sluiten",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 74,
+          "bounds": {
+            "x": 1237.3080100631714,
+            "y": 712.8362500000001,
+            "width": 181.8069899368286,
+            "height": 86.58000000000004
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "srv-1:2d95c7c96f4e9f4d",
+            "to": "OverlaySheetScope"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "OverlaySheetScope",
+            "to": "Sluiten"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 52,
+      "ok": true
+    },
+    {
+      "verb": "snapshot",
+      "line": 53,
+      "screenshot": "00-held-select-one-sheet.png",
+      "screenshot_source": "platform-compositor",
+      "viewport": {
+        "available": true,
+        "width": 1919.9999999999998,
+        "height": 1080.0,
+        "devicePixelRatio": 2.0,
+        "space": "root",
+        "scale": 1.85,
+        "logicalWidth": 1037.8378378378377,
+        "logicalHeight": 583.7837837837837,
+        "safeArea": {
+          "top": 0.0,
+          "right": 0.0,
+          "bottom": 0.0,
+          "left": 0.0
+        },
+        "_statusCode": 200
+      },
+      "screenshot_pixels": {
+        "width": 3840,
+        "height": 2160
+      },
+      "ui_tree": "00-held-select-one-sheet.json",
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 54,
+      "input_route": "idb",
+      "key": "menu",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [],
+        "focus": {
+          "label": "Sluiten",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 74,
+          "bounds": {
+            "x": 1237.3080100631714,
+            "y": 712.8362500000001,
+            "width": 181.8069899368286,
+            "height": 86.58000000000004
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 430.5475,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "Sluiten"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "to": "srv-1:2d95c7c96f4e9f4d"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 55,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 56,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 57,
+      "input_route": "idb",
+      "key": "up",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 430.5475,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.refresh]"
+        ],
+        "focus": {
+          "label": "tvLibraries.refreshAll",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 69,
+          "bounds": {
+            "x": 1244.7100831985472,
+            "y": 226.50750000000002,
+            "width": 338.6480977630615,
+            "height": 86.58000000000001
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "srv-1:2d95c7c96f4e9f4d",
+            "to": "tvLibraries.refreshAll"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 58,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 59,
+      "input_route": "idb",
+      "key": "right",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.refresh]"
+        ],
+        "focus": {
+          "label": "tvLibraries.refreshAll",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 69,
+          "bounds": {
+            "x": 1244.7100831985472,
+            "y": 226.50750000000002,
+            "width": 338.6480977630615,
+            "height": 86.58000000000001
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.reorder]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1607.0581809616087,
+            "y": 226.50750000000002,
+            "width": 237.46181903839124,
+            "height": 86.58000000000001
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvLibraries.refreshAll",
+            "to": "tvLibraries.reorder"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 60,
+      "input_route": "idb",
+      "key": "select",
+      "hold_ms": 650,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.reorder]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1607.0581809616087,
+            "y": 226.50750000000002,
+            "width": 237.46181903839124,
+            "height": 86.58000000000001
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.done]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1642.9216699218748,
+            "y": 224.65750000000003,
+            "width": 201.59833007812495,
+            "height": 90.28000000000003
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 61,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 62,
+      "input_route": "idb",
+      "key": "menu",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.done]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1642.9216699218748,
+            "y": 224.65750000000003,
+            "width": 201.59833007812495,
+            "height": 90.28000000000003
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.reorder]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1603.3581809616087,
+            "y": 224.65750000000003,
+            "width": 241.16181903839106,
+            "height": 90.28000000000003
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 63,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 64,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 65,
+      "input_route": "idb",
+      "key": "select",
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.reorder]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1603.3581809616087,
+            "y": 224.65750000000003,
+            "width": 241.16181903839106,
+            "height": 90.28000000000003
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.done]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1642.9216699218748,
+            "y": 224.65750000000003,
+            "width": 201.59833007812495,
+            "height": 90.28000000000003
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 66,
+      "input_route": "idb",
+      "key": "down",
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.done]"
+        ],
+        "focus": {
+          "label": "tvLibraries.reorder",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 70,
+          "bounds": {
+            "x": 1642.9216699218748,
+            "y": 224.65750000000003,
+            "width": 201.59833007812495,
+            "height": 90.28000000000003
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 408.70000000000005,
+            "width": 538.0,
+            "height": 97.44999999999999
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvLibraries.reorder",
+            "to": "srv-1:2d95c7c96f4e9f4d"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 67,
+      "input_route": "idb",
+      "key": "select",
+      "hold_ms": 650,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 408.70000000000005,
+            "width": 538.0,
+            "height": 97.44999999999999
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 408.70000000000005,
+            "width": 538.0,
+            "height": 97.44999999999999
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": false,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 68,
+      "state": [
+        {
+          "predicate": "state",
+          "subject": "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]",
+          "key": "moving",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]'.state.moving is true"
+        },
+        {
+          "predicate": "focused",
+          "subject": "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 69,
+      "input_route": "idb",
+      "key": "down",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 408.70000000000005,
+            "width": 538.0,
+            "height": 97.44999999999999
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 520.95,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 70,
+      "state": [
+        {
+          "predicate": "state",
+          "subject": "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]",
+          "key": "moving",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]'.state.moving is true"
+        },
+        {
+          "predicate": "focused",
+          "subject": "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 71,
+      "geometry": [
+        {
+          "predicate": "below",
+          "subject": "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]",
+          "other": "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]",
+          "ok": true,
+          "message": "GeoRect(98.48, 520.95, 538.0x97.45000000000005) is below GeoRect(98.48, 408.70000000000005, 538.0x97.44999999999999)",
+          "detail": {}
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "snapshot",
+      "line": 72,
+      "screenshot": "01-held-reorder-server-order.png",
+      "screenshot_source": "platform-compositor",
+      "viewport": {
+        "available": true,
+        "width": 1919.9999999999998,
+        "height": 1080.0,
+        "devicePixelRatio": 2.0,
+        "space": "root",
+        "scale": 1.85,
+        "logicalWidth": 1037.8378378378377,
+        "logicalHeight": 583.7837837837837,
+        "safeArea": {
+          "top": 0.0,
+          "right": 0.0,
+          "bottom": 0.0,
+          "left": 0.0
+        },
+        "_statusCode": 200
+      },
+      "screenshot_pixels": {
+        "width": 3840,
+        "height": 2160
+      },
+      "ui_tree": "01-held-reorder-server-order.json",
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 73,
+      "input_route": "idb",
+      "key": "select",
+      "hold_ms": 650,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 520.95,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 520.95,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": false,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 74,
+      "state": [
+        {
+          "predicate": "state",
+          "subject": "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]",
+          "key": "moving",
+          "expected": false,
+          "actual": false,
+          "ok": true,
+          "message": "'my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]'.state.moving is false"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 75,
+      "input_route": "idb",
+      "key": "menu",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 520.95,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 539.9975000000001,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 76,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 77,
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 78,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 79,
+      "input_route": "idb",
+      "key": "select",
+      "hold_ms": 250,
+      "before": {
+        "focused_ids": [
+          "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]"
+        ],
+        "focus": {
+          "label": "srv-1:2d95c7c96f4e9f4d",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 71,
+          "bounds": {
+            "x": 98.48,
+            "y": 539.9975000000001,
+            "width": 538.0,
+            "height": 97.45000000000005
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [],
+        "focus": {
+          "label": "Sluiten",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 79,
+          "bounds": {
+            "x": 1237.3080100631714,
+            "y": 712.8362500000001,
+            "width": 181.8069899368286,
+            "height": 86.58000000000004
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "srv-1:2d95c7c96f4e9f4d",
+            "to": "OverlaySheetScope"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "OverlaySheetScope",
+            "to": "Sluiten"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 80,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 81,
+      "input_route": "idb",
+      "key": "menu",
+      "before": {
+        "focused_ids": [],
+        "focus": {
+          "label": "Sluiten",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 79,
+          "bounds": {
+            "x": 1237.3080100631714,
+            "y": 712.8362500000001,
+            "width": 181.8069899368286,
+            "height": 86.58000000000004
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [],
+        "focus": {
+          "label": "Sluiten",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 79,
+          "bounds": {
+            "x": 1237.3080100631714,
+            "y": 731.2217518210412,
+            "width": 181.8069899368286,
+            "height": 86.58000000000004
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "myPleya",
+          "tvDestination": "myPleya",
+          "tvNestedRoute": "tvMyPleya_libraries",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 82,
+      "ok": true
+    },
+    {
+      "verb": "snapshot",
+      "line": 83,
+      "screenshot": "02-followup-input-still-works.png",
+      "screenshot_source": "platform-compositor",
+      "viewport": {
+        "available": true,
+        "width": 1919.9999999999998,
+        "height": 1080.0,
+        "devicePixelRatio": 2.0,
+        "space": "root",
+        "scale": 1.85,
+        "logicalWidth": 1037.8378378378377,
+        "logicalHeight": 583.7837837837837,
+        "safeArea": {
+          "top": 0.0,
+          "right": 0.0,
+          "bottom": 0.0,
+          "left": 0.0
+        },
+        "_statusCode": 200
+      },
+      "screenshot_pixels": {
+        "width": 3840,
+        "height": 2160
+      },
+      "ui_tree": "02-followup-input-still-works.json",
+      "ok": true
+    }
+  ]
+}
