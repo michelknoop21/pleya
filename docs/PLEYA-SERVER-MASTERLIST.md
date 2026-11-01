@@ -49,7 +49,7 @@ Bron voor de scope:
 
 De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
 
-Per taak, en dat is de maat die telt: **162 taken, 84 gereed, 22 bezig, 56 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **162 taken, 88 gereed, 28 bezig, 46 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -156,7 +156,7 @@ P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, OVERDUE)
 P8 (Plex Replacement Readiness Gate) staan nog open. Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
 S1, met alle zeventien rijen erin ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md)), en venster 2, bij S2, met alle tien ([DEC-138](DECISIONS.md),
-[DEC-146](DECISIONS.md)). Van deze acht staat er nu geen open. Daarnaast is het afzonderlijke BP-08b-venster hieronder vrijgegeven. De volledige stand staat in hoofdstuk 4.
+[DEC-146](DECISIONS.md)). Van deze acht staat er nu geen open. Ook het afzonderlijke BP-08b-venster hieronder is vrijgegeven. De volledige stand staat in hoofdstuk 4.
 
 ### 2.5 Twee dingen die deze planning kunnen omgooien
 
