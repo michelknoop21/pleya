@@ -89,7 +89,12 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   String currentTitle = '';
   int bytes = 0;
   LocalLibraryState state = LocalLibraryState.disabled;
+  static const _maxCachedQueries = 8;
   final Map<({String library, LibraryQuery query}), List<MediaItem>> _queryCache = {};
+
+  /// Cached query keys from least to most recently used; no result lists copied.
+  @visibleForTesting
+  Iterable<({String library, LibraryQuery query})> get cachedQueryKeys => List.unmodifiable(_queryCache.keys);
 
   bool get enabled => _store?.enabled ?? false;
   bool get wifiOnly => _store?.wifiOnly ?? true;
@@ -447,11 +452,15 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     final store = _store;
     if (store == null || !store.isComplete(libraryKey) || !libraries.any((l) => l.globalKey == libraryKey)) return null;
     final key = (library: libraryKey, query: query.copyWith(offset: 0, limit: 0));
-    var result = _queryCache[key];
+    // Dart maps preserve insertion order: removing a hit promotes it on reinsertion.
+    var result = _queryCache.remove(key);
     if (result == null) {
       result = queryLocalLibrary(store.libraryItems(libraryKey), query);
       if (result == null) return null;
-      _queryCache[key] = result;
+    }
+    _queryCache[key] = result;
+    if (_queryCache.length > _maxCachedQueries) {
+      _queryCache.remove(_queryCache.keys.first);
     }
     return LibraryPage(
       items: result.skip(query.offset).take(query.limit).toList(),

@@ -65,6 +65,89 @@ void main() {
     await root.delete(recursive: true);
   });
 
+  for (final count in [450, 5000]) {
+    test('query LRU holds eight keys and recomputes evicted offline results for $count items', () async {
+      provider.dispose();
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(
+        library,
+        List.generate(count, (i) => film('film-${i.toString().padLeft(4, '0')}')),
+        complete: true,
+      );
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) => visible,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+      );
+      await provider.ready;
+      // Both prefetch settings must permit complete local reads while offline.
+      for (final enabled in [false, true]) {
+        await provider.setEnabled(enabled);
+        const all = LibraryQuery(limit: 10000);
+        final original = provider.page(library.globalKey, all)!;
+        final originalIds = original.items.map((item) => item.id).toList();
+        expect(originalIds, hasLength(count));
+        for (var i = 0; i < 7; i++) {
+          provider.page(library.globalKey, LibraryQuery(search: '$i'));
+        }
+        expect(provider.cachedQueryKeys, hasLength(8));
+        // Pagination shares a key and a hit promotes it past the oldest filter.
+        final laterPage = provider.page(library.globalKey, all.copyWith(offset: count - 20, limit: 20))!;
+        expect(laterPage.items.map((item) => item.id), originalIds.skip(count - 20));
+        provider.page(library.globalKey, const LibraryQuery(search: '7'));
+        expect(provider.cachedQueryKeys, hasLength(8));
+        expect(provider.cachedQueryKeys.any((key) => key.query.search == null), isTrue);
+        expect(provider.cachedQueryKeys.any((key) => key.query.search == '0'), isFalse);
+        for (var i = 8; i < 16; i++) {
+          provider.page(library.globalKey, LibraryQuery(search: '$i'));
+          expect(provider.cachedQueryKeys, hasLength(8));
+        }
+        expect(provider.cachedQueryKeys.any((key) => key.query.search == null), isFalse);
+        final recomputed = provider.page(library.globalKey, all)!;
+        expect(recomputed.totalCount, count);
+        expect(recomputed.items.map((item) => item.id), originalIds);
+        expect(original.items.map((item) => item.id), originalIds, reason: 'eviction preserves held page references');
+        expect(provider.cachedQueryKeys, hasLength(8));
+        expect(client.entered.isCompleted, isFalse, reason: 'offline paging never requests provider metadata');
+        expect(client.idLookups, 0);
+        // Unsupported local queries do not consume the result budget.
+        expect(provider.page(library.globalKey, const LibraryQuery(favoritesOnly: true)), isNull);
+        expect(provider.cachedQueryKeys, hasLength(8));
+        await provider.clear();
+        expect(provider.cachedQueryKeys, isEmpty);
+        expect(provider.page(library.globalKey, all), isNull);
+        if (!enabled) {
+          // Reopen the same complete fixture for the enabled/offline case.
+          provider.dispose();
+          await store.saveLibrary(
+            library,
+            List.generate(count, (i) => film('film-${i.toString().padLeft(4, '0')}')),
+            complete: true,
+          );
+          provider = LocalLibraryProvider(
+            profileId: 'a',
+            directory: root,
+            librariesForSync: () => [library],
+            clientFor: (_) => client,
+            mayReadServer: (_) => visible,
+            mayReadLibrary: (_) => true,
+            networkConnected: () => false,
+            wifiConnected: () => false,
+            changes: changes,
+          );
+          await provider.ready;
+        }
+      }
+    });
+  }
+
   test('known authentication rejection persists until an authoritative successful bind', () async {
     provider.dispose();
     final store = LocalLibraryStore(root);
@@ -224,8 +307,10 @@ void main() {
     wifi = true;
     await provider.setEnabled(true);
     await until(provider, () => provider.state == LocalLibraryState.ready);
+    expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 2);
     visible = false;
     changes.notifyListeners();
+    expect(provider.cachedQueryKeys, isEmpty);
     expect(provider.items, isEmpty);
     expect(provider.posterPath('one', '/shared-poster'), isNull);
     expect(provider.page('one:films', const LibraryQuery()), isNull);
@@ -271,7 +356,9 @@ void main() {
     wifi = true;
     await provider.setEnabled(true);
     await until(provider, () => provider.state == LocalLibraryState.ready);
+    provider.page(library.globalKey, const LibraryQuery());
     final clear = provider.clear();
+    expect(provider.cachedQueryKeys, isEmpty);
     addTearDown(() => clear);
     expect(provider.items, isEmpty);
     expect(provider.item('one', 'a'), isNull);
@@ -302,8 +389,11 @@ void main() {
     await until(provider, () => provider.state == LocalLibraryState.ready);
     final boundary = provider.readBoundaryRevision;
     final revision = provider.revision;
+    expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 2);
     client.rows = [film('a'), film('b'), film('c')];
     await provider.synchronize();
+    expect(provider.cachedQueryKeys, isEmpty);
+    expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 3);
     expect(provider.items.map((item) => item.id), ['a', 'b', 'c']);
     expect(provider.revision, greaterThan(revision));
     expect(provider.readBoundaryRevision, boundary);
