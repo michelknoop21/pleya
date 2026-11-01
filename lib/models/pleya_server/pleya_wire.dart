@@ -168,6 +168,8 @@ class PleyaCapabilities {
     this.artworkSizes = false,
     this.filters = false,
     this.externalIdLookup = false,
+    this.appliedExternalIdentity = false,
+    this.metadataMatchStatus = false,
     this.watchStateOwnership = false,
     this.watchStateCopy = false,
     this.streamSessions = false,
@@ -237,6 +239,8 @@ class PleyaCapabilities {
   /// `external_ids`. Without it the parameter is ignored and the whole library
   /// comes back, so the client never sends it.
   final bool externalIdLookup;
+  final bool appliedExternalIdentity;
+  final bool metadataMatchStatus;
 
   /// The server knows the ownership model: `base_revision`, the
   /// `playback_started` acquisition and the backlog marker on a watch-state
@@ -293,6 +297,8 @@ class PleyaCapabilities {
     artworkSizes: booleanOr(json, 'artwork_sizes', orElse: false),
     filters: booleanOr(json, 'filters', orElse: false),
     externalIdLookup: booleanOr(json, 'external_id_lookup', orElse: false),
+    appliedExternalIdentity: booleanOr(json, 'applied_external_identity', orElse: false),
+    metadataMatchStatus: booleanOr(json, 'metadata_match_status', orElse: false),
     watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
     watchStateCopy: booleanOr(json, 'watch_state_copy', orElse: false),
     streamSessions: booleanOr(json, 'stream_sessions', orElse: false),

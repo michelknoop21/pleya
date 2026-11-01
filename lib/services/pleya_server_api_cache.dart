@@ -6,6 +6,7 @@ import '../database/app_database.dart';
 import '../media/ids.dart';
 import '../media/media_backend.dart';
 import '../media/media_item.dart';
+import '../media/unified/carried_external_ids.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
 import '../utils/global_key_utils.dart';
 import 'api_cache.dart';
@@ -144,7 +145,13 @@ class PleyaServerApiCache extends ApiCache {
     try {
       final item = PleyaItem.fromJson(data);
       if (item.kind == null) return null;
-      return PleyaServerMappers.mediaItem(item, serverId: serverId, serverName: serverName);
+      return PleyaServerMappers.mediaItem(
+        item,
+        serverId: serverId,
+        serverName: serverName,
+        useAppliedExternalIds: data[pleyaExternalIdsSourceKey] == 'applied',
+        identityKnown: data[pleyaExternalIdsSourceKey] == 'applied' || data[pleyaExternalIdsSourceKey] == 'legacy',
+      );
     } catch (_) {
       return null;
     }

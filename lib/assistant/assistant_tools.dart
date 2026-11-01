@@ -8,6 +8,7 @@ import 'assistant_media_key.dart';
 import 'assistant_people.dart';
 import '../media/media_stream.dart';
 import '../services/unified_catalog/source_cursor.dart';
+import '../utils/stored_identity_trust.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import '../media/media_backend.dart';
 import '../media/unified/unified_media_group.dart';

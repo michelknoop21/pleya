@@ -26,6 +26,7 @@ import '../media/library_query.dart';
 import '../media/live_tv_dvr_support.dart';
 import '../media/live_tv_support.dart';
 import '../media/media_backend.dart';
+import '../media/unified/carried_external_ids.dart';
 import '../mpv/models.dart' show SubtitleTrack;
 import '../media/media_file_info.dart';
 import '../media/media_hub.dart';
@@ -160,7 +161,13 @@ class PleyaServerClient
       throw StateError('No answer about $id: ${response.statusCode}');
     }
     final wire = PleyaItem.fromJson(data);
-    final item = PleyaServerMappers.mediaItem(wire, serverId: serverId.toString(), serverName: serverName);
+    final item = PleyaServerMappers.mediaItem(
+      wire,
+      serverId: serverId.toString(),
+      serverName: serverName,
+      useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+      identityKnown: _identityCapabilitiesKnown,
+    );
     final state = wire.userState;
     return item.copyWith(viewCount: state != null && state.watched ? math.max(state.playCount, 1) : 0);
   }
@@ -218,6 +225,17 @@ class PleyaServerClient
       _PleyaMemoryTransport(this, isCurrent);
 
   bool _offlineMode = false;
+  bool _identityCapabilitiesKnown = false;
+  @override
+  bool get identityCapabilitiesKnown => _identityCapabilitiesKnown;
+  @override
+  String get externalIdentitySource =>
+      !_identityCapabilitiesKnown ? 'unknown' : (wireCapabilities.appliedExternalIdentity ? 'applied' : 'legacy');
+
+  /// Unqualified stored numbers need an explicitly old server, never unknown info.
+  bool get usesLegacyExternalIdentity => _identityCapabilitiesKnown && !wireCapabilities.appliedExternalIdentity;
+
+  bool canUseStoredExternalIds(MediaItem item) => hasAppliedExternalIds(item) || usesLegacyExternalIdentity;
   ServerCapabilities _capabilities = PleyaServerCapabilityResolver.unknown;
   PleyaCapabilities _wireCapabilities = PleyaCapabilities.unknown;
 
@@ -328,6 +346,11 @@ class PleyaServerClient
       final data = response.data;
       if (data is! Map<String, dynamic>) return null;
       final info = PleyaInfo.fromJson(data);
+      if (!_identityCapabilitiesKnown ||
+          _wireCapabilities.appliedExternalIdentity != info.capabilities.appliedExternalIdentity) {
+        _recentExternalIds.clear();
+      }
+      _identityCapabilitiesKnown = true;
       _wireCapabilities = info.capabilities;
       _capabilities = PleyaServerCapabilityResolver.resolve(info.capabilities);
       return info;

@@ -9,6 +9,7 @@ import '../media/media_server_client.dart';
 import '../media/unified/unified_media_source.dart';
 import '../services/unified_catalog/grouping_service.dart';
 import '../services/unified_catalog/identity_resolver.dart';
+import '../utils/stored_identity_trust.dart';
 import '../utils/app_logger.dart';
 import '../utils/continue_watching_order.dart';
 import '../utils/media_server_timeouts.dart';
@@ -350,6 +351,10 @@ class DataAggregationService {
     if (duplicateBuckets.isEmpty) return items;
 
     final resolver = UnifiedIdentityResolver(
+      trustStoredIdentity: (item) => canTrustStoredIdentity(
+        item,
+        item.serverId == null ? null : _serverManager.getClient(ServerId(item.serverId!)),
+      ),
       fetchExternalIds: (serverId, targetId) async {
         try {
           final client = _serverManager.getClient(ServerId(serverId));

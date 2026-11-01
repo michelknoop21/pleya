@@ -8,7 +8,7 @@ import '../media/media_role.dart';
 import '../media/media_stream.dart';
 import '../media/media_source_info.dart';
 import '../media/media_version.dart';
-import '../media/unified/carried_external_ids.dart' show pleyaExternalIdsRawKey;
+import '../media/unified/carried_external_ids.dart' show pleyaExternalIdsRawKey, pleyaExternalIdsSourceKey;
 import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
 import '../models/pleya_server/pleya_wire_lists.dart';
@@ -160,6 +160,8 @@ class PleyaServerMappers {
     String? libraryId,
     String? libraryTitle,
     Map<String, PleyaItem> parents = const {},
+    bool useAppliedExternalIds = false,
+    bool identityKnown = true,
   }) => [
     for (final item in wire)
       if (item.kind != null)
@@ -171,6 +173,8 @@ class PleyaServerMappers {
           libraryTitle: libraryTitle,
           parent: parents[item.parentId],
           grandparent: _grandparentOf(item, parents),
+          useAppliedExternalIds: useAppliedExternalIds,
+          identityKnown: identityKnown,
         ),
   ];
 
@@ -230,6 +234,8 @@ class PleyaServerMappers {
     String? libraryTitle,
     PleyaItem? parent,
     PleyaItem? grandparent,
+    bool useAppliedExternalIds = false,
+    bool identityKnown = true,
   }) {
     final kind = wire.kind;
     if (kind == null) {
@@ -272,8 +278,13 @@ class PleyaServerMappers {
         'favorite': wire.favorite,
         // Only when the server sent the key: an older server leaves it out, and
         // then nothing here may pass for "this title has no numbers".
-        if (wire.externalIdsReported && (kind == PleyaItemKind.movie || kind == PleyaItemKind.show))
-          pleyaExternalIdsRawKey: ExternalIds(tmdb: wire.externalIds.tmdb).toJson(),
+        if (kind == PleyaItemKind.movie || kind == PleyaItemKind.show) ...{
+          pleyaExternalIdsSourceKey: useAppliedExternalIds ? 'applied' : (identityKnown ? 'legacy' : 'unknown'),
+          if (identityKnown && (useAppliedExternalIds ? wire.appliedExternalIdsReported : wire.externalIdsReported))
+            pleyaExternalIdsRawKey: ExternalIds(
+              tmdb: (useAppliedExternalIds ? wire.appliedExternalIds : wire.externalIds).tmdb,
+            ).toJson(),
+        },
       },
       // `updated_at` is when the state last moved, which is the closest thing
       // the contract has to "last viewed". Continue Watching sorts on it.

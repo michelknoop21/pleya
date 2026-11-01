@@ -346,6 +346,8 @@ class PleyaItem {
     this.watchedEpisodeCount,
     this.externalIds = PleyaExternalIds.none,
     this.externalIdsReported = false,
+    this.appliedExternalIds = PleyaExternalIds.none,
+    this.appliedExternalIdsReported = false,
     this.artwork = PleyaArtwork.none,
     this.versions = const [],
     this.userState,
@@ -394,6 +396,10 @@ class PleyaItem {
   /// client tells a server that predates it from a title that has no proven
   /// number. The two must not read the same: only the second is a "no".
   final bool externalIdsReported;
+
+  /// Only a well formed non-null applied object is evidence, never intent.
+  final PleyaExternalIds appliedExternalIds;
+  final bool appliedExternalIdsReported;
   final PleyaArtwork artwork;
   final List<PleyaVersion> versions;
   final PleyaUserState? userState;
@@ -404,6 +410,7 @@ class PleyaItem {
     final artwork = json['artwork'];
     final userState = json['user_state'];
     final externalIds = json['external_ids'];
+    final appliedIds = json['applied_external_ids'];
     return PleyaItem(
       id: str(json, 'id'),
       kind: PleyaItemKind.tryParse(strOrNull(json, 'kind')),
@@ -425,6 +432,10 @@ class PleyaItem {
       watchedEpisodeCount: integerOrNull(json, 'watched_episode_count'),
       externalIds: externalIds is Map<String, dynamic> ? PleyaExternalIds.fromJson(externalIds) : PleyaExternalIds.none,
       externalIdsReported: json.containsKey('external_ids') && PleyaExternalIds.isWellFormed(externalIds),
+      appliedExternalIds: appliedIds is Map<String, dynamic> && PleyaExternalIds.isWellFormed(appliedIds)
+          ? PleyaExternalIds.fromJson(appliedIds)
+          : PleyaExternalIds.none,
+      appliedExternalIdsReported: appliedIds is Map<String, dynamic> && PleyaExternalIds.isWellFormed(appliedIds),
       artwork: artwork is Map<String, dynamic> ? PleyaArtwork.fromJson(artwork) : PleyaArtwork.none,
       versions: [for (final v in objectList(json['versions'], 'versions')) PleyaVersion.fromJson(v)],
       userState: userState is Map<String, dynamic> ? PleyaUserState.fromJson(userState) : null,

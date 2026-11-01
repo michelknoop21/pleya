@@ -80,11 +80,11 @@ class ResolvableItem {
 
   /// The numbers the item's own list answer carried, when they describe the
   /// item itself: the lookup target is the item and nothing narrows them.
-  ExternalIds? get _carriedIds {
+  ExternalIds? _carriedIds({required bool allowLegacyPleya}) {
     if (externalIdDiscriminator != null) return null;
     final target = externalIdTarget;
     if (target == null || target.targetId != item.id) return null;
-    return externalIdsCarriedBy(item);
+    return externalIdsCarriedBy(item, allowLegacyPleya: allowLegacyPleya);
   }
 
   String? get _effectiveBucketKey => bucketKeyOverride ?? identity?.resolutionKey;
@@ -104,7 +104,13 @@ class UnifiedIdentityResolver {
   final Future<ExternalIds> Function(String serverId, String targetId) fetchExternalIds;
   final int maxConcurrentFetches;
 
-  UnifiedIdentityResolver({required this.fetchExternalIds, this.maxConcurrentFetches = 4});
+  UnifiedIdentityResolver({
+    required this.fetchExternalIds,
+    this.maxConcurrentFetches = 4,
+    this.trustStoredIdentity = storedIdentityIsSafe,
+  });
+
+  final bool Function(MediaItem) trustStoredIdentity;
 
   /// [known] and [onResolved] let a caller that resolves a growing list every
   /// round keep its own evidence: an item whose evidence came from fetched ids
@@ -131,13 +137,16 @@ class UnifiedIdentityResolver {
     };
 
     final evidence = List<IdentityEvidence?>.filled(items.length, null);
+    final trustedAtStart = [for (final entry in items) trustStoredIdentity(entry.item)];
+    final newlyResolved = <int>{};
     final pending = <int>[];
     for (var i = 0; i < items.length; i++) {
       final entry = items[i];
       // Numbers the list answer already carried decide identity on their own:
       // no request, and no title or year in the way. A title bucket only
       // gathers candidates for items that came without them.
-      final carried = entry._carriedIds;
+      final trusted = trustedAtStart[i];
+      final carried = entry._carriedIds(allowLegacyPleya: trusted);
       if (carried != null) {
         evidence[i] = IdentityEvidence(
           identity: entry.identity ?? CanonicalMediaIdentity.opaque(),
@@ -150,7 +159,7 @@ class UnifiedIdentityResolver {
       }
       final key = entry._effectiveBucketKey;
       final inDuplicateBucket = key != null && duplicateBuckets.contains(key);
-      final remembered = inDuplicateBucket ? known?.call(i) : null;
+      final remembered = inDuplicateBucket && trusted ? known?.call(i) : null;
       if (remembered != null) {
         evidence[i] = remembered;
       } else if (!inDuplicateBucket || entry.externalIdTarget == null) {
@@ -176,13 +185,22 @@ class UnifiedIdentityResolver {
             },
           );
           evidence[i] = resolved;
-          onResolved?.call(i, resolved);
+          newlyResolved.add(i);
         } catch (_) {
           evidence[i] = _guidOnlyEvidence(entry);
         }
       });
     }
 
+    // A completed legacy answer can wait behind another source. Qualify the
+    // whole pass before publishing any answer into the caller's known cache.
+    for (var i = 0; i < items.length; i++) {
+      if (trustedAtStart[i] && !trustStoredIdentity(items[i].item)) {
+        evidence[i] = _guidOnlyEvidence(items[i]);
+      } else if (newlyResolved.contains(i)) {
+        onResolved?.call(i, evidence[i]!);
+      }
+    }
     return [for (final e in evidence) e!];
   }
 

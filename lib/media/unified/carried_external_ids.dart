@@ -14,6 +14,17 @@ import '../media_kind.dart';
 /// - Pleya Server: `pleyaExternalIds`, written by the mapper only when the
 ///   server sent the `external_ids` key, so an older server leaves it out.
 const pleyaExternalIdsRawKey = 'pleyaExternalIds';
+const pleyaExternalIdsSourceKey = 'pleyaExternalIdsSource';
+
+/// Without live server context only persisted, explicitly applied proof is safe.
+bool hasAppliedExternalIds(MediaItem item) {
+  final ids = item.raw?[pleyaExternalIdsRawKey];
+  if (item.raw?[pleyaExternalIdsSourceKey] != 'applied' || ids is! Map) return false;
+  final tmdb = ids['tmdb'];
+  return tmdb == null || (tmdb is int && tmdb > 0);
+}
+
+bool storedIdentityIsSafe(MediaItem item) => item.backend != MediaBackend.pleyaServer || hasAppliedExternalIds(item);
 
 /// The numbers [item]'s list answer carried, or null when it carried none this
 /// client can trust as "what the server knows". An empty [ExternalIds] is a
@@ -23,7 +34,7 @@ const pleyaExternalIdsRawKey = 'pleyaExternalIds';
 /// Movies and shows only. An episode's numbers on Plex and Jellyfin describe
 /// the episode itself, not its show, so they are never a substitute for the
 /// show-plus-ordinal identity Continue Watching groups on.
-ExternalIds? externalIdsCarriedBy(MediaItem item) {
+ExternalIds? externalIdsCarriedBy(MediaItem item, {bool allowLegacyPleya = false}) {
   if (item.kind != MediaKind.movie && item.kind != MediaKind.show) return null;
   final raw = item.raw;
   if (raw == null) return null;
@@ -35,6 +46,7 @@ ExternalIds? externalIdsCarriedBy(MediaItem item) {
       final ids = raw['ProviderIds'];
       return ids is Map ? ExternalIds.fromJellyfinProviderIds(Map<String, Object?>.from(ids)) : null;
     case MediaBackend.pleyaServer:
+      if (!hasAppliedExternalIds(item) && !allowLegacyPleya) return null;
       final ids = raw[pleyaExternalIdsRawKey];
       return ids is Map ? ExternalIds.fromJson(Map<String, Object?>.from(ids)) : null;
     case MediaBackend.local:

@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 
 import '../media/ids.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
@@ -17,6 +18,8 @@ import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems
 import '../services/seerr/seerr_client.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../services/unified_catalog/source_resolver.dart';
+import '../services/pleya_server_client.dart';
+import '../utils/stored_identity_trust.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
@@ -373,12 +376,29 @@ class FindRun {
         if (matches.contains(m)) m,
     ];
     await Future.wait([for (final m in live) _link(m)]);
-    await groupLibraryMatches(matches, (serverId, targetId) async {
-      if (_knownIds[buildGlobalKey(ServerId(serverId), targetId)] case final known?) return known;
-      final client = ctx.userClient(ServerId(serverId));
-      if (client == null || settled) throw StateError('no lookup');
-      return client.fetchExternalIds(targetId).timeout(_left);
-    });
+    await groupLibraryMatches(
+      matches,
+      (serverId, targetId) async {
+        final client = ctx.userClient(ServerId(serverId));
+        // A disappeared client still belongs to the concrete library item.
+        // Null must not turn a Pleya legacy claim into another backend's cache.
+        final isPleyaItem =
+            client is PleyaServerClient ||
+            matches.any(
+              (match) => match.library.any(
+                (item) => item.serverId == serverId && item.id == targetId && item.backend == MediaBackend.pleyaServer,
+              ),
+            );
+        final canReuseBareIds = !isPleyaItem || (client is PleyaServerClient && client.usesLegacyExternalIdentity);
+        if (canReuseBareIds && _knownIds[buildGlobalKey(ServerId(serverId), targetId)] != null) {
+          return _knownIds[buildGlobalKey(ServerId(serverId), targetId)]!;
+        }
+        if (client == null || settled) throw StateError('no lookup');
+        return client.fetchExternalIds(targetId).timeout(_left);
+      },
+      trustStoredIdentity: (item) =>
+          canTrustStoredIdentity(item, item.serverId == null ? null : ctx.userClient(ServerId(item.serverId!))),
+    );
     attachLooseMatches(matches);
   }
 

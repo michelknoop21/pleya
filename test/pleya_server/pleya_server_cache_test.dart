@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/unified/carried_external_ids.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/services/pleya_server_api_cache.dart';
 
 import 'pleya_fake_server.dart';
@@ -56,5 +58,51 @@ void main() {
     await db.delete(db.connections).go();
     expect((await cache.getMetadata(ServerId('opaque-account-connection'), 'movie'))?.serverId, 'physical-server');
     expect((await cache.getAllPinnedMetadata()).keys, ['physical-server:movie']);
+  });
+  test('wire cache rehydrates applied evidence but never promotes old external_ids', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    PleyaServerApiCache.initialize(db);
+    final fake = PleyaFakeServer();
+    final legacy = fake.addItem(id: 'old', kind: 'movie', title: 'Old', externalIds: {'tmdb': 22});
+    final applied = {
+      ...legacy,
+      'id': 'applied',
+      pleyaExternalIdsSourceKey: 'applied',
+      'applied_external_ids': {'tmdb': 11},
+    };
+    final unknown = {...legacy, 'id': 'unknown', 'applied_external_ids': null};
+    final unqualifiedApplied = {
+      ...legacy,
+      'id': 'unqualified-applied',
+      'applied_external_ids': {'tmdb': 11},
+    };
+    final cache = PleyaServerApiCache.instance;
+    final server = ServerId('synthetic');
+    for (final item in [legacy, applied, unknown, unqualifiedApplied]) {
+      await cache.put(server, PleyaServerApiCache.itemEndpoint(item['id'] as String), item);
+    }
+    expect(externalIdsCarriedBy((await cache.getMetadata(server, 'old'))!), isNull);
+    expect(externalIdsCarriedBy((await cache.getMetadata(server, 'unknown'))!), isNull);
+    expect(externalIdsCarriedBy((await cache.getMetadata(server, 'unqualified-applied'))!), isNull);
+    expect(externalIdsCarriedBy((await cache.getMetadata(server, 'applied'))!), const ExternalIds(tmdb: 11));
+  });
+  test('live cache retains the actually selected legacy source under explicit capfalse', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    PleyaServerApiCache.initialize(db);
+    final fake = PleyaFakeServer();
+    fake.addItem(id: 'movie', kind: 'movie', title: 'Film', externalIds: {'tmdb': 22})['applied_external_ids'] = {
+      'tmdb': 11,
+    };
+    final client = fake.client();
+    addTearDown(client.close);
+    await client.refreshCapabilities();
+    final live = (await client.fetchItem('movie'))!;
+    final cached = (await PleyaServerApiCache.instance.getMetadata(ServerId(fake.connection().id), 'movie'))!;
+    expect(externalIdsCarriedBy(live, allowLegacyPleya: true), const ExternalIds(tmdb: 22));
+    expect(externalIdsCarriedBy(cached, allowLegacyPleya: true), const ExternalIds(tmdb: 22));
+    expect(externalIdsCarriedBy(cached), isNull);
+    expect(cached.raw?[pleyaExternalIdsSourceKey], 'legacy');
   });
 }

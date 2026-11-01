@@ -139,19 +139,27 @@ class LocalLibrarySync {
       // Whether the stored answer may be trusted as final. Only a Pleya Server
       // that knows the field says so; the others keep the behaviour they had.
       var authoritative = false;
+      String? identitySource = client is PleyaServerClient ? client.externalIdentitySource : null;
       // A Pleya row whose stored answer was not final (written by an older build,
       // or by a server that predates the field) is asked again, also when the
       // rest of the row was retained unchanged.
-      final storedFinal = client is! PleyaServerClient || item.raw?['pleyaLocalExternalIdsFinal'] == true;
+      final storedFinal =
+          client is! PleyaServerClient ||
+          (item.raw?['pleyaLocalExternalIdsFinal'] == true && client.canUseStoredExternalIds(item));
       // Numbers the fresh list answer carries always win: a retained row keeps
       // its old stored answer, which predates a match the server made since.
-      final fresh = externalIdsCarriedBy(candidate);
+      final allowLegacy =
+          client is PleyaServerClient &&
+          !client.wireCapabilities.appliedExternalIdentity &&
+          client.identityCapabilitiesKnown;
+      final fresh = externalIdsCarriedBy(candidate, allowLegacyPleya: allowLegacy);
       if (fresh != null) {
         ids = fresh;
         authoritative = true;
+        if (client is PleyaServerClient) identitySource = candidate.raw?[pleyaExternalIdsSourceKey] as String?;
       } else if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) &&
-          (item.raw?['pleyaLocalExternalIds'] == null || !storedFinal)) {
-        final listed = externalIdsCarriedBy(item);
+          (client is PleyaServerClient || item.raw?['pleyaLocalExternalIds'] == null || !storedFinal)) {
+        final listed = client is PleyaServerClient ? null : externalIdsCarriedBy(item);
         if (listed != null) {
           ids = listed;
           authoritative = true;
@@ -161,6 +169,7 @@ class LocalLibrarySync {
               final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));
               ids = answer.ids;
               authoritative = answer.authoritative;
+              identitySource = answer.source;
             } else {
               ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
             }
@@ -179,13 +188,24 @@ class LocalLibrarySync {
           await check();
         }
       }
+      final identityRaw = client is PleyaServerClient ? <String, dynamic>{...?item.raw, ...?candidate.raw} : item.raw;
+      if (client is PleyaServerClient) {
+        identityRaw?.remove('pleyaLocalExternalIds');
+        identityRaw?.remove('pleyaLocalExternalIdsFinal');
+        identityRaw?.remove(pleyaExternalIdsRawKey);
+        if (fresh != null) identityRaw?[pleyaExternalIdsRawKey] = fresh.toJson();
+      }
       next[item.globalKey] = ids == null
-          ? item
+          ? item.copyWith(raw: identityRaw)
           : item.copyWith(
               raw: {
-                ...?item.raw,
+                ...?identityRaw,
                 'pleyaLocalExternalIds': ids.toJson(),
-                if (client is PleyaServerClient) 'pleyaLocalExternalIdsFinal': authoritative,
+                if (client is PleyaServerClient) ...{
+                  'pleyaLocalExternalIdsFinal': authoritative,
+                  pleyaExternalIdsSourceKey: identitySource ?? 'unknown',
+                  if (authoritative) pleyaExternalIdsRawKey: ids.toJson(),
+                },
               },
             );
       done++;

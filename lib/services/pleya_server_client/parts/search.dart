@@ -31,7 +31,13 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
     if (json == null) return const [];
     try {
       final page = PleyaItemPage.fromJson(json);
-      return PleyaServerMappers.items(page.knownItems, serverId: serverId.toString(), serverName: serverName);
+      return PleyaServerMappers.items(
+        page.knownItems,
+        serverId: serverId.toString(),
+        serverName: serverName,
+        useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+        identityKnown: identityCapabilitiesKnown,
+      );
     } on PleyaWireFormatException catch (e) {
       appLogger.w('PleyaServerClient: /search did not match the contract', error: e);
       return const [];
@@ -49,12 +55,22 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
   /// other backends use is switched off here. Ambiguity (two titles carrying
   /// the number) never resolves, as for every backend.
   Future<MediaItem?> findByIdentity(MediaIdentity identity) async =>
-      identity.pickMatch(await _identityCandidates(identity), allowTitleFallback: false);
+      identity.pickMatch(await _identityCandidatesInSameSource(identity), allowTitleFallback: false);
 
   /// Every title on this server that is provably [identity]: a server can hold
   /// the same film in two libraries, and each copy is a source.
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async =>
-      identity.pickAllMatches(await _identityCandidates(identity), allowTitleFallback: false);
+      identity.pickAllMatches(await _identityCandidatesInSameSource(identity), allowTitleFallback: false);
+
+  Future<List<({MediaItem item, ExternalIds ids})>> _identityCandidatesInSameSource(MediaIdentity identity) async {
+    final source = externalIdentitySource;
+    final candidates = await _identityCandidates(identity);
+    if (source != externalIdentitySource ||
+        candidates.any((candidate) => candidate.item.raw?[pleyaExternalIdsSourceKey] != source)) {
+      throw const IdentityLookupUnavailable('identity source changed during lookup');
+    }
+    return candidates;
+  }
 
   /// Asks the server for the titles that carry the number of [identity], per
   /// library of the right kind. The lookup is by number only: the folder name,
@@ -74,7 +90,7 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
     if (tmdb == null || (kind != MediaKind.movie && kind != MediaKind.show)) {
       throw IdentityLookupUnsupported('${identity.title} has no TMDB number and kind to ask by');
     }
-    if (!wireCapabilities.externalIdLookup) {
+    if (!(wireCapabilities.appliedExternalIdentity || wireCapabilities.externalIdLookup)) {
       throw const IdentityLookupUnsupported('this server cannot look titles up by number');
     }
 
@@ -98,7 +114,11 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
         if (pages >= 3) throw IdentityLookupUnavailable('too many results for tmdb:$tmdb in ${library.id}');
         final answer = await _getJsonDetailed(
           '/libraries/${Uri.encodeComponent(library.id)}/items',
-          queryParameters: {'external_id': 'tmdb:$tmdb', 'limit': '100', 'cursor': ?cursor},
+          queryParameters: {
+            (wireCapabilities.appliedExternalIdentity ? 'applied_external_id' : 'external_id'): 'tmdb:$tmdb',
+            'limit': '100',
+            'cursor': ?cursor,
+          },
           timeout: MediaServerTimeouts.searchPerServer,
         );
         final json = answer.json;
@@ -117,7 +137,9 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
         // ignored the parameter returns everything, and everything is not a hit.
         final hits = [
           for (final item in page.knownItems)
-            if (item.kind == wantedItemKind && item.externalIds.tmdb == tmdb) item,
+            if (item.kind == wantedItemKind &&
+                (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIds : item.externalIds).tmdb == tmdb)
+              item,
         ];
         for (final item in hits) {
           out.add((
@@ -125,10 +147,14 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
               item,
               serverId: serverId.toString(),
               serverName: serverName,
+              useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+              identityKnown: identityCapabilitiesKnown,
               libraryId: library.id,
               libraryTitle: library.title,
             ),
-            ids: ExternalIds(tmdb: item.externalIds.tmdb),
+            ids: ExternalIds(
+              tmdb: (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIds : item.externalIds).tmdb,
+            ),
           ));
         }
         cursor = page.nextCursor;

@@ -289,7 +289,12 @@ void main() {
         title: id,
         serverId: 'one',
         libraryId: 'films',
-        raw: {'pleyaLocalExternalIds': ids, 'pleyaLocalExternalIdsFinal': final_},
+        raw: {
+          'pleyaLocalExternalIds': ids,
+          'pleyaLocalExternalIdsFinal': final_,
+          'pleyaExternalIdsSource': final_ ? 'applied' : 'unknown',
+          if (final_) 'pleyaExternalIds': ids,
+        },
       );
       await store.saveLibrary(library, [
         pleya('proven', {'tmdb': 5}),

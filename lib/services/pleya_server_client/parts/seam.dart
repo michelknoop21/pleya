@@ -20,6 +20,8 @@ mixin _PleyaServerRequests {
   /// on this: an endpoint the server says it does not have is not worth a
   /// round-trip, and the answer would be a 404 the UI has to interpret.
   PleyaCapabilities get wireCapabilities;
+  bool get identityCapabilitiesKnown;
+  String get externalIdentitySource;
 
   bool get isOfflineMode;
 

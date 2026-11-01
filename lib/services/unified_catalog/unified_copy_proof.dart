@@ -9,6 +9,7 @@ import '../../media/ids.dart';
 import '../../media/media_identity.dart';
 import '../../media/episode_collection.dart';
 import '../../media/media_item.dart';
+import '../../media/media_backend.dart';
 import '../../media/media_item_types.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -17,6 +18,7 @@ import '../../media/unified/identity_evidence.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/external_ids.dart';
+import '../../utils/stored_identity_trust.dart';
 import 'source_episode_index.dart';
 
 /// [guid] when it says what the title is. An unmatched item carries a
@@ -39,7 +41,16 @@ class UnifiedCopyProof {
   final Map<String, Future<ExternalIds?>> _ids = {};
 
   Future<bool> sameTitle(UnifiedMediaSource a, UnifiedMediaSource b) async {
+    final trustedA = canTrustStoredIdentity(a.item, clientFor(a.serverId));
+    final trustedB = canTrustStoredIdentity(b.item, clientFor(b.serverId));
     final idsOf = await Future.wait([_idsOf(a), _idsOf(b)]);
+    final lostA = trustedA && !canTrustStoredIdentity(a.item, clientFor(a.serverId));
+    final lostB = trustedB && !canTrustStoredIdentity(b.item, clientFor(b.serverId));
+    if (lostA || lostB) {
+      if (lostA) _ids.remove(a.sourceKey);
+      if (lostB) _ids.remove(b.sourceKey);
+      return false;
+    }
     final claim = MediaIdentity(guid: _titleGuid(a), externalIds: idsOf.first, title: a.item.title, kind: a.item.kind);
     final other = (item: b.item.copyWith(guid: _titleGuid(b)), ids: idsOf.last);
     return claim.pickAllMatches([other], allowTitleFallback: false).isNotEmpty;
@@ -49,9 +60,11 @@ class UnifiedCopyProof {
   static String? _titleGuid(UnifiedMediaSource source) => source.item.isEpisode ? null : provingGuid(source.item.guid);
 
   Future<ExternalIds> _idsOf(UnifiedMediaSource source) async {
-    if (source.externalIds.hasAny) return source.externalIds;
-    final carried = externalIdsCarriedBy(source.item);
+    final trusted = canTrustStoredIdentity(source.item, clientFor(source.serverId));
+    if (source.item.backend != MediaBackend.pleyaServer && source.externalIds.hasAny) return source.externalIds;
+    final carried = externalIdsCarriedBy(source.item, allowLegacyPleya: trusted);
     if (carried != null) return carried;
+    if (!trusted) _ids.remove(source.sourceKey);
     final read = await (_ids[source.sourceKey] ??= _read(source));
     // A server that did not answer gets asked again next time.
     if (read == null) _ids.remove(source.sourceKey);

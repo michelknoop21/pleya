@@ -71,7 +71,10 @@ MediaItem _pleyaShow(String id, String title, int year, {int? tmdb, MediaKind ki
   year: year,
   serverId: 'srv-pleya',
   serverName: 'srv-pleya',
-  raw: {pleyaExternalIdsRawKey: ExternalIds(tmdb: tmdb).toJson()},
+  raw: {
+    pleyaExternalIdsRawKey: ExternalIds(tmdb: tmdb).toJson(),
+    pleyaExternalIdsSourceKey: 'applied',
+  },
 );
 
 class _Client implements MediaServerClient {
@@ -161,7 +164,7 @@ void main() {
       expect(externalIdsCarriedBy(item), const ExternalIds(imdb: 'tt0386676', tmdb: 2316));
     });
 
-    test('Pleya Server carries numbers only when the server sent the key', () {
+    test('Pleya Server carries applied proof; legacy needs explicit old-server context', () {
       PleyaItem wire(Map<String, dynamic> extra) => PleyaItem.fromJson({
         'id': 'p1',
         'kind': 'show',
@@ -173,17 +176,31 @@ void main() {
         externalIdsCarriedBy(
           PleyaServerMappers.mediaItem(
             wire({
-              'external_ids': {'tmdb': 2316},
+              'applied_external_ids': {'tmdb': 2316},
             }),
             serverId: 's',
+            useAppliedExternalIds: true,
           ),
         ),
         const ExternalIds(tmdb: 2316),
       );
       expect(
-        externalIdsCarriedBy(PleyaServerMappers.mediaItem(wire({'external_ids': null}), serverId: 's')),
+        externalIdsCarriedBy(
+          PleyaServerMappers.mediaItem(
+            wire({'applied_external_ids': null}),
+            serverId: 's',
+            useAppliedExternalIds: true,
+          ),
+        ),
+        isNull,
+        reason: 'null applied is unknown, never legacy intent',
+      );
+      expect(
+        externalIdsCarriedBy(
+          PleyaServerMappers.mediaItem(wire({'external_ids': null}), serverId: 's'),
+          allowLegacyPleya: true,
+        ),
         const ExternalIds(),
-        reason: 'the server knows the field and says: no numbers',
       );
       expect(
         externalIdsCarriedBy(PleyaServerMappers.mediaItem(wire({}), serverId: 's')),

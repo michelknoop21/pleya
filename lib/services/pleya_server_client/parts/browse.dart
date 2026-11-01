@@ -263,7 +263,12 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       _watchLedger.remember(item.id, item.userState?.revision);
       _rememberExternalIds([item]);
       try {
-        await cache.put(ServerId(connection.id), PleyaServerApiCache.itemEndpoint(id), json);
+        await cache.put(ServerId(connection.id), PleyaServerApiCache.itemEndpoint(id), {
+          ...json,
+          pleyaExternalIdsSourceKey: identityCapabilitiesKnown
+              ? (wireCapabilities.appliedExternalIdentity ? 'applied' : 'legacy')
+              : 'unknown',
+        });
       } catch (e) {
         appLogger.d('PleyaServerClient: optional metadata cache write failed', error: e);
       }
@@ -272,6 +277,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
         item,
         serverId: serverId.toString(),
         serverName: serverName,
+        useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+        identityKnown: identityCapabilitiesKnown,
         parent: ancestors.parent,
         grandparent: ancestors.grandparent,
       );
@@ -289,25 +296,32 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// [IdentityLookupUnavailable] means it did not answer (offline, transport,
   /// timeout, 429, 5xx, a broken body) and nothing may be remembered as final.
   /// Only a `not_found` answer, the item being gone, is a definitive empty.
-  Future<ExternalIds> fetchExternalIds(String itemId) async => (await fetchExternalIdsDetailed(itemId)).ids;
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    final answer = await fetchExternalIdsDetailed(itemId);
+    if (answer.source != externalIdentitySource) {
+      throw const IdentityLookupUnavailable('identity source changed while reading');
+    }
+    return answer.ids;
+  }
 
   /// [fetchExternalIds] plus whether the answer is authoritative: the server
   /// knows the `external_ids` field, so an empty list really is "no proven
   /// number". A server that predates the field answers empty with
   /// `authoritative: false`, and a caller that stores the answer must not treat
   /// it as final.
-  Future<({ExternalIds ids, bool authoritative})> fetchExternalIdsDetailed(String itemId) async {
+  Future<({ExternalIds ids, bool authoritative, String source})> fetchExternalIdsDetailed(String itemId) async {
     // Numbers read a moment ago off a page or a detail answer need no second
     // request. Short-lived, so a later rematch is never hidden for long.
     final known = _recentExternalIds[itemId];
     if (known != null && DateTime.now().difference(known.at) < _recentExternalIdsTtl) {
-      return (ids: known.ids, authoritative: known.authoritative);
+      return (ids: known.ids, authoritative: known.authoritative, source: known.source);
     }
     final answer = await _getJsonDetailed('/items/${Uri.encodeComponent(itemId)}');
     final json = answer.json;
     if (json == null) {
       final code = answer.errorCode;
-      if (code != null && code.endsWith('not_found')) return (ids: const ExternalIds(), authoritative: true);
+      if (code != null && code.endsWith('not_found'))
+        return (ids: const ExternalIds(), authoritative: true, source: externalIdentitySource);
       throw IdentityLookupUnavailable('no usable answer for /items/$itemId (${code ?? 'no response'})');
     }
     final PleyaItem item;
@@ -320,8 +334,16 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     _rememberExternalIds([item]);
     final isTitle = item.kind == PleyaItemKind.movie || item.kind == PleyaItemKind.show;
     return (
-      ids: isTitle ? ExternalIds(tmdb: item.externalIds.tmdb) : const ExternalIds(),
-      authoritative: !isTitle || item.externalIdsReported,
+      ids: isTitle && identityCapabilitiesKnown
+          ? ExternalIds(
+              tmdb: (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIds : item.externalIds).tmdb,
+            )
+          : const ExternalIds(),
+      authoritative:
+          !isTitle ||
+          (identityCapabilitiesKnown &&
+              (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIdsReported : item.externalIdsReported)),
+      source: externalIdentitySource,
     );
   }
 
@@ -337,8 +359,15 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       if (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) continue;
       _recentExternalIds.remove(item.id);
       _recentExternalIds[item.id] = (
-        ids: ExternalIds(tmdb: item.externalIds.tmdb),
-        authoritative: item.externalIdsReported,
+        ids: identityCapabilitiesKnown
+            ? ExternalIds(
+                tmdb: (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIds : item.externalIds).tmdb,
+              )
+            : const ExternalIds(),
+        source: externalIdentitySource,
+        authoritative:
+            identityCapabilitiesKnown &&
+            (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIdsReported : item.externalIdsReported),
         at: now,
       );
     }
@@ -721,6 +750,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       window,
       serverId: serverId.toString(),
       serverName: serverName,
+      useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+      identityKnown: identityCapabilitiesKnown,
       libraryId: libraryId,
       parents: await _ancestorsFor(window, parentId: parentId),
     );
@@ -791,7 +822,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   final Map<String, PleyaItem> _itemCache = {};
 
   /// The numbers of the item [fetchItem] answered last, for [fetchExternalIds].
-  final Map<String, ({ExternalIds ids, bool authoritative, DateTime at})> _recentExternalIds = {};
+  final Map<String, ({ExternalIds ids, bool authoritative, String source, DateTime at})> _recentExternalIds = {};
   static const Duration _recentExternalIdsTtl = Duration(seconds: 60);
   static const int _recentExternalIdsMax = 5000;
 

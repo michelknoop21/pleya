@@ -25,6 +25,8 @@ import '../services/local_library/local_library_sync.dart';
 import '../utils/app_logger.dart';
 import '../utils/deletion_notifier.dart';
 import '../utils/external_ids.dart';
+import '../utils/stored_identity_trust.dart';
+import '../media/unified/carried_external_ids.dart';
 import '../utils/media_image_helper.dart';
 
 int _nextArtworkWriter = 0;
@@ -778,6 +780,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   ExternalIds? externalIds(String serverId, String targetId) {
     final cached = item(serverId, targetId);
     if (cached == null) return null;
+    if (!canTrustStoredIdentity(cached, clientFor(ServerId(serverId)))) return null;
+    if (hasAppliedExternalIds(cached)) return externalIdsCarriedBy(cached);
     final raw = cached.raw;
     final local = raw?['pleyaLocalExternalIds'];
     if (local is Map<String, Object?>) {

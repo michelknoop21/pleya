@@ -26,7 +26,7 @@ Consumeer Task1. Additief Item.applied_external_ids, applied_external_id-query, 
 
 ## Task 3: Flutter, cache en opgeslagen bewijs
 
-Consumeer Task2. Bij capability true uitsluitend applied, ook bij ontbrekend/ongeldig applied: nooit intentie als fallback. Gebruik bestaande raw-map/Final-bronkwalificatie voor persisted/retained-row/cacheclaims, geen ongefundeerde nieuwe Drift-/epochinfrastructuur. Alle detail/list/lookup/carried/known/copy-proof-fastpaths meenemen; overige backends behouden gedrag. Restart/offline/capabilityovergang met echte opslagtests, generated wire en toepasselijke clientchecks. Concrete uitvoerbrief volgt.
+Consumeer Task2. Bij capability true uitsluitend applied, ook bij ontbrekend/ongeldig applied: nooit intentie als fallback. Gebruik bestaande raw-map/Final-bronkwalificatie voor persisted/retained-row/cacheclaims, geen ongefundeerde nieuwe Drift-/epochinfrastructuur. Alle detail/list/lookup/carried/known/copy-proof-fastpaths meenemen; overige backends behouden gedrag. Restart/offline/capabilityovergang met echte opslagtests en toepasselijke clientchecks lokaal gebouwd op85ac47eb5. Feitelijke antwoordbron en hele-passbewaking voorkomen promotie na await; 34 code/testfiles frozen, [B1-bewijs](../../qa/2026-11-01-server-gap-applied-client.md). Definitieve cohort59PASS, veertien fasegebonden negatieven en canonieke gate groen; review-I1/M1 in één ronde hersteld,108gerichtePASS en extra negatief/herstel, verse scopedreview akkoord. Normale commithooks volgen bij lokale commit. B2-functionaliteit blijft Task4.
 
 ## Task 4: Big P en onvolledige lookupdekking
 

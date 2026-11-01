@@ -536,6 +536,7 @@ class _SearchScreenState extends State<SearchScreen>
             return externalIdsFetcherFor(multiServerProvider)(server, id);
           },
           people: aggregated.people,
+          trustStoredIdentity: storedIdentityTrustFor(multiServerProvider),
         );
         if (!mounted || isStale()) return;
       }
