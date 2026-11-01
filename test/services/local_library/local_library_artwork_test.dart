@@ -247,6 +247,46 @@ void main() {
     expect(store.posterBudget(now).total, 60);
   });
 
+  test('revalidation ceiling is three across retiring and new profile callers', () async {
+    final gates = [for (var i = 0; i < 4; i++) Completer<void>()];
+    var entered = 0;
+    var active = 0;
+    var maxActive = 0;
+    final client = MockClient((_) async {
+      final index = entered++;
+      active++;
+      if (active > maxActive) maxActive = active;
+      await gates[index].future;
+      active--;
+      return http.Response.bytes([1], 200);
+    });
+    final pending = [
+      for (var i = 0; i < 4; i++) revalidateLocalPoster('https://fixture.invalid/$i', {}, transport: client),
+    ];
+    try {
+      for (var spin = 0; entered < 3 && spin < 100; spin++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(entered, 3);
+      expect(maxActive, 3);
+      for (final gate in gates.take(3)) {
+        gate.complete();
+      }
+      for (var spin = 0; entered < 4 && spin < 100; spin++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(entered, 4);
+      gates.last.complete();
+      await Future.wait(pending);
+      expect(maxActive, 3);
+    } finally {
+      for (final gate in gates) {
+        if (!gate.isCompleted) gate.complete();
+      }
+      await Future.wait(pending);
+    }
+  });
+
   test('policy denial starts no artwork request', () async {
     var calls = 0;
     await expectLater(

@@ -19,6 +19,8 @@ import '../utils/media_server_http_client.dart';
 
 final _artworkHttpClient = MediaServerHttpClient(usePlexApiClient: true);
 final _artworkRequestLimiter = _RequestLimiter(6);
+// Across retiring/new profile providers as well as one sequential sync.
+final _localPosterRevalidationLimiter = _RequestLimiter(3);
 
 /// Durable on-disk location for the artwork cache.
 ///
@@ -258,6 +260,7 @@ Future<LocalPosterResult> revalidateLocalPoster(
   Map<String, String> headers = const {},
   http.Client? transport,
 }) async {
+  final permit = await _localPosterRevalidationLimiter.acquire();
   final variant = artworkStorageKey(url);
   final sameVariant = validators['variant'] == variant;
   final client = transport ?? _SharedHttpClient(_artworkHttpClient.inner);
@@ -302,6 +305,7 @@ Future<LocalPosterResult> revalidateLocalPoster(
   } finally {
     timeout.cancel();
     abort.abort();
+    permit.release();
     // The wrapper releases permits; it does not close the app-wide transport.
     if (transport == null) client.close();
   }

@@ -28,6 +28,25 @@ class LocalLibraryStore {
   final Map<String, String> _posters = {};
   final Map<String, Map<String, dynamic>> _posterFreshness = {};
   final List<({DateTime at, bool priority})> _posterAttempts = [];
+  final Map<String, Map<String, dynamic>> _artworkVariants = {};
+  Future<void> invalidateArtworkVariants() {
+    _artworkVariants.clear();
+    return saveAccess();
+  }
+
+  Map<String, dynamic> artworkVariant(String identity) => Map.of(_artworkVariants[identity] ?? const {});
+  Future<void> saveArtworkVariant(String identity, Map<String, dynamic> state, {required bool Function() isCurrent}) =>
+      _serial(() async {
+        if (!isCurrent()) return;
+        final next = {..._artworkVariants}..remove(identity);
+        next[identity] = state;
+        if (next.length > 60) next.remove(next.keys.first);
+        await _atomic(_optionsFile, jsonEncode({..._options, 'artworkVariants': next}), isCurrent);
+        if (!isCurrent()) return;
+        _artworkVariants
+          ..clear()
+          ..addAll(next);
+      });
   ({int total, int priority}) posterBudget(DateTime now) {
     _posterAttempts.removeWhere((a) => now.difference(a.at) >= const Duration(minutes: 10));
     return (total: _posterAttempts.length, priority: _posterAttempts.where((a) => a.priority).length);
@@ -60,6 +79,7 @@ class LocalLibraryStore {
     await _atomic(_optionsFile, jsonEncode(_options), isCurrent);
   });
   Future<void> _pending = Future.value();
+  Future<void> get pendingWrites => _pending;
 
   static String digest(String value) => sha256.convert(utf8.encode(value)).toString();
   static String _posterKey(String serverId, String path) => digest('$serverId|${artworkStorageKey(path)}');
@@ -106,6 +126,9 @@ class LocalLibraryStore {
       final data = jsonDecode(await _optionsFile.readAsString()) as Map<String, dynamic>;
       enabled = data['enabled'] == true;
       wifiOnly = data['wifiOnly'] != false;
+      for (final entry in (data['artworkVariants'] as Map<String, dynamic>? ?? {}).entries.take(60)) {
+        _artworkVariants[entry.key] = Map<String, dynamic>.from(entry.value as Map);
+      }
       for (final raw in (data['posterAttempts'] as List? ?? const [])) {
         final value = raw as Map;
         final at = DateTime.tryParse(value['at'] as String? ?? '');
@@ -122,6 +145,7 @@ class LocalLibraryStore {
     if (await clearMarker.exists()) {
       enabled = false;
       _posterFreshness.clear();
+      _artworkVariants.clear();
       _posterAttempts.clear();
       await _atomic(_optionsFile, jsonEncode(_options), () => true);
       await _removeContent();
@@ -211,6 +235,7 @@ class LocalLibraryStore {
   Map<String, Object?> get _options => {
     'enabled': enabled,
     'wifiOnly': wifiOnly,
+    'artworkVariants': _artworkVariants,
     'posterAttempts': [
       for (final a in _posterAttempts) {'at': a.at.toIso8601String(), 'priority': a.priority},
     ],
@@ -389,6 +414,7 @@ class LocalLibraryStore {
     _completed.clear();
     _posters.clear();
     _posterFreshness.clear();
+    _artworkVariants.clear();
     _posterPriority.clear();
     _posterAttempts.clear();
     await _removeContent();

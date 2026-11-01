@@ -394,16 +394,21 @@ class OptimizedMediaImage extends StatelessWidget {
       imageType: imageType,
     );
 
-    final effectiveCacheKey = cacheKey ?? _generateCacheKey(imageUrl);
+    final baseCacheKey = cacheKey ?? _generateCacheKey(imageUrl);
+    final effectiveCacheKey = context.select<LocalLibraryProvider?, String>(
+      (owner) => client == null
+          ? baseCacheKey
+          : owner?.artworkCacheKey(client!.serverId, imageUrl, baseCacheKey) ?? baseCacheKey,
+    );
 
     final provider = CachedNetworkImageProvider(
       imageUrl,
       cacheKey: effectiveCacheKey,
-      cacheManager: PlexImageCacheManager.instance,
+      cacheManager: context.read<LocalLibraryProvider?>()?.artworkCache ?? PlexImageCacheManager.instance,
       headers: const {'User-Agent': 'Pleya'},
     );
 
-    return Image(
+    final image = Image(
       image: ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider),
       width: width,
       height: height,
@@ -439,6 +444,13 @@ class OptimizedMediaImage extends StatelessWidget {
           child: frame != null ? child : _buildPlaceholder(context, imageUrl),
         );
       },
+    );
+    return _VisibleArtworkRegistration(
+      owner: context.read<LocalLibraryProvider?>(),
+      request: client == null
+          ? null
+          : VisibleArtworkRequest(client: client!, path: imagePath!, url: imageUrl, baseKey: baseCacheKey),
+      child: image,
     );
   }
 
@@ -486,4 +498,53 @@ class OptimizedMediaImage extends StatelessWidget {
   // URL keeps auth-token rotation from invalidating the whole disk cache on
   // every re-auth. See [artworkCacheKey].
   String _generateCacheKey(String imageUrl) => artworkCacheKey(imageUrl);
+}
+
+/// No layout or paint change. The lease lives exactly as long as this mounted
+/// network image, and equal rebuilds keep one registration.
+class _VisibleArtworkRegistration extends StatefulWidget {
+  const _VisibleArtworkRegistration({required this.owner, required this.request, required this.child});
+  final LocalLibraryProvider? owner;
+  final VisibleArtworkRequest? request;
+  final Widget child;
+  @override
+  State<_VisibleArtworkRegistration> createState() => _VisibleArtworkRegistrationState();
+}
+
+class _VisibleArtworkRegistrationState extends State<_VisibleArtworkRegistration> {
+  final Object _lease = Object();
+  void _register() {
+    final request = widget.request;
+    if (request != null) widget.owner?.registerVisibleArtwork(_lease, request);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _register();
+  }
+
+  @override
+  void didUpdateWidget(covariant _VisibleArtworkRegistration oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final a = oldWidget.request;
+    final b = widget.request;
+    if (identical(oldWidget.owner, widget.owner) &&
+        identical(a?.client, b?.client) &&
+        a?.url == b?.url &&
+        a?.baseKey == b?.baseKey &&
+        a?.path == b?.path)
+      return;
+    oldWidget.owner?.unregisterVisibleArtwork(_lease);
+    _register();
+  }
+
+  @override
+  void dispose() {
+    widget.owner?.unregisterVisibleArtwork(_lease);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

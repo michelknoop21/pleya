@@ -62,6 +62,7 @@ void main() {
   });
   tearDown(() async {
     if (!provider.isDisposed) provider.dispose();
+    await provider.pendingStoreWrites;
     changes.dispose();
     await root.delete(recursive: true);
   });
