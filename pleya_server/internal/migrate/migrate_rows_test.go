@@ -42,8 +42,11 @@ func TestMigrationsKeepRowsInMediaItemsAndRefreshTokens(t *testing.T) {
 	used, live := auth.HashOpaque("gebruikt"), auth.HashOpaque("kop-van-de-keten")
 	execAll(t, pool, map[string][]any{
 		`INSERT INTO users (id, username, password_hash, role) VALUES ($1, 'kijker', 'x', 'member')`: {user},
-		`INSERT INTO sessions (id, user_id, device_name) VALUES ($1, $2, 'Browser')`:                 {session, user},
 		`INSERT INTO libraries (id, slug, title, kind) VALUES ($1, 'films', 'Films', 'movies')`:      {library},
+	})
+	// Een map heeft geen volgorde, en sessions verwijst naar users.
+	execAll(t, pool, map[string][]any{
+		`INSERT INTO sessions (id, user_id, device_name) VALUES ($1, $2, 'Browser')`: {session, user},
 	})
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO media_items (id, library_id, parent_id, kind, grouping_key, title, year, item_index) VALUES
@@ -186,7 +189,7 @@ func TestMigration0030AddsTheIndexesAndKeepsRowsAndConstraints(t *testing.T) {
 
 			var indexes int
 			if err := pool.QueryRow(ctx, `
-				SELECT count(*) FROM pg_indexes WHERE tablename = 'auth_refresh_tokens' AND indexname IN
+				SELECT count(*) FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'auth_refresh_tokens' AND indexname IN
 					('auth_refresh_tokens_session_id_idx', 'auth_refresh_tokens_replaced_by_idx')`).Scan(&indexes); err != nil {
 				t.Fatal(err)
 			}
