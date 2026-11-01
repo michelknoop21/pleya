@@ -17,8 +17,20 @@ import '../plex_client.dart';
 import '../pleya_server_client.dart';
 import '../local_folder_client.dart';
 import 'local_library_store.dart';
+import '../download_artwork_helpers.dart';
 
 class LocalLibraryPaused implements Exception {}
+
+class LocalPosterResult {
+  const LocalPosterResult({this.bytes, this.etag, this.lastModified, required this.variant});
+  final Uint8List? bytes; // null means a successful conditional 304.
+  final String? etag;
+  final String? lastModified;
+  final String variant;
+}
+
+typedef LocalPosterRevalidator =
+    Future<LocalPosterResult> Function(MediaServerClient client, MediaItem item, Map<String, dynamic> validators);
 
 typedef LocalPosterLoader = Future<Uint8List> Function(MediaServerClient client, MediaItem item);
 
@@ -31,9 +43,13 @@ class LocalLibrarySync {
     this.checkpointEvery = const Duration(seconds: 30),
     this.mayContinue,
     this.posterLoader,
+    this.posterRevalidator,
+    DateTime Function()? clock,
     this.onProgress,
     this.onCheckpoint,
-  });
+  }) : clock = clock ?? DateTime.now;
+  final DateTime Function() clock;
+  final LocalPosterRevalidator? posterRevalidator;
   final LocalLibraryStore store;
   final int pageSize;
 
@@ -172,19 +188,6 @@ class LocalLibrarySync {
                 if (client is PleyaServerClient) 'pleyaLocalExternalIdsFinal': authoritative,
               },
             );
-      final loader = posterLoader;
-      final path = item.thumbPath;
-      if (loader != null &&
-          path != null &&
-          path.isNotEmpty &&
-          item.serverId != null &&
-          (store.posterPath(item.serverId!, path) == null ||
-              old?.thumbPath != path ||
-              (item.updatedAt != null && item.updatedAt != old?.updatedAt))) {
-        final bytes = await loader(client, item).timeout(const Duration(seconds: 30));
-        await check();
-        await store.savePoster(item.serverId!, path, bytes, isCurrent: valid);
-      }
       done++;
       onProgress?.call(done, item.displayTitle);
     }
@@ -276,6 +279,102 @@ class LocalLibrarySync {
       await check();
       if (client is LocalFolderClient && client.hasIncompleteScan) throw StateError('Folder scan is incomplete');
       await store.saveLibrary(library, next.values.toList(), complete: true, isCurrent: valid);
+      if (posterLoader != null || posterRevalidator != null) {
+        await syncPosters(next.values, (_) => client, isCurrent: valid);
+      }
+    }
+  }
+
+  /// Pilot ceiling, not an optimal device/network budget. Sequential IO keeps
+  /// at most one response body in memory (below the proposed concurrency 3).
+  /// Select bounded references only; never gather the poster catalog or bytes.
+  Future<void> syncPosters(
+    Iterable<MediaItem> items,
+    MediaServerClient? Function(String) clientFor, {
+    required bool Function() isCurrent,
+  }) async {
+    final now = clock().toUtc();
+    bool valid() => isCurrent();
+    Future<void> check() async {
+      if (!valid() || !(await mayContinue?.call() ?? true) || !valid()) throw LocalLibraryPaused();
+    }
+
+    await check();
+    const interval = Duration(minutes: 10);
+    final budget = store.posterBudget(now);
+    if (budget.total >= 60) return;
+    final priority = <MediaItem>[];
+    final oldest = <MediaItem>[];
+    String key(MediaItem i) => '${i.serverId}|${artworkStorageKey(i.thumbPath!)}';
+    DateTime attempted(MediaItem i) =>
+        DateTime.tryParse(store.posterFreshness(i.serverId!, i.thumbPath!)['attempted'] as String? ?? '') ??
+        DateTime.utc(1970);
+    void insert(List<MediaItem> list, MediaItem item, int cap) {
+      if (list.any((i) => key(i) == key(item))) return;
+      list.add(item);
+      list.sort((a, b) {
+        final order = attempted(a).compareTo(attempted(b));
+        return order == 0 ? key(a).compareTo(key(b)) : order;
+      });
+      if (list.length > cap) list.removeLast();
+    }
+
+    for (final item in items) {
+      if (item.serverId == null || item.thumbPath == null || item.thumbPath!.isEmpty) continue;
+      final state = store.posterFreshness(item.serverId!, item.thumbPath!);
+      final last = attempted(item);
+      final retry = DateTime.tryParse(state['retry'] as String? ?? '');
+      if (now.difference(last) < interval || (retry != null && now.isBefore(retry))) continue;
+      insert(oldest, item, 60);
+      if (store.posterIsPriority(item.serverId!, item.thumbPath!)) insert(priority, item, 20);
+    }
+    final selected = <MediaItem>[...priority.take(20 - budget.priority)];
+    final priorityKeys = selected.map(key).toSet();
+    selected.addAll(oldest.where((i) => !priorityKeys.contains(key(i))).take(40 - (budget.total - budget.priority)));
+    for (final item in selected.take(60 - budget.total)) {
+      await check();
+      final client = clientFor(item.serverId!);
+      if (client == null || client.isOfflineMode) continue;
+      final path = item.thumbPath!;
+      final state = store.posterFreshness(item.serverId!, path);
+      state['attempted'] = clock().toUtc().toIso8601String();
+      store.reservePosterAttempt(clock().toUtc(), priority: priorityKeys.contains(key(item)));
+      // Reserve before IO so restart/interruption cannot replay a whole round.
+      await store.savePosterFreshness(item.serverId!, path, state, isCurrent: valid);
+      await check();
+      try {
+        final hasFile = store.posterPath(item.serverId!, path) != null;
+        final result = posterRevalidator != null
+            ? await posterRevalidator!(client, item, hasFile ? state : {})
+            : LocalPosterResult(
+                bytes: await posterLoader!(client, item).timeout(const Duration(seconds: 30)),
+                variant: path,
+              );
+        await check();
+        if (client.isOfflineMode) throw LocalLibraryPaused();
+        if (result.bytes == null && store.posterPath(item.serverId!, path) == null)
+          throw StateError('304 without local bytes');
+        if (result.bytes != null) await store.savePoster(item.serverId!, path, result.bytes!, isCurrent: valid);
+        await check();
+        state.addAll({
+          'variant': result.variant,
+          'etag': result.etag,
+          'lastModified': result.lastModified,
+          'validated': now.toIso8601String(),
+          'failures': 0,
+          'retry': null,
+        });
+        await store.savePosterFreshness(item.serverId!, path, state, isCurrent: valid);
+      } on LocalLibraryPaused {
+        rethrow;
+      } catch (_) {
+        await check();
+        final failures = ((state['failures'] as int? ?? 0) + 1).clamp(1, 5);
+        state['failures'] = failures;
+        state['retry'] = now.add(Duration(minutes: 10 * (1 << (failures - 1)))).toIso8601String();
+        await store.savePosterFreshness(item.serverId!, path, state, isCurrent: valid);
+        // A failed poster never replaces valid bytes or fails metadata sync.
+      }
     }
   }
 }

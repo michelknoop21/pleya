@@ -26,6 +26,39 @@ class LocalLibraryStore {
   final Map<String, Map<String, MediaItem>> _items = {};
   final Map<String, DateTime> _completed = {};
   final Map<String, String> _posters = {};
+  final Map<String, Map<String, dynamic>> _posterFreshness = {};
+  final List<({DateTime at, bool priority})> _posterAttempts = [];
+  ({int total, int priority}) posterBudget(DateTime now) {
+    _posterAttempts.removeWhere((a) => now.difference(a.at) >= const Duration(minutes: 10));
+    return (total: _posterAttempts.length, priority: _posterAttempts.where((a) => a.priority).length);
+  }
+
+  void reservePosterAttempt(DateTime now, {required bool priority}) =>
+      _posterAttempts.add((at: now, priority: priority));
+  final Set<String> _posterPriority = {};
+  Iterable<MediaItem> get artworkItems => _items.values.expand((rows) => rows.values);
+
+  Map<String, dynamic> posterFreshness(String serverId, String path) =>
+      Map.of(_posterFreshness[_posterKey(serverId, path)] ?? const {});
+
+  bool posterIsPriority(String serverId, String path) => _posterPriority.contains(_posterKey(serverId, path));
+  void prioritizePoster(String serverId, String path) {
+    final key = _posterKey(serverId, path);
+    _posterPriority.remove(key);
+    _posterPriority.add(key);
+    if (_posterPriority.length > 20) _posterPriority.remove(_posterPriority.first);
+  }
+
+  Future<void> savePosterFreshness(
+    String serverId,
+    String path,
+    Map<String, dynamic> state, {
+    required bool Function() isCurrent,
+  }) => _serial(() async {
+    if (!isCurrent()) return;
+    _posterFreshness[_posterKey(serverId, path)] = state;
+    await _atomic(_optionsFile, jsonEncode(_options), isCurrent);
+  });
   Future<void> _pending = Future.value();
 
   static String digest(String value) => sha256.convert(utf8.encode(value)).toString();
@@ -73,6 +106,14 @@ class LocalLibraryStore {
       final data = jsonDecode(await _optionsFile.readAsString()) as Map<String, dynamic>;
       enabled = data['enabled'] == true;
       wifiOnly = data['wifiOnly'] != false;
+      for (final raw in (data['posterAttempts'] as List? ?? const [])) {
+        final value = raw as Map;
+        final at = DateTime.tryParse(value['at'] as String? ?? '');
+        if (at != null) _posterAttempts.add((at: at, priority: value['priority'] == true));
+      }
+      for (final entry in (data['posterFreshness'] as Map<String, dynamic>? ?? {}).entries) {
+        _posterFreshness[entry.key] = Map<String, dynamic>.from(entry.value as Map);
+      }
       serverAccess.addAll((data['serverAccess'] as Map<String, dynamic>? ?? {}).cast<String, bool>());
       for (final entry in (data['libraryAccess'] as Map<String, dynamic>? ?? {}).entries) {
         libraryAccess[entry.key] = (entry.value as List).cast<String>().toSet();
@@ -80,6 +121,8 @@ class LocalLibraryStore {
     }
     if (await clearMarker.exists()) {
       enabled = false;
+      _posterFreshness.clear();
+      _posterAttempts.clear();
       await _atomic(_optionsFile, jsonEncode(_options), () => true);
       await _removeContent();
       return;
@@ -168,6 +211,10 @@ class LocalLibraryStore {
   Map<String, Object?> get _options => {
     'enabled': enabled,
     'wifiOnly': wifiOnly,
+    'posterAttempts': [
+      for (final a in _posterAttempts) {'at': a.at.toIso8601String(), 'priority': a.priority},
+    ],
+    'posterFreshness': _posterFreshness,
     'serverAccess': serverAccess,
     'libraryAccess': {for (final e in libraryAccess.entries) e.key: e.value.toList()},
   };
@@ -265,7 +312,7 @@ class LocalLibraryStore {
         if (!valid()) return;
         final key = _posterKey(serverId, path);
         final hash = sha256.convert(bytes).toString();
-        if (_posters[key]?.endsWith('.$hash.image') ?? false) return;
+        if ((_posters[key]?.endsWith('.$hash.image') ?? false) && await File(_posters[key]!).exists()) return;
         final priorVersion = _version(_posters[key]);
         final now = DateTime.now().microsecondsSinceEpoch;
         final version = now > priorVersion ? now : priorVersion + 1;
@@ -281,7 +328,10 @@ class LocalLibraryStore {
         if (valid()) _posters[key] = saved.path;
       });
 
-  String? posterPath(String serverId, String path) => _posters[_posterKey(serverId, path)];
+  String? posterPath(String serverId, String path) {
+    final saved = _posters[_posterKey(serverId, path)];
+    return saved != null && File(saved).existsSync() ? saved : null;
+  }
 
   Future<void> _pruneUnreferencedPosters() async {
     final posters = <(String, String)>{};
@@ -293,6 +343,8 @@ class LocalLibraryStore {
     // A hash per poster, in the hundreds of thousands on a large library: off
     // the UI thread, like the rest of a scan.
     final referenced = await tryIsolateRun(() => _posterKeys(posters));
+    _posterFreshness.removeWhere((key, _) => !referenced.contains(key));
+    _posterPriority.removeWhere((key) => !referenced.contains(key));
     for (final key in _posters.keys.where((k) => !referenced.contains(k)).toList()) {
       final file = File(_posters.remove(key)!);
       if (await file.exists()) await file.delete();
@@ -336,7 +388,11 @@ class LocalLibraryStore {
     _items.clear();
     _completed.clear();
     _posters.clear();
+    _posterFreshness.clear();
+    _posterPriority.clear();
+    _posterAttempts.clear();
     await _removeContent();
+    await _atomic(_optionsFile, jsonEncode(_options), () => true);
   });
 
   Future<void> _removeContent() async {

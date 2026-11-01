@@ -11,6 +11,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/providers/local_library_provider.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
+import 'package:pleya/services/local_library/local_library_sync.dart';
 import 'package:pleya/utils/deletion_notifier.dart';
 import '../services/local_library/local_library_store_test.dart' show library, film;
 import '../services/local_library/local_library_sync_test.dart' show Client;
@@ -60,10 +61,67 @@ void main() {
     await provider.ready;
   });
   tearDown(() async {
-    provider.dispose();
+    if (!provider.isDisposed) provider.dispose();
     changes.dispose();
     await root.delete(recursive: true);
   });
+
+  for (final boundary in ['provider', 'revoke', 'clear', 'profile']) {
+    test('$boundary change rejects a late poster in the actual provider', () async {
+      provider.dispose();
+      wifi = true;
+      // Keep the dependency signature stable before the late request: client
+      // identity, rather than newly populated membership, must invalidate it.
+      final seeded = LocalLibraryStore(root);
+      await seeded.load();
+      await seeded.saveLibrary(library, client.rows, complete: true);
+      final entered = Completer<void>();
+      final gate = Completer<LocalPosterResult>();
+      var calls = 0;
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) => visible,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => true,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+        posterRevalidator: (_, _, _) {
+          calls++;
+          if (!entered.isCompleted) entered.complete();
+          return gate.future;
+        },
+      );
+      await provider.ready;
+      await provider.setEnabled(true);
+      await entered.future;
+      final oldClient = client;
+      if (boundary == 'provider') {
+        client = Client();
+        changes.notifyListeners();
+      }
+      if (boundary == 'revoke') {
+        visible = false;
+        changes.notifyListeners();
+      }
+      if (boundary == 'clear') await provider.clear();
+      if (boundary == 'profile') provider.dispose();
+      gate.complete(LocalPosterResult(bytes: Uint8List.fromList([99]), variant: 'v', etag: 'late'));
+      if (boundary != 'profile') await until(provider, () => provider.state != LocalLibraryState.syncing);
+      // Wait for the disposed sync's guarded completion as well.
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(provider.posterPath('one', '/shared-poster'), isNull);
+      final check = LocalLibraryStore(root);
+      await check.load();
+      expect(check.posterFreshness('one', '/shared-poster')['validated'], isNull);
+      expect(check.posterPath('one', '/shared-poster'), isNull);
+      expect(calls, 1);
+      if (boundary == 'provider') expect(identical(client, oldClient), isFalse);
+    });
+  }
 
   for (final count in [450, 5000]) {
     test('query LRU holds eight keys and recomputes evicted offline results for $count items', () async {

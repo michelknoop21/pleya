@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:cached_network_image_ce/cached_network_image.dart' show FileInfo;
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -44,10 +44,16 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     Directory? directory,
     Future<int?> Function()? availableBytes,
     LocalPosterLoader? posterLoader,
+    LocalPosterRevalidator? posterRevalidator,
   }) : _changes = changes,
        _directory = directory,
        _availableBytes = availableBytes ?? _readAvailableBytes,
-       _posterLoader = posterLoader ?? _loadPoster {
+       _posterRevalidator =
+           posterRevalidator ??
+           (posterLoader == null
+               ? loadPoster
+               : (client, item, _) async =>
+                     LocalPosterResult(bytes: await posterLoader(client, item), variant: item.thumbPath!)) {
     _changes.addListener(_changed);
     _deletions = DeletionNotifier().stream.listen((event) => unawaited(_confirmedDeletion(event)));
     WidgetsBinding.instance.addObserver(this);
@@ -68,7 +74,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   final Listenable _changes;
   final Directory? _directory;
   final Future<int?> Function() _availableBytes;
-  final LocalPosterLoader _posterLoader;
+  final LocalPosterRevalidator _posterRevalidator;
   LocalLibraryStore? _store;
   Timer? _timer;
   StreamSubscription<DeletionEvent>? _deletions;
@@ -259,7 +265,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     networkConnected(),
     wifiConnected(),
     wifiOnly,
-    for (final l in librariesForSync()) '${l.globalKey}:${l.updatedAt}:${_allowedLibrary(l)}',
+    for (final l in librariesForSync())
+      '${l.globalKey}:${l.updatedAt}:${_allowedLibrary(l)}:${l.serverId == null ? 0 : identityHashCode(clientFor(ServerId(l.serverId!)))}',
     for (final l in _store?.libraries ?? <MediaLibrary>[]) '${l.globalKey}:${_allowedLibrary(l)}',
   ].join('|');
 
@@ -353,7 +360,6 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
           await LocalLibrarySync(
             store: store,
             mayContinue: space,
-            posterLoader: _posterLoader,
             onCheckpoint: () {
               if (!valid()) return;
               _refreshReadIndex();
@@ -384,6 +390,12 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
           appLogger.w('Local library scan incomplete; retaining previous snapshot', error: error, stackTrace: stack);
         }
       }
+      await LocalLibrarySync(
+        store: store,
+        mayContinue: space,
+        posterRevalidator: _posterRevalidator,
+      ).syncPosters(store.artworkItems.where(_allowedItem), (id) => clientFor(ServerId(id)), isCurrent: valid);
+      if (valid()) safeNotifyListeners();
     } on LocalLibraryPaused {
       paused = true;
     } finally {
@@ -408,9 +420,10 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   }
 
   String? posterPath(String? serverId, String? path) {
-    if (serverId == null || path == null || !mayReadServer(serverId)) return null;
+    if (isDisposed || serverId == null || path == null || !mayReadServer(serverId)) return null;
     // Image reads obey the same library boundary as metadata reads.
     if (!_posterReferences.contains('$serverId|${artworkStorageKey(path)}')) return null;
+    _store?.prioritizePoster(serverId, path);
     return _store?.posterPath(serverId, path);
   }
 
@@ -531,7 +544,13 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     }
   }
 
-  static Future<Uint8List> _loadPoster(MediaServerClient client, MediaItem item) async {
+  @visibleForTesting
+  static Future<LocalPosterResult> loadPoster(
+    MediaServerClient client,
+    MediaItem item,
+    Map<String, dynamic> validators, {
+    http.Client? transport,
+  }) async {
     final path = item.thumbPath!;
     final url = MediaImageHelper.getOptimizedImageUrl(
       client: client,
@@ -542,11 +561,15 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       imageType: item.kind.id == 'episode' ? ImageType.thumb : ImageType.poster,
     );
     final uri = Uri.tryParse(url);
-    if (uri?.scheme == 'file') return File.fromUri(uri!).readAsBytes();
-    final response = await PlexImageCacheManager.instance
-        .getFileStream(url, headers: {'User-Agent': 'Pleya', if (client is PleyaServerClient) ...client.streamHeaders})
-        .firstWhere((r) => r is FileInfo);
-    return (response as FileInfo).file.readAsBytes();
+    if (uri?.scheme == 'file') {
+      return LocalPosterResult(bytes: await File.fromUri(uri!).readAsBytes(), variant: artworkStorageKey(url));
+    }
+    return revalidateLocalPoster(
+      url,
+      validators,
+      transport: transport,
+      headers: {'User-Agent': 'Pleya', if (client is PleyaServerClient) ...client.streamHeaders},
+    );
   }
 }
 

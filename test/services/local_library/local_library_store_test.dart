@@ -135,6 +135,16 @@ void main() {
     expect(store.posterPath('one', '/shared-poster'), isNull);
   });
 
+  test('missing poster file is repaired even when replacement bytes are identical', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    final bytes = Uint8List.fromList([1, 2, 3]);
+    await store.savePoster('one', '/poster', bytes);
+    await File(store.posterPath('one', '/poster')!).delete();
+    await store.savePoster('one', '/poster', bytes);
+    expect(File(store.posterPath('one', '/poster')!).existsSync(), isTrue);
+  });
+
   test('updated poster bytes get a new image identity and old version is retired', () async {
     final store = LocalLibraryStore(root);
     await store.load();

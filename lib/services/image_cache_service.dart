@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io' show Directory;
+import 'dart:typed_data';
+
+import 'download_artwork_helpers.dart';
+import 'local_library/local_library_sync.dart' show LocalPosterResult;
 
 import 'package:cached_network_image_ce/cached_network_image.dart' show FileResponse;
 // CE's public conditional export hides the IO-only httpClientFactory parameter
@@ -242,5 +246,63 @@ class _RequestPermit {
     if (_released) return;
     _released = true;
     _limiter._release();
+  }
+}
+
+/// Conditional network validation for permanent local posters. This deliberately
+/// awaits the HTTP answer rather than accepting CE's first (possibly stale)
+/// FileInfo. Uses the existing shared transport/auth/limiter, not another cache.
+Future<LocalPosterResult> revalidateLocalPoster(
+  String url,
+  Map<String, dynamic> validators, {
+  Map<String, String> headers = const {},
+  http.Client? transport,
+}) async {
+  final variant = artworkStorageKey(url);
+  final sameVariant = validators['variant'] == variant;
+  final client = transport ?? _SharedHttpClient(_artworkHttpClient.inner);
+  final abort = AbortController();
+  final timeout = Timer(const Duration(seconds: 30), abort.abort);
+  try {
+    final request = http.AbortableRequest('GET', Uri.parse(url), abortTrigger: abort.trigger);
+    request.headers.addAll({
+      ...headers,
+      'Cache-Control': 'no-cache',
+      if (sameVariant && validators['etag'] is String) 'If-None-Match': validators['etag'] as String,
+      if (sameVariant && validators['etag'] == null && validators['lastModified'] is String)
+        'If-Modified-Since': validators['lastModified'] as String,
+    });
+    final response = await client.send(request);
+    final etag = response.headers['etag'];
+    final modified = response.headers['last-modified'];
+    if (response.statusCode == 304 &&
+        sameVariant &&
+        (validators['etag'] != null || validators['lastModified'] != null)) {
+      await response.stream.drain<void>();
+      return LocalPosterResult(
+        variant: variant,
+        etag: etag ?? validators['etag'] as String?,
+        lastModified: modified ?? validators['lastModified'] as String?,
+      );
+    }
+    if (response.statusCode != 200) {
+      await response.stream.drain<void>();
+      throw StateError('Artwork HTTP ${response.statusCode}');
+    }
+    // Match the existing server's source-image bound; never buffer an entire
+    // artwork set. Stop reading an oversized or empty body, retain prior bytes.
+    const maxBytes = 12 * 1024 * 1024;
+    final bytes = BytesBuilder(copy: false);
+    await for (final chunk in response.stream) {
+      if (bytes.length + chunk.length > maxBytes) throw StateError('Artwork body exceeds limit');
+      bytes.add(chunk);
+    }
+    if (bytes.isEmpty) throw StateError('Empty artwork body');
+    return LocalPosterResult(bytes: bytes.takeBytes(), variant: variant, etag: etag, lastModified: modified);
+  } finally {
+    timeout.cancel();
+    abort.abort();
+    // The wrapper releases permits; it does not close the app-wide transport.
+    if (transport == null) client.close();
   }
 }
