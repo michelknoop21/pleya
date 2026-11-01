@@ -47,6 +47,10 @@ type MetadataTarget struct {
 	// ManualExternalID is de id die een beheerder koos (0016). Leeg als er geen
 	// handmatige keuze is; dan gaat de ronde op de .nfo en daarna op zoeken.
 	ManualExternalID string
+
+	// CandidateUpdatedAt is de verwachte duurzame generatie van deze poging.
+	// nil betekent dat er bij het lezen nog geen kandidaat bestond.
+	CandidateUpdatedAt *time.Time
 }
 
 // Alternative is een mogelijke treffer die een beheerder kan kiezen.
@@ -108,9 +112,10 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		SELECT i.id, i.kind, i.title, i.year,
 		       coalesce(mp.root_path, sp.root_path, ''),
 		       coalesce(mp.relative_path, sp.relative_path, ''),
-		       CASE WHEN c.manual THEN coalesce(c.external_id, '') ELSE '' END
+		       CASE WHEN c.manual THEN coalesce(c.external_id, '') ELSE '' END,
+		       c.updated_at
 		FROM media_items i
-		LEFT JOIN metadata_candidates c ON c.item_id = i.id AND c.provider = $1
+		LEFT JOIN metadata_candidates c ON c.item_id = i.id
 		LEFT JOIN LATERAL (
 		    SELECT sl.root_path, f.relative_path
 		    FROM media_versions v
@@ -147,7 +152,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 	var out []MetadataTarget
 	for rows.Next() {
 		var t MetadataTarget
-		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID); err != nil {
+		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.CandidateUpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -169,6 +174,21 @@ func (s *Store) MarkSidecarChecked(ctx context.Context, itemID id.ID) error {
 // SaveCandidate legt de uitkomst van een poging vast. Het canonieke record blijft
 // hier onaangeroerd: dat gaat via ApplyMetadata.
 func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, c.ItemID); err != nil {
+		return err
+	}
+	if err := saveCandidate(ctx, tx, c); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func saveCandidate(ctx context.Context, tx pgx.Tx, c MetadataCandidate) error {
 	var details any
 	if c.Details != nil {
 		raw, err := json.Marshal(c.Details)
@@ -181,7 +201,7 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 	if c.ExternalID != "" {
 		ext = c.ExternalID
 	}
-	_, err := s.pool.Exec(ctx, `
+	_, err := tx.Exec(ctx, `
 		INSERT INTO metadata_candidates
 		    (item_id, provider, state, external_id, details, attempts, next_attempt_at, pass)
 		VALUES ($1, $2, $3, $4, $5, 1, $6, $7)
@@ -194,7 +214,7 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 		    last_attempt_at = now(),
 		    next_attempt_at = EXCLUDED.next_attempt_at,
 		    pass = EXCLUDED.pass,
-		    updated_at = now()`,
+		    updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`,
 		c.ItemID, c.Provider, c.State, ext, details, c.NextAttempt, max(c.Pass, 1))
 	if err != nil {
 		return fmt.Errorf("kandidaat opslaan: %w", err)
@@ -213,6 +233,13 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := applyMetadata(ctx, tx, itemID, provider, d); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func applyMetadata(ctx context.Context, tx pgx.Tx, itemID id.ID, provider string, d MetadataDetails) error {
 	var sources map[string]string
 	var raw []byte
 	if err := tx.QueryRow(ctx, `SELECT metadata_sources FROM media_items WHERE id = $1 FOR UPDATE`, itemID).Scan(&raw); err != nil {
@@ -270,7 +297,7 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1 AND metadata_sources IS DISTINCT FROM $2`, itemID, out); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // SourceNFO en SourceManual zijn de bronnen naast een provider.
@@ -322,7 +349,22 @@ func (s *Store) GetProviderArtwork(ctx context.Context, itemID id.ID, kind, prov
 // het bestand al; het id blijft gelijk bij een vervanging en generation loopt op
 // zodra de bytes anders zijn.
 func (s *Store) UpsertProviderArtwork(ctx context.Context, a ProviderArtwork) error {
-	_, err := s.pool.Exec(ctx, `
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, a.ItemID); err != nil {
+		return err
+	}
+	if err := upsertProviderArtwork(ctx, tx, a); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func upsertProviderArtwork(ctx context.Context, tx pgx.Tx, a ProviderArtwork) error {
+	_, err := tx.Exec(ctx, `
 		INSERT INTO provider_artwork (id, item_id, kind, provider, source_ref, file_name, sha256)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (item_id, kind, provider) DO UPDATE SET
@@ -531,14 +573,20 @@ func (s *Store) DropProviderArtwork(ctx context.Context, artworkID id.ID) error 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	var itemID id.ID
-	if err := tx.QueryRow(ctx, `DELETE FROM provider_artwork WHERE id = $1 RETURNING item_id`, artworkID).Scan(&itemID); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT item_id FROM provider_artwork WHERE id = $1`, artworkID).Scan(&itemID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return err
 	}
+	if err := lockMetadataItem(ctx, tx, itemID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM provider_artwork WHERE id = $1`, artworkID); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE metadata_candidates SET next_attempt_at = now(), updated_at = now()
+		UPDATE metadata_candidates SET next_attempt_at = now(), updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 		WHERE item_id = $1 AND state = 'matched'`, itemID); err != nil {
 		return err
 	}
@@ -558,13 +606,21 @@ func (s *Store) CandidateAttempts(ctx context.Context, itemID id.ID) (int, error
 // SetManualMatch legt de keuze van een beheerder vast en zet het item meteen aan
 // de beurt. Alleen films en series kennen een providermatch.
 func (s *Store) SetManualMatch(ctx context.Context, itemID id.ID, provider, externalID string) error {
-	tag, err := s.pool.Exec(ctx, `
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, itemID); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `
 		INSERT INTO metadata_candidates (item_id, provider, state, external_id, manual, attempts, next_attempt_at, pass)
 		SELECT i.id, $2, 'matched', $3, true, 0, now(), 1
 		FROM media_items i WHERE i.id = $1 AND i.kind IN ('movie', 'show')
 		ON CONFLICT (item_id) DO UPDATE SET
 		    provider = EXCLUDED.provider, state = 'matched', external_id = EXCLUDED.external_id,
-		    manual = true, details = NULL, next_attempt_at = now(), updated_at = now()`,
+		    manual = true, details = NULL, next_attempt_at = now(), updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`,
 		itemID, provider, externalID)
 	if err != nil {
 		return fmt.Errorf("handmatige match opslaan: %w", err)
@@ -572,7 +628,7 @@ func (s *Store) SetManualMatch(ctx context.Context, itemID id.ID, provider, exte
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // RejectMatch zegt dat er bij dit item geen providerdata hoort: de velden die de
@@ -644,7 +700,8 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 		VALUES ($1, $2, 'rejected', false, 0, 1)
 		ON CONFLICT (item_id) DO UPDATE SET
 		    provider = EXCLUDED.provider, state = 'rejected', external_id = NULL, manual = false,
-		    details = NULL, next_attempt_at = NULL, updated_at = now()`, itemID, provider); err != nil {
+		    details = NULL, next_attempt_at = NULL,
+		    updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`, itemID, provider); err != nil {
 		return nil, err
 	}
 	return files, tx.Commit(ctx)
@@ -741,4 +798,62 @@ func (s *Store) MetadataCoverage(ctx context.Context, libraryID id.ID) (Coverage
 	}
 	c.GateMet = c.Items > 0 && c.Ratio >= GenreCoverageThreshold
 	return c, nil
+}
+
+// ErrMetadataSuperseded betekent dat de gelezen poging door een nieuwere keuze
+// of ronde is ingehaald. De aanroeper gooit uitsluitend zijn eigen staged bytes weg.
+var ErrMetadataSuperseded = errors.New("metadata-poging ingehaald")
+
+func lockMetadataItem(ctx context.Context, tx pgx.Tx, itemID id.ID) error {
+	var found id.ID
+	err := tx.QueryRow(ctx, `SELECT id FROM media_items WHERE id = $1 FOR UPDATE`, itemID).Scan(&found)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
+}
+
+// CommitMetadata publiceert één voorbereide poging onder dezelfde generatie voor
+// velden, kandidaat en artwork. Alleen DB-werk onder de itemlock; alle provider-I/O
+// en nieuwe bestanden zijn vooraf voorbereid. updated_at loopt bij iedere
+// kandidaatwrite minstens één microseconde op, ook bij dezelfde keuze of klokterugloop.
+func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c MetadataCandidate, details, sidecar *MetadataDetails, artwork []ProviderArtwork) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, target.ID); err != nil {
+		return err
+	}
+	var actual time.Time
+	err = tx.QueryRow(ctx, `SELECT updated_at FROM metadata_candidates WHERE item_id = $1`, target.ID).Scan(&actual)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if target.CandidateUpdatedAt != nil {
+			return ErrMetadataSuperseded
+		}
+	} else if err != nil {
+		return err
+	} else if target.CandidateUpdatedAt == nil || !actual.Equal(*target.CandidateUpdatedAt) {
+		return ErrMetadataSuperseded
+	}
+	if details != nil {
+		if err := applyMetadata(ctx, tx, target.ID, c.Provider, *details); err != nil {
+			return err
+		}
+	}
+	if sidecar != nil {
+		if err := applyMetadata(ctx, tx, target.ID, SourceNFO, *sidecar); err != nil {
+			return err
+		}
+	}
+	for _, a := range artwork {
+		if err := upsertProviderArtwork(ctx, tx, a); err != nil {
+			return err
+		}
+	}
+	if err := saveCandidate(ctx, tx, c); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

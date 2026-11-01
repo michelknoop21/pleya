@@ -56,6 +56,25 @@ func (f *fakeStore) SaveCandidate(_ context.Context, c catalog.MetadataCandidate
 	f.candidates[c.ItemID] = c
 	return nil
 }
+func (f *fakeStore) CommitMetadata(ctx context.Context, target catalog.MetadataTarget, c catalog.MetadataCandidate, details, sidecar *catalog.MetadataDetails, artwork []catalog.ProviderArtwork) error {
+	if details != nil {
+		if err := f.ApplyMetadata(ctx, target.ID, c.Provider, *details); err != nil {
+			return err
+		}
+	}
+	if sidecar != nil {
+		if err := f.ApplyMetadata(ctx, target.ID, catalog.SourceNFO, *sidecar); err != nil {
+			return err
+		}
+	}
+	for _, a := range artwork {
+		if err := f.UpsertProviderArtwork(ctx, a); err != nil {
+			return err
+		}
+	}
+	return f.SaveCandidate(ctx, c)
+}
+
 func (f *fakeStore) ApplyMetadata(_ context.Context, item id.ID, source string, d catalog.MetadataDetails) error {
 	if f.applyErr != nil {
 		return f.applyErr
