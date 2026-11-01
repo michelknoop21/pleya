@@ -1,0 +1,71 @@
+{
+  "code_sha": "1bba038a74525d61de5cc88211f80ec6d35e6794",
+  "base_sha": "1cc45a4be1b7cc64a3af54ba511df81196fd6220",
+  "dirty": false,
+  "run_id": "tvos-my-pleya-libraries-cinema-1793568204830",
+  "result": "PASS",
+  "duration_ms": 148389,
+  "device": {
+    "name": "Pleya Verify Apple TV 4K",
+    "id": "2B32D66F-268C-4550-8A6A-0AE5FC13A308",
+    "class": "tv",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.tvOS-27-0"
+  },
+  "input_route": "idb",
+  "app": {
+    "bundle_id": "nl.michelknoop.pleya.verify",
+    "version": "2.8.1",
+    "build": "430",
+    "configuration": "Debug"
+  },
+  "northstar": "libfile_300e724505fc8191abfb215b094f4eba v0",
+  "screenshots": [
+    {
+      "file": "00-bronbeheer-list.png",
+      "width": 3840,
+      "height": 2160,
+      "sha256": "f388e9e8e973e165f021f2cd3420cfb31d6f6f9ea0420688b0c0944361a0eecc"
+    },
+    {
+      "file": "01-action-sheet-movies.png",
+      "width": 3840,
+      "height": 2160,
+      "sha256": "d5cd143d469b459179275e56d5330f80c4a426e461861954cde2999f9dbc26ae"
+    },
+    {
+      "file": "02-sheet-closed.png",
+      "width": 3840,
+      "height": 2160,
+      "sha256": "f388e9e8e973e165f021f2cd3420cfb31d6f6f9ea0420688b0c0944361a0eecc"
+    },
+    {
+      "file": "02b-cinema-order-picked.png",
+      "width": 3840,
+      "height": 2160,
+      "sha256": "4a47c9a32c1d13caf0776e64177dd49adec33b0aba1d397b17c1f69a1d365ba2"
+    },
+    {
+      "file": "02c-cinema-order-closed.png",
+      "width": 3840,
+      "height": 2160,
+      "sha256": "f388e9e8e973e165f021f2cd3420cfb31d6f6f9ea0420688b0c0944361a0eecc"
+    },
+    {
+      "file": "03-opened-in-catalog.png",
+      "width": 3840,
+      "height": 2160,
+      "sha256": "9370842d34053b20b24fe50885dd41583bcf0e09c39fe70fe9c920d3ec0cb541"
+    },
+    {
+      "file": "04-back-on-row.png",
+      "width": 3840,
+      "height": 2160,
+      "sha256": "f388e9e8e973e165f021f2cd3420cfb31d6f6f9ea0420688b0c0944361a0eecc"
+    }
+  ],
+  "limits": [
+    "No physical Siri Remote/overscan/device-performance proof",
+    "Rights, hidden/empty/unknown/dense/profile-update cases have focused widget evidence; not all have native captures",
+    "No push, merge, NAS or TestFlight in this UI task"
+  ]
+}
