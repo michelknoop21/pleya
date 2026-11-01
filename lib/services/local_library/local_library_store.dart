@@ -331,27 +331,44 @@ class LocalLibraryStore {
   static int _version(String? path) =>
       path == null ? 0 : int.tryParse(path.split('/').last.split('.').elementAtOrNull(1) ?? '') ?? 0;
 
-  Future<void> savePoster(String serverId, String path, Uint8List bytes, {bool Function()? isCurrent}) =>
-      _serial(() async {
-        bool valid() => isCurrent?.call() ?? true;
-        if (!valid()) return;
-        final key = _posterKey(serverId, path);
-        final hash = sha256.convert(bytes).toString();
-        if ((_posters[key]?.endsWith('.$hash.image') ?? false) && await File(_posters[key]!).exists()) return;
-        final priorVersion = _version(_posters[key]);
-        final now = DateTime.now().microsecondsSinceEpoch;
-        final version = now > priorVersion ? now : priorVersion + 1;
-        final folder = Directory('${directory.path}/posters');
-        await folder.create(recursive: true);
-        final pending = File('${folder.path}/$key.pending');
-        await pending.writeAsBytes(bytes, flush: true);
-        if (!valid()) {
-          await pending.delete();
-          return;
+  Future<void> savePoster(
+    String serverId,
+    String path,
+    Uint8List bytes, {
+    bool Function()? isCurrent,
+    bool retirePrevious = false,
+  }) => _serial(() async {
+    bool valid() => isCurrent?.call() ?? true;
+    if (!valid()) return;
+    final key = _posterKey(serverId, path);
+    final hash = sha256.convert(bytes).toString();
+    if ((_posters[key]?.endsWith('.$hash.image') ?? false) && await File(_posters[key]!).exists()) return;
+    final prior = _posters[key];
+    final priorVersion = _version(prior);
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final version = now > priorVersion ? now : priorVersion + 1;
+    final folder = Directory('${directory.path}/posters');
+    await folder.create(recursive: true);
+    final pending = File('${folder.path}/$key.pending');
+    await pending.writeAsBytes(bytes, flush: true);
+    if (!valid()) {
+      await pending.delete();
+      return;
+    }
+    final saved = await pending.rename('${folder.path}/$key.$version.$hash.image');
+    if (valid()) {
+      _posters[key] = saved.path;
+      // Visible updates may run with catalog fill off. Retire only the
+      // superseded version of this already stored poster after publication.
+      if (retirePrevious && prior != null && prior != saved.path) {
+        try {
+          await File(prior).delete();
+        } on FileSystemException {
+          /* Existing complete-scan pruning retries. */
         }
-        final saved = await pending.rename('${folder.path}/$key.$version.$hash.image');
-        if (valid()) _posters[key] = saved.path;
-      });
+      }
+    }
+  });
 
   String? posterPath(String serverId, String path) {
     final saved = _posters[_posterKey(serverId, path)];

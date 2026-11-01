@@ -66,7 +66,18 @@ void main() {
   late ChangeNotifier changes;
   late ThumbnailClient client;
   late DateTime now;
+  var colorArtwork = false;
+  final colorBodies = {
+    1: base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR4nGP4z8DwH4QZYAwAR8oH+WdZbrcAAAAASUVORK5CYII=',
+    ),
+    2: base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEElEQVR4nGNgYPj/H4KhDAA/0gf5tBJPzQAAAABJRU5ErkJggg==',
+    ),
+  };
   var allowed = true;
+  var includeUnrelated = false;
+  var unrelatedHidden = false;
   var wifi = true;
   var version = 1;
   var status = 200;
@@ -82,12 +93,31 @@ void main() {
     baseKey: OptimizedMediaImage.artworkCacheKey(address),
   );
   String key() => provider.artworkCacheKey('one', url, base);
+  Future<LocalPosterResult> validate(String address, Map<String, dynamic> state) {
+    validators = state;
+    return revalidateLocalPoster(
+      address,
+      state,
+      transport: MockClient((r) async {
+        requests++;
+        if (status != 200) return http.Response('', status);
+        if (r.headers['If-None-Match'] == '"$version"') return http.Response('', 304, headers: {'etag': '"$version"'});
+        final body = colorArtwork ? colorBodies[version]! : Uint8List.fromList([version]);
+        bodyBytes += body.length;
+        return http.Response.bytes(body, 200, headers: {'etag': '"$version"'});
+      }),
+    );
+  }
+
   setUp(() async {
     root = await Directory.systemTemp.createTemp('pleya-visible-artwork-');
     cache = Cache(Directory('${root.path}/ce'));
     changes = ChangeNotifier();
     client = ThumbnailClient();
     allowed = true;
+    colorArtwork = false;
+    includeUnrelated = false;
+    unrelatedHidden = false;
     wifi = true;
     version = 1;
     status = 200;
@@ -99,7 +129,10 @@ void main() {
     provider = LocalLibraryProvider(
       profileId: 'synthetic',
       directory: Directory('${root.path}/local'),
-      librariesForSync: () => [library],
+      librariesForSync: () => [
+        library,
+        if (includeUnrelated) library.copyWith(id: 'unrelated', hidden: unrelatedHidden),
+      ],
       clientFor: (_) => client,
       mayReadServer: (_) => allowed,
       mayReadLibrary: (_) => allowed,
@@ -109,21 +142,8 @@ void main() {
       availableBytes: () async => 1024 * 1024 * 1024,
       artworkCache: cache,
       artworkClock: () => now,
-      artworkRevalidator: (address, state) {
-        validators = state;
-        return revalidateLocalPoster(
-          address,
-          state,
-          transport: MockClient((r) async {
-            requests++;
-            if (status != 200) return http.Response('', status);
-            if (r.headers['If-None-Match'] == '"$version"')
-              return http.Response('', 304, headers: {'etag': '"$version"'});
-            bodyBytes++;
-            return http.Response.bytes([version], 200, headers: {'etag': '"$version"'});
-          }),
-        );
-      },
+      artworkRevalidator: validate,
+      posterRevalidator: (_, _, state) => validate(url, state),
     );
     await provider.ready;
     await cache.putFile(url, Uint8List.fromList([0]), key: base);
@@ -383,6 +403,189 @@ void main() {
     } finally {
       prefetcher.dispose();
     }
+  });
+
+  testWidgets('review I1: filled permanent poster stays fresh with fill off and same mounted widget', (tester) async {
+    colorArtwork = true;
+    await tester.runAsync(() async {
+      await provider.setEnabled(true);
+      await until(() => provider.state == LocalLibraryState.ready && !provider.artworkRevalidationRunning);
+    });
+    final v1 = provider.posterPath('one', '/shared-poster')!;
+    expect(await tester.runAsync(() => File(v1).readAsBytes()), colorBodies[1]);
+    Widget tree() => ChangeNotifierProvider.value(
+      value: provider,
+      child: MaterialApp(
+        home: OptimizedMediaImage.poster(client: client, imagePath: '/shared-poster', width: 200, height: 300),
+      ),
+    );
+    Future<void> expectRenderedColor(List<int> expected) async {
+      List<int>? actual;
+      for (var spin = 0; spin < 1000; spin++) {
+        final image = tester
+            .widgetList<RawImage>(find.byType(RawImage))
+            .map((w) => w.image)
+            .whereType<dynamic>()
+            .firstOrNull;
+        if (image != null) {
+          final bytes = await tester.runAsync(() => image.toByteData());
+          actual = bytes?.buffer.asUint8List().take(4).toList().cast<int>();
+          if (listEquals(actual, expected)) break;
+        }
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 1)));
+        await tester.pump();
+      }
+      expect(actual, expected, reason: 'the mounted RawImage must decode the selected poster bytes');
+    }
+
+    await tester.pumpWidget(tree());
+    await expectRenderedColor([255, 0, 0, 255]);
+    expect(provider.visibleArtworkCount, 1);
+    final mounted = tester.state(
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == '_VisibleArtworkRegistration'),
+    );
+    final oldImage = tester.widget<Image>(find.byType(Image).first).image;
+    await tester.runAsync(() => provider.setEnabled(false));
+    now = now.add(const Duration(minutes: 10));
+    version = 2;
+    await tester.runAsync(provider.revalidateVisibleArtwork);
+    await tester.pump();
+    await expectRenderedColor([0, 0, 255, 255]);
+    final v2 = provider.posterPath('one', '/shared-poster')!;
+    expect(v2, isNot(v1));
+    expect(
+      await tester.runAsync(() => File(v1).exists()),
+      isFalse,
+      reason: 'fill-off maintenance retires only its superseded image version',
+    );
+    expect(await tester.runAsync(() => File(v2).readAsBytes()), colorBodies[2]);
+    expect(tester.widget<Image>(find.byType(Image).first).image, isNot(oldImage));
+    expect(
+      tester.state(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_VisibleArtworkRegistration')),
+      same(mounted),
+    );
+    now = now.add(const Duration(minutes: 10));
+    await tester.runAsync(provider.revalidateVisibleArtwork);
+    await tester.pump();
+    expect(provider.posterPath('one', '/shared-poster'), v2, reason: '304 keeps file and decode identity');
+    now = now.add(const Duration(minutes: 10));
+    status = 503;
+    await tester.runAsync(provider.revalidateVisibleArtwork);
+    await tester.pump();
+    expect(provider.posterPath('one', '/shared-poster'), v2);
+    expect(await tester.runAsync(() => File(v2).readAsBytes()), colorBodies[2]);
+    expect(provider.enabled, isFalse);
+    expect(provider.items, hasLength(2));
+    expect(requests, 4);
+    expect(bodyBytes, colorBodies[1]!.length + colorBodies[2]!.length);
+    expect(cache.writes, 0);
+    await tester.pumpWidget(const SizedBox());
+    expect(provider.visibleArtworkCount, 0);
+  });
+
+  testWidgets('review I2: allowed mounted lease recovers after unrelated access and clear; revoke stays closed', (
+    tester,
+  ) async {
+    includeUnrelated = true;
+    wifi = false;
+    await tester.runAsync(() async {
+      changes.notifyListeners();
+      await provider.pendingStoreWrites;
+    });
+    Widget tree() => ChangeNotifierProvider.value(
+      value: provider,
+      child: MaterialApp(
+        home: OptimizedMediaImage.poster(client: client, imagePath: '/shared-poster', width: 200, height: 300),
+      ),
+    );
+    await tester.pumpWidget(tree());
+    final mounted = tester.state(
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == '_VisibleArtworkRegistration'),
+    );
+    await tester.pumpWidget(tree());
+    expect(provider.visibleArtworkCount, 1);
+    // No selected path/cache-key change can rebuild this image: only its
+    // registration-epoch subscription observes this unrelated boundary.
+    expect(key(), base);
+    unrelatedHidden = true;
+    await tester.runAsync(() async {
+      changes.notifyListeners();
+      await provider.pendingStoreWrites;
+    });
+    expect(provider.visibleArtworkCount, 0);
+    await tester.pump();
+    expect(provider.visibleArtworkCount, 1);
+    expect(key(), base);
+    expect(requests, 0);
+    expect(
+      tester.state(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_VisibleArtworkRegistration')),
+      same(mounted),
+    );
+    Future<void> settle() async {
+      for (var spin = 0; spin < 1000 && (key() == base || provider.artworkRevalidationRunning); spin++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 1)));
+        await tester.pump();
+      }
+      expect(key(), isNot(base));
+      expect(provider.artworkRevalidationRunning, isFalse);
+    }
+
+    wifi = true;
+    await tester.runAsync(() async {
+      changes.notifyListeners();
+    });
+    await tester.pump();
+    await settle();
+    expect(requests, 1);
+    now = now.add(const Duration(minutes: 10));
+    version = 2;
+    unrelatedHidden = false;
+    await tester.runAsync(() async {
+      changes.notifyListeners();
+      await provider.pendingStoreWrites;
+    });
+    expect(key(), base, reason: 'boundary withdraws prior publication');
+    await tester.pump();
+    expect(provider.visibleArtworkCount, 1, reason: 'notify renews same allowed mounted widget without replacement');
+    await settle();
+    expect(requests, 2);
+    expect(
+      tester.state(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_VisibleArtworkRegistration')),
+      same(mounted),
+    );
+    now = now.add(const Duration(minutes: 10));
+    version = 3;
+    await tester.runAsync(provider.clear);
+    await tester.pump();
+    expect(provider.visibleArtworkCount, 1);
+    await settle();
+    expect(requests, 3);
+    expect(provider.enabled, isFalse);
+    expect(
+      tester.state(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_VisibleArtworkRegistration')),
+      same(mounted),
+    );
+    allowed = false;
+    await tester.runAsync(() async {
+      changes.notifyListeners();
+      await provider.pendingStoreWrites;
+    });
+    await tester.pump();
+    await tester.runAsync(provider.revalidateVisibleArtwork);
+    expect(provider.visibleArtworkCount, 0);
+    expect(requests, 3);
+    await tester.pumpWidget(const SizedBox());
+    // CE's public putFile returns before Hive's metadata write future.
+    // Complete that real close while this widget's fake timers/microtasks can
+    // still advance; teardown outside this zone cannot flush those callbacks.
+    var cacheClosed = false;
+    final closing = cache.dispose().whenComplete(() => cacheClosed = true);
+    for (var spin = 0; spin < 1000 && !cacheClosed; spin++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 1)));
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+    expect(cacheClosed, isTrue);
+    await closing;
   });
 
   for (final boundary in ['clear', 'revoke', 'profile', 'client', 'unregister']) {
