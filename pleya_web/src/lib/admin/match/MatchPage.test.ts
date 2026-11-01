@@ -107,7 +107,7 @@ describe('een kandidaat kiezen', () => {
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Koppelen' }));
     await waitFor(() => expect(server.writes()).toEqual(['PUT /items/i1/metadata-match']));
     expect(server.seen.find((s) => s.method === 'PUT')?.body).toEqual({ external_id: '693134' });
-    expect(await screen.findByText(/is gekoppeld aan Dune: Part Two \(2024\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/Keuze ontvangen voor Dune \(2021\): Dune: Part Two \(2024\)/)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('button', { name: /^Dune \(2021\)/ })).toBeNull());
     expect(server.seen.filter((s) => s.path.startsWith('/metadata/attention')).length).toBeGreaterThan(1);
   });
@@ -216,6 +216,6 @@ describe('wat de server nog niet draagt', () => {
     const names = screen.getAllByRole('button').map((b) => b.textContent ?? '');
     for (const name of names) expect(name).not.toMatch(/override|artwork|pin|providerronde|veld|bevestig/i);
     expect(screen.queryByText(/Artwork kiezen|Velden van|Providerronde/)).toBeNull();
-    expect(screen.getByText(/staan hier niet/)).toBeInTheDocument();
+    expect(screen.getByText(/zijn afzonderlijke acties/)).toBeInTheDocument();
   });
 });

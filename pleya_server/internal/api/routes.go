@@ -108,6 +108,9 @@ func (s *Server) routeTable() []route {
 		// admin, in de handler zoals hierboven.
 		{"GET " + p + "/libraries/{library_id}/metadata-coverage", s.authenticated(s.handleMetadataCoverage)},
 		{"GET " + p + "/metadata/attention", s.authenticated(s.handleMetadataAttention)},
+		{"GET " + p + "/items/{item_id}/metadata-search", s.authenticated(s.handleMetadataSearch)},
+		{"GET " + p + "/items/{item_id}/metadata-candidates/{external_id}", s.authenticated(s.handleMetadataCandidate)},
+		{"GET " + p + "/items/{item_id}/metadata-candidate-artwork", s.authenticated(s.handleMetadataCandidateArtwork)},
 		{"GET " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleMetadataMatchStatus)},
 		{"PUT " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleSetMetadataMatch)},
 		{"DELETE " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleClearMetadataMatch)},

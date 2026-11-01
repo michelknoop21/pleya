@@ -1722,6 +1722,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 96 | `POST /playlists/{id}/items` | item-ids in de body | als regel 95 |
 | 97 | `DELETE /playlists/{id}/items/{item_id}` | direct id | als regel 95 |
 | 98 | `GET /items/{id}/metadata-match` | gekozen en toegepaste metadata-identiteit/status | klasse `admin`, verse scope/rol; canonieke `404` voor de rest; film/serie, anders `library.not_found`; metadata_match_status (9.4b) |
+| 99 | `GET /items/{id}/metadata-search` | begrensde read-only titel/jaarzoeking | klasse `admin`, actuele item/libraryscope, metadata_search; provider uit 503 |
+| 100 | `GET /items/{id}/metadata-candidates/{external_id}` | alleen gekozen-kandidaatdetails | klasse `admin`, actuele item/libraryscope, metadata_search; provider uit 503 |
+| 101 | `GET /items/{id}/metadata-candidate-artwork` | vaste-host read-only beeldpreview | klasse `admin`, actuele item/libraryscope, metadata_search; provider uit 503 |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2553,6 +2556,9 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/libraries/{id}/metadata-coverage` | `admin` | nee |
 | `GET /pleya/v1/metadata/attention` | `admin` | nee |
 | `GET /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
+| `GET /pleya/v1/items/{id}/metadata-search` | `admin` | ja |
+| `GET /pleya/v1/items/{id}/metadata-candidates/{external_id}` | `admin` | ja |
+| `GET /pleya/v1/items/{id}/metadata-candidate-artwork` | `admin` | ja |
 | `PUT /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `DELETE /pleya/v1/items/{id}/metadata-match` | `admin` | ja |
 | `GET /pleya/v1/libraries/{id}/facets` | `authenticated` | nee |
@@ -2667,3 +2673,38 @@ Codes: `memory.invalid` (400), `memory.not_permitted` (403), `memory.too_large` 
 `memory.duplicate` (409). Geen code bevat feittekst of een snapshot. Een conflict vraagt opnieuw
 lezen en driepartijenvergelijking; nooit blind opnieuw verzenden. Voor de clientbinding, offline-
 en herstelregels geldt het [BP-08b-plan](plans/2026-10-26-big-p-geheugensync.md).
+
+### Metadatazoekpreview (additief venster 1 november 2026, Task5)
+
+`capabilities.metadata_search` is standaard false en staat uitsluitend aan met
+bestaande ingestelde metadata-provider. Onder deze vlag mag admin vanuit een
+bestaand movie/show-item `GET /items/{id}/metadata-search?title=...&year=...`
+aanroepen (titel 1–200 tekens, jaar optioneel 1–9999, maximaal twintig resultaten).
+Er is geen automatische keuze of Details-fanout. Een expliciet geselecteerd
+positief provider-ID krijgt details via `GET /items/{id}/metadata-candidates/{external_id}`;
+een veilige `/filename.jpg|png|webp`-ref mag met rol poster/backdrop naar
+`GET /items/{id}/metadata-candidate-artwork`. Geen URL-input, nieuwe sleutel,
+provider of upload. Bestaande TMDB-host-, no-redirect-, bytes- en timeoutgrenzen
+blijven gelden; de route begrenst de hele providerread op 35 seconden en levert
+alleen overeenkomende jpeg/png/webp-bytes, private/no-store. Afbreken stopt de
+read, geen reeds ontvangen schrijfkeuze. Zowel vóór als na providerwerk gelden
+bestaande authenticatie, actuele adminrol/tokenscope en item/libraryscope.
+
+Gesloten queries weigeren onbekende/herhaalde velden met
+`library.invalid_metadata_query` (400). Provider uit geeft `library.metadata_unavailable` (503),
+provider-/payloadfout `library.metadata_failed` (502), steeds zonder interne fouttekst,
+paden of credentials. De bestaande 429-vorm draagt `retry_after_ms`; deze
+itemreads delen per account vijf directe aanvragen en daarna één per twaalf
+seconden. Statusreads gebruiken die providerlimiet niet.
+
+Zoeken, details en beeldpreview zijn alleen lezen en bewijzen geen publicatie of
+bibliotheekidentiteit. De bestaande expliciet bevestigde PUT/DELETE blijven het
+mutatiepad. PUT202 betekent uitsluitend ontvangst. Onder de afzonderlijke
+`metadata_match_status`-vlag toont GET-status requested en applied onafhankelijk;
+pending/failure behoudt eerder applied A terwijl B aangevraagd is. Web ververst
+status één keer na ontvangst en daarna uitsluitend op expliciete actie, zonder
+polling. De kandidaatgeneratie `updated_at` blijft exact op de wire; JavaScript
+Date-milliseconden zijn geen generatiebewijs. Requestsequentie, item en
+accountcontext begrenzen late antwoorden. Zonder zoek- of statuscapability blijft
+het bestaande handmatige pad bruikbaar en worden de bijbehorende nieuwe routes
+niet aangeroepen. Geen schema-/opslagepoch of wijziging van legacy external_ids.

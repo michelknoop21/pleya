@@ -88,3 +88,8 @@ export type TranscodeSession = S['TranscodeSession'];
 export type Backup = S['Backup'];
 export type BackupList = S['BackupList'];
 export type BackupRestoreTest = S['BackupRestoreTest'];
+
+export type MetadataSearchCandidate = S['MetadataSearchCandidate'];
+export type MetadataSearchResults = S['MetadataSearchResults'];
+export type MetadataCandidateDetails = S['MetadataCandidateDetails'];
+export type MetadataMatchStatus = S['MetadataMatchStatus'];

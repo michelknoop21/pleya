@@ -370,6 +370,19 @@ func matrixProbes() []matrixProbe {
 		{row: 42, name: "GET /metadata/attention", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/metadata/attention"), body: noBody,
 			ok: http.StatusOK, expect: adminSurface()},
+		{row: 99, name: "GET /items/{id}/metadata-search", method: http.MethodGet,
+			path: func(f *matrixFixture) string {
+				return "/pleya/v1/items/" + f.itemID + "/metadata-search?title=Synthetic"
+			},
+			body: noBody, ok: http.StatusServiceUnavailable, expect: adminSurface()},
+		{row: 100, name: "GET /items/{id}/metadata-candidates/{external_id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/metadata-candidates/1" },
+			body: noBody, ok: http.StatusServiceUnavailable, expect: adminSurface()},
+		{row: 101, name: "GET /items/{id}/metadata-candidate-artwork", method: http.MethodGet,
+			path: func(f *matrixFixture) string {
+				return "/pleya/v1/items/" + f.itemID + "/metadata-candidate-artwork?role=poster&ref=/synthetic.png"
+			},
+			body: noBody, ok: http.StatusServiceUnavailable, expect: adminSurface()},
 		{row: 98, name: "GET /items/{id}/metadata-match", method: http.MethodGet,
 			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/metadata-match" },
 			body: noBody, ok: http.StatusOK, expect: adminSurface()},

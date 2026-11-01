@@ -657,6 +657,41 @@
       "file": "error_applied_filter_invalid.json",
       "schema": "ErrorEnvelope",
       "note": "Gemengde of ongeldige applied-filter: HTTP400."
+    },
+    {
+      "file": "metadata_search_results.json",
+      "schema": "MetadataSearchResults",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "metadata_search_empty.json",
+      "schema": "MetadataSearchResults",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "metadata_candidate_details.json",
+      "schema": "MetadataCandidateDetails",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "error_metadata_unavailable.json",
+      "schema": "ErrorEnvelope",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "error_metadata_failed.json",
+      "schema": "ErrorEnvelope",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "error_metadata_invalid_query.json",
+      "schema": "ErrorEnvelope",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "info_metadata_search.json",
+      "schema": "Info",
+      "note": "Task5 additive read-only metadata window"
     }
   ]
 }

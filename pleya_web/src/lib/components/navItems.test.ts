@@ -5,6 +5,9 @@ import type { Capabilities } from '../api/types';
 
 const all: Capabilities = {
   external_id_lookup: false,
+  applied_external_identity: false,
+  metadata_match_status: false,
+  metadata_search: false,
   assistant_memory: false,
   browse: true,
   search: true,

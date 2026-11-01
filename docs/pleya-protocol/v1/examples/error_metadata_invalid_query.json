@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.invalid_metadata_query",
+    "message": "metadata query invalid",
+    "retryable": false
+  }
+}

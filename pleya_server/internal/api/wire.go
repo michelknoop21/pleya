@@ -82,6 +82,7 @@ type Capabilities struct {
 	// negeert de parameter stil en levert de hele bibliotheek.
 	ExternalIDLookup        bool `json:"external_id_lookup"`
 	AppliedExternalIdentity bool `json:"applied_external_identity"`
+	MetadataSearch          bool `json:"metadata_search"`
 	MetadataMatchStatus     bool `json:"metadata_match_status"`
 
 	// History, Favorites, Ratings en TrackPreferences (venster 6 deel 2, S20).

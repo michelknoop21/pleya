@@ -337,6 +337,7 @@ func run() int {
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
+		MetadataProvider:   metadataProvider,
 		Artwork:            artwork.New(cfg.FFmpegPath, cfg.CacheDir, logging.Component(log, "artwork")),
 		Jobs:               runner,
 		Signer:             signer,

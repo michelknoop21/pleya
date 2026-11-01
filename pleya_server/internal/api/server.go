@@ -25,6 +25,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
 	"github.com/edde746/plezy/pleya_server/internal/memory"
+	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
@@ -143,6 +144,9 @@ type Options struct {
 	// toegestaan: de ronde pakt de wijziging dan bij haar volgende tik op.
 	OnMetadataChange func()
 
+	// MetadataProvider is the same configured provider used by the background runner.
+	MetadataProvider metadata.Provider
+
 	// Jobs is de wachtrij achter POST /storage/roots/recheck (S2.3). Nil
 	// betekent dat dat endpoint niets kan inplannen en server.internal
 	// antwoordt in plaats van te doen alsof er een ronde loopt.
@@ -195,6 +199,7 @@ type Server struct {
 	log                        *slog.Logger
 	limiter                    *limiter
 	refreshLimiter             *limiter
+	metadataLimiter            *limiter
 	loginGuard                 *loginGuard
 	mux                        *http.ServeMux
 	now                        func() time.Time
@@ -230,13 +235,14 @@ func New(opts Options) *Server {
 		opts.Revocations = auth.NewRevocations(0)
 	}
 	s := &Server{
-		opts:           opts,
-		log:            opts.Logger,
-		limiter:        newLimiter(),
-		refreshLimiter: newRefreshLimiter(),
-		loginGuard:     newLoginGuard(),
-		mux:            http.NewServeMux(),
-		now:            time.Now,
+		opts:            opts,
+		log:             opts.Logger,
+		limiter:         newLimiter(),
+		metadataLimiter: newLimiter(),
+		refreshLimiter:  newRefreshLimiter(),
+		loginGuard:      newLoginGuard(),
+		mux:             http.NewServeMux(),
+		now:             time.Now,
 	}
 	s.routes()
 	return s

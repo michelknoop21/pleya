@@ -1285,6 +1285,122 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /items/{item_id}/metadata-search:
+    get:
+      tags: [administration]
+      operationId: searchMetadataCandidates
+      summary: Zoek titel en optioneel jaar bij de bestaande provider.
+      description: |
+        Klasse admin, alleen onder capabilities.metadata_search. Item bepaalt
+        movie/show en actuele libraryscope. Read-only: geen metadata-publicatie,
+        kopieclaim of bestandswijziging. Gesloten query, herhaalde parameters ongeldig.
+        Zelfde ingestelde provider als de achtergrondronde; geen nieuwe keys of URL-input.
+        Rechten en intrekking worden na de providerawait opnieuw gecontroleerd.
+        Zoekresultaten maximaal twintig zonder Details-fanout; details alleen op selectie.
+        Afbeelding alleen vaste TMDB-host zonder redirects, maximaal 12 MiB,
+        jpeg/png/webp met overeenkomend inhoudstype; private no-store.
+        Netwerkduur maximaal 35 seconden; afbreken beëindigt de read.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+        - name: title
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: year
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 9999 }
+      responses:
+        "200":
+          description: Begrensde read-only providerpreview.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataSearchResults" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /items/{item_id}/metadata-candidates/{external_id}:
+    get:
+      tags: [administration]
+      operationId: getMetadataCandidate
+      summary: Lees alleen de geselecteerde kandidaat.
+      description: |
+        Klasse admin, alleen onder capabilities.metadata_search. Item bepaalt
+        movie/show en actuele libraryscope. Read-only: geen metadata-publicatie,
+        kopieclaim of bestandswijziging. Gesloten query, herhaalde parameters ongeldig.
+        Zelfde ingestelde provider als de achtergrondronde; geen nieuwe keys of URL-input.
+        Rechten en intrekking worden na de providerawait opnieuw gecontroleerd.
+        Zoekresultaten maximaal twintig zonder Details-fanout; details alleen op selectie.
+        Afbeelding alleen vaste TMDB-host zonder redirects, maximaal 12 MiB,
+        jpeg/png/webp met overeenkomend inhoudstype; private no-store.
+        Netwerkduur maximaal 35 seconden; afbreken beëindigt de read.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+        - name: external_id
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[1-9][0-9]{0,9}$" }
+      responses:
+        "200":
+          description: Begrensde read-only providerpreview.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataCandidateDetails" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /items/{item_id}/metadata-candidate-artwork:
+    get:
+      tags: [administration]
+      operationId: getMetadataCandidateArtwork
+      summary: Lees een veilige vaste-host providerafbeelding.
+      description: |
+        Klasse admin, alleen onder capabilities.metadata_search. Item bepaalt
+        movie/show en actuele libraryscope. Read-only: geen metadata-publicatie,
+        kopieclaim of bestandswijziging. Gesloten query, herhaalde parameters ongeldig.
+        Zelfde ingestelde provider als de achtergrondronde; geen nieuwe keys of URL-input.
+        Rechten en intrekking worden na de providerawait opnieuw gecontroleerd.
+        Zoekresultaten maximaal twintig zonder Details-fanout; details alleen op selectie.
+        Afbeelding alleen vaste TMDB-host zonder redirects, maximaal 12 MiB,
+        jpeg/png/webp met overeenkomend inhoudstype; private no-store.
+        Netwerkduur maximaal 35 seconden; afbreken beëindigt de read.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+        - name: ref
+          in: query
+          required: true
+          schema: { type: string, pattern: '^/[A-Za-z0-9_-]{1,200}\.(jpg|png|webp)$' }
+        - name: role
+          in: query
+          required: true
+          schema: { type: string, enum: [poster, backdrop], x-unknown-safe: false }
+      responses:
+        "200":
+          description: Begrensde read-only providerpreview.
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /items/{item_id}/metadata-match:
     get:
       tags: [administration]
@@ -3675,6 +3791,14 @@ components:
             Bij true gebruikt een nieuwe client uitsluitend applied-identiteit;
             ontbrekend/null/ongeldig mag nooit terugvallen op external_ids of
             oude ongekwalificeerde cacheclaims. Zonder vlag blijft legacy gelden.
+        metadata_search:
+          type: boolean
+          default: false
+          description: |
+            Admin itemzoeking, geselecteerde kandidaatdetails en veilige
+            vaste-hostpreview zijn samen beschikbaar met ingestelde provider.
+            Zonder vlag blijft de handmatige metadata-matchroute bruikbaar;
+            nieuwe clients roepen geen zoek/detail/previewroute aan.
         metadata_match_status:
           type: boolean
           default: false
@@ -5069,6 +5193,36 @@ components:
         item_id: { $ref: "#/components/schemas/Id" }
         state: { $ref: "#/components/schemas/MetadataMatchState" }
         external_id: { type: [string, "null"] }
+
+    MetadataSearchCandidate:
+      type: object
+      required: [external_id, title, year]
+      properties:
+        external_id: { type: string, pattern: "^[1-9][0-9]{0,9}$" }
+        title: { type: string }
+        original_title: { type: string }
+        year: { type: [integer, "null"], minimum: 1 }
+    MetadataSearchResults:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/MetadataSearchCandidate" }
+    MetadataCandidateDetails:
+      type: object
+      required: [external_id, summary, genres, content_rating, poster_ref, backdrop_ref]
+      properties:
+        external_id: { type: string, pattern: "^[1-9][0-9]{0,9}$" }
+        summary: { type: string, maxLength: 10000 }
+        genres:
+          type: array
+          maxItems: 50
+          items: { type: string }
+        content_rating: { type: string }
+        poster_ref: { type: [string, "null"] }
+        backdrop_ref: { type: [string, "null"] }
 
     MetadataApplicationState:
       type: string

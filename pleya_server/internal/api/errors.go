@@ -299,6 +299,9 @@ var errorTable = map[string]struct {
 	CodeSetupAlreadyCompleted: {http.StatusConflict, false},
 	CodeSetupCodeInvalid:      {http.StatusUnauthorized, false},
 	CodeRateLimited:           {http.StatusTooManyRequests, true},
+	CodeMetadataUnavailable:   {http.StatusServiceUnavailable, true},
+	CodeMetadataFailed:        {http.StatusBadGateway, true},
+	CodeMetadataInvalid:       {http.StatusBadRequest, false},
 
 	CodeUserNotFound:         {http.StatusNotFound, false},
 	CodeUsernameTaken:        {http.StatusConflict, false},
@@ -432,3 +435,10 @@ func registeredStatus(code string) (int, bool) {
 	entry, ok := errorTable[code]
 	return entry.status, ok
 }
+
+// Read-only provider preview errors never contain provider text or credentials.
+const (
+	CodeMetadataUnavailable = "library.metadata_unavailable"
+	CodeMetadataFailed      = "library.metadata_failed"
+	CodeMetadataInvalid     = "library.invalid_metadata_query"
+)

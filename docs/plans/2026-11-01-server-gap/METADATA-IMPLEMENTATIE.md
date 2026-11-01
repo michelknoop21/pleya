@@ -36,6 +36,8 @@ B2 lokaal gebouwd en beoordeeld op1cc-basis; [bewijs](../../qa/2026-11-01-server
 
 ## Task 5: Zoeken, kandidaten en R3-matchstatus
 
+Gestart op schone B2-commit164894243e5262c062618e7bc0ad3939a3776b53, normale hooks/gate/review groen. Eén productwriter; volledige concrete brief en R3-pariteitsmapping in de taakoverdracht. Lokale implementatie en gerichte keten geleverd:34/430 Go,99 Web,142 Dart,143 fixtures en gates PASS,13 negatieven,9 breedte/themagevallen plus afwijs-vervolgketen en24 fasegebonden beelden. [Task5-bewijs](../../qa/2026-11-01-server-gap-metadata-search.md); onafhankelijke review vond één Important ontvangstbanner; één gerichte fixronde gebouwd met108 Webtests/3extra negatieven/8fixbeelden en gates PASS; verse scopedfixreview spec/correctness/visual PASS, I1 gesloten zonder nieuwe bevindingen; normale hooks ingeschakeld. Geen deploy/gereedclaim. De nieuw geautoriseerde gezamenlijke release-eenheid in de roadmap gaat vóór Task6/7; hun volledige scope blijft behouden.
+
 Binnen geopend venster: echte titel/optioneel-jaarzoekroute, gekozen-kandidaatdetails en veilige vaste-host-beeldpreview. Begrensd resultaat, geen fan-out/nieuwe provider, onderscheid ontvangst/pending/applied/fout. Directe UI en oorspronkelijke handmatige-ID-/reject-/confirmmogelijkheden behouden. R3 toepassen zonder nieuwe mockupronde; echte API en visueel bewijs. Concrete uitvoerbrief volgt.
 
 ## Task 6: Veld-overrides en locks

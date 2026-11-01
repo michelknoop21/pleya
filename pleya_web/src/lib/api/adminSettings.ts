@@ -13,6 +13,9 @@ import type {
   LogLevel,
   MetadataAttentionList,
   MetadataMatch,
+  MetadataMatchStatus,
+  MetadataSearchResults,
+  MetadataCandidateDetails,
   ServerEnvironment,
   ServerLog,
   Settings,
@@ -59,6 +62,26 @@ export function adminSettingsApi(client: PleyaClient) {
       client.request((raw) =>
         raw.GET('/metadata/attention', { params: { query: { limit } }, signal })
       ),
+
+    searchMetadata: (itemId: string, title: string, year?: number, signal?: AbortSignal): Promise<MetadataSearchResults> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-search', {
+        params: { path: { item_id: itemId }, query: { title, ...(year === undefined ? {} : { year }) } }, signal
+      })),
+
+    metadataCandidate: (itemId: string, externalId: string, signal?: AbortSignal): Promise<MetadataCandidateDetails> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-candidates/{external_id}', {
+        params: { path: { item_id: itemId, external_id: externalId } }, signal
+      })),
+
+    metadataCandidateArtwork: (itemId: string, ref: string, role: 'poster' | 'backdrop', signal?: AbortSignal): Promise<Blob> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-candidate-artwork', {
+        params: { path: { item_id: itemId }, query: { ref, role } }, parseAs: 'blob', signal
+      })),
+
+    metadataMatchStatus: (itemId: string, signal?: AbortSignal): Promise<MetadataMatchStatus> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-match', {
+        params: { path: { item_id: itemId } }, signal
+      })),
 
     /** Kiest de titel van de provider; 202, het ophalen gebeurt op de achtergrond. */
     setMetadataMatch: (itemId: string, externalId: string): Promise<MetadataMatch> =>

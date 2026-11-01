@@ -72,6 +72,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			ExternalIDLookup:        true,
 			AppliedExternalIdentity: true,
 			MetadataMatchStatus:     true,
+			MetadataSearch:          s.opts.MetadataProvider != nil,
 			// S20: de persoonlijke laag bestaat zodra de opslag er is.
 			History:          s.opts.Personal != nil,
 			Favorites:        s.opts.Personal != nil,
