@@ -348,6 +348,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   @override
   void didUpdateWidget(TvCatalogCardGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _preserveFocusedRow(previous: oldWidget.itemIds);
     _reconcileNodes(previous: oldWidget.itemIds);
     if (focusPositionsChanged(oldWidget.itemIds, widget.itemIds)) {
       final node = _nodes[_focusedId] ?? _nodes.values.firstOrNull;
@@ -369,6 +370,41 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
         });
       }
     }
+  }
+
+  /// A slow source can insert sorted titles before the card being read. The
+  /// node survives, but its row does not: leaving the offset unchanged moves
+  /// that same focused title out of view (CAT-SCROLL429). Preserve its viewport
+  /// row, without reordering data or stealing focus back from a control.
+  void _preserveFocusedRow({required List<String> previous}) {
+    if (!widget.rowAligned || !_controller.hasClients) return;
+    final id = _focusedId;
+    if (id == null || !(_nodes[id]?.hasFocus ?? false)) return;
+    final oldIndex = previous.indexOf(id);
+    final newIndex = widget.itemIds.indexOf(id);
+    final grid = _grid;
+    if (grid == null || oldIndex < 0 || newIndex < 0 || oldIndex == newIndex) return;
+    final rowDelta = newIndex ~/ grid.columns - oldIndex ~/ grid.columns;
+    if (rowDelta == 0) return;
+    final measured = _measuredRow(grid.columns, itemIds: previous);
+    if (measured == null) return;
+    final offset = _controller.offset;
+    final wasScrolling = _controller.position.isScrollingNotifier.value;
+    final center = _artworkCenterRow;
+    if (center != null) _artworkCenterRow = math.max(0, center + rowDelta);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controller.hasClients || _focusedId != id || !(_nodes[id]?.hasFocus ?? false)) return;
+      if (widget.itemIds.indexOf(id) != newIndex || _grid?.columns != grid.columns) return;
+      final position = _controller.position;
+      if (!position.hasContentDimensions) return;
+      if (wasScrolling) {
+        // The old animation still targets the old row; replace it with the
+        // ordinary row alignment, rather than snapping mid-gesture.
+        _alignToRow(newIndex, grid, _cardHeight!);
+      } else {
+        position.jumpTo((offset + rowDelta * measured.pitch).clamp(position.minScrollExtent, position.maxScrollExtent));
+      }
+    });
   }
 
   @override
@@ -473,9 +509,11 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   /// card), and that one runs first. Only an explicit move from here replaces
   /// it, so "nothing to do" still has to say so.
   void _alignToRow(int index, TvCatalogGrid grid, double cardHeight) {
+    final id = widget.itemIds[index];
     final duration = reduceMotion(context, TvCatalogCardGrid.rowScrollDuration);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_controller.hasClients) return;
+      if (!mounted || !_controller.hasClients || _focusedId != id || !(_nodes[id]?.hasFocus ?? false)) return;
+      if (widget.itemIds.indexOf(id) != index) return;
       final position = _controller.position;
       if (!position.hasViewportDimension || !position.hasContentDimensions) return;
       // The rows as laid out, not as budgeted: [TvCatalogLayout.cardHeight]
@@ -510,8 +548,8 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
 
   /// The first card's laid-out height and the distance from the first row to
   /// the second, or null while there is no second row to measure against.
-  ({double height, double pitch})? _measuredRow(int columns) {
-    final ids = widget.itemIds;
+  ({double height, double pitch})? _measuredRow(int columns, {List<String>? itemIds}) {
+    final ids = itemIds ?? widget.itemIds;
     if (ids.length <= columns) return null;
     final first = _nodes[ids.first]?.context?.findRenderObject();
     final below = _nodes[ids[columns]]?.context?.findRenderObject();
@@ -777,46 +815,57 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final isFirstColumn = column == 0;
     final isLastRow = index + grid.columns >= widget.itemIds.length;
 
-    return widget.itemBuilder(
-      context,
-      TvCatalogGridCell(
-        index: index,
-        width: grid.cardWidth,
-        focusNode: _nodeFor(id),
-        onFocusChange: (hasFocus) {
-          if (!hasFocus) return;
-          _focusedId = id;
-          final row = index ~/ grid.columns;
-          final center = _artworkCenterRow;
-          if (center == null || tvCatalogArtworkShouldRecenter(focusedRow: row, centerRow: center)) {
-            setState(() => _artworkCenterRow = row);
-          }
-          widget.onFocusedIdChanged?.call(id);
-          _keepFocusRingVisible(index);
-          widget.onFocusedCell?.call(index, grid);
-          _maybeLoadMore(index);
-        },
-        onNavigateUp: isFirstRow
-            ? widget.onExitTop
-            : widget.rowAligned
-            ? () => _moveToRow(index, grid.columns, -1)
-            : null,
-        // DOWN on the last row is the *backstop*, not the trigger any more —
-        // see [_maybeLoadMore], which fires two rows earlier. It fires the load
-        // and keeps focus exactly where it is: hoofdstuk 28 forbids a reflow,
-        // and moving focus to a card that does not exist yet is the reset this
-        // whole widget is built to avoid.
-        onNavigateDown: isLastRow
-            ? (widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : null)
-            : widget.rowAligned
-            ? () => _moveToRow(index, grid.columns, 1)
-            : null,
-        onNavigateLeft: isFirstColumn ? widget.onExitLeft : null,
-        // The end of the list is an end: a short last row has cards above it to
-        // the right, and the traversal would take the nearest of those.
-        onNavigateRight: index == widget.itemIds.length - 1 ? () {} : null,
-        onBack: widget.onBack,
+    // A local ValueKey cannot move a card between different Row parents.
+    // Reparent the existing cell with its already-owned node, preserving its
+    // focus decoration and artwork state when a late source shifts a row.
+    return KeyedSubtree(
+      key: _TvCatalogCellKey(_nodeFor(id)),
+      child: widget.itemBuilder(
+        context,
+        TvCatalogGridCell(
+          index: index,
+          width: grid.cardWidth,
+          focusNode: _nodeFor(id),
+          onFocusChange: (hasFocus) {
+            if (!hasFocus) return;
+            _focusedId = id;
+            final row = index ~/ grid.columns;
+            final center = _artworkCenterRow;
+            if (center == null || tvCatalogArtworkShouldRecenter(focusedRow: row, centerRow: center)) {
+              setState(() => _artworkCenterRow = row);
+            }
+            widget.onFocusedIdChanged?.call(id);
+            _keepFocusRingVisible(index);
+            widget.onFocusedCell?.call(index, grid);
+            _maybeLoadMore(index);
+          },
+          onNavigateUp: isFirstRow
+              ? widget.onExitTop
+              : widget.rowAligned
+              ? () => _moveToRow(index, grid.columns, -1)
+              : null,
+          // DOWN on the last row is the *backstop*, not the trigger any more —
+          // see [_maybeLoadMore], which fires two rows earlier. It fires the load
+          // and keeps focus exactly where it is: hoofdstuk 28 forbids a reflow,
+          // and moving focus to a card that does not exist yet is the reset this
+          // whole widget is built to avoid.
+          onNavigateDown: isLastRow
+              ? (widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : null)
+              : widget.rowAligned
+              ? () => _moveToRow(index, grid.columns, 1)
+              : null,
+          onNavigateLeft: isFirstColumn ? widget.onExitLeft : null,
+          // The end of the list is an end: a short last row has cards above it to
+          // the right, and the traversal would take the nearest of those.
+          onNavigateRight: index == widget.itemIds.length - 1 ? () {} : null,
+          onBack: widget.onBack,
+        ),
       ),
     );
   }
+}
+
+/// Private key type prevents collisions with other uses of the same node.
+class _TvCatalogCellKey extends GlobalObjectKey {
+  const _TvCatalogCellKey(FocusNode super.value);
 }
