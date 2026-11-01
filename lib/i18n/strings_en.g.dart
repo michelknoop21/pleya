@@ -2907,6 +2907,9 @@ class TranslationsLibrariesEn {
 
 	// Translations
 
+	/// en: 'Select: pick up/drop · ↑↓: move · Menu: done'
+	String get cinemaReorderHint => 'Select: pick up/drop · ↑↓: move · Menu: done';
+
 	/// en: 'Visible'
 	String get cinemaVisible => 'Visible';
 
@@ -11431,6 +11434,7 @@ extension on Translations {
 			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
 			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
 			'notices.playbackServerErrorBody' => 'The server hit an error while transcoding',
+			'libraries.cinemaReorderHint' => 'Select: pick up/drop · ↑↓: move · Menu: done',
 			'libraries.cinemaVisible' => 'Visible',
 			'libraries.cinemaHidden' => 'Hidden in this profile',
 			'libraries.cinemaOptionsHint' => 'Select for library options',
@@ -11527,9 +11531,9 @@ extension on Translations {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
 			'about.title' => 'About',
-			'about.openSourceLicenses' => 'Open Source Licenses',
 			_ => null,
 		} ?? switch (path) {
+			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
 			'about.viewLicensesDescription' => 'View licenses of third-party libraries',
@@ -12041,9 +12045,9 @@ extension on Translations {
 			'performanceOverlay.memory' => 'Memory',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'External Player',
-			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
 			'externalPlayer.customPlayers' => 'Custom Players',
@@ -12555,9 +12559,9 @@ extension on Translations {
 			'unifiedCatalog.oneSource' => '1 source',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
 			'unifiedCatalog.oneSeason' => '1 season',
-			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
 			'unifiedCatalog.jumpTo' => 'Jump to',
@@ -13069,9 +13073,9 @@ extension on Translations {
 			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
 			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
 			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
-			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
 			'assistant.examples.recentlyAdded.0' => 'What was added this week?',

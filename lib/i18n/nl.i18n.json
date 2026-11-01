@@ -1004,6 +1004,7 @@
     "playbackServerErrorBody": "De server liep vast tijdens het transcoderen"
   },
   "libraries": {
+    "cinemaReorderHint": "Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar",
     "cinemaVisible": "Zichtbaar",
     "cinemaHidden": "Verborgen in dit profiel",
     "cinemaOptionsHint": "Select voor bibliotheekopties",

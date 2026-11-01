@@ -1217,6 +1217,7 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get cinemaReorderHint => 'Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar';
 	@override String get cinemaVisible => 'Zichtbaar';
 	@override String get cinemaHidden => 'Verborgen in dit profiel';
 	@override String get cinemaOptionsHint => 'Select voor bibliotheekopties';
@@ -5548,6 +5549,7 @@ extension on TranslationsNl {
 			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
 			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
 			'notices.playbackServerErrorBody' => 'De server liep vast tijdens het transcoderen',
+			'libraries.cinemaReorderHint' => 'Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar',
 			'libraries.cinemaVisible' => 'Zichtbaar',
 			'libraries.cinemaHidden' => 'Verborgen in dit profiel',
 			'libraries.cinemaOptionsHint' => 'Select voor bibliotheekopties',
@@ -5644,9 +5646,9 @@ extension on TranslationsNl {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
 			'about.title' => 'Over',
-			'about.openSourceLicenses' => 'Open Source licenties',
 			_ => null,
 		} ?? switch (path) {
+			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
 			'about.viewLicensesDescription' => 'Bekijk licenties van third-party bibliotheken',
@@ -6158,9 +6160,9 @@ extension on TranslationsNl {
 			'performanceOverlay.memory' => 'Geheugen',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'Externe speler',
-			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
 			'externalPlayer.customPlayers' => 'Aangepaste spelers',
@@ -6672,9 +6674,9 @@ extension on TranslationsNl {
 			'unifiedCatalog.oneSource' => '1 bron',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
 			'unifiedCatalog.oneSeason' => '1 seizoen',
-			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
 			'unifiedCatalog.jumpTo' => 'Spring naar',
@@ -7186,9 +7188,9 @@ extension on TranslationsNl {
 			'assistant.examples.tonight.1' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
 			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
-			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
 			'assistant.examples.recentlyAdded.0' => 'Wat is er deze week toegevoegd?',

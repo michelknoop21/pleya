@@ -294,6 +294,11 @@ void main() {
       await pressPanelButton(tester, t.libraries.reorder);
 
       expect(find.text(t.libraries.reorderIntro), findsOneWidget);
+      expect(
+        find.text(t.libraries.cinemaOptionsHint),
+        findsNothing,
+        reason: 'Select picks up/drops in reorder; it cannot open library options',
+      );
       expect(find.text(t.unifiedCatalog.homeRows.done), findsOneWidget);
 
       await pressPanelButton(tester, t.unifiedCatalog.homeRows.done);

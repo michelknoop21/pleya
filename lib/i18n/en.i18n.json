@@ -1004,6 +1004,7 @@
     "playbackServerErrorBody": "The server hit an error while transcoding"
   },
   "libraries": {
+    "cinemaReorderHint": "Select: pick up/drop · ↑↓: move · Menu: done",
     "cinemaVisible": "Visible",
     "cinemaHidden": "Hidden in this profile",
     "cinemaOptionsHint": "Select for library options",

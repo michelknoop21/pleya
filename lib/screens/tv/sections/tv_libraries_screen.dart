@@ -560,7 +560,7 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
                   SizedBox(width: 16 * hig),
                   Expanded(
                     child: Text(
-                      t.libraries.cinemaOptionsHint,
+                      _reordering ? t.libraries.cinemaReorderHint : t.libraries.cinemaOptionsHint,
                       style: TextStyle(fontSize: 25 * hig, color: tokens(context).textMuted),
                     ),
                   ),
