@@ -50,6 +50,60 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 430 · 1 November 2026 · iPhone and iPad
+
+<!-- commit: c0f5b06d -->
+
+### New
+
+- **A new Home hero on iPad.** In landscape it fills the screen like on Apple TV, in portrait it is a card like on iPhone.
+- **Collections and playlists on Pleya Server.** Add titles to your own lists and play them from there.
+
+### Improved
+
+- **Synced positions are not viewings.** A position or watched mark copied to another Pleya Server no longer counts as a play or appears in watch history. Titles still show as watched.
+
+### Fixed
+
+- **Offline viewing on Pleya Server.** A film you finished offline now lands on the server, also when the title already had a position. A newer position from another device is kept.
+
+### Notes
+
+- Watch history shows the last real viewing. Marking a title unwatched no longer moves it there.
+
+### Worth checking
+
+- Rotate an iPad on Home, then open a title from the hero.
+- Finish a film offline, go back online, and check the state on the server.
+- Watch a title on one server and confirm the other server shows the position, with no new entry in watch history.
+- Switch profiles while a device reconnects: nothing should appear under the other profile.
+
+## 2.8.1 · build 429 · 1 November 2026 · Apple TV
+
+<!-- commit: 699026e1 -->
+
+### New
+
+- **Collections and playlists on Pleya Server.** Add titles to your own lists and play them from there.
+
+### Improved
+
+- **Synced positions are not viewings.** A position or watched mark copied to another Pleya Server no longer counts as a play or appears in watch history. Titles still show as watched.
+
+### Fixed
+
+- **Offline viewing on Pleya Server.** A film you finished offline now lands on the server, also when the title already had a position. A newer position from another device is kept.
+
+### Notes
+
+- Watch history shows the last real viewing. Marking a title unwatched no longer moves it there.
+
+### Worth checking
+
+- Watch a title on one server and confirm the other server shows the position, with no new entry in watch history.
+- Switch sources on a title and check that the position follows.
+- Add a title to a playlist on Pleya Server and play the list.
+
 ## 2.8.1 · build 428 · 31 October 2026 · iPhone and iPad
 
 <!-- commit: c78aca1d -->
