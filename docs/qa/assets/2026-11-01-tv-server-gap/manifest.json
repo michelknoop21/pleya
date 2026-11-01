@@ -1,0 +1,94 @@
+{
+  "tested_sha": "b3a5eac3aedc75c12c43ad31577e62f0583a5e03",
+  "dirty": false,
+  "target": "tvos-sim",
+  "app": {
+    "bundle_id": "nl.michelknoop.pleya.verify",
+    "version": "2.8.1",
+    "build": "430",
+    "configuration": "Debug Verify; not TestFlight"
+  },
+  "runs": [
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "result": "PASS",
+      "terminal_exit_code": 0,
+      "duration_ms": 48199,
+      "bundle_dir": ".build/pleya-verify/tvos-catalog-full-bleed-grid-1793562812765"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "result": "PASS",
+      "terminal_exit_code": 0,
+      "duration_ms": 38924,
+      "bundle_dir": ".build/pleya-verify/tvos-catalog-full-bleed-jump-1793562862001"
+    }
+  ],
+  "input": "idb",
+  "physical_mac_ui_used": false,
+  "global_prune": false,
+  "simulator_restored_to_shutdown": true,
+  "captures": [
+    {
+      "scenario": "grid",
+      "sha256": "d936974a8aa8bf462b77e32aece82f55734888473bc6060c8a76253e70e01ba4",
+      "width": 3840,
+      "height": 2160,
+      "file": "grid-00-rest.png",
+      "personally_reviewed": true
+    },
+    {
+      "scenario": "grid",
+      "sha256": "260fbe66b7e9cdf78bf4a4cc7f8eedb774714a39b3b64b1fa1b19d01cae09f63",
+      "width": 3840,
+      "height": 2160,
+      "file": "grid-01-row2.png",
+      "personally_reviewed": true
+    },
+    {
+      "scenario": "grid",
+      "sha256": "616f9042d1c2c1df0a5737ada36339310712f8c6734e8780cd30165ae2f792d0",
+      "width": 3840,
+      "height": 2160,
+      "file": "grid-02-landing.png",
+      "personally_reviewed": true
+    },
+    {
+      "scenario": "jump",
+      "sha256": "cc59599aff21cb84dbcff3d829819a8cd4622dd0a51f9957224ffcf671a0af5c",
+      "width": 3840,
+      "height": 2160,
+      "file": "jump-00-all-loaded.png",
+      "personally_reviewed": true
+    },
+    {
+      "scenario": "jump",
+      "sha256": "1cb40a73734ce7911cc19234e4dedf608de787cb3ace31acf5029de12badb7ca",
+      "width": 3840,
+      "height": 2160,
+      "file": "jump-01-after-presses.png",
+      "personally_reviewed": true
+    },
+    {
+      "scenario": "jump",
+      "sha256": "68fc09e253916d3635b2772b458d8441c2bb41ecbcd0d9301fd5d87e8e089840",
+      "width": 3840,
+      "height": 2160,
+      "file": "jump-02-letters.png",
+      "personally_reviewed": true
+    },
+    {
+      "scenario": "jump",
+      "sha256": "42288c98c19a3273e341e6586cdcf4128d4887be0610c471335ae29e3c0c258f",
+      "width": 3840,
+      "height": 2160,
+      "file": "jump-03-landed-on-b.png",
+      "personally_reviewed": true
+    }
+  ],
+  "limits": [
+    "Late sorted insert and ring state fixes have widget RED/GREEN; these native cases are regression tests.",
+    "Physical Siri Remote, real cache on/off/warm/cold matrix and performance acceptance remain open.",
+    "No push, merge, release, NAS or production mutation."
+  ]
+}
