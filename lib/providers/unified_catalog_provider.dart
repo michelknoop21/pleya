@@ -11,8 +11,11 @@ import 'package:flutter/foundation.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/unified/unified_media_group.dart';
+import '../media/unified/unified_media_source.dart';
+import '../media/unified/unified_watch_state.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/unified_catalog/catalog_service.dart';
+import '../services/unified_catalog/grouping_service.dart';
 import '../services/unified_catalog/source_cursor.dart';
 import '../services/unified_catalog/source_preference_store.dart';
 import '../services/unified_catalog/unified_catalog_query.dart';
@@ -303,38 +306,82 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// refresh/query change applies the new global order. Match memberships as
   /// well as group ids so changed identity facts retain the session's keys.
   UnifiedCatalogSnapshot _inVisibleOrder(UnifiedCatalogSnapshot fresh) {
-    final remaining = {for (final group in fresh.groups) group.groupId: group};
+    // groupId is a session/bucket key, not a unique concrete membership:
+    // weak ambiguous editions may legitimately have the same groupId.
     final bySource = {
-      for (final group in fresh.groups)
-        for (final source in group.sources) source.sourceKey: group,
+      for (var index = 0; index < fresh.groups.length; index++)
+        for (final source in fresh.groups[index].sources) source.sourceKey: index,
     };
+    final keepUnobserved = !fresh.isComplete || fresh.failedLibraryIds.isNotEmpty;
     final groups = <UnifiedMediaGroup>[];
-    final used = <String>{};
+    final published = <int, int>{};
     for (final old in _snapshot.groups) {
-      final updated =
-          remaining[old.groupId] ?? old.sources.map((source) => bySource[source.sourceKey]).nonNulls.firstOrNull;
-      if (updated == null) {
-        if (!fresh.isComplete || fresh.failedLibraryIds.isNotEmpty) groups.add(old);
+      final matches = old.sources.map((source) => bySource[source.sourceKey]).nonNulls.toSet();
+      final match =
+          matches.where((index) => fresh.groups[index].groupId == old.groupId).firstOrNull ?? matches.firstOrNull;
+      if (match == null) {
+        if (keepUnobserved) groups.add(old);
         continue;
       }
-      if (!used.add(updated.groupId)) continue;
-      remaining.remove(updated.groupId);
-      groups.add(
-        UnifiedMediaGroup(
-          groupId: old.groupId,
-          identity: updated.identity,
-          sources: updated.sources,
-          representativeSourceKey: updated.representativeSourceKey,
-          watchState: updated.watchState,
-        ),
-      );
+      final updated = fresh.groups[match];
+      final unobserved = keepUnobserved
+          ? old.sources.where((source) => !bySource.containsKey(source.sourceKey)).toList()
+          : const <UnifiedMediaSource>[];
+      if (unobserved.isNotEmpty && updated.groupId != old.groupId) {
+        // Only a rematched sibling was observed. Its new group does not
+        // establish a new identity for the siblings still outside the prefix.
+        groups.add(_withSources(old, unobserved));
+        continue;
+      }
+      final previousIndex = published[match];
+      if (previousIndex != null) {
+        // Two old groups may now merge. Carry their still-unobserved members
+        // into the one published candidate, without publishing it twice.
+        final existing = groups[previousIndex];
+        groups[previousIndex] = _withSources(existing, [
+          ...existing.sources,
+          if (keepUnobserved) ...old.sources.where((source) => !bySource.containsKey(source.sourceKey)),
+        ]);
+        continue;
+      }
+      final sources = {
+        for (final source in old.sources)
+          if (keepUnobserved && !bySource.containsKey(source.sourceKey)) source.sourceKey: source,
+        // A fresh observation replaces its old item; a member observed in a
+        // different candidate is never retained here after a split/rematch.
+        for (final source in updated.sources) source.sourceKey: source,
+      };
+      // Keep the old membership order as the card's continuity anchor.
+      final ordered = [
+        for (final source in old.sources)
+          if (sources.containsKey(source.sourceKey)) sources.remove(source.sourceKey)!,
+        ...sources.values,
+      ];
+      published[match] = groups.length;
+      groups.add(_withSources(updated, ordered, groupId: old.groupId));
     }
-    groups.addAll(remaining.values);
+    for (var index = 0; index < fresh.groups.length; index++) {
+      if (!published.containsKey(index)) groups.add(fresh.groups[index]);
+    }
     return UnifiedCatalogSnapshot(
       groups: List.unmodifiable(groups),
       failedLibraryIds: fresh.failedLibraryIds,
       initialLoadFailed: groups.isEmpty && fresh.initialLoadFailed,
       isComplete: fresh.isComplete && fresh.failedLibraryIds.isEmpty,
+    );
+  }
+
+  UnifiedMediaGroup _withSources(UnifiedMediaGroup group, List<UnifiedMediaSource> sources, {String? groupId}) {
+    final members = {for (final source in sources) source.sourceKey: source};
+    final preferred = members.keys.where(_rememberedSourceKeys.contains).firstOrNull;
+    return UnifiedMediaGroup(
+      groupId: groupId ?? group.groupId,
+      identity: group.identity,
+      sources: members.values.toList(),
+      representativeSourceKey: selectRepresentativeSource(members.values.toList()),
+      watchState: selectRepresentativeWatchState({
+        for (final source in members.values) source.sourceKey: source.item,
+      }, preferredSourceKey: preferred),
     );
   }
 

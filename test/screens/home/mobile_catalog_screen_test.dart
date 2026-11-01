@@ -8,10 +8,15 @@
 /// the real merge/query/filter pipeline.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
+import 'package:pleya/widgets/mobile/mobile_media_card.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -53,6 +58,8 @@ class _FakeLibraryClient implements MediaServerClient {
   final Map<String, List<MediaItem>> itemsByLibrary;
   bool shouldThrow = false;
   int fetchCalls = 0;
+  Future<void>? laterPageWait;
+  bool failLaterPages = false;
 
   @override
   ServerId get serverId => ServerId(id);
@@ -78,6 +85,10 @@ class _FakeLibraryClient implements MediaServerClient {
   }) async {
     fetchCalls++;
     if (shouldThrow) throw StateError('offline');
+    if (query.offset >= 50) {
+      await laterPageWait;
+      if (failLaterPages) throw StateError('later page unavailable');
+    }
     final all = itemsByLibrary[libraryId] ?? const <MediaItem>[];
     final end = (query.offset + query.limit).clamp(0, all.length);
     final slice = query.offset >= all.length ? const <MediaItem>[] : all.sublist(query.offset, end);
@@ -291,6 +302,42 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pump();
   }
+
+  testWidgets('ambiguous editions have distinct grid keys and preserve their index mapping after reorder', (
+    tester,
+  ) async {
+    final theatrical = _movie('edition-theatrical', title: 'Collision', serverId: 's1');
+    final directors = _movie('edition-directors', title: 'Collision', serverId: 's1');
+    client.itemsByLibrary['A'] = [theatrical, directors];
+    await pumpCatalog(tester);
+    await settle(tester);
+    expect(catalogs.movies.snapshot.groups, hasLength(2));
+    expect(catalogs.movies.snapshot.groups.map((g) => g.groupId).toSet(), hasLength(1));
+    final nodes = tester
+        .widgetList<AutomationNode>(
+          find.byWidgetPredicate((widget) => widget is AutomationNode && widget.id == AutomationIds.catalogGridItem),
+        )
+        .toList();
+    final keys = nodes.map((node) => node.key!).toList();
+    expect(keys.toSet(), hasLength(2), reason: 'weak ambiguous editions are distinct concrete cards');
+    final delegate = tester.widget<SliverGrid>(find.byType(SliverGrid)).delegate as SliverChildBuilderDelegate;
+    expect(delegate.findChildIndexCallback!(keys[0]), 0);
+    expect(delegate.findChildIndexCallback!(keys[1]), 1);
+
+    client.itemsByLibrary['A'] = [directors, theatrical];
+    await tester.runAsync(catalogs.movies.refresh);
+    await settle(tester);
+    final reordered = tester.widget<SliverGrid>(find.byType(SliverGrid)).delegate as SliverChildBuilderDelegate;
+    expect(reordered.findChildIndexCallback!(keys[0]), 1);
+    expect(reordered.findChildIndexCallback!(keys[1]), 0);
+    expect(
+      tester
+          .widgetList<MobileMediaCard>(find.byType(MobileMediaCard))
+          .map((card) => card.group.sources.single.sourceKey),
+      [directors.globalKey, theatrical.globalKey],
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   /// Taps [finder]. The `ensureVisible` is a no-op for the chip row itself,
   /// which fits the viewport by construction, and is kept for the chips that
@@ -659,6 +706,101 @@ void main() {
     });
   });
 
+  testWidgets('prefetches ahead without presenting a partial count as the catalogue size', (tester) async {
+    client.itemsByLibrary['A'] = [
+      for (var i = 0; i < 450; i++) _movie('flow$i', title: 'Film ${i.toString().padLeft(3, '0')}', serverId: 's1'),
+    ];
+    await pumpCatalog(tester, width: 600);
+    await settle(tester);
+    expect(catalogs.movies.snapshot.groups.length, greaterThan(20));
+    expect(catalogs.movies.snapshot.groups.length, lessThan(450));
+    expect(catalogs.movies.snapshot.hasMore, isTrue);
+    expect(find.text(t.unifiedCatalog.titlesLoaded(count: catalogs.movies.snapshot.groups.length)), findsNothing);
+    expect(tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!.offset, 0);
+  });
+
+  for (final failPage in [false, true]) {
+    testWidgets('fast fling keeps the list and offset through a slow page, failure=$failPage', (tester) async {
+      final gate = Completer<void>();
+      addTearDown(() {
+        if (!gate.isCompleted) gate.complete();
+      });
+      client.laterPageWait = gate.future;
+      client.failLaterPages = failPage;
+      client.itemsByLibrary['A'] = [
+        for (var i = 0; i < 450; i++) _movie('slow$i', title: 'Film ${i.toString().padLeft(3, '0')}', serverId: 's1'),
+      ];
+      await pumpCatalog(tester, width: 600);
+      await settle(tester);
+      final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
+      await tester.fling(find.byType(CustomScrollView), const Offset(0, -4000), 6000);
+      await settle(tester);
+      expect(catalogs.movies.isLoadingMore, isTrue);
+      final before = catalogs.movies.snapshot.groups.map((g) => g.groupId).toList();
+      expect(before.length, lessThan(450));
+      scroll.jumpTo(200);
+      await settle(tester);
+      final firstKey = tester
+          .widgetList<AutomationNode>(find.byType(AutomationNode))
+          .firstWhere((node) => node.id == AutomationIds.catalogGridItem && node.instance?.endsWith('.0') == true)
+          .key!;
+      final firstElement = tester.element(find.byKey(firstKey));
+      final beforeOffset = scroll.offset;
+      gate.complete();
+      await settle(tester);
+      // Publish the async fetch result, then render the provider's new state.
+      await settle(tester);
+      expect(scroll.offset, beforeOffset);
+      expect(tester.element(find.byKey(firstKey)), same(firstElement));
+      expect(catalogs.movies.snapshot.groups.take(before.length).map((g) => g.groupId), before);
+      expect(find.byType(CustomScrollView), findsOneWidget);
+      if (failPage) {
+        // The first successful page may still have ten buffered items when
+        // the next page fails. Keep those too; only the failing fetch is absent.
+        final failedCount = catalogs.movies.snapshot.groups.length;
+        expect(failedCount, greaterThanOrEqualTo(before.length));
+        expect(failedCount, lessThan(450));
+        expect(catalogs.movies.snapshot.failedLibraryIds, isNotEmpty);
+        final failedCalls = client.fetchCalls;
+        await tester.pump(const Duration(seconds: 1));
+        expect(client.fetchCalls, failedCalls, reason: 'a failed page waits for deliberate retry');
+        client.failLaterPages = false;
+        scroll.jumpTo(scroll.position.maxScrollExtent);
+        await settle(tester);
+        await tester.scrollUntilVisible(
+          find.text(t.common.retry),
+          500,
+          scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+          maxScrolls: 30,
+        );
+        await tester.tap(find.text(t.common.retry));
+        await settle(tester);
+        expect(catalogs.movies.snapshot.failedLibraryIds, isEmpty);
+        expect(catalogs.movies.snapshot.groups.length, greaterThan(failedCount));
+      }
+      expect(catalogs.movies.snapshot.groups.length, greaterThan(before.length));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('a 450-title catalogue remains reachable through all pages', (tester) async {
+    client.itemsByLibrary['A'] = [
+      for (var i = 0; i < 450; i++) _movie('large$i', title: 'Film ${i.toString().padLeft(3, '0')}', serverId: 's1'),
+    ];
+    await pumpCatalog(tester);
+    await settle(tester);
+    expect(catalogs.movies.snapshot.groups.length, lessThan(450));
+    for (var step = 0; step < 180 && catalogs.movies.snapshot.hasMore; step++) {
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -1800));
+      await settle(tester);
+    }
+    expect(catalogs.movies.snapshot.groups.length, 450);
+    expect(catalogs.movies.snapshot.isComplete, isTrue);
+    expect(client.fetchCalls, greaterThan(8));
+    expect(find.text(t.unifiedCatalog.titleCount(count: 450)), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows the populated grid, the count line and the chip labels once loaded', (tester) async {
     // Wide enough for the test font, which draws every glyph a full em wide.
     await pumpCatalog(tester, width: 600);
@@ -667,7 +809,7 @@ void main() {
     expect(find.text('Alien'), findsOneWidget);
     expect(find.text('Dune'), findsOneWidget);
     expect(find.text('Civil War'), findsOneWidget);
-    expect(find.text(t.unifiedCatalog.titlesLoaded(count: 3)), findsOneWidget);
+    expect(find.text(t.unifiedCatalog.titleCount(count: 3)), findsOneWidget);
     expect(find.text(t.unifiedCatalog.allSources), findsOneWidget);
     expect(find.text(t.unifiedCatalog.filters.title), findsOneWidget);
     expect(find.text(mobileCatalogSortLabel(UnifiedCatalogSort.titleAsc)), findsOneWidget);
@@ -795,7 +937,7 @@ void main() {
     // left out instead of cut (the test font is a full em per glyph).
     final title = MobileCatalogKind.movies.title;
     expect(tester.renderObject<RenderParagraph>(find.text(title)).didExceedMaxLines, isFalse);
-    expect(find.text(t.unifiedCatalog.titlesLoaded(count: 3)), findsNothing);
+    expect(find.text(t.unifiedCatalog.titleCount(count: 3)), findsNothing);
   });
 
   testWidgets('chips that fit stay on a single line', (tester) async {
@@ -884,7 +1026,7 @@ void main() {
       await settle(tester);
 
       final title = tester.getRect(find.text(MobileCatalogKind.movies.title));
-      final count = tester.getRect(find.text(t.unifiedCatalog.titlesLoaded(count: 3)));
+      final count = tester.getRect(find.text(t.unifiedCatalog.titleCount(count: 3)));
       expect((count.center.dy - title.center.dy).abs(), lessThan(8), reason: 'count beside the title: $title $count');
       expect(count.left, greaterThan(title.right));
       expect(find.byKey(const ValueKey('catalog.filterSummary')), findsNothing);
