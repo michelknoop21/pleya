@@ -110,6 +110,7 @@ Future<AssistantToolResult> _discoverResult(
           sources: const [FindSource.seerr],
         )
         ..ids = ExternalIds(tmdb: m.tmdbId)
+        ..externalIds = ExternalIds(tmdb: m.tmdbId)
         ..seerr = ctx.requests?.client() == null ? null : m,
   ];
   await assistantLinkLibrary(ctx, matches);

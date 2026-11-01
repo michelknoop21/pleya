@@ -60,6 +60,11 @@ class FindMatch {
   MediaKind? kind;
   final Set<FindSource> sources;
   ExternalIds ids = const ExternalIds();
+
+  /// Provider ids supplied by an external title source, not a library claim.
+  ExternalIds externalIds = const ExternalIds();
+  MediaItem? identityItem;
+  bool libraryLookupIncomplete = false;
   String? qid;
   String snippet = '';
 
@@ -138,6 +143,13 @@ class FindMatch {
     kind ??= other.kind;
     qid ??= other.qid;
     seerr ??= other.seerr;
+    identityItem ??= other.identityItem;
+    libraryLookupIncomplete |= other.libraryLookupIncomplete;
+    externalIds = ExternalIds(
+      tmdb: externalIds.tmdb ?? other.externalIds.tmdb,
+      imdb: externalIds.imdb ?? other.externalIds.imdb,
+      tvdb: externalIds.tvdb ?? other.externalIds.tvdb,
+    );
     if (snippet.isEmpty) snippet = other.snippet;
     ids = ExternalIds(
       tmdb: ids.tmdb ?? other.ids.tmdb,

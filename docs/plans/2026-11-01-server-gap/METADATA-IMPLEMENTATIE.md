@@ -32,6 +32,8 @@ Consumeer Task2. Bij capability true uitsluitend applied, ook bij ontbrekend/ong
 
 Consumeer Task3. Werkelijke title-ref/facts/find/fanout-consumers controleren. Een lege lookup met onvolledige applied-dekking is geen bewijs dat een titel ontbreekt. Behoud unknown/unchecked naast afwezig; voorkom oude positieve of zesuur-negatieve caches als toegepast bewijs. Geen algemene facts-cachewipe of tweede integratiearchitectuur. Het aparte S16-plan blijft eigenaar van beheerintegratie. Concrete uitvoerbrief volgt.
 
+B2 lokaal gebouwd en beoordeeld op1cc-basis; [bewijs](../../qa/2026-11-01-server-gap-applied-refs.md):229 gerichte PASS en acht mutatienegatieven. Library-/externe refgrens, concrete eindtargets/episodeparent en gekwalificeerde cachedekking; geen liveherverificatie zonder recente observatie. Eerste gate FAIL (JDK-PATH/twee unused imports), herstelchecks nativeformat PASS/analyze 0 errors/warnings; onafhankelijke review vond drie geverifieerde Important. Eén gezamenlijke fixronde gebouwd,239gerichtePASS en drie extra mutatienegatieven; verse scopedfixreview spec/correctness PASS, I1/I2/I3 gesloten; finale gate PASS/exit0, normale hooks blijven ingeschakeld.
+
 ## Task 5: Zoeken, kandidaten en R3-matchstatus
 
 Binnen geopend venster: echte titel/optioneel-jaarzoekroute, gekozen-kandidaatdetails en veilige vaste-host-beeldpreview. Begrensd resultaat, geen fan-out/nieuwe provider, onderscheid ontvangst/pending/applied/fout. Directe UI en oorspronkelijke handmatige-ID-/reject-/confirmmogelijkheden behouden. R3 toepassen zonder nieuwe mockupronde; echte API en visueel bewijs. Concrete uitvoerbrief volgt.

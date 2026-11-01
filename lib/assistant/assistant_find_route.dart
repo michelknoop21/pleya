@@ -340,13 +340,36 @@ class FindRun {
   Future<void> _resolve(List<FindMatch> todo) async {
     await Future.wait([
       for (final m in todo)
-        if (m.library.isNotEmpty && !m.ids.hasAny)
+        if (m.library.isNotEmpty &&
+            (!m.ids.hasAny || m.library.any((item) => item.backend == MediaBackend.pleyaServer)))
           attempt(() async {
             final item = m.library.first;
             final client = ctx.userClient(ServerId(item.serverId!));
-            if (client == null) return;
-            final ids = await client.fetchExternalIds(item.id);
-            if (!settled) m.ids = _knownIds[item.globalKey] = ids;
+            final isPleya = item.backend == MediaBackend.pleyaServer || client is PleyaServerClient;
+            final mode = client is PleyaServerClient ? client.externalIdentitySource : null;
+            final ids = isPleya && !(client is PleyaServerClient && client.usesLegacyExternalIdentity)
+                ? await pleyaAppliedTitleIds(
+                    item,
+                    client is PleyaServerClient ? client : null,
+                    identityItem: m.identityItem,
+                  )
+                : client == null
+                ? null
+                : await client.fetchExternalIds(item.id);
+            if (settled ||
+                !identical(ctx.userClient(ServerId(item.serverId!)), client) ||
+                (client is PleyaServerClient && client.externalIdentitySource != mode)) {
+              partial = true;
+              m.libraryLookupIncomplete = true;
+              return;
+            }
+            if (ids == null) return;
+            _knownIds[item.globalKey] = ids;
+            if (!m.externalIds.hasAny && m.seerr == null) m.ids = ids;
+            if (isPleya && !ids.hasAny) {
+              partial = true;
+              m.libraryLookupIncomplete = true;
+            }
           }),
     ]);
     final client = seerr;
@@ -367,7 +390,10 @@ class FindRun {
         () => webCache.get(_profile, 'wikidata', qids.join(' '), () => web.wikidataIds(qids, abort: _abort)),
       );
       for (final m in bridge) {
-        m.ids = ids?[m.qid] ?? m.ids;
+        if (ids?[m.qid] case final found?) {
+          m.ids = found;
+          m.externalIds = found;
+        }
       }
     }
     attachLooseMatches(matches);
@@ -419,6 +445,7 @@ class FindRun {
     if (_keep(m, pick)) m.seerr = pick;
     m
       ..ids = ExternalIds(tmdb: pick.tmdbId, imdb: m.ids.imdb, tvdb: m.ids.tvdb)
+      ..externalIds = ExternalIds(tmdb: pick.tmdbId)
       ..kind ??= pick.isMovie ? MediaKind.movie : MediaKind.show
       ..year ??= int.tryParse(pick.year ?? '')
       ..sources.add(FindSource.seerr);
@@ -447,6 +474,11 @@ class FindRun {
             onBatch: (batch) {
               if (settled) return true;
               for (final r in batch) {
+                if (!r.ok || !identical(ctx.userClient(r.serverId), servers[r.serverId])) {
+                  partial = true;
+                  m.libraryLookupIncomplete = true;
+                  continue;
+                }
                 m.addLibrary([
                   for (final item in filterHiddenLibraryItems([
                     for (final item in r.matches) _stamp(item, r.serverId.value),

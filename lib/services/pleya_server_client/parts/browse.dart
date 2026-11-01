@@ -347,6 +347,25 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     );
   }
 
+  /// A newly observed applied answer contradicts an older persisted claim.
+  /// No fresh observation means the existing persisted-cache TTL is unchanged.
+  bool isStoredAppliedIdentityCurrent(MediaItem item) {
+    if (!hasAppliedExternalIds(item)) return false;
+    return isAppliedIdentityCurrent(item.id, externalIdsCarriedBy(item)!);
+  }
+
+  /// Recheck an already qualified title against observations made since its
+  /// lookup, without another request or a new cache lifetime.
+  bool isAppliedIdentityCurrent(String itemId, ExternalIds expected) {
+    final known = _recentExternalIds[itemId];
+    if (known == null || DateTime.now().difference(known.at) >= _recentExternalIdsTtl || known.source != 'applied')
+      return true;
+    return known.authoritative &&
+        (expected.tmdb == null || known.ids.tmdb == expected.tmdb) &&
+        (expected.imdb == null || known.ids.imdb == expected.imdb) &&
+        (expected.tvdb == null || known.ids.tvdb == expected.tvdb);
+  }
+
   @visibleForTesting
   void debugForgetExternalIds() => _recentExternalIds.clear();
 

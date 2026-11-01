@@ -152,10 +152,13 @@ void main() {
     expect(a.map((item) => item.id), ['film']);
     expect(h.queries.last['applied_external_id'], 'tmdb:11');
     expect(h.queries.last.containsKey('external_id'), isFalse);
-    final b = await client.findAllByIdentity(
-      const MediaIdentity(title: 'Film', kind: MediaKind.movie, externalIds: ExternalIds(tmdb: 22)),
+    await expectLater(
+      client.findAllByIdentity(
+        const MediaIdentity(title: 'Film', kind: MediaKind.movie, externalIds: ExternalIds(tmdb: 22)),
+      ),
+      throwsA(isA<IdentityLookupUnavailable>()),
+      reason: 'ignored applied filter cannot prove B absent across unmatched catalog rows',
     );
-    expect(b, isEmpty, reason: 'the fixture ignores applied filter, so response evidence must reject B');
   });
 
   test('actual snapshot reopening preserves applied proof and rejects legacy until explicitly old info', () async {

@@ -69,6 +69,9 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
         candidates.any((candidate) => candidate.item.raw?[pleyaExternalIdsSourceKey] != source)) {
       throw const IdentityLookupUnavailable('identity source changed during lookup');
     }
+    if (source == 'applied' && candidates.isEmpty) {
+      throw const IdentityLookupUnavailable('no applied copy proven; catalog identity coverage is incomplete');
+    }
     return candidates;
   }
 

@@ -838,6 +838,8 @@ void main() {
 }
 
 class _CountingClient implements MediaServerClient {
+  @override
+  MediaBackend get backend => MediaBackend.plex;
   _CountingClient({required this.onCall});
 
   final Future<List<MediaItem>> Function() onCall;
