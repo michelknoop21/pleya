@@ -517,6 +517,71 @@ void main() {
       expect(find.byType(TvLibrariesScreen), findsOneWidget);
     });
 
+    testWidgets('remote repeat burst advances once per event and stops after release', (tester) async {
+      final rows = [for (var i = 0; i < 12; i++) _lib('remote$i', serverId: ServerId('srv'), title: 'Remote $i')];
+      await pump(tester, rows);
+      state(tester).loadLibraryByKey(rows.first.globalKey);
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) {
+        await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(seconds: 2));
+      expect(FocusManager.instance.primaryFocus?.debugLabel, rows[5].globalKey);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, rows[4].globalKey);
+    });
+
+    testWidgets('held and repeated Select opens one sheet and the next press still works', (tester) async {
+      await pump(tester, [movie, show]);
+      state(tester).loadLibraryByKey(movie.globalKey);
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.openInAllMovies), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.openInAllMovies), findsNothing);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, movie.globalKey);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.openInAllMovies), findsOneWidget);
+    });
+
+    testWidgets('removal during a held reorder direction cannot move the replacement row', (tester) async {
+      await pump(tester, [movie, show, music]);
+      await pressPanelButton(tester, t.libraries.reorder);
+      await selectRow(tester, movie.globalKey);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(libraries.libraries.map((library) => library.globalKey), [
+        show.globalKey,
+        movie.globalKey,
+        music.globalKey,
+      ]);
+      libraries.debugSetLibraries([show, music]);
+      await tester.pumpAndSettle();
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(seconds: 2));
+      expect(libraries.libraries.map((library) => library.globalKey), [show.globalKey, music.globalKey]);
+      expect(
+        tester.widgetList<TvCinemaLibraryRow>(find.byType(TvCinemaLibraryRow)).where((row) => row.moving),
+        isEmpty,
+      );
+      expect(FocusManager.instance.primaryFocus?.debugLabel, music.globalKey);
+    });
+
     testWidgets('a single library offers no Ordenen — nothing to reorder', (tester) async {
       await pump(tester, [movie]);
 

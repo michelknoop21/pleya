@@ -353,6 +353,26 @@ jobs:
         working-directory: pleya_verify/runner
         run: dart run bin/verify.dart run ../scenarios/tvos.smoke.boot.yaml --json
 
+      # The smoke step built this checkout's isolated app. Reuse only within
+      # this unchanged job; the remote pack drives idb HID, not Bluetooth.
+      - name: Cinema held remote acceptance
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+        run: dart run bin/verify.dart run ../scenarios/tvos.my-pleya.libraries-remote-hold.yaml --json
+
+      - name: Held navigation and Menu passthrough contract
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+        run: dart run bin/verify.dart run ../scenarios/tvos.nav.held-press-lands-once.yaml --json
+
+      - name: Account profile picker and Menu return
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+        run: dart run bin/verify.dart run ../scenarios/tvos.profile.picker.yaml --json
+
       - name: Upload evidence bundle
         if: always()
         uses: actions/upload-artifact@v7

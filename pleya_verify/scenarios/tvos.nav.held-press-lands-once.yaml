@@ -1,33 +1,15 @@
 name: tvos.nav.held-press-lands-once
 target: tvos-sim
-# NAV1 (docs/tvos-fysieke-correctieronde.md, "NAV1, de echte oorzaak"). One
-# arrow press onto the Home tab moved the focus twice, and only that press.
-#
-# The mechanism lives in the engine fork, not in the phases. When the ring
-# lands on Home the app enables the Menu passthrough, and the engine answers an
-# enable with `releaseAllSynthesizedPresses`: a synthetic keyup for the arrow
-# that is still held. The press's own `.ended` then finds no keydown and re-taps
-# the arrow as a fresh pair (`tapIfMissingKeyDown:YES`). Step two. See
-# docs/tvos-remote-press-pipeline.md, side door 1 and 2.
-#
-# Why a *held* press. An idb tap is down and up within a few milliseconds, and
-# the passthrough message reaches the engine after the up: nothing to release,
-# nothing to re-tap. On the Siri Remote a click holds the ring for 80-230 ms
-# (log wa6v9), which is longer than the round trip. `holdMs: 250` puts the
-# simulator in the same window and stays under the engine's 400 ms repeat
-# delay, so the only second step that can show up is the defect.
-#
-# Negative control: with `TvosSystemNavigationService` sending the enable at
-# once (the pre-7786a952 code) the held LEFT from Series lands on Search, not
-# on Home, and this scenario is red. The fix parks the enable until the key is
-# up.
-#
-# A-24c (LEESMIJ-v4, review 557-I4): the ring moving no longer changes the
-# page, so landing on Home with an arrow raises nothing; the enable now comes
-# with Select on Home. A held Select is the same window as a held arrow: an
-# enable while it is down would re-tap it, and the second Select on a Home
-# that is now active would carry the remote into the page. The steps below
-# hold both the arrows and that Select.
+# NAV1 app-side acceptance: a held HID key must not cause an enable message
+# while HardwareKeyboard still reports that key down. Check parkedFlushes and
+# enablesSentWhileKeysHeld, as documented in tvos-remote-press-pipeline.md.
+# Installed idb uses keyboard HID in the simulator. It does NOT reach the
+# swizzled physical UIPress hook, synthesizedPressedKeys or the engine repeat
+# timer. Passing this scenario proves the app-side contract, not a physical
+# Siri Remote/engine re-tap fix. No Bluetooth or touch-surface claim.
+# The immediate-send negative control is detected by enablesSentWhileKeysHeld,
+# independently of whether this synthetic input route produces a second step.
+# 250ms holds exercise separate down/up phases without claiming engine repeats.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
