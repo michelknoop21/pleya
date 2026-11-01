@@ -5611,7 +5611,11 @@ beschrijving wijzigde, dus de regels van hoofdstuk 3 worden niet geraakt.
 
 **Lokale testuitkomsten:** alleen lokaal op branch `feat/unified-copy-cause`, niet op de NAS, niet op een toestel en niet in CI. De volledige `internal/watch` en `internal/api` tegen een wegwerp-Postgres gaven vóór de reviewronde 350 geslaagd, 0 gefaald en 0 overgeslagen; na de wijziging in `store.go` zijn `internal/watch` en de betrokken API-tests opnieuw gedraaid. `scripts/check_protocol.sh` slaagt. Mutaties aan de Go-fix en de clientfix maken de bijbehorende tests rood. `TestCopyAndAStartOnANewItemKeepTheOwner` raakte de eigenaar kwijt in 69 van 1000 rondes zonder de wachtstap in `Apply`, en in 0 van 1000 met.
 
+<a id="metadata-venster-2026-11-01"></a>
+
 ## DEC-XXX: additief metadata-venster voor het server-gapplan
+
+**Verwijzing tot merge:** [additief metadata-venster voor het server-gapplan](#metadata-venster-2026-11-01). Dit is het unieke besluitanker. Het definitieve DEC-nummer wordt volgens AGENTS.md pas bij merge toegewezen; deze lokale ontwikkelbranch heeft geen mergevrijgave en kent daarom nog geen nummer. Bestaande besluiten worden niet hernummerd.
 
 1 november 2026. Michel koos op de concrete venstervraag: “Open dit additieve metadata-venster (aanbevolen)”. [Exacte scope en acceptatie](plans/2026-11-01-server-gap/METADATA-VENSTERVOORSTEL.md), Roadmap C-05/S4/S22/S14.5. Additief toegepast-identiteitsbewijs met capability en aparte lookup/status, itemzoekflow titel/jaar/kandidaat/veilige vaste-host-beeldpreview, afzonderlijke veld-overrides/locks en artworkkeuze/pins. Legacy `external_ids`/filter behouden hun betekenis. Nieuwe clients gebruiken bij capability true uitsluitend applied-bewijs, inclusief caches/opgeslagen identiteit. Benodigde lokale opslagmigraties krijgen synthetisch upgrade-/backup-/restorebewijs en onafhankelijke review.
 

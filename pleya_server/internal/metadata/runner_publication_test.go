@@ -86,6 +86,10 @@ func TestPublicationEmptyReplacementSurvivesThreeRoundsAndRestart(t *testing.T) 
 		if err != nil || st.Matched != 1 || !reflect.DeepEqual(p.ids, []int{2}) || p.searches != 0 {
 			t.Fatalf("ronde %d: %+v %+v %v", round, st, p, err)
 		}
+		status, statusErr := fresh.MetadataMatchStatus(ctx, item)
+		if statusErr != nil || status.State != catalog.MetadataApplicationApplied || status.AppliedExternalID == nil || *status.AppliedExternalID != "2" {
+			t.Fatalf("publicatiebewijs na herlezing: %+v %v", status, statusErr)
+		}
 		var empty bool
 		if err := pool.QueryRow(ctx, `SELECT summary IS NULL AND genres IS NULL AND content_rating IS NULL AND people IS NULL AND metadata_sources='{}'::jsonb FROM media_items WHERE id=$1`, item).Scan(&empty); err != nil {
 			t.Fatal(err)
@@ -118,6 +122,10 @@ func TestPublicationFailureKeepsManualIDAndRetriesExactChoice(t *testing.T) {
 	st, err := testRunner(store, p, dir).Round(ctx)
 	if err != nil || st.Failed != 1 {
 		t.Fatalf("foutpad: %+v %v", st, err)
+	}
+	status, statusErr := catalog.NewStore(pool).MetadataMatchStatus(ctx, item)
+	if statusErr != nil || status.State != catalog.MetadataApplicationFailed || status.RequestedExternalID == nil || *status.RequestedExternalID != "2" || status.AppliedExternalID == nil || *status.AppliedExternalID != "1" || status.ErrorCode == nil || *status.ErrorCode != catalog.MetadataApplicationErrorFailed {
+		t.Fatalf("failure verloor bewijs/status: %+v %v", status, statusErr)
 	}
 	var ext, state, summary string
 	var manual bool

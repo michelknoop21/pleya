@@ -142,7 +142,11 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		      THEN i.sidecar_checked_at IS NULL OR i.sidecar_checked_at <= now() - $5::interval
 		      ELSE c.item_id IS NULL
 		           OR (c.state <> 'rejected'
+		               AND c.state <> 'ambiguous'
+		               AND (c.next_attempt_at IS NULL OR c.next_attempt_at <= now())
 		               AND (c.pass < $4
+		                    OR (c.state = 'matched' AND c.application_state = 'unknown'
+		                        AND c.applied_provider IS NULL)
 		                    OR (c.state IN ('unmatched', 'failed', 'matched')
 		                        AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now())))
 		      END
@@ -266,19 +270,19 @@ func applyMetadata(ctx context.Context, tx pgx.Tx, itemID id.ID, provider string
 	}
 
 	if d.Summary != "" && free("summary") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET summary = $2, updated_at = now() WHERE id = $1 AND summary IS DISTINCT FROM $2`, itemID, d.Summary); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET summary = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND summary IS DISTINCT FROM $2`, itemID, d.Summary); err != nil {
 			return err
 		}
 		sources["summary"] = provider
 	}
 	if len(d.Genres) > 0 && free("genres") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET genres = $2, updated_at = now() WHERE id = $1 AND genres IS DISTINCT FROM $2`, itemID, d.Genres); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET genres = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND genres IS DISTINCT FROM $2`, itemID, d.Genres); err != nil {
 			return err
 		}
 		sources["genres"] = provider
 	}
 	if d.ContentRating != "" && free("content_rating") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET content_rating = $2, updated_at = now() WHERE id = $1 AND content_rating IS DISTINCT FROM $2`, itemID, d.ContentRating); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET content_rating = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND content_rating IS DISTINCT FROM $2`, itemID, d.ContentRating); err != nil {
 			return err
 		}
 		sources["content_rating"] = provider
@@ -289,7 +293,7 @@ func applyMetadata(ctx context.Context, tx pgx.Tx, itemID id.ID, provider string
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET people = $2, updated_at = now() WHERE id = $1 AND people IS DISTINCT FROM $2`, itemID, raw); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET people = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND people IS DISTINCT FROM $2`, itemID, raw); err != nil {
 			return err
 		}
 		sources["people"] = provider
@@ -620,12 +624,13 @@ func (s *Store) SetManualMatch(ctx context.Context, itemID id.ID, provider, exte
 		return err
 	}
 	tag, err := tx.Exec(ctx, `
-		INSERT INTO metadata_candidates (item_id, provider, state, external_id, manual, attempts, next_attempt_at, pass)
-		SELECT i.id, $2, 'matched', $3, true, 0, now(), 1
+		INSERT INTO metadata_candidates (item_id, provider, state, external_id, manual, attempts, next_attempt_at, pass, application_state)
+		SELECT i.id, $2, 'matched', $3, true, 0, now(), 1, 'pending'
 		FROM media_items i WHERE i.id = $1 AND i.kind IN ('movie', 'show')
 		ON CONFLICT (item_id) DO UPDATE SET
 		    provider = EXCLUDED.provider, state = 'matched', external_id = EXCLUDED.external_id,
-		    manual = true, details = NULL, next_attempt_at = now(), updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`,
+		    manual = true, details = NULL, next_attempt_at = now(),
+		    application_state = 'pending', application_error_code = NULL, updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`,
 		itemID, provider, externalID)
 	if err != nil {
 		return fmt.Errorf("handmatige match opslaan: %w", err)
@@ -669,7 +674,7 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 		default:
 			continue
 		}
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET `+column+` = NULL, updated_at = now() WHERE id = $1`, itemID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET `+column+` = NULL, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1`, itemID); err != nil {
 			return nil, err
 		}
 		delete(sources, field)
@@ -700,12 +705,17 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 		return nil, err
 	}
 
+	if err := touchAppliedIdentity(ctx, tx, itemID, "", ""); err != nil {
+		return nil, err
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO metadata_candidates (item_id, provider, state, manual, attempts, pass)
 		VALUES ($1, $2, 'rejected', false, 0, 1)
 		ON CONFLICT (item_id) DO UPDATE SET
 		    provider = EXCLUDED.provider, state = 'rejected', external_id = NULL, manual = false,
 		    details = NULL, next_attempt_at = NULL,
+		    applied_provider = NULL, applied_external_id = NULL,
+		    application_state = 'unknown', application_error_code = NULL,
 		    updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`, itemID, provider); err != nil {
 		return nil, err
 	}
@@ -823,6 +833,14 @@ func lockMetadataItem(ctx context.Context, tx pgx.Tx, itemID id.ID) error {
 // en nieuwe bestanden zijn vooraf voorbereid. updated_at loopt bij iedere
 // kandidaatwrite minstens één microseconde op, ook bij dezelfde keuze of klokterugloop.
 func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c MetadataCandidate, details, sidecar *MetadataDetails, artwork []ProviderArtwork) error {
+	if c.ItemID != target.ID {
+		return errors.New("metadata-publicatie hoort niet bij het gelockte item")
+	}
+	for _, a := range artwork {
+		if a.ItemID != target.ID {
+			return errors.New("metadata-artwork hoort niet bij het gelockte item")
+		}
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -866,6 +884,9 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 		}
 	}
 	if err := saveCandidate(ctx, tx, c); err != nil {
+		return err
+	}
+	if err := publishMetadataApplication(ctx, tx, c, details); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

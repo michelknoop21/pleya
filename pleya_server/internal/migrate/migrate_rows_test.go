@@ -172,7 +172,7 @@ func TestMigration0030AddsTheIndexesAndKeepsRowsAndConstraints(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			result, err := migrate.Run(ctx, pool, nil)
+			result, err := migrate.RunTo(ctx, pool, nil, 30)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -208,7 +208,7 @@ func TestMigration0030AddsTheIndexesAndKeepsRowsAndConstraints(t *testing.T) {
 				t.Fatalf("%d van de 3 constraints", constraints)
 			}
 
-			again, err := migrate.Run(ctx, pool, nil)
+			again, err := migrate.RunTo(ctx, pool, nil, 30)
 			if err != nil {
 				t.Fatalf("tweede start: %v", err)
 			}

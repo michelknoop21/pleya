@@ -61,7 +61,7 @@ func clearMissingProviderFields(ctx context.Context, tx pgx.Tx, target MetadataT
 	    genres = CASE WHEN $3 THEN NULL ELSE genres END,
 	    content_rating = CASE WHEN $4 THEN NULL ELSE content_rating END,
 	    people = CASE WHEN $5 THEN NULL ELSE people END,
-	    metadata_sources = $6, updated_at = now()
+	    metadata_sources = $6, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 	    WHERE id=$1`, target.ID, missing["summary"], missing["genres"], missing["content_rating"], missing["people"], out)
 	return err
 }

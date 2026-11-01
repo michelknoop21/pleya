@@ -39,7 +39,8 @@ type Provider interface {
 }
 
 // currentPass is het rondenummer van deze versie van de ronde. Verhogen zet
-// elk item één keer opnieuw aan de beurt. 2: .nfo als bron. 3: alternatieven bij
+// geschikte items één keer opnieuw aan de beurt: geen rejected/ambiguous en
+// nooit vóór een geplande retry. 2: .nfo als bron. 3: alternatieven bij
 // titels die niet matchen, en handmatige keuzes (M2b).
 const currentPass = 3
 

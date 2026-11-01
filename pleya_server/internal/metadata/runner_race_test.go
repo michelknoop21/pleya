@@ -152,6 +152,14 @@ func TestLateRunnerPreservesManualIntent(t *testing.T) {
 			if state != want || (strings.HasPrefix(tc.action, "choose") && (ext != chosen || !manual)) || (tc.action == "reject" && (ext != "" || manual)) || summary != "" || len(details) > 0 {
 				t.Errorf("oude runner overschrijft intentie: state=%s ext=%s manual=%v summary=%s details=%s", state, ext, manual, summary, details)
 			}
+			status, statusErr := catalog.NewStore(pool).MetadataMatchStatus(ctx, item)
+			expectedStatus := catalog.MetadataApplicationPending
+			if tc.action == "reject" {
+				expectedStatus = catalog.MetadataApplicationUnknown
+			}
+			if statusErr != nil || status.State != expectedStatus || status.AppliedProvider != nil || status.ErrorCode != nil {
+				t.Fatalf("late runner publiceerde identiteit/status: %+v %v", status, statusErr)
+			}
 			var empty bool
 			if err := pool.QueryRow(ctx, `SELECT summary IS NULL AND genres IS NULL AND content_rating IS NULL AND people IS NULL AND metadata_sources='{}'::jsonb FROM media_items WHERE id=$1`, item).Scan(&empty); err != nil {
 				t.Fatal(err)

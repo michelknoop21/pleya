@@ -451,4 +451,4 @@ Michel gaf opdracht het volledige gapplan te ontwikkelen. De lokale uitvoering b
 
 S16 hergebruikt het aparte Big P/MCP-plan op branch `docs/bigp-mcp-roadmap`, commit `1d66b211fb2f62160660d5ef8880735fdcfff970`, in `docs/plans/2026-11-01-big-p-server-mcp/`. Die documentregistratie is nog niet in deze basis gemerged en wordt bij latere integratie inhoudelijk behouden, zonder vervangende S16-lijst.
 
-Metadata-venster bij dit gapplan: Michel koos op 1 november expliciet voor openen van het [additieve voorstel](plans/2026-11-01-server-gap/METADATA-VENSTERVOORSTEL.md). Dit is uitsluitend de genoemde C-05/S4/S22/S14.5-contractscope, geen uitbreiding van overige protocol-/productie-/releasebevoegdheden.
+Metadata-venster bij dit gapplan ([uniek besluitanker](DECISIONS.md#metadata-venster-2026-11-01)): Michel koos op 1 november expliciet voor openen van het [additieve voorstel](plans/2026-11-01-server-gap/METADATA-VENSTERVOORSTEL.md). Dit is uitsluitend de genoemde C-05/S4/S22/S14.5-contractscope, geen uitbreiding van overige protocol-/productie-/releasebevoegdheden.

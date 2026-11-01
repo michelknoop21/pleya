@@ -262,7 +262,11 @@ func TestFailedAndMatchedWithArtworkRetryComeBackWhenDue(t *testing.T) {
 
 	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateFailed, NextAttempt: &past})
 	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["heat"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "949", NextAttempt: &future})
-	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1"})
+	// Een voltooid item vraagt echte publicatie; SaveCandidate is onbewezen intentie.
+	d := catalog.MetadataDetails{}
+	if err := store.CommitMetadata(ctx, catalog.MetadataTarget{ID: ids["show"]}, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 1}, &d, nil, nil); err != nil {
+		t.Fatal(err)
+	}
 
 	due, err := store.MetadataDue(ctx, "tmdb", 1, nil, 10)
 	if err != nil || len(due) != 1 || due[0].ID != ids["alien"] {
@@ -299,24 +303,34 @@ func TestDropProviderArtworkPutsTheItemBackInTheQueue(t *testing.T) {
 	}
 }
 
-func TestRaisingThePassPutsEveryItemBackExceptNothingIsLost(t *testing.T) {
+func TestRaisingThePassKeepsAmbiguityAndPublishedIdentity(t *testing.T) {
 	store, ctx, ids, _ := metadataFixture(t)
+	d := catalog.MetadataDetails{}
 	for _, k := range []string{"alien", "heat"} {
-		_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids[k], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 1})
+		item := ids[k]
+		if err := store.CommitMetadata(ctx, catalog.MetadataTarget{ID: item}, catalog.MetadataCandidate{ItemID: item, Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 1}, &d, nil, nil); err != nil {
+			t.Fatal(err)
+		}
 	}
-	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateAmbiguous, Pass: 1})
-
-	if due, _ := store.MetadataDue(ctx, "tmdb", 1, nil, 10); len(due) != 0 {
-		t.Fatalf("pass 1 hoort niets te geven: %+v", due)
+	if err := store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateAmbiguous, Pass: 1}); err != nil {
+		t.Fatal(err)
 	}
-	due, _ := store.MetadataDue(ctx, "tmdb", 2, nil, 10)
-	if len(due) != 3 {
-		t.Fatalf("pass 2 hoort alle drie opnieuw aan de beurt te zetten (ook de ambigue), kreeg %d", len(due))
+	if due, err := store.MetadataDue(ctx, "tmdb", 1, nil, 10); err != nil || len(due) != 0 {
+		t.Fatalf("bewezen pass 1: %+v %v", due, err)
 	}
-	// Eenmaal vastgelegd op pass 2 komt een item niet nog eens.
-	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 2})
-	if due, _ = store.MetadataDue(ctx, "tmdb", 2, nil, 10); len(due) != 2 {
-		t.Fatalf("na vastleggen op pass 2 horen er twee over te zijn, kreeg %d", len(due))
+	due, err := store.MetadataDue(ctx, "tmdb", 2, nil, 10)
+	if err != nil || len(due) != 2 {
+		t.Fatalf("pass 2 mag ambigu niet kiezen: %+v %v", due, err)
+	}
+	for _, target := range due {
+		if target.ID == ids["alien"] {
+			if err := store.CommitMetadata(ctx, target, catalog.MetadataCandidate{ItemID: target.ID, Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 2}, &d, nil, nil); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if due, err = store.MetadataDue(ctx, "tmdb", 2, nil, 10); err != nil || len(due) != 1 || due[0].ID != ids["heat"] {
+		t.Fatalf("herpublicatie niet begrensd: %+v %v", due, err)
 	}
 }
 
