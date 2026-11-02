@@ -195,17 +195,18 @@ export class PleyaClient {
   async setup(
     input: {
       setup_code: string;
+      server_name?: string;
       username: string;
       password: string;
     } & DeviceFields
   ): Promise<void> {
     const generation = ++this.#sessionGeneration;
-    const { setup_code, ...credentials } = input;
+    const { setup_code, server_name, ...credentials } = input;
     // SetupRequest is gesloten: credential_mode hoort bij login en refresh, en de server antwoordt erop
     // met een 401 die leest als een verkeerde setupcode. Setup levert dus altijd een refreshtoken in het
     // lichaam. Op een server met cookie_auth wordt dat nergens bewaard: de setupsessie gaat eerst dicht,
     // anders blijft hij als tweede rij in de toestellenlijst staan, en daarna volgt de cookielogin.
-    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: { setup_code, ...credentials } }));
+    const pair = await this.#unwrap(this.#raw.POST('/auth/setup', { body: { setup_code, ...credentials, ...(server_name === undefined ? {} : { server_name }) } }));
     if (generation !== this.#sessionGeneration) throw new Error('Account changed during setup');
     if (!this.#supportsCookieAuth) {
       this.#cookieAuth = false;

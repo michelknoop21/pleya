@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { setupDestination } from '#lib/setup/route.js';
   import Wordmark from '#lib/components/Wordmark.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -29,7 +30,7 @@
         ...deviceFields(session.capabilities)
       });
       await session.afterAuth();
-      await goto('/', { replace: true });
+      await goto(setupDestination(page.url.searchParams.get('next'),session.canAdminister), { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'auth.rate_limited') {
         // De server geeft retry_after_ms mee in details. Dat is het enige

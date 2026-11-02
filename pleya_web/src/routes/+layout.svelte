@@ -19,6 +19,7 @@
   import { session } from '#lib/stores/session.svelte.js';
   import { theme } from '#lib/stores/theme.svelte.js';
   import { viewport } from '#lib/stores/viewport.svelte.js';
+  import { setupDestination } from '#lib/setup/route.js';
   import { initLocale, t } from '#lib/i18n/index.js';
 
   // Vóór de eerste markup: `t()` is niet reactief, dus de taal moet vaststaan
@@ -68,9 +69,6 @@
   // De primitievengalerij heeft geen server nodig en hoort niet achter de
   // sessiepoort; buiten `vite dev` is `dev` onwaar en valt deze tak weg.
   const isDevGallery = $derived(dev && page.url.pathname.startsWith('/dev/'));
-  const isAuthRoute = $derived(
-    page.url.pathname === '/login' || page.url.pathname === '/setup'
-  );
   // De speler (mockup 50) vult het hele venster, zonder topnav of tabbalk.
   const isPlayer = $derived(isPlayerPath(page.url.pathname));
 
@@ -92,8 +90,8 @@
   const expectedPath = $derived.by(() => {
     if (isDevGallery) return null;
     if (session.phase === 'setup') return '/setup';
-    if (session.phase === 'signed-out') return '/login';
-    if (session.phase === 'ready' && isAuthRoute) return '/';
+    if (session.phase === 'signed-out') return page.url.pathname === '/setup' ? '/login?next=/setup' : '/login';
+    if (session.phase === 'ready' && page.url.pathname === '/login') return setupDestination(page.url.searchParams.get('next'),session.canAdminister);
     return null;
   });
 
@@ -115,7 +113,7 @@
   // beschermt is de API, die zonder geldig token niets geeft.
   $effect(() => {
     const target = expectedPath;
-    if (target !== null && page.url.pathname !== target) {
+    if (target !== null && page.url.pathname !== target.split('?')[0]) {
       void goto(target, { replace: true });
     }
   });
@@ -147,6 +145,8 @@
   </main>
 {:else if !routeMatchesPhase}
   <SkeletonPage variant="compact" />
+{:else if page.url.pathname === '/setup' && !unreachable}
+  <main id="main" class="auth-shell">{@render children()}</main>
 {:else if isPlayer && !unreachable}
   <main id="main" class="player-shell">
     {@render children()}

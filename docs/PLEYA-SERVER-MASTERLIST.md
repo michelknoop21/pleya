@@ -396,9 +396,9 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S11.1 | Vier stappen, hervatbaar, gedane stappen overgeslagen | `[ ]` | | |
-| S11.2 | Overnamevariant bij `.env`-bibliotheken | `[ ]` | | |
-| S11.3 | Golden journey 1 groen | `[ ]` | | |
+| S11.1 | Vier stappen, hervatbaar, gedane stappen overgeslagen | `[x]` | Hervatbare vierstappenflow op bestaande services: owner, aangeboden roots, bibliotheek, scan/Home; werkelijk opgeslagen serverdata bepalen gedane stappen. Rootdraft alleen in gevalideerde interne URL; geen writes bij reload. Bestaande servernaamcap, gesloten loginbody en account-/rolguards behouden. Lokaal206 Webtests, zes gedragsnegatieven, gates en onafhankelijke security/beeldreview PASS. [Bevroren bron en bewijs](qa/2026-11-02-server-gap-onboarding.md). Geen brede installatie-/NAS-/releaseclosure. | 2026-11-02 |
+| S11.2 | Overnamevariant bij `.env`-bibliotheken | `[x]` | Bestaande `.env`-bibliotheek via expliciete adoptbevestiging, geen nieuwe bibliotheek; verse reread voorkomt dubbel effect. Echte lokale browserproef behoudt bibliotheek-ID; slugbehoud volgt tevens bestaande ongewijzigde store/tests. Read-only media en lege succesvolle scan ondersteund. [Lokale adopt-/herlaadproef](qa/2026-11-02-server-gap-onboarding.md); hostmounts blijven operatorwerk. | 2026-11-02 |
+| S11.3 | Golden journey 1 groen | `[x]` | Golden journey1 lokaal met echte HTTP/PG/jobs/scanner/ffprobe op synthetische read-only media: owner→root→bibliotheek→scan→Home met titel, vier reloadgrenzen en exact1owner/1bibliotheek/1scan;14 primaire browserbeelden, bron/Web vóór en na gelijk. Rolblokkade en herstelbare leesfout getest. [Scope en manifest](qa/2026-11-02-server-gap-onboarding.md). De brede host-/uid-/poort-/NAS- en releaseacceptatie blijft afzonderlijk open. | 2026-11-02 |
 
 ### S12 Webreader (PS-15W)
 
