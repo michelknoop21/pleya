@@ -1,0 +1,21 @@
+# Onafhankelijke review — lokale image-rollbackbewijzen
+
+**PASS voor het afgebakende document-/bewijspakket.** Geen Critical, Important of Minor bevestigd. Beoordeeld: `docs/qa/2026-11-02-server-image-rollback.md`, behouden assets/manifest en uitsluitend de nieuwe bewijsalinea in S25.4. Rootbron44ab; geen productcodeheraudit, tests/builds/Docker/NAS/UI/netwerkactie. Alleen dit ignored reviewrapport geschreven.
+
+## Vastgestelde bewijsketen
+
+- Alle **26 hashes** in `/tmp/task5-image-rollback-1102/evidence-manifest.json` en alle **8 behouden assethashes** in `docs/qa/assets/2026-11-02-image-rollback/manifest.json` komen overeen. Ook de bron/Web-buildcontextmanifests gecontroleerd:549 oude en576 nieuwe bestanden, nul hashafwijkingen.
+- De twee bewaarde imagebeschrijvingen binden linux/amd64 aan de opgegeven revisionlabels en image-ID’s: oud699026e1/schema30/`6729466e…5803b`; nieuw44abf69f/schema32/`e4c685ff…964a92`. De buildlogs eindigen met de normale image-export/tagging. Geen gelijkstelling met de onbekende exacte NAS-productieimage.
+- Finale tijdlijn01:12:45–01:13:05 toont gewone handmatige backup, nieuw proces op dezelfde eigen DB/config, echte upgradeguardbackup op30 vóór migraties31/32, oude image op32 geweigerd met terminale **78**, schema32 onveranderd, nieuw proces weer op32, normale restoreAPI **202**, voltooiing en terminale **75**, database werkelijk30, exact dezelfde oude image terug ready200. `upgrade-guard.log:7–12`, `old-refusal.log:7`, `new-restore.log:14–19`, `old-returned.log:8` sluiten op de tijdlijn aan.
+- De gelezen runtimeorchestratie gebruikt `/backups` en `/backups/{id}/restore` met de werkelijk opgevraagde confirmation, plus de normale processen. Geen RunTo/neerwaartse SQL als vervangend runtimebewijs. Na restore wordt de nieuwe image niet automatisch herstart om de teruggezette30 meteen weer te migreren.
+- Voor/na-bestanden zijn bytegelijk. De digestquery neemt voor de tien opgesomde tabellen gesorteerd `row_to_json(t)` van **alle kolommen**, zonder uitzonderingsfilter; schema_migrations omvat30regels. Signingkey-SHA256 is eveneens gelijk. Archiefbewijs toont zowel manual- als upgradebackup met schema30 en `secrets.tar.enc`/Argon2id/AES-GCM; report noemt correct dat database.sql.gz zelf niet versleuteld is. Dit bewijst geselecteerd synthetisch behoud, niet alle mogelijke producttabellen of kwaadwillige dumps.
+
+## Geschiedenis, cleanup en statusautoriteit
+
+De oorspronkelijke verkeerde verwachte exit64 is als harnasfout zichtbaar; de uiteindelijke werkelijke guardexit is78. `runtime-resume.log` eindigt op de eerste full-row-assertionfailure; dat is niet als geslaagd eindbewijs verkocht. `before-first.json` versus de geïnitialiseerde fixture verschilt alleen in de media_itemsdigest. De uitvoerder identificeert sidecar_checked_at als normale eerste initialisatie; de finale herhaling vertrekt daarna van die normaal geïnitialiseerde oude server. De finale vergelijking sluit **geen velden uit**, controleert bovendien vóór oude herstart al gelijkheid en bewijst vervolgens volledige gelijkheid na die herstart. Geen productpatch of versoepelde guard is nodig/verkocht om deze ronde groen te maken.
+
+Cleanup-evidence rapporteert exit0 en afwezige eigen container/DB/rol/mounts/geheimen/archieven. Het cleanupscript controleert eigendom vóór verwijderen; baseline-containerbestanden vóór/na zijn bytegelijk. Images en geredigeerde logs/hashes blijven behouden. De claim blijft terecht beperkt tot die cleanup-snapshot en sluit later gestart werk niet onterecht uit.
+
+De masterlijstdiff voegt alleen de begrensde nieuwe bewijsalinea aan de bestaande S25.4-rij toe; checkbox/andere rijen blijven intact. Rapport-/assetlinks bestaan en wijzen naar dezelfde images, hashes en uitstappen. Het oudere24→30→24-bewijs wordt als historisch onderscheiden. S25.6 journey13, off-site/sleutelrecovery, exacte NAS-productieimage, liveherstel, playback/hardware en volledige server-gapclosure worden niet meegesloten.
+
+Conclusie: de voorheen open **lokale echte proces/image-terugval** is met deze synthetische fixture onderbouwd. Geen productie-uitroltoestemming of volledige rollbackacceptatie voor de NAS afgeleid. Geen uitvoeringsblocker/denied/pending actie binnen deze read-only review.

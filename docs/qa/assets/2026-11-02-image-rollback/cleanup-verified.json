@@ -1,0 +1,8 @@
+{
+  "own_database_absent": true,
+  "own_role_absent": true,
+  "own_container_absent": true,
+  "runtime_mounts_secrets_and_backup_archives_removed": true,
+  "all_baseline_container_ids_names_states_unchanged": true,
+  "new_containers_from_other_workers": []
+}

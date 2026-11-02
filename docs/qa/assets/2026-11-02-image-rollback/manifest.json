@@ -1,0 +1,43 @@
+{
+  "result": "PASS",
+  "source_old": "699026e1b031137fa79fd3639d49df58acc1d553",
+  "source_new": "44abf69f015bd0e639021f69fdac475522bcce12",
+  "guard_exit": 78,
+  "restore_exit": 75,
+  "runtime_exit": 0,
+  "cleanup_exit": 0,
+  "files": [
+    {
+      "file": "old-image.txt",
+      "sha256": "e8111767e686f6b3d0478025b702bcc859174ee28ae88534e4da328b8eda1c42"
+    },
+    {
+      "file": "new-image.txt",
+      "sha256": "3f182ce753ba35d41f61ad40335c1fa7d48ab3b9627b6419aabc8b1f524044db"
+    },
+    {
+      "file": "old-manifest.json",
+      "sha256": "96bbb9a3a28f79490c2082b2a1f4441bf44dac1fa585827d98dc99cb0ec8ce3b"
+    },
+    {
+      "file": "new-manifest.json",
+      "sha256": "4c2c24b67196fb20ba8b658258762eea6d1047aa547a404b1d35a733ed63f4d6"
+    },
+    {
+      "file": "before.json",
+      "sha256": "35b5966778a5233b7acbe9b63f92ea8a5c53e71e46f7b839ae66f0ece88ad467"
+    },
+    {
+      "file": "after.json",
+      "sha256": "35b5966778a5233b7acbe9b63f92ea8a5c53e71e46f7b839ae66f0ece88ad467"
+    },
+    {
+      "file": "archive-proof.json",
+      "sha256": "cc2a46ef7a24a0702ab8ebd58b0ea4a5417cba43281976647f2eab8e3f019d30"
+    },
+    {
+      "file": "cleanup-verified.json",
+      "sha256": "0071f83ce145aafe3c1aca8aa56f5c68f9ca7597d109dc2534643ca1487e0eed"
+    }
+  ]
+}
