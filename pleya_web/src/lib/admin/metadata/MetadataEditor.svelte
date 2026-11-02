@@ -12,6 +12,7 @@
   import { t } from '../../i18n';
   import AdminPageHead from '../AdminPageHead.svelte';
   import MetadataFieldFrame from './MetadataFieldFrame.svelte';
+  import ArtworkEditor from './ArtworkEditor.svelte';
   import { metadataDraft, metadataPatch, type DirtyFields, type MetadataDraft } from './editor';
 
   let { itemId }: { itemId: string } = $props();
@@ -26,7 +27,8 @@
   let attempt = $state(0);
   let sequence = 0;
   let writeController: AbortController | null = null;
-  const enabled = $derived(session.canAdminister === true && session.capabilities?.metadata_overrides === true);
+  const fieldsEnabled = $derived(session.capabilities?.metadata_overrides === true);
+  const enabled = $derived(session.canAdminister === true && (fieldsEnabled || session.capabilities?.artwork_choices === true));
   const changed = $derived(Object.values(dirty).some(Boolean));
   const label = (field: MetadataOverrideField) => t(`admin.metadata.editor.field.${field}`);
   const fieldError = (field: MetadataOverrideField) => invalid.includes(field) ? t('admin.metadata.editor.invalid') : undefined;
@@ -42,11 +44,11 @@
     writeController?.abort();
     data = null; item = null; draft = null; dirty = {}; invalid = []; failure = null; notice = null; busy = false;
     if (allowed && id) {
-      Promise.all([client.item(id, controller.signal), adminSettingsApi(client).metadataFields(id, controller.signal)])
+      Promise.all([client.item(id, controller.signal), fieldsEnabled ? adminSettingsApi(client).metadataFields(id, controller.signal) : Promise.resolve(null)])
         .then(([target, fields]) => {
           if (controller.signal.aborted || !same(id, client, generation, subject, current)) return;
-          if (target.id !== id || fields.item_id !== id || !['movie', 'show'].includes(target.kind)) throw new Error('metadata item unavailable');
-          item = target; adopt(fields);
+          if (target.id !== id || (fields && fields.item_id !== id) || !['movie', 'show'].includes(target.kind)) throw new Error('metadata item unavailable');
+          item = target; if(fields) adopt(fields);
         }).catch((error: unknown) => {
           if (!controller.signal.aborted && same(id, client, generation, subject, current)) failure = describeError(error);
         });
@@ -54,10 +56,10 @@
     return () => { controller.abort(); writeController?.abort(); };
   });
   function same(id: string, client: typeof session.client, generation: number, subject: string | undefined, current: number): boolean {
-    return current === sequence && itemId === id && client === session.client && generation === client.sessionGeneration && subject === session.me?.id && session.canAdminister === true && session.capabilities?.metadata_overrides === true;
+    return current === sequence && itemId === id && client === session.client && generation === client.sessionGeneration && subject === session.me?.id && session.canAdminister === true && enabled;
   }
   async function write(field?: MetadataOverrideField): Promise<void> {
-    if (!enabled || !data || !draft || busy || (field && changed)) return;
+    if (!enabled || !fieldsEnabled || !data || !draft || busy || (field && changed)) return;
     const payload = metadataPatch(draft, dirty);
     if (!field) {
       if (!changed) return;
@@ -70,7 +72,7 @@
     try {
       const api = adminSettingsApi(client);
       const result = field ? await api.deleteMetadataOverride(id, field, controller.signal) : await api.setMetadataOverrides(id, payload.body, controller.signal);
-      if (controller.signal.aborted || !same(id, client, generation, subject, current)) return;
+      if (controller.signal.aborted || !fieldsEnabled || !same(id, client, generation, subject, current)) return;
       if (result.item_id !== id) throw new Error('metadata item mismatch');
       adopt(result);
       notice = field ? t('admin.metadata.editor.unlockedNotice', { field: label(field) }) : t('admin.metadata.editor.saved');
@@ -89,11 +91,13 @@
   <AdminPageHead title={t('admin.metadata.editor.title')} crumbs={[{ label: t('admin.match.title'), href: '/admin/metadata/match' }, { label: data?.fields.title.value ?? item?.title ?? t('admin.metadata.editor.title') }]} />
   {#if !enabled}<StateView message={t('admin.metadata.editor.unavailable')} />
   {:else if !itemId}<StateView message={t('admin.metadata.editor.missing')} />
-  {:else if data && draft && item}
+  {:else if item}
     <nav class="item-actions" aria-label={t('admin.metadata.editor.fields')}>
       <a class="btn btn--secondary btn--sm" href="/items/{encodeURIComponent(itemId)}">{t('admin.metadata.editor.back')}</a>
       <a class="btn btn--secondary btn--sm" href="/admin/metadata/match?item={encodeURIComponent(itemId)}">{t('admin.match.title')}</a>
+      {#if session.capabilities?.artwork_choices===true}<a class="btn btn--secondary btn--sm" href="#artwork">{t('admin.metadata.artwork.title')}</a>{/if}
     </nav>
+    {#if fieldsEnabled && data && draft}
     <div class="editor-panel"><Panel>
       <div class="intro"><h2>{data.fields.title.value}</h2><p>{t('admin.metadata.editor.intro')}</p><p class="help">{t('admin.metadata.editor.emptyHint')}</p></div>
       {#if failure}<Alert tone="err">{failure}</Alert>{/if}
@@ -139,6 +143,8 @@
       </form>
       <button type="button" class="text-action reload" disabled={busy || changed} onclick={() => attempt++}>{t('admin.metadata.editor.reload')}</button>
     </Panel></div>
+    {/if}
+    <ArtworkEditor {itemId} defaultArtwork={item.artwork}/>
   {:else if failure}<StateView kind="error" message={failure} onRetry={() => attempt++} />
   {:else}<SkeletonPage variant="compact" />{/if}
 </div>

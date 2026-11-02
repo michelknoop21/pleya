@@ -97,3 +97,10 @@ export type MetadataMatchStatus = S['MetadataMatchStatus'];
 export type MetadataFields = S['MetadataFields'];
 export type MetadataOverridesRequest = S['MetadataOverridesRequest'];
 export type MetadataOverrideField = keyof MetadataOverridesRequest;
+
+
+export type ArtworkCandidates = S['ArtworkCandidates'];
+export type ArtworkCandidate = S['ArtworkCandidate'];
+export type ArtworkSelection = S['ArtworkSelection'];
+export type ArtworkSelectionRequest = S['ArtworkSelectionRequest'];
+export type ArtworkPinState = S['ArtworkPinState'];

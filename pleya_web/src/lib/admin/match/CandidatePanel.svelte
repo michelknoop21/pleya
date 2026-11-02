@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ArtworkCredits from '../metadata/ArtworkCredits.svelte';
   import { untrack } from 'svelte';
   import type { MetadataSearchCandidate, MetadataCandidateDetails } from '../../api/types';
   import { adminSettingsApi } from '../../api/adminSettings';
@@ -126,6 +127,7 @@
         </section>
       {/if}
       {#if imageError}<p class="hint">{t('admin.match.search.imageError')}</p>{/if}
+      {#if details}<ArtworkCredits/>{/if}
       <div class="apply"><p class="hint">{t('admin.match.search.choose')}</p><button type="button" class="btn btn--primary" disabled={busy || !choice || details?.external_id!==choice || detailBusy} onclick={pick}>{t('admin.match.search.pick')}</button></div>
     {:else}
       {#if options.length>0}<Choice legend={t('admin.match.cand.legend')} hideLegend {options} bind:value={choice} disabled={busy}/><button type="button" class="btn btn--primary" disabled={busy || !choice} onclick={pick}>{t('admin.match.cand.pick')}</button>

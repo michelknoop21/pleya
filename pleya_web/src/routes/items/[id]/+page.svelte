@@ -183,7 +183,7 @@
 
         {#if session.canAdminister && (item.kind === 'movie' || item.kind === 'show')}
           <div class="detail__play">
-            {#if session.capabilities?.metadata_overrides === true}<a class="btn btn--secondary" href="/admin/metadata/edit?item={encodeURIComponent(item.id)}">{t('admin.metadata.editor.title')}</a>{/if}
+            {#if (session.capabilities?.metadata_overrides === true || session.capabilities?.artwork_choices === true)}<a class="btn btn--secondary" href="/admin/metadata/edit?item={encodeURIComponent(item.id)}">{t('admin.metadata.editor.title')}</a>{/if}
             <a class="btn btn--secondary" href="/admin/metadata/match?item={encodeURIComponent(item.id)}">{t('admin.match.title')}</a>
           </div>
         {/if}

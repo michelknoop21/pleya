@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"image"
 	"image/color"
 	"image/png"
@@ -15,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,6 +26,27 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/web"
 )
+
+// Deze provider bestaat uitsluitend in de expliciet opt-in testbinary.
+type editorArtworkProvider struct {
+	*browserMetadataProvider
+	imagesDown atomic.Bool
+	alternate  []byte
+}
+
+func (p *editorArtworkProvider) Images(_ context.Context, _ string, _ int) ([]metadata.ImageChoice, error) {
+	if p.imagesDown.Load() {
+		return nil, errors.New("synthetic image list unavailable")
+	}
+	nl := "nl"
+	return []metadata.ImageChoice{{Kind: "poster", Ref: "/synthetic.png", Width: 180, Height: 270}, {Kind: "poster", Ref: "/alternate.png", Language: &nl, Width: 180, Height: 270}, {Kind: "backdrop", Ref: "/alternate-wide.png", Width: 180, Height: 270}}, nil
+}
+func (p *editorArtworkProvider) Image(ctx context.Context, kind, ref string) ([]byte, string, error) {
+	if ref == "/alternate.png" || ref == "/alternate-wide.png" {
+		return p.alternate, ".png", nil
+	}
+	return p.browserMetadataProvider.Image(ctx, kind, ref)
+}
 
 func TestTask6EditorBrowserFixture(t *testing.T) {
 	if os.Getenv("PLEYA_TASK6_BROWSER_FIXTURE") != "synthetic-only" {
@@ -39,9 +62,23 @@ func TestTask6EditorBrowserFixture(t *testing.T) {
 	if err := png.Encode(&img, im); err != nil {
 		t.Fatal(err)
 	}
-	provider := &browserMetadataProvider{image: img.Bytes()}
+	for y := 0; y < 270; y++ {
+		for x := 0; x < 180; x++ {
+			im.Set(x, y, color.RGBA{uint8(180 + x/4), uint8(40 + y/5), uint8(20 + x/6), 255})
+		}
+	}
+	var alternate bytes.Buffer
+	if err := png.Encode(&alternate, im); err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(img.Bytes(), alternate.Bytes()) {
+		t.Fatal("synthetic alternatives must differ")
+	}
+	provider := &editorArtworkProvider{browserMetadataProvider: &browserMetadataProvider{image: img.Bytes()}, alternate: alternate.Bytes()}
+	cacheDir := t.TempDir()
 	e := newEnv(t, func(o *api.Options) {
 		o.MetadataProvider = provider
+		o.CacheDir = cacheDir
 		o.Web = web.HandlerFor(web.Options{FS: os.DirFS("/task6-web")})
 	})
 	e.setup(e.putSetupCode())
@@ -51,9 +88,20 @@ func TestTask6EditorBrowserFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	newRunner := func() *metadata.Runner {
-		return metadata.NewRunner(catalog.NewStore(e.pool), provider, metadata.ProviderTMDB, t.TempDir(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+		return metadata.NewRunner(catalog.NewStore(e.pool), provider, metadata.ProviderTMDB, cacheDir, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	}
 	reset := func(ctx context.Context) error {
+		provider.imagesDown.Store(false)
+		if err := os.WriteFile(filepath.Join(e.root, "films", "Grease (1978)", "poster.jpg"), img.Bytes(), 0600); err != nil {
+			return err
+		}
+		state, err := e.store.ArtworkState(ctx, item)
+		if err != nil {
+			return err
+		}
+		if err := e.store.CommitArtworkPins(ctx, state, map[string]*catalog.ArtworkPin{"poster": nil, "backdrop": nil}); err != nil {
+			return err
+		}
 		if _, err := e.pool.Exec(ctx, `UPDATE media_items SET title='Grease',year=1978,summary=NULL,genres=NULL,content_rating=NULL,people=NULL,metadata_sources='{}',metadata_field_layers='{}',metadata_nfo_safe=false WHERE id=$1`, item); err != nil {
 			return err
 		}
@@ -73,7 +121,14 @@ func TestTask6EditorBrowserFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	mux := http.NewServeMux()
-	mux.Handle("/", e.server.Handler())
+	var failNextItem atomic.Bool
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/pleya/v1/items/"+movie.ID && failNextItem.CompareAndSwap(true, false) {
+			http.Error(w, "synthetic transient item read failure", http.StatusServiceUnavailable)
+			return
+		}
+		e.server.Handler().ServeHTTP(w, r)
+	}))
 	mux.HandleFunc("/__task6/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Task6-Fixture") != "synthetic-only" {
 			http.NotFound(w, r)
@@ -89,6 +144,34 @@ func TestTask6EditorBrowserFixture(t *testing.T) {
 			}
 			if err := reset(r.Context()); err != nil {
 				http.Error(w, "fixture reset failed", 500)
+				return
+			}
+			w.WriteHeader(204)
+		case "/__task6/fail-next-item":
+			if r.Method != http.MethodPost {
+				http.NotFound(w, r)
+				return
+			}
+			failNextItem.Store(true)
+			w.WriteHeader(204)
+		case "/__task6/provider-down":
+			if r.Method != http.MethodPost {
+				http.NotFound(w, r)
+				return
+			}
+			provider.imagesDown.Store(true)
+			w.WriteHeader(204)
+		case "/__task6/source-loss":
+			if r.Method != http.MethodPost {
+				http.NotFound(w, r)
+				return
+			}
+			if err := os.Remove(filepath.Join(e.root, "films", "Grease (1978)", "poster.jpg")); err != nil {
+				http.Error(w, "fixture source removal failed", 500)
+				return
+			}
+			if err := os.RemoveAll(filepath.Join(cacheDir, "artwork-pins")); err != nil {
+				http.Error(w, "fixture cache removal failed", 500)
 				return
 			}
 			w.WriteHeader(204)
@@ -122,7 +205,7 @@ func TestTask6EditorBrowserFixture(t *testing.T) {
 			http.NotFound(w, r)
 		}
 	})
-	listener, err := net.Listen("tcp", ":8843")
+	listener, err := net.Listen("tcp", "0.0.0.0:8845")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,7 @@
  */
 import type { PleyaClient } from './client';
 import type {
+  ArtworkCandidates, ArtworkSelection, ArtworkSelectionRequest,
   ConnectivityCheck,
   LogLevel,
   MetadataAttentionList,
@@ -78,6 +79,12 @@ export function adminSettingsApi(client: PleyaClient) {
       client.request((raw) => raw.GET('/items/{item_id}/metadata-candidate-artwork', {
         params: { path: { item_id: itemId }, query: { ref, role } }, parseAs: 'blob', signal
       })),
+
+    artworkCandidates: (itemId: string, signal?: AbortSignal): Promise<ArtworkCandidates> =>
+      client.request(raw => raw.GET('/items/{item_id}/artwork-candidates', { params: { path: { item_id: itemId } }, signal })),
+
+    setArtwork: (itemId: string, body: ArtworkSelectionRequest, signal?: AbortSignal): Promise<ArtworkSelection> =>
+      client.request(raw => raw.PUT('/items/{item_id}/artwork', { params: { path: { item_id: itemId } }, body, signal })),
 
     metadataFields: (itemId: string, signal?: AbortSignal): Promise<MetadataFields> =>
       client.request(raw => raw.GET('/items/{item_id}/metadata', { params: { path: { item_id: itemId } }, signal })),
