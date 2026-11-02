@@ -195,6 +195,7 @@ type FFprobeStatus struct {
 
 // Server is de router met zijn afhankelijkheden.
 type Server struct {
+	pins                       *artwork.Pins
 	opts                       Options
 	log                        *slog.Logger
 	limiter                    *limiter
@@ -244,6 +245,7 @@ func New(opts Options) *Server {
 		mux:             http.NewServeMux(),
 		now:             time.Now,
 	}
+	s.pins = artwork.NewPins(opts.Catalog, opts.MetadataProvider, opts.CacheDir)
 	s.routes()
 	return s
 }

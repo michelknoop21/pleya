@@ -1285,6 +1285,69 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /items/{item_id}/artwork-candidates:
+    get:
+      tags: [administration]
+      operationId: getArtworkCandidates
+      summary: Begrensde itemgebonden poster- en achtergrondkeuzes.
+      description: |
+        Klasse admin, actuele bibliotheekscope, capability artwork_choices.
+        Alleen film/serie. Pins houden bron en SHA duurzaam vast, boven de gewone
+        lokale/providerladder. Cache is afgeleid; bronverlies behoudt intentie en
+        geeft een expliciete fout. Geen externe identiteitswijziging of upload.
+        Kandidaten zijn gebonden aan item, rol en actuele base_token. Alleen
+        beschikbare lokale bronnen en TMDB-beelden van de bewezen applied-identiteit.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: Bevestigde actuele artworkkeuze.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArtworkCandidates" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /items/{item_id}/artwork:
+    put:
+      tags: [administration]
+      operationId: setArtworkPins
+      summary: Kies of ontpin poster en achtergrond atomair.
+      description: |
+        Klasse admin, actuele bibliotheekscope, capability artwork_choices.
+        Alleen film/serie. Pins houden bron en SHA duurzaam vast, boven de gewone
+        lokale/providerladder. Cache is afgeleid; bronverlies behoudt intentie en
+        geeft een expliciete fout. Geen externe identiteitswijziging of upload.
+        Kandidaten zijn gebonden aan item, rol en actuele base_token. Alleen
+        beschikbare lokale bronnen en TMDB-beelden van de bewezen applied-identiteit.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArtworkSelectionRequest" }
+      responses:
+        "200":
+          description: Bevestigde actuele artworkkeuze.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArtworkSelection" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /items/{item_id}/metadata:
     get:
       tags: [administration]
@@ -3872,6 +3935,10 @@ components:
             Bij true gebruikt een nieuwe client uitsluitend applied-identiteit;
             ontbrekend/null/ongeldig mag nooit terugvallen op external_ids of
             oude ongekwalificeerde cacheclaims. Zonder vlag blijft legacy gelden.
+        artwork_choices:
+          type: boolean
+          default: false
+          description: Admin itemgebonden artworkkeuze/pins en keyless lokale bronnen beschikbaar. Externe alternatieven vereisen bestaande ingestelde TMDB-provider en bewezen applied-identiteit.
         metadata_overrides:
           type: boolean
           default: false
@@ -5278,6 +5345,60 @@ components:
         item_id: { $ref: "#/components/schemas/Id" }
         state: { $ref: "#/components/schemas/MetadataMatchState" }
         external_id: { type: [string, "null"] }
+
+    ArtworkToken:
+      type: string
+      pattern: '^[a-f0-9]{64}$'
+    ArtworkCandidate:
+      type: object
+      required: [id, role, source, artwork_id, preview_ref, language, available]
+      properties:
+        id: { $ref: "#/components/schemas/ArtworkToken" }
+        role: { type: string, enum: [poster, backdrop], x-unknown-safe: true }
+        source: { type: string, description: 'local of tmdb; onbekende bron niet selecteren.' }
+        artwork_id: { type: [string, "null"], format: uuid }
+        preview_ref: { type: [string, "null"], pattern: '^/[A-Za-z0-9_-]{1,200}\.(jpg|png|webp)$', description: Uitsluitend voor de bestaande vaste-hostproviderpreview; geen vrije URL. }
+        language: { type: [string, "null"] }
+        available: { type: boolean }
+    ArtworkPinState:
+      type: object
+      required: [artwork_id, source, state, error_code]
+      properties:
+        artwork_id: { $ref: "#/components/schemas/Id" }
+        source: { type: string, description: 'local of tmdb; onbekende bron veilig tonen.' }
+        state: { type: string, enum: [ready, unavailable], x-unknown-safe: true }
+        error_code: { type: [string, "null"], description: 'source_unavailable, source_changed of invalid_image; onbekende fout veilig tonen.' }
+    ArtworkPins:
+      type: object
+      required: [poster, backdrop]
+      properties:
+        poster: { anyOf: [{ $ref: "#/components/schemas/ArtworkPinState" }, { type: "null" }] }
+        backdrop: { anyOf: [{ $ref: "#/components/schemas/ArtworkPinState" }, { type: "null" }] }
+    ArtworkSelection:
+      type: object
+      required: [item_id, base_token, pins]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        base_token: { $ref: "#/components/schemas/ArtworkToken" }
+        pins: { $ref: "#/components/schemas/ArtworkPins" }
+    ArtworkCandidates:
+      allOf:
+        - $ref: "#/components/schemas/ArtworkSelection"
+        - type: object
+          required: [candidates, provider_state]
+          properties:
+            candidates: { type: array, maxItems: 40, items: { $ref: "#/components/schemas/ArtworkCandidate" } }
+            provider_state: { type: string, enum: [available, unavailable, not_configured, identity_unknown], x-unknown-safe: true }
+    ArtworkSelectionRequest:
+      type: object
+      additionalProperties: false
+      required: [base_token]
+      minProperties: 2
+      description: Gesloten partiële write, precies één JSON-object tot EOF; ontbrekende rol blijft behouden, null ontpint. Bij stale token 409 zonder write. Geen URLs, refs, uploads of externe IDs.
+      properties:
+        base_token: { $ref: "#/components/schemas/ArtworkToken" }
+        poster: { anyOf: [{ $ref: "#/components/schemas/ArtworkToken" }, { type: "null" }] }
+        backdrop: { anyOf: [{ $ref: "#/components/schemas/ArtworkToken" }, { type: "null" }] }
 
     MetadataOverridePerson:
       type: object

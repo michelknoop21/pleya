@@ -9,6 +9,7 @@ const all: Capabilities = {
   metadata_match_status: false,
   metadata_search: false,
   metadata_overrides: false,
+  artwork_choices: false,
   assistant_memory: false,
   browse: true,
   search: true,

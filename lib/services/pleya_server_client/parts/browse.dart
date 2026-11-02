@@ -251,6 +251,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   // ---------------------------------------------------------------------------
 
   Future<MediaItem?> fetchItem(String id) async {
+    final readOrder = _beginItemRead();
+    final source = externalIdentitySource;
     final json = await _getJson('/items/${Uri.encodeComponent(id)}');
     if (json == null) return null;
     try {
@@ -261,14 +263,25 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // otherwise get that event refused as stale and leave the viewing
       // without an owner, so its progress would never be stored.
       _watchLedger.remember(item.id, item.userState?.revision);
-      _rememberExternalIds([item]);
+      final accepted = _rememberExternalIds([item], readOrder: readOrder, source: source).contains(item.id);
+      final cacheCurrent = accepted || (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show);
       try {
-        await cache.put(ServerId(connection.id), PleyaServerApiCache.itemEndpoint(id), {
-          ...json,
-          pleyaExternalIdsSourceKey: identityCapabilitiesKnown
-              ? (wireCapabilities.appliedExternalIdentity ? 'applied' : 'legacy')
-              : 'unknown',
-        });
+        if (cacheCurrent)
+          await cache.putIfCurrent(
+            ServerId(connection.id),
+            PleyaServerApiCache.itemEndpoint(id),
+            {
+              ...json,
+              pleyaExternalIdsSourceKey: identityCapabilitiesKnown
+                  ? (wireCapabilities.appliedExternalIdentity ? 'applied' : 'legacy')
+                  : 'unknown',
+            },
+            () =>
+                !_closed &&
+                source == externalIdentitySource &&
+                ((item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) ||
+                    _recentExternalIds[item.id]?.readOrder == readOrder),
+          );
       } catch (e) {
         appLogger.d('PleyaServerClient: optional metadata cache write failed', error: e);
       }
@@ -316,6 +329,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     if (known != null && DateTime.now().difference(known.at) < _recentExternalIdsTtl) {
       return (ids: known.ids, authoritative: known.authoritative, source: known.source);
     }
+    final readOrder = _beginItemRead();
+    final source = externalIdentitySource;
     final answer = await _getJsonDetailed('/items/${Uri.encodeComponent(itemId)}');
     final json = answer.json;
     if (json == null) {
@@ -331,7 +346,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       appLogger.w('PleyaServerClient: /items/$itemId did not match the contract', error: e);
       throw IdentityLookupUnavailable('/items/$itemId did not match the contract');
     }
-    _rememberExternalIds([item]);
+    _rememberExternalIds([item], readOrder: readOrder, source: source);
     final isTitle = item.kind == PleyaItemKind.movie || item.kind == PleyaItemKind.show;
     return (
       ids: isTitle && identityCapabilitiesKnown
@@ -366,16 +381,67 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
         (expected.tvdb == null || known.ids.tvdb == expected.tvdb);
   }
 
+  /// A fresh presentation observation can contradict a warm row while the
+  /// applied identity remains equal. Missing/expired observations retain the
+  /// existing cache TTL; this does not turn an edit into an identity change.
+  bool isStoredPresentationCurrent(MediaItem item) {
+    if (!wireCapabilities.appliedExternalIdentity) return true;
+    final known = _recentExternalIds[item.id];
+    if (known == null || DateTime.now().difference(known.at) >= _recentExternalIdsTtl) return true;
+    return known.presentation == _presentationDigest(item);
+  }
+
+  String _presentationDigest(MediaItem item) => sha256
+      .convert(
+        utf8.encode(
+          jsonEncode([
+            item.title,
+            item.year,
+            item.summary,
+            item.genres ?? const [],
+            item.contentRating,
+            item.directors ?? const [],
+            item.writers ?? const [],
+            [
+              for (final role in item.roles ?? const <MediaRole>[]) [role.tag, role.role],
+            ],
+            item.thumbPath,
+            item.artPath,
+          ]),
+        ),
+      )
+      .toString();
+
+  @visibleForTesting
+  void debugExpireRecentObservations() {
+    for (final entry in _recentExternalIds.entries.toList()) {
+      final old = entry.value;
+      _recentExternalIds[entry.key] = (
+        ids: old.ids,
+        authoritative: old.authoritative,
+        source: old.source,
+        at: DateTime.fromMillisecondsSinceEpoch(0),
+        presentation: old.presentation,
+        readOrder: old.readOrder,
+      );
+    }
+  }
+
   @visibleForTesting
   void debugForgetExternalIds() => _recentExternalIds.clear();
 
   /// Keeps the numbers of items just read, so [fetchExternalIdsDetailed] can
   /// answer without asking again. Movies and shows only: nothing else carries
   /// numbers. Bounded, oldest out.
-  void _rememberExternalIds(Iterable<PleyaItem> items) {
+  Set<String> _rememberExternalIds(Iterable<PleyaItem> items, {required int readOrder, required String source}) {
+    final accepted = <String>{};
+    if (source != externalIdentitySource) return accepted;
     final now = DateTime.now();
     for (final item in items) {
       if (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) continue;
+      final current = _recentExternalIds[item.id];
+      if (current != null && current.readOrder > readOrder) continue;
+      accepted.add(item.id);
       _recentExternalIds.remove(item.id);
       _recentExternalIds[item.id] = (
         ids: identityCapabilitiesKnown
@@ -388,11 +454,21 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
             identityCapabilitiesKnown &&
             (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIdsReported : item.externalIdsReported),
         at: now,
+        readOrder: readOrder,
+        presentation: _presentationDigest(
+          PleyaServerMappers.mediaItem(
+            item,
+            serverId: serverId.toString(),
+            useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+            identityKnown: identityCapabilitiesKnown,
+          ),
+        ),
       );
     }
     while (_recentExternalIds.length > _recentExternalIdsMax) {
       _recentExternalIds.remove(_recentExternalIds.keys.first);
     }
+    return accepted;
   }
 
   /// An item plus the episode to resume.
@@ -688,6 +764,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       if (itemFilter != null && cursor != null && !seenCursors.add(cursor)) {
         throw StateError('Listing repeated its cursor');
       }
+      final readOrder = _beginItemRead();
+      final source = externalIdentitySource;
       final answer = await _getJsonDetailed(
         path,
         queryParameters: {'limit': '$pageSize', ...extraQuery, 'cursor': ?cursor},
@@ -725,6 +803,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       if (strictSnapshot && page.items.length != page.knownItems.length) {
         throw StateError('Snapshot contains unsupported items');
       }
+      _rememberExternalIds(page.knownItems, readOrder: readOrder, source: source);
       final visible = itemFilter == null ? page.knownItems : page.knownItems.where(itemFilter).toList();
       final count = itemFilter == null ? page.items.length : visible.length;
       exhausted = page.nextCursor == null;
@@ -764,7 +843,6 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     }
 
     final window = collected.length > limit ? collected.take(limit).toList() : collected;
-    _rememberExternalIds(window);
     final items = PleyaServerMappers.items(
       window,
       serverId: serverId.toString(),
@@ -841,7 +919,11 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   final Map<String, PleyaItem> _itemCache = {};
 
   /// The numbers of the item [fetchItem] answered last, for [fetchExternalIds].
-  final Map<String, ({ExternalIds ids, bool authoritative, String source, DateTime at})> _recentExternalIds = {};
+  final Map<
+    String,
+    ({ExternalIds ids, bool authoritative, String source, DateTime at, String presentation, int readOrder})
+  >
+  _recentExternalIds = {};
   static const Duration _recentExternalIdsTtl = Duration(seconds: 60);
   static const int _recentExternalIdsMax = 5000;
 

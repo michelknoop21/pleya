@@ -372,6 +372,8 @@ func matrixProbes() []matrixProbe {
 			ok: http.StatusOK, expect: adminSurface()},
 		{row: 102, name: "GET /items/{id}/metadata", method: http.MethodGet, path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/metadata" }, body: noBody, ok: http.StatusOK, expect: adminSurface()},
 		{row: 103, name: "PUT /items/{id}/overrides", method: http.MethodPut, path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/overrides" }, body: func(*matrixFixture) any { return map[string]string{"summary": "synthetic"} }, ok: http.StatusOK, expect: adminSurface()},
+		{row: 105, name: "GET /items/{id}/artwork-candidates", method: http.MethodGet, path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/artwork-candidates" }, body: noBody, ok: http.StatusServiceUnavailable, expect: adminSurface()},
+		{row: 106, name: "PUT /items/{id}/artwork", method: http.MethodPut, path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/artwork" }, body: func(*matrixFixture) any { return map[string]any{} }, ok: http.StatusServiceUnavailable, expect: adminSurface()},
 		{row: 104, name: "DELETE /items/{id}/overrides/{field}", method: http.MethodDelete, path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/overrides/summary" }, body: noBody, ok: http.StatusConflict, expect: adminSurface()},
 		{row: 99, name: "GET /items/{id}/metadata-search", method: http.MethodGet,
 			path: func(f *matrixFixture) string {

@@ -365,7 +365,10 @@ class SourceAllResolver {
     final cacheKey = _identityCacheKey(identity);
     final cached = await _readCache(cacheKey, visibility, eligible, expectedIds, identity);
     if (!current()) return unavailable();
-    if (cached != null && _appliedItemsCurrent(cached.items, eligible, identity)) return cached;
+    if (cached != null &&
+        _appliedItemsCurrent(cached.items, eligible, identity) &&
+        _presentationsCurrent(cached.items, eligible))
+      return cached;
 
     final items = <MediaItem>[];
     final checked = <String>{};
@@ -414,7 +417,8 @@ class SourceAllResolver {
       }
     }
 
-    if (!current() || !_appliedItemsCurrent(items, eligible, identity)) return unavailable();
+    if (!current() || (!_appliedItemsCurrent(items, eligible, identity) || !_presentationsCurrent(items, eligible)))
+      return unavailable();
     final coverage = SourceCoverageState(
       expectedServerIds: expectedIds,
       checkedServerIds: checked,
@@ -424,8 +428,20 @@ class SourceAllResolver {
     // A cancelled run asked fewer servers than it was going to; caching that
     // would freeze a deliberately partial answer for the full positive TTL.
     if (!cancelled)
-      await _writeCache(cacheKey, visibility, items: items, coverage: coverage, identitySources: identitySources);
-    if (!current() || !_appliedItemsCurrent(items, eligible, identity)) return unavailable();
+      await _writeCache(
+        cacheKey,
+        visibility,
+        items: items,
+        coverage: coverage,
+        identitySources: identitySources,
+        isCurrent: () =>
+            !(isCancelled?.call() ?? false) &&
+            current() &&
+            _appliedItemsCurrent(items, eligible, identity) &&
+            _presentationsCurrent(items, eligible),
+      );
+    if (!current() || (!_appliedItemsCurrent(items, eligible, identity) || !_presentationsCurrent(items, eligible)))
+      return unavailable();
     return (items: items, coverage: coverage);
   }
 
@@ -505,7 +521,7 @@ class SourceAllResolver {
         appLogger.d('Source-all-resolver cache row unreadable', error: e);
         return null;
       }
-      if (!_appliedItemsCurrent(items, eligible, identity)) return null;
+      if ((!_appliedItemsCurrent(items, eligible, identity) || !_presentationsCurrent(items, eligible))) return null;
       final rawReasons = row['uncheckedReasons'];
       final uncheckedReasons = <String, UncheckedSourceReason>{
         for (final id in expectedIds.difference(checkedIds))
@@ -539,6 +555,16 @@ class SourceAllResolver {
     return (items: const <MediaItem>[], coverage: SourceCoverageState.complete(expectedIds));
   }
 
+  // Presentation freshness is independent of applied identity. A changed pin
+  // or manual field does not alter which title this server has proven.
+  bool _presentationsCurrent(List<MediaItem> items, List<EligibleSourceServer> eligible) {
+    for (final item in items.where((item) => item.backend == MediaBackend.pleyaServer)) {
+      final client = eligible.where((s) => s.serverId.value == item.serverId).firstOrNull?.client;
+      if (client is PleyaServerClient && !client.isStoredPresentationCurrent(item)) return false;
+    }
+    return true;
+  }
+
   bool _appliedItemsCurrent(List<MediaItem> items, List<EligibleSourceServer> eligible, MediaIdentity identity) {
     for (final item in items.where((item) => item.backend == MediaBackend.pleyaServer)) {
       final server = eligible.where((s) => s.serverId.value == item.serverId).firstOrNull;
@@ -559,13 +585,14 @@ class SourceAllResolver {
     required List<MediaItem> items,
     required SourceCoverageState coverage,
     required Map<String, String> identitySources,
+    required bool Function() isCurrent,
   }) async {
     // An incomplete negative says nothing durable: the server that did not
     // answer may be exactly the one holding the title.
     if (items.isEmpty && !coverage.isComplete) return;
 
     try {
-      await cache.put(cacheServerId, _endpointFor(key, visibility), {
+      await cache.putIfCurrent(cacheServerId, _endpointFor(key, visibility), {
         'checkedAtMs': _now.millisecondsSinceEpoch,
         'identitySources': {for (final id in coverage.checkedServerIds) id: identitySources[id]},
         // Written for a negative too: the read side needs to know which
@@ -576,7 +603,7 @@ class SourceAllResolver {
           'items': [for (final item in items) item.toJson()],
           'uncheckedReasons': {for (final e in coverage.uncheckedReasons.entries) e.key: e.value.name},
         },
-      });
+      }, isCurrent);
     } catch (e) {
       appLogger.d('Source-all-resolver cache write failed', error: e);
     }

@@ -58,6 +58,12 @@ mixin _PleyaServerRequests {
   /// it for the transcode-session calls.
   Future<Map<String, dynamic>?> _adminSend(String method, String path, {Map<String, dynamic>? body});
 
+  // Request start order is local ownership within this client, never a wire
+  // revision. The existing bounded observation map retains per-item winners.
+  int _itemReadOrder = 0;
+  int _beginItemRead() => ++_itemReadOrder;
+  Set<String> _rememberExternalIds(Iterable<PleyaItem> items, {required int readOrder, required String source});
+
   /// One item by id. The playback part needs it to turn watch-state rows back
   /// into items, and the browse part already implements it.
   Future<MediaItem?> fetchItem(String id);

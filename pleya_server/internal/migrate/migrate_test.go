@@ -153,6 +153,7 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		// metadata-provider (S22.1 in kleine vorm).
 		"metadata_candidates": true,
 		"provider_artwork":    true,
+		"artwork_pins":        true, // S22.5: duurzame bronkeuze, geen beeldbytes.
 		// S18, migratie 0019: de omzetsessies van PS-8.
 		"transcode_sessions": true,
 		// S23, migratie 0021: de klaargezette downloads.

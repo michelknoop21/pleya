@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';

@@ -150,9 +150,14 @@ const (
 	// CodeInvalidMatch is het antwoord van PUT /items/{id}/metadata-match op een
 	// external_id die geen providernummer is (venster 3, S22.5). Een code in het
 	// domein library en geen nieuw domein: het gaat over de catalogus.
-	CodeInvalidMatch     = "library.invalid_match"
-	CodeInvalidOverride  = "library.invalid_override"
-	CodeOverrideFallback = "library.override_source_unavailable"
+	CodeInvalidMatch             = "library.invalid_match"
+	CodeInvalidOverride          = "library.invalid_override"
+	CodeOverrideFallback         = "library.override_source_unavailable"
+	CodeArtworkInvalid           = "library.artwork_invalid"
+	CodeArtworkStale             = "library.artwork_stale"
+	CodeArtworkSourceUnavailable = "library.artwork_source_unavailable"
+	CodeArtworkSourceChanged     = "library.artwork_source_changed"
+	CodeArtworkImageInvalid      = "library.artwork_image_invalid"
 
 	// CodeFilterInvalid is het antwoord van GET /libraries/{id}/items op een
 	// filterparameter die de server niet kan uitvoeren (venster 3, D1.4).
@@ -285,25 +290,30 @@ var errorTable = map[string]struct {
 	status    int
 	retryable bool
 }{
-	CodeMemoryNotPermitted:    {http.StatusForbidden, false},
-	CodeMemoryTooLarge:        {http.StatusRequestEntityTooLarge, false},
-	CodeMemoryInvalid:         {http.StatusBadRequest, false},
-	CodeMemoryConflict:        {http.StatusConflict, false},
-	CodeMemoryEpoch:           {http.StatusConflict, false},
-	CodeMemoryDeleted:         {http.StatusConflict, false},
-	CodeMemoryLimit:           {http.StatusConflict, false},
-	CodeMemoryDuplicate:       {http.StatusConflict, false},
-	CodeInvalidCredentials:    {http.StatusUnauthorized, false},
-	CodeTokenExpired:          {http.StatusUnauthorized, false},
-	CodeTokenInvalid:          {http.StatusUnauthorized, false},
-	CodeRefreshTokenReused:    {http.StatusUnauthorized, false},
-	CodeSetupRequired:         {http.StatusConflict, false},
-	CodeSetupAlreadyCompleted: {http.StatusConflict, false},
-	CodeSetupCodeInvalid:      {http.StatusUnauthorized, false},
-	CodeRateLimited:           {http.StatusTooManyRequests, true},
-	CodeMetadataUnavailable:   {http.StatusServiceUnavailable, true},
-	CodeMetadataFailed:        {http.StatusBadGateway, true},
-	CodeMetadataInvalid:       {http.StatusBadRequest, false},
+	CodeMemoryNotPermitted:       {http.StatusForbidden, false},
+	CodeMemoryTooLarge:           {http.StatusRequestEntityTooLarge, false},
+	CodeMemoryInvalid:            {http.StatusBadRequest, false},
+	CodeMemoryConflict:           {http.StatusConflict, false},
+	CodeMemoryEpoch:              {http.StatusConflict, false},
+	CodeMemoryDeleted:            {http.StatusConflict, false},
+	CodeMemoryLimit:              {http.StatusConflict, false},
+	CodeMemoryDuplicate:          {http.StatusConflict, false},
+	CodeInvalidCredentials:       {http.StatusUnauthorized, false},
+	CodeTokenExpired:             {http.StatusUnauthorized, false},
+	CodeTokenInvalid:             {http.StatusUnauthorized, false},
+	CodeRefreshTokenReused:       {http.StatusUnauthorized, false},
+	CodeSetupRequired:            {http.StatusConflict, false},
+	CodeSetupAlreadyCompleted:    {http.StatusConflict, false},
+	CodeSetupCodeInvalid:         {http.StatusUnauthorized, false},
+	CodeRateLimited:              {http.StatusTooManyRequests, true},
+	CodeMetadataUnavailable:      {http.StatusServiceUnavailable, true},
+	CodeMetadataFailed:           {http.StatusBadGateway, true},
+	CodeMetadataInvalid:          {http.StatusBadRequest, false},
+	CodeArtworkInvalid:           {http.StatusBadRequest, false},
+	CodeArtworkStale:             {http.StatusConflict, false},
+	CodeArtworkSourceUnavailable: {http.StatusServiceUnavailable, true},
+	CodeArtworkSourceChanged:     {http.StatusConflict, false},
+	CodeArtworkImageInvalid:      {http.StatusBadGateway, false},
 
 	CodeUserNotFound:         {http.StatusNotFound, false},
 	CodeUsernameTaken:        {http.StatusConflict, false},

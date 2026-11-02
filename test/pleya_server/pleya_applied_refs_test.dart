@@ -13,11 +13,14 @@ import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_title_facts_cache.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_identity.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/api_cache.dart';
+import 'package:pleya/services/pleya_server_api_cache.dart';
 import 'package:pleya/services/tmdb/tmdb_client.dart';
 import 'package:pleya/services/unified_catalog/source_resolver.dart';
 import 'package:pleya/utils/external_ids.dart';
@@ -456,6 +459,335 @@ void main() {
     expect(matchesOf(result), isEmpty);
     expect(() => ctx.requireShownItem(ServerId('srv-1'), 'film'), throwsA(isA<AssistantToolError>()));
   });
+  for (final layer in ['detail', 'source-all']) {
+    test('CI2 publication await cannot overwrite B with accepted A: $layer', () async {
+      final h = _RefsHarness();
+      h.fake.items['film']!.addAll({
+        'title': 'Old A',
+        'artwork': {'poster_id': 'poster-a', 'backdrop_id': 'backdrop-a'},
+      });
+      final client = h.client();
+      addTearDown(client.close);
+      await client.refreshCapabilities();
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final hold = _PublicationHold();
+      PleyaServerApiCache.initialize(db);
+      final ApiCache sourceCache = _PublicationCache(db, encoder: layer == 'source-all' ? hold.encode : null);
+      if (layer == 'detail') PleyaServerApiCache.initializeWithEncoder(db, hold.encode);
+      SourceAllResolver resolver() => SourceAllResolver(
+        profileId: 'profile',
+        serversFor: () => [
+          (
+            serverId: client.serverId,
+            backend: MediaBackend.pleyaServer,
+            client: client,
+            online: true,
+            hasAuthError: false,
+          ),
+        ],
+        cache: sourceCache,
+      );
+      final Future<Object?> old = layer == 'detail'
+          ? client.fetchItem('film')
+          : resolver().resolveAllSourcesForGroup(_identity(11));
+      await hold.entered.future;
+      h.fake.items['film']!.addAll({
+        'title': 'New B',
+        'artwork': {'poster_id': 'poster-b', 'backdrop_id': 'backdrop-b'},
+      });
+      final newer = layer == 'detail'
+          ? client.fetchItem('film').then((v) => v!)
+          : resolver().resolveAllSourcesForGroup(_identity(11)).then((v) => v.items.single);
+      await hold.newerEncoded.future;
+      final completedBeforeRelease = await newer
+          .then((_) => true)
+          .timeout(const Duration(milliseconds: 100), onTimeout: () => false);
+      hold.release.complete();
+      await old;
+      final fresh = await newer;
+      expect(completedBeforeRelease, isFalse, reason: 'same-key publication stays ordered through SQL');
+      expect(fresh.title, 'New B');
+      expect(client.isStoredPresentationCurrent(fresh), isTrue);
+      if (layer == 'detail') {
+        final stored = (await PleyaServerApiCache.instance.getMetadata(ServerId(h.fake.connection().id), 'film'))!;
+        expect(stored.title, 'New B');
+        expect(client.thumbnailUrl(stored.thumbPath), contains('poster-b'));
+      } else {
+        final rows = await db.select(db.apiCache).get();
+        final row = rows.singleWhere(
+          (row) => row.cacheKey.startsWith(SourceAllResolver.cacheServerId.toString() + ':'),
+        );
+        final stored = jsonDecode(row.data) as Map<String, dynamic>;
+        expect(((stored['items'] as List).single as Map)['title'], 'New B');
+      }
+    });
+  }
+  for (final layer in ['detail', 'source-all']) {
+    test('publication ownership stays current during encode: $layer', () async {
+      final h = _RefsHarness();
+      h.fake.items['film']!['title'] = 'Old A';
+      final client = h.client();
+      addTearDown(client.close);
+      await client.refreshCapabilities();
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final hold = _PublicationHold();
+      var cancelled = false;
+      PleyaServerApiCache.initialize(db);
+      final cache = _PublicationCache(db, encoder: layer == 'source-all' ? hold.encode : null);
+      if (layer == 'detail') PleyaServerApiCache.initializeWithEncoder(db, hold.encode);
+      final resolver = SourceAllResolver(
+        profileId: 'profile',
+        serversFor: () => [
+          (
+            serverId: client.serverId,
+            backend: MediaBackend.pleyaServer,
+            client: client,
+            online: true,
+            hasAuthError: false,
+          ),
+        ],
+        cache: cache,
+      );
+      final Future<Object?> pending = layer == 'detail'
+          ? client.fetchItem('film')
+          : resolver.resolveAllSourcesForGroup(_identity(11), isCancelled: () => cancelled);
+      await hold.entered.future;
+      if (layer == 'detail')
+        client.close();
+      else
+        cancelled = true;
+      hold.release.complete();
+      await pending;
+      final rows = await db.select(db.apiCache).get();
+      expect(rows, isEmpty, reason: 'closed client/cancelled resolve must not publish a late row');
+    });
+  }
+  test('CI1 fresh lookup B supersedes detail A without another detail request', () async {
+    final h = _RefsHarness();
+    final client = h.client();
+    addTearDown(client.close);
+    await client.refreshCapabilities();
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    PlexApiCache.initialize(db);
+    PleyaServerApiCache.initialize(db);
+    await client.fetchItem('film');
+    h.fake.items['film']!.addAll({
+      'title': 'Verse B',
+      'summary': 'B',
+      'artwork': {'poster_id': 'poster-b', 'backdrop_id': 'backdrop-b'},
+    });
+    final reads = h.reads;
+    final result = await _resolver(client, PlexApiCache.instance).resolveAllSourcesForGroup(_identity(11));
+    expect(result.items, hasLength(1));
+    expect(result.items.single.title, 'Verse B');
+    expect(client.thumbnailUrl(result.items.single.thumbPath), contains('poster-b'));
+    expect(client.thumbnailUrl(result.items.single.artPath), contains('backdrop-b'));
+    expect(externalIdsCarriedBy(result.items.single), const ExternalIds(tmdb: 11));
+    expect(h.reads - reads, 2, reason: 'one libraries read and one lookup, no compensating HTTP');
+  });
+  for (final older in ['detail', 'lookup', 'page']) {
+    for (final newer in ['detail', 'lookup', 'page']) {
+      test('CI2 held older $older cannot undo newer $newer presentation B', () async {
+        final h = _RefsHarness();
+        h.fake.items['film']!['artwork'] = {'poster_id': 'poster-a', 'backdrop_id': 'backdrop-a'};
+        final client = h.client();
+        addTearDown(client.close);
+        await client.refreshCapabilities();
+        final db = AppDatabase.forTesting(NativeDatabase.memory());
+        addTearDown(db.close);
+        PlexApiCache.initialize(db);
+        PleyaServerApiCache.initialize(db);
+        final resolver = _resolver(client, PlexApiCache.instance);
+        await resolver.resolveAllSourcesForGroup(_identity(11));
+        final entered = Completer<void>(), release = Completer<void>();
+        var held = false;
+        h.after = (request, response) async {
+          final matches = older == 'detail'
+              ? request.url.path.endsWith('/items/film')
+              : request.url.path.endsWith('/libraries/films/items');
+          if (!held && matches) {
+            held = true;
+            entered.complete();
+            await release.future;
+          }
+        };
+        final Future<Object?> pending = switch (older) {
+          'detail' => client.fetchItem('film'),
+          'lookup' => client.findAllByIdentity(_identity(11)),
+          _ => client.fetchLibraryPagedContent(
+            'films',
+            query: const LibraryQuery(limit: 100),
+            libraryKind: MediaKind.movie,
+          ),
+        };
+        await entered.future;
+        h.fake.items['film']!.addAll({
+          'title': 'Nieuw B',
+          'summary': 'B',
+          'artwork': {'poster_id': 'poster-b', 'backdrop_id': 'backdrop-b'},
+        });
+        final fresh = switch (newer) {
+          'detail' => (await client.fetchItem('film'))!,
+          'lookup' => (await client.findAllByIdentity(_identity(11))).single,
+          _ => (await client.fetchLibraryPagedContent(
+            'films',
+            query: const LibraryQuery(limit: 100),
+            libraryKind: MediaKind.movie,
+          )).items.single,
+        };
+        expect(client.isStoredPresentationCurrent(fresh), isTrue);
+        release.complete();
+        await pending;
+        expect(
+          client.isStoredPresentationCurrent(fresh),
+          isTrue,
+          reason: 'arrival order must not roll request ownership back',
+        );
+        final cached = await PleyaServerApiCache.instance.getMetadata(ServerId(h.fake.connection().id), 'film');
+        if (newer == 'detail') expect(cached, isNotNull);
+        if (cached != null)
+          expect(cached.title, 'Nieuw B', reason: 'held detail must not replace the newer wire cache');
+        final result = await resolver.resolveAllSourcesForGroup(_identity(11));
+        expect(result.items.single.title, 'Nieuw B');
+        expect(client.thumbnailUrl(result.items.single.thumbPath), contains('poster-b'));
+        expect(externalIdsCarriedBy(result.items.single), const ExternalIds(tmdb: 11));
+      });
+    }
+  }
+  test('fresh manual fields replace a warm title without changing applied identity', () async {
+    final h = _RefsHarness();
+    h.fake.items['film']!.addAll({
+      'year': 2001,
+      'summary': 'Oud',
+      'genres': ['Oud'],
+      'content_rating': '12',
+    });
+    final client = h.client();
+    addTearDown(client.close);
+    await client.refreshCapabilities();
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    PlexApiCache.initialize(db);
+    PleyaServerApiCache.initialize(db);
+    final resolver = _resolver(client, PlexApiCache.instance);
+    final old = (await resolver.resolveAllSourcesForGroup(_identity(11))).items.single;
+    h.fake.items['film']!.addAll({
+      'title': 'Handmatig',
+      'year': null,
+      'summary': '',
+      'genres': [],
+      'content_rating': '',
+      'people': [
+        {'name': 'Actor', 'role': 'actor', 'character': 'Rol'},
+        {'name': 'Regisseur', 'role': 'director'},
+        {'name': 'Schrijver', 'role': 'writer'},
+      ],
+    });
+    final fresh = (await client.fetchItem('film'))!;
+    expect(externalIdsCarriedBy(fresh), externalIdsCarriedBy(old));
+    final cached = (await PleyaServerApiCache.instance.getMetadata(ServerId(h.fake.connection().id), 'film'))!;
+    expect(cached.title, fresh.title);
+    expect(externalIdsCarriedBy(cached), const ExternalIds(tmdb: 11));
+    final resolved = (await resolver.resolveAllSourcesForGroup(_identity(11))).items.single;
+    expect(resolved.title, fresh.title);
+    expect(resolved.year, isNull);
+    expect(resolved.summary, '');
+    expect(resolved.genres ?? [], isEmpty);
+    expect(resolved.contentRating, '');
+    expect(resolved.roles?.single.tag, 'Actor');
+    expect(resolved.roles?.single.role, 'Rol');
+    expect(resolved.directors, ['Regisseur']);
+    expect(resolved.writers, ['Schrijver']);
+    expect(externalIdsCarriedBy(resolved), const ExternalIds(tmdb: 11));
+  });
+  test('fresh artwork pin replaces a warm resolved poster with unchanged applied identity', () async {
+    final h = _RefsHarness();
+    h.fake.items['film']!['artwork'] = {'poster_id': 'poster-before', 'backdrop_id': null};
+    final client = h.client();
+    addTearDown(client.close);
+    await client.refreshCapabilities();
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    PlexApiCache.initialize(db);
+    PleyaServerApiCache.initialize(db);
+    final resolver = _resolver(client, PlexApiCache.instance);
+    final first = (await resolver.resolveAllSourcesForGroup(_identity(11))).items.single;
+    final oldUrl = client.thumbnailUrl(first.thumbPath);
+    expect(oldUrl, contains('poster-before'));
+    h.fake.items['film']!['artwork'] = {'poster_id': 'pin-after', 'backdrop_id': null};
+    final fresh = (await client.fetchItem('film'))!;
+    expect(externalIdsCarriedBy(fresh), externalIdsCarriedBy(first));
+    expect(client.thumbnailUrl(fresh.thumbPath), contains('pin-after'));
+    final resolved = (await resolver.resolveAllSourcesForGroup(_identity(11))).items.single;
+    expect(client.thumbnailUrl(resolved.thumbPath), client.thumbnailUrl(fresh.thumbPath));
+    expect(client.thumbnailUrl(resolved.thumbPath), isNot(oldUrl));
+    expect(externalIdsCarriedBy(resolved), const ExternalIds(tmdb: 11));
+  });
+  for (final clear in [false, true]) {
+    test('fresh poster and backdrop update or explicit removal: clear=$clear', () async {
+      final h = _RefsHarness();
+      h.fake.items['film']!['artwork'] = {'poster_id': 'before-poster', 'backdrop_id': 'before-backdrop'};
+      final client = h.client();
+      addTearDown(client.close);
+      await client.refreshCapabilities();
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      PlexApiCache.initialize(db);
+      PleyaServerApiCache.initialize(db);
+      final resolver = _resolver(client, PlexApiCache.instance);
+      await resolver.resolveAllSourcesForGroup(_identity(11));
+      h.fake.items['film']!['artwork'] = {
+        'poster_id': clear ? null : 'pin-poster',
+        'backdrop_id': clear ? null : 'pin-backdrop',
+      };
+      final fresh = (await client.fetchItem('film'))!;
+      final resolved = (await resolver.resolveAllSourcesForGroup(_identity(11))).items.single;
+      expect(resolved.thumbPath, fresh.thumbPath);
+      expect(resolved.artPath, fresh.artPath);
+      if (clear) {
+        expect(resolved.thumbPath, isNull);
+        expect(resolved.artPath, isNull);
+      } else {
+        expect(client.thumbnailUrl(resolved.thumbPath), contains('pin-poster'));
+        expect(client.thumbnailUrl(resolved.artPath), contains('pin-backdrop'));
+      }
+      expect(externalIdsCarriedBy(resolved), const ExternalIds(tmdb: 11));
+    });
+  }
+  for (final expired in [false, true]) {
+    test('missing or expired presentation observation preserves positive cache TTL: expired=$expired', () async {
+      final h = _RefsHarness();
+      h.fake.items['film']!['artwork'] = {'poster_id': 'before-poster', 'backdrop_id': 'before-backdrop'};
+      final client = h.client();
+      addTearDown(client.close);
+      await client.refreshCapabilities();
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      PlexApiCache.initialize(db);
+      PleyaServerApiCache.initialize(db);
+      final resolver = _resolver(client, PlexApiCache.instance);
+      final first = (await resolver.resolveAllSourcesForGroup(_identity(11))).items.single;
+      h.fake.items['film']!.addAll({
+        'title': 'Unobserved',
+        'artwork': {'poster_id': 'new-poster', 'backdrop_id': null},
+      });
+      if (expired) {
+        await client.fetchItem('film');
+        client.debugExpireRecentObservations();
+      } else {
+        client.debugForgetExternalIds();
+      }
+      final reads = h.reads;
+      final retained = (await resolver.resolveAllSourcesForGroup(_identity(11))).items.single;
+      expect(retained.title, first.title);
+      expect(retained.thumbPath, first.thumbPath);
+      expect(retained.artPath, first.artPath);
+      expect(h.reads, reads, reason: 'no new cache TTL or poll policy');
+    });
+  }
   test('actual trending end card keeps external B facts but no unproven Pleya A target', () async {
     final h = _RefsHarness()..applied = false;
     final client = h.client();
@@ -527,6 +859,7 @@ class _RefsHarness {
   Object? value = {'tmdb': 11};
   int reads = 0;
   Future<void> Function(http.Request)? before;
+  Future<void> Function(http.Request, http.Response)? after;
   final extraValues = <String, Object?>{};
   PleyaServerClient client() => PleyaServerClient.create(
     fake.connection(),
@@ -534,6 +867,7 @@ class _RefsHarness {
       reads++;
       await before?.call(request);
       final response = await fake.handle(request);
+      await after?.call(request, response);
       final body = jsonDecode(response.body);
       if (body is Map<String, dynamic>) {
         if (request.url.path.endsWith('/info')) (body['capabilities'] as Map)['applied_external_identity'] = applied;
@@ -586,4 +920,26 @@ class _CallbackFacts extends TitleFactsService {
     callback();
     return [for (final _ in refs) const TitleFacts()];
   }
+}
+
+class _PublicationHold {
+  final entered = Completer<void>(), release = Completer<void>(), newerEncoded = Completer<void>();
+  bool held = false;
+  Future<String> encode(Map<String, dynamic> data) async {
+    final items = data['items'];
+    final title = data['title'] ?? (items is List && items.isNotEmpty ? (items.first as Map)['title'] : null);
+    if (!held && title == 'Old A') {
+      held = true;
+      entered.complete();
+      await release.future;
+    }
+    if (title == 'New B' && !newerEncoded.isCompleted) newerEncoded.complete();
+    return jsonEncode(data);
+  }
+}
+
+class _PublicationCache extends ApiCache {
+  _PublicationCache(super.db, {super.encoder});
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(invocation.memberName.toString());
 }

@@ -469,6 +469,9 @@ func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.
                    (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
                         FILTER (WHERE a.kind='backdrop'))[1] AS backdrop
             FROM (
+                SELECT pin.id,pin.kind,-1 AS priority,''::text AS path,''::text AS provider
+                FROM artwork_pins pin WHERE pin.item_id=i.id
+                UNION ALL
                 SELECT f.id,f.artwork_kind AS kind,0 AS priority,f.relative_path AS path,''::text AS provider
                 FROM media_files f WHERE f.item_id=i.id AND f.role='artwork' AND f.missing_since IS NULL
                 UNION ALL

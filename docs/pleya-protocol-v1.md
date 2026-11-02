@@ -636,6 +636,11 @@ contract keurt ze af.
 | `job.not_cancellable` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; `details.reason` zegt welke |
 | `library.invalid_override` | 400 | nee | Ongeldige gesloten typed metadata-veldbewerking; geen gedeeltelijke write |
 | `library.override_source_unavailable` | 409 | ja | Actuele onderliggende bron niet bewezen; lock en waarde behouden |
+| `library.artwork_invalid` | 400 | nee | Ongeldige gesloten artworkkeuze |
+| `library.artwork_stale` | 409 | nee | Item/rol/bron of pinkeuze gewijzigd; kandidaten opnieuw laden |
+| `library.artwork_source_unavailable` | 503 | ja | Gekozen bron niet beschikbaar; pin behouden |
+| `library.artwork_source_changed` | 409 | nee | Bronbytes wijken af van gekozen SHA; pin behouden |
+| `library.artwork_image_invalid` | 502 | nee | Bron is geen ondersteunde begrensde afbeelding |
 | `library.invalid_match` | 400 | nee | `PUT /items/{id}/metadata-match`: `external_id` is geen positief geheel getal tot tien cijfers, of de body is geen gesloten `{external_id}`; een geweigerde poging staat als `denied` in het audit (S22.5) |
 | `library.filter_invalid` | 400 | nee | `GET /libraries/{id}/items`: een filterparameter heeft een onbekende of onmogelijke waarde (`watch`, `resolution`, een jaar buiten 1800 tot 2200 of niet vier cijfers, `year_from` na `year_to`, een `audio_language` die geen drie letters is, of meer dan vijftig waarden); `details.parameter` noemt de parameter en `details.value` de waarde (venster 3, D1) |
 
@@ -1730,6 +1735,8 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 102 | `GET /items/{id}/metadata` | effectieve velden, bron en lock | klasse `admin`, actuele item/libraryscope; metadata_overrides; film/serie |
 | 103 | `PUT /items/{id}/overrides` | gesloten typed partiële handmatige veldlocks | klasse `admin`, actuele item/libraryscope; metadata_overrides; geen identiteitswrite |
 | 104 | `DELETE /items/{id}/overrides/{field}` | veilige ontgrendeling naar actuele bron | klasse `admin`, actuele item/libraryscope; metadata_overrides; 409 behoudt lock bij onvoldoende bronbewijs |
+| 105 | `GET /items/{id}/artwork-candidates` | begrensde itemgebonden lokale/TMDB-keuzes en duurzame pins | klasse `admin`, actuele item/libraryscope; artwork_choices; film/serie |
+| 106 | `PUT /items/{id}/artwork` | poster/achtergrond pinnen of null-ontpinnen | klasse `admin`, actuele item/libraryscope; artwork_choices; gesloten body/EOF en actuele base_token |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2737,3 +2744,27 @@ undo of historie. Geen van deze writes verandert requested/applied-identiteit,
 item-id, bestanden, versies, kijkstatus of lijsten. Audit bevat alleen veldnamen,
 geen handmatige tekst of bronpaden. Foutcode `library.invalid_override` is 400,
 retryable false; `library.override_source_unavailable` is 409, retryable true.
+
+### Artworkkeuze/pins — additief metadata-venster 1 november 2026
+
+`capabilities.artwork_choices` ontbrekend betekent false. Alleen bij true gebruikt
+nieuwe Web deze adminroutes; oude clients blijven gewone Item-artwork-IDs lezen.
+Bewezen applied movie/show bepaalt één begrensde TMDB Images-lijst op aanvraag;
+requested match-ID is nooit artworkbewijs. Keyless blijven lokale kandidaten en
+ontpinnen beschikbaar. Kandidaten bevatten geen bestandspaden of vrije URLs.
+
+`base_token` is een berekende guard over bestaande bron-/match-/pintoestand. Een
+write bevat die token en minimaal één van `poster`/`backdrop`: kandidaat-ID kiest,
+null ontpint, ontbreken behoudt. Beide rollen publiceren atomair. Een ongeldige,
+andere-item/rol- of verouderde kandidaat wijzigt niets. Autorisatie wordt na
+bron-I/O opnieuw getoetst. Geen wijziging van requested/applied-identiteit.
+
+Een pin bewaart eigen UUID, oorspronkelijke bronlocator en SHA-256. Deze keuze
+wint van lokale sidecars en mutable providerartwork, ook na rematch/reject.
+Cachebytes en afgeleide maten zijn geen originele-mediabackup: de databasebackup
+bewaart intentie; herstel bouwt dezelfde bytes uit de beschikbare bron op.
+Verdwenen of gewijzigde bron behoudt de pin en geeft respectievelijk 503 of 409;
+geen stille andere afbeelding. Nieuw bewust kiezen geeft een nieuwe UUID/ETag.
+Ontpinnen herstelt de gewone bronladder. `pins.*.state=ready` betekent aanwezige
+gevalideerde cachebytes, `unavailable` houdt intentie en herstelbare fout zichtbaar.
+GET mag cache herstellen; PUT lokt na publicatie geen nieuwe netwerkcall uit.

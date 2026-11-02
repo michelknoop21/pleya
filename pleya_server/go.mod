@@ -1,10 +1,11 @@
 module github.com/edde746/plezy/pleya_server
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/jackc/pgx/v5 v5.10.0
 	golang.org/x/crypto v0.52.0
+	golang.org/x/image v0.45.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.41.0
 )

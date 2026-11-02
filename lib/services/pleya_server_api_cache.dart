@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'package:drift/drift.dart';
 
@@ -25,7 +26,7 @@ import 'pleya_server_mappers.dart';
 /// same string the client asked for. That keeps a cached answer readable and
 /// lets a future phase invalidate by path without a translation table.
 class PleyaServerApiCache extends ApiCache {
-  PleyaServerApiCache._(super.db);
+  PleyaServerApiCache._(super.db, {super.encoder});
 
   static PleyaServerApiCache? _instance;
 
@@ -39,6 +40,12 @@ class PleyaServerApiCache extends ApiCache {
 
   static void initialize(AppDatabase db) {
     _instance = PleyaServerApiCache._(db);
+    ApiCache.registerInstance(MediaBackend.pleyaServer, _instance!);
+  }
+
+  @visibleForTesting
+  static void initializeWithEncoder(AppDatabase db, ApiCacheEncoder encoder) {
+    _instance = PleyaServerApiCache._(db, encoder: encoder);
     ApiCache.registerInstance(MediaBackend.pleyaServer, _instance!);
   }
 

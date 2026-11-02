@@ -37,6 +37,39 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Een pin heeft een eigen onveranderlijke identiteit, onafhankelijk van de
+	// mutable provider-artworkrij. Eerst rechten, pas daarna eventuele bron-I/O.
+	pin, pinLibrary, pinErr := s.opts.Catalog.ArtworkPin(r.Context(), artworkID)
+	if pinErr == nil {
+		if !s.authorizeLibrary(w, r, pinLibrary) {
+			return
+		}
+		file, resolveErr := s.pins.Resolve(r.Context(), pin)
+		s.authenticated(func(w http.ResponseWriter, fresh *http.Request) {
+			if !s.authorizeLibrary(w, fresh, pinLibrary) {
+				return
+			}
+			_, currentLibrary, err := s.opts.Catalog.ArtworkPin(fresh.Context(), artworkID)
+			if err != nil {
+				s.writeStoreError(w, err)
+				return
+			}
+			if currentLibrary != pinLibrary {
+				writeError(w, s.log, CodeNotFound, "not found", nil)
+				return
+			}
+			if resolveErr != nil {
+				s.writeArtworkError(w, resolveErr)
+				return
+			}
+			s.serveArtworkFile(w, fresh, file)
+		}).ServeHTTP(w, r)
+		return
+	}
+	if !errors.Is(pinErr, catalog.ErrNotFound) {
+		s.writeStoreError(w, pinErr)
+		return
+	}
 	file, libraryID, err := s.opts.Catalog.ArtworkFile(r.Context(), artworkID)
 	if errors.Is(err, catalog.ErrNotFound) && s.opts.CacheDir != "" {
 		// Geen afbeelding naast de media: misschien een die een provider in de
@@ -53,6 +86,10 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.serveArtworkFile(w, r, file)
+}
+
+func (s *Server) serveArtworkFile(w http.ResponseWriter, r *http.Request, file catalog.FileOnDisk) {
 	// De validator hangt aan het id én aan generation. Het id alleen is niet
 	// genoeg: een afbeelding die in plaats wordt vervangen houdt zijn
 	// media_files-rij en dus zijn id, terwijl de bytes veranderen. generation

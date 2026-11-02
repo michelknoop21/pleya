@@ -115,6 +115,8 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
       String? cursor;
       for (var pages = 0; ; pages++) {
         if (pages >= 3) throw IdentityLookupUnavailable('too many results for tmdb:$tmdb in ${library.id}');
+        final readOrder = _beginItemRead();
+        final source = externalIdentitySource;
         final answer = await _getJsonDetailed(
           '/libraries/${Uri.encodeComponent(library.id)}/items',
           queryParameters: {
@@ -136,6 +138,7 @@ mixin _PleyaServerSearchMethods on _PleyaServerRequests {
         } on PleyaWireFormatException {
           throw IdentityLookupUnavailable('${library.id} did not match the contract');
         }
+        _rememberExternalIds(page.knownItems, readOrder: readOrder, source: source);
         // Believe the number on the item, not the filter alone: a server that
         // ignored the parameter returns everything, and everything is not a hit.
         final hits = [

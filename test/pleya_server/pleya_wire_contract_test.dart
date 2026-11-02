@@ -65,6 +65,10 @@ void main() {
     // Task6 veldeditor is admin Web-only; geen Flutter-editor in deze slice.
     'MetadataFields',
     'MetadataOverridesRequest',
+    // Artworkbeheer blijft Web-only; gewone Item-artwork wordt wel gelezen.
+    'ArtworkCandidates',
+    'ArtworkSelection',
+    'ArtworkSelectionRequest',
     // Task5 search/details are admin Web-only; the Flutter wire ignores them.
     'MetadataSearchResults',
     'MetadataCandidateDetails',
@@ -249,8 +253,8 @@ void main() {
       );
     });
 
-    test('covers the 146 fixtures the contract ships', () {
-      expect(fixtures, hasLength(146));
+    test('covers the 150 fixtures the contract ships', () {
+      expect(fixtures, hasLength(150));
     });
 
     for (final fixture in fixtures) {

@@ -187,7 +187,8 @@ func (s *Store) attachListArtwork(ctx context.Context, kind ListKind, viewer Lis
 			JOIN media_items i ON i.id = li.item_id
 			CROSS JOIN LATERAL (
 				SELECT c.art FROM (
-					SELECT f.id AS art, 0 AS rank, f.relative_path AS tie
+					SELECT pin.id AS art, -1 AS rank, pin.kind AS tie FROM artwork_pins pin WHERE pin.item_id=i.id AND pin.kind='poster'
+					UNION ALL SELECT f.id, 0, f.relative_path
 					FROM media_files f
 					WHERE f.item_id = i.id AND f.role = 'artwork' AND f.artwork_kind = 'poster' AND f.missing_since IS NULL
 					UNION ALL

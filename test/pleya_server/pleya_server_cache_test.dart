@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
@@ -12,6 +12,21 @@ import 'package:pleya/services/pleya_server_api_cache.dart';
 import 'pleya_fake_server.dart';
 
 void main() {
+  test('presentation ownership keeps season and episode wire caching', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    PleyaServerApiCache.initialize(db);
+    final fake = PleyaFakeServer();
+    final client = fake.client();
+    addTearDown(client.close);
+    await client.refreshCapabilities();
+    for (final kind in ['season', 'episode']) {
+      fake.addItem(id: kind, kind: kind, title: kind, index: 1);
+      expect(await client.fetchItem(kind), isNotNull);
+      expect(await PleyaServerApiCache.instance.getMetadata(ServerId(fake.connection().id), kind), isNotNull);
+    }
+  });
+
   test('account cache namespace hydrates the physical server identity without decrypting credentials', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);

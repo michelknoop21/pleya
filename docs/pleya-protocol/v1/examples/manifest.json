@@ -707,6 +707,26 @@
       "file": "metadata_override_source_unavailable.json",
       "schema": "ErrorEnvelope",
       "note": "S22.5 typed veldlocks/provenance binnen metadata-venster 1 november 2026"
+    },
+    {
+      "file": "artwork_selection.json",
+      "schema": "ArtworkSelection",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "artwork_candidates.json",
+      "schema": "ArtworkCandidates",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "artwork_selection_request.json",
+      "schema": "ArtworkSelectionRequest",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "info_artwork_choices.json",
+      "schema": "Info",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
     }
   ]
 }
