@@ -1,0 +1,19 @@
+# Operatorrecept: rollback met restartpolicy — 2 november 2026
+
+**Uitkomst:** de negatieve hypothese is bevestigd. Onder normale `restart: unless-stopped` volgt op restore-exit75 een automatische start van dezelfde nieuwe binary, die de herstelde database30 opnieuw naar32 migreert. Eerst `restart=no` zetten voorkomt dit; daarna start exact de oude image onder `unless-stopped` met gelijke data en signingkey.
+
+**Vaste grens:** bestaande lokale linux/amd64-images, geen build/productwijziging: oud `699026e1b031137fa79fd3639d49df58acc1d553`, schema30, `task5-rollback-old:1102`, image-ID `sha256:6729466e02db41be21cda54b253a123aff2925bced776c433edc2b5a4565803b`; nieuw `44abf69f015bd0e639021f69fdac475522bcce12`, schema32, `task5-rollback-new:1102`, image-ID `sha256:e4c685ff3c793969fb115fa1564031475dce2b6bdb0453eb3629cd2984964a92`. Geen actuele schema33/pins-, NAS-, productie-, offsite- of hardwareclaim.
+
+**Bewezen operatorvolgorde:**
+1. Bewaar de bedoelde oude image en config/signingkey en identificeer de geslaagde backup met passend oud schema. Gebruik bestaande normale authenticatie.
+2. Zet uitsluitend de huidige servercontainer vóór de restore op `docker update --restart=no <huidige-container>`; controleer de daadwerkelijke policy `no`. Een latere Compose-recreate kan deze runtimepolicy overschrijven: start de nieuwe image daarom niet opnieuw tussen restore en imagewissel.
+3. Lees `GET /pleya/v1/backups/{id}`; stuur diens exacte `restore_confirmation` als `confirm` naar `POST /pleya/v1/backups/{id}/restore`. Verwacht202, wacht de echte terminale exit75 af en controleer dat het backupschema terugstaat.
+4. Vervang het gestopte proces door exact de bewaarde oude image, met dezelfde herstelde database en behouden config/signingkey. Herstel pas voor deze oude image de normale `unless-stopped`-policy. Controleer readyz200, schema, server/library/item-IDs, gebruikers/rollen/rechten, kijkstatus en configuratiehashes.
+
+**Echte proef (02:00:10–02:00:46 UTC):** nieuwe eigen synthetische DB/rol, vier gebruikersrollen, één bibliotheek/item, twee rechten en kijkstatussen, favoriet, waardering en instelling; configgeheimen normaal versleuteld in `secrets.tar.enc` (SQL-dump blijft normale gzip). Negatief: API202, Docker-events `die exitCode75` gevolgd door `start`, RestartCount1, database32. Positief: policy vóór restore `no`, API202, `docker wait`75, database30; daarna exact oude image met policy`unless-stopped` readyz200. Volledige rijdigests van schema_migrations/server_instance/users/libraries/media_items/library_permissions/watch_states/favorites/ratings/server_settings en signingkey-SHA256 exact gelijk, zonder veldfilter. Geen neerwaartse SQL, authbypass of guardwijziging. Uitvoering via pleya-heavy.
+
+**Transportonderbreking:** het script liep aantoonbaar door tijdens exec-disconnect; bestaande logs eindigen op PASS. Na herstel uitsluitend read-only inspectie en cleanup gedaan, geen keten herhaald. De buitenste shell-exit kon niet meer rechtstreeks worden opgehaald; operationele exit75 is wel via daemon-events en de bestaande wait-assertion bewezen. Cleanupscript exit0.
+
+**Cleanup:** eigen `task5-rollback-restart-server-1102` verwijderd; DB`task5_rollback_restart_1102`/rol`task5_rollback_restart_role_1102` en eigen mounts inclusief signing/configkeys/backuparchieven verwijderd. Hashes/manifests/geredigeerde logs behouden. Alle oorspronkelijke container-ID/naam/states gelijk op recovery én cleanup; geen nieuwe containers in die snapshots. PG en netwerk behouden hun exact opgegeven IDs. Writers op8845/8853 en overige resources onaangeraakt; deze snapshots doen geen uitspraak over latere gecoördineerde toevoegingen. Geen resterende blocker.
+
+[Behouden bewijs en hashes](assets/2026-11-02-rollback-restart/manifest.json); overige geredigeerde logs blijven onder de genoemde tijdelijke bewijsmap.

@@ -128,7 +128,16 @@ Start je een oudere image op een database die een nieuwere image al gemigreerd h
 
 Een rollback omvat de upgrade-back-up van de database, de bijbehorende `/config` en de passende oude image. Voorkom dat na herstel de nieuwe image automatisch opnieuw start: die zou de teruggezette database meteen weer vooruit migreren. Kies vooraf een gevalideerde herstelroute met gestopte server en passende versie, of een afzonderlijk bewezen procedure die de nieuwe server na de restore laat stoppen zonder automatische herstart. Het gewone Terugzetten op een container met `restart: unless-stopped` is daarom op zichzelf geen versie-rollback.
 
-De volledige actuele-productiegrens (schema 24 naar 30 en terug met de bijpassende image) is nog niet als complete herstelronde bewezen. De lokale uitvoering onder C-05/S25 bouwt daarvoor synthetisch bewijs; dat is geen toestemming om deze stappen op de NAS uit te voeren. Wijzigingen na het tijdstip van de teruggezette back-up gaan bij rollback verloren.
+De lokale [schema30/32-imageproef met restartpolicy](qa/2026-11-02-server-rollback-restart.md) bewijst de volgende beperkte operatorroute:
+
+1. Bewaar de juiste oude image, de passende geslaagde back-up en de config/signingkey. Leg de actuele container en oorspronkelijke restartpolicy vast.
+2. Zet uitsluitend de huidige servercontainer vóór Terugzetten op `docker update --restart=no <huidige-servercontainer>` en controleer policy `no`. Laat Compose de nieuwe image tussendoor niet opnieuw aanmaken: dat kan de policy weer overschrijven.
+3. Gebruik de gewone restore-API met de exacte `restore_confirmation`. Wacht na202 de echte proces-exit75 af en controleer het teruggezette schema en de configuratie. Laat de nieuwe image nu gestopt.
+4. Start exact de bewaarde oude image met de herstelde database en config, pas voor deze image weer met de normale restartpolicy. Controleer readyz, schema, IDs, rechten en voortgang. Start nooit alleen een oude binary op het nog nieuwe schema.
+
+Een weigering vóór onderhoud is geen geslaagde restore. Herstel de oorspronkelijke restartpolicy alleen nadat is vastgesteld dat de huidige binary nog bij het bestaande schema past; schakel hem niet blind terug in na een onzekere hersteluitkomst.
+
+Deze route is lokaal op historische schema30/32-images bewezen, inclusief een negatieve proef waarin `unless-stopped` de teruggezette database meteen opnieuw naar32 migreerde. De volledige herstelronde met de exact bewaarde productieimage op de NAS blijft afzonderlijk open; ook schema33/pins en off-site herstel vallen buiten dit bewijs. Wijzigingen na het tijdstip van de teruggezette back-up gaan bij rollback verloren.
 
 ## Vier foutcodes
 
