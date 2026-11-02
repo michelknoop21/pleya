@@ -1,0 +1,757 @@
+{
+  "scope": "opt-in synthetic loopback Go handlers + built product Web",
+  "fixture": {
+    "item": "01a199da-9556-7000-a274-2a9bfde75fe6",
+    "server": "synthetic-only",
+    "show": "01a199da-95d8-7000-b09c-f3a393967c59"
+  },
+  "manifest": [
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 320,
+      "theme": "dark",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "320-dark-initial.png",
+      "fullFile": "320-dark-initial-full.png",
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "panel": {
+          "x": 16,
+          "y": 232.59375,
+          "width": 288,
+          "height": 2300.796875,
+          "top": 232.59375,
+          "right": 304,
+          "bottom": 2533.390625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "6e063d74ef4d7cdaf05807cbd1718494bb919cdd6016a2de35a40d366288751d",
+      "fullFileSha256": "6349450b38357d3268638d1c4dc6c3258fdb57a0622df138dac77f7d93ca0019"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 320,
+      "theme": "oled",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "320-oled-initial.png",
+      "fullFile": "320-oled-initial-full.png",
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "panel": {
+          "x": 16,
+          "y": 232.59375,
+          "width": 288,
+          "height": 2300.796875,
+          "top": 232.59375,
+          "right": 304,
+          "bottom": 2533.390625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "decf779d81b3fde6ffea2b1164fee2031a1f2ff857e45f2ba256a333ee17d572",
+      "fullFileSha256": "9681cd198980aff8fbfd41a43dd90ab40a9c80828a7c6e1f38214e7965001931"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 320,
+      "theme": "light",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "320-light-initial.png",
+      "fullFile": "320-light-initial-full.png",
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "panel": {
+          "x": 16,
+          "y": 232.59375,
+          "width": 288,
+          "height": 2300.796875,
+          "top": 232.59375,
+          "right": 304,
+          "bottom": 2533.390625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "85ca42ac62de8938d50b740172e84a0804e4a323b641a92d5c766a627d7cae44",
+      "fullFileSha256": "512316b64a49158042600c4d9b52f6e0600393da76775c7d68f382f194adce66"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 320,
+      "theme": "light",
+      "state": "typed people rows in mobile document flow; touch add and native role select",
+      "file": "320-light-people-touch.png",
+      "fullFile": "320-light-people-touch-full.png",
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "panel": {
+          "x": 16,
+          "y": -1599.40625,
+          "width": 288,
+          "height": 2717.296875,
+          "top": -1599.40625,
+          "right": 304,
+          "bottom": 1117.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "c90a76f54b1c8070e1797bdf02c966803de541d28ca51f9dcaaa53ec33d9a3aa",
+      "fullFileSha256": "f73050bdf6c3762252e4ae6d830386321630e4a315c309278f1e9a166bcb1649"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 320,
+      "theme": "light",
+      "state": "save/discard remain above the native mobile tabbar in ordinary document flow",
+      "file": "320-light-actions-safe.png",
+      "fullFile": "320-light-actions-safe-full.png",
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "panel": {
+          "x": 16,
+          "y": -1991.40625,
+          "width": 288,
+          "height": 2717.296875,
+          "top": -1991.40625,
+          "right": 304,
+          "bottom": 725.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "5c854d41446a52f4c81eb43dfc11fbe8d36fd99a1ee55e1b1fc4ed8df4ef6abb",
+      "fullFileSha256": "a8016276895cbca3d32574a3e12f0737f988f9014639abd49bbb601b8b82f9c3"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 320,
+      "theme": "light",
+      "state": "confirmed long title and manual lock at320 without overflow",
+      "file": "320-light-long-saved-title.png",
+      "fullFile": "320-light-long-saved-title-full.png",
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "panel": {
+          "x": 16,
+          "y": 296.59375,
+          "width": 288,
+          "height": 2527.390625,
+          "top": 296.59375,
+          "right": 304,
+          "bottom": 2823.984375,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "5db9d8aacab96fa6ce1563b4da73cc78510fdcd3f8a1d5209f4a28688b6e79d2",
+      "fullFileSha256": "0a682227ed440b5951221de8d6c7b87795808b17a282fbd0c6630a9ce20a7dad"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 390,
+      "theme": "dark",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "390-dark-initial.png",
+      "fullFile": "390-dark-initial-full.png",
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "panel": {
+          "x": 16,
+          "y": 186.59375,
+          "width": 358,
+          "height": 2233.296875,
+          "top": 186.59375,
+          "right": 374,
+          "bottom": 2419.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "9d1be9a1a34c9a7c4343f0a694a91858c9deccac2165a7a4e96ac115cee85b2f",
+      "fullFileSha256": "4354a57e040f11376cd9f736d912c548027a2426fec0c395eb458f16093388e1"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 390,
+      "theme": "oled",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "390-oled-initial.png",
+      "fullFile": "390-oled-initial-full.png",
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "panel": {
+          "x": 16,
+          "y": 186.59375,
+          "width": 358,
+          "height": 2233.296875,
+          "top": 186.59375,
+          "right": 374,
+          "bottom": 2419.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "8a029781ec527f3aacb5eb77956755f55ca2dc60c97c2a57822d2dd752e92b32",
+      "fullFileSha256": "fd4170d01b4cc146d9f27ebda9ea471af9e9e4d81495442613765c0b039b1b9b"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 390,
+      "theme": "light",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "390-light-initial.png",
+      "fullFile": "390-light-initial-full.png",
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "panel": {
+          "x": 16,
+          "y": 186.59375,
+          "width": 358,
+          "height": 2233.296875,
+          "top": 186.59375,
+          "right": 374,
+          "bottom": 2419.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "99cf7c681a5cafd7d9e5fc7e45a4fb1586d1a9b53ee0a7ecee26795879368652",
+      "fullFileSha256": "cd93583d62b4117d485a5b281820986a2fcf43750ad3b8e22e73c739c713a090"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 390,
+      "theme": "light",
+      "state": "typed people rows in mobile document flow; touch add and native role select",
+      "file": "390-light-people-touch.png",
+      "fullFile": "390-light-people-touch-full.png",
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "panel": {
+          "x": 16,
+          "y": -1532.40625,
+          "width": 358,
+          "height": 2630.296875,
+          "top": -1532.40625,
+          "right": 374,
+          "bottom": 1097.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "3363ecdc7b8ba75359a794268775d460a34866d37751caf4fcb1ce0caf82fbe3",
+      "fullFileSha256": "4f73838b3c8ba92536f6d7ba6b27477266e0d8fc01418f6106c58724b8d9768f"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 390,
+      "theme": "light",
+      "state": "save/discard remain above the native mobile tabbar in ordinary document flow",
+      "file": "390-light-actions-safe.png",
+      "fullFile": "390-light-actions-safe-full.png",
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "panel": {
+          "x": 16,
+          "y": -1904.40625,
+          "width": 358,
+          "height": 2630.296875,
+          "top": -1904.40625,
+          "right": 374,
+          "bottom": 725.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "f5c78f4dd650550dd9f2065e349fca2935c17a49d88a645ffc609c92ea170c26",
+      "fullFileSha256": "b862db0567c6733dceb725c6d58b6e6ed020045c20a77a58da31ff76bea3841b"
+    },
+    {
+      "screen": "/items/01a199da-9556-7000-a274-2a9bfde75fe6",
+      "width": 1440,
+      "theme": "dark",
+      "state": "existing movie detail exposes separate matching and field editing actions",
+      "file": "1440-dark-item-entry.png",
+      "fullFile": "1440-dark-item-entry-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "6174a98026ca4a59d013d8e3ae6d1c4e4ce6bc74d942ad8fa79881e442e02408",
+      "fullFileSha256": "55314b1077fd63bdf700a27977e2cc6d11afef1ce6b0c3b2e38c3e6b85a40a91"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "dark",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "1440-dark-initial.png",
+      "fullFile": "1440-dark-initial-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1987.796875,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2195.1875,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "d66b85341f3c45816b9c7d33bdbf6d58633fed7f4e95cc72bf4d44522ec45ee7",
+      "fullFileSha256": "25cd0b6e10c60451f46cccbafa883a7e3f4e74d4dbef028e103bd112d728f00f"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "dark",
+      "state": "typed actor row with optional character; edits not saved",
+      "file": "1440-dark-typed-people.png",
+      "fullFile": "1440-dark-typed-people-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": -752.609375,
+          "width": 840,
+          "height": 1899.296875,
+          "top": -752.609375,
+          "right": 1160,
+          "bottom": 1146.6875,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "b4aad73349e445953877bc1d31f467be31217baa5dbbd8121c196c2ed6d37e3d",
+      "fullFileSha256": "cfb5d7fb7f63b044ef07cf7eb0f5bdc9178e12f3b588de45d770d5e612f226cc"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "dark",
+      "state": "real PUT confirmation, six manual fields and wrapped long title",
+      "file": "1440-dark-saved.png",
+      "fullFile": "1440-dark-saved-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1807.59375,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2014.984375,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "97ec07f08de85b1eea517357696931ac0305a0b8e6814e4b12dfa849f80013c5",
+      "fullFileSha256": "ffb62f68ce3a29bb1bc3a22d393ad6a65e1b393c8a7562591a2aaa2b9efc69ec"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "dark",
+      "state": "browser reload and three real fresh runners retain manual locks",
+      "file": "1440-dark-reloaded-three-rounds.png",
+      "fullFile": "1440-dark-reloaded-three-rounds-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1757.296875,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 1964.6875,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "d605773ceb0c96aee0c7139702294bae616646487bbd10f3aaf1d4d93858ff24",
+      "fullFileSha256": "fcf1de4b617942ed9224c0433f06a127ca75c5e5102349f33d4ccd460f14b8a2"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "dark",
+      "state": "actual server409 caused by unavailable underlying source; lock retained",
+      "file": "1440-dark-unlock409.png",
+      "fullFile": "1440-dark-unlock409-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1807.59375,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2014.984375,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "869cc9839725f2e1744524296880ca7e2f5a0fced6599feea30a53f3353d3508",
+      "fullFileSha256": "0d1c784a7b62769c3f05409d471df89242100f72ac88c86f2c170eab1c2d4eff"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "dark",
+      "state": "successful DELETE restores newly observed provider value",
+      "file": "1440-dark-unlocked.png",
+      "fullFile": "1440-dark-unlocked-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1807.59375,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2014.984375,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "cb7c629f1811910c2cbc160e85b2a81881d007f9babfd4e4a1d9302f4b183bf2",
+      "fullFileSha256": "757631016512a091e36c5f0c15fa9a0753ce60a03971bbd7fea5ae76edb0f096"
+    },
+    {
+      "screen": "/admin/metadata/match",
+      "width": 1440,
+      "theme": "dark",
+      "state": "existing matching/search/artwork preview remains reachable",
+      "file": "1440-dark-matching-preserved.png",
+      "fullFile": "1440-dark-matching-preserved-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "2aa3597432857880d9dba48d02192cf76a6b45bd9a60c5aba932537d7d6eca36",
+      "fullFileSha256": "4e87ec54f96a956199b856e7d04ac21b706332e21351c683cf803ffd08484e20"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "oled",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "1440-oled-initial.png",
+      "fullFile": "1440-oled-initial-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1987.796875,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2195.1875,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "434b538f3ecd746eba2e5796499aaf5403836bd0559cf9f5a87ed27c0cf96b53",
+      "fullFileSha256": "e3821b93a4e5448cc9a2b8bd11ee0a2e23d168dbf7f713b2cbed66ce6ed9dd00"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1440,
+      "theme": "light",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "1440-light-initial.png",
+      "fullFile": "1440-light-initial-full.png",
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1987.796875,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2195.1875,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "a08c9d14a076479941b1905db5cc7a8afe9dc912692ea8462a2d8a183e683f40",
+      "fullFileSha256": "64679dd3b753d7b816df4ad586ace943dde25987fa1c2a12b362b38154545484"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1280,
+      "theme": "dark",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "1280-dark-initial.png",
+      "fullFile": "1280-dark-initial-full.png",
+      "geometry": {
+        "viewport": 1280,
+        "document": 1280,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1987.796875,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2195.1875,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "d52dffa679fb690fecdff79c7e464a742793f94eac8c3abed71d9ff0c03c2530",
+      "fullFileSha256": "ab2f96bb5d56e674756b60b7ab819812f2b441161fb058a7496466a95527ee95"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 1920,
+      "theme": "dark",
+      "state": "actual source values, source provenance, unlocked state and typed people",
+      "file": "1920-dark-initial.png",
+      "fullFile": "1920-dark-initial-full.png",
+      "geometry": {
+        "viewport": 1920,
+        "document": 1920,
+        "panel": {
+          "x": 320,
+          "y": 207.390625,
+          "width": 840,
+          "height": 1987.796875,
+          "top": 207.390625,
+          "right": 1160,
+          "bottom": 2195.1875,
+          "left": 320
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "7fb1a13e571ff403f6ce3fd4b084c57e5ff8feb2de58c836e5d5a0d0b6f5a78d",
+      "fullFileSha256": "ec8072d6bb541e619cec93db747b57defd140fd6758f906fe572c3217447fc48"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 390,
+      "theme": "oled",
+      "state": "real series detail entry opens the same typed editor without changing matching/artwork",
+      "file": "390-oled-series-editor.png",
+      "fullFile": "390-oled-series-editor-full.png",
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "panel": {
+          "x": 16,
+          "y": 186.59375,
+          "width": 358,
+          "height": 1622.296875,
+          "top": 186.59375,
+          "right": 374,
+          "bottom": 1808.890625,
+          "left": 16
+        }
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "43e649b7533111a9cc28469d79aa8f57324c6a4677d419f90b4dc02072523f3b",
+      "fullFileSha256": "a4ce6819446a83c1830bbcd0fde1c97dc6e5651629087e826e14dd91dde21c8c"
+    },
+    {
+      "screen": "/admin/metadata/edit",
+      "width": 390,
+      "theme": "dark",
+      "state": "actual admin route404 for member, no metadata read or edit",
+      "file": "390-dark-member-refused.png",
+      "fullFile": "390-dark-member-refused-full.png",
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      },
+      "zoom": 1,
+      "dpr": 1,
+      "fileSha256": "34e47e1481545b0cb0e6fe16514c77d8854122b79d428b67b9378d51e44f2e0c",
+      "fullFileSha256": "34e47e1481545b0cb0e6fe16514c77d8854122b79d428b67b9378d51e44f2e0c"
+    }
+  ],
+  "checks": [
+    {
+      "width": 320,
+      "theme": "dark",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 320,
+      "theme": "oled",
+      "axeViolations": 0
+    },
+    {
+      "width": 320,
+      "theme": "oled",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "theme": "oled",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "axeViolations": 0
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "axeViolations": 0
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "theme": "oled",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1920,
+      "theme": "dark",
+      "keyboardSpace": true,
+      "discardNoWrite": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "scenario": "series entry",
+      "pageErrors": []
+    }
+  ],
+  "sourceFreeze": {
+    "file": "source-freeze.json",
+    "sha256": "a6b0dfa750c910f0822a7de2409eeee78e3b47a70b553bd91bd55a7837e9d3ea",
+    "verification": "source-freeze-verified.json",
+    "dirtySourceMappedByGitBlobs": true,
+    "baseHead": "219e8d8f96fa7a6bbd060abcd59994306c6cb034"
+  },
+  "pixelRead": {
+    "implementerPrimaryFramesRead": 25,
+    "fullPageCompanions": "Same-run context only; sticky chrome may sit at the current viewport offset. Primary viewport frames are authoritative."
+  },
+  "fixtureBoundary": {
+    "optIn": "PLEYA_TASK6_BROWSER_FIXTURE=synthetic-only",
+    "transport": "loopback 127.0.0.1:8843 only",
+    "controls": "_test.go only; fixed synthetic item; X-Task6-Fixture: synthetic-only; reset/rounds/fallback cannot ship in product binary",
+    "cleanup": "Go test returned PASS, own --rm container exited; existing protected database container/network untouched",
+    "database": "task5_overrides_1102"
+  }
+}

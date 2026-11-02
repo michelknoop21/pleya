@@ -15,6 +15,9 @@ const nl: Record<string, string> = { ...sharedNl, ...webNl };
  * vrijwel zeker een vergeten kopie.
  */
 const SAME_ON_PURPOSE = [
+  // S22.5: providernaam en gangbaar leenwoord zijn identiek.
+  'admin.metadata.editor.source.tmdb',
+  'admin.metadata.editor.field.genres',
   // Een Nederlands leenwoord en een cijfernotatie.
   'downloads.title',
   'history.ratingScore',

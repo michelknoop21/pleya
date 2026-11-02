@@ -93,3 +93,7 @@ export type MetadataSearchCandidate = S['MetadataSearchCandidate'];
 export type MetadataSearchResults = S['MetadataSearchResults'];
 export type MetadataCandidateDetails = S['MetadataCandidateDetails'];
 export type MetadataMatchStatus = S['MetadataMatchStatus'];
+
+export type MetadataFields = S['MetadataFields'];
+export type MetadataOverridesRequest = S['MetadataOverridesRequest'];
+export type MetadataOverrideField = keyof MetadataOverridesRequest;

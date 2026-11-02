@@ -181,6 +181,13 @@
           {/key}
         {/if}
 
+        {#if session.canAdminister && (item.kind === 'movie' || item.kind === 'show')}
+          <div class="detail__play">
+            {#if session.capabilities?.metadata_overrides === true}<a class="btn btn--secondary" href="/admin/metadata/edit?item={encodeURIComponent(item.id)}">{t('admin.metadata.editor.title')}</a>{/if}
+            <a class="btn btn--secondary" href="/admin/metadata/match?item={encodeURIComponent(item.id)}">{t('admin.match.title')}</a>
+          </div>
+        {/if}
+
         {#if versionOptions.length > 1}
           <Select label={t('item.version')} value={version?.id ?? ''} options={versionOptions} onchange={value => selectedVersionId = value} />
         {/if}

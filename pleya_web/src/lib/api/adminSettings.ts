@@ -14,6 +14,7 @@ import type {
   MetadataAttentionList,
   MetadataMatch,
   MetadataMatchStatus,
+  MetadataFields, MetadataOverridesRequest, MetadataOverrideField,
   MetadataSearchResults,
   MetadataCandidateDetails,
   ServerEnvironment,
@@ -77,6 +78,15 @@ export function adminSettingsApi(client: PleyaClient) {
       client.request((raw) => raw.GET('/items/{item_id}/metadata-candidate-artwork', {
         params: { path: { item_id: itemId }, query: { ref, role } }, parseAs: 'blob', signal
       })),
+
+    metadataFields: (itemId: string, signal?: AbortSignal): Promise<MetadataFields> =>
+      client.request(raw => raw.GET('/items/{item_id}/metadata', { params: { path: { item_id: itemId } }, signal })),
+
+    setMetadataOverrides: (itemId: string, body: MetadataOverridesRequest, signal?: AbortSignal): Promise<MetadataFields> =>
+      client.request(raw => raw.PUT('/items/{item_id}/overrides', { params: { path: { item_id: itemId } }, body, signal })),
+
+    deleteMetadataOverride: (itemId: string, field: MetadataOverrideField, signal?: AbortSignal): Promise<MetadataFields> =>
+      client.request(raw => raw.DELETE('/items/{item_id}/overrides/{field}', { params: { path: { item_id: itemId, field } }, signal })),
 
     metadataMatchStatus: (itemId: string, signal?: AbortSignal): Promise<MetadataMatchStatus> =>
       client.request((raw) => raw.GET('/items/{item_id}/metadata-match', {

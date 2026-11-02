@@ -8,6 +8,7 @@ const all: Capabilities = {
   applied_external_identity: false,
   metadata_match_status: false,
   metadata_search: false,
+  metadata_overrides: false,
   assistant_memory: false,
   browse: true,
   search: true,

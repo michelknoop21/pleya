@@ -1,13 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item } from '../../lib/api/types';
-const h=vi.hoisted(()=>({item:vi.fn(),children:vi.fn(),playback:true,personal:false,favorite:vi.fn()}));
+const h=vi.hoisted(()=>({item:vi.fn(),children:vi.fn(),playback:true,personal:false,admin:false,overrides:false,favorite:vi.fn()}));
 vi.mock('$app/state',()=>({page:{params:{id:'movie'},url:new URL('http://client.test/items/movie')}}));
-vi.mock('../../lib/stores/session.svelte.js',()=>({session:{client:{item:h.item,children:h.children},get capabilities(){return {playback_plan:h.playback,favorites:h.personal};}}}));
+vi.mock('../../lib/stores/session.svelte.js',()=>({session:{client:{item:h.item,children:h.children},get canAdminister(){return h.admin;},get capabilities(){return {playback_plan:h.playback,favorites:h.personal,metadata_overrides:h.overrides};}}}));
 vi.mock('../../lib/api/personal',()=>({personalApi:()=>({setFavorite:h.favorite})}));
 import Detail from './[id]/+page.svelte';
 const movie:Item={id:'movie',kind:'movie',title:'Fixture film',added_at:'2026-10-29T12:00:00Z',summary:'A real plot from NFO.',genres:['Science Fiction'],content_rating:'PG',people:[{name:'Director name',role:'director'},{name:'Actor name',role:'actor',character:'Character name'},{name:'Writer name',role:'writer'}],versions:[{id:'first',container:'mkv',edition:'Theatrical',duration_ms:60000,file_count:1},{id:'second',container:'mp4',edition:'Extended',duration_ms:70000,file_count:1}],user_state:{position_ms:12000,watched:false,play_count:0,updated_at:'2026-10-29T12:00:00Z'}};
-beforeEach(()=>{h.playback=true;h.personal=false;h.favorite.mockReset().mockResolvedValue(undefined);h.item.mockReset();h.children.mockReset();h.item.mockResolvedValue(structuredClone(movie));h.children.mockResolvedValue({items:[],next_cursor:null});});
+beforeEach(()=>{h.playback=true;h.personal=false;h.admin=false;h.overrides=false;h.favorite.mockReset().mockResolvedValue(undefined);h.item.mockReset();h.children.mockReset();h.item.mockResolvedValue(structuredClone(movie));h.children.mockResolvedValue({items:[],next_cursor:null});});
 describe('public detail consumer',()=>{
  it('shows existing metadata without invented person navigation',async()=>{
   render(Detail);await screen.findByRole('heading',{name:'Fixture film'});
@@ -55,4 +55,21 @@ describe('public detail consumer',()=>{
   expect(screen.getByRole('link',{name:'Play from start'})).toHaveAttribute('href','/items/movie/play?version=second');
  });
 
+});
+
+it('opens the separate metadata editor from an authorized movie',async()=>{
+ h.admin=true;h.overrides=true;render(Detail);
+ expect(await screen.findByRole('link',{name:'Edit metadata'})).toHaveAttribute('href','/admin/metadata/edit?item=movie');
+});
+
+it.each(['role','capability','kind'])('hides the editor without %s eligibility',async reason=>{
+ h.admin=reason!=='role';h.overrides=reason!=='capability';
+ if(reason==='kind') h.item.mockResolvedValue({...structuredClone(movie),kind:'episode'});
+ render(Detail);await screen.findByRole('heading',{name:'Fixture film'});
+ expect(screen.queryByRole('link',{name:'Edit metadata'})).toBeNull();
+});
+
+it('opens the same separate editor for a series',async()=>{
+ h.admin=true;h.overrides=true;h.item.mockResolvedValue({...structuredClone(movie),kind:'show'});
+ render(Detail);expect(await screen.findByRole('link',{name:'Edit metadata'})).toHaveAttribute('href','/admin/metadata/edit?item=movie');
 });

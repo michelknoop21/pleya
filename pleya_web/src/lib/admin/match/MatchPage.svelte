@@ -202,6 +202,7 @@
         <Alert tone="info">{t('admin.match.gone')}</Alert>
       {/if}
       {#if shown}
+        {#if session.canAdminister === true && session.capabilities?.metadata_overrides === true}<a class="btn btn--secondary btn--sm metadata-editor-link" href="/admin/metadata/edit?item={encodeURIComponent(shown.item_id)}">{t('admin.metadata.editor.title')}</a>{/if}
         {#key shown.item_id}<CandidatePanel item={shown} choiceReceived={receivedFor===shown.item_id} {busy} onpick={askPick} onreject={askReject} />{/key}
         <section class="match-status" aria-live="polite" data-generation={status?.updated_at ?? ''}>
           {#if statusEnabled}
@@ -249,6 +250,7 @@
 {/if}
 
 <style>
+  .metadata-editor-link { justify-self: start; }
   .match-content {display:grid;gap:20px;max-width:840px;min-width:0;}
   .match-status { display:grid;gap:10px;margin:0;padding:16px;border:1px solid var(--hairline);border-radius:12px;font-size:14px; }
   .match-status p {margin:0;}
