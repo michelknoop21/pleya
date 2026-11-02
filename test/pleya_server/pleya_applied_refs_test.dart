@@ -873,7 +873,8 @@ class _RefsHarness {
         if (request.url.path.endsWith('/info')) (body['capabilities'] as Map)['applied_external_identity'] = applied;
         void stamp(Map<String, dynamic> item) {
           if (item['id'] == 'film') item['applied_external_ids'] = value;
-          if (extraValues.containsKey(item['id'])) item['applied_external_ids'] = extraValues[item['id']];
+          final itemId = item['id'];
+          if (itemId is String && extraValues.containsKey(itemId)) item['applied_external_ids'] = extraValues[itemId];
         }
 
         stamp(body);

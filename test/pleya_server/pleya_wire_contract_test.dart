@@ -69,6 +69,9 @@ void main() {
     'ArtworkCandidates',
     'ArtworkSelection',
     'ArtworkSelectionRequest',
+    // S4.6-cachebeheer is Web-only; deze routes hebben geen Dart-consument.
+    'ArtworkCacheStats',
+    'ArtworkCachePurgeRequest',
     // Task5 search/details are admin Web-only; the Flutter wire ignores them.
     'MetadataSearchResults',
     'MetadataCandidateDetails',
@@ -253,8 +256,8 @@ void main() {
       );
     });
 
-    test('covers the 150 fixtures the contract ships', () {
-      expect(fixtures, hasLength(150));
+    test('covers the 154 fixtures the contract ships', () {
+      expect(fixtures, hasLength(154));
     });
 
     for (final fixture in fixtures) {

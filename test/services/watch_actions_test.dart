@@ -14,6 +14,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/carried_external_ids.dart';
 import 'package:pleya/media/unified/source_availability.dart';
 import 'package:pleya/media/unified/source_coverage_state.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
@@ -941,6 +942,11 @@ void main() {
       kind: MediaKind.movie,
       title: 'Dune',
       serverId: pleya.serverId.value,
+      // The card already carried applied identity before the token round fails.
+      raw: const {
+        pleyaExternalIdsRawKey: {'tmdb': 1},
+        pleyaExternalIdsSourceKey: 'applied',
+      },
     );
 
     Future<OfflineWatchProgressItem?> row() => db.getLatestWatchAction('${pleya.serverId}:movie-1');
@@ -1004,6 +1010,25 @@ void main() {
           await markGroup(ctx, [copy()]);
 
           expect((await row())?.actionType, 'watched');
+        });
+      });
+
+      testWidgets('$name leaves an unproven source-only identity unmirrored when lookup fails', (tester) async {
+        final other = _HealthyClient('b');
+        serverManager.debugRegisterClientForTesting(other);
+        final ctx = await pumpTree(tester);
+        await tester.runAsync(() async {
+          await connect(failingRefresh: (status, code));
+          // groupOf still claims tmdb1; an unqualified claim is no carried proof.
+          final unproven = copy().copyWith(raw: null);
+          expect(externalIdsCarriedBy(unproven), isNull);
+
+          await markGroup(ctx, [unproven, _itemOn('b', 'movie-1')]);
+
+          expect(await row(), isNull);
+          expect(server.watchEvents, isEmpty);
+          expect(other.writes, [(itemId: 'movie-1', watched: true)]);
+          expect(server.requests.where((path) => path.endsWith('/auth/refresh')), isNotEmpty);
         });
       });
     }

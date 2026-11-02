@@ -4,7 +4,7 @@
 <section class="credits" aria-label={t('admin.metadata.artwork.credits')}>
   <h3>{t('admin.metadata.artwork.credits')}</h3>
   <div class="credit-body">
-    <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer"><img src="/providers/tmdb.svg" alt="TMDB" width="64" height="46" /></a>
+    <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer"><img src="/providers/tmdb.svg" alt={t('admin.metadata.artwork.source.tmdb')} width="64" height="46" /></a>
     <p lang="en">{t('admin.metadata.artwork.creditNotice')}</p>
   </div>
 </section>

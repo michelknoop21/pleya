@@ -207,7 +207,7 @@ func TestAppliedStatusPreservesExactMonotoneGeneration(t *testing.T) {
 		var wire struct {
 			UpdatedAt *string `json:"updated_at"`
 		}
-		e.getJSON("/pleya/v1/items/"+movie.ID+"/metadata-match", "", http.StatusOK, &wire)
+		e.getJSON("/pleya/v1/items/"+movie.ID+"/metadata-match", "MetadataMatchStatus", http.StatusOK, &wire)
 		if wire.UpdatedAt == nil {
 			t.Fatal("generatie ontbreekt")
 		}

@@ -79,12 +79,12 @@ func TestMetadataSearchReadOnlyBoundedAndDetails(t *testing.T) {
 	item := e.findMovie("Grease")
 	path := "/pleya/v1/items/" + item.ID
 	var results api.MetadataSearchResults
-	e.getJSON(path+"/metadata-search?title=%20New%20title%20&year=2001", "", 200, &results)
+	e.getJSON(path+"/metadata-search?title=%20New%20title%20&year=2001", "MetadataSearchResults", 200, &results)
 	if len(results.Items) != 20 || p.calls != 1 || p.title != "New title" || p.kind != "movie" || p.year == nil || *p.year != 2001 {
 		t.Fatalf("results/binding: %+v %+v", results, p)
 	}
 	var d api.MetadataCandidateDetails
-	e.getJSON(path+"/metadata-candidates/1", "", 200, &d)
+	e.getJSON(path+"/metadata-candidates/1", "MetadataCandidateDetails", 200, &d)
 	if d.ExternalID != "1" || d.Summary != "Provider summary" || d.PosterRef == nil || d.BackdropRef != nil || p.calls != 2 {
 		t.Fatalf("details: %+v calls %d", d, p.calls)
 	}

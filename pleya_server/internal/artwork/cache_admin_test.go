@@ -310,16 +310,16 @@ func TestCacheQueuedReadersCancelAndResumeAfterCancelledPurge(t *testing.T) {
 func TestCacheFilesystemErrorsAreNotSuccess(t *testing.T) {
 	if os.Getenv("PLEYA_CACHE_PERMISSION_CHILD") == "1" {
 		r := New("", os.Getenv("PLEYA_CACHE_PERMISSION_ROOT"), quiet())
-		if err := r.Purge(); err == nil {
-			t.Fatal("echte gedeeltelijke unlinkfout werd succes")
+		if err := r.Purge(); !errors.Is(err, syscall.EPERM) {
+			t.Fatalf("echte gedeeltelijke unlinkfout niet EPERM: %v", err)
 		}
 		if _, err := os.Stat(filepath.Join(r.dir, "019a0000-0000-7000-8000-000000000002_1_480.jpg")); err != nil {
 			t.Fatalf("beschermd bestand geraakt: %v", err)
 		}
 		// Een niet-leesbare echte directory mag geen nulstand opleveren.
 		r.dir = filepath.Join(os.Getenv("PLEYA_CACHE_PERMISSION_ROOT"), "onleesbaar")
-		if _, _, err := r.Stats(); err == nil {
-			t.Fatal("echte ReadDir-fout werd nulstand")
+		if _, _, err := r.Stats(); !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("echte ReadDir-fout niet permission denied: %v", err)
 		}
 		return
 	}
@@ -335,22 +335,46 @@ func TestCacheFilesystemErrorsAreNotSuccess(t *testing.T) {
 	if err := os.Mkdir(dir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	// Sticky directory: uid65534 kan alleen zijn eigen ladder verwijderen.
-	if err := os.Chmod(dir, os.ModeSticky|0777); err != nil {
-		t.Fatal(err)
-	}
 	removable := filepath.Join(dir, cacheTestName)
 	if err := os.WriteFile(removable, []byte("derived"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chown(removable, 65534, 65534); err != nil {
 		t.Fatal(err)
 	}
 	protected := filepath.Join(dir, "019a0000-0000-7000-8000-000000000002_1_480.jpg")
 	if err := os.WriteFile(protected, []byte("keep"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(filepath.Join(root, "onleesbaar"), 0000); err != nil {
+	unreadable := filepath.Join(root, "onleesbaar")
+	if err := os.Mkdir(unreadable, 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(unreadable, 0755)
+	if os.Geteuid() != 0 {
+		// Zonder root kan de fixture geen vreemde eigenaar maken. Weiger echte
+		// unlinks via directoryrechten en behoud beide ladders onder de eigen uid.
+		if err := os.Chmod(dir, 0555); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(dir, 0755)
+		r := New("", root, quiet())
+		if err := r.Purge(); !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("echte unlinkfout niet permission denied: %v", err)
+		}
+		r.dir = unreadable
+		if _, _, err := r.Stats(); !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("echte ReadDir-fout niet permission denied: %v", err)
+		}
+		for path, want := range map[string]string{removable: "derived", protected: "keep"} {
+			if got, err := os.ReadFile(path); err != nil || string(got) != want {
+				t.Fatalf("ladder geraakt na geweigerde unlink: %q %v", got, err)
+			}
+		}
+		return
+	}
+	// Sticky directory: uid65534 kan alleen zijn eigen ladder verwijderen.
+	if err := os.Chmod(dir, os.ModeSticky|0777); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(removable, 65534, 65534); err != nil {
 		t.Fatal(err)
 	}
 	executable := filepath.Join(root, "permission-test")
@@ -369,6 +393,9 @@ func TestCacheFilesystemErrorsAreNotSuccess(t *testing.T) {
 	}
 	if _, err := os.Stat(removable); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("geen echte partial delete vóór fout: %v", err)
+	}
+	if got, err := os.ReadFile(protected); err != nil || string(got) != "keep" {
+		t.Fatalf("beschermde ladder geraakt na partial delete: %q %v", got, err)
 	}
 }
 
