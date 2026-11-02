@@ -1,0 +1,9 @@
+{
+  "run_id": "ios-catalog-header-collapse-1793577758137",
+  "git_commit": "d69209da690615f6a76f5a53bbb3fff2385e60fc",
+  "dirty": false,
+  "target": "ios-sim",
+  "result": "PASS",
+  "duration_ms": 156973,
+  "scenario_hash": "31514034e9e8529ade961736dfbac29098235814186a63730d39edbd07d1de42"
+}

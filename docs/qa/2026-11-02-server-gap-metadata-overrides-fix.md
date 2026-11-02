@@ -13,3 +13,5 @@ Roadmap **C-05/S4/S22.5/S14.5**, branch `feat/server-gap-metadata-overrides`, ba
 **Pakket:** fix-only `/tmp/task5-overrides-1102/fix-only.diff` en `fix-only.sha256`; volledig bijgewerkt `/tmp/task5-overrides-1102/fix-frozen.diff` en `fix-frozen.sha256`. Nog open: verse onafhankelijke scopedfixreview, normale commithooks bij roots commit, frontendeditor/visuele pariteit, artworkpins en gezamenlijke release/NAS/TestFlight-acceptatie. Geen uitvoeringsblocker; uitsluitend eigen synthetische database gebruikt.
 
 Verse onafhankelijke fixreview: **PASS**; I1/M1/M2 gesloten, geen nieuwe bevindingen. Normale hooks volgen bij deze lokale commit. Frontend, artworkpins en volledige releaseacceptatie blijven open.
+
+**Integratiecheckpoint:** backendcommit219e8d8f96fa7a6bbd060abcd59994306c6cb034 is via gewone hooks groen gecommit en lokaal geïntegreerd als7536d754e. De hierboven beschreven reviewoverdracht is historisch; de verse onafhankelijke fixreview sloot I1/M1/M2 met PASS. Frontend, pins en gezamenlijke releaseacceptatie blijven open.
