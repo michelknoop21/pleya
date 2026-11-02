@@ -357,7 +357,7 @@ func (p *Pins) Prepare(ctx context.Context, state catalog.ArtworkState, selectio
 				ref := chosen.Ref
 				pin.Ref = &ref
 			}
-			if err := p.writeCache(pin, body); err != nil {
+			if err := p.writeCache(ctx, pin, body); err != nil {
 				return nil, err
 			}
 			if err := ctx.Err(); err != nil {
@@ -375,7 +375,33 @@ func (p *Pins) Prepare(ctx context.Context, state catalog.ArtworkState, selectio
 func (p *Pins) cachePath(pin catalog.ArtworkPin) string {
 	return filepath.Join(p.cache, "artwork-pins", pin.ID.String()+"_"+pin.SHA256+pin.Extension)
 }
-func (p *Pins) writeCache(pin catalog.ArtworkPin, body []byte) error {
+func (p *Pins) writeCache(ctx context.Context, pin catalog.ArtworkPin, body []byte) error {
+	return retryPinCacheWrite(ctx, func() error { return p.writeCacheAttempt(pin, body) })
+}
+
+// De afgeleide cachemap kan tijdens een write verdwijnen. Herhaal alleen die
+// ENOENT-grens, met dezelfde gevalideerde bytes en een vaste bovengrens; andere
+// opslagfouten en annulering blijven zichtbaar voor de aanroeper.
+func retryPinCacheWrite(ctx context.Context, attempt func() error) error {
+	for n := 0; ; n++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err := attempt()
+		if !errors.Is(err, os.ErrNotExist) || n == 2 {
+			return err
+		}
+		timer := time.NewTimer(10 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+func (p *Pins) writeCacheAttempt(pin catalog.ArtworkPin, body []byte) error {
 	dir := filepath.Join(p.cache, "artwork-pins")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -446,7 +472,7 @@ func (p *Pins) Resolve(ctx context.Context, pin catalog.ArtworkPin) (catalog.Fil
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		return nil, p.writeCache(pin, body)
+		return nil, p.writeCache(ctx, pin, body)
 	})
 	select {
 	case <-ctx.Done():
