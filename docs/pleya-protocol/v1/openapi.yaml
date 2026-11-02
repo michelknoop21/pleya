@@ -1285,6 +1285,87 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /items/{item_id}/metadata:
+    get:
+      tags: [administration]
+      operationId: getMetadataFields
+      summary: Effectieve metadata en gesloten handmatige veldlocks.
+      description: |
+        Klasse admin, actuele bibliotheekscope, capability metadata_overrides.
+        Alleen film/serie. Geen wijziging van requested/applied-identiteit.
+        Explicit leeg blijft handmatig. Ontgrendelen publiceert actuele bewezen bron;
+        409 library.override_source_unavailable behoudt lock en waarde bij onzekerheid.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: Actuele effectieve waarden, herkomst en locks.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataFields" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /items/{item_id}/overrides:
+    put:
+      tags: [administration]
+      operationId: setMetadataOverrides
+      summary: Effectieve metadata en gesloten handmatige veldlocks.
+      description: |
+        Klasse admin, actuele bibliotheekscope, capability metadata_overrides.
+        Alleen film/serie. Geen wijziging van requested/applied-identiteit.
+        Explicit leeg blijft handmatig. Ontgrendelen publiceert actuele bewezen bron;
+        409 library.override_source_unavailable behoudt lock en waarde bij onzekerheid.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MetadataOverridesRequest" }
+      responses:
+        "200":
+          description: Actuele effectieve waarden, herkomst en locks.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataFields" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /items/{item_id}/overrides/{field}:
+    delete:
+      tags: [administration]
+      operationId: deleteMetadataOverride
+      summary: Effectieve metadata en gesloten handmatige veldlocks.
+      description: |
+        Klasse admin, actuele bibliotheekscope, capability metadata_overrides.
+        Alleen film/serie. Geen wijziging van requested/applied-identiteit.
+        Explicit leeg blijft handmatig. Ontgrendelen publiceert actuele bewezen bron;
+        409 library.override_source_unavailable behoudt lock en waarde bij onzekerheid.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+        - name: field
+          in: path
+          required: true
+          schema: { type: string, enum: [title, year, summary, genres, content_rating, people], x-unknown-safe: false }
+      responses:
+        "200":
+          description: Actuele effectieve waarden, herkomst en locks.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetadataFields" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /items/{item_id}/metadata-search:
     get:
       tags: [administration]
@@ -3791,6 +3872,10 @@ components:
             Bij true gebruikt een nieuwe client uitsluitend applied-identiteit;
             ontbrekend/null/ongeldig mag nooit terugvallen op external_ids of
             oude ongekwalificeerde cacheclaims. Zonder vlag blijft legacy gelden.
+        metadata_overrides:
+          type: boolean
+          default: false
+          description: Admin metadataread, typed gedeeltelijke veldlocks en veilige ontgrendeling samen beschikbaar.
         metadata_search:
           type: boolean
           default: false
@@ -5193,6 +5278,78 @@ components:
         item_id: { $ref: "#/components/schemas/Id" }
         state: { $ref: "#/components/schemas/MetadataMatchState" }
         external_id: { type: [string, "null"] }
+
+    MetadataOverridePerson:
+      type: object
+      additionalProperties: false
+      required: [name, role]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        role: { type: string, enum: [actor, director, writer], x-unknown-safe: false }
+        character: { type: string, maxLength: 200 }
+    MetadataOverridesRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Partiële typed write; ontbrekend bewaart huidig veld. Alleen year accepteert null. Totale body maximaal 8 KiB.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        year: { type: [integer, "null"], minimum: 1, maximum: 9999 }
+        summary: { type: string, maxLength: 20000 }
+        content_rating: { type: string, maxLength: 100 }
+        genres: { type: array, maxItems: 50, items: { type: string, minLength: 1, maxLength: 100 } }
+        people: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/MetadataOverridePerson" } }
+    MetadataFields:
+      type: object
+      required: [item_id, fields]
+      properties:
+        item_id: { $ref: "#/components/schemas/Id" }
+        fields:
+          type: object
+          required: [title, year, summary, genres, content_rating, people]
+          properties:
+            title:
+              type: object
+              required: [value, source, locked]
+              properties:
+                value: { type: string }
+                source: { type: string, description: 'manual, tmdb, nfo, scanner, none of unknown; onbekende bronnen veilig tonen.' }
+                locked: { type: boolean }
+            year:
+              type: object
+              required: [value, source, locked]
+              properties:
+                value: { type: [integer, "null"], minimum: 1, maximum: 9999 }
+                source: { type: string, description: 'manual, tmdb, nfo, scanner, none of unknown; onbekende bronnen veilig tonen.' }
+                locked: { type: boolean }
+            summary:
+              type: object
+              required: [value, source, locked]
+              properties:
+                value: { type: [string, "null"] }
+                source: { type: string, description: 'manual, tmdb, nfo, scanner, none of unknown; onbekende bronnen veilig tonen.' }
+                locked: { type: boolean }
+            content_rating:
+              type: object
+              required: [value, source, locked]
+              properties:
+                value: { type: [string, "null"] }
+                source: { type: string, description: 'manual, tmdb, nfo, scanner, none of unknown; onbekende bronnen veilig tonen.' }
+                locked: { type: boolean }
+            genres:
+              type: object
+              required: [value, source, locked]
+              properties:
+                value: { type: [array, "null"], items: { type: string } }
+                source: { type: string, description: 'manual, tmdb, nfo, scanner, none of unknown; onbekende bronnen veilig tonen.' }
+                locked: { type: boolean }
+            people:
+              type: object
+              required: [value, source, locked]
+              properties:
+                value: { type: [array, "null"], items: { $ref: "#/components/schemas/Person" } }
+                source: { type: string, description: 'manual, tmdb, nfo, scanner, none of unknown; onbekende bronnen veilig tonen.' }
+                locked: { type: boolean }
 
     MetadataSearchCandidate:
       type: object

@@ -150,7 +150,9 @@ const (
 	// CodeInvalidMatch is het antwoord van PUT /items/{id}/metadata-match op een
 	// external_id die geen providernummer is (venster 3, S22.5). Een code in het
 	// domein library en geen nieuw domein: het gaat over de catalogus.
-	CodeInvalidMatch = "library.invalid_match"
+	CodeInvalidMatch     = "library.invalid_match"
+	CodeInvalidOverride  = "library.invalid_override"
+	CodeOverrideFallback = "library.override_source_unavailable"
 
 	// CodeFilterInvalid is het antwoord van GET /libraries/{id}/items op een
 	// filterparameter die de server niet kan uitvoeren (venster 3, D1.4).
@@ -323,6 +325,8 @@ var errorTable = map[string]struct {
 	CodeLibraryNotConfigManaged: {http.StatusConflict, false},
 	CodeLibraryConfirmMismatch:  {http.StatusConflict, false},
 	CodeInvalidMatch:            {http.StatusBadRequest, false},
+	CodeInvalidOverride:         {http.StatusBadRequest, false},
+	CodeOverrideFallback:        {http.StatusConflict, true},
 	CodeFilterInvalid:           {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 

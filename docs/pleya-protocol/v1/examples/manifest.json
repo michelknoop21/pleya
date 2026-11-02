@@ -692,6 +692,21 @@
       "file": "info_metadata_search.json",
       "schema": "Info",
       "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "metadata_fields.json",
+      "schema": "MetadataFields",
+      "note": "S22.5 typed veldlocks/provenance binnen metadata-venster 1 november 2026"
+    },
+    {
+      "file": "metadata_overrides_request.json",
+      "schema": "MetadataOverridesRequest",
+      "note": "S22.5 typed veldlocks/provenance binnen metadata-venster 1 november 2026"
+    },
+    {
+      "file": "metadata_override_source_unavailable.json",
+      "schema": "ErrorEnvelope",
+      "note": "S22.5 typed veldlocks/provenance binnen metadata-venster 1 november 2026"
     }
   ]
 }

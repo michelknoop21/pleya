@@ -62,6 +62,9 @@ void main() {
     'MetadataMatch',
     // Additief metadata-venster: adminstatus is voor het web, geen Flutter-UI.
     'MetadataMatchStatus',
+    // Task6 veldeditor is admin Web-only; geen Flutter-editor in deze slice.
+    'MetadataFields',
+    'MetadataOverridesRequest',
     // Task5 search/details are admin Web-only; the Flutter wire ignores them.
     'MetadataSearchResults',
     'MetadataCandidateDetails',
@@ -246,8 +249,8 @@ void main() {
       );
     });
 
-    test('covers the 143 fixtures the contract ships', () {
-      expect(fixtures, hasLength(143));
+    test('covers the 146 fixtures the contract ships', () {
+      expect(fixtures, hasLength(146));
     });
 
     for (final fixture in fixtures) {

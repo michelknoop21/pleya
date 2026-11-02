@@ -79,6 +79,9 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"library.confirm_mismatch":         {409, false},
 		"storage.root_not_offered":         {400, false},
 		"job.not_cancellable":              {409, false},
+		"library.invalid_metadata_query":   {400, false},
+		"library.metadata_unavailable":     {503, true},
+		"library.metadata_failed":          {502, true},
 		"library.invalid_match":            {400, false},
 		"library.filter_invalid":           {400, false},
 		"server.maintenance":               {503, true},
@@ -88,6 +91,15 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"playback.file_corrupt":            {422, false},
 		"playback.selection_invalid":       {400, false},
 	}
+
+	want[CodeInvalidOverride] = struct {
+		status    int
+		retryable bool
+	}{400, false}
+	want[CodeOverrideFallback] = struct {
+		status    int
+		retryable bool
+	}{409, true}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
 	// settings.invalid_value kwam erbij met S1.2, server.confirm_mismatch met

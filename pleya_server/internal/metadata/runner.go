@@ -21,7 +21,7 @@ import (
 // Store is wat de ronde van de catalogus nodig heeft.
 type Store interface {
 	MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error)
-	MarkSidecarChecked(ctx context.Context, itemID id.ID) error
+	CommitSidecar(ctx context.Context, target catalog.MetadataTarget, details *catalog.MetadataDetails) error
 	CommitMetadata(ctx context.Context, target catalog.MetadataTarget, c catalog.MetadataCandidate, details, sidecar *catalog.MetadataDetails, artwork []catalog.ProviderArtwork) error
 	ApplyMetadata(ctx context.Context, itemID id.ID, provider string, d catalog.MetadataDetails) error
 	LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdrop bool, err error)
@@ -177,31 +177,28 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	if r.sidecar != nil {
 		if checked, ok := r.sidecar.(interface {
 			ReadChecked(catalog.MetadataTarget) (*nfo.Result, error)
-		}); ok && r.provider != nil {
+		}); ok {
 			side, t.SidecarReadError = checked.ReadChecked(t)
 		} else {
 			side = r.sidecar.Read(t)
 		}
 	}
 
-	// ApplyMetadata bewaart de bronrang, ook bij een latere ronde zonder provider.
-	applySidecar := func() error {
-		if side == nil {
-			return nil
-		}
-		if err := r.store.ApplyMetadata(ctx, t.ID, catalog.SourceNFO, sidecarDetails(side)); err != nil {
-			return err
-		}
-		st.SidecarApplied++
-		return nil
-	}
-	// Zonder provider is er geen kandidaat die dit item afvinkt, ook niet als er
-	// geen .nfo naast staat. Mislukt het toepassen, dan blijft het aan de beurt.
+	// Een sleutelvrije ronde publiceert bronbewijs en checked-at atomair. Ook
+	// ontbreken/onleesbaarheid moet een oude verborgen NFO ongeldig maken.
 	if r.provider == nil {
-		if err := applySidecar(); err != nil {
+		var details *catalog.MetadataDetails
+		if side != nil {
+			d := sidecarDetails(side)
+			details = &d
+		}
+		if err := r.store.CommitSidecar(ctx, t, details); err != nil {
 			return err
 		}
-		return r.store.MarkSidecarChecked(ctx, t.ID)
+		if details != nil {
+			st.SidecarApplied++
+		}
+		return nil
 	}
 
 	state, chosen, how, results, err := r.decide(ctx, t, side)

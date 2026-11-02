@@ -634,6 +634,8 @@ contract keurt ze af.
 | `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
 | `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 | `job.not_cancellable` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; `details.reason` zegt welke |
+| `library.invalid_override` | 400 | nee | Ongeldige gesloten typed metadata-veldbewerking; geen gedeeltelijke write |
+| `library.override_source_unavailable` | 409 | ja | Actuele onderliggende bron niet bewezen; lock en waarde behouden |
 | `library.invalid_match` | 400 | nee | `PUT /items/{id}/metadata-match`: `external_id` is geen positief geheel getal tot tien cijfers, of de body is geen gesloten `{external_id}`; een geweigerde poging staat als `denied` in het audit (S22.5) |
 | `library.filter_invalid` | 400 | nee | `GET /libraries/{id}/items`: een filterparameter heeft een onbekende of onmogelijke waarde (`watch`, `resolution`, een jaar buiten 1800 tot 2200 of niet vier cijfers, `year_from` na `year_to`, een `audio_language` die geen drie letters is, of meer dan vijftig waarden); `details.parameter` noemt de parameter en `details.value` de waarde (venster 3, D1) |
 
@@ -1725,6 +1727,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 99 | `GET /items/{id}/metadata-search` | begrensde read-only titel/jaarzoeking | klasse `admin`, actuele item/libraryscope, metadata_search; provider uit 503 |
 | 100 | `GET /items/{id}/metadata-candidates/{external_id}` | alleen gekozen-kandidaatdetails | klasse `admin`, actuele item/libraryscope, metadata_search; provider uit 503 |
 | 101 | `GET /items/{id}/metadata-candidate-artwork` | vaste-host read-only beeldpreview | klasse `admin`, actuele item/libraryscope, metadata_search; provider uit 503 |
+| 102 | `GET /items/{id}/metadata` | effectieve velden, bron en lock | klasse `admin`, actuele item/libraryscope; metadata_overrides; film/serie |
+| 103 | `PUT /items/{id}/overrides` | gesloten typed partiële handmatige veldlocks | klasse `admin`, actuele item/libraryscope; metadata_overrides; geen identiteitswrite |
+| 104 | `DELETE /items/{id}/overrides/{field}` | veilige ontgrendeling naar actuele bron | klasse `admin`, actuele item/libraryscope; metadata_overrides; 409 behoudt lock bij onvoldoende bronbewijs |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2708,3 +2713,27 @@ Date-milliseconden zijn geen generatiebewijs. Requestsequentie, item en
 accountcontext begrenzen late antwoorden. Zonder zoek- of statuscapability blijft
 het bestaande handmatige pad bruikbaar en worden de bijbehorende nieuwe routes
 niet aangeroepen. Geen schema-/opslagepoch of wijziging van legacy external_ids.
+
+### Metadata veldlocks (S22.5, additief venster 1 november 2026)
+
+`capabilities.metadata_overrides` is standaard false. Alleen bij true roepen nieuwe
+clients GET `/items/{id}/metadata`, PUT `/items/{id}/overrides` en DELETE
+`/items/{id}/overrides/{field}` aan. Alle drie zijn adminroutes met actuele
+bibliotheekscope; andere rollen, buiten scope en andere itemsoorten krijgen 404.
+De volledige gesloten veldset is `title`, `year`, `summary`, `genres`,
+`content_rating`, `people`. PUT is gedeeltelijk en atomair: ontbrekend laat staan,
+lege string/array lockt expliciet leeg; alleen year mag null zijn. Title mag niet
+leeg of alleen whitespace zijn. Personen hebben name/role en optioneel character;
+extra velden worden geweigerd. Bodylimiet blijft 8 KiB.
+
+GET en succesvolle writes geven alle effectieve waarden met source en locked.
+`manual` betekent gelockt; `unknown` geeft geen bewezen historische herkomst.
+Provider/NFO/scanner vernieuwen hun huidige bronwaarden onder de bestaande
+itemlock en publicatieguard, zonder manual te vervangen. DELETE herstelt de
+actuele bewezen bron met bestaande bronvoorrang; onzekere NFO of ontbrekend bewijs
+geeft 409 `library.override_source_unavailable` en behoudt waarde/lock. Een
+bewezen lege volledige bronronde kan lege nullable metadata herstellen. Er is geen
+undo of historie. Geen van deze writes verandert requested/applied-identiteit,
+item-id, bestanden, versies, kijkstatus of lijsten. Audit bevat alleen veldnamen,
+geen handmatige tekst of bronpaden. Foutcode `library.invalid_override` is 400,
+retryable false; `library.override_source_unavailable` is 409, retryable true.

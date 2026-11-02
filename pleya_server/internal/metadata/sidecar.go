@@ -46,8 +46,8 @@ func (FSSidecar) Read(t catalog.MetadataTarget) *nfo.Result {
 }
 
 // ReadChecked onderscheidt echt ontbreken van een onzekere actuele fallback.
-// Alleen providerpublicatie gebruikt dit strengere pad; de bestaande losse
-// sidecarronde blijft onleesbare sidecars overslaan.
+// Providerpublicatie en losse sidecarrondes gebruiken dit bewijs; onleesbare
+// sidecars worden overgeslagen en mogen bij unlock geen oude bron legitimeren.
 func (FSSidecar) ReadChecked(t catalog.MetadataTarget) (*nfo.Result, error) {
 	if t.MediaPath == "" || t.MediaRoot == "" {
 		return nil, nil

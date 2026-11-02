@@ -47,11 +47,13 @@ func (s *Store) ResolveItem(ctx context.Context, ref ItemRef) (id.ID, bool, erro
 		INSERT INTO media_items (id, library_id, parent_id, kind, grouping_key, title, sort_title, year, item_index)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (library_id, parent_id, kind, grouping_key) DO UPDATE
-		SET title = EXCLUDED.title,
-		    sort_title = EXCLUDED.sort_title,
-		    year = coalesce(EXCLUDED.year, media_items.year),
+		SET title = CASE WHEN media_items.metadata_sources->>'title'='manual' THEN media_items.title ELSE EXCLUDED.title END,
+            sort_title = CASE WHEN media_items.metadata_sources->>'title'='manual' THEN media_items.sort_title ELSE EXCLUDED.sort_title END,
+            year = CASE WHEN media_items.metadata_sources->>'year'='manual' THEN media_items.year ELSE coalesce(EXCLUDED.year,media_items.year) END,
+            metadata_field_layers = jsonb_set(media_items.metadata_field_layers,'{scanner}',
+                jsonb_build_object('title',EXCLUDED.title,'sort_title',EXCLUDED.sort_title,'year',coalesce(EXCLUDED.year,(media_items.metadata_field_layers->'scanner'->>'year')::integer,CASE WHEN media_items.metadata_sources->>'year'='manual' THEN NULL ELSE media_items.year END)),true),
 		    item_index = coalesce(EXCLUDED.item_index, media_items.item_index),
-		    updated_at = now()
+		    updated_at = GREATEST(media_items.updated_at + interval '1 microsecond', clock_timestamp())
 		RETURNING id, (xmax = 0)`,
 		id.New(), ref.LibraryID, ref.ParentID, ref.Kind, ref.GroupingKey,
 		ref.Title, nullString(ref.SortTitle), ref.Year, ref.Index).Scan(&existing, &created)

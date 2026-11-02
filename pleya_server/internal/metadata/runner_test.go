@@ -47,6 +47,14 @@ func (f *fakeStore) MetadataDue(_ context.Context, _ string, _ int, exclude []id
 	}
 	return out, nil
 }
+func (f *fakeStore) CommitSidecar(ctx context.Context, target catalog.MetadataTarget, details *catalog.MetadataDetails) error {
+	if details != nil {
+		if err := f.ApplyMetadata(ctx, target.ID, catalog.SourceNFO, *details); err != nil {
+			return err
+		}
+	}
+	return f.MarkSidecarChecked(ctx, target.ID)
+}
 func (f *fakeStore) MarkSidecarChecked(_ context.Context, item id.ID) error {
 	f.checked[item] = true
 	return nil

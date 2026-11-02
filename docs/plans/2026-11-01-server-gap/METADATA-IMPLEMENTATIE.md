@@ -44,6 +44,8 @@ Binnen geopend venster: echte titel/optioneel-jaarzoekroute, gekozen-kandidaatde
 
 Binnen geopend venster: aparte editor, typed gesloten writes, expliciet leeg en veilige ontgrendeling naar actuele bron. Scanner en provider respecteren locks. Geen historie verzinnen of generieke revisiewerkbank. Scope/revoke/stale/fout, drie rondes en herstart bewijzen, echte visuele pariteit. Concrete uitvoerbrief volgt.
 
+Task6 backend is op2november lokaal gebouwd in de geïsoleerde overrides-worktree: alle zes geopende velden, additieve adminroutes/capability, gesloten typed writes, coherente effectieve read en migratie0032 voor huidige bronwaarden naast manual locks. Providerpublicatie en keyless NFO-observatie gebruiken de bestaande itemlock/candidategeneratie; unlock herstelt aantoonbaar actuele bron of bewaart lock/waarde met409. [Gerichte tests, negatieven, backup/restore en resterende grens](../../qa/2026-11-02-server-gap-metadata-overrides.md). Dit sluit de afzonderlijke frontendeditor/visuele pariteit, onafhankelijke review, artworkpins en releaseacceptatie niet. De eerste onafhankelijke review vond I1/M1/M2; de gezamenlijke fixronde voor late NFO-edit, volledige body-EOF en expliciete API-wiremapper is lokaal gebouwd met [fixbewijs](../../qa/2026-11-02-server-gap-metadata-overrides-fix.md). Verse scopedfixreview blijft open.
+
 ## Task 7: Artwork kiezen en pinnen
 
 Binnen geopend venster: itemgebonden echte kandidaten, poster/backdropkeuze/pin en veilige ontpinning. Behoud lokale bronnen en cache-/commitbescherming. Geen upload of willekeurige URL. Rechten, stale kandidaten, providerfout, nieuwe bron, drie rondes/herstart en zichtbare clientcacheverversing bewijzen. Concrete uitvoerbrief volgt.

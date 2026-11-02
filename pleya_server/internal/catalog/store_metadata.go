@@ -261,6 +261,10 @@ func applyMetadata(ctx context.Context, tx pgx.Tx, itemID id.ID, provider string
 		sources = map[string]string{}
 	}
 
+	if err := rememberMetadataLayer(ctx, tx, itemID, provider, d); err != nil {
+		return err
+	}
+
 	// Een veld is schrijfbaar als niemand het zette, of als de nieuwe bron minstens
 	// even zwaar weegt als de huidige. Rang: handmatig, dan een provider in de
 	// servertaal, dan een sidecar (DEC-153).
@@ -313,12 +317,15 @@ func applyMetadata(ctx context.Context, tx pgx.Tx, itemID id.ID, provider string
 const (
 	SourceNFO    = "nfo"
 	SourceManual = "manual"
+	SourceNone   = "none"
 )
 
 // sourceRank is de voorrang van een bron: hoger wint. Een onbekende bron (een
 // tweede provider) staat tussen de .nfo en de eerste provider.
 func sourceRank(src string) int {
 	switch src {
+	case SourceNone:
+		return 0
 	case SourceManual:
 		return 100
 	case SourceNFO:
@@ -701,6 +708,9 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 		return nil, err
 	}
 
+	if err := rememberMetadataLayer(ctx, tx, itemID, provider, MetadataDetails{}); err != nil {
+		return nil, err
+	}
 	if err := touchAppliedIdentity(ctx, tx, itemID, "", ""); err != nil {
 		return nil, err
 	}
@@ -859,6 +869,15 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 		return err
 	} else if target.CandidateUpdatedAt == nil || !actual.Equal(*target.CandidateUpdatedAt) {
 		return ErrMetadataSuperseded
+	}
+	if target.SidecarReadError != nil || c.State == CandidateFailed {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_nfo_safe=false WHERE id=$1`, target.ID); err != nil {
+			return err
+		}
+	} else if sidecar == nil {
+		if err := rememberMetadataLayer(ctx, tx, target.ID, SourceNFO, MetadataDetails{}); err != nil {
+			return err
+		}
 	}
 	if details != nil {
 		if err := clearMissingProviderFields(ctx, tx, target, c.Provider, *details); err != nil {
