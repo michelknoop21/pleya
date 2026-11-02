@@ -1,0 +1,14 @@
+{
+  "scope": "Two representative originals of six normal-image screenshots; post-outcome read-only continuation, no live success-transition claim",
+  "source_commit": "4034f07f1e8a747fa4807281415e1c5f6a5c0908",
+  "files": [
+    {
+      "file": "web-1440-zero-continuation.png",
+      "sha256": "9adfbb5b971f5c6a801a50cf0b5ca5bbe0dbc7c44cdd971cec409dcc9cd789de"
+    },
+    {
+      "file": "web-390-regenerated.png",
+      "sha256": "6855b8d5a312a4d2800f7597259e16cf91dd23880bca3129d20ff10cb1233f0c"
+    }
+  ]
+}
