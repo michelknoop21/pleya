@@ -1,0 +1,20 @@
+# Fixed-image host cache-loss gate —2026-11-02
+
+**HOST COHORT PASS12/12; full runtime terminal1 from a separate optional source-loss assertion.** RoadmapC-05/S22.5. No product/authority edits, commit, push, NAS, Docker restart/prune or unrelated resource mutation. Historical old-image RED evidence untouched and referenced by hashes. No claim that a finite cohort proves every filesystem timing.
+
+**Exact new image:** `task5-pin-cache-recovery:1102`=`sha256:f8cbfced5549c72bcb28196649845cab83f6c87a5ce440d026a2a7b2c6de9647`,linux/amd64; one normal pinned Dockerfile build, exit0, revision`9e607e4cce5d6b870c9b7b2edb00f9a0bd5ea1bc`. Server/Web/protocol from exact gitarchive, no testbinary/working-tree context. pins.goSHA`adf1cb96…` matches committed fix. Matching prior Web reused ONLY after identical0ae/9e WebGit tree`7828f4ea…` and all200bundlefileSHA256 equality; `web-reuse-proof.json`. Dockerfile blob identical`fc33d9f8…`; all migration-directory fileGitblobs/SHA equal0ae→9e (`migration-parity.json`). Source manifest retained. No native/app verification rerun or new nativeSHA claim.
+
+**Resources:** desktop-linux29.8.2,4CPU/8.32GB; actual VMfree16,561,764KiB, host119GiB. HeavyFIFO build`4f017a87…`, runtime`8dae7558…`; no simultaneous heavy process. Unique own PG/net/server/runner names refused if existing, disposable project test-db.sh PG18.6 exact digest7d2695c3…/tmpfs, capped512MiB memory+swap/1CPU. ServerUID/GID1000, readonlyroot,capdropALL/no-new-privileges,768MiB/1CPU,readonlysyntheticmedia,loopback8877,ownnetworkonly. Full inspect/IDs retained.
+
+| Actual image check | Result |
+|---|---|
+|Basic runtime|healthz/readyz200,binaryhealthcheck0,unauthlibraries401,UID1000; schema max34/count34|
+|Normal local pin|real scanner/ffmpeg clip+local32×48PNG,normal setup/candidates/pin; baselineGET200|
+|Exact host-loss cohort|12rounds host`shutil.rmtree(cache/artwork-pins)`→samepinGET, unchanged probe order/no added delay; hostexists=false after every removal. GET begins0.043–0.074ms after deletion ends. EveryGET200,cache rebuilt,baselineSHA/ETag exact,entire pinrow/ID/intent exact. `host-rounds.json`,`host-outcome.json`,`host-summary.json`|
+|Optional real source-loss probe|After cohort,hostcachedirremoved+hostposterrenamed; immediateGET200 while harness expected503,so terminal1. Responsehash/guestcache/sourcevisibility at that request not recorded. A valid cachedpin may be served before source revalidation; host/gueststate was not established. No source-unavailability503 or changed-source result claimed; latter NOT RUN. No retry/newfixture/fix after this assertion.|
+
+PinID`01a19b92-5a44-7000-96d9-8b7a0aa5d555`; item`01a19b92-555c-7000-9560-072fafceacfd`. Every cohort response: SHA256`41313a9a2e0164570d324a4302cf721a3fb4ef48287f101b1f6dcffef9691040`,ETag`"422ad64bd62a42fa28a285430fe1834f"`. Old normal16c1-image diagnostic reproduced host503 in round1; its exit0 denotes REPRODUCED, notGREEN. Fixed cohort and oldRED use separately owned synthetic fixtures; no original pinID equality across fixtures is claimed.
+
+**Cleanup complete despite terminal1:** own server`c959322d…`,PG`463d8f9e…`,network`8c2b1276…` removed; ownconfig/cache/media/transcode/backups/keys+heldposter removed. All preexisting containerIDs/names/states identical; protected PG`283651dc…` remains sameID/exited. Original images retained; only new fixedimage added. All protected nondefault networks retained. Defaultbridge ID changed between snapshots; cause unknown, our commands contain no bridge mutation/restart. `cleanup-proof.json`/before-after snapshots.
+
+**Limits:** no EACCES/ENOSPC occurred in normal-imagecohort; they were not suppressed or replaced by success. This run does not inject storagefull/permissionerrors or contextcancellation; prior focusedsource tests remain separate. Optional source-loss/changed-source assertions remain unproven. No new encryptedbackup/restore/rollback,Webbrowser,native,provider,hardware,NAS/offsite/production/release proof; earlier34recovery/Web evidence is not relabelled as this fixedimage's evidence. Exactvirtiofsinternalcause remains unproven. `exits.json` separates build0/cohortPASS/runtime1/cleanup.
