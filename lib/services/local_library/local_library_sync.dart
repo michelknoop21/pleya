@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show VoidCallback;
 
+import 'dart:async' show TimeoutException;
+
+import '../../exceptions/identity_lookup_exceptions.dart';
 import '../../exceptions/media_server_exceptions.dart';
 import '../../media/library_query.dart';
 import '../../media/media_item.dart';
@@ -8,13 +11,26 @@ import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../utils/external_ids.dart';
 import '../../media/media_server_client.dart';
+import '../../media/unified/carried_external_ids.dart';
 import '../jellyfin_client.dart';
 import '../plex_client.dart';
 import '../pleya_server_client.dart';
 import '../local_folder_client.dart';
 import 'local_library_store.dart';
+import '../download_artwork_helpers.dart';
 
 class LocalLibraryPaused implements Exception {}
+
+class LocalPosterResult {
+  const LocalPosterResult({this.bytes, this.etag, this.lastModified, required this.variant});
+  final Uint8List? bytes; // null means a successful conditional 304.
+  final String? etag;
+  final String? lastModified;
+  final String variant;
+}
+
+typedef LocalPosterRevalidator =
+    Future<LocalPosterResult> Function(MediaServerClient client, MediaItem item, Map<String, dynamic> validators);
 
 typedef LocalPosterLoader = Future<Uint8List> Function(MediaServerClient client, MediaItem item);
 
@@ -24,13 +40,24 @@ class LocalLibrarySync {
   LocalLibrarySync({
     required this.store,
     this.pageSize = 100,
+    this.checkpointEvery = const Duration(seconds: 30),
     this.mayContinue,
     this.posterLoader,
+    this.posterRevalidator,
+    DateTime Function()? clock,
     this.onProgress,
     this.onCheckpoint,
-  });
+  }) : clock = clock ?? DateTime.now;
+  final DateTime Function() clock;
+  final LocalPosterRevalidator? posterRevalidator;
   final LocalLibraryStore store;
   final int pageSize;
+
+  /// A checkpoint rewrites the whole library file, so a count of rows alone
+  /// would make a scan quadratic: an unchanged library walks hundreds of rows
+  /// a second, and on a 34 MB library the scan spent 57% of its time rewriting.
+  /// A scan that stops loses at most this much progress.
+  final Duration checkpointEvery;
   final Future<bool> Function()? mayContinue;
   final LocalPosterLoader? posterLoader;
   final void Function(int done, String title)? onProgress;
@@ -46,6 +73,7 @@ class LocalLibrarySync {
     final next = <String, MediaItem>{};
     var done = 0;
     var checkpointDone = 0;
+    final sinceCheckpoint = Stopwatch()..start();
     if (client is LocalFolderClient) client.invalidateScanCache();
 
     Future<LibraryPage<MediaItem>> rootPage(MediaKind kind, int offset, int limit) {
@@ -103,36 +131,85 @@ class LocalLibrarySync {
         parentId: detail.parentId ?? candidate.parentId,
         grandparentId: detail.grandparentId ?? candidate.grandparentId,
       );
-      // Preserve strong cross-server identity for offline grouping. The Plex
-      // neutral mapper intentionally omits the Guid array from raw metadata.
+      // Preserve strong cross-server identity for offline grouping. The list
+      // answer usually carried the numbers already (Plex `includeGuids`,
+      // Jellyfin `ProviderIds`, Pleya `external_ids`); only without them is
+      // the server asked per title.
       ExternalIds? ids;
-      if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) && item.raw?['pleyaLocalExternalIds'] == null) {
-        try {
-          ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
-        } on MediaServerHttpException {
-          // Plex used to answer a failed lookup with no ids. Keep that here: one
-          // flaky includeGuids call must not fail the whole library scan.
-          ids = null;
+      // Whether the stored answer may be trusted as final. Only a Pleya Server
+      // that knows the field says so; the others keep the behaviour they had.
+      var authoritative = false;
+      String? identitySource = client is PleyaServerClient ? client.externalIdentitySource : null;
+      // A Pleya row whose stored answer was not final (written by an older build,
+      // or by a server that predates the field) is asked again, also when the
+      // rest of the row was retained unchanged.
+      final storedFinal =
+          client is! PleyaServerClient ||
+          (item.raw?['pleyaLocalExternalIdsFinal'] == true && client.canUseStoredExternalIds(item));
+      // Numbers the fresh list answer carries always win: a retained row keeps
+      // its old stored answer, which predates a match the server made since.
+      final allowLegacy =
+          client is PleyaServerClient &&
+          !client.wireCapabilities.appliedExternalIdentity &&
+          client.identityCapabilitiesKnown;
+      final fresh = externalIdsCarriedBy(candidate, allowLegacyPleya: allowLegacy);
+      if (fresh != null) {
+        ids = fresh;
+        authoritative = true;
+        if (client is PleyaServerClient) identitySource = candidate.raw?[pleyaExternalIdsSourceKey] as String?;
+      } else if ((item.kind == MediaKind.movie || item.kind == MediaKind.show) &&
+          (client is PleyaServerClient || item.raw?['pleyaLocalExternalIds'] == null || !storedFinal)) {
+        final listed = client is PleyaServerClient ? null : externalIdsCarriedBy(item);
+        if (listed != null) {
+          ids = listed;
+          authoritative = true;
+        } else {
+          try {
+            if (client is PleyaServerClient) {
+              final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));
+              ids = answer.ids;
+              authoritative = answer.authoritative;
+              identitySource = answer.source;
+            } else {
+              ids = await client.fetchExternalIds(item.id).timeout(const Duration(seconds: 20));
+            }
+          } on MediaServerHttpException {
+            // Plex used to answer a failed lookup with no ids. Keep that here: one
+            // flaky includeGuids call must not fail the whole library scan.
+            ids = null;
+          } on IdentityLookupException {
+            // The server did not answer (offline, 429, 503, a broken body). The row
+            // is kept with no stored answer, which readers treat as unknown rather
+            // than as "no numbers", so the next scan or lookup asks again.
+            ids = null;
+          } on TimeoutException {
+            ids = null;
+          }
+          await check();
         }
-        await check();
+      }
+      final identityRaw = client is PleyaServerClient ? <String, dynamic>{...?item.raw, ...?candidate.raw} : item.raw;
+      if (client is PleyaServerClient) {
+        identityRaw?.remove('pleyaLocalExternalIds');
+        identityRaw?.remove('pleyaLocalExternalIdsFinal');
+        identityRaw?.remove(pleyaExternalIdsRawKey);
+        if (fresh != null) identityRaw?[pleyaExternalIdsRawKey] = fresh.toJson();
       }
       next[item.globalKey] = ids == null
-          ? item
-          : item.copyWith(raw: {...?item.raw, 'pleyaLocalExternalIds': ids.toJson()});
-      final loader = posterLoader;
-      final path = item.thumbPath;
-      if (loader != null &&
-          path != null &&
-          path.isNotEmpty &&
-          item.serverId != null &&
-          (store.posterPath(item.serverId!, path) == null ||
-              old?.thumbPath != path ||
-              (item.updatedAt != null && item.updatedAt != old?.updatedAt))) {
-        final bytes = await loader(client, item).timeout(const Duration(seconds: 30));
-        await check();
-        await store.savePoster(item.serverId!, path, bytes, isCurrent: valid);
-      }
-      onProgress?.call(++done, item.displayTitle);
+          ? item.copyWith(raw: identityRaw)
+          : item.copyWith(
+              raw: {
+                ...?identityRaw,
+                'pleyaLocalExternalIds': ids.toJson(),
+                if (client is PleyaServerClient) ...{
+                  'pleyaLocalExternalIdsFinal': authoritative,
+                  pleyaExternalIdsSourceKey: identitySource ?? 'unknown',
+                  if (authoritative) pleyaExternalIdsRawKey: ids.toJson(),
+                },
+              },
+            );
+      done++;
+      onProgress?.call(done, item.displayTitle);
     }
 
     late Future<void> Function(MediaItem) scanChildren;
@@ -164,9 +241,10 @@ class LocalLibrarySync {
             await scanChildren(item);
           }
         }
-        if (done - checkpointDone >= pageSize) {
+        if (done - checkpointDone >= pageSize && sinceCheckpoint.elapsed >= checkpointEvery) {
           await store.saveLibrary(library, next.values.toList(), complete: false, isCurrent: valid);
           checkpointDone = done;
+          sinceCheckpoint.reset();
           if (valid()) onCheckpoint?.call();
         }
         offset += page.items.length;
@@ -221,6 +299,102 @@ class LocalLibrarySync {
       await check();
       if (client is LocalFolderClient && client.hasIncompleteScan) throw StateError('Folder scan is incomplete');
       await store.saveLibrary(library, next.values.toList(), complete: true, isCurrent: valid);
+      if (posterLoader != null || posterRevalidator != null) {
+        await syncPosters(next.values, (_) => client, isCurrent: valid);
+      }
+    }
+  }
+
+  /// Pilot ceiling, not an optimal device/network budget. Sequential IO keeps
+  /// at most one response body in memory (below the proposed concurrency 3).
+  /// Select bounded references only; never gather the poster catalog or bytes.
+  Future<void> syncPosters(
+    Iterable<MediaItem> items,
+    MediaServerClient? Function(String) clientFor, {
+    required bool Function() isCurrent,
+  }) async {
+    final now = clock().toUtc();
+    bool valid() => isCurrent();
+    Future<void> check() async {
+      if (!valid() || !(await mayContinue?.call() ?? true) || !valid()) throw LocalLibraryPaused();
+    }
+
+    await check();
+    const interval = Duration(minutes: 10);
+    final budget = store.posterBudget(now);
+    if (budget.total >= 60) return;
+    final priority = <MediaItem>[];
+    final oldest = <MediaItem>[];
+    String key(MediaItem i) => '${i.serverId}|${artworkStorageKey(i.thumbPath!)}';
+    DateTime attempted(MediaItem i) =>
+        DateTime.tryParse(store.posterFreshness(i.serverId!, i.thumbPath!)['attempted'] as String? ?? '') ??
+        DateTime.utc(1970);
+    void insert(List<MediaItem> list, MediaItem item, int cap) {
+      if (list.any((i) => key(i) == key(item))) return;
+      list.add(item);
+      list.sort((a, b) {
+        final order = attempted(a).compareTo(attempted(b));
+        return order == 0 ? key(a).compareTo(key(b)) : order;
+      });
+      if (list.length > cap) list.removeLast();
+    }
+
+    for (final item in items) {
+      if (item.serverId == null || item.thumbPath == null || item.thumbPath!.isEmpty) continue;
+      final state = store.posterFreshness(item.serverId!, item.thumbPath!);
+      final last = attempted(item);
+      final retry = DateTime.tryParse(state['retry'] as String? ?? '');
+      if (now.difference(last) < interval || (retry != null && now.isBefore(retry))) continue;
+      insert(oldest, item, 60);
+      if (store.posterIsPriority(item.serverId!, item.thumbPath!)) insert(priority, item, 20);
+    }
+    final selected = <MediaItem>[...priority.take(20 - budget.priority)];
+    final priorityKeys = selected.map(key).toSet();
+    selected.addAll(oldest.where((i) => !priorityKeys.contains(key(i))).take(40 - (budget.total - budget.priority)));
+    for (final item in selected.take(60 - budget.total)) {
+      await check();
+      final client = clientFor(item.serverId!);
+      if (client == null || client.isOfflineMode) continue;
+      final path = item.thumbPath!;
+      final state = store.posterFreshness(item.serverId!, path);
+      state['attempted'] = clock().toUtc().toIso8601String();
+      store.reservePosterAttempt(clock().toUtc(), priority: priorityKeys.contains(key(item)));
+      // Reserve before IO so restart/interruption cannot replay a whole round.
+      await store.savePosterFreshness(item.serverId!, path, state, isCurrent: valid);
+      await check();
+      try {
+        final hasFile = store.posterPath(item.serverId!, path) != null;
+        final result = posterRevalidator != null
+            ? await posterRevalidator!(client, item, hasFile ? state : {})
+            : LocalPosterResult(
+                bytes: await posterLoader!(client, item).timeout(const Duration(seconds: 30)),
+                variant: path,
+              );
+        await check();
+        if (client.isOfflineMode) throw LocalLibraryPaused();
+        if (result.bytes == null && store.posterPath(item.serverId!, path) == null)
+          throw StateError('304 without local bytes');
+        if (result.bytes != null) await store.savePoster(item.serverId!, path, result.bytes!, isCurrent: valid);
+        await check();
+        state.addAll({
+          'variant': result.variant,
+          'etag': result.etag,
+          'lastModified': result.lastModified,
+          'validated': now.toIso8601String(),
+          'failures': 0,
+          'retry': null,
+        });
+        await store.savePosterFreshness(item.serverId!, path, state, isCurrent: valid);
+      } on LocalLibraryPaused {
+        rethrow;
+      } catch (_) {
+        await check();
+        final failures = ((state['failures'] as int? ?? 0) + 1).clamp(1, 5);
+        state['failures'] = failures;
+        state['retry'] = now.add(Duration(minutes: 10 * (1 << (failures - 1)))).toIso8601String();
+        await store.savePosterFreshness(item.serverId!, path, state, isCurrent: valid);
+        // A failed poster never replaces valid bytes or fails metadata sync.
+      }
     }
   }
 }

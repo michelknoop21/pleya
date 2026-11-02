@@ -31,6 +31,7 @@ describe('hls.js-configuratie', () => {
     const config = hlsConfig(async () => ACCESS_TOKEN);
     expect(config['enableWorker']).toBe(false);
     expect(config['startPosition']).toBe(0);
+    expect(hlsConfig(async () => ACCESS_TOKEN, 120)['startPosition']).toBe(120);
     const xhr = { open: vi.fn(), setRequestHeader: vi.fn() };
     const setup = config['xhrSetup'] as (x: unknown, u: string) => Promise<void>;
     await setup(xhr, 'http://pleya.test/seg_00001.m4s');

@@ -37,14 +37,16 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     final iconSize = TvHig.body * pt;
     final play = model.of(_DetailActionKind.play)!;
     final onPlay = _tvDetailPlayAction(metadata, play.onPressed);
-    // A series resumes into an episode, so that is what the ring reads.
+    // A series resumes into an episode, so that is what the ring reads. On a
+    // title across servers that is the copy Play starts, at the title's position.
     final target = _tvDetailResumeTarget(metadata);
-    final resumable = (target?.viewOffsetMs ?? 0) > 0;
-    final progress = resumable && (target?.durationMs ?? 0) > 0
-        ? (target!.viewOffsetMs! / target.durationMs!).clamp(0.0, 1.0).toDouble()
+    final shown = _unifiedResumeItem(metadata) ?? target;
+    final resumable = (shown?.viewOffsetMs ?? 0) > 0;
+    final progress = resumable && (shown?.durationMs ?? 0) > 0
+        ? (shown!.viewOffsetMs! / shown.durationMs!).clamp(0.0, 1.0).toDouble()
         : null;
-    final left = resumable && target?.durationMs != null
-        ? formatDurationSpaced(target!.durationMs! - target.viewOffsetMs!)
+    final left = resumable && shown?.durationMs != null
+        ? formatDurationSpaced(shown!.durationMs! - shown.viewOffsetMs!)
         : null;
     final label = !resumable
         ? t.common.play
@@ -63,7 +65,7 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     final watched = model.of(_DetailActionKind.watched)!;
     final more = model.of(_DetailActionKind.more);
     final request = model.of(_DetailActionKind.request);
-    void onRestart() => unawaited(_handlePlayFromStart(target ?? metadata));
+    void onRestart() => unawaited(_handlePlayFromStartPressed(target ?? metadata));
     void onRate() => unawaited(_showRatingDialog(context, metadata));
 
     return FocusableActionBar(
@@ -143,8 +145,8 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
               focusNode: state.focusNode,
               child: MediaContextMenu(
                 key: _contextMenuKey,
-                item: metadata,
-                onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+                item: _menuItem(metadata),
+                onRefresh: (_) => unawaited(_refreshItemInPlace(metadata.id)),
                 onPlayTrailer: model.onPlayTrailer,
                 onRequest: request?.onPressed,
                 child: TvDetailRoundButton(
@@ -180,11 +182,5 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     }
     final next = _seasonNextEpisode;
     return next == null ? null : _fresh(next);
-  }
-
-  Future<void> _handlePlayFromStart(MediaItem metadata) async {
-    final pick = _detailTrackPickFor(metadata);
-    await playFromBeginning(context, metadata, preferredAudioTrack: pick.audio, preferredSubtitleTrack: pick.subtitle);
-    if (mounted) await refreshAfterPlayback(playedItemId: metadata.id);
   }
 }

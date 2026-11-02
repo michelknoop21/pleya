@@ -8,10 +8,8 @@
  * uitgegrijsd item en geen scherm dat bij aankomst uitlegt dat het niet kan.
  *
  * Zoeken is geen slot maar een actie in de kop (TopNav en MobileHeader).
- * Films, Series en Boeken wijzen naar de enige bibliotheek van die soort, en
- * bij meer dan één naar het bibliotheekoverzicht. Dat zijn de routes die er
- * vandaag zijn; S8 en S9 geven ze eigen landingen zonder dat de schil
- * verandert.
+ * Films en Series openen hun eigen landing. Boeken volgt de bestaande
+ * bibliotheekroute zolang de reader- en catalogusintegratie nog open is.
  */
 import type { Capabilities, Library } from '../api/types';
 import { t } from '../i18n';
@@ -46,10 +44,10 @@ export function navItems(
 
   if (browse) items.push({ id: 'home', href: '/', label: t('nav.home'), icon: 'home' });
   if (browse && has('shows')) {
-    items.push({ id: 'series', href: slotHref(libraries, 'shows'), label: t('nav.series'), icon: 'show' });
+    items.push({ id: 'series', href: '/series', label: t('nav.series'), icon: 'show' });
   }
   if (browse && has('movies')) {
-    items.push({ id: 'films', href: slotHref(libraries, 'movies'), label: t('nav.films'), icon: 'movie' });
+    items.push({ id: 'films', href: '/films', label: t('nav.films'), icon: 'movie' });
   }
   if (browse && has('books')) {
     items.push({ id: 'books', href: slotHref(libraries, 'books'), label: t('nav.books'), icon: 'book' });

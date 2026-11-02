@@ -6,13 +6,20 @@
  * `library.cursor_invalid` op, en dat is geen fout van de gebruiker maar een
  * lijst die van vorm veranderde.
  */
-import type { Item, ItemPage } from '../api/types';
+import type { Item } from '../api/types';
 import { ApiError } from '../api/errors';
 
-export type PageLoader = (cursor: string | undefined, signal: AbortSignal) => Promise<ItemPage>;
+/** De gemeenschappelijke vorm van een pagina; `HistoryPage` kent geen schatting. */
+export interface Page<T> {
+  items: T[];
+  next_cursor?: string | null;
+  total_estimate?: number | null;
+}
 
-export interface PagerState {
-  items: Item[];
+export type PageLoader<T = Item> = (cursor: string | undefined, signal: AbortSignal) => Promise<Page<T>>;
+
+export interface PagerState<T = Item> {
+  items: T[];
   cursor: string | null;
   totalEstimate: number | null;
   loading: boolean;
@@ -20,7 +27,7 @@ export interface PagerState {
   error: unknown;
 }
 
-export function emptyPager(): PagerState {
+export function emptyPager<T = Item>(): PagerState<T> {
   return { items: [], cursor: null, totalEstimate: null, loading: false, done: false, error: null };
 }
 
@@ -34,14 +41,14 @@ export function emptyPager(): PagerState {
  * reactie is opnieuw bij het begin beginnen, en dat is wat de aanroeper met
  * `restarted` te horen krijgt.
  */
-export async function loadNext(
-  state: PagerState,
-  load: PageLoader,
+export async function loadNext<T = Item>(
+  state: PagerState<T>,
+  load: PageLoader<T>,
   signal: AbortSignal
-): Promise<{ next: PagerState; restarted: boolean }> {
+): Promise<{ next: PagerState<T>; restarted: boolean }> {
   if (state.loading || state.done) return { next: state, restarted: false };
 
-  const working: PagerState = { ...state, loading: true, error: null };
+  const working: PagerState<T> = { ...state, loading: true, error: null };
   try {
     const page = await load(state.cursor ?? undefined, signal);
     return {
@@ -57,7 +64,7 @@ export async function loadNext(
     };
   } catch (err) {
     if (err instanceof ApiError && err.code === 'library.cursor_invalid' && state.cursor) {
-      return { next: { ...emptyPager() }, restarted: true };
+      return { next: emptyPager<T>(), restarted: true };
     }
     return { next: { ...working, loading: false, error: err }, restarted: false };
   }

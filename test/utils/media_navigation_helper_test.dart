@@ -270,7 +270,11 @@ void main() {
     });
 
     test('the screen receives the context and the change callback it was given', () {
-      Future<void> change(BuildContext _) async {}
+      Future<UnifiedMediaRouteContext?> change(
+        BuildContext _,
+        UnifiedMediaRouteContext _, {
+        bool pageFailed = false,
+      }) async => null;
       final screen = MediaDetailScreen(metadata: movie(), unifiedRouteContext: context(), onChangeSource: change);
 
       expect(screen.unifiedRouteContext?.sourceKey, 'nas:i1');

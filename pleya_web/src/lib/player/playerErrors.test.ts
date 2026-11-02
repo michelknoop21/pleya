@@ -114,10 +114,10 @@ describe('sporen, chip en route', () => {
     ]
   };
 
-  it('biedt alleen externe WebVTT aan en telt de rest', () => {
+  it('biedt externe WebVTT en SRT aan en telt niet-leverbare sporen', () => {
     const subs = subtitleOptions(version);
-    expect(subs.usable.map((s) => s.id)).toEqual(['s1']);
-    expect(subs.skipped).toBe(2);
+    expect(subs.usable.map((s) => s.id)).toEqual(['s1', 's2']);
+    expect(subs.skipped).toBe(1);
     expect(audioOptions(version).map((a) => a.isDefault)).toEqual([false, true]);
   });
 
@@ -132,6 +132,7 @@ describe('sporen, chip en route', () => {
     expect(isPlayerPath('/items/abc')).toBe(false);
     expect(playerHref('abc', 4_001_500)).toBe('/items/abc/play?t=4001');
     expect(playerHref('abc')).toBe('/items/abc/play');
+    expect(playerHref('abc', 12000, 'version-id')).toBe('/items/abc/play?t=12&version=version-id');
   });
 });
 

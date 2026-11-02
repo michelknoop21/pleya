@@ -31,17 +31,20 @@ void main() {
     expect((errors.single as Map<String, Object?>)['message'], contains('requires a timeout field'));
   });
 
-  test('validate --json on a scenario the parser rejects with a raw exception still emits one clean error object', () async {
-    // Same backstop as the `run --json` case below, for `_runValidate`.
-    final result = await _run(['validate', 'test/fixtures/malformed_yaml_syntax.yaml', '--json']);
-    expect(result.exitCode, 70, reason: 'stderr: ${result.stderr}');
-    final lines = (result.stdout as String).trim().split('\n');
-    expect(lines, hasLength(1));
-    final decoded = jsonDecode(lines.single) as Map<String, Object?>;
-    expect(decoded['ok'], false);
-    final errors = decoded['errors'] as List<Object?>;
-    expect((errors.single as Map<String, Object?>)['message'], contains('parsing a flow mapping'));
-  });
+  test(
+    'validate --json on a scenario the parser rejects with a raw exception still emits one clean error object',
+    () async {
+      // Same backstop as the `run --json` case below, for `_runValidate`.
+      final result = await _run(['validate', 'test/fixtures/malformed_yaml_syntax.yaml', '--json']);
+      expect(result.exitCode, 70, reason: 'stderr: ${result.stderr}');
+      final lines = (result.stdout as String).trim().split('\n');
+      expect(lines, hasLength(1));
+      final decoded = jsonDecode(lines.single) as Map<String, Object?>;
+      expect(decoded['ok'], false);
+      final errors = decoded['errors'] as List<Object?>;
+      expect((errors.single as Map<String, Object?>)['message'], contains('parsing a flow mapping'));
+    },
+  );
 
   test('validate on a missing file exits with EX_NOINPUT', () async {
     final result = await _run(['validate', 'test/fixtures/does_not_exist.yaml']);

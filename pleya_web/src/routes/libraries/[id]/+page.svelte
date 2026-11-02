@@ -5,6 +5,8 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
 
+  import CatalogFilterBar from '#lib/components/CatalogFilterBar.svelte';
+  import { parseCatalogFilters, writeCatalogFilters, catalogFilterCount, type CatalogFilters } from '#lib/util/catalogFilters.js';
   import MediaGrid from '#lib/components/MediaGrid.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import Select from '#lib/components/Select.svelte';
@@ -12,7 +14,7 @@
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import { session } from '#lib/stores/session.svelte.js';
   import { describeError } from '#lib/api/errors.js';
-  import { SORT_OPTIONS, isSortOption, type SortOption, type Item } from '#lib/api/types.js';
+  import { SORT_OPTIONS, LEGACY_SORT_OPTIONS, isSortOption, type SortOption, type Item, type Facets } from '#lib/api/types.js';
   import { emptyPager, loadNext, type PagerState } from '#lib/util/paging.js';
   import { formatCount } from '#lib/util/format.js';
   import { plural, t } from '#lib/i18n/index.js';
@@ -20,8 +22,39 @@
   const libraryId = $derived(page.params['id'] ?? '');
   const library = $derived(session.library(libraryId));
 
-  const initialSort = page.url.searchParams.get('sort');
-  let sort = $state<SortOption>(initialSort && isSortOption(initialSort) ? initialSort : 'title');
+  const filterSupport = $derived(session.capabilities?.filters === true);
+  const query = $derived.by(() => {
+    const requestedSort = page.url.searchParams.get('sort') ?? 'title';
+    try {
+      const filters = parseCatalogFilters(page.url.searchParams);
+      if (!isSortOption(requestedSort)) return { filters, sort: 'title' as SortOption, error: t('catalog.invalid') };
+      const unsupported = (!filterSupport && (catalogFilterCount(filters) > 0 || !LEGACY_SORT_OPTIONS.includes(requestedSort)))
+        || (filters.watch && session.capabilities?.watch_state !== true);
+      return { filters, sort: requestedSort, error: unsupported ? t('catalog.unsupported') : null };
+    } catch {
+      return { filters: {} as CatalogFilters, sort: 'title' as SortOption, error: t('catalog.invalid') };
+    }
+  });
+  const sort = $derived(query.sort);
+  const queryKey = $derived(JSON.stringify([libraryId, query]));
+  let facets = $state<Facets | null>(null);
+  let facetsLoading = $state(false);
+  let facetsError = $state<unknown>(null);
+  let facetsRetry = $state(0);
+  $effect(() => {
+    const id = libraryId;
+    const enabled = filterSupport;
+    void facetsRetry;
+    const controller = new AbortController();
+    facets = null;
+    facetsError = null;
+    facetsLoading = enabled;
+    if (enabled) void session.client.libraryFacets(id, controller.signal)
+      .then(value => { if (!controller.signal.aborted) facets = value; })
+      .catch(error => { if (!controller.signal.aborted) facetsError = error; })
+      .finally(() => { if (!controller.signal.aborted) facetsLoading = false; });
+    return () => controller.abort();
+  });
   let pager = $state<PagerState>(emptyPager());
   let sentinel = $state<HTMLDivElement | null>(null);
   let highlighted = $state<Item | null>(null);
@@ -62,7 +95,11 @@
     added_at: t('libraries.sort.added_at'),
     '-added_at': t('libraries.sort.-added_at'),
     year: t('libraries.sort.year'),
-    '-year': t('libraries.sort.-year')
+    '-year': t('libraries.sort.-year'),
+    last_played_at: t('libraries.sort.last_played_at'),
+    '-last_played_at': t('libraries.sort.-last_played_at'),
+    duration: t('libraries.sort.duration'),
+    '-duration': t('libraries.sort.-duration')
   };
 
   // Onder 900 staat `sub` op een eigen regel. Verschijnt het aantal pas als de
@@ -70,7 +107,7 @@
   // niet-afbrekende spatie houdt die regel vast zolang het aantal onbekend is.
   const RESERVED_LINE = '\u00A0';
 
-  const sortOptions = SORT_OPTIONS.map((value) => ({ value, label: sortLabels[value] }));
+  const sortOptions = $derived((filterSupport ? SORT_OPTIONS : LEGACY_SORT_OPTIONS).map((value) => ({ value, label: sortLabels[value] })));
 
   // Een schatting die groter is dan wat er staat is "ongeveer"; is de lijst
   // even groot of kleiner, dan telt het werkelijke aantal. Zo staat er nooit
@@ -97,16 +134,21 @@
    * de server gewoon antwoordt.
    */
   async function fetchMore(signal: AbortSignal): Promise<void> {
-    const currentSort = sort;
+    if (query.error) return;
+    const currentKey = queryKey;
+    const currentLibrary = libraryId;
+    const currentQuery = query;
     const current = untrack(() => pager);
 
+    if (current.loading || current.done) return;
+    pager = { ...current, loading: true, error: null };
     const { next, restarted } = await loadNext(
       current,
       (cursor, sig) =>
-        session.client.libraryItems(libraryId, { cursor, sort: currentSort, limit: 100 }, sig),
+        session.client.libraryItems(currentLibrary, { ...currentQuery.filters, cursor, sort: currentQuery.sort, limit: 100 }, sig),
       signal
     );
-    if (signal.aborted || currentSort !== sort) return;
+    if (signal.aborted || currentKey !== queryKey) return;
     pager = next;
     // Een cursor die bij een andere sortering hoorde is ongeldig geworden; de
     // lijst begint dan opnieuw en haalt meteen de eerste pagina op.
@@ -116,8 +158,7 @@
   // Sorteren of van bibliotheek wisselen begint de lijst opnieuw: de cursor
   // hoort bij precies één sortering.
   $effect(() => {
-    void libraryId;
-    void sort;
+    void queryKey;
     const controller = new AbortController();
     untrack(() => {
       pager = emptyPager();
@@ -151,10 +192,16 @@
 
   function changeSort(value: string): void {
     if (!isSortOption(value)) return;
-    sort = value;
     const url = new URL(page.url.href);
     url.searchParams.set('sort', value);
-    void goto(url, { shallow: true, replace: true, state: page.state });
+    url.searchParams.delete('cursor');
+    void goto(url, { reset: false, state: page.state });
+  }
+  function applyFilters(filters: CatalogFilters): void {
+    const url = writeCatalogFilters(page.url, filters);
+    url.searchParams.delete('cursor');
+    if (query.error) url.searchParams.delete('sort');
+    void goto(url, { reset: false, state: page.state });
   }
 </script>
 
@@ -178,7 +225,17 @@
     {/snippet}
   </PageHeader>
 
-  {#if pager.error && pager.items.length === 0}
+  {#if filterSupport && !query.error}
+    <CatalogFilterBar filters={query.filters} {facets} loading={facetsLoading} watchState={session.capabilities?.watch_state === true} onapply={applyFilters} />
+    {#if facetsError}
+      <StateView compact kind="error" message={describeError(facetsError)} onRetry={() => facetsRetry++} />
+    {/if}
+  {/if}
+  {#if query.error}
+    <StateView kind="error" message={query.error}>
+      {#snippet actions()}<button type="button" class="btn btn--sm" onclick={() => applyFilters({})}>{t('catalog.clear')}</button>{/snippet}
+    </StateView>
+  {:else if pager.error && pager.items.length === 0}
     <StateView
       kind="error"
       message={describeError(pager.error)}
@@ -201,10 +258,14 @@
     <!-- Beeld 13 zonder de beheerknoppen: scannen is S10. De uitweg is de bibliotheeklijst. -->
     <StateView
       title={t('states.emptyTitle')}
-      message={t('libraries.gridEmptyBody', { library: library?.title ?? t('libraries.title') })}
+      message={catalogFilterCount(query.filters) ? t('catalog.noMatches') : t('libraries.gridEmptyBody', { library: library?.title ?? t('libraries.title') })}
     >
       {#snippet actions()}
-        <a class="btn btn--sm" href="/libraries">{t('libraries.allLibraries')}</a>
+        {#if catalogFilterCount(query.filters)}
+          <button type="button" class="btn btn--sm" onclick={() => applyFilters({})}>{t('catalog.clear')}</button>
+        {:else}
+          <a class="btn btn--sm" href="/libraries">{t('libraries.allLibraries')}</a>
+        {/if}
       {/snippet}
     </StateView>
   {:else}

@@ -29,10 +29,10 @@ class ServerCapabilities {
   /// `/Playlists`).
   final bool serverSidePlaylists;
 
-  /// Server-side collections the app can add to and remove from (Plex
-  /// `/library/collections`, Jellyfin and Emby `/Collections`). The write is
-  /// still the server owner's: the flag says the backend can, not that this
-  /// user may.
+  /// Server-side collections the app can list, open, add to and remove from
+  /// (Plex `/library/collections`, Jellyfin and Emby `/Collections`, Pleya
+  /// Server `/collections`). The write is still the owner's: the flag says the
+  /// backend can, not that this user may.
   final bool serverSideCollections;
 
   /// This backend kind has a Live TV / DVR API the app can talk to. Whether
@@ -53,10 +53,19 @@ class ServerCapabilities {
   /// Server can transcode video.
   final bool videoTranscoding;
 
+  /// Can reopen playback with a selected source audio stream.
+  final bool sourceAudioSelection;
+
+  /// Can reopen playback with a selected source subtitle, including off/burn.
+  final bool sourceSubtitleSelection;
+
   /// Server supports server-side downloads / "sync" (the queued-from-server
   /// model). Both Plex and Jellyfin support client-driven downloads, which
   /// is a separate concept.
   final bool serverSideSync;
+
+  /// The existing client download queue can fetch media from this server.
+  final bool clientDownloads;
 
   /// Server provides curated recommendation hubs (Plex Discover). Jellyfin
   /// returns synthesized hubs but with sparser categorisation.
@@ -157,7 +166,10 @@ class ServerCapabilities {
     this.liveTvDvr = false,
     this.subtitleSearch = false,
     this.videoTranscoding = true,
+    this.sourceAudioSelection = true,
+    this.sourceSubtitleSelection = false,
     this.serverSideSync = false,
+    this.clientDownloads = true,
     this.richHubs = false,
     this.relatedHubs = false,
     this.userRating = false,
@@ -245,6 +257,7 @@ class ServerCapabilities {
   /// Only [folderGrouping] is true — the scanner exposes a folder hierarchy.
   /// Everything else (live TV, hubs, playlists, ratings, transcoding) is off.
   static const ServerCapabilities local = ServerCapabilities(
+    sourceAudioSelection: false,
     serverSidePlayQueue: false,
     serverSidePlaylists: false,
     liveTv: false,
@@ -275,7 +288,10 @@ class ServerCapabilities {
     bool? liveTvDvr,
     bool? subtitleSearch,
     bool? videoTranscoding,
+    bool? sourceAudioSelection,
+    bool? sourceSubtitleSelection,
     bool? serverSideSync,
+    bool? clientDownloads,
     bool? richHubs,
     bool? relatedHubs,
     bool? userRating,
@@ -302,7 +318,10 @@ class ServerCapabilities {
       liveTvDvr: liveTvDvr ?? this.liveTvDvr,
       subtitleSearch: subtitleSearch ?? this.subtitleSearch,
       videoTranscoding: videoTranscoding ?? this.videoTranscoding,
+      sourceAudioSelection: sourceAudioSelection ?? this.sourceAudioSelection,
+      sourceSubtitleSelection: sourceSubtitleSelection ?? this.sourceSubtitleSelection,
       serverSideSync: serverSideSync ?? this.serverSideSync,
+      clientDownloads: clientDownloads ?? this.clientDownloads,
       richHubs: richHubs ?? this.richHubs,
       relatedHubs: relatedHubs ?? this.relatedHubs,
       userRating: userRating ?? this.userRating,

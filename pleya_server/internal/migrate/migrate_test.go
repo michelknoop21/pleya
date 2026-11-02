@@ -153,6 +153,7 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		// metadata-provider (S22.1 in kleine vorm).
 		"metadata_candidates": true,
 		"provider_artwork":    true,
+		"artwork_pins":        true, // S22.5: duurzame bronkeuze, geen beeldbytes.
 		// S18, migratie 0019: de omzetsessies van PS-8.
 		"transcode_sessions": true,
 		// S23, migratie 0021: de klaargezette downloads.
@@ -168,6 +169,12 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		"favorites":         true,
 		"ratings":           true,
 		"track_preferences": true,
+		// S19, migratie 0026: verzamelingen en afspeellijsten.
+		"collections":      true,
+		"collection_users": true,
+		"collection_items": true,
+		"playlists":        true,
+		"playlist_items":   true,
 	}
 
 	rows, err := pool.Query(ctx, `

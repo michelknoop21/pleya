@@ -9,10 +9,15 @@
  */
 import type { PleyaClient } from './client';
 import type {
+  ArtworkCandidates, ArtworkSelection, ArtworkSelectionRequest,
   ConnectivityCheck,
   LogLevel,
   MetadataAttentionList,
   MetadataMatch,
+  MetadataMatchStatus,
+  MetadataFields, MetadataOverridesRequest, MetadataOverrideField,
+  MetadataSearchResults,
+  MetadataCandidateDetails,
   ServerEnvironment,
   ServerLog,
   Settings,
@@ -59,6 +64,41 @@ export function adminSettingsApi(client: PleyaClient) {
       client.request((raw) =>
         raw.GET('/metadata/attention', { params: { query: { limit } }, signal })
       ),
+
+    searchMetadata: (itemId: string, title: string, year?: number, signal?: AbortSignal): Promise<MetadataSearchResults> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-search', {
+        params: { path: { item_id: itemId }, query: { title, ...(year === undefined ? {} : { year }) } }, signal
+      })),
+
+    metadataCandidate: (itemId: string, externalId: string, signal?: AbortSignal): Promise<MetadataCandidateDetails> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-candidates/{external_id}', {
+        params: { path: { item_id: itemId, external_id: externalId } }, signal
+      })),
+
+    metadataCandidateArtwork: (itemId: string, ref: string, role: 'poster' | 'backdrop', signal?: AbortSignal): Promise<Blob> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-candidate-artwork', {
+        params: { path: { item_id: itemId }, query: { ref, role } }, parseAs: 'blob', signal
+      })),
+
+    artworkCandidates: (itemId: string, signal?: AbortSignal): Promise<ArtworkCandidates> =>
+      client.request(raw => raw.GET('/items/{item_id}/artwork-candidates', { params: { path: { item_id: itemId } }, signal })),
+
+    setArtwork: (itemId: string, body: ArtworkSelectionRequest, signal?: AbortSignal): Promise<ArtworkSelection> =>
+      client.request(raw => raw.PUT('/items/{item_id}/artwork', { params: { path: { item_id: itemId } }, body, signal })),
+
+    metadataFields: (itemId: string, signal?: AbortSignal): Promise<MetadataFields> =>
+      client.request(raw => raw.GET('/items/{item_id}/metadata', { params: { path: { item_id: itemId } }, signal })),
+
+    setMetadataOverrides: (itemId: string, body: MetadataOverridesRequest, signal?: AbortSignal): Promise<MetadataFields> =>
+      client.request(raw => raw.PUT('/items/{item_id}/overrides', { params: { path: { item_id: itemId } }, body, signal })),
+
+    deleteMetadataOverride: (itemId: string, field: MetadataOverrideField, signal?: AbortSignal): Promise<MetadataFields> =>
+      client.request(raw => raw.DELETE('/items/{item_id}/overrides/{field}', { params: { path: { item_id: itemId, field } }, signal })),
+
+    metadataMatchStatus: (itemId: string, signal?: AbortSignal): Promise<MetadataMatchStatus> =>
+      client.request((raw) => raw.GET('/items/{item_id}/metadata-match', {
+        params: { path: { item_id: itemId } }, signal
+      })),
 
     /** Kiest de titel van de provider; 202, het ophalen gebeurt op de achtergrond. */
     setMetadataMatch: (itemId: string, externalId: string): Promise<MetadataMatch> =>

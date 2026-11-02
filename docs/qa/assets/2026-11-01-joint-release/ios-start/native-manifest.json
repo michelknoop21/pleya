@@ -1,0 +1,40 @@
+{
+  "run_id": "ios-catalog-header-collapse-1793574173250",
+  "git_commit": "2ce7feddf69ee2b9fba547fcc6f3003075d07a62",
+  "dirty": false,
+  "target": "ios-sim",
+  "device": {
+    "name": "Pleya Verify iPhone SE",
+    "id": "0EF7D62F-941E-41B8-B289-F1257DBC78E4",
+    "class": "phone",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-27-0"
+  },
+  "os": "Version 27.0.1 (Build 26A434)",
+  "scenario_hash": "31514034e9e8529ade961736dfbac29098235814186a63730d39edbd07d1de42",
+  "snapshot_hash": "8a1a99c93c59d1095f062613aece56d7b0fd772ec9f1a4db8e6af51407e7954c",
+  "instance": null,
+  "result": "FAILED",
+  "duration_ms": 115070,
+  "failure_message": "InstanceDiscoveryException: no Pleya Verify instance announced itself within 0:01:00.000000 at any of: /Volumes/SSD/CoreSimulator/Devices/0EF7D62F-941E-41B8-B289-F1257DBC78E4/data/Containers/Data/Application/56DE725F-7774-4839-8122-F6814A26BD13/Library/Caches/pleya-verify/instance.json, /Volumes/SSD/CoreSimulator/Devices/0EF7D62F-941E-41B8-B289-F1257DBC78E4/data/Containers/Data/Application/56DE725F-7774-4839-8122-F6814A26BD13/tmp/pleya-verify/instance.json",
+  "steps": [
+    {
+      "verb": "reset_app",
+      "line": 8,
+      "started_at_utc": "2026-11-01T23:02:53.952061Z",
+      "ok": true,
+      "duration_ms": 6595,
+      "finished_at_utc": "2026-11-01T23:03:00.547246Z"
+    },
+    {
+      "verb": "seed",
+      "line": 9,
+      "ok": true
+    },
+    {
+      "verb": "launch",
+      "line": 10,
+      "ok": false,
+      "error": "InstanceDiscoveryException: no Pleya Verify instance announced itself within 0:01:00.000000 at any of: /Volumes/SSD/CoreSimulator/Devices/0EF7D62F-941E-41B8-B289-F1257DBC78E4/data/Containers/Data/Application/56DE725F-7774-4839-8122-F6814A26BD13/Library/Caches/pleya-verify/instance.json, /Volumes/SSD/CoreSimulator/Devices/0EF7D62F-941E-41B8-B289-F1257DBC78E4/data/Containers/Data/Application/56DE725F-7774-4839-8122-F6814A26BD13/tmp/pleya-verify/instance.json"
+    }
+  ]
+}

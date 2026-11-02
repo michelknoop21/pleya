@@ -16,6 +16,8 @@ import (
 // vijftig is een vergissing of een poging de query groot te maken.
 const maxFilterValues = 50
 
+var canonicalNumber = regexp.MustCompile(`^[1-9][0-9]*$`)
+
 var languagePattern = regexp.MustCompile(`^[a-z]{3}$`)
 
 // filterError noemt de parameter en de waarde die de server afkeurt.
@@ -119,6 +121,28 @@ func parseItemFilters(q url.Values, subject string) (catalog.Filters, *filterErr
 			return f, &filterError{parameter: "resolution", value: r}
 		}
 		f.Resolutions = append(f.Resolutions, r)
+	}
+
+	_, legacy := q["external_id"]
+	_, applied := q["applied_external_id"]
+	if legacy && applied {
+		return f, &filterError{parameter: "applied_external_id", value: q.Get("applied_external_id")}
+	}
+	for _, name := range []string{"external_id", "applied_external_id"} {
+		if _, present := q[name]; !present {
+			continue
+		}
+		provider, raw, ok := strings.Cut(q.Get(name), ":")
+		n, err := strconv.Atoi(raw)
+		if !ok || provider != catalog.ProviderTMDB || !canonicalNumber.MatchString(raw) || err != nil || n <= 0 || (name == "applied_external_id" && len(q[name]) != 1) {
+			return f, &filterError{parameter: name, value: q.Get(name)}
+		}
+		value := &catalog.ExternalIDFilter{Provider: provider, Value: n}
+		if name == "external_id" {
+			f.ExternalID = value
+		} else {
+			f.AppliedExternalID = value
+		}
 	}
 
 	if _, present := q["watch"]; present {

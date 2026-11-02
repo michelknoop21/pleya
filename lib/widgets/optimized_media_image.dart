@@ -303,7 +303,13 @@ class OptimizedMediaImage extends StatelessWidget {
     if (_hasKnownDimensions) {
       return blurArtwork(
         hasLocal
-            ? _buildLocalFileImage(context, localFile, width!, height!)
+            ? _buildRegisteredLocalFileImage(
+                context,
+                localFile,
+                width!,
+                height!,
+                permanent: storedPath != null && localFilePath == null,
+              )
             : _buildCachedImage(context, width!, height!),
       );
     }
@@ -314,10 +320,48 @@ class OptimizedMediaImage extends StatelessWidget {
           final effectiveWidth = _resolvedDimension(width, constraints.maxWidth, 300.0);
           final effectiveHeight = _resolvedDimension(height, constraints.maxHeight, 450.0);
           return hasLocal
-              ? _buildLocalFileImage(context, localFile, effectiveWidth, effectiveHeight)
+              ? _buildRegisteredLocalFileImage(
+                  context,
+                  localFile,
+                  effectiveWidth,
+                  effectiveHeight,
+                  permanent: storedPath != null && localFilePath == null,
+                )
               : _buildCachedImage(context, effectiveWidth, effectiveHeight);
         },
       ),
+    );
+  }
+
+  Widget _buildRegisteredLocalFileImage(
+    BuildContext context,
+    File file,
+    double width,
+    double height, {
+    required bool permanent,
+  }) {
+    final child = _buildLocalFileImage(context, file, width, height);
+    if (!permanent || client == null || imagePath == null) return child;
+    final url = MediaImageHelper.getOptimizedImageUrl(
+      client: client,
+      thumbPath: imagePath,
+      maxWidth: requestSize?.width ?? width,
+      maxHeight: requestSize?.height ?? height,
+      devicePixelRatio: MediaImageHelper.effectiveDevicePixelRatio(context),
+      enableTranscoding: enableTranscoding,
+      imageType: imageType,
+    );
+    return _VisibleArtworkRegistration(
+      owner: context.read<LocalLibraryProvider?>(),
+      epoch: context.select<LocalLibraryProvider?, int>((owner) => owner?.artworkRegistrationEpoch ?? 0),
+      request: VisibleArtworkRequest(
+        client: client!,
+        path: imagePath!,
+        url: url,
+        baseKey: cacheKey ?? _generateCacheKey(url),
+        permanent: true,
+      ),
+      child: child,
     );
   }
 
@@ -394,16 +438,21 @@ class OptimizedMediaImage extends StatelessWidget {
       imageType: imageType,
     );
 
-    final effectiveCacheKey = cacheKey ?? _generateCacheKey(imageUrl);
+    final baseCacheKey = cacheKey ?? _generateCacheKey(imageUrl);
+    final effectiveCacheKey = context.select<LocalLibraryProvider?, String>(
+      (owner) => client == null
+          ? baseCacheKey
+          : owner?.artworkCacheKey(client!.serverId, imageUrl, baseCacheKey) ?? baseCacheKey,
+    );
 
     final provider = CachedNetworkImageProvider(
       imageUrl,
       cacheKey: effectiveCacheKey,
-      cacheManager: PlexImageCacheManager.instance,
+      cacheManager: context.read<LocalLibraryProvider?>()?.artworkCache ?? PlexImageCacheManager.instance,
       headers: const {'User-Agent': 'Pleya'},
     );
 
-    return Image(
+    final image = Image(
       image: ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider),
       width: width,
       height: height,
@@ -439,6 +488,14 @@ class OptimizedMediaImage extends StatelessWidget {
           child: frame != null ? child : _buildPlaceholder(context, imageUrl),
         );
       },
+    );
+    return _VisibleArtworkRegistration(
+      epoch: context.select<LocalLibraryProvider?, int>((owner) => owner?.artworkRegistrationEpoch ?? 0),
+      owner: context.read<LocalLibraryProvider?>(),
+      request: client == null
+          ? null
+          : VisibleArtworkRequest(client: client!, path: imagePath!, url: imageUrl, baseKey: baseCacheKey),
+      child: image,
     );
   }
 
@@ -486,4 +543,62 @@ class OptimizedMediaImage extends StatelessWidget {
   // URL keeps auth-token rotation from invalidating the whole disk cache on
   // every re-auth. See [artworkCacheKey].
   String _generateCacheKey(String imageUrl) => artworkCacheKey(imageUrl);
+}
+
+/// No layout or paint change. The lease lives exactly as long as this mounted
+/// network image, and equal rebuilds keep one registration.
+class _VisibleArtworkRegistration extends StatefulWidget {
+  const _VisibleArtworkRegistration({
+    required this.owner,
+    required this.request,
+    required this.child,
+    required this.epoch,
+  });
+  final LocalLibraryProvider? owner;
+  final int epoch;
+  final VisibleArtworkRequest? request;
+  final Widget child;
+  @override
+  State<_VisibleArtworkRegistration> createState() => _VisibleArtworkRegistrationState();
+}
+
+class _VisibleArtworkRegistrationState extends State<_VisibleArtworkRegistration> {
+  final Object _lease = Object();
+  void _register() {
+    final request = widget.request;
+    if (request != null) widget.owner?.registerVisibleArtwork(_lease, request);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _register();
+  }
+
+  @override
+  void didUpdateWidget(covariant _VisibleArtworkRegistration oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final a = oldWidget.request;
+    final b = widget.request;
+    if (identical(oldWidget.owner, widget.owner) &&
+        identical(a?.client, b?.client) &&
+        a?.url == b?.url &&
+        a?.baseKey == b?.baseKey &&
+        a?.path == b?.path &&
+        a?.permanent == b?.permanent &&
+        oldWidget.epoch == widget.epoch &&
+        (widget.owner?.hasVisibleArtworkLease(_lease) ?? true))
+      return;
+    oldWidget.owner?.unregisterVisibleArtwork(_lease);
+    _register();
+  }
+
+  @override
+  void dispose() {
+    widget.owner?.unregisterVisibleArtwork(_lease);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

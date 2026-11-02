@@ -25,6 +25,8 @@ class PlaybackSourceResolver {
     required bool offlineLibraryMode,
     required TranscodeQualityPreset qualityPreset,
     int? selectedAudioStreamId,
+    int? selectedSubtitleStreamId,
+    SourceTrackSelector? selectSourceTracks,
     String? sessionIdentifier,
     String? transcodeSessionId,
     bool? preferOffline,
@@ -38,6 +40,8 @@ class PlaybackSourceResolver {
       preferOffline: preferOffline ?? (offlineLibraryMode || qualityPreset.isOriginal),
       qualityPreset: qualityPreset,
       selectedAudioStreamId: selectedAudioStreamId,
+      selectedSubtitleStreamId: selectedSubtitleStreamId,
+      selectSourceTracks: selectSourceTracks,
       sessionIdentifier: sessionIdentifier,
       transcodeSessionId: transcodeSessionId,
     );

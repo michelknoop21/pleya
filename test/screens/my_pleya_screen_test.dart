@@ -3,6 +3,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/automation/automation_registry.dart';
 import 'package:pleya/automation/automation_screen.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -240,6 +241,13 @@ void main() {
     addTearDown(watchlist.dispose);
     await pumpScreen(tester, seerr: ConfiguredSeerrDouble(), watchlist: watchlist);
 
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is AutomationNode && widget.id == AutomationIds.myPleyaWatchlistItem && widget.instance == '0',
+      ),
+      findsOneWidget,
+    );
     // The poster is read by its title alone; the rows add their subtitle.
     final poster = tester.getSemantics(find.bySemanticsLabel('Title w1')).getSemanticsData();
     expect(poster.hasAction(SemanticsAction.tap), isTrue, reason: 'kijklijst poster is not activatable');

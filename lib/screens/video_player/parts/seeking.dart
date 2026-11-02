@@ -95,6 +95,7 @@ extension _VideoPlayerSeekingMethods on VideoPlayerScreenState {
       final externalSubtitlePlan = _prepareExternalSubtitleOpenPlan(
         player: currentPlayer,
         externalSubtitles: result.externalSubtitles,
+        deferredSubtitle: result.deferredSubtitle,
       );
       final shouldAutoPlay = shouldResumePlayback && externalSubtitlePlan.canStartBeforeTrackSetup;
 

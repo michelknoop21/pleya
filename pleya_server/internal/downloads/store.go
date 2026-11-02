@@ -47,6 +47,9 @@ type Download struct {
 	SHA256    string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// DeviceName is de naam van de inlogsessie die de download aanvroeg, leeg als
+	// dat niet bekend is: een download van vóór 0025 of een sessie die weg is.
+	DeviceName string
 }
 
 // Store is de opslag van downloads.
@@ -55,12 +58,13 @@ type Store struct{ pool *pgxpool.Pool }
 // NewStore maakt een Store.
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{pool: pool} }
 
-const columns = `id, user_id, item_id, version_id, status, size_bytes, mtime_ns, coalesce(sha256, ''), created_at, updated_at`
+const columns = `id, user_id, item_id, version_id, status, size_bytes, mtime_ns, coalesce(sha256, ''), created_at, updated_at,
+	coalesce((SELECT se.device_name FROM sessions se WHERE se.id = auth_session_id), '')`
 
 func scan(row pgx.Row) (Download, error) {
 	var d Download
 	var status string
-	err := row.Scan(&d.ID, &d.UserID, &d.ItemID, &d.VersionID, &status, &d.SizeBytes, &d.MtimeNS, &d.SHA256, &d.CreatedAt, &d.UpdatedAt)
+	err := row.Scan(&d.ID, &d.UserID, &d.ItemID, &d.VersionID, &status, &d.SizeBytes, &d.MtimeNS, &d.SHA256, &d.CreatedAt, &d.UpdatedAt, &d.DeviceName)
 	d.Status = Status(status)
 	return d, err
 }
@@ -68,13 +72,14 @@ func scan(row pgx.Row) (Download, error) {
 // Create legt een download aan in toestand preparing.
 // Een eerdere download van dezelfde gebruiker en versie vervalt: een nieuwe
 // aanvraag vervangt hem, zodat herhalen of hervatten geen rijen opstapelt.
-func (s *Store) Create(ctx context.Context, user, item, version id.ID) (Download, error) {
+// session is de inlogsessie van de aanvraag, nil als die er niet is.
+func (s *Store) Create(ctx context.Context, user, item, version id.ID, session *id.ID) (Download, error) {
 	if _, err := s.pool.Exec(ctx, `DELETE FROM downloads WHERE user_id = $1 AND version_id = $2`, user, version); err != nil {
 		return Download{}, fmt.Errorf("eerdere download opruimen: %w", err)
 	}
 	d, err := scan(s.pool.QueryRow(ctx, `
-		INSERT INTO downloads (id, user_id, item_id, version_id) VALUES ($1, $2, $3, $4)
-		RETURNING `+columns, id.New(), user, item, version))
+		INSERT INTO downloads (id, user_id, item_id, version_id, auth_session_id) VALUES ($1, $2, $3, $4, $5)
+		RETURNING `+columns, id.New(), user, item, version, session))
 	if err != nil {
 		return Download{}, fmt.Errorf("download aanmaken: %w", err)
 	}

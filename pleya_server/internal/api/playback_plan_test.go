@@ -98,3 +98,34 @@ func TestPlaybackPlanUnknownTargetsAre404AndBodyIsClosed(t *testing.T) {
 		}
 	}
 }
+
+func TestExplicitQualityIsRecognizedAndNeverSilentlyDirectPlays(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease")
+	rec := e.do(http.MethodPost, "/pleya/v1/playback/plan", map[string]any{
+		"item_id": movie.ID,
+		"quality": map[string]any{"max_video_bitrate_kbps": 2000, "max_height": 720},
+	})
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("quality request: %d %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeNotPlayable)
+}
+
+func TestExplicitSelectionValidatesClosedQualityAndVersionRequirement(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	movie := e.findMovie("Grease")
+	for _, extra := range []map[string]any{
+		{"audio_stream_id": "01a159b2-221d-7000-b75d-cf3a0d1ba000"},
+		{"quality": map[string]any{"max_video_bitrate_kbps": 2000}},
+		{"quality": map[string]any{"max_video_bitrate_kbps": 2000, "max_height": 4321}},
+	} {
+		extra["item_id"] = movie.ID
+		rec := e.do(http.MethodPost, "/pleya/v1/playback/plan", extra)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("invalid selection: %d %s", rec.Code, rec.Body.String())
+		}
+	}
+}

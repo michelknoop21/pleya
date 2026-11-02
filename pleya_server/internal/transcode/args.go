@@ -10,6 +10,7 @@ package transcode
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Mode is hoe zwaar de omzetting is.
@@ -32,6 +33,12 @@ const (
 // Job is één omzetting. Alles hierin komt van de server zelf: het pad uit de
 // catalogus, de modus uit de planner.
 type Job struct {
+	SubtitlePath        string
+	SubtitleBitmap      bool
+	SubtitleStreamIndex int
+	MaxVideoBitrateKbps int
+	MaxHeight           int
+	AudioStreamIndex    *int
 	// InputPath is het absolute pad van het mediabestand.
 	InputPath string
 	// OutDir is de map van deze sessie onder de transcodemap.
@@ -68,6 +75,20 @@ func BuildArgs(j Job) ([]string, error) {
 	if j.InputPath == "" || j.OutDir == "" {
 		return nil, fmt.Errorf("pad ontbreekt")
 	}
+	if j.MaxVideoBitrateKbps < 0 || j.MaxVideoBitrateKbps > 100000 || j.MaxHeight < 0 || j.MaxHeight > 4320 ||
+		((j.MaxVideoBitrateKbps == 0) != (j.MaxHeight == 0)) || (j.MaxHeight > 0 && j.Mode != ModeTranscode) {
+		return nil, fmt.Errorf("ongeldige kwaliteitslimieten")
+	}
+	audioMap := "0:a:0?"
+	if j.AudioStreamIndex != nil {
+		if *j.AudioStreamIndex < 0 {
+			return nil, fmt.Errorf("ongeldig audiospoor")
+		}
+		audioMap = "0:" + strconv.Itoa(*j.AudioStreamIndex)
+	}
+	if (j.SubtitleBitmap || j.SubtitlePath != "") && j.Mode != ModeTranscode || j.SubtitleBitmap && (j.SubtitlePath != "" || j.SubtitleStreamIndex < 0) {
+		return nil, fmt.Errorf("ongeldig ondertitelplan")
+	}
 	seg := j.SegmentSeconds
 	if seg <= 0 {
 		seg = 4
@@ -90,7 +111,12 @@ func BuildArgs(j Job) ([]string, error) {
 	// kopiëren heeft de HLS-muxer daar geen tijd uit en schrijft hij een
 	// afspeellijst met TARGETDURATION:0 en één segment van 0 s, die geen
 	// speler afspeelt. ffmpeg leidt de tijden dan af uit de volgorde.
-	a = append(a, "-fflags", "+genpts", "-i", j.InputPath, "-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn")
+	a = append(a, "-fflags", "+genpts", "-i", j.InputPath)
+	videoMap := "0:v:0"
+	if j.SubtitleBitmap {
+		videoMap = "[subbed]"
+	}
+	a = append(a, "-map", videoMap, "-map", audioMap, "-sn", "-dn")
 
 	switch j.Mode {
 	case ModeRemux:
@@ -104,13 +130,48 @@ func BuildArgs(j Job) ([]string, error) {
 			return nil, err
 		}
 	case ModeTranscode:
-		switch {
-		case hw:
-			a = append(a, "-vf", "format=nv12,hwupload", "-c:v", "h264_vaapi", "-qp", "23")
-		case j.HDR:
-			a = append(a, "-vf", hdrToSDRFilter, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p")
-		default:
+		var filters []string
+		if j.HDR {
+			filters = append(filters, hdrToSDRFilter)
+		}
+		if j.SubtitlePath != "" && !j.SubtitleBitmap {
+			// Manager links the validated cache file under this fixed name; no path enters the filter grammar.
+			filters = append(filters, "subtitles=subtitle")
+		}
+		if j.SubtitleBitmap {
+			prefix := "[0:v:0]"
+			if len(filters) > 0 {
+				prefix += strings.Join(filters, ",") + "[base];[base]"
+			}
+			// The source itself, not an extracted copy: ffmpeg shifts a second input to start at zero, which
+			// would move every cue forward by the time of the first one. Bitmap tracks are always embedded.
+			filters = []string{prefix + "[0:" + strconv.Itoa(j.SubtitleStreamIndex) + "]overlay=eof_action=pass:repeatlast=0"}
+		}
+		if j.MaxHeight > 0 {
+			filters = append(filters, fmt.Sprintf("scale=-2:'trunc(min(ih,%d)/2)*2'", j.MaxHeight))
+		}
+		if hw {
+			filters = append(filters, "format=nv12", "hwupload")
+		}
+		if len(filters) > 0 {
+			if j.SubtitleBitmap {
+				a = append(a, "-filter_complex", strings.Join(filters, ",")+"[subbed]")
+			} else {
+				a = append(a, "-vf", strings.Join(filters, ","))
+			}
+		}
+		if hw {
+			a = append(a, "-c:v", "h264_vaapi")
+			if j.MaxVideoBitrateKbps == 0 {
+				a = append(a, "-qp", "23")
+			}
+		} else {
 			a = append(a, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p")
+		}
+
+		if j.MaxVideoBitrateKbps > 0 {
+			rate := strconv.Itoa(j.MaxVideoBitrateKbps) + "k"
+			a = append(a, "-b:v", rate, "-maxrate", rate, "-bufsize", strconv.Itoa(2*j.MaxVideoBitrateKbps)+"k")
 		}
 		if j.AudioCodec == "" {
 			// Het geluid past al; alleen het beeld wordt omgezet.

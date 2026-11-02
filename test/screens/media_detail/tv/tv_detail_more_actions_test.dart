@@ -18,9 +18,11 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/media/media_version.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_coverage_state.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_route_context.dart';
 import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
@@ -33,6 +35,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_preference_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
+import 'package:pleya/utils/media_navigation_helper.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/file_info_bottom_sheet.dart';
@@ -149,7 +152,7 @@ void main() {
     _Client client, {
     bool owner = false,
     UnifiedMediaRouteContext? unified,
-    Future<void> Function(BuildContext)? onChangeSource,
+    UnifiedSourceChangeCallback? onChangeSource,
     bool underShell = true,
   }) async {
     tester.view.physicalSize = _panel;
@@ -459,7 +462,10 @@ void main() {
         tester,
         _Client(_movie(), fileInfo: _tracks()),
         unified: unified(),
-        onChangeSource: (context) async => contexts.add(context),
+        onChangeSource: (context, _, {pageFailed = false}) async {
+          contexts.add(context);
+          return null;
+        },
       );
       await openPanel(tester);
 
@@ -474,12 +480,93 @@ void main() {
       expect(contexts.single.findAncestorWidgetOfExactType<MediaDetailScreen>(), isNotNull);
     });
 
+    /// The other copy of [_movie], on a server the page does not show.
+    MediaItem copy({int? offset}) =>
+        _movie(offset: offset).copyWith(id: 'copy', serverId: 'server_2', serverName: 'Attic');
+
+    UnifiedMediaSource source(MediaItem item) => UnifiedMediaSource(
+      sourceKey: item.globalKey,
+      item: item,
+      serverId: ServerId(item.serverId!),
+      serverName: item.serverName!,
+      backend: item.backend,
+    );
+
+    /// The page stays on server_1, a play starts on server_2.
+    UnifiedMediaRouteContext playsElsewhere(MediaItem page, MediaItem chosen) => UnifiedMediaRouteContext(
+      groupId: 'g',
+      identity: CanonicalMediaIdentity.movie(title: 'Puss in Boots', year: 2022),
+      sourceKey: chosen.globalKey,
+      pageSourceKey: page.globalKey,
+      playItem: chosen,
+      availableSourceKeys: [page.globalKey, chosen.globalKey],
+      titleSources: [source(chosen), source(page)],
+      coverage: SourceCoverageState.complete({page.globalKey, chosen.globalKey}),
+      intent: UnifiedActivationIntent.details,
+    );
+
+    testWidgets('the row speaks for the chosen copy: its menu, and how far along it is', (tester) async {
+      final page = _movie();
+      await pumpDetail(
+        tester,
+        _Client(page, fileInfo: _tracks()),
+        unified: playsElsewhere(page, copy(offset: 1800000)),
+        onChangeSource: (_, _, {pageFailed = false}) async => null,
+      );
+
+      final menus = find.byType(MediaContextMenu);
+      expect(tester.widgetList<MediaContextMenu>(menus).map((menu) => (menu.item as MediaItem).id), contains('copy'));
+      expect(find.textContaining(t.common.resume), findsOneWidget);
+    });
+
+    testWidgets('the file line names what Play starts, not the copy on the page', (tester) async {
+      final page = _movie().copyWith(
+        mediaVersions: const [MediaVersion(id: 'page', videoResolution: '4k')],
+      );
+      await pumpDetail(
+        tester,
+        _Client(page),
+        unified: playsElsewhere(
+          page,
+          copy().copyWith(
+            mediaVersions: const [MediaVersion(id: 'copy', videoResolution: '1080')],
+          ),
+        ),
+        onChangeSource: (_, _, {pageFailed = false}) async => null,
+      );
+
+      expect(find.text('1080p'), findsOneWidget);
+      expect(find.text('4K'), findsNothing);
+    });
+
+    testWidgets('a pick that keeps the page reaches the row, and the page stays', (tester) async {
+      final page = _movie();
+      await pumpDetail(
+        tester,
+        _Client(page, fileInfo: _tracks()),
+        unified: unified(sources: [page.globalKey, copy().globalKey]).withSourceKey(page.globalKey),
+        onChangeSource: (_, _, {pageFailed = false}) async => playsElsewhere(page, copy()),
+      );
+      await openPanel(tester);
+      expect(_row(tester, 'source').value, 'Server');
+
+      for (var i = 0; i < _rows(tester).toList().indexOf('source'); i++) {
+        await _press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      await _press(tester, LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MediaDetailScreen), findsOneWidget);
+      await openPanel(tester);
+      expect(_row(tester, 'source').value, 'Attic');
+    });
+
     testWidgets('one source is nothing to choose', (tester) async {
       await pumpDetail(
         tester,
         _Client(_movie(), fileInfo: _tracks()),
         unified: unified(sources: const ['server_1:movie']),
-        onChangeSource: (_) async {},
+        onChangeSource: (_, _, {pageFailed = false}) async => null,
       );
       await openPanel(tester);
 

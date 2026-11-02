@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/svelte';
-import { createRawSnippet } from 'svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { render, screen, within, waitFor } from '@testing-library/svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import DataTable, { type Column } from './DataTable.svelte';
 
@@ -126,4 +126,16 @@ describe('DataTable', () => {
     expect(bodyRows[0]).toHaveAttribute('data-library-kind', 'Movies');
     expect(bodyRows[1]).toHaveAttribute('data-library-id', 'series');
   });
+});
+
+it('houdt een later geladen stacktabel met één pixel overflow bereikbaar met het toetsenbord',async()=>{
+ vi.stubGlobal('ResizeObserver',class {observe(){} disconnect(){}});
+ const client=vi.spyOn(Element.prototype,'clientWidth','get').mockReturnValue(200);
+ const scroll=vi.spyOn(Element.prototype,'scrollWidth','get').mockReturnValue(201);
+ try{
+  const view=render(DataTable<Lib>,{props:{columns,rows:[],label:'Libraries',cell,stack:true}});
+  await tick();
+  await view.rerender({columns,rows,label:'Libraries',cell,stack:true});
+  await waitFor(()=>expect(screen.getByRole('region',{name:'Libraries'})).toHaveAttribute('tabindex','0'));
+ }finally{client.mockRestore();scroll.mockRestore();vi.unstubAllGlobals();}
 });

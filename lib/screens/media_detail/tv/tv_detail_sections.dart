@@ -97,6 +97,8 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       item,
       onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
       onPlaybackReturned: (played) => unawaited(refreshAfterPlayback(playedItemId: played.id)),
+      // The State's context sits above the scope the page builds for its rows.
+      unifiedRouteContext: _unifiedTitle?.routeFor(item),
       restoreTarget: TvFocusRestoreTarget(itemId: item.id, containerId: sectionId),
     );
   }

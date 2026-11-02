@@ -98,6 +98,252 @@ void main() {
   });
 
   group('watch state on the wire', () {
+    test('a position on a copy sends nothing: only a viewing moves a position here', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(
+        item,
+        position: const Duration(minutes: 5),
+        duration: const Duration(minutes: 90),
+        watched: false,
+      );
+
+      expect(landed, isFalse);
+      expect(server.watchEvents, isEmpty);
+    });
+
+    test('a position at 95 percent stays home too: the threshold would make it a viewing', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(
+        item,
+        position: const Duration(minutes: 95),
+        duration: const Duration(minutes: 100),
+        watched: false,
+      );
+
+      expect(landed, isFalse);
+      expect(server.watchEvents, isEmpty);
+    });
+
+    test('a finished copy is one mark: mark_watched leaves no row in the history', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(
+        item,
+        position: const Duration(minutes: 90),
+        duration: const Duration(minutes: 90),
+        watched: true,
+      );
+
+      expect(landed, isTrue);
+      final event = server.watchEvents.single;
+      expect(event['explicit_action'], 'mark_watched');
+      expect(event.containsKey('cause'), isFalse, reason: 'a reclaim would count as a viewing');
+    });
+
+    test('a finished copy lands on a server from before the ownership model too', () async {
+      server = PleyaFakeServer(watchState: true);
+      final item = movie(server);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(item, position: const Duration(minutes: 90), watched: true);
+
+      expect(landed, isTrue);
+      expect(server.watchEvents.single['explicit_action'], 'mark_watched');
+    });
+
+    test('a finished copy stays home just after a write: a session may hold the title', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final recent = DateTime.now().millisecondsSinceEpoch ~/ 1000 - 30;
+      final item = movie(server).copyWith(lastViewedAt: recent);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(item, position: const Duration(minutes: 90), watched: true);
+
+      expect(landed, isFalse);
+      expect(server.watchEvents, isEmpty);
+    });
+
+    test('a finished copy goes out once the last write is older than two leases', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final old = DateTime.now().millisecondsSinceEpoch ~/ 1000 - 200;
+      final item = movie(server).copyWith(lastViewedAt: old);
+      client = await connected(server);
+
+      final landed = await client.writeCopyState(item, position: const Duration(minutes: 90), watched: true);
+
+      expect(landed, isTrue);
+      expect(server.watchEvents.single['explicit_action'], 'mark_watched');
+    });
+
+    test('a finished copy the server refuses throws, so the queue can decide', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+      server.watchStateFailureStatus = 500;
+
+      await expectLater(
+        client.writeCopyState(item, position: const Duration(minutes: 90), watched: true),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('a viewing on this device keeps its session past a copy', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+      await client.reportPlaybackStarted(itemId: item.id, position: Duration.zero);
+      final viewing = server.watchEvents.single['session_id'];
+
+      await client.writeCopyState(item, position: const Duration(minutes: 5), watched: false);
+      await client.reportPlaybackProgress(
+        itemId: item.id,
+        position: const Duration(minutes: 1),
+        duration: const Duration(minutes: 90),
+      );
+
+      expect(server.watchEvents, hasLength(2));
+      expect(server.watchEvents.last['session_id'], viewing);
+    });
+
+    group('with watch_state_copy', () {
+      Future<MediaItem> copyServer() async {
+        server = PleyaFakeServer(watchState: true, watchStateOwnership: true)..watchStateCopyCapability = true;
+        final item = movie(server);
+        client = await connected(server);
+        return item;
+      }
+
+      test('a position is one event that says it is a copy, and no viewing', () async {
+        final item = await copyServer();
+
+        final landed = await client.writeCopyState(
+          item,
+          position: const Duration(minutes: 5),
+          duration: const Duration(minutes: 90),
+          watched: false,
+        );
+
+        expect(landed, isTrue, reason: 'owned_by_this_session is false on a copy, and that says nothing');
+        final event = server.watchEvents.single;
+        expect(event['copy'], isTrue);
+        expect(event['explicit_action'], 'none');
+        expect(event['completed'], isFalse);
+        expect(event['position_ms'], 300000);
+        expect(event['duration_ms'], 5400000);
+        expect(event.containsKey('cause'), isFalse);
+        expect(event.containsKey('backlog'), isFalse);
+      });
+
+      test('95 percent stays a position: only the flag says finished', () async {
+        final item = await copyServer();
+
+        final landed = await client.writeCopyState(
+          item,
+          position: const Duration(minutes: 95),
+          duration: const Duration(minutes: 100),
+          watched: false,
+        );
+
+        expect(landed, isTrue);
+        expect(server.watchEvents.single['completed'], isFalse);
+        expect(server.watchStates[item.id]?['watched'], isFalse);
+      });
+
+      test('a finished copy lands on the answer, at position zero', () async {
+        final item = await copyServer();
+
+        final landed = await client.writeCopyState(
+          item,
+          position: const Duration(minutes: 90),
+          duration: const Duration(minutes: 90),
+          watched: true,
+        );
+
+        expect(landed, isTrue);
+        final event = server.watchEvents.single;
+        expect(event['copy'], isTrue);
+        expect(event['completed'], isTrue);
+        expect(event['explicit_action'], 'none');
+        expect(server.watchStates[item.id]?['play_count'], 1);
+      });
+
+      test('a session on the title holds it: a position and a finished copy do not land', () async {
+        final item = await copyServer();
+        server.watchLeases[item.id] = 'someone-watching';
+
+        for (final watched in const [false, true]) {
+          final landed = await client.writeCopyState(item, position: const Duration(minutes: 5), watched: watched);
+          expect(landed, isFalse, reason: 'watched: $watched');
+        }
+        expect(server.watchStates, isEmpty);
+      });
+
+      test('a watched title refuses a position', () async {
+        final item = await copyServer();
+        await client.writeCopyState(item, position: Duration.zero, watched: true);
+
+        final landed = await client.writeCopyState(item, position: const Duration(minutes: 5), watched: false);
+
+        expect(landed, isFalse);
+        expect(server.watchStates[item.id]?['position_ms'], 0);
+      });
+
+      test('every copy write is the same session, apart from a viewing', () async {
+        final item = await copyServer();
+        await client.reportPlaybackStarted(itemId: item.id, position: Duration.zero);
+        final viewing = server.watchEvents.single['session_id'];
+        server.watchLeases.remove(item.id);
+
+        for (final minutes in const [5, 6]) {
+          await client.writeCopyState(item, position: Duration(minutes: minutes), watched: false);
+        }
+
+        final copies = server.watchEvents.skip(1).map((e) => e['session_id']).toSet();
+        expect(copies, hasLength(1));
+        expect(copies, isNot(contains(viewing)));
+      });
+
+      test('a copy makes no claim on what this client last saw', () async {
+        final item = await copyServer();
+        await client.reportPlaybackStarted(itemId: item.id, position: Duration.zero);
+        await client.reportPlaybackStopped(itemId: item.id, position: Duration.zero);
+        server.watchLeases.remove(item.id);
+        final before = server.watchEvents.length;
+
+        await client.writeCopyState(item, position: const Duration(minutes: 5), watched: false);
+
+        expect(server.watchEvents.skip(before).single.containsKey('base_revision'), isFalse);
+      });
+
+      test('an event that is no copy does not carry the field', () async {
+        final item = await copyServer();
+
+        await client.reportPlaybackStarted(itemId: item.id, position: Duration.zero);
+        await client.markWatched(item);
+
+        expect(server.watchEvents.map((e) => e.containsKey('copy')), everyElement(isFalse));
+      });
+    });
+
+    test('a server without watch_state_copy refuses the field whole', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = movie(server);
+      client = await connected(server);
+
+      await client.writeCopyState(item, position: const Duration(minutes: 5), watched: false);
+      await client.writeCopyState(item, position: const Duration(minutes: 90), watched: true);
+
+      expect(server.watchEvents.map((e) => e.containsKey('copy')), everyElement(isFalse));
+    });
+
     test('playback_started acquires, with a cause and a session', () async {
       server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
       final item = movie(server);

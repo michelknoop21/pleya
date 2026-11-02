@@ -24,12 +24,8 @@ test.describe('de verticale slice', () => {
 
   test('home toont wat er recent is toegevoegd', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Recently added' })).toBeVisible();
-    await expect(page.getByRole('list', { name: 'Recently added' }).getByRole('listitem').first()).toBeVisible();
-
-    // Kijkstatus bestaat niet in PS-2, dus die rijen horen er niet te staan.
-    await expect(page.getByText('Continue watching')).toHaveCount(0);
-    await expect(page.getByText('Next up')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /^Recently added · / }).first()).toBeVisible();
+    await expect(page.getByRole('list', { name: /^Recently added · / }).first().getByRole('listitem').first()).toBeVisible();
 
     await expectNoAxeViolations(page, 'home');
   });
@@ -86,18 +82,20 @@ test.describe('de verticale slice', () => {
     await page.waitForURL(/\/libraries\/.+/);
     // Nadrukkelijk het raster en niet zomaar het eerste lijstonderdeel op de
     // pagina: de navigatie is ook een lijst, en die staat eerder in de DOM.
-    await grid(page).getByRole('listitem').first().getByRole('link').click();
+    const [response] = await Promise.all([
+      page.waitForResponse(response => /\/pleya\/v1\/items\/[^/]+$/.test(new URL(response.url()).pathname) && response.ok()),
+      grid(page).getByRole('listitem').first().getByRole('link').click()
+    ]);
+    const item = await response.json();
     await page.waitForURL(/\/items\/.+/);
 
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(item.title);
     await expect(page.getByRole('heading', { name: 'Versions' })).toBeVisible();
-
-    // Velden die het protocol vandaag niet kent horen hier niet te staan.
-    const body = (await page.locator('body').innerText()).toLowerCase();
-    for (const absent of ['summary', 'genres', 'cast', 'tagline', 'studio', 'trailer']) {
-      expect(body, absent).not.toContain(absent);
+    if (item.summary?.trim()) await expect(page.getByText(item.summary, { exact: true })).toBeVisible();
+    for (const person of item.people ?? []) {
+      if (['actor', 'director', 'writer'].includes(person.role) && person.name.trim()) await expect(page.getByText(person.name, { exact: true })).toBeVisible();
     }
-    // En geen speler: afspelen is PS-4.
+    // Afspelen opent de bestaande aparte spelerroute.
     await expect(page.locator('video')).toHaveCount(0);
 
     await expectNoAxeViolations(page, 'itemdetail');
@@ -164,7 +162,7 @@ test.describe('de verticale slice', () => {
 
     // Er is geen endpoint voor scannen, jobs of opslag, dus er is ook geen knop.
     const body = (await page.locator('body').innerText()).toLowerCase();
-    for (const absent of ['start scan', 'jobs', 'storage', 'backup', 'add library']) {
+    for (const absent of ['start scan', 'jobs', 'storage', 'add library']) {
       expect(body, absent).not.toContain(absent);
     }
 
@@ -216,21 +214,11 @@ test.describe('toetsenbord', () => {
     await expect(page.locator('a.skip-link')).toBeFocused();
 
     // Merklink, dan elk slot in DOM-volgorde (Home, Series, Films, Mijn
-    // Pleya), dan de zoekactie. Bibliotheek-ids zijn per stack anders, dus de
-    // slots voor Series en Films worden op hun pad-voorvoegsel getoetst.
-    const expected: (string | RegExp)[] = [
-      '/',
-      '/',
-      /^\/libraries\/[0-9a-f-]+$/,
-      /^\/libraries\/[0-9a-f-]+$/,
-      '/server',
-      '/search'
-    ];
-    for (const href of expected) {
+    // Pleya), dan de zoekactie. Series en Films openen hun eigen landing.
+    for (const href of ['/', '/', '/series', '/films', '/server', '/search']) {
       await page.keyboard.press('Tab');
       const actual = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      if (typeof href === 'string') expect(actual).toBe(href);
-      else expect(actual).toMatch(href);
+      expect(actual).toBe(href);
     }
   });
 
@@ -243,8 +231,8 @@ test.describe('toetsenbord', () => {
     const hrefs = await links.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
     expect(hrefs).toHaveLength(4);
     expect(hrefs[0]).toBe('/');
-    expect(hrefs[1]).toMatch(/^\/libraries\//);
-    expect(hrefs[2]).toMatch(/^\/libraries\//);
+    expect(hrefs[1]).toBe('/series');
+    expect(hrefs[2]).toBe('/films');
     expect(hrefs[3]).toBe('/server');
 
     // Elke link in de balk is een echte tabstop.

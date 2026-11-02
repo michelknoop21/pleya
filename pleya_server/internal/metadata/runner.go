@@ -21,14 +21,14 @@ import (
 // Store is wat de ronde van de catalogus nodig heeft.
 type Store interface {
 	MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error)
-	SaveCandidate(ctx context.Context, c catalog.MetadataCandidate) error
+	CommitSidecar(ctx context.Context, target catalog.MetadataTarget, details *catalog.MetadataDetails) error
+	CommitMetadata(ctx context.Context, target catalog.MetadataTarget, c catalog.MetadataCandidate, details, sidecar *catalog.MetadataDetails, artwork []catalog.ProviderArtwork) error
 	ApplyMetadata(ctx context.Context, itemID id.ID, provider string, d catalog.MetadataDetails) error
 	LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdrop bool, err error)
 	CandidateAttempts(ctx context.Context, itemID id.ID) (int, error)
 	ListProviderArtwork(ctx context.Context) ([]catalog.ProviderArtwork, error)
 	DropProviderArtwork(ctx context.Context, artworkID id.ID) error
 	GetProviderArtwork(ctx context.Context, itemID id.ID, kind, provider string) (catalog.ProviderArtwork, bool, error)
-	UpsertProviderArtwork(ctx context.Context, a catalog.ProviderArtwork) error
 }
 
 // Provider is de bron van titels en afbeeldingen.
@@ -39,7 +39,8 @@ type Provider interface {
 }
 
 // currentPass is het rondenummer van deze versie van de ronde. Verhogen zet
-// elk item één keer opnieuw aan de beurt. 2: .nfo als bron. 3: alternatieven bij
+// geschikte items één keer opnieuw aan de beurt: geen rejected/ambiguous en
+// nooit vóór een geplande retry. 2: .nfo als bron. 3: alternatieven bij
 // titels die niet matchen, en handmatige keuzes (M2b).
 const currentPass = 3
 
@@ -65,7 +66,8 @@ type Runner struct {
 	failuresLimit  int
 }
 
-// NewRunner bouwt een runner. cacheDir is CacheDir; afbeeldingen komen onder artwork/.
+// NewRunner bouwt een runner. Een nil-provider verwerkt uitsluitend lokale sidecars.
+// cacheDir is CacheDir; afbeeldingen komen onder artwork/.
 func NewRunner(store Store, provider Provider, name, cacheDir string, log *slog.Logger) *Runner {
 	return &Runner{
 		store: store, provider: provider, name: name, cacheDir: cacheDir, log: log,
@@ -85,7 +87,7 @@ func (r *Runner) WithSidecar(s Sidecar) *Runner { r.sidecar = s; return r }
 
 // RoundStats telt wat een ronde deed.
 type RoundStats struct {
-	Matched, Ambiguous, Unmatched, Failed, ArtworkSaved int
+	Matched, Ambiguous, Unmatched, Failed, ArtworkSaved, SidecarApplied int
 	// ByID telt matches die via een externe id uit de .nfo liepen, zonder zoeken.
 	ByID int
 	// Manual telt matches die een beheerder koos.
@@ -100,8 +102,10 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 	var seen []id.ID
 	consecutive := 0
 
-	if err := r.repairCache(ctx); err != nil {
-		r.log.Warn("cache nalopen mislukt", slog.String("error", err.Error()))
+	if r.provider != nil {
+		if err := r.repairCache(ctx); err != nil {
+			r.log.Warn("cache nalopen mislukt", slog.String("error", err.Error()))
+		}
 	}
 
 	for {
@@ -117,12 +121,20 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 				return st, err
 			}
 			seen = append(seen, t.ID)
-			if err := r.one(ctx, t, &st); err != nil {
+			if err := r.one(ctx, t, &st); errors.Is(err, catalog.ErrMetadataSuperseded) {
+				continue
+			} else if err != nil {
 				st.Failed++
-				consecutive++
+				if errors.Is(err, catalog.ErrMetadataFallbackUnavailable) {
+					// Details slaagde: deze lokale bronfout onderbreekt een reeks
+					// providerfouten en mag de rest van de ronde niet blokkeren.
+					consecutive = 0
+				} else {
+					consecutive++
+				}
 				r.log.Warn("metadata ophalen mislukt",
 					slog.String("title", t.Title), slog.String("error", err.Error()))
-				if ctx.Err() == nil {
+				if ctx.Err() == nil && r.provider != nil {
 					r.recordFailure(ctx, t)
 				}
 				if consecutive >= r.failuresLimit {
@@ -163,7 +175,30 @@ func withBackoff[T any](ctx context.Context, r *Runner, call func() (T, error)) 
 func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundStats) error {
 	var side *nfo.Result
 	if r.sidecar != nil {
-		side = r.sidecar.Read(t)
+		if checked, ok := r.sidecar.(interface {
+			ReadChecked(catalog.MetadataTarget) (*nfo.Result, error)
+		}); ok {
+			side, t.SidecarReadError = checked.ReadChecked(t)
+		} else {
+			side = r.sidecar.Read(t)
+		}
+	}
+
+	// Een sleutelvrije ronde publiceert bronbewijs en checked-at atomair. Ook
+	// ontbreken/onleesbaarheid moet een oude verborgen NFO ongeldig maken.
+	if r.provider == nil {
+		var details *catalog.MetadataDetails
+		if side != nil {
+			d := sidecarDetails(side)
+			details = &d
+		}
+		if err := r.store.CommitSidecar(ctx, t, details); err != nil {
+			return err
+		}
+		if details != nil {
+			st.SidecarApplied++
+		}
+		return nil
 	}
 
 	state, chosen, how, results, err := r.decide(ctx, t, side)
@@ -178,33 +213,30 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	}
 	alternatives := alternativesOf(results)
 
-	// De .nfo vult wat de provider niet vult, en wint nergens van een
-	// providerwaarde (rang in ApplyMetadata). Hij gaat ook door bij een titel die
-	// de provider niet kent: dan is de .nfo het enige dat er is.
-	applySidecar := func() error {
-		if side == nil {
-			return nil
-		}
-		return r.store.ApplyMetadata(ctx, t.ID, catalog.SourceNFO, sidecarDetails(side))
+	var sideDetails *catalog.MetadataDetails
+	if side != nil {
+		d := sidecarDetails(side)
+		sideDetails = &d
 	}
-
 	switch state {
-	case catalog.CandidateAmbiguous:
-		st.Ambiguous++
-		if err := applySidecar(); err != nil {
+	case catalog.CandidateAmbiguous, catalog.CandidateUnmatched:
+		var next *time.Time
+		if state == catalog.CandidateUnmatched {
+			n := time.Now().Add(r.retryUnmatch)
+			next = &n
+		}
+		if err := r.store.CommitMetadata(ctx, t, catalog.MetadataCandidate{Pass: currentPass, ItemID: t.ID, Provider: r.name, State: state, NextAttempt: next, Details: alternativesDetails(alternatives)}, nil, sideDetails, nil); err != nil {
 			return err
 		}
-		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass, ItemID: t.ID, Provider: r.name, State: state,
-			Details: alternativesDetails(alternatives)})
-	case catalog.CandidateUnmatched:
-		st.Unmatched++
-		if err := applySidecar(); err != nil {
-			return err
+		if state == catalog.CandidateAmbiguous {
+			st.Ambiguous++
+		} else {
+			st.Unmatched++
 		}
-		next := time.Now().Add(r.retryUnmatch)
-		return r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass,
-			ItemID: t.ID, Provider: r.name, State: state, NextAttempt: &next,
-			Details: alternativesDetails(alternatives)})
+		if sideDetails != nil {
+			st.SidecarApplied++
+		}
+		return nil
 	}
 
 	details, err := withBackoff(ctx, r, func() (catalog.MetadataDetails, error) {
@@ -213,15 +245,6 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	if err != nil {
 		return err
 	}
-	// Eerst toepassen, dan pas vastleggen: een fout hier laat het item aan de
-	// beurt in plaats van het als gedaan te boeken zonder velden.
-	if err := r.store.ApplyMetadata(ctx, t.ID, r.name, details); err != nil {
-		return err
-	}
-	if err := applySidecar(); err != nil {
-		return err
-	}
-
 	// Afbeeldingen zijn een bonus op de tekst: een mislukte download maakt de
 	// match niet ongedaan, maar zet het item over een uur opnieuw aan de beurt.
 	hasPoster, hasBackdrop, err := r.store.LocalArtwork(ctx, t.ID)
@@ -229,6 +252,7 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		return err
 	}
 	var retry *time.Time
+	var prepared []preparedArtwork
 	for _, a := range []struct {
 		kind  string
 		ref   string
@@ -240,7 +264,7 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		if a.ref == "" || a.local {
 			continue
 		}
-		saved, err := r.cacheImage(ctx, t.ID, a.kind, a.ref)
+		saved, err := r.prepareImage(ctx, t.ID, a.kind, a.ref)
 		if err != nil {
 			r.log.Warn("afbeelding ophalen mislukt",
 				slog.String("title", t.Title), slog.String("kind", a.kind), slog.String("error", err.Error()))
@@ -248,16 +272,37 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 			retry = &next
 			continue
 		}
-		if saved {
-			st.ArtworkSaved++
+		if saved != nil {
+			prepared = append(prepared, *saved)
 		}
 	}
 
-	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass,
+	var artwork []catalog.ProviderArtwork
+	for _, a := range prepared {
+		artwork = append(artwork, a.row)
+	}
+	commitErr := r.store.CommitMetadata(ctx, t, catalog.MetadataCandidate{Pass: currentPass,
 		ItemID: t.ID, Provider: r.name, State: state,
 		ExternalID: fmt.Sprint(chosen.ID), Details: &details, NextAttempt: retry,
-	}); err != nil {
-		return err
+	}, &details, sideDetails, artwork)
+	// Een gewone fout kan terugkomen terwijl COMMIT nog loopt. Een MVCC-read
+	// ziet dan mogelijk de oude rij: dat is geen bewijs dat deze bytes vrij zijn.
+	// Alleen succes of expliciete supersession geeft directe cleanup vrij.
+	// Andere fouten behouden ook mogelijk ongebruikte bytes voor de bestaande GC.
+	if commitErr == nil || errors.Is(commitErr, catalog.ErrMetadataSuperseded) {
+		r.cleanupPrepared(ctx, t.ID, prepared)
+	}
+	if commitErr != nil {
+		return commitErr
+	}
+	st.ArtworkSaved += len(prepared)
+	if sideDetails != nil {
+		st.SidecarApplied++
+	}
+	for _, a := range prepared {
+		if a.previous != "" && a.previous != a.row.FileName {
+			_ = os.Remove(filepath.Join(r.cacheDir, "artwork", a.previous))
+		}
 	}
 	st.Matched++
 	return nil
@@ -344,8 +389,8 @@ func (r *Runner) recordFailure(ctx context.Context, t catalog.MetadataTarget) {
 		wait = r.failBackoffMax
 	}
 	next := time.Now().Add(wait)
-	if err := r.store.SaveCandidate(ctx, catalog.MetadataCandidate{Pass: currentPass,
-		ItemID: t.ID, Provider: r.name, State: catalog.CandidateFailed, NextAttempt: &next}); err != nil {
+	if err := r.store.CommitMetadata(ctx, t, catalog.MetadataCandidate{Pass: currentPass,
+		ItemID: t.ID, Provider: r.name, State: catalog.CandidateFailed, ExternalID: t.ManualExternalID, NextAttempt: &next}, nil, nil, nil); err != nil && !errors.Is(err, catalog.ErrMetadataSuperseded) {
 		r.log.Warn("mislukte poging vastleggen mislukt", slog.String("error", err.Error()))
 	}
 }
@@ -387,15 +432,20 @@ func (r *Runner) repairCache(ctx context.Context) error {
 	return nil
 }
 
-// cacheImage haalt één afbeelding en zet hem in de cache, tenzij de bytes
-// gelijk zijn aan wat er al staat.
-func (r *Runner) cacheImage(ctx context.Context, itemID id.ID, kind, ref string) (bool, error) {
+type preparedArtwork struct {
+	row      catalog.ProviderArtwork
+	previous string
+}
+
+// prepareImage schrijft uitsluitend een nieuwe bestandsnaam; de cacherij wordt
+// samen met de velden en kandidaat gepubliceerd door CommitMetadata.
+func (r *Runner) prepareImage(ctx context.Context, itemID id.ID, kind, ref string) (*preparedArtwork, error) {
 	existing, found, err := r.store.GetProviderArtwork(ctx, itemID, kind, r.name)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if found && existing.SourceRef == ref {
-		return false, nil
+		return nil, nil
 	}
 
 	type img struct {
@@ -407,7 +457,7 @@ func (r *Runner) cacheImage(ctx context.Context, itemID id.ID, kind, ref string)
 		return img{data, ext}, err
 	})
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	sum := sha256.Sum256(got.data)
@@ -415,36 +465,43 @@ func (r *Runner) cacheImage(ctx context.Context, itemID id.ID, kind, ref string)
 	if found {
 		artID = existing.ID
 	}
-	name := artID.String() + got.ext
+	name := artID.String() + "-" + id.New().String() + got.ext
 
 	dir := filepath.Join(r.cacheDir, "artwork")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return false, err
+		return nil, err
 	}
 	tmp, err := os.CreateTemp(dir, ".incoming-*")
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	tmpName := tmp.Name()
 	defer os.Remove(tmpName)
 	if _, err := tmp.Write(got.data); err != nil {
 		tmp.Close()
-		return false, err
+		return nil, err
 	}
 	if err := tmp.Close(); err != nil {
-		return false, err
+		return nil, err
 	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
-		return false, err
+		return nil, err
 	}
-	if found && existing.FileName != name {
-		_ = os.Remove(filepath.Join(dir, existing.FileName))
-	}
-
-	return true, r.store.UpsertProviderArtwork(ctx, catalog.ProviderArtwork{
+	return &preparedArtwork{row: catalog.ProviderArtwork{
 		ID: artID, ItemID: itemID, Kind: kind, Provider: r.name,
 		SourceRef: ref, FileName: name, SHA256: hex.EncodeToString(sum[:]),
-	})
+	}, previous: existing.FileName}, nil
+}
+
+func (r *Runner) cleanupPrepared(ctx context.Context, itemID id.ID, prepared []preparedArtwork) {
+	check, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+	defer cancel()
+	for _, a := range prepared {
+		current, found, err := r.store.GetProviderArtwork(check, itemID, a.row.Kind, r.name)
+		if err == nil && (!found || current.FileName != a.row.FileName) {
+			_ = os.Remove(filepath.Join(r.cacheDir, "artwork", a.row.FileName))
+		}
+	}
 }
 
 // Run houdt de rondes gaande: bij het opstarten, na elk signaal (een afgeronde
@@ -459,7 +516,7 @@ func (r *Runner) Run(ctx context.Context, trigger <-chan struct{}, interval time
 			r.log.Info("metadata-ronde klaar", slog.String("reason", reason),
 				slog.Int("matched", st.Matched), slog.Int("ambiguous", st.Ambiguous),
 				slog.Int("unmatched", st.Unmatched), slog.Int("failed", st.Failed),
-				slog.Int("artwork", st.ArtworkSaved), slog.Int("by_id", st.ByID), slog.Int("manual", st.Manual))
+				slog.Int("artwork", st.ArtworkSaved), slog.Int("by_id", st.ByID), slog.Int("manual", st.Manual), slog.Int("sidecar_applied", st.SidecarApplied))
 		}
 	}
 	do("startup")

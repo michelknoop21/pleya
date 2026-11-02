@@ -551,6 +551,9 @@
   "videoControls": {
     "audioLabel": "Audio",
     "subtitlesLabel": "Ondertitels",
+    "subtitlesPreparing": "Ondertitels voorbereiden",
+    "subtitlesPrepareFailed": "Ondertitels konden niet worden voorbereid",
+    "subtitlesPrepareRetry": "Opnieuw",
     "resetToZero": "Reset naar 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",
@@ -1001,6 +1004,12 @@
     "playbackServerErrorBody": "De server liep vast tijdens het transcoderen"
   },
   "libraries": {
+    "cinemaReorderHint": "Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar",
+    "cinemaVisible": "Zichtbaar",
+    "cinemaHidden": "Verborgen in dit profiel",
+    "cinemaOptionsHint": "Select voor bibliotheekopties",
+    "cinemaSummaryTitle": "Eén bibliotheek.",
+    "cinemaSummaryHint": "Alle mogelijkheden bij Select.",
     "alphabetScrubber": "Alfabetisch bladeren",
     "title": "Bibliotheken",
     "fallbackTitle": "Bibliotheek",
@@ -1350,6 +1359,7 @@
     "errorLoading": "Fout bij laden afspeellijsten",
     "errorAdding": "Fout bij toevoegen aan afspeellijst",
     "errorReordering": "Fout bij herschikken van afspeellijstitem",
+    "changedElsewhere": "Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.",
     "errorRemoving": "Fout bij verwijderen uit afspeellijst"
   },
   "watchTogether": {

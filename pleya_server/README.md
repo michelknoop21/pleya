@@ -162,8 +162,8 @@ adminklasse ook wanneer de rol hem wel haalt.
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
 afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer die nog niet gebouwd is. Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
-`watch_state_ownership`, `stream_sessions`, `users`, `sessions`, `api_tokens`, `cookie_auth` en
-`administration` staan op `true`, en capabilities is leidend. `administration` staat aan sinds S1.6,
+`watch_state_ownership`, `stream_sessions`, `users`, `sessions`, `api_tokens`, `cookie_auth`,
+`cookie_upgrade` en `administration` staan op `true`, en capabilities is leidend. `administration` staat aan sinds S1.6,
 voor het beheeroppervlak van S1.2 tot en met S1.5; `cookie_auth` sinds S1.8.
 
 Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een
@@ -686,14 +686,28 @@ Dat legt de antwoorden van een draaiende server vast en houdt ze met
 valideren. De validator staat bewust in Python en niet in Go: een Go-validator zou de server tegen
 zijn eigen lezing van het contract houden.
 
-## Wat hier niet in zit
+## Setup en verdere bediening
 
-Geen afspelen in de webclient: die kan bladeren en zoeken, en de `<video>`-kant is PS-4W. Geen
-metadata-providers, geen matching, geen artwork van buiten de schijf, geen schalen of cachen van
-afbeeldingen. Geen afspeelplan, geen transcodering, geen transcode-sessies. Geen gebruikers, rollen
-of bibliotheekrechten. Geen kijkgeschiedenis, favorieten, waarderingen of spoorvoorkeuren. Geen
-downloads, geen Live TV, geen websockets, geen server-sent events. Geen beheerendpoint: een
-bibliotheek toevoegen is nog steeds `.env` wijzigen en herstarten.
+De Webclient heeft al eenmalige eigenaarsetup en afzonderlijk beheer voor bibliotheken,
+opslagdiagnose en scans. Open het lokale serveradres in de browser; `/info` bepaalt of eerst
+`/setup` of inloggen nodig is. `/setup` begeleidt de eigenaar/beheerder daarna door de bestaande
+opslag-, bibliotheek- en scanhandelingen. Herladen leest de opgeslagen bibliotheken en scanstatus
+opnieuw; het maakt geen tweede eigenaar of bibliotheek aan en start niet vanzelf een nieuwe scan.
+Een opgeslagen `.env`-bibliotheek kan met behoud van ID/slug worden overgenomen. Verwijder daarna
+de oude omgevingsregel zoals in stap 3 hierboven beschreven. Bestaande bibliotheken blijven ook
+bereikbaar via `/admin/libraries`; opslagcontrole staat op `/admin/storage`.
+
+Hostmappen koppelen en containerpoorten kiezen blijven operatortaken in Compose. De Webflow biedt
+uitsluitend de door de server gedeclareerde containerroots aan; hij koppelt geen NAS-schijf en opent
+geen routerpoort. Zonder juiste mount of leesrechten moet eerst de operatorconfiguratie worden
+hersteld, waarna de opslagstatus opnieuw gelezen kan worden. Een voltooide scan met nul titels is
+een geldige lege bibliotheek en geen automatische installatiefout.
+
+Dit beschrijft de lokale S11-implementatie, geen afgeronde installatie-, hardware- of
+vervangingsacceptatie. De actuele voortgang en open productgrenzen staan in
+[de masterlijst](../docs/PLEYA-SERVER-MASTERLIST.md), niet in de historische fasebeschrijvingen
+hierboven. De eerdere tekst dat toevoegen uitsluitend via `.env` ging is achterhaald door de
+bestaande bibliotheekroutes en beheerschermen.
 
 `compose.yaml` bevat een uitgecommentarieerd blok voor `/dev/dri` met `group_add: "937"`, de groep
 `videodriver` zoals gemeten op deze NAS. Het is volledig inert zolang het uitstaat en staat er alleen

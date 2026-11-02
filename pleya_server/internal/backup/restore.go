@@ -37,8 +37,8 @@ type Plan struct {
 }
 
 // PrepareRestore toetst een back-up zonder iets te wijzigen: hij bestaat, is
-// geslaagd, het bestand is leesbaar, het schema is niet nieuwer dan deze binary,
-// en de geheimen gaan open. Een restore die pas halverwege ontdekt dat de
+// geslaagd, het archief en de gzip-dump zijn leesbaar, het schema is niet nieuwer
+// dan deze binary, en de geheimen gaan open. Een restore die pas halverwege ontdekt dat de
 // sleutel niet past, heeft de server dan al in onderhoud gezet voor niets.
 func (s *Service) PrepareRestore(ctx context.Context, backupID id.ID) (Plan, error) {
 	rec, err := s.Get(ctx, backupID)
@@ -58,6 +58,9 @@ func (s *Service) PrepareRestore(ctx context.Context, backupID id.ID) (Plan, err
 	}
 	if p.manifest.SchemaVersion > target {
 		return Plan{}, fmt.Errorf("%w: %w: de back-up heeft schema %d, deze binary %d", ErrNotRestorable, ErrSchemaNewer, p.manifest.SchemaVersion, target)
+	}
+	if err := withDump(p.file, func(r io.Reader) error { return validateDump(ctx, r) }); err != nil {
+		return Plan{}, err
 	}
 	var sealed []byte
 	if p.plain, sealed, err = archiveContents(p.file); err != nil {
@@ -127,4 +130,36 @@ func writeConfigFile(dir string, f configFile) error {
 		return err
 	}
 	return os.Rename(tmp, target)
+}
+
+// validateDump leest de gzip volledig, inclusief trailer en volgende leden. De
+// SQL blijft buiten het geheugen; inhoudelijk toetsen blijft de hersteltest.
+func validateDump(ctx context.Context, r io.Reader) error {
+	zr, err := gzip.NewReader(contextReader{ctx: ctx, r: r})
+	if err != nil {
+		return fmt.Errorf("%w: de dump is geen leesbare gzip: %w", ErrNotRestorable, err)
+	}
+	defer zr.Close()
+	n, err := io.Copy(io.Discard, contextReader{ctx: ctx, r: zr})
+	if err != nil {
+		return fmt.Errorf("%w: de dump is beschadigd: %w", ErrNotRestorable, err)
+	}
+	if n == 0 {
+		return fmt.Errorf("%w: de dump is leeg", ErrNotRestorable)
+	}
+	return nil
+}
+
+// contextReader controleert annulering ook tijdens het uitpakken, wanneer een
+// klein gecomprimeerd blok veel SQL oplevert zonder de bron opnieuw te lezen.
+type contextReader struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (r contextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.r.Read(p)
 }

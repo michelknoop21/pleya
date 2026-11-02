@@ -1,0 +1,17 @@
+# Task6 backend — gezamenlijke reviewfixes
+
+Roadmap **C-05/S4/S22.5/S14.5**, branch `feat/server-gap-metadata-overrides`, basis `5136ed7f43b5d886f86172300ea48faf2182fcd9`. Eén fixronde op het exact geverifieerde oorspronkelijke frozen pakket; geen eigen commit/push/merge/deploy. **I1/M1/M2 hersteld, frozen voor verse scopedfixreview; geen acceptatieclosure.**
+
+- **I1:** manual-edits vullen alleen ontbrekend legacy-bronbewijs aan. Bestaande actuele bronwaarden, inclusief expliciet null na NFO-verwijdering, worden nooit door oude effectieve waarden vervangen. Echte keyless FSSidecar-volgorde met tijdelijke bestanden: A→bestand weg én A→vier velden weg→nieuwe manual-edit→unlock, verse Stores; bron-null behouden, veilige409/lock, nooit A terug. Scanner-/legacy-/lege-unlockregressies blijven groen.
+- **M1:** uitsluitend de nieuwe overrideroute decodeert één volledige JSON-body met EOF vóór enige write/audit. Tweede object, scalars en rommel geven400; volledige itemrij en alle auditrijen blijven bytegelijk. Normale trailing whitespace werkt. Algemene authdecoder ongemoeid; onjuiste EOF-comment hersteld.
+- **M2:** catalogus houdt `id.ID` en domeinvelden zonder wiretags. Nieuwe `api/wire_metadata_overrides.go` vormt via expliciete zesveldmapper de API-response met string-ID. Mappertest bewaart lege waarde/bron/lock en verhindert doorlekken van toekomstige interne velden. OpenAPI/generatedtypes blijven exact gelijk.
+
+**Delta:** `catalog/store_metadata_overrides.go`, `api/handlers_metadata_overrides.go`, twee bestaande regressiebestanden, nieuwe wirevorm/mappertest; originele QA-overdracht, S22.5-masterlijst en uitvoeringsplan reconciliëren de reviewstatus. Geen nieuwe feature, migratie, provider of frontend.
+
+**Bewijs** onder `/tmp/task5-overrides-1102/`: `fix-red.log` reproduceert I1 en M1 vóór herstel; `fix-negative-summary.log` plus drie `fix-negative-*.log` bewijzen gedrags-RED voor elk van de drie fixes en herstel van alle mutaties. Finale `fix-final.log`: **18 hoofdtests/20 incl. subtests PASS,0SKIP/FAIL**, inclusief encryptedrestore32; daarna focused vet exit0. `fix-protocol.log`: OpenAPI/146fixtures PASS; `fix-types-fresh.log` PASS; `fix-responses.log`: echte synthetische API-antwoorden schema-conform, inclusief string item_id. `fix-ci-checks.log`: **All checks passed**, drie gebruikelijke CI-only DCLscans expliciet SKIP. `git diff --check` PASS. Bestaande Fluttercontract143PASS blijft ongewijzigd van toepassing; geen Fluttercodewijziging in deze fixronde.
+
+**Pakket:** fix-only `/tmp/task5-overrides-1102/fix-only.diff` en `fix-only.sha256`; volledig bijgewerkt `/tmp/task5-overrides-1102/fix-frozen.diff` en `fix-frozen.sha256`. Nog open: verse onafhankelijke scopedfixreview, normale commithooks bij roots commit, frontendeditor/visuele pariteit, artworkpins en gezamenlijke release/NAS/TestFlight-acceptatie. Geen uitvoeringsblocker; uitsluitend eigen synthetische database gebruikt.
+
+Verse onafhankelijke fixreview: **PASS**; I1/M1/M2 gesloten, geen nieuwe bevindingen. Normale hooks volgen bij deze lokale commit. Frontend, artworkpins en volledige releaseacceptatie blijven open.
+
+**Integratiecheckpoint:** backendcommit219e8d8f96fa7a6bbd060abcd59994306c6cb034 is via gewone hooks groen gecommit en lokaal geïntegreerd als7536d754e. De hierboven beschreven reviewoverdracht is historisch; de verse onafhankelijke fixreview sloot I1/M1/M2 met PASS. Frontend, pins en gezamenlijke releaseacceptatie blijven open.

@@ -8,11 +8,18 @@
  * uitgegrijsd.
  */
 import { PleyaClient } from '../api/client';
+import { streamSessions } from '../player/streamSessionCache';
+import { addToList } from './addToList.svelte';
 import type { Capabilities, Info, Library, ServerDetail, User } from '../api/types';
-import { describeError } from '../api/errors';
+import { ApiError, TransportError, describeError } from '../api/errors';
 import { readLastContact, writeLastContact, type LastContact } from './lastContact';
 
 export type SessionPhase = 'starting' | 'setup' | 'signed-out' | 'ready' | 'unreachable';
+
+/** Geen verbinding of een 5xx zegt niets over de tokens, dus dat is geen uitloggen. */
+function isOutage(err: unknown): boolean {
+  return err instanceof TransportError || (err instanceof ApiError && err.status >= 500);
+}
 
 class SessionState {
   phase = $state<SessionPhase>('starting');
@@ -34,6 +41,8 @@ class SessionState {
       client ??
       new PleyaClient({
         onSessionLost: () => {
+          streamSessions.clear();
+          addToList.reset();
           this.server = null;
           this.libraries = [];
           this.me = null;
@@ -93,9 +102,7 @@ class SessionState {
     try {
       this.info = await this.client.info();
     } catch (err) {
-      this.error = describeError(err);
-      this.lastContact = readLastContact();
-      this.phase = 'unreachable';
+      this.#markUnreachable(err);
       return;
     }
 
@@ -106,7 +113,12 @@ class SessionState {
 
     const restored = await this.client.restore();
     if (!restored) {
-      this.phase = 'signed-out';
+      if (this.client.refreshUnavailable) this.#markUnreachable();
+      else {
+        const refused = this.client.refreshRefused;
+        if (refused) this.error = describeError(refused);
+        this.phase = 'signed-out';
+      }
       return;
     }
     await this.load();
@@ -114,6 +126,7 @@ class SessionState {
 
   /** Haalt op wat achter authenticatie zit. Aanroepen na setup of login. */
   async load(): Promise<void> {
+    const generation = this.client.sessionGeneration;
     try {
       const [server, libraries, me] = await Promise.all([
         this.client.server(),
@@ -124,6 +137,7 @@ class SessionState {
           ? this.client.me().catch(() => null)
           : Promise.resolve(null)
       ]);
+      if (generation !== this.client.sessionGeneration) return;
       this.server = server;
       this.libraries = libraries;
       this.me = me;
@@ -136,13 +150,31 @@ class SessionState {
         libraries: libraries.map((l) => ({ id: l.id, kind: l.kind }))
       });
     } catch (err) {
-      this.error = describeError(err);
+      if (generation !== this.client.sessionGeneration) return;
+      if (this.client.refreshUnavailable || isOutage(err)) {
+        this.#markUnreachable(err);
+        return;
+      }
+      this.error = describeError(this.client.refreshRefused ?? err);
       this.phase = 'signed-out';
     }
   }
 
+  /**
+   * De server antwoordt nu niet, of de verversing lukte niet zonder dat het token
+   * is afgewezen (429, 5xx, geen verbinding). Dat tweede is geen uitloggen: de
+   * sessie bestaat nog, en de poging die onbereikbaar elke 30 s doet, herstelt
+   * hem zonder dat iemand opnieuw hoeft in te loggen.
+   */
+  #markUnreachable(err?: unknown): void {
+    this.error = err === undefined ? null : describeError(err);
+    this.lastContact = readLastContact();
+    this.phase = 'unreachable';
+  }
+
   /** Na een geslaagde setup of login: info opnieuw lezen en doorlopen. */
   async afterAuth(): Promise<void> {
+    streamSessions.clear();
     try {
       this.info = await this.client.info();
     } catch {
@@ -157,7 +189,12 @@ class SessionState {
    * heeft ingetrokken (een geroteerde ondertekensleutel).
    */
   async signOut(options: { local?: boolean } = {}): Promise<void> {
-    await this.client.signOut({ remote: !options.local && this.capabilities?.sessions === true });
+    streamSessions.clear();
+    addToList.reset();
+    const pending = this.client.signOut({ remote: !options.local && this.capabilities?.sessions === true });
+    const generation = this.client.sessionGeneration;
+    await pending;
+    if (generation !== this.client.sessionGeneration) return;
     this.server = null;
     this.libraries = [];
     this.me = null;

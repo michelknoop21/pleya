@@ -20,6 +20,21 @@ mixin ServerAuthorityGuard {
     }
   }
 
+  /// Canonical collections: creating one, changing its membership, deleting
+  /// it. On Plex and Jellyfin this is [canManageServerMetadata]. On Pleya
+  /// Server it is the owner role alone, while the rest of the canonical
+  /// metadata has no write path there. It is deliberately not
+  /// [canAdministerServer]: a Pleya admin does not manage canonical
+  /// collections. Sharing one is the exception and goes through
+  /// [assertCanAdministerServer]. Unwired refuses.
+  bool Function()? canManageCollections;
+
+  void assertCanManageCollections() {
+    if (canManageCollections?.call() != true) {
+      throw const MediaServerAuthException('Only the server owner can change collections', statusCode: 403);
+    }
+  }
+
   /// Server administration beyond metadata: users, library access, jobs and
   /// scans on backends whose admin role is wider than the owner rule
   /// (Pleya Server admins). Wired and evaluated like

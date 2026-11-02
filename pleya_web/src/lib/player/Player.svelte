@@ -20,8 +20,10 @@
   import PlayerIcon from './PlayerIcon.svelte';
   import PlayerTrackMenu from './PlayerTrackMenu.svelte';
   import { PlayerSession, type PlayerDeps } from './playerSession.svelte';
-  import { audioOptions, cueText, defaultAudioIndex, subtitleBlobUrl, subtitleOptions } from './tracks';
+  import { PlayerSubtitles } from './playerSubtitles.svelte';
+  import { audioOptions, defaultAudioIndex, subtitleOptions } from './tracks';
   import { deliveryLabel } from './labels';
+  import { ResumeFloor, resumePoint, WatchProgress } from './watchProgress';
   // Globaal en niet gescoped, met `.player` als voorvoegsel: zo blijft deze
   // component onder de 400 regels.
   import './player.css';
@@ -33,12 +35,16 @@
     deps: PlayerDeps;
     onclose: () => void;
     onlogin: () => void;
+    /** Het item is uitgespeeld; een afspeellijst gaat dan door. */
+    onfinished?: () => void;
   }
 
-  let { item, version, startAt = 0, deps, onclose, onlogin }: Props = $props();
+  let { item, version, startAt = 0, deps, onclose, onlogin, onfinished }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   const session = new PlayerSession(deps);
+  // svelte-ignore state_referenced_locally
+  const subtitles = new PlayerSubtitles(deps.api, () => version);
   let root = $state<HTMLElement | null>(null);
   let video = $state<HTMLVideoElement | null>(null);
 
@@ -53,11 +59,10 @@
   let fullscreen = $state(false);
   let menuOpen = $state(false);
   let active = $state(true);
-  let subtitleId = $state<string | null>(null);
-  let subtitleUrl = $state<string | null>(null);
-  let revokeSubtitle: (() => void) | null = null;
   let audioIndex = $state(0);
-  let caption = $state('');
+  let progress: WatchProgress | null = null;
+  let lastPosition = 0;
+  let resumeFloor = new ResumeFloor(0);
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const total = $derived(
@@ -65,7 +70,7 @@
   );
   const isHls = $derived(session.delivery?.kind === 'hls');
   const audio = $derived(audioOptions(version));
-  const subs = $derived(subtitleOptions(version));
+  const subs = $derived(subtitleOptions(version, deps.server?.embedded_subtitles === true));
   const audioSwitchable = $derived(
     !isHls && (video as { audioTracks?: { length: number } } | null)?.audioTracks?.length === audio.length
   );
@@ -76,17 +81,57 @@
       .join(' · ')
   );
   const modeLabel = $derived(session.delivery ? deliveryLabel(session.delivery.mode, version) : null);
-  const subtitleLabel = $derived(subs.usable.find((s) => s.id === subtitleId)?.label ?? null);
+  const subtitleLabel = $derived(subs.usable.find((s) => s.id === subtitles.activeId)?.label ?? null);
+  const subtitleNote = $derived(subtitles.preparing ? t('player.subtitlePreparing') : subtitles.error);
   const showChrome = $derived(active || paused || menuOpen || session.phase !== 'ready');
 
   function start(): void {
     if (!video) return;
+    subtitles.abort();
+    progress?.finish(false);
+    progress = null;
+    lastPosition = 0;
+    // The contract's duration, not the element's: a growing transcode has no end of its own yet.
+    const from = resumePoint(startAt, (version?.duration_ms ?? 0) / 1000);
+    resumeFloor = new ResumeFloor(from);
     audioIndex = 0;
-    void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt });
+    void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt: from });
   }
 
   $effect(() => {
     if (session.delivery) audioIndex = session.delivery.kind === 'hls' ? 0 : defaultAudioIndex(audio);
+  });
+
+  // Teardown empties the element, so a report after an error reads the last position that played.
+  function samplePosition(): number {
+    if (video && session.phase === 'ready') lastPosition = resumeFloor.position(video.currentTime);
+    return lastPosition;
+  }
+
+  // On `playing`, not `play`: `play` fires before a resume seek lands and would report position 0.
+  function playing(): void {
+    if (!video || session.phase !== 'ready') return;
+    progress ??= new WatchProgress({
+      report: (body, keepalive) => deps.api.reportWatchState(body, keepalive),
+      enabled: deps.server?.watch_state === true,
+      ownership: deps.server?.watch_state_ownership === true,
+      itemId: item.id, revision: item.user_state?.revision,
+      sample: () => ({ position: samplePosition(), duration: total }),
+      ...(deps.timers ? { timers: deps.timers } : {})
+    });
+    progress.play();
+  }
+
+  // De film speelt door; zonder dit gaat een mislukte voorbereiding achter verborgen knoppen schuil.
+  $effect(() => {
+    if (subtitles.error) poke();
+  });
+
+  $effect(() => {
+    if (session.phase === 'error') {
+      progress?.finish(false);
+      progress = null;
+    }
   });
 
   function poke(): void {
@@ -104,6 +149,7 @@
   function seekTo(seconds: number): void {
     if (!video || session.phase !== 'ready') return;
     const max = isHls ? seekLimit : total || video.duration;
+    resumeFloor.release();
     video.currentTime = clamp(seconds, 0, Number.isFinite(max) ? max : seconds);
   }
 
@@ -122,36 +168,6 @@
       // iOS Safari kent alleen volledig scherm op de video zelf.
       (video as { webkitEnterFullscreen?: () => void } | null)?.webkitEnterFullscreen?.();
     }
-  }
-
-  async function chooseSubtitle(id: string | null): Promise<void> {
-    subtitleId = id;
-    caption = '';
-    revokeSubtitle?.();
-    revokeSubtitle = null;
-    subtitleUrl = null;
-    if (!id) return;
-    try {
-      const loaded = await subtitleBlobUrl(() => deps.api.subtitleText(id));
-      if (subtitleId !== id) return loaded.revoke();
-      revokeSubtitle = loaded.revoke;
-      subtitleUrl = loaded.url;
-    } catch {
-      subtitleId = null;
-    }
-  }
-
-  /**
-   * De ondertitel tekent deze speler zelf, boven de besturing. De browser zou
-   * hem tegen de onderrand van het element zetten, en dat is hier het hele
-   * venster: onder de knoppen. Het spoor staat daarom op `hidden` (de cues
-   * lopen wel, ze worden alleen niet door de browser getekend).
-   */
-  function syncCues(event: Event): void {
-    const track = (event.currentTarget as HTMLTrackElement).track;
-    if (!track) return;
-    if (track.mode !== 'hidden') track.mode = 'hidden';
-    caption = cueText(track.activeCues as ArrayLike<VTTCue> | null);
   }
 
   function chooseAudio(index: number): void {
@@ -190,6 +206,7 @@
 
   function syncTime(): void {
     if (!video) return;
+    samplePosition();
     current = video.currentTime;
     mediaDuration = video.duration;
     const b = video.buffered;
@@ -198,7 +215,7 @@
     seekLimit = s.length ? s.end(s.length - 1) : 0;
   }
 
-  const onPageHide = () => session.dispose(true);
+  const onPageHide = () => { subtitles.abort(); progress?.finish(true); progress = null; session.dispose(true); };
   const onPageShow = (e: PageTransitionEvent) => {
     if (e.persisted) start();
   };
@@ -217,8 +234,10 @@
     window.removeEventListener('pageshow', onPageShow);
     document.removeEventListener('fullscreenchange', onFullscreen);
     if (idleTimer) clearTimeout(idleTimer);
+    progress?.finish(false);
+    progress = null;
     session.dispose(false);
-    revokeSubtitle?.();
+    subtitles.dispose();
   });
 </script>
 
@@ -238,7 +257,10 @@
     bind:this={video}
     playsinline
     onplay={() => (paused = false)}
-    onpause={() => (paused = true)}
+    onplaying={playing}
+    onpause={() => { paused = true; progress?.report(); }}
+    onseeked={() => progress?.report()}
+    onended={() => { paused = true; progress?.finish(false); progress = null; onfinished?.(); }}
     ontimeupdate={syncTime}
     ondurationchange={syncTime}
     onprogress={syncTime}
@@ -250,13 +272,13 @@
     onerror={() => session.mediaFailed(video?.error ?? null)}
     onclick={toggle}
   >
-    {#if subtitleUrl}
-      <track kind="subtitles" src={subtitleUrl} label={subtitleLabel ?? ''} default onload={syncCues} oncuechange={syncCues} />
+    {#if subtitles.url}
+      <track kind="subtitles" src={subtitles.url} label={subtitleLabel ?? ''} default onload={subtitles.syncCues} oncuechange={subtitles.syncCues} />
     {/if}
   </video>
 
-  {#if caption && subtitleUrl}
-    <p class="caption" class:caption--low={!showChrome}>{caption}</p>
+  {#if subtitles.caption && subtitles.url}
+    <p class="caption" class:caption--low={!showChrome}>{subtitles.caption}</p>
   {/if}
 
   <div class="scrim scrim--top" aria-hidden="true"></div>
@@ -319,9 +341,13 @@
         {audioSwitchable}
         onaudio={chooseAudio}
         subtitles={subs.usable}
-        {subtitleId}
+        subtitleId={subtitles.pendingId ?? subtitles.activeId}
+        error={subtitles.error}
+        loading={subtitles.pendingId !== null}
+        preparing={subtitles.preparing}
         skippedSubtitles={subs.skipped}
-        onsubtitle={(id) => void chooseSubtitle(id)}
+        onsubtitle={(id) => void subtitles.choose(id)}
+        onsubtitleretry={subtitles.failedId ? () => subtitles.retry() : null}
         onclose={() => (menuOpen = false)}
       />
     {/if}
@@ -335,7 +361,10 @@
       {muted}
       {rate}
       {fullscreen}
-      subtitlesOn={subtitleId !== null}
+      subtitlesOn={subtitles.activeId !== null}
+      subtitlePreparing={subtitles.preparing}
+      {subtitleNote}
+      onsubtitleretry={subtitles.failedId ? () => subtitles.retry() : null}
       {menuOpen}
       ontoggle={toggle}
       onseek={seekTo}

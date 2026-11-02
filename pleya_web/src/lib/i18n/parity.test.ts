@@ -15,6 +15,20 @@ const nl: Record<string, string> = { ...sharedNl, ...webNl };
  * vrijwel zeker een vergeten kopie.
  */
 const SAME_ON_PURPOSE = [
+  // Artwork: Poster is een gangbaar Nederlands leenwoord; TMDB is een eigennaam.
+  'admin.metadata.artwork.poster',
+  'admin.metadata.artwork.source.tmdb',
+  // Bestaande bronnotice blijft bewust ongewijzigd in beide talen.
+  'admin.metadata.artwork.creditNotice',
+  // S22.5: providernaam en gangbaar leenwoord zijn identiek.
+  'admin.metadata.editor.source.tmdb',
+  'admin.metadata.editor.field.genres',
+  // Een Nederlands leenwoord en een cijfernotatie.
+  'downloads.title',
+  'history.ratingScore',
+  // Gangbare Nederlandse leenwoorden voor de catalogusbediening.
+  'catalog.filters',
+  'catalog.genre',
   'admin.tok.list.title',
   'admin.tok.owner',
   'admin.tok.mcp.title',

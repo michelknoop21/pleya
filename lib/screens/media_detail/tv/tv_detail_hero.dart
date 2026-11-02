@@ -64,7 +64,7 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
     final info = _detailFileInfo;
     final target = _detailAudioTarget;
     if (info == null || target == null) {
-      return [for (final label in buildMediaQualityLabels(metadata)) (icon: null, text: label)];
+      return [for (final label in buildMediaQualityLabels(_playedItem(metadata))) (icon: null, text: label)];
     }
     final audio = _detailAudioTracks.where((track) => track.id == _selectedDetailAudioTrackId).firstOrNull;
     final subtitle = _detailSubtitleTracks.where((track) => track.id == _selectedDetailSubtitleTrackId).firstOrNull;

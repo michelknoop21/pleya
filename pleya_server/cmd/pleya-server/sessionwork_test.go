@@ -16,14 +16,40 @@ import (
 )
 
 type fakeSweeper struct {
-	idle  time.Duration
-	swept []id.ID
-	err   error
+	idle     time.Duration
+	swept    []id.ID
+	err      error
+	purged   int64
+	purgeErr error
+}
+
+func (f *fakeSweeper) PurgeStreamSessions(context.Context, time.Time) (int64, error) {
+	return f.purged, f.purgeErr
 }
 
 func (f *fakeSweeper) SweepIdleSessions(_ context.Context, _ time.Time, idle time.Duration) ([]id.ID, error) {
 	f.idle = idle
 	return f.swept, f.err
+}
+
+func TestPurgeStreamSessionsOnceLogsCountAndSurvivesAnError(t *testing.T) {
+	var buf bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&buf, nil))
+	now := time.Date(2026, 10, 30, 4, 0, 0, 0, time.UTC)
+
+	if n := purgeStreamSessionsOnce(context.Background(), &fakeSweeper{purged: 3}, now, log); n != 3 {
+		t.Fatalf("ronde gaf %d", n)
+	}
+	if out := buf.String(); !strings.Contains(out, "count=3") || !strings.Contains(out, "source=system") {
+		t.Fatalf("de logregel mist het aantal of de bron: %s", out)
+	}
+	buf.Reset()
+	if n := purgeStreamSessionsOnce(context.Background(), &fakeSweeper{purgeErr: errors.New("geen database")}, now, log); n != 0 {
+		t.Fatalf("een mislukte ronde gaf %d", n)
+	}
+	if !strings.Contains(buf.String(), "level=WARN") {
+		t.Fatalf("geen waarschuwing: %s", buf.String())
+	}
 }
 
 // Eén ronde leest de levensduur die nu geldt, meldt elk ingetrokken id aan het

@@ -116,6 +116,7 @@ TitleRef _seerrRef(SeerrMedia m) => TitleRef(
   title: m.title,
   year: int.tryParse(m.year ?? ''),
   tmdbId: m.tmdbId,
+  idsAreExternal: true,
 );
 
 /// What [_gateTitles] kept, each with its facts (null without a facts

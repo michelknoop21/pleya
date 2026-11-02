@@ -89,7 +89,9 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
       selectedSubtitleStreamId: widget.selectedSubtitleStreamId,
     );
     final canSwitchSourceSubtitles =
-        versionQuality.canSwitch && versionQuality.isTranscoding && widget.metadata.backend == MediaBackend.plex;
+        versionQuality.canSwitch &&
+        ((versionQuality.isTranscoding && widget.metadata.backend == MediaBackend.plex) ||
+            widget.serverSupportsSubtitleSelection);
     return TrackControlsState(
       availableVersions: versionQuality.availableVersions,
       selectedMediaIndex: widget.selectedMediaIndex,
@@ -103,6 +105,7 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
           ? versionQuality.sourceSubtitleTracks
           : const <MediaSubtitleTrack>[],
       selectedSubtitleStreamId: canSwitchSourceSubtitles ? versionQuality.selectedSubtitleStreamId : null,
+      deferredSubtitles: widget.deferredSubtitles,
       sourcePartId: canSwitchSourceSubtitles ? widget.sourcePartId : null,
       sourceDurationMs: widget.metadata.durationMs,
       boxFitMode: widget.boxFitMode,
@@ -124,7 +127,9 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
       onToggleAlwaysOnTop: onToggleAlwaysOnTop,
       onSwitchVersion: versionQuality.canSwitch ? (i) => _switchVersionAndQuality(newMediaIndex: i) : null,
       onSwitchQualityPreset: versionQuality.canSwitch ? (p) => _switchVersionAndQuality(newPreset: p) : null,
-      onSwitchAudioStreamId: versionQuality.canSwitch ? (id) => _switchVersionAndQuality(newAudioStreamId: id) : null,
+      onSwitchAudioStreamId: versionQuality.canSwitch && widget.serverSupportsAudioSelection
+          ? (id) => _switchVersionAndQuality(newAudioStreamId: id)
+          : null,
       onSwitchSubtitleStreamId: canSwitchSourceSubtitles
           ? (id) => _switchVersionAndQuality(newSubtitleStreamId: id)
           : null,

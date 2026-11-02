@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
@@ -92,6 +93,14 @@ void main() {
 
     expect(find.text('Continue watching'), findsOneWidget);
     expect(find.byType(MobileMediaCard), findsNWidgets(2));
+  });
+
+  testWidgets('rail automation identifies its representative source item', (tester) async {
+    await pump(tester, MobileMediaRail(hub: hub(count: 1), railIndex: 0));
+    final node = tester
+        .widgetList<AutomationNode>(find.byType(AutomationNode))
+        .singleWhere((node) => node.instance == '0.0');
+    expect(node.state?.call(), {'item_id': 'i0'});
   });
 
   // DEC-132: a seed row's reason ("Because you watched X") is its rail title;

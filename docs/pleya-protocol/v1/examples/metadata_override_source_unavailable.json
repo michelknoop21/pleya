@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.override_source_unavailable",
+    "message": "current source unavailable; override retained",
+    "retryable": true
+  }
+}

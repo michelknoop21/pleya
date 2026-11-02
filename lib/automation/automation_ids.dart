@@ -217,6 +217,11 @@ class AutomationIds {
   /// with the ring here, and Menu from the detail rail comes back to it.
   static const String mediaDetailPlay = 'media-detail.play';
 
+  /// The "Bron" card on the iPhone detail of a title with more than one
+  /// source; its state names the server the page is bound to, and a tap opens
+  /// the source picker to switch (unified, DEC-XXX).
+  static const String mediaDetailSource = 'media-detail.source';
+
   /// Visible preparation feedback; each concurrent notice has its own instance.
   static const String noticeBusy = 'notice.busy';
 
@@ -551,6 +556,11 @@ class AutomationIds {
   /// tab and sub-view, so a scenario can prove which layer is open.
   static const String playerPanel = 'player.panel';
 
+  /// Version/quality choices in the shared picker.
+  static const String playerSourceChoice = 'player.source_choice';
+  static const String playerSettingsQuality = 'player.settings.quality';
+  static const String playerTracksButton = 'player.tracks_button';
+
   /// One pill of the panel. Instanceable: `[information|video|audio|subtitles]`;
   /// `state.active` says whether it is the open tab.
   static const String playerPanelTab = 'player.panel.tab';
@@ -872,6 +882,7 @@ class AutomationIds {
     bigpLibraryAsk,
     playerPanelTab,
     playerPanelRow,
+    playerSourceChoice,
     requestsMineItem,
     requestsForm,
     requestsFormOption,
@@ -993,6 +1004,7 @@ class AutomationIds {
     {'id': mediaDetailTab, 'role': 'chip', 'instanceable': true},
     {'id': mediaDetailActivity, 'role': 'text', 'instanceable': false},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailSource, 'role': 'button', 'instanceable': false},
     {'id': noticeBusy, 'role': 'status', 'instanceable': true},
     {'id': serverStatus, 'role': 'dialog', 'instanceable': false},
     {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},
@@ -1077,6 +1089,9 @@ class AutomationIds {
     {'id': playerPanel, 'role': 'region', 'instanceable': false},
     {'id': playerPanelTab, 'role': 'tab', 'instanceable': true},
     {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
+    {'id': playerSourceChoice, 'role': 'button', 'instanceable': true},
+    {'id': playerSettingsQuality, 'role': 'button', 'instanceable': false},
+    {'id': playerTracksButton, 'role': 'button', 'instanceable': false},
     {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
     {'id': playerHandoffButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},

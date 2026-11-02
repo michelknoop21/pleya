@@ -104,9 +104,8 @@ Een restore zet de database en `/config` terug naar het moment van de back-up. A
 ```sh
 # De zin staat in restore_confirmation van de back-up en moet letterlijk terug.
 curl -s -H "Authorization: Bearer $A" $B/backups/<id> | jq -r .restore_confirmation
-curl -s -X POST -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
-  -d '{"confirm":"herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren"}' \
-  $B/backups/<id>/restore
+# Lees en beoordeel de volledige zin hierboven voordat je hem gebruikt.
+# Zet die exacte actuele tekst als confirm in de aanvraagbody; neem geen oude voorbeeldzin over.
 ```
 
 Wat er dan gebeurt:
@@ -125,7 +124,20 @@ Zonder Pleya kan het ook: `tar -xf <back-up>.tar database.sql.gz` en `zcat datab
 
 Een nieuwe image die migraties meebrengt, maakt vóór de eerste migratie zelf een back-up (`trigger: upgrade`). Lukt die niet, bijvoorbeeld omdat `/backups` niet gemount of niet beschrijfbaar is, dan start de server niet en zegt het log waarom. Dat is opzet: migraties lopen alleen vooruit, en zonder back-up is er geen weg terug.
 
-Start je een oudere image op een database die een nieuwere image al gemigreerd heeft, dan weigert de server te starten met de melding dat de database nieuwer is dan de binary. Terug naar de oude versie gaat alleen door de upgrade-back-up terug te zetten met die oude versie, of door de nieuwe image weer te starten.
+Start je een oudere image op een database die een nieuwere image al gemigreerd heeft, dan weigert de server te starten met de melding dat de database nieuwer is dan de binary. Die weigering betekent ook dat je de restore-API van die oude image niet kunt gebruiken om de nieuwere database eerst terug te zetten.
+
+Een rollback omvat de upgrade-back-up van de database, de bijbehorende `/config` en de passende oude image. Voorkom dat na herstel de nieuwe image automatisch opnieuw start: die zou de teruggezette database meteen weer vooruit migreren. Kies vooraf een gevalideerde herstelroute met gestopte server en passende versie, of een afzonderlijk bewezen procedure die de nieuwe server na de restore laat stoppen zonder automatische herstart. Het gewone Terugzetten op een container met `restart: unless-stopped` is daarom op zichzelf geen versie-rollback.
+
+De lokale [schema30/32-imageproef met restartpolicy](qa/2026-11-02-server-rollback-restart.md) bewijst de volgende beperkte operatorroute:
+
+1. Bewaar de juiste oude image, de passende geslaagde back-up en de config/signingkey. Leg de actuele container en oorspronkelijke restartpolicy vast.
+2. Zet uitsluitend de huidige servercontainer vóór Terugzetten op `docker update --restart=no <huidige-servercontainer>` en controleer policy `no`. Laat Compose de nieuwe image tussendoor niet opnieuw aanmaken: dat kan de policy weer overschrijven.
+3. Gebruik de gewone restore-API met de exacte `restore_confirmation`. Wacht na202 de echte proces-exit75 af en controleer het teruggezette schema en de configuratie. Laat de nieuwe image nu gestopt.
+4. Start exact de bewaarde oude image met de herstelde database en config, pas voor deze image weer met de normale restartpolicy. Controleer readyz, schema, IDs, rechten en voortgang. Start nooit alleen een oude binary op het nog nieuwe schema.
+
+Een weigering vóór onderhoud is geen geslaagde restore. Herstel de oorspronkelijke restartpolicy alleen nadat is vastgesteld dat de huidige binary nog bij het bestaande schema past; schakel hem niet blind terug in na een onzekere hersteluitkomst.
+
+Deze route is lokaal op historische schema30/32-images bewezen, inclusief een negatieve proef waarin `unless-stopped` de teruggezette database meteen opnieuw naar32 migreerde. De volledige herstelronde met de exact bewaarde productieimage op de NAS blijft afzonderlijk open; ook schema33/pins en off-site herstel vallen buiten dit bewijs. Wijzigingen na het tijdstip van de teruggezette back-up gaan bij rollback verloren.
 
 ## Vier foutcodes
 
@@ -137,3 +149,7 @@ Start je een oudere image op een database die een nieuwere image al gemigreerd h
 | bronbestand kapot | `playback.file_corrupt` (422) | `POST /playback/plan` als ook een tweede analyse van het bestand mislukt |
 
 De test `TestFailurePathsEachHaveTheirOwnCode` laat alle vier met een echte oorzaak optreden: `/dev/full` als schijf, een database op een poort waar niets luistert, een ffmpeg die aan een segfault sterft en een bestand vol rommel.
+
+## Lokale versiegrensproef
+
+De synthetische [schema-24/30-rehearsal](qa/2026-11-01-server-gap-rollback.md) bewijst echte versleutelde backup, upgrade, datamutaties en restore van database plus config. De versieguard weigert 24 op 30, accepteert de teruggezette 24 en de nieuwe versie migreert daarna opnieuw vooruit. Dit is geen oude-image- of productieherstelproef. Gebruik deze uitkomst niet als toestemming om zonder bewezen image-/herstartprocedure een NAS-rollback te doen.

@@ -93,6 +93,11 @@
       "note": "serie met episode_count en watched_episode_count"
     },
     {
+      "file": "item_show_with_external_ids.json",
+      "schema": "Item",
+      "note": "serie met een bewezen TMDB-nummer (unified)"
+    },
+    {
       "file": "item_episode.json",
       "schema": "Item",
       "note": "aflevering met parent_id en index"
@@ -163,6 +168,11 @@
       "file": "watch_state_event_backlog.json",
       "schema": "WatchStateEvent",
       "note": "offline wachtrij, verwerft nooit"
+    },
+    {
+      "file": "watch_state_event_copy.json",
+      "schema": "WatchStateEvent",
+      "note": "voorstel DEC-XXX: de stand van een andere bron, geen kijkactie"
     },
     {
       "file": "watch_state_page.json",
@@ -479,14 +489,109 @@
       "note": "BP-08b persoonlijk geheugen"
     },
     {
+      "file": "ratings_page.json",
+      "schema": "ItemPage",
+      "note": "GET /ratings, de laatst gewaardeerde eerst, elk item draagt rating"
+    },
+    {
       "file": "memory_clear.json",
       "schema": "MemoryClear",
       "note": "BP-08b persoonlijk geheugen"
     },
     {
+      "file": "playback_plan_selection_request.json",
+      "schema": "PlaybackPlanRequest",
+      "note": "vrijgegeven expliciete kwaliteit en audiokeuze"
+    },
+    {
+      "file": "playback_plan_selection.json",
+      "schema": "PlaybackPlan",
+      "note": "vrijgegeven expliciete kwaliteit en audiokeuze"
+    },
+    {
+      "file": "collection.json",
+      "schema": "Collection",
+      "note": "S19: de eigenaar ziet shared_with; item_count en artwork zijn per kijker"
+    },
+    {
+      "file": "collection_page.json",
+      "schema": "CollectionPage",
+      "note": "S19: GET /collections: een eigen en een gedeelde verzameling"
+    },
+    {
+      "file": "collection_create_request.json",
+      "schema": "CreateCollectionRequest",
+      "note": "S19: POST /collections met zichtbaarheid per gebruiker"
+    },
+    {
+      "file": "collection_update_request.json",
+      "schema": "UpdateCollectionRequest",
+      "note": "S19: PATCH /collections/{id}: wat ontbreekt blijft staan"
+    },
+    {
+      "file": "playlist.json",
+      "schema": "Playlist",
+      "note": "S19: duration_ms is de som van de rijen die de eigenaar ziet"
+    },
+    {
+      "file": "playlist_page.json",
+      "schema": "PlaylistPage",
+      "note": "S19: GET /playlists: alleen de eigen lijsten"
+    },
+    {
+      "file": "playlist_create_request.json",
+      "schema": "CreatePlaylistRequest",
+      "note": "S19: POST /playlists"
+    },
+    {
+      "file": "playlist_update_request.json",
+      "schema": "UpdatePlaylistRequest",
+      "note": "S19: PATCH /playlists/{id}"
+    },
+    {
+      "file": "list_items_request.json",
+      "schema": "ListItemsRequest",
+      "note": "S19: POST op .../items, in de gewenste volgorde"
+    },
+    {
+      "file": "list_replace_request.json",
+      "schema": "ReplaceListItemsRequest",
+      "note": "S19: PUT op .../items, met de revisie die de client las"
+    },
+    {
+      "file": "error_list_invalid.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: een dubbel item in PUT .../items"
+    },
+    {
+      "file": "error_list_not_owner.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: de lijst is zichtbaar maar van een ander"
+    },
+    {
+      "file": "error_list_conflict.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: base_revision is niet meer de huidige; details.revision wel"
+    },
+    {
+      "file": "error_list_share_not_permitted.json",
+      "schema": "ErrorEnvelope",
+      "note": "S19: een member of restricted deelt een verzameling"
+    },
+    {
+      "file": "error_scope_insufficient.json",
+      "schema": "ErrorEnvelope",
+      "note": "17c.2: een API-token onder admin op een schrijfroute van eigen gegevens"
+    },
+    {
       "file": "info_item_activity.json",
       "schema": "Info",
       "note": "DEC-169: een server met de activiteit van het huishouden"
+    },
+    {
+      "file": "info_watch_state_copy.json",
+      "schema": "Info",
+      "note": "voorstel DEC-XXX: een server die copy op WatchStateEvent kent"
     },
     {
       "file": "item_activity.json",
@@ -507,6 +612,137 @@
       "file": "activity_sharing_request.json",
       "schema": "ActivitySharingRequest",
       "note": "DEC-169: gesloten aanvraag"
+    },
+    {
+      "file": "info_applied_false.json",
+      "schema": "Info",
+      "note": "Nieuwe vlaggen expliciet false; oude ontbrekende vlaggen blijven geldig."
+    },
+    {
+      "file": "info_applied_true.json",
+      "schema": "Info",
+      "note": "Applied Item en lookup samen, aparte adminstatus; geen dekkingclaim."
+    },
+    {
+      "file": "item_movie_applied.json",
+      "schema": "Item",
+      "note": "Keuze B, werkelijk toegepaste identiteit A."
+    },
+    {
+      "file": "item_movie_applied_unknown.json",
+      "schema": "Item",
+      "note": "Oude matched/manual-details bewijzen geen applied identiteit."
+    },
+    {
+      "file": "metadata_match_status_unknown.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Geldige film zonder kandidaat."
+    },
+    {
+      "file": "metadata_match_status_pending.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Duurzame toepassingsstatus, geen ruwe providerfout."
+    },
+    {
+      "file": "metadata_match_status_applied.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Duurzame toepassingsstatus, geen ruwe providerfout."
+    },
+    {
+      "file": "metadata_match_status_failed.json",
+      "schema": "MetadataMatchStatus",
+      "note": "Duurzame toepassingsstatus, geen ruwe providerfout."
+    },
+    {
+      "file": "error_applied_filter_invalid.json",
+      "schema": "ErrorEnvelope",
+      "note": "Gemengde of ongeldige applied-filter: HTTP400."
+    },
+    {
+      "file": "metadata_search_results.json",
+      "schema": "MetadataSearchResults",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "metadata_search_empty.json",
+      "schema": "MetadataSearchResults",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "metadata_candidate_details.json",
+      "schema": "MetadataCandidateDetails",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "error_metadata_unavailable.json",
+      "schema": "ErrorEnvelope",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "error_metadata_failed.json",
+      "schema": "ErrorEnvelope",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "error_metadata_invalid_query.json",
+      "schema": "ErrorEnvelope",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "info_metadata_search.json",
+      "schema": "Info",
+      "note": "Task5 additive read-only metadata window"
+    },
+    {
+      "file": "metadata_fields.json",
+      "schema": "MetadataFields",
+      "note": "S22.5 typed veldlocks/provenance binnen metadata-venster 1 november 2026"
+    },
+    {
+      "file": "metadata_overrides_request.json",
+      "schema": "MetadataOverridesRequest",
+      "note": "S22.5 typed veldlocks/provenance binnen metadata-venster 1 november 2026"
+    },
+    {
+      "file": "metadata_override_source_unavailable.json",
+      "schema": "ErrorEnvelope",
+      "note": "S22.5 typed veldlocks/provenance binnen metadata-venster 1 november 2026"
+    },
+    {
+      "file": "artwork_selection.json",
+      "schema": "ArtworkSelection",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "artwork_candidates.json",
+      "schema": "ArtworkCandidates",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "artwork_selection_request.json",
+      "schema": "ArtworkSelectionRequest",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "info_artwork_choices.json",
+      "schema": "Info",
+      "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "artwork_cache_stats.json",
+      "schema": "ArtworkCacheStats"
+    },
+    {
+      "file": "artwork_cache_purge_request.json",
+      "schema": "ArtworkCachePurgeRequest"
+    },
+    {
+      "file": "artwork_cache_confirmation_error.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "info_artwork_cache_admin.json",
+      "schema": "Info"
     }
   ]
 }

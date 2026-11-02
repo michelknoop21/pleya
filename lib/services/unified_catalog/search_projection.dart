@@ -16,6 +16,7 @@
 library;
 
 import '../../media/media_item.dart';
+import '../../media/unified/carried_external_ids.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/canonical_media_identity.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -89,6 +90,7 @@ Future<UnifiedSearchProjection> searchProjection(
   required Future<ExternalIds> Function(String serverId, String targetId) fetchExternalIds,
   List<MediaItem> people = const [],
   int maxConcurrentFetches = 4,
+  bool Function(MediaItem) trustStoredIdentity = storedIdentityIsSafe,
 }) async {
   if (results.isEmpty && people.isEmpty) return const UnifiedSearchProjection();
 
@@ -124,6 +126,7 @@ Future<UnifiedSearchProjection> searchProjection(
   final resolver = UnifiedIdentityResolver(
     fetchExternalIds: fetchExternalIds,
     maxConcurrentFetches: maxConcurrentFetches,
+    trustStoredIdentity: trustStoredIdentity,
   );
   final evidence = await resolver.resolveEvidence([
     for (final item in unifiable)

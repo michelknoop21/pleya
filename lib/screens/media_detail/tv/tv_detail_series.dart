@@ -118,6 +118,8 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
         episode,
         isOffline: widget.isOffline,
         openEpisodeItself: true,
+        // The State's context sits above the scope the page builds for its rows.
+        unifiedRouteContext: _unifiedTitle?.routeFor(episode),
         onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
         restoreTarget: TvFocusRestoreTarget(itemId: episode.id, containerId: sectionId),
       ),

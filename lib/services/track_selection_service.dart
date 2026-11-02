@@ -1058,6 +1058,9 @@ class TrackSelectionService {
     SubtitleTrack? preferredSecondarySubtitleTrack,
     double? defaultPlaybackSpeed,
     bool Function()? isCurrent,
+    // The subtitle was resolved before open and arrives later as a file. mpv
+    // has nothing to choose from yet, so resolving here would turn it off.
+    bool skipSubtitles = false,
     // Typed as returning a future rather than `Function(...)`: both are fired
     // without awaiting below, and `unawaited` needs a real future to accept.
     //
@@ -1132,6 +1135,7 @@ class TrackSelectionService {
     }
 
     if (!live()) return;
+    if (skipSubtitles) return _applyDefaultPlaybackSpeed(defaultPlaybackSpeed, isCurrent, live);
     // Select and apply subtitle track
     final subtitleResult = selectSubtitleTrack(realSubtitleTracks, preferredSubtitleTrack, selectedAudioTrack);
     final selectedSubtitleTrack = subtitleResult.track;
@@ -1186,14 +1190,15 @@ class TrackSelectionService {
       }
     }
 
-    // Apply default playback speed from settings
-    if (!live()) return;
-    if (defaultPlaybackSpeed != null && defaultPlaybackSpeed != 1.0) {
-      if (isCurrent == null) {
-        unawaited(player.setRate(defaultPlaybackSpeed));
-      } else {
-        await player.setRate(defaultPlaybackSpeed);
-      }
+    await _applyDefaultPlaybackSpeed(defaultPlaybackSpeed, isCurrent, live);
+  }
+
+  Future<void> _applyDefaultPlaybackSpeed(double? speed, bool Function()? isCurrent, bool Function() live) async {
+    if (!live() || speed == null || speed == 1.0) return;
+    if (isCurrent == null) {
+      unawaited(player!.setRate(speed));
+    } else {
+      await player!.setRate(speed);
     }
   }
 }

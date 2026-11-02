@@ -1,0 +1,103 @@
+name: tvos.my-pleya.libraries-cinema
+target: tvos-sim
+# LIB7 (DEC-092): Bibliotheken is bronbeheer on TV, not a second browsing
+# screen. `tvos.my-pleya.section-libraries` proves the generic Mijn Pleya
+# nested-route contract (opens, focus lands inside, Menu returns); this
+# scenario proves what changed underneath it — every row is a management row
+# and Select opens the action sheet, not a tab bar with content.
+#
+# `tvos.my-pleya.library-chooser` and `tvos.library.sort` exercised the
+# tab/chooser/grid contract this decision removes on TV. TV6 retired both:
+# this file replaces the chooser. Sorting lives in the catalog rail now;
+# `tvos.catalog.rail-sort-focus` covers its focus, and the order it produces
+# is TV8's "filters en sorteren" row.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
+  - press: down
+  # A-24c: the first Down puts the remote on Big P; the next is the Snel naar dock, and
+  # Bibliotheken is along it.
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[watchTogether]", timeout: 5000}
+  - walk: {direction: right, steps: 6, stopAt: "my_pleya.tile[libraries]", timeout: 60000, settle: 400}
+
+  - press: select
+  - wait_until: {id: "my_pleya.section[libraries]", timeout: 15000}
+  - settle: 1000
+  - snapshot: 00-bronbeheer-list
+
+  # Every library is a management row with its own title — not a tab, not a
+  # chooser chip.
+  - assert: {id: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", state: {title: Movies}}
+  - assert: {id: "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]", state: {title: Shows}}
+
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 8000}
+  - press: select
+  - settle: 800
+  - snapshot: 01-action-sheet-movies
+
+  # Menu closes the sheet, not the section — the remote lands back on the row
+  # that opened it.
+  - press: menu
+  - settle: 500
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 5000}
+  - snapshot: 02-sheet-closed
+
+  # Cinema A keeps native header actions and contiguous server-scoped ordering.
+  - press: up
+  - wait_until: {focused: "my_pleya.section.tile[libraries.refresh]", timeout: 5000}
+  - press: right
+  - wait_until: {focused: "my_pleya.section.tile[libraries.reorder]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[libraries.done]", timeout: 5000}
+  # Menu from the header dismisses only ordering, including the native release.
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[libraries.reorder]", timeout: 5000}
+  - assert: {id: "my_pleya.section[libraries]"}
+  - press: select
+  - wait_until: {id: "my_pleya.section.tile[libraries.done]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 5000}
+  - press: select
+  - snapshot: 02b-cinema-order-picked
+  - press: menu
+  - wait_until: {id: "my_pleya.section.tile[libraries.refresh]", timeout: 5000}
+  - settle: 500
+  - snapshot: 02c-cinema-order-closed
+
+  # State D: "Openen in Alle films" lands on the existing catalog with this
+  # library as a preset source filter — the same "Alle N" mechanism ROW1c
+  # already opens with a filter override, not a new browsing surface.
+  - press: select
+  - settle: 800
+  - press: up
+  - press: up
+  - press: up
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[movies]", timeout: 15000}
+  - settle: 1000
+  - snapshot: 03-opened-in-catalog
+
+  # SYS-1d: the catalog opens through `tvContentRouteRegistry`, inside the
+  # shell, so the top navigation stays on screen above it and Menu pops back
+  # to the row that opened it. The old plain push covered the shell.
+  - assert: {id: nav.movies, insideViewport: true}
+  - assert: {id: "tv.catalog.grid[movies]", below: nav.movies}
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 8000}
+  - settle: 800
+  - snapshot: 04-back-on-row

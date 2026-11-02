@@ -37,7 +37,12 @@ class MediaIdentity {
   /// answers. **Ambiguity never resolves.** Two candidates that both look
   /// right mean the library holds two versions or two different films with the
   /// same name, and picking one would put the wrong entry behind a poster.
-  MediaItem? pickMatch(List<({MediaItem item, ExternalIds ids})> candidates) {
+  ///
+  /// [allowTitleFallback] false stops after the guid and external-id tiers. A
+  /// backend whose own identity data is the only thing that can prove a match
+  /// (Pleya Server) turns it off, so a same-named title is never taken for the
+  /// same title.
+  MediaItem? pickMatch(List<({MediaItem item, ExternalIds ids})> candidates, {bool allowTitleFallback = true}) {
     final wanted = guid;
     if (wanted != null && wanted.isNotEmpty) {
       final byGuid = candidates.where((c) => c.item.guid == wanted).toList();
@@ -50,6 +55,7 @@ class MediaIdentity {
       if (byExternal.length == 1) return byExternal.single.item;
       if (byExternal.length > 1) return null;
     }
+    if (!allowTitleFallback) return null;
 
     final wantedTitle = title;
     if (wantedTitle == null || wantedTitle.isEmpty) return null;
@@ -84,7 +90,12 @@ class MediaIdentity {
   /// The title-only fallback stays exactly as strict as [pickMatch]: with no
   /// external proof, more than one same-named candidate is a genuine
   /// ambiguity, not multiple copies, so it still counts as nothing found.
-  List<MediaItem> pickAllMatches(List<({MediaItem item, ExternalIds ids})> candidates) {
+  ///
+  /// [allowTitleFallback] is explained on [pickMatch].
+  List<MediaItem> pickAllMatches(
+    List<({MediaItem item, ExternalIds ids})> candidates, {
+    bool allowTitleFallback = true,
+  }) {
     final wanted = guid;
     if (wanted != null && wanted.isNotEmpty) {
       final byGuid = candidates.where((c) => c.item.guid == wanted).toList();
@@ -95,6 +106,7 @@ class MediaIdentity {
       final byExternal = candidates.where((c) => _sharesExternalId(c.ids)).toList();
       if (byExternal.isNotEmpty) return [for (final c in byExternal) c.item];
     }
+    if (!allowTitleFallback) return const [];
 
     final wantedTitle = title;
     if (wantedTitle == null || wantedTitle.isEmpty) return const [];

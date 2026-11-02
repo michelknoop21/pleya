@@ -98,10 +98,9 @@ extension _VideoPlayerEpisodeQueueMethods on VideoPlayerScreenState {
     }
 
     try {
-      final adjacentEpisodes = await _episodeNavigation.loadAdjacentEpisodes(
-        context: context,
-        metadata: targetMetadata,
-      );
+      final queued = await _episodeNavigation.loadAdjacentEpisodes(context: context, metadata: targetMetadata);
+      if (!mounted) return;
+      final adjacentEpisodes = await _adjacentAcrossSources(targetMetadata, queued);
 
       if (mounted && _currentMetadata.globalKey == targetMetadata.globalKey && (attempt == null || attempt.isCurrent)) {
         _setPlayerState(() {

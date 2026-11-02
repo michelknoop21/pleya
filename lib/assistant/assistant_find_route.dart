@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 
 import '../media/ids.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
@@ -17,6 +18,8 @@ import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems
 import '../services/seerr/seerr_client.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../services/unified_catalog/source_resolver.dart';
+import '../services/pleya_server_client.dart';
+import '../utils/stored_identity_trust.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
@@ -337,13 +340,36 @@ class FindRun {
   Future<void> _resolve(List<FindMatch> todo) async {
     await Future.wait([
       for (final m in todo)
-        if (m.library.isNotEmpty && !m.ids.hasAny)
+        if (m.library.isNotEmpty &&
+            (!m.ids.hasAny || m.library.any((item) => item.backend == MediaBackend.pleyaServer)))
           attempt(() async {
             final item = m.library.first;
             final client = ctx.userClient(ServerId(item.serverId!));
-            if (client == null) return;
-            final ids = await client.fetchExternalIds(item.id);
-            if (!settled) m.ids = _knownIds[item.globalKey] = ids;
+            final isPleya = item.backend == MediaBackend.pleyaServer || client is PleyaServerClient;
+            final mode = client is PleyaServerClient ? client.externalIdentitySource : null;
+            final ids = isPleya && !(client is PleyaServerClient && client.usesLegacyExternalIdentity)
+                ? await pleyaAppliedTitleIds(
+                    item,
+                    client is PleyaServerClient ? client : null,
+                    identityItem: m.identityItem,
+                  )
+                : client == null
+                ? null
+                : await client.fetchExternalIds(item.id);
+            if (settled ||
+                !identical(ctx.userClient(ServerId(item.serverId!)), client) ||
+                (client is PleyaServerClient && client.externalIdentitySource != mode)) {
+              partial = true;
+              m.libraryLookupIncomplete = true;
+              return;
+            }
+            if (ids == null) return;
+            _knownIds[item.globalKey] = ids;
+            if (!m.externalIds.hasAny && m.seerr == null) m.ids = ids;
+            if (isPleya && !ids.hasAny) {
+              partial = true;
+              m.libraryLookupIncomplete = true;
+            }
           }),
     ]);
     final client = seerr;
@@ -364,7 +390,10 @@ class FindRun {
         () => webCache.get(_profile, 'wikidata', qids.join(' '), () => web.wikidataIds(qids, abort: _abort)),
       );
       for (final m in bridge) {
-        m.ids = ids?[m.qid] ?? m.ids;
+        if (ids?[m.qid] case final found?) {
+          m.ids = found;
+          m.externalIds = found;
+        }
       }
     }
     attachLooseMatches(matches);
@@ -373,12 +402,29 @@ class FindRun {
         if (matches.contains(m)) m,
     ];
     await Future.wait([for (final m in live) _link(m)]);
-    await groupLibraryMatches(matches, (serverId, targetId) async {
-      if (_knownIds[buildGlobalKey(ServerId(serverId), targetId)] case final known?) return known;
-      final client = ctx.userClient(ServerId(serverId));
-      if (client == null || settled) throw StateError('no lookup');
-      return client.fetchExternalIds(targetId).timeout(_left);
-    });
+    await groupLibraryMatches(
+      matches,
+      (serverId, targetId) async {
+        final client = ctx.userClient(ServerId(serverId));
+        // A disappeared client still belongs to the concrete library item.
+        // Null must not turn a Pleya legacy claim into another backend's cache.
+        final isPleyaItem =
+            client is PleyaServerClient ||
+            matches.any(
+              (match) => match.library.any(
+                (item) => item.serverId == serverId && item.id == targetId && item.backend == MediaBackend.pleyaServer,
+              ),
+            );
+        final canReuseBareIds = !isPleyaItem || (client is PleyaServerClient && client.usesLegacyExternalIdentity);
+        if (canReuseBareIds && _knownIds[buildGlobalKey(ServerId(serverId), targetId)] != null) {
+          return _knownIds[buildGlobalKey(ServerId(serverId), targetId)]!;
+        }
+        if (client == null || settled) throw StateError('no lookup');
+        return client.fetchExternalIds(targetId).timeout(_left);
+      },
+      trustStoredIdentity: (item) =>
+          canTrustStoredIdentity(item, item.serverId == null ? null : ctx.userClient(ServerId(item.serverId!))),
+    );
     attachLooseMatches(matches);
   }
 
@@ -399,6 +445,7 @@ class FindRun {
     if (_keep(m, pick)) m.seerr = pick;
     m
       ..ids = ExternalIds(tmdb: pick.tmdbId, imdb: m.ids.imdb, tvdb: m.ids.tvdb)
+      ..externalIds = ExternalIds(tmdb: pick.tmdbId)
       ..kind ??= pick.isMovie ? MediaKind.movie : MediaKind.show
       ..year ??= int.tryParse(pick.year ?? '')
       ..sources.add(FindSource.seerr);
@@ -427,6 +474,11 @@ class FindRun {
             onBatch: (batch) {
               if (settled) return true;
               for (final r in batch) {
+                if (!r.ok || !identical(ctx.userClient(r.serverId), servers[r.serverId])) {
+                  partial = true;
+                  m.libraryLookupIncomplete = true;
+                  continue;
+                }
                 m.addLibrary([
                   for (final item in filterHiddenLibraryItems([
                     for (final item in r.matches) _stamp(item, r.serverId.value),

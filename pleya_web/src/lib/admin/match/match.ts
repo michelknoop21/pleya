@@ -1,20 +1,10 @@
-/**
- * De gegevens en rekenregels van Match en overrides (scherm 36).
- *
- * Wat het contract draagt: de lijst titels die aandacht vragen met hun
- * alternatieven (`GET /metadata/attention`), een kandidaat of een eigen nummer
- * kiezen (`PUT /items/{id}/metadata-match`) en de match afwijzen
- * (`DELETE /items/{id}/metadata-match`).
- *
- * Wat niet, en dus ook niet in dit scherm staat: velden per titel overschrijven
- * met herkomst (provenance), artwork kiezen met pin, een score of poster per
- * kandidaat (`MetadataAlternative` kent alleen nummer, titel en jaar), een
- * providerronde starten en de statistiek ervan. Dat volgt met S22.5.
- */
+/** Match data and shared presentation rules; preview reads never publish metadata. */
 import type { MetadataAttention, MetadataAttentionList } from '../../api/types';
 import type { AdminSettingsApi } from '../../api/adminSettings';
 import type { PillTone } from '../../components/StatusPill.svelte';
 import { plural, t } from '../../i18n';
+
+export type MatchTarget = Pick<MetadataAttention, 'item_id' | 'kind' | 'title' | 'year' | 'alternatives'> & { state: MetadataAttention['state'] | 'unknown' };
 
 export const MATCH_LIMIT = 50;
 
@@ -89,7 +79,7 @@ export function hintLabel(state: string): string {
 }
 
 /** Afwijzen is idempotent, maar bij een al afgewezen titel zegt het niets. */
-export function canReject(item: MetadataAttention): boolean {
+export function canReject(item: Pick<MatchTarget, 'state'>): boolean {
   return item.state !== 'rejected';
 }
 

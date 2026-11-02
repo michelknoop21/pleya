@@ -47,6 +47,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../focus/card_focus_scope.dart';
+import '../../focus/focus_history.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_kind.dart';
@@ -357,6 +358,15 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   @override
   void didUpdateWidget(TvDiscoveryRail oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (focusPositionsChanged(
+      [for (final g in oldWidget.groups) g.groupId],
+      [for (final g in widget.groups) g.groupId],
+    )) {
+      // Any built tile will do: the history belongs to the scope, and the tiles
+      // are virtualized.
+      final attached = _nodes.values.where((node) => node.nearestScope != null).firstOrNull;
+      if (attached != null) clearFocusHistory(attached);
+    }
     // A rail whose groups changed under it (a late server merged in) keeps
     // describing the same title when that title is still there, and falls back
     // to the first only when it is not.
@@ -553,7 +563,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   bool _focusIndex(int index) {
     final node = _nodeAt(index);
     if (node != null && node.parent != null && node.canRequestFocus) {
-      node.requestFocus();
+      requestFocusOutsideTraversal(node);
       return true;
     }
 
@@ -575,9 +585,9 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     final target = _revealTarget(index, _scale);
     if (target != null) _scroll.jumpTo(target);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || index > _lastIndex) return;
       final built = _nodeAt(index);
-      if (built != null && built.parent != null && built.canRequestFocus) built.requestFocus();
+      if (built != null && built.parent != null && built.canRequestFocus) requestFocusOutsideTraversal(built);
     });
     WidgetsBinding.instance.ensureVisualUpdate();
     return true;

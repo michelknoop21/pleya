@@ -87,7 +87,10 @@ extension _MediaDetailActionModel on _MediaDetailScreenState {
             icon: Symbols.shuffle_rounded,
             tooltip: t.tooltips.shufflePlay,
           ),
-        if (!widget.isOffline && !PlatformDetector.isAppleTV())
+        if (!widget.isOffline &&
+            !PlatformDetector.isAppleTV() &&
+            (_getMediaClientForMetadata(context)?.capabilities.clientDownloads ??
+                (metadata.backend != MediaBackend.pleyaServer)))
           _DetailAction(_DetailActionKind.download, onPressed: () => unawaited(_handleDownloadButtonPressed(metadata))),
         _DetailAction(_DetailActionKind.watched, onPressed: () => unawaited(_handleWatchedTogglePressed(metadata))),
         if (!widget.isOffline &&

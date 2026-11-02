@@ -1,6 +1,6 @@
 /// Covers docs/qa/tvos-unified-edge-cases.md register C (C1-C24) at the
 /// grouping-outcome level — which sources actually end up merged — plus
-/// DEC-063's Pleya Server/local isolation and hoofdstuk 4.7/11.5/11.9's
+/// DEC-063's local-folder isolation (Pleya Server merges since DEC-XXX) and hoofdstuk 4.7/11.5/11.9's
 /// representative-selection and group-id contracts. Pure identity-primitive
 /// coverage (bucketing, tokens) lives in
 /// test/media/canonical_media_identity_test.dart.
@@ -136,17 +136,17 @@ void main() {
       expect(groups.single.sources, hasLength(2));
     });
 
-    test('AGG1/DEC-063: a Pleya Server source never merges with Plex/Jellyfin, even with matching strong evidence', () {
+    test('AGG1/DEC-XXX: a Pleya Server source merges with a Plex source on the same TMDB number', () {
       final duneA = serverACandidates().firstWhere((c) => c.item.id == 'a-dune-2021');
       final duneC = serverCCandidates().firstWhere((c) => c.item.id == 'c-dune-2021');
 
       final groups = groupUnifiedMediaSources([_candidateFromFixture(duneA), _candidateFromFixture(duneC)]);
 
-      expect(groups, hasLength(2));
-      expect(groups.every((g) => g.sources.length == 1), isTrue);
+      expect(groups, hasLength(1));
+      expect(groups.single.sources.map((s) => s.backend), containsAll([MediaBackend.plex, MediaBackend.pleyaServer]));
     });
 
-    test('DEC-063: two Pleya Server sources never merge with each other either', () {
+    test('DEC-XXX: two Pleya Server sources merge with each other on the same TMDB number', () {
       final item1 = MediaItem(
         id: 'ps-1',
         backend: MediaBackend.pleyaServer,
@@ -172,7 +172,8 @@ void main() {
         _candidateFromItem(item2, ids: ids),
       ]);
 
-      expect(groups, hasLength(2));
+      expect(groups, hasLength(1));
+      expect(groups.single.sources, hasLength(2));
     });
 
     test('C19: a server contributing two candidates to one bucket never weak-fallback-merges either of them', () {

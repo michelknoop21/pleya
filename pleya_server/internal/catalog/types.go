@@ -68,6 +68,7 @@ type File struct {
 	StorageLocationID id.ID
 	RelativePath      string
 	Role              FileRole
+	AuxiliaryKind     string
 	VersionID         *id.ID
 	ItemID            *id.ID
 	PartIndex         int
@@ -110,6 +111,15 @@ type Item struct {
 	Genres        []string
 	People        []Person
 
+	// ExternalIDs zijn de providernummers die een gematchte provider (S22) bij
+	// dit item heeft vastgelegd. Alleen een match met state 'matched' levert er
+	// een; ambigu, niet gevonden, mislukt en afgewezen leveren er geen. Leeg
+	// zolang niemand het item gematcht heeft.
+	ExternalIDs ExternalIDs
+
+	// AppliedExternalIDs bewijst uitsluitend daadwerkelijk gepubliceerde metadata.
+	AppliedExternalIDs ExternalIDs
+
 	// Afgeleid en niet opgeslagen. Ze staan hier omdat het wire-type ze draagt
 	// en de leeslaag ze per pagina in één keer ophaalt.
 	DurationMs          *int64
@@ -121,6 +131,15 @@ type Item struct {
 	Versions            []Version
 }
 
+// ExternalIDs zijn nummers bij externe catalogi, per provider. Nu alleen TMDB:
+// dat is de enige bron die de server zelf vastlegt (metadata_candidates).
+type ExternalIDs struct {
+	TMDB *int
+}
+
+// IsZero zegt of er geen enkel nummer is.
+func (e ExternalIDs) IsZero() bool { return e.TMDB == nil }
+
 // Version is één versie van een item.
 type Version struct {
 	ID         id.ID
@@ -131,6 +150,8 @@ type Version struct {
 	BitrateBps *int64
 	FileCount  int
 	Streams    []Stream
+	// Internal source eligibility; never a wire field or an authorization rule.
+	AuxiliaryOnly bool
 }
 
 // Stream is één spoor, ingebed of los.

@@ -4,6 +4,7 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/unified/canonical_media_identity.dart';
 import '../media/unified/identity_evidence.dart';
+import '../media/unified/carried_external_ids.dart';
 import '../media/unified/unified_media_source.dart';
 import '../models/seerr/seerr_media.dart';
 import '../services/unified_catalog/grouping_service.dart';
@@ -59,6 +60,11 @@ class FindMatch {
   MediaKind? kind;
   final Set<FindSource> sources;
   ExternalIds ids = const ExternalIds();
+
+  /// Provider ids supplied by an external title source, not a library claim.
+  ExternalIds externalIds = const ExternalIds();
+  MediaItem? identityItem;
+  bool libraryLookupIncomplete = false;
   String? qid;
   String snippet = '';
 
@@ -137,6 +143,13 @@ class FindMatch {
     kind ??= other.kind;
     qid ??= other.qid;
     seerr ??= other.seerr;
+    identityItem ??= other.identityItem;
+    libraryLookupIncomplete |= other.libraryLookupIncomplete;
+    externalIds = ExternalIds(
+      tmdb: externalIds.tmdb ?? other.externalIds.tmdb,
+      imdb: externalIds.imdb ?? other.externalIds.imdb,
+      tvdb: externalIds.tvdb ?? other.externalIds.tvdb,
+    );
     if (snippet.isEmpty) snippet = other.snippet;
     ids = ExternalIds(
       tmdb: ids.tmdb ?? other.ids.tmdb,
@@ -174,8 +187,9 @@ FindMatch addMatch(List<FindMatch> matches, FindMatch m) {
 /// in one group are folded together. [fetchExternalIds] serves the resolver.
 Future<void> groupLibraryMatches(
   List<FindMatch> matches,
-  Future<ExternalIds> Function(String serverId, String targetId) fetchExternalIds,
-) async {
+  Future<ExternalIds> Function(String serverId, String targetId) fetchExternalIds, {
+  bool Function(MediaItem) trustStoredIdentity = storedIdentityIsSafe,
+}) async {
   final owners = <String, List<FindMatch>>{};
   final items = <MediaItem>[];
   for (final m in matches) {
@@ -187,15 +201,21 @@ Future<void> groupLibraryMatches(
     }
   }
   if (owners.length < 2) return;
-  final evidence = await UnifiedIdentityResolver(fetchExternalIds: fetchExternalIds).resolveEvidence([
-    for (final item in items)
-      ResolvableItem(
-        item: item,
-        identity: canonicalIdentityOf(item),
-        scope: (canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque()).granularity.name,
-        externalIdTarget: normalizeStableGuid(item.guid) == null ? (serverId: item.serverId!, targetId: item.id) : null,
-      ),
-  ]);
+  final evidence =
+      await UnifiedIdentityResolver(
+        fetchExternalIds: fetchExternalIds,
+        trustStoredIdentity: trustStoredIdentity,
+      ).resolveEvidence([
+        for (final item in items)
+          ResolvableItem(
+            item: item,
+            identity: canonicalIdentityOf(item),
+            scope: (canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque()).granularity.name,
+            externalIdTarget: normalizeStableGuid(item.guid) == null
+                ? (serverId: item.serverId!, targetId: item.id)
+                : null,
+          ),
+      ]);
   final groups = groupUnifiedMediaSources([
     for (var i = 0; i < items.length; i++)
       GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),

@@ -1,0 +1,21 @@
+# iOS Verify packaging — onafhankelijke scopedreview
+
+Roadmap C-05. Basis5136ed7f43b5d886f86172300ea48faf2182fcd9. **Correctness/security/scope PASS.** Geen Critical, Important of Minor gevonden in de drie frozen bestanden. De drie oorspronkelijke SHA256’s zijn tegen `/tmp/task5-gap-restore-1101/ios-runpath-source-freeze.json` gecontroleerd. Daarna is uitsluitend de relatieve testimport vervangen door de equivalente package-import op testregel5; het terugvervangen van precies die regel reproduceert SHA256-exact de frozen test. Huidige testhash `c1b55dce5b5969d798912c146b305a09db38ea4e6094b87314aa7af9a7b69c67`; beide implementatiehashes blijven gelijk. Deze lintcorrectie is in dezelfde reviewpass meegenomen, zonder assertion-/gedragsdelta. Alleen dit ignored rapport geschreven; geen tests, builds, UI, Docker, NAS of productwrites uitgevoerd.
+
+## Beoordeling
+
+`pleya_verify/runner/lib/src/driver/ios_simulator_driver.dart:210` roept de helper uitsluitend aan na het kopiëren van de gebouwde app en de bestaande gecontroleerde Verify-bundle-ID-/fullscreenherschrijving. De expliciete reuse-tak blijft ongewijzigd. Geen server/API/runtime-, timeout-, SDK- of compilerflagwijziging.
+
+`pleya_verify/runner/lib/src/driver/ios_bundle_runpaths.dart:43` valideert alle geselecteerde executable-/dylib-/frameworkbinaries tegen de werkelijk opgeloste kopieroot vóór tools of binaire mutatie. De helper onderzoekt eerst de gehele wijzigingsset en controleert de bestaande eigen PackageFrameworks-dependencies op embedded aanwezigheid (`:49`–`:62`); ontbrekende packagecode stopt de voorbereiding vóór executablemutatie. Argumentlijsten behouden spaties zonder shellinterpolatie. `:85` matcht alleen de exacte eigen PackageFrameworks-rpath; system-, loader- en executablepaden blijven staan. `:64` wijzigt alleen de geselecteerde kopiebinaries. Daarna worden gewijzigde nested codeobjecten expliciet ad-hoc getekend vóór de bestaande outer-deepsign en individueel strikt geverifieerd (`:72`–`:79`). Toolfouten breken af. Geen wijziging van bronproduct, signingidentity/rechten of simulatorconfiguratie.
+
+Het bronprobleem is voldoende gericht onderbouwd: oorspronkelijke canonieke boot faalt bij instance discovery na60s; de LLDB-dyldketen en `ios-exact-open-path.log` wijzen naar de host-CSQLite onder de eigen absolute PackageFrameworks-locatie. De gecontroleerde dezelfde-gecompileerde-app-proef verwijdert die runpath uit drie kopiebinaries, tekent nested+outer correct en krijgt daadwerkelijke instance/HTTP200 na9404ms. Dat ondersteunt deze packagingingreep; het bewijst geen definitieve nativeacceptatie op de nieuwe SHA en geen algemene TCC-/performanceoorzaak.
+
+## Gelezen bewijs
+
+Vier gerichte tests terminal PASS, inclusief echte Apple-linker/dyldfixture: externe librarywaarde1 vóór, embeddedwaarde2 na ingreep; individuele signatures geldig en bronframeworkbytes gelijk. Missing-embedded-case bewaart executablebytes; symlinkcase weigert vóór enige tool. De portable matchercontrole dekt exacte paden/spaties en herhaalde fatsliceloadcommands, geen zelfstandig echte multiarch-loaderclaim.
+
+Drie mutatielogs persoonlijk gecontroleerd: zonder runpathfix blijft werkelijke loaderuitkomst1 in plaats van2; zonder nested signing faalt codesign op gewijzigde Runner.debug.dylib; zonder kopiegrens ontbreekt de vereiste StateError. Dit zijn uitvoer-/assertionfouten, geen compile/loadfouten. Het mutatiescript herstelt per variant en in finally byte-exact; gerapporteerde herstelhash en huidige bron matchen. Finale vier regressies opnieuw groen in het bestaande log; reviewer heeft ze niet herhaald.
+
+`ios-runpath-final-gates.log` is inmiddels terminaal: runner-analyse twee infos, geen errors/warnings; canonieke `scripts/ci_checks.sh` All checks passed, met drie bestaande brede DCL-scans SKIP/CI. Dit terminalbewijs is van vóór de latere equivalente testimportcorrectie; root herhaalt daarvoor de finale gate/analyse. Geen finale post-importgate-PASS geclaimd.
+
+**Grenzen:** nieuwe finale freeze/gate na testimportcorrectie, normale hooks, verse schone nativeapp op nieuwe SHA en de echte iOS-scenario’s volgen bij root. De succesvolle handmatige diagnosticprobe had gecompileerde bron2ce7feddf en telt hiervoor niet als finale nativePASS. Geen hardware-/algemeneperformance-/release-/deploymentclaim. Geen codeblocker gevonden voor die vervolgstappen.

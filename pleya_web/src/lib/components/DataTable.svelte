@@ -38,7 +38,7 @@
 </script>
 
 <script lang="ts" generics="T">
-  import { onMount, type Snippet } from 'svelte';
+  import type { Snippet } from 'svelte';
 
   import { t } from '../i18n';
   import Panel from './Panel.svelte';
@@ -90,11 +90,13 @@
   let scroller = $state<HTMLDivElement | null>(null);
   let overflows = $state(false);
 
-  onMount(() => {
-    if (!scroller || typeof ResizeObserver === 'undefined') return;
+  // De scrollstrook kan pas na een lege/loadingstaat verschijnen. Koppel de
+  // meting daarom aan haar werkelijke DOM-node, niet alleen aan de eerste mount.
+  $effect(() => {
     const el = scroller;
+    if (!el || typeof ResizeObserver === 'undefined') return;
     const measure = () => {
-      overflows = el.scrollWidth > el.clientWidth + 1;
+      overflows = el.scrollWidth > el.clientWidth;
     };
     const observer = new ResizeObserver(measure);
     observer.observe(el);

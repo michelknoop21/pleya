@@ -8,7 +8,7 @@ import '../../utils/app_logger.dart';
 import '../jellyfin_client.dart';
 import '../plex_watchlist_client.dart';
 import '../pleya_server_client.dart';
-import 'jellyfin_favorites_source.dart';
+import 'server_favorites_source.dart';
 import 'plex_account_watchlist_source.dart';
 import 'verify_watchlist_source.dart';
 
@@ -52,6 +52,15 @@ class WatchlistSourceFactory {
 
   PlexWatchlistClient? _plexClient;
 
+  /// Whether [client] can contribute a source to [build].
+  ///
+  /// The Plex source hangs off the account, so a Plex server going offline
+  /// changes nothing here. A Pleya Verify build also reads the fixture
+  /// kijklijst from Pleya Servers without the favorites capability.
+  static bool contributesSource(MediaServerClient client, {bool verifyWatchlist = kPleyaVerify}) =>
+      ((client is JellyfinClient || client is PleyaServerClient) && client.capabilities.serverFavorites) ||
+      (verifyWatchlist && client is PleyaServerClient);
+
   /// The sources this profile can actually use right now.
   ///
   /// No Plex source is a normal outcome rather than an error: a Jellyfin-only
@@ -69,7 +78,37 @@ class WatchlistSourceFactory {
 
     for (final entry in clientsById().entries) {
       final client = entry.value;
-      if (client is! JellyfinClient || !client.capabilities.serverFavorites) continue;
+      if (client is! JellyfinClient && client is! PleyaServerClient) continue;
+      if (!client.capabilities.serverFavorites) continue;
+      if (client is PleyaServerClient) {
+        final connection = client.connection;
+        final userId = connection.accountUserId;
+        if (connection.serverId.isEmpty || userId == null) continue;
+        sources.add(
+          ServerFavoritesSource(
+            client: client,
+            serverId: ServerId(entry.key),
+            scope: WatchlistScopeId(
+              profileId: profileId,
+              backend: MediaBackend.pleyaServer,
+              accountId: connection.serverId,
+              userId: userId,
+            ),
+            resolveClient: () {
+              final current = clientsById()[entry.key];
+              if (current is! PleyaServerClient ||
+                  current.connection.accountUserId != userId ||
+                  current.connection.serverId != connection.serverId ||
+                  !current.capabilities.serverFavorites) {
+                throw const WatchlistScopeUnavailable('Favorite account is no longer active');
+              }
+              return current;
+            },
+          ),
+        );
+        continue;
+      }
+      if (client is! JellyfinClient) continue;
 
       final connection = client.connection;
       if (connection.serverMachineId.isEmpty || connection.userId.isEmpty) {
@@ -80,7 +119,7 @@ class WatchlistSourceFactory {
       }
 
       sources.add(
-        JellyfinFavoritesSource(
+        ServerFavoritesSource(
           client: client,
           serverId: ServerId(entry.key),
           scope: WatchlistScopeId(

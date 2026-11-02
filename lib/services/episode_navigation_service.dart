@@ -115,11 +115,11 @@ class EpisodeNavigationService {
     // The *cache* key carries the server, the context key does not.
     // `grandparentId` is server-local — two servers can each call their own
     // show `123` — so caching episode lists under the bare series id lets one
-    // source's list answer for another source's playback, which is the silent
-    // hop between servers hoofdstuk 15 forbids (D11). The context key stays
-    // the bare series id on purpose: [JellyfinSequentialLauncher] writes it
-    // in that shape too, and the guard below compares against whatever it
-    // wrote.
+    // source's list answer for another source's playback: a hop to another
+    // server belongs to `UnifiedTitlePlayback`, which decides it on purpose
+    // (D11, besluit 2 of DEC-XXX "Eén titel over servers heen"). The context
+    // key stays the bare series id: [JellyfinSequentialLauncher] writes it in
+    // that shape too, and the guard below compares against whatever it wrote.
     final seriesCacheKey = '$serverId:$seriesId';
     // Don't replace a playlist/collection queue with a series queue.
     // The launcher (e.g. [JellyfinSequentialLauncher]) sets contextKey to

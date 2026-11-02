@@ -12,6 +12,8 @@ library;
 /// (Plex stream id, Jellyfin stream index).
 class DownloadSubtitleSpec {
   final int id;
+  final String? sourceStreamId;
+  final Future<Map<String, String>> Function()? headersSupplier;
   final String url;
   final String? codec;
   final String? language;
@@ -21,6 +23,8 @@ class DownloadSubtitleSpec {
 
   const DownloadSubtitleSpec({
     required this.id,
+    this.sourceStreamId,
+    this.headersSupplier,
     required this.url,
     this.codec,
     this.language,
@@ -39,7 +43,10 @@ class DownloadArtworkSpec {
   final String localKey;
   final String url;
 
-  const DownloadArtworkSpec({required this.localKey, required this.url});
+  /// Resolve credentials when the queued transfer starts, bound to its originating account.
+  final Future<Map<String, String>> Function()? headersSupplier;
+
+  const DownloadArtworkSpec({required this.localKey, required this.url, this.headersSupplier});
 }
 
 /// Bundle of everything the download pipeline needs to fetch the primary

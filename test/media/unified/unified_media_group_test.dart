@@ -109,4 +109,130 @@ void main() {
       expect(updated.watchState.representativeSourceKey, 'b:sintel');
     });
   });
+
+  group('withSource', () {
+    test('a source the picker found later becomes a member', () {
+      final group = _group([_item('a', durationMs: 7200000)]);
+      final late = UnifiedMediaSource.fromItem(_item('b', durationMs: 7200000));
+
+      final grown = group.withSource(late);
+
+      expect(grown.itemOf('b:sintel').serverId, 'b');
+      expect(grown.representativeSourceKey, group.representativeSourceKey);
+    });
+
+    test('a member stays one member', () {
+      final group = _group([_item('a')]);
+
+      expect(group.withSource(group.sources.single), same(group));
+    });
+  });
+
+  group('keepingSources', () {
+    test('a dropped source is gone from the group', () {
+      final group = _group([_item('a'), _item('b'), _item('c')]);
+
+      final kept = group.keepingSources(['a:sintel', 'c:sintel']);
+
+      expect(kept.sources.map((s) => s.sourceKey), ['a:sintel', 'c:sintel']);
+    });
+
+    test('nothing to drop keeps the group itself', () {
+      final group = _group([_item('a'), _item('b')]);
+
+      expect(group.keepingSources(['a:sintel', 'b:sintel']), same(group));
+    });
+
+    test('the representative source stays: a group cannot be without one', () {
+      final group = _group([_item('a'), _item('b')], representativeServerId: 'a');
+
+      expect(group.keepingSources(['b:sintel']).representativeSourceKey, 'a:sintel');
+    });
+  });
+
+  group('withFreshSourceItems', () {
+    test('the session\'s own watch state reaches a group a route held on to', () {
+      final held = _item('a', viewOffsetMs: 40 * 60000, durationMs: 7200000, lastViewedAt: 1000);
+      final group = _group([held, _item('b', durationMs: 7200000)]);
+
+      final fresh = group.withFreshSourceItems(
+        (item) => item.serverId == 'a' ? item.copyWith(viewOffsetMs: 50 * 60000) : item,
+      );
+
+      expect(fresh.resumeCarriedTo('b:sintel'), const Duration(minutes: 50));
+      expect(fresh.representativeSourceKey, group.representativeSourceKey);
+    });
+  });
+
+  group('resumeCarriedTo', () {
+    const hour = 60 * 60 * 1000;
+    UnifiedMediaGroup movie(MediaItem a, MediaItem b) {
+      final state = selectRepresentativeWatchState({'a:sintel': a, 'b:sintel': b});
+      return UnifiedMediaGroup(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+        sources: [UnifiedMediaSource.fromItem(a), UnifiedMediaSource.fromItem(b)],
+        representativeSourceKey: state.representativeSourceKey,
+        watchState: state,
+      );
+    }
+
+    test('a source without a position continues where the other one stands', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', durationMs: 2 * hour),
+      );
+
+      expect(group.resumeCarriedTo('b:sintel'), const Duration(milliseconds: 3041059));
+    });
+
+    test('the source that holds the position needs nothing carried', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', durationMs: 2 * hour),
+      );
+
+      expect(group.resumeCarriedTo('a:sintel'), isNull);
+    });
+
+    test('a position of its own wins, as the source picker promises', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', viewOffsetMs: 600000, durationMs: 2 * hour, lastViewedAt: 1000),
+      );
+
+      expect(group.resumeCarriedTo('b:sintel'), isNull);
+    });
+
+    test('a position does not cross to a cut of a very different length', () {
+      final group = movie(
+        _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000),
+        _item('b', durationMs: 3 * hour),
+      );
+
+      expect(group.watchState.runtimesDiffer, isTrue);
+      expect(group.resumeCarriedTo('b:sintel'), isNull);
+    });
+
+    test('the holder is the source with the position, not the source the card shows', () {
+      final held = _item('a', viewOffsetMs: 3041059, durationMs: 2 * hour, lastViewedAt: 2000);
+      final other = _item('b', durationMs: 2 * hour);
+      final group = UnifiedMediaGroup(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+        sources: [UnifiedMediaSource.fromItem(held), UnifiedMediaSource.fromItem(other)],
+        representativeSourceKey: 'b:sintel',
+        watchState: selectRepresentativeWatchState({'a:sintel': held, 'b:sintel': other}),
+      );
+
+      expect(group.resumeCarriedTo('b:sintel'), const Duration(milliseconds: 3041059));
+      expect(group.resumeCarriedTo('a:sintel'), isNull);
+    });
+
+    test('nothing in progress carries nothing', () {
+      final group = movie(_item('a', durationMs: 2 * hour), _item('b', durationMs: 2 * hour));
+
+      expect(group.resumeCarriedTo('b:sintel'), isNull);
+    });
+  });
 }

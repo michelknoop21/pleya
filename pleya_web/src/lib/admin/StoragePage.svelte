@@ -22,6 +22,7 @@
   import LibraryProblemAlert from './LibraryProblemAlert.svelte';
   import { opsProblem } from './opsErrors';
   import StorageTable from './StorageTable.svelte';
+  import ArtworkCachePanel from './ArtworkCachePanel.svelte';
   import {
     RECHECK_REFRESH_MS,
     libraryNames,
@@ -49,6 +50,7 @@
     const controller = new AbortController();
     loadStorage(adminApi(session.client), controller.signal)
       .then((result) => {
+        if (controller.signal.aborted) return;
         data = result;
         failure = null;
       })
@@ -139,7 +141,7 @@
   <StorageTable roots={data.roots} scanning={data.scanning} />
 
   <div class="info">
-    <Panel>
+    <Panel level={2}>
       {#snippet title()}{t('admin.sto.manage.title')}{/snippet}
       <p class="body">
         {t('admin.sto.manage.before')}<span class="mono">PLEYA_SERVER_MEDIA_DIRS</span>{t(
@@ -147,7 +149,7 @@
         )}
       </p>
     </Panel>
-    <Panel>
+    <Panel level={2}>
       {#snippet title()}{t('admin.sto.inodeInfo.title')}{/snippet}
       {#snippet actions()}
         {#if down.length === 0}
@@ -173,6 +175,8 @@
 {:else}
   <SkeletonPage variant="compact" />
 {/if}
+
+<ArtworkCachePanel />
 
 <style>
   .msg {

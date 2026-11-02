@@ -95,5 +95,6 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     );
 
     await _trackManager?.onBackendSwitched();
+    await _deferredSubtitles.reattach();
   }
 }

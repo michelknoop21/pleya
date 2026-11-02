@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.list_not_owner",
+    "message": "only the owner can change this list",
+    "retryable": false
+  }
+}

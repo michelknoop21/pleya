@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/pleya_server/pleya_wire.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_activity.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_library.dart';
+import 'package:pleya/models/pleya_server/pleya_wire_lists.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_playback.dart';
 import 'package:pleya/services/pleya_server_client.dart' show pleyaWatchHistoryFromJson;
 import 'package:pleya/services/memory/memory_sync_models.dart';
@@ -59,6 +60,21 @@ void main() {
     'SetMetadataMatchRequest',
     'MetadataMatchState',
     'MetadataMatch',
+    // Additief metadata-venster: adminstatus is voor het web, geen Flutter-UI.
+    'MetadataMatchStatus',
+    // Task6 veldeditor is admin Web-only; geen Flutter-editor in deze slice.
+    'MetadataFields',
+    'MetadataOverridesRequest',
+    // Artworkbeheer blijft Web-only; gewone Item-artwork wordt wel gelezen.
+    'ArtworkCandidates',
+    'ArtworkSelection',
+    'ArtworkSelectionRequest',
+    // S4.6-cachebeheer is Web-only; deze routes hebben geen Dart-consument.
+    'ArtworkCacheStats',
+    'ArtworkCachePurgeRequest',
+    // Task5 search/details are admin Web-only; the Flutter wire ignores them.
+    'MetadataSearchResults',
+    'MetadataCandidateDetails',
     'Scan',
     'Job',
     'UserList',
@@ -127,6 +143,8 @@ void main() {
     // assert their closed body; the client never parses a request from the server.
     'MemoryReplace',
     'MemoryClear',
+    // Outbound map: playback_sources_test compares the actual public-client request with this fixture.
+    'PlaybackPlanRequest',
   };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
@@ -187,6 +205,29 @@ void main() {
       expect(history.items, hasLength((json['items'] as List).length), reason: 'every row has a timestamp');
       expect(history.items.where((w) => w.seriesId != null), isNotEmpty);
     },
+    'Collection': (json) {
+      final collection = PleyaCollection.fromJson(json);
+      expect(collection.id, json['id']);
+      expect(collection.visibility?.wire, json['visibility']);
+      expect(collection.sharedWith, hasLength((json['shared_with'] as List? ?? const []).length));
+    },
+    'CollectionPage': (json) {
+      final page = PleyaListPage.fromJson(json, PleyaCollection.fromJson);
+      expect(page.items, hasLength((json['items'] as List).length));
+    },
+    'Playlist': (json) => PleyaPlaylist.fromJson(json),
+    'PlaylistPage': (json) {
+      final page = PleyaListPage.fromJson(json, PleyaPlaylist.fromJson);
+      expect(page.items, hasLength((json['items'] as List).length));
+    },
+    // The four request schemas are closed, so what the client writes has to be
+    // exactly what the fixture holds.
+    'CreateCollectionRequest': (json) => expect(PleyaCreateCollectionRequest.fromJson(json).toJson(), json),
+    'UpdateCollectionRequest': (json) => expect(PleyaUpdateCollectionRequest.fromJson(json).toJson(), json),
+    'CreatePlaylistRequest': (json) => expect(PleyaPlaylistTitleRequest.fromJson(json).toJson(), json),
+    'UpdatePlaylistRequest': (json) => expect(PleyaPlaylistTitleRequest.fromJson(json).toJson(), json),
+    'ListItemsRequest': (json) => expect(PleyaListItemsRequest.fromJson(json).toJson(), json),
+    'ReplaceListItemsRequest': (json) => expect(PleyaReplaceListItemsRequest.fromJson(json).toJson(), json),
     'WatchStateEvent': (json) {
       // Round-trip: parse the fixture and write it back. That proves the type
       // reads the contract's shape and produces it, which is what matters for a
@@ -200,6 +241,7 @@ void main() {
       if (json.containsKey('cause')) expect(written['cause'], json['cause']);
       if (json.containsKey('base_revision')) expect(written['base_revision'], json['base_revision']);
       if (json['backlog'] == true) expect(written['backlog'], isTrue);
+      expect(written['copy'], json['copy']);
     },
   };
 
@@ -214,8 +256,8 @@ void main() {
       );
     });
 
-    test('covers the 106 fixtures the contract ships', () {
-      expect(fixtures, hasLength(106));
+    test('covers the 154 fixtures the contract ships', () {
+      expect(fixtures, hasLength(154));
     });
 
     for (final fixture in fixtures) {
@@ -226,6 +268,14 @@ void main() {
         parsers[schema]!(load(file));
       });
     }
+  });
+
+  group('Collection visibility', () {
+    test('an unknown value parses to null and is never sent back', () {
+      final collection = PleyaCollection.fromJson({...load('collection.json'), 'visibility': 'family'});
+      expect(collection.visibility, isNull);
+      expect(const PleyaUpdateCollectionRequest(title: 'Nieuw').toJson(), {'title': 'Nieuw'});
+    });
   });
 
   group('ItemActivity', () {
@@ -308,6 +358,12 @@ void main() {
       expect(PleyaInfo.fromJson(load('info.json')).capabilities.itemActivity, isFalse);
       expect(PleyaInfo.fromJson(load('info_administration.json')).capabilities.itemActivity, isFalse);
       expect(PleyaCapabilities.unknown.itemActivity, isFalse);
+    });
+
+    test('watch_state_copy is read from the server and off by default', () {
+      expect(PleyaInfo.fromJson(load('info_watch_state_copy.json')).capabilities.watchStateCopy, isTrue);
+      expect(PleyaInfo.fromJson(load('info.json')).capabilities.watchStateCopy, isFalse);
+      expect(PleyaCapabilities.unknown.watchStateCopy, isFalse);
     });
 
     test('artwork_sizes is off unless the server says so', () {

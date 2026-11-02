@@ -15,7 +15,8 @@ class _MenuFacts {
   final MediaPlaylist? playlist;
   final MediaKind? mediaKind;
 
-  /// Owner of the server and a backend with collections to write to.
+  /// May write to this collection on a backend that has them: see
+  /// `MultiServerManager.canManageCollections`, and the collection is his.
   final bool canManageCollections;
   final List<MediaMenuAction> actions;
 
@@ -49,7 +50,13 @@ extension on MediaContextMenuState {
     // Backend capabilities gate menu items so we don't expose actions the
     // active server cannot perform.
     final mediaClient = _itemServerId != null ? multiServerProvider.getClientForServer(ServerId(_itemServerId!)) : null;
-    final canManageCollections = isAdmin && (mediaClient?.capabilities.serverSideCollections ?? false);
+    // Collections have their own rule: a Pleya Server admin passes `isAdmin`'s
+    // neighbours but not this one, and another user's collection stays his.
+    final canManageCollections =
+        _itemServerId != null &&
+        multiServerProvider.serverManager.canManageCollections(ServerId(_itemServerId!)) &&
+        (mediaClient?.capabilities.serverSideCollections ?? false) &&
+        (mediaItem?.isOwnCollection ?? true);
 
     final menuActions = <MediaMenuAction>[];
 
@@ -61,7 +68,9 @@ extension on MediaContextMenuState {
       // Download + sync-rule management. Video playlists and any collection
       // qualify, collections can contain movies, episodes, and shows.
       final isVideoPlaylist = isPlaylist && playlist.playlistType == 'video';
-      if ((isVideoPlaylist || isCollection) && !PlatformDetector.isAppleTV()) {
+      if ((isVideoPlaylist || isCollection) &&
+          !PlatformDetector.isAppleTV() &&
+          (mediaClient?.capabilities.clientDownloads ?? (itemBackend != MediaBackend.pleyaServer))) {
         final hasRule = Provider.of<DownloadProvider>(context, listen: false).hasSyncRule(_itemSyncRuleKey(context));
         if (hasRule) {
           menuActions.add(
@@ -86,7 +95,7 @@ extension on MediaContextMenuState {
       }
 
       // A playlist is the user's own; a collection is canonical server data.
-      if (isPlaylist || isAdmin) {
+      if (isPlaylist || canManageCollections) {
         menuActions.add(
           MediaMenuAction(value: 'delete', icon: Symbols.delete_rounded, label: t.common.delete, destructive: true),
         );

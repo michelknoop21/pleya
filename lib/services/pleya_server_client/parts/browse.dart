@@ -102,6 +102,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     MediaKind? libraryKind,
     AbortController? abort,
     bool strictSnapshot = false,
+    bool Function(PleyaItem)? itemFilter,
   }) async {
     if (!wireCapabilities.browse) {
       if (strictSnapshot) throw StateError('Browse capability is not available for a snapshot');
@@ -250,6 +251,8 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   // ---------------------------------------------------------------------------
 
   Future<MediaItem?> fetchItem(String id) async {
+    final readOrder = _beginItemRead();
+    final source = externalIdentitySource;
     final json = await _getJson('/items/${Uri.encodeComponent(id)}');
     if (json == null) return null;
     try {
@@ -260,11 +263,35 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // otherwise get that event refused as stale and leave the viewing
       // without an owner, so its progress would never be stored.
       _watchLedger.remember(item.id, item.userState?.revision);
+      final accepted = _rememberExternalIds([item], readOrder: readOrder, source: source).contains(item.id);
+      final cacheCurrent = accepted || (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show);
+      try {
+        if (cacheCurrent)
+          await cache.putIfCurrent(
+            ServerId(connection.id),
+            PleyaServerApiCache.itemEndpoint(id),
+            {
+              ...json,
+              pleyaExternalIdsSourceKey: identityCapabilitiesKnown
+                  ? (wireCapabilities.appliedExternalIdentity ? 'applied' : 'legacy')
+                  : 'unknown',
+            },
+            () =>
+                !_closed &&
+                source == externalIdentitySource &&
+                ((item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) ||
+                    _recentExternalIds[item.id]?.readOrder == readOrder),
+          );
+      } catch (e) {
+        appLogger.d('PleyaServerClient: optional metadata cache write failed', error: e);
+      }
       final ancestors = await _ancestorsOf(item);
       return PleyaServerMappers.mediaItem(
         item,
         serverId: serverId.toString(),
         serverName: serverName,
+        useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+        identityKnown: identityCapabilitiesKnown,
         parent: ancestors.parent,
         grandparent: ancestors.grandparent,
       );
@@ -272,6 +299,176 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       appLogger.w('PleyaServerClient: /items/$id did not match the contract', error: e);
       return null;
     }
+  }
+
+  /// The provider numbers the server has proven for a movie or show, for the
+  /// unified identity pipeline.
+  ///
+  /// Three outcomes, and they must stay three. A list means the server answered:
+  /// possibly with no numbers, which is "no evidence" and never "no match". A
+  /// [IdentityLookupUnavailable] means it did not answer (offline, transport,
+  /// timeout, 429, 5xx, a broken body) and nothing may be remembered as final.
+  /// Only a `not_found` answer, the item being gone, is a definitive empty.
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    final answer = await fetchExternalIdsDetailed(itemId);
+    if (answer.source != externalIdentitySource) {
+      throw const IdentityLookupUnavailable('identity source changed while reading');
+    }
+    return answer.ids;
+  }
+
+  /// [fetchExternalIds] plus whether the answer is authoritative: the server
+  /// knows the `external_ids` field, so an empty list really is "no proven
+  /// number". A server that predates the field answers empty with
+  /// `authoritative: false`, and a caller that stores the answer must not treat
+  /// it as final.
+  Future<({ExternalIds ids, bool authoritative, String source})> fetchExternalIdsDetailed(String itemId) async {
+    // Numbers read a moment ago off a page or a detail answer need no second
+    // request. Short-lived, so a later rematch is never hidden for long.
+    final known = _recentExternalIds[itemId];
+    if (known != null && DateTime.now().difference(known.at) < _recentExternalIdsTtl) {
+      return (ids: known.ids, authoritative: known.authoritative, source: known.source);
+    }
+    final readOrder = _beginItemRead();
+    final source = externalIdentitySource;
+    final answer = await _getJsonDetailed('/items/${Uri.encodeComponent(itemId)}');
+    final json = answer.json;
+    if (json == null) {
+      final code = answer.errorCode;
+      if (code != null && code.endsWith('not_found'))
+        return (ids: const ExternalIds(), authoritative: true, source: externalIdentitySource);
+      throw IdentityLookupUnavailable('no usable answer for /items/$itemId (${code ?? 'no response'})');
+    }
+    final PleyaItem item;
+    try {
+      item = PleyaItem.fromJson(json);
+    } on PleyaWireFormatException catch (e) {
+      appLogger.w('PleyaServerClient: /items/$itemId did not match the contract', error: e);
+      throw IdentityLookupUnavailable('/items/$itemId did not match the contract');
+    }
+    _rememberExternalIds([item], readOrder: readOrder, source: source);
+    final isTitle = item.kind == PleyaItemKind.movie || item.kind == PleyaItemKind.show;
+    return (
+      ids: isTitle && identityCapabilitiesKnown
+          ? ExternalIds(
+              tmdb: (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIds : item.externalIds).tmdb,
+            )
+          : const ExternalIds(),
+      authoritative:
+          !isTitle ||
+          (identityCapabilitiesKnown &&
+              (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIdsReported : item.externalIdsReported)),
+      source: externalIdentitySource,
+    );
+  }
+
+  /// A newly observed applied answer contradicts an older persisted claim.
+  /// No fresh observation means the existing persisted-cache TTL is unchanged.
+  bool isStoredAppliedIdentityCurrent(MediaItem item) {
+    if (!hasAppliedExternalIds(item)) return false;
+    return isAppliedIdentityCurrent(item.id, externalIdsCarriedBy(item)!);
+  }
+
+  /// Recheck an already qualified title against observations made since its
+  /// lookup, without another request or a new cache lifetime.
+  bool isAppliedIdentityCurrent(String itemId, ExternalIds expected) {
+    final known = _recentExternalIds[itemId];
+    if (known == null || DateTime.now().difference(known.at) >= _recentExternalIdsTtl || known.source != 'applied')
+      return true;
+    return known.authoritative &&
+        (expected.tmdb == null || known.ids.tmdb == expected.tmdb) &&
+        (expected.imdb == null || known.ids.imdb == expected.imdb) &&
+        (expected.tvdb == null || known.ids.tvdb == expected.tvdb);
+  }
+
+  /// A fresh presentation observation can contradict a warm row while the
+  /// applied identity remains equal. Missing/expired observations retain the
+  /// existing cache TTL; this does not turn an edit into an identity change.
+  bool isStoredPresentationCurrent(MediaItem item) {
+    if (!wireCapabilities.appliedExternalIdentity) return true;
+    final known = _recentExternalIds[item.id];
+    if (known == null || DateTime.now().difference(known.at) >= _recentExternalIdsTtl) return true;
+    return known.presentation == _presentationDigest(item);
+  }
+
+  String _presentationDigest(MediaItem item) => sha256
+      .convert(
+        utf8.encode(
+          jsonEncode([
+            item.title,
+            item.year,
+            item.summary,
+            item.genres ?? const [],
+            item.contentRating,
+            item.directors ?? const [],
+            item.writers ?? const [],
+            [
+              for (final role in item.roles ?? const <MediaRole>[]) [role.tag, role.role],
+            ],
+            item.thumbPath,
+            item.artPath,
+          ]),
+        ),
+      )
+      .toString();
+
+  @visibleForTesting
+  void debugExpireRecentObservations() {
+    for (final entry in _recentExternalIds.entries.toList()) {
+      final old = entry.value;
+      _recentExternalIds[entry.key] = (
+        ids: old.ids,
+        authoritative: old.authoritative,
+        source: old.source,
+        at: DateTime.fromMillisecondsSinceEpoch(0),
+        presentation: old.presentation,
+        readOrder: old.readOrder,
+      );
+    }
+  }
+
+  @visibleForTesting
+  void debugForgetExternalIds() => _recentExternalIds.clear();
+
+  /// Keeps the numbers of items just read, so [fetchExternalIdsDetailed] can
+  /// answer without asking again. Movies and shows only: nothing else carries
+  /// numbers. Bounded, oldest out.
+  Set<String> _rememberExternalIds(Iterable<PleyaItem> items, {required int readOrder, required String source}) {
+    final accepted = <String>{};
+    if (source != externalIdentitySource) return accepted;
+    final now = DateTime.now();
+    for (final item in items) {
+      if (item.kind != PleyaItemKind.movie && item.kind != PleyaItemKind.show) continue;
+      final current = _recentExternalIds[item.id];
+      if (current != null && current.readOrder > readOrder) continue;
+      accepted.add(item.id);
+      _recentExternalIds.remove(item.id);
+      _recentExternalIds[item.id] = (
+        ids: identityCapabilitiesKnown
+            ? ExternalIds(
+                tmdb: (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIds : item.externalIds).tmdb,
+              )
+            : const ExternalIds(),
+        source: externalIdentitySource,
+        authoritative:
+            identityCapabilitiesKnown &&
+            (wireCapabilities.appliedExternalIdentity ? item.appliedExternalIdsReported : item.externalIdsReported),
+        at: now,
+        readOrder: readOrder,
+        presentation: _presentationDigest(
+          PleyaServerMappers.mediaItem(
+            item,
+            serverId: serverId.toString(),
+            useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+            identityKnown: identityCapabilitiesKnown,
+          ),
+        ),
+      );
+    }
+    while (_recentExternalIds.length > _recentExternalIdsMax) {
+      _recentExternalIds.remove(_recentExternalIds.keys.first);
+    }
+    return accepted;
   }
 
   /// An item plus the episode to resume.
@@ -295,6 +492,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     int? size,
     AbortController? abort,
     bool strictSnapshot = false,
+    bool Function(PleyaItem)? itemFilter,
   }) async {
     if (!wireCapabilities.browse) {
       if (strictSnapshot) throw StateError('Browse capability is not available for a snapshot');
@@ -321,7 +519,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   /// explicit; a season at a time keeps a long-running series from becoming one
   /// unbounded request.
   Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async {
-    final page = await fetchPlayableDescendantsPage(parentId, start: 0, size: _maxPageSize);
+    final page = await fetchPlayableDescendantsPage(parentId);
     return page.items;
   }
 
@@ -331,12 +529,11 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     int? size,
     AbortController? abort,
   }) async {
-    final direct = await fetchChildrenPage(parentId, start: 0, size: _maxPageSize, abort: abort);
+    final direct = await _everyChild(parentId, abort);
     final leaves = <MediaItem>[];
-    for (final child in direct.items) {
+    for (final child in direct) {
       if (child.kind == MediaKind.season || child.kind == MediaKind.show) {
-        final grandchildren = await fetchChildrenPage(child.id, start: 0, size: _maxPageSize, abort: abort);
-        leaves.addAll(grandchildren.items.where((item) => item.kind.isPlayable));
+        leaves.addAll((await _everyChild(child.id, abort)).where((item) => item.kind.isPlayable));
       } else if (child.kind.isPlayable) {
         leaves.add(child);
       }
@@ -344,6 +541,16 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     final offset = start ?? 0;
     final window = leaves.skip(offset).take(size ?? leaves.length).toList();
     return LibraryPage(items: window, totalCount: leaves.length, offset: offset);
+  }
+
+  /// A long-running series has more episodes than one page holds.
+  Future<List<MediaItem>> _everyChild(String parentId, AbortController? abort) async {
+    final children = <MediaItem>[];
+    while (true) {
+      final page = await fetchChildrenPage(parentId, start: children.length, size: _maxPageSize, abort: abort);
+      children.addAll(page.items);
+      if (page.items.isEmpty || children.length >= page.totalCount) return children;
+    }
   }
 
   /// Null hands the caller back to the generic episode-queue path, which builds
@@ -542,6 +749,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     String? parentId,
     AbortController? abort,
     bool strictSnapshot = false,
+    bool Function(PleyaItem)? itemFilter,
   }) async {
     final pageSize = limit <= 0 ? 100 : (limit > _maxPageSize ? _maxPageSize : limit);
     var position = offset <= 0 ? 0 : _cursors.nearestKnownOffset(ledgerKey, offset);
@@ -549,8 +757,15 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     final collected = <PleyaItem>[];
     var walked = 0;
     var restarted = false;
+    var exhausted = false;
+    final seenCursors = <String>{};
 
     while (true) {
+      if (itemFilter != null && cursor != null && !seenCursors.add(cursor)) {
+        throw StateError('Listing repeated its cursor');
+      }
+      final readOrder = _beginItemRead();
+      final source = externalIdentitySource;
       final answer = await _getJsonDetailed(
         path,
         queryParameters: {'limit': '$pageSize', ...extraQuery, 'cursor': ?cursor},
@@ -568,29 +783,34 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
         position = 0;
         cursor = null;
         collected.clear();
+        seenCursors.clear();
         walked = 0;
         continue;
       }
       final json = answer.json;
       if (json == null) {
-        if (strictSnapshot) throw StateError('Snapshot page was not received');
+        if (strictSnapshot || itemFilter != null) throw StateError('Listing page was not received');
         break;
       }
       final PleyaItemPage page;
       try {
         page = PleyaItemPage.fromJson(json);
       } on PleyaWireFormatException catch (e) {
-        if (strictSnapshot) rethrow;
+        if (strictSnapshot || itemFilter != null) rethrow;
         appLogger.w('PleyaServerClient: $path did not match the contract', error: e);
         break;
       }
       if (strictSnapshot && page.items.length != page.knownItems.length) {
         throw StateError('Snapshot contains unsupported items');
       }
+      _rememberExternalIds(page.knownItems, readOrder: readOrder, source: source);
+      final visible = itemFilter == null ? page.knownItems : page.knownItems.where(itemFilter).toList();
+      final count = itemFilter == null ? page.items.length : visible.length;
+      exhausted = page.nextCursor == null;
       _cursors.recordPage(
         ledgerKey,
         offset: position,
-        count: page.items.length,
+        count: count,
         nextCursor: page.nextCursor,
         totalEstimate: page.totalEstimate,
       );
@@ -598,10 +818,10 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // Items before the requested offset belong to an earlier window and are
       // dropped rather than returned; the walk only exists to reach the window.
       final skipInThisPage = offset > position ? offset - position : 0;
-      if (skipInThisPage < page.knownItems.length) {
-        collected.addAll(page.knownItems.skip(skipInThisPage));
+      if (skipInThisPage < visible.length) {
+        collected.addAll(visible.skip(skipInThisPage));
       }
-      position += page.items.length;
+      position += count;
 
       if (collected.length >= limit || page.nextCursor == null || page.items.isEmpty) break;
       // The walk bound counts *fruitless* pages, not pages. Counting every
@@ -613,9 +833,9 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       // the catalogue was finished. A page that contributed something is
       // progress, so it resets the count; the bound still stops a long stretch
       // of pages that give this window nothing.
-      if (skipInThisPage < page.knownItems.length) {
+      if (skipInThisPage < visible.length) {
         walked = 0;
-      } else if (++walked >= _maxCursorWalk) {
+      } else if (itemFilter == null && ++walked >= _maxCursorWalk) {
         appLogger.d('PleyaServerClient: stopped walking $path after $_maxCursorWalk unproductive pages');
         break;
       }
@@ -627,12 +847,22 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
       window,
       serverId: serverId.toString(),
       serverName: serverName,
+      useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+      identityKnown: identityCapabilitiesKnown,
       libraryId: libraryId,
       parents: await _ancestorsFor(window, parentId: parentId),
     );
     final estimate = _cursors.totalEstimate(ledgerKey);
     if (strictSnapshot && estimate == null) throw StateError('Snapshot count is unavailable');
-    return LibraryPage(items: items, totalCount: estimate ?? (offset + items.length), offset: offset);
+    return LibraryPage(
+      items: items,
+      totalCount: itemFilter != null
+          ? exhausted
+                ? position
+                : position + 1
+          : estimate ?? (offset + items.length),
+      offset: offset,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -687,6 +917,15 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   }
 
   final Map<String, PleyaItem> _itemCache = {};
+
+  /// The numbers of the item [fetchItem] answered last, for [fetchExternalIds].
+  final Map<
+    String,
+    ({ExternalIds ids, bool authoritative, String source, DateTime at, String presentation, int readOrder})
+  >
+  _recentExternalIds = {};
+  static const Duration _recentExternalIdsTtl = Duration(seconds: 60);
+  static const int _recentExternalIdsMax = 5000;
 
   /// One item in wire form, memoised for the lifetime of the client.
   ///

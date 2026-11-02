@@ -28,6 +28,9 @@ void main() {
     bool liveTv = false,
     bool realtime = false,
     bool users = false,
+    bool trackPreferences = false,
+    bool collections = false,
+    bool playlists = false,
     bool itemActivity = false,
   }) => PleyaCapabilities(
     browse: browse,
@@ -40,8 +43,99 @@ void main() {
     liveTv: liveTv,
     realtime: realtime,
     users: users,
+    trackPreferences: trackPreferences,
+    collections: collections,
+    playlists: playlists,
     itemActivity: itemActivity,
   );
+
+  test('client downloads follow the server flag independently from server-side sync', () {
+    expect(PleyaServerCapabilityResolver.unknown.clientDownloads, isFalse);
+    expect(PleyaServerCapabilityResolver.resolve(caps()).clientDownloads, isFalse);
+    final offered = PleyaServerCapabilityResolver.resolve(caps(downloads: true));
+    expect(offered.clientDownloads, isTrue);
+    expect(offered.serverSideSync, isFalse);
+    expect(ServerCapabilities.plex.clientDownloads, isTrue);
+    expect(ServerCapabilities.jellyfin.clientDownloads, isTrue);
+    expect(offered.copyWith(clientDownloads: false).clientDownloads, isFalse);
+  });
+
+  test('quality and source audio actions each require their own server flag', () {
+    final qualityOnly = PleyaServerCapabilityResolver.resolve(
+      PleyaCapabilities.fromJson({
+        'browse': true,
+        'search': true,
+        'artwork': true,
+        'watch_state': true,
+        'transcode': true,
+        'playback_plan': true,
+        'playback_quality': true,
+      }),
+    );
+    expect(qualityOnly.videoTranscoding, isTrue);
+    expect(qualityOnly.sourceAudioSelection, isFalse);
+    final audioOnly = PleyaServerCapabilityResolver.resolve(
+      PleyaCapabilities.fromJson({
+        'browse': true,
+        'search': true,
+        'artwork': true,
+        'watch_state': true,
+        'transcode': true,
+        'playback_plan': true,
+        'playback_audio_selection': true,
+      }),
+    );
+    expect(audioOnly.videoTranscoding, isFalse);
+    expect(audioOnly.sourceAudioSelection, isTrue);
+  });
+
+  test('source subtitles require their own plan and transcode capability', () {
+    for (final enabled in [false, true]) {
+      final resolved = PleyaServerCapabilityResolver.resolve(
+        PleyaCapabilities.fromJson({
+          'browse': true,
+          'search': true,
+          'artwork': true,
+          'watch_state': true,
+          'transcode': true,
+          'playback_plan': true,
+          'playback_subtitles': enabled,
+        }),
+      );
+      expect(resolved.sourceSubtitleSelection, enabled);
+      expect(resolved.copyWith().sourceSubtitleSelection, enabled);
+    }
+    expect(PleyaServerCapabilityResolver.unknown.sourceSubtitleSelection, isFalse);
+  });
+
+  test('personal actions require their specific advertised feature', () {
+    final usersOnly = PleyaServerCapabilityResolver.resolve(caps(users: true, watchState: true));
+    expect(usersOnly.serverFavorites, isFalse);
+    expect(usersOnly.userRating, isFalse);
+    expect(usersOnly.trackPreferencePersistence, isFalse);
+    final favorites = PleyaServerCapabilityResolver.resolve(
+      const PleyaCapabilities(browse: true, search: true, artwork: true, watchState: false, favorites: true),
+    );
+    expect(favorites.serverFavorites, isTrue);
+    expect(favorites.userRating, isFalse);
+    final ratings = PleyaServerCapabilityResolver.resolve(
+      const PleyaCapabilities(browse: true, search: true, artwork: true, watchState: false, ratings: true),
+    );
+    expect(ratings.userRating, isTrue);
+    expect(ratings.numericUserRating, isTrue);
+    final tracks = PleyaServerCapabilityResolver.resolve(caps(trackPreferences: true));
+    expect(tracks.trackPreferencePersistence, isTrue);
+    expect(tracks.serverFavorites, isFalse);
+  });
+
+  test('each list resource follows its own flag', () {
+    final collections = PleyaServerCapabilityResolver.resolve(caps(collections: true));
+    expect(collections.serverSideCollections, isTrue);
+    expect(collections.serverSidePlaylists, isFalse);
+    final playlists = PleyaServerCapabilityResolver.resolve(caps(playlists: true));
+    expect(playlists.serverSidePlaylists, isTrue);
+    expect(playlists.serverSideCollections, isFalse);
+  });
 
   group('item activity', () {
     test('follows the server, because this build can read it', () {
@@ -63,6 +157,7 @@ void main() {
       expect(unknown.videoTranscoding, isFalse, reason: 'the ServerCapabilities default is true and would be a lie');
       expect(unknown.liveTv, isFalse);
       expect(unknown.serverSidePlaylists, isFalse);
+      expect(unknown.serverSideCollections, isFalse);
       expect(unknown.serverFavorites, isFalse);
       expect(unknown.richMetadataEdit, isFalse);
       expect(unknown.alphaBar, AlphaBarMode.none);
@@ -77,6 +172,7 @@ void main() {
       expect(resolved.videoTranscoding, isFalse);
       expect(resolved.serverSidePlayQueue, isFalse);
       expect(resolved.serverSidePlaylists, isFalse);
+      expect(resolved.serverSideCollections, isFalse);
       expect(resolved.liveTv, isFalse);
       expect(resolved.liveTvDvr, isFalse);
       expect(resolved.serverSideSync, isFalse);
@@ -329,7 +425,7 @@ void main() {
                 'code': 'auth.rate_limited',
                 'message': 'slow down',
                 'retryable': true,
-                'details': {'retry_after_ms': 5000},
+                'details': {'retry_after_ms': 1},
               },
             }, status: 429),
           ),
@@ -414,7 +510,7 @@ void main() {
         httpClientFactory: () => MockClient((_) async => json(const {})),
       );
       await expectLater(client.markWatched(_dummyItem), completes);
-      await expectLater(client.rate(_dummyItem, 8), completes);
+      await expectLater(client.rate(_dummyItem, 8), throwsUnsupportedError);
       expect(await client.deleteMediaItem(_dummyItem), isFalse);
       expect(await client.addToPlaylist(playlistId: 'p', items: const []), isFalse);
       expect(await client.createPlaylist(title: 't', items: const []), isNull);

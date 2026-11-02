@@ -1,4 +1,5 @@
 import 'package:pleya/media/library_query.dart';
+import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
@@ -9,6 +10,8 @@ import 'package:pleya/media/media_server_client.dart';
 /// other member throws, so a source that starts calling something else fails
 /// loudly instead of quietly getting a default.
 class FakeFavoritesClient implements MediaServerClient {
+  @override
+  MediaBackend get backend => MediaBackend.plex;
   FakeFavoritesClient({required this.favorites, this.pageSize = 100});
 
   final List<MediaItem> favorites;

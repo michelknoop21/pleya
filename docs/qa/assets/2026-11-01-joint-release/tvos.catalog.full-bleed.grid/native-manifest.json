@@ -1,0 +1,1879 @@
+{
+  "run_id": "tvos-catalog-full-bleed-grid-1793572532154",
+  "git_commit": "d8cd3c77e025887128cea625699be025a1ad19a0",
+  "dirty": false,
+  "target": "tvos-sim",
+  "device": {
+    "name": "Pleya Verify Apple TV 4K",
+    "id": "2B32D66F-268C-4550-8A6A-0AE5FC13A308",
+    "class": "tv",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.tvOS-27-0"
+  },
+  "os": "Version 27.0.1 (Build 26A434)",
+  "scenario_hash": "020a69346f4addfa7cbe07c7a756138a13ec9bf51cf893bb70159179f0037020",
+  "snapshot_hash": "ab6b3ef79bac116e05f198594db8a1838d7b3cde976b01c1e7eb9f3e6530cd6f",
+  "instance": {
+    "port": 47317,
+    "protocolVersion": 1,
+    "pid": 59871,
+    "source": "/Volumes/SSD/CoreSimulator/Devices/2B32D66F-268C-4550-8A6A-0AE5FC13A308/data/Containers/Data/Application/631DDD34-B131-4F0D-9E15-C9E0C5227B3F/Library/Caches/pleya-verify/instance.json"
+  },
+  "result": "PASS",
+  "duration_ms": 54949,
+  "steps": [
+    {
+      "verb": "reset_app",
+      "line": 7,
+      "started_at_utc": "2026-11-01T22:35:32.873971Z",
+      "ok": true,
+      "duration_ms": 4217,
+      "finished_at_utc": "2026-11-01T22:35:37.091245Z"
+    },
+    {
+      "verb": "seed",
+      "line": 8,
+      "ok": true
+    },
+    {
+      "verb": "launch",
+      "line": 9,
+      "instance": {
+        "port": 47317,
+        "protocolVersion": 1,
+        "pid": 59871,
+        "source": "/Volumes/SSD/CoreSimulator/Devices/2B32D66F-268C-4550-8A6A-0AE5FC13A308/data/Containers/Data/Application/631DDD34-B131-4F0D-9E15-C9E0C5227B3F/Library/Caches/pleya-verify/instance.json"
+      },
+      "ok": true
+    },
+    {
+      "verb": "sign_in",
+      "line": 10,
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 12,
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 13,
+      "ok": true
+    },
+    {
+      "verb": "walk",
+      "line": 14,
+      "walk": "walk-14.json",
+      "stop": "steps",
+      "hops": [
+        {
+          "hop": 1,
+          "direction": "right",
+          "from": {
+            "node": 7,
+            "id": "nav.discover",
+            "label": "Home, huidige sectie",
+            "bounds": {
+              "x": 520.9882928466795,
+              "y": 44.03,
+              "width": 140.61625976562505,
+              "height": 66.1375
+            }
+          },
+          "before": {
+            "focused_ids": [
+              "nav.discover"
+            ],
+            "focus": {
+              "label": "tvNav_home",
+              "focused": true,
+              "canRequestFocus": true,
+              "node": 7,
+              "bounds": {
+                "x": 520.9882928466795,
+                "y": 44.03,
+                "width": 140.61625976562505,
+                "height": 66.1375
+              },
+              "_statusCode": 200
+            },
+            "screens": [
+              "screen.main",
+              "screen.discover",
+              "screen.libraries",
+              "screen.my_pleya"
+            ],
+            "route": {
+              "activeTab": null,
+              "tvDestination": "home",
+              "tvNestedRoute": null,
+              "navigatorDepth": 1,
+              "navigatorStack": [
+                "/"
+              ],
+              "_statusCode": 200
+            }
+          },
+          "after": {
+            "focused_ids": [
+              "nav.series"
+            ],
+            "focus": {
+              "label": "tvNav_series",
+              "focused": true,
+              "canRequestFocus": true,
+              "node": 8,
+              "bounds": {
+                "x": 700.9170526123046,
+                "y": 44.03,
+                "width": 145.82570800781252,
+                "height": 66.1375
+              },
+              "_statusCode": 200
+            },
+            "screens": [
+              "screen.main",
+              "screen.discover",
+              "screen.libraries",
+              "screen.my_pleya"
+            ],
+            "route": {
+              "activeTab": null,
+              "tvDestination": "home",
+              "tvNestedRoute": null,
+              "navigatorDepth": 1,
+              "navigatorStack": [
+                "/"
+              ],
+              "_statusCode": 200
+            }
+          },
+          "changed": true,
+          "events": [
+            {
+              "name": "input.received",
+              "data": {
+                "source": "hardware",
+                "key": "Arrow Right"
+              }
+            },
+            {
+              "name": "focus.changed",
+              "data": {
+                "from": "tvNav_home",
+                "to": "tvNav_series"
+              }
+            },
+            {
+              "name": "input.received",
+              "data": {
+                "source": "hardware",
+                "key": "Arrow Right"
+              }
+            }
+          ],
+          "to": {
+            "node": 8,
+            "id": "nav.series",
+            "label": "Series",
+            "bounds": {
+              "x": 700.9170526123046,
+              "y": 44.03,
+              "width": 145.82570800781252,
+              "height": 66.1375
+            }
+          },
+          "kind": "ok",
+          "message": "RIGHT from nav.discover at 521,44 141x66 to nav.series at 701,44 146x66"
+        },
+        {
+          "hop": 2,
+          "direction": "right",
+          "from": {
+            "node": 8,
+            "id": "nav.series",
+            "label": "Series",
+            "bounds": {
+              "x": 700.9170526123046,
+              "y": 44.03,
+              "width": 145.82570800781252,
+              "height": 66.1375
+            }
+          },
+          "before": {
+            "focused_ids": [
+              "nav.series"
+            ],
+            "focus": {
+              "label": "tvNav_series",
+              "focused": true,
+              "canRequestFocus": true,
+              "node": 8,
+              "bounds": {
+                "x": 700.9170526123046,
+                "y": 44.03,
+                "width": 145.82570800781252,
+                "height": 66.1375
+              },
+              "_statusCode": 200
+            },
+            "screens": [
+              "screen.main",
+              "screen.discover",
+              "screen.libraries",
+              "screen.my_pleya"
+            ],
+            "route": {
+              "activeTab": null,
+              "tvDestination": "home",
+              "tvNestedRoute": null,
+              "navigatorDepth": 1,
+              "navigatorStack": [
+                "/"
+              ],
+              "_statusCode": 200
+            }
+          },
+          "after": {
+            "focused_ids": [
+              "nav.movies"
+            ],
+            "focus": {
+              "label": "tvNav_movies",
+              "focused": true,
+              "canRequestFocus": true,
+              "node": 9,
+              "bounds": {
+                "x": 886.0552606201171,
+                "y": 44.03,
+                "width": 133.90346069335942,
+                "height": 66.1375
+              },
+              "_statusCode": 200
+            },
+            "screens": [
+              "screen.main",
+              "screen.discover",
+              "screen.libraries",
+              "screen.my_pleya"
+            ],
+            "route": {
+              "activeTab": null,
+              "tvDestination": "home",
+              "tvNestedRoute": null,
+              "navigatorDepth": 1,
+              "navigatorStack": [
+                "/"
+              ],
+              "_statusCode": 200
+            }
+          },
+          "changed": true,
+          "events": [
+            {
+              "name": "input.received",
+              "data": {
+                "source": "hardware",
+                "key": "Arrow Right"
+              }
+            },
+            {
+              "name": "focus.changed",
+              "data": {
+                "from": "tvNav_series",
+                "to": "tvNav_movies"
+              }
+            },
+            {
+              "name": "input.received",
+              "data": {
+                "source": "hardware",
+                "key": "Arrow Right"
+              }
+            }
+          ],
+          "to": {
+            "node": 9,
+            "id": "nav.movies",
+            "label": "Films",
+            "bounds": {
+              "x": 886.0552606201171,
+              "y": 44.03,
+              "width": 133.90346069335942,
+              "height": 66.1375
+            }
+          },
+          "kind": "ok",
+          "message": "RIGHT from nav.series at 701,44 146x66 to nav.movies at 886,44 134x66"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 15,
+      "input_route": "idb",
+      "key": "select",
+      "before": {
+        "focused_ids": [
+          "nav.movies"
+        ],
+        "focus": {
+          "label": "tvNav_movies",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 9,
+          "bounds": {
+            "x": 886.0552606201171,
+            "y": 44.03,
+            "width": 133.90346069335942,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": null,
+          "tvDestination": "home",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "nav.movies"
+        ],
+        "focus": {
+          "label": "tvNav_movies",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 9,
+          "bounds": {
+            "x": 886.0552606201171,
+            "y": 44.03,
+            "width": 133.90346069335942,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "route.changed",
+          "data": {
+            "destination": "movies"
+          }
+        },
+        {
+          "name": "navigation.tab_changed",
+          "data": {
+            "from": "discover",
+            "to": "movies"
+          }
+        },
+        {
+          "name": "route.changed",
+          "data": {
+            "tab": "movies"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 16,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 19,
+      "input_route": "idb",
+      "key": "down",
+      "before": {
+        "focused_ids": [
+          "nav.movies"
+        ],
+        "focus": {
+          "label": "tvNav_movies",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 9,
+          "bounds": {
+            "x": 886.0552606201171,
+            "y": 44.03,
+            "width": 133.90346069335942,
+            "height": 66.1375
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [],
+        "focus": {
+          "label": "TvDiscoveryViewAll",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 74,
+          "bounds": {
+            "x": 240.38871093749998,
+            "y": 240.8466114139557,
+            "width": 203.81651214599611,
+            "height": 66.60000000000002
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "tvNav_movies",
+            "to": "Content"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "Content",
+            "to": "TvDiscoveryViewAll"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 20,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 21,
+      "input_route": "idb",
+      "key": "select",
+      "before": {
+        "focused_ids": [],
+        "focus": {
+          "label": "TvDiscoveryViewAll",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 74,
+          "bounds": {
+            "x": 240.38871093749998,
+            "y": 240.8466114139557,
+            "width": 203.81651214599611,
+            "height": 66.60000000000002
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.0]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid01:2001)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 75,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 60.000000000000036,
+            "width": 268.20228310502273,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "route.changed",
+          "data": {
+            "destination": "movies",
+            "nested": "tvCatalog_movies"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvDiscoveryViewAll",
+            "to": "Content"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Enter"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "Content",
+            "to": "TvUnifiedCard(group:movie:longgrid01:2001)"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 22,
+      "ok": true
+    },
+    {
+      "verb": "wait_until",
+      "line": 23,
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 24,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 25,
+      "geometry": [
+        {
+          "predicate": "insideViewport",
+          "subject": "tv.catalog.grid.item[movies.0]",
+          "ok": true,
+          "message": "GeoRect(71.99999999999997, 60.000000000000036, 268.20228310502273x470.75342465753414) is fully inside viewport GeoRect(0.0, 0.0, 1919.9999999999998x1080.0)",
+          "detail": {}
+        }
+      ],
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "tv.catalog.grid.item[movies.0]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'tv.catalog.grid.item[movies.0]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 26,
+      "geometry": [
+        {
+          "predicate": "insideViewport",
+          "subject": "tv.catalog.grid.item[movies.5]",
+          "ok": true,
+          "message": "GeoRect(1579.797716894977, 60.000000000000036, 268.20228310502284x470.75342465753414) is fully inside viewport GeoRect(0.0, 0.0, 1919.9999999999998x1080.0)",
+          "detail": {}
+        },
+        {
+          "predicate": "sameRow",
+          "subject": "tv.catalog.grid.item[movies.5]",
+          "other": "tv.catalog.grid.item[movies.0]",
+          "ok": true,
+          "message": "GeoRect(1579.797716894977, 60.000000000000036, 268.20228310502284x470.75342465753414) and GeoRect(71.99999999999997, 60.000000000000036, 268.20228310502273x470.75342465753414) share a row (Δy=0.0)",
+          "detail": {}
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 27,
+      "geometry": [
+        {
+          "predicate": "insideViewport",
+          "subject": "tv.catalog.grid.item[movies.6]",
+          "ok": true,
+          "message": "GeoRect(71.99999999999997, 549.2465753424658, 268.20228310502273x470.7534246575342) is fully inside viewport GeoRect(0.0, 0.0, 1919.9999999999998x1080.0)",
+          "detail": {}
+        },
+        {
+          "predicate": "below",
+          "subject": "tv.catalog.grid.item[movies.6]",
+          "other": "tv.catalog.grid.item[movies.0]",
+          "ok": true,
+          "message": "GeoRect(71.99999999999997, 549.2465753424658, 268.20228310502273x470.7534246575342) is below GeoRect(71.99999999999997, 60.000000000000036, 268.20228310502273x470.75342465753414)",
+          "detail": {}
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 28,
+      "geometry": [
+        {
+          "predicate": "insideViewport",
+          "subject": "tv.catalog.grid.item[movies.11]",
+          "ok": true,
+          "message": "GeoRect(1579.797716894977, 549.2465753424658, 268.20228310502284x470.7534246575342) is fully inside viewport GeoRect(0.0, 0.0, 1919.9999999999998x1080.0)",
+          "detail": {}
+        },
+        {
+          "predicate": "sameRow",
+          "subject": "tv.catalog.grid.item[movies.11]",
+          "other": "tv.catalog.grid.item[movies.6]",
+          "ok": true,
+          "message": "GeoRect(1579.797716894977, 549.2465753424658, 268.20228310502284x470.7534246575342) and GeoRect(71.99999999999997, 549.2465753424658, 268.20228310502273x470.7534246575342) share a row (Δy=0.0)",
+          "detail": {}
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 29,
+      "geometry": [
+        {
+          "predicate": "below",
+          "subject": "tv.catalog.grid.item[movies.12]",
+          "other": "tv.catalog.grid.item[movies.6]",
+          "ok": true,
+          "message": "GeoRect(71.99999999999997, 1038.4931506849316, 268.20228310502273x470.7534246575342) is below GeoRect(71.99999999999997, 549.2465753424658, 268.20228310502273x470.7534246575342)",
+          "detail": {}
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 30,
+      "state": [
+        {
+          "predicate": "state",
+          "subject": "nav.bar",
+          "key": "hidden",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'nav.bar'.state.hidden is true"
+        },
+        {
+          "predicate": "state",
+          "subject": "nav.bar",
+          "key": "overlay",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'nav.bar'.state.overlay is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 31,
+      "ok": true
+    },
+    {
+      "verb": "snapshot",
+      "line": 32,
+      "screenshot": "00-rest.png",
+      "screenshot_source": "platform-compositor",
+      "viewport": {
+        "available": true,
+        "width": 1919.9999999999998,
+        "height": 1080.0,
+        "devicePixelRatio": 2.0,
+        "space": "root",
+        "scale": 1.85,
+        "logicalWidth": 1037.8378378378377,
+        "logicalHeight": 583.7837837837837,
+        "safeArea": {
+          "top": 0.0,
+          "right": 0.0,
+          "bottom": 0.0,
+          "left": 0.0
+        },
+        "_statusCode": 200
+      },
+      "screenshot_pixels": {
+        "width": 3840,
+        "height": 2160
+      },
+      "ui_tree": "00-rest.json",
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 35,
+      "input_route": "idb",
+      "key": "up",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.0]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid01:2001)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 75,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 60.000000000000036,
+            "width": 268.20228310502273,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.0]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid01:2001)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 75,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 60.000000000000036,
+            "width": 268.20228310502273,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": false,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 36,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 37,
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "tv.catalog.grid.item[movies.0]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'tv.catalog.grid.item[movies.0]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 38,
+      "state": [
+        {
+          "predicate": "state",
+          "subject": "nav.bar",
+          "key": "hidden",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'nav.bar'.state.hidden is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 41,
+      "input_route": "idb",
+      "key": "down",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.0]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid01:2001)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 75,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 60.000000000000036,
+            "width": 268.20228310502273,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.6]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid07:2007)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 81,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 549.2465753424658,
+            "width": 268.20228310502273,
+            "height": 470.7534246575342
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvUnifiedCard(group:movie:longgrid01:2001)",
+            "to": "TvUnifiedCard(group:movie:longgrid07:2007)"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 42,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 43,
+      "geometry": [
+        {
+          "predicate": "insideViewport",
+          "subject": "tv.catalog.grid.item[movies.6]",
+          "ok": true,
+          "message": "GeoRect(71.99999999999997, 549.2465753424658, 268.20228310502273x470.7534246575342) is fully inside viewport GeoRect(0.0, 0.0, 1919.9999999999998x1080.0)",
+          "detail": {}
+        }
+      ],
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "tv.catalog.grid.item[movies.6]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'tv.catalog.grid.item[movies.6]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 44,
+      "input_route": "idb",
+      "key": "down",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.6]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid07:2007)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 81,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 549.2465753424658,
+            "width": 268.20228310502273,
+            "height": 470.7534246575342
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.12]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid13:2013)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 87,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 626.1287049906355,
+            "width": 268.20228310502273,
+            "height": 470.7534246575342
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvUnifiedCard(group:movie:longgrid07:2007)",
+            "to": "TvUnifiedCard(group:movie:longgrid13:2013)"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Down"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 45,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 46,
+      "geometry": [
+        {
+          "predicate": "insideViewport",
+          "subject": "tv.catalog.grid.item[movies.12]",
+          "ok": true,
+          "message": "GeoRect(71.99999999999997, 549.2465753424658, 268.20228310502273x470.7534246575342) is fully inside viewport GeoRect(0.0, 0.0, 1919.9999999999998x1080.0)",
+          "detail": {}
+        }
+      ],
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "tv.catalog.grid.item[movies.12]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'tv.catalog.grid.item[movies.12]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 47,
+      "geometry": [
+        {
+          "predicate": "insideViewport",
+          "subject": "tv.catalog.grid.item[movies.6]",
+          "ok": true,
+          "message": "GeoRect(71.99999999999997, 60.00000000000006, 268.20228310502273x470.75342465753414) is fully inside viewport GeoRect(0.0, 0.0, 1919.9999999999998x1080.0)",
+          "detail": {}
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "snapshot",
+      "line": 48,
+      "screenshot": "01-row2.png",
+      "screenshot_source": "platform-compositor",
+      "viewport": {
+        "available": true,
+        "width": 1919.9999999999998,
+        "height": 1080.0,
+        "devicePixelRatio": 2.0,
+        "space": "root",
+        "scale": 1.85,
+        "logicalWidth": 1037.8378378378377,
+        "logicalHeight": 583.7837837837837,
+        "safeArea": {
+          "top": 0.0,
+          "right": 0.0,
+          "bottom": 0.0,
+          "left": 0.0
+        },
+        "_statusCode": 200
+      },
+      "screenshot_pixels": {
+        "width": 3840,
+        "height": 2160
+      },
+      "ui_tree": "01-row2.json",
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 51,
+      "input_route": "idb",
+      "key": "right",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.12]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid13:2013)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 87,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 549.2465753424658,
+            "width": 268.20228310502273,
+            "height": 470.7534246575342
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.13]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid14:2014)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 88,
+          "bounds": {
+            "x": 373.5595433789954,
+            "y": 549.2465753424658,
+            "width": 268.20228310502284,
+            "height": 470.7534246575342
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvUnifiedCard(group:movie:longgrid13:2013)",
+            "to": "TvUnifiedCard(group:movie:longgrid14:2014)"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 52,
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 53,
+      "input_route": "idb",
+      "key": "up",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.13]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid14:2014)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 88,
+          "bounds": {
+            "x": 373.5595433789954,
+            "y": 549.2465753424658,
+            "width": 268.20228310502284,
+            "height": 470.7534246575342
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.7]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid08:2008)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 82,
+          "bounds": {
+            "x": 373.5595433789954,
+            "y": 60.00000000000006,
+            "width": 268.20228310502284,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvUnifiedCard(group:movie:longgrid14:2014)",
+            "to": "TvUnifiedCard(group:movie:longgrid08:2008)"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Up"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 54,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 55,
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "tv.catalog.grid.item[movies.7]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'tv.catalog.grid.item[movies.7]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 56,
+      "input_route": "idb",
+      "key": "left",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.7]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid08:2008)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 82,
+          "bounds": {
+            "x": 373.5595433789954,
+            "y": 60.00000000000006,
+            "width": 268.20228310502284,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.6]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid07:2007)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 81,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 60.00000000000006,
+            "width": 268.20228310502273,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Left"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvUnifiedCard(group:movie:longgrid08:2008)",
+            "to": "TvUnifiedCard(group:movie:longgrid07:2007)"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Left"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 57,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 58,
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "tv.catalog.grid.item[movies.6]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'tv.catalog.grid.item[movies.6]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 59,
+      "input_route": "idb",
+      "key": "right",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.6]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid07:2007)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 81,
+          "bounds": {
+            "x": 71.99999999999997,
+            "y": 60.00000000000006,
+            "width": 268.20228310502273,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.7]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid08:2008)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 82,
+          "bounds": {
+            "x": 373.5595433789954,
+            "y": 60.00000000000006,
+            "width": 268.20228310502284,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvUnifiedCard(group:movie:longgrid07:2007)",
+            "to": "TvUnifiedCard(group:movie:longgrid08:2008)"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Arrow Right"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 60,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 61,
+      "state": [
+        {
+          "predicate": "focused",
+          "subject": "tv.catalog.grid.item[movies.7]",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "message": "'tv.catalog.grid.item[movies.7]'.focused is true"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "press",
+      "line": 64,
+      "input_route": "idb",
+      "key": "menu",
+      "before": {
+        "focused_ids": [
+          "tv.catalog.grid.item[movies.7]"
+        ],
+        "focus": {
+          "label": "TvUnifiedCard(group:movie:longgrid08:2008)",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 82,
+          "bounds": {
+            "x": 373.5595433789954,
+            "y": 60.00000000000006,
+            "width": 268.20228310502284,
+            "height": 470.75342465753414
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": "tvCatalog_movies",
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "after": {
+        "focused_ids": [],
+        "focus": {
+          "label": "TvDiscoveryViewAll",
+          "focused": true,
+          "canRequestFocus": true,
+          "node": 74,
+          "bounds": {
+            "x": 240.38871093749998,
+            "y": 240.8466114139557,
+            "width": 203.81651214599611,
+            "height": 66.60000000000002
+          },
+          "_statusCode": 200
+        },
+        "screens": [
+          "screen.main",
+          "screen.discover",
+          "screen.libraries",
+          "screen.my_pleya"
+        ],
+        "route": {
+          "activeTab": "movies",
+          "tvDestination": "movies",
+          "tvNestedRoute": null,
+          "navigatorDepth": 1,
+          "navigatorStack": [
+            "/"
+          ],
+          "_statusCode": 200
+        }
+      },
+      "changed": true,
+      "events": [
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        },
+        {
+          "name": "route.changed",
+          "data": {
+            "destination": "movies"
+          }
+        },
+        {
+          "name": "input.received",
+          "data": {
+            "source": "hardware",
+            "key": "Escape"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "from": "TvUnifiedCard(group:movie:longgrid08:2008)"
+          }
+        },
+        {
+          "name": "focus.changed",
+          "data": {
+            "to": "TvDiscoveryViewAll"
+          }
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "settle",
+      "line": 65,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 66,
+      "ok": true
+    },
+    {
+      "verb": "assert",
+      "line": 67,
+      "state": [
+        {
+          "predicate": "state",
+          "subject": "nav.bar",
+          "key": "hidden",
+          "expected": false,
+          "actual": false,
+          "ok": true,
+          "message": "'nav.bar'.state.hidden is false"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "verb": "snapshot",
+      "line": 68,
+      "screenshot": "02-landing.png",
+      "screenshot_source": "platform-compositor",
+      "viewport": {
+        "available": true,
+        "width": 1919.9999999999998,
+        "height": 1080.0,
+        "devicePixelRatio": 2.0,
+        "space": "root",
+        "scale": 1.85,
+        "logicalWidth": 1037.8378378378377,
+        "logicalHeight": 583.7837837837837,
+        "safeArea": {
+          "top": 0.0,
+          "right": 0.0,
+          "bottom": 0.0,
+          "left": 0.0
+        },
+        "_statusCode": 200
+      },
+      "screenshot_pixels": {
+        "width": 3840,
+        "height": 2160
+      },
+      "ui_tree": "02-landing.json",
+      "ok": true
+    }
+  ]
+}

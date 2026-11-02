@@ -42,10 +42,25 @@ type DeviceCapabilitiesWire struct {
 }
 
 // PlaybackPlanRequest is de body van POST /playback/plan.
+type PlaybackSubtitleSelection struct {
+	Mode     string  `json:"mode"`
+	StreamID *string `json:"stream_id,omitempty"`
+}
+
+type PlaybackSubtitlePlan struct {
+	Action   string  `json:"action"`
+	StreamID *string `json:"stream_id,omitempty"`
+	URL      *string `json:"url,omitempty"`
+	Format   *string `json:"format,omitempty"`
+}
+
 type PlaybackPlanRequest struct {
-	ItemID       string                  `json:"item_id"`
-	VersionID    *string                 `json:"version_id,omitempty"`
-	Capabilities *DeviceCapabilitiesWire `json:"capabilities,omitempty"`
+	Subtitle      *PlaybackSubtitleSelection `json:"subtitle,omitempty"`
+	Quality       *playback.Quality          `json:"quality,omitempty"`
+	AudioStreamID *string                    `json:"audio_stream_id,omitempty"`
+	ItemID        string                     `json:"item_id"`
+	VersionID     *string                    `json:"version_id,omitempty"`
+	Capabilities  *DeviceCapabilitiesWire    `json:"capabilities,omitempty"`
 }
 
 // PlaybackReason is een domeincode met parameters.
@@ -63,17 +78,20 @@ type PlaybackTrackPlan struct {
 
 // PlaybackPlan is het antwoord van POST /playback/plan.
 type PlaybackPlan struct {
-	ItemID       string            `json:"item_id"`
-	VersionID    string            `json:"version_id"`
-	DeliveryMode string            `json:"delivery_mode"`
-	StreamURL    string            `json:"stream_url"`
-	Container    string            `json:"container"`
-	Video        PlaybackTrackPlan `json:"video"`
-	Audio        PlaybackTrackPlan `json:"audio"`
-	Seekable     bool              `json:"seekable"`
-	SessionID    *string           `json:"session_id"`
-	Reason       PlaybackReason    `json:"reason"`
-	Reasons      []PlaybackReason  `json:"reasons"`
+	Subtitle              *PlaybackSubtitlePlan `json:"subtitle,omitempty"`
+	EffectiveQuality      *playback.Quality     `json:"effective_quality,omitempty"`
+	SelectedAudioStreamID *string               `json:"selected_audio_stream_id,omitempty"`
+	ItemID                string                `json:"item_id"`
+	VersionID             string                `json:"version_id"`
+	DeliveryMode          string                `json:"delivery_mode"`
+	StreamURL             string                `json:"stream_url"`
+	Container             string                `json:"container"`
+	Video                 PlaybackTrackPlan     `json:"video"`
+	Audio                 PlaybackTrackPlan     `json:"audio"`
+	Seekable              bool                  `json:"seekable"`
+	SessionID             *string               `json:"session_id"`
+	Reason                PlaybackReason        `json:"reason"`
+	Reasons               []PlaybackReason      `json:"reasons"`
 }
 
 func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
@@ -105,12 +123,64 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Quality != nil && (req.Quality.MaxVideoBitrateKbps < 1 || req.Quality.MaxVideoBitrateKbps > 100000 || req.Quality.MaxHeight < 1 || req.Quality.MaxHeight > 4320) || req.AudioStreamID != nil && req.VersionID == nil {
+		writeError(w, s.log, CodePlaybackSelectionInvalid, "invalid playback selection", nil)
+		return
+	}
+	if sub := req.Subtitle; sub != nil {
+		if (sub.Mode != "off" && sub.Mode != "external" && sub.Mode != "burn") ||
+			(sub.Mode == "off" && sub.StreamID != nil) ||
+			(sub.Mode != "off" && (sub.StreamID == nil || req.VersionID == nil)) {
+			writeError(w, s.log, CodePlaybackSelectionInvalid, "invalid subtitle selection", nil)
+			return
+		}
+	}
+	var subtitleStream *catalog.Stream
 	var sources []playback.Source
+	hasOrdinary := false
 	for _, v := range item.Versions {
+		if !v.AuxiliaryOnly {
+			hasOrdinary = true
+			break
+		}
+	}
+	for _, v := range item.Versions {
+		// Historical explicit versions remain addressable; an automatic Play
+		// prefers an ordinary source when one exists. A known all-auxiliary item
+		// keeps its existing direct playback behavior (e.g. from history).
+		if wantVersion == nil && hasOrdinary && v.AuxiliaryOnly {
+			continue
+		}
 		if wantVersion != nil && v.ID != *wantVersion {
 			continue
 		}
-		sources = append(sources, planSource(v))
+		if sub := req.Subtitle; sub != nil && sub.Mode != "off" {
+			for _, stream := range v.Streams {
+				if stream.Kind == "subtitle" && stream.ID.String() == *sub.StreamID && stream.SubtitleFormat != "" {
+					copy := stream
+					subtitleStream = &copy
+					break
+				}
+			}
+		}
+		src := planSource(v)
+		if req.AudioStreamID != nil {
+			src.Audio = nil
+			for _, stream := range v.Streams {
+				if stream.ID.String() == *req.AudioStreamID && stream.Kind == "audio" && !stream.IsExternal && stream.Index != nil {
+					src.Audio = &playback.AudioTrack{ID: stream.ID.String(), Index: stream.Index, Codec: stream.Codec}
+					if stream.Channels != nil {
+						src.Audio.Channels = *stream.Channels
+					}
+					break
+				}
+			}
+			if src.Audio == nil {
+				writeError(w, s.log, CodeNotFound, "audio stream not found", nil)
+				return
+			}
+		}
+		sources = append(sources, src)
 	}
 	if len(sources) == 0 {
 		if wantVersion != nil {
@@ -121,11 +191,18 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Subtitle != nil && req.Subtitle.Mode != "off" && subtitleStream == nil {
+		writeError(w, s.log, CodeNotFound, "subtitle not found", nil)
+		return
+	}
 	var caps playback.Capabilities
 	if req.Capabilities != nil {
 		caps = req.Capabilities.model()
 	}
-	plan, err := playback.Decide(sources, caps, s.playbackPolicy())
+	policy := s.playbackPolicy()
+	policy.Quality, policy.SelectAudio = req.Quality, req.AudioStreamID != nil
+	policy.BurnSubtitles = req.Subtitle != nil && req.Subtitle.Mode == "burn"
+	plan, err := playback.Decide(sources, caps, policy)
 	var np *playback.NotPlayableError
 	if errors.As(err, &np) {
 		writeError(w, s.log, CodeNotPlayable, "no version can be played on this device",
@@ -136,15 +213,66 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
-	var sess *transcode.Session
-	if plan.Mode != playback.DirectPlay {
-		var ok bool
-		if sess, ok = s.startTranscode(w, r, plan, chosenSource(sources, plan.VersionID)); !ok {
-			return
+	var subtitlePlan *PlaybackSubtitlePlan
+	if req.Subtitle != nil {
+		subtitlePlan = &PlaybackSubtitlePlan{Action: req.Subtitle.Mode, StreamID: req.Subtitle.StreamID}
+		if subtitleStream != nil {
+			format := subtitleStream.SubtitleFormat
+			subtitlePlan.Format = &format
+			if req.Subtitle.Mode == "external" {
+				url := "/pleya/v1/subtitles/" + subtitleStream.ID.String()
+				subtitlePlan.URL = &url
+			} else if req.Subtitle.Mode == "burn" {
+				file, _, _, fileErr := s.opts.Catalog.SubtitleFile(r.Context(), subtitleStream.ID)
+				index := 0
+				if errors.Is(fileErr, catalog.ErrNotFound) {
+					file, _, _, index, fileErr = s.opts.Catalog.EmbeddedSubtitleFile(r.Context(), subtitleStream.ID)
+				}
+				if fileErr != nil {
+					s.writeStoreError(w, fileErr)
+					return
+				}
+				if format == "pgs" || format == "dvdsub" {
+					// Burned straight from the source: an extraction reads the whole file for what ffmpeg
+					// demuxes anyway, and a separate input would lose the cue times.
+					plan.SubtitleBitmap, plan.SubtitleStream = true, index
+				} else {
+					user, subjectErr := s.subjectID(r)
+					if subjectErr != nil {
+						writeInternal(w, s.log, subjectErr)
+						return
+					}
+					path, extractErr := s.opts.Transcode.ExtractSubtitle(r.Context(), transcode.SubtitleParams{
+						User: user, InputPath: file.AbsPath, StreamIndex: index, Format: file.Format, Generation: file.Generation,
+					})
+					if extractErr != nil {
+						s.writeSubtitlePreparationError(w, r, subtitleStream.ID, extractErr)
+						return
+					}
+					plan.SubtitlePath = path
+				}
+			}
 		}
 	}
-	s.opts.Metrics.Inc("pleya_playback_plans_total", "Afspeelplannen per leveringswijze.", "mode", string(plan.Mode))
-	writeJSON(w, http.StatusOK, mapPlan(itemID, plan, sess))
+	// Preparation may outlive credentials or a library grant.
+	s.authenticated(func(w http.ResponseWriter, fresh *http.Request) {
+		if !s.authorizeLibrary(w, fresh, item.LibraryID) {
+			return
+		}
+		var sess *transcode.Session
+		if plan.Mode != playback.DirectPlay {
+			var ok bool
+			if sess, ok = s.startTranscode(w, fresh, plan, chosenSource(sources, plan.VersionID)); !ok {
+				return
+			}
+		}
+		s.opts.Metrics.Inc("pleya_playback_plans_total", "Afspeelplannen per leveringswijze.", "mode", string(plan.Mode))
+		response := mapPlan(itemID, plan, sess)
+		response.EffectiveQuality = plan.Quality
+		response.SelectedAudioStreamID = req.AudioStreamID
+		response.Subtitle = subtitlePlan
+		writeJSON(w, http.StatusOK, response)
+	}).ServeHTTP(w, r)
 }
 
 func chosenSource(sources []playback.Source, versionID string) playback.Source {
@@ -178,7 +306,7 @@ func planSource(v catalog.Version) playback.Source {
 		}
 	}
 	if firstAudio != nil {
-		at := &playback.AudioTrack{Codec: firstAudio.Codec}
+		at := &playback.AudioTrack{ID: firstAudio.ID.String(), Index: firstAudio.Index, Codec: firstAudio.Codec}
 		if firstAudio.Channels != nil {
 			at.Channels = *firstAudio.Channels
 		}

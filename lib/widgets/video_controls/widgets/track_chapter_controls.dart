@@ -11,6 +11,7 @@ import '../../../media/media_version.dart';
 import '../../../mpv/mpv.dart';
 import '../../../media/media_source_info.dart';
 import '../../../services/airplay_service.dart';
+import '../../../services/deferred_subtitle_loader.dart';
 import '../../../services/sleep_timer_service.dart';
 import '../../../utils/haptics.dart';
 import '../../../utils/platform_detector.dart';
@@ -26,6 +27,7 @@ import '../sheets/video_settings_sheet.dart';
 import '../tv_info_panel/tv_panel_types.dart';
 import '../../../services/shader_service.dart';
 import '../video_control_button.dart';
+import 'deferred_subtitle_status.dart';
 import '../../pleya_fly_icon.dart';
 
 /// Row of track and chapter control buttons for the video player
@@ -190,6 +192,12 @@ class TrackChapterControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final deferredSubtitles = trackControlsState.deferredSubtitles;
+    if (deferredSubtitles == null) return _buildControls(context);
+    return ListenableBuilder(listenable: deferredSubtitles, builder: (context, _) => _buildControls(context));
+  }
+
+  Widget _buildControls(BuildContext context) {
     return StreamBuilder<Tracks>(
       stream: player.streams.tracks,
       initialData: player.state.tracks,
@@ -274,6 +282,7 @@ class TrackChapterControls extends StatelessWidget {
         // Combined audio & subtitles button
         {
           final currentIndex = buttonIndex;
+          final deferredNote = deferredSubtitleNote(trackControlsState.deferredSubtitles?.status);
           final hasSubtitleControls = trackControlsState.hasSubtitleControls(tracks);
           final selectedSub = player.state.track.subtitle;
           final hasActiveSubtitle = selectedSub != null && selectedSub.id != 'no';
@@ -285,8 +294,12 @@ class TrackChapterControls extends StatelessWidget {
             _buildTrackButton(
               buttonIndex: currentIndex,
               icon: icon,
-              tooltip: t.videoControls.tracksButton,
-              semanticLabel: t.videoControls.tracksButton,
+              iconWidget: trackControlsState.deferredSubtitles?.status == DeferredSubtitleStatus.preparing
+                  ? const DeferredSubtitleIcon()
+                  : null,
+              automationId: AutomationIds.playerTracksButton,
+              tooltip: deferredNote ?? t.videoControls.tracksButton,
+              semanticLabel: deferredNote ?? t.videoControls.tracksButton,
               isMobile: isMobile,
               isDesktop: isDesktop,
               onPressed: () {

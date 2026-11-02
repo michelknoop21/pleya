@@ -286,9 +286,27 @@ func TestRestoreBringsBackTheBackupAndABrokenDumpChangesNothing(t *testing.T) {
 	// aangemaakt) en daarna een leesfout. Zou psql daarop zijn invoer gesloten
 	// zien in plaats van gedood worden, dan commit hij een leeg schema.
 	marker = f.addMarkerLibrary(t)
-	broken := f.craft(t, func(m *Manifest, dump []byte) []byte { return truncatedAtStatement(t, dump) })
+	broken := f.craft(t, func(_ *Manifest, dump []byte) []byte { return dump })
 	plan, err = f.svc.PrepareRestore(ctx, broken)
 	if err != nil {
+		t.Fatal(err)
+	}
+	// Beschadig pas na een geldige voorbereiding: de load-beveiliging moet ook
+	// tegen een leesfout tijdens Restore blijven beschermen.
+	got := entries(t, plan.file)
+	dumpPath := filepath.Join(t.TempDir(), "dump.gz")
+	if err := os.WriteFile(dumpPath, truncatedAtStatement(t, got[entryDump]), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := os.Create(plan.file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeArchive(out, plan.manifest, dumpPath, nil, got[entrySecrets]); err != nil {
+		out.Close()
+		t.Fatal(err)
+	}
+	if err := out.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.svc.Restore(ctx, plan); err == nil {
@@ -321,6 +339,42 @@ func truncatedAtStatement(t *testing.T, dump []byte) []byte {
 	_ = zw.Close()
 	out.WriteString("rommel na het eerste gzip-lid")
 	return out.Bytes()
+}
+
+func TestPrepareRestoreRejectsDamagedDump(t *testing.T) {
+	testsupport.HasPostgresClient(t)
+	pool := testsupport.Pool(t)
+	if _, err := migrate.Run(context.Background(), pool, nil); err != nil {
+		t.Fatal(err)
+	}
+	configDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(configDir, "token-signing.key"), []byte(keyMarker), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := &fixture{svc: newService(pool, t.TempDir(), configDir, testKey), pool: pool, configDir: configDir}
+	marker := f.addMarkerLibrary(t)
+	for _, tc := range []struct {
+		name   string
+		damage func([]byte) []byte
+	}{
+		{"geen gzip", func([]byte) []byte { return []byte("geen gzip") }},
+		{"afgekapt", func(d []byte) []byte { return d[:len(d)-5] }},
+		{"checksum", func(d []byte) []byte { d[len(d)-8] ^= 1; return d }},
+		{"rommel na gzip", func(d []byte) []byte { return append(d, []byte("rommel na gzip")...) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			broken := f.craft(t, func(_ *Manifest, d []byte) []byte { return tc.damage(d) })
+			if _, err := f.svc.PrepareRestore(context.Background(), broken); !errors.Is(err, ErrNotRestorable) {
+				t.Fatalf("kapotte dump toegelaten in de voorbereiding: %v", err)
+			}
+			if !f.libraryExists(t, marker) {
+				t.Fatal("voorbereiding wijzigde de database")
+			}
+			if got, err := os.ReadFile(filepath.Join(f.configDir, "token-signing.key")); err != nil || string(got) != keyMarker {
+				t.Fatalf("voorbereiding wijzigde /config: %q %v", got, err)
+			}
+		})
+	}
 }
 
 func TestRestoreRefusesABackupFromANewerSchema(t *testing.T) {

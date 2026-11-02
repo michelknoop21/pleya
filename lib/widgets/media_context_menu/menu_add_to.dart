@@ -126,13 +126,14 @@ extension on MediaContextMenuState {
         }
       }
 
-      if (libraryId == null || libraryId.isEmpty) {
+      // A Pleya Server collection spans the server, so it has no section to find.
+      if (client.backend != MediaBackend.pleyaServer && (libraryId == null || libraryId.isEmpty)) {
         if (context.mounted) {
           showErrorSnackBar(context, t.messages.unableToDetermineLibrarySection);
         }
         return;
       }
-      final resolvedLibraryId = libraryId;
+      final resolvedLibraryId = libraryId ?? '';
       if (!context.mounted) return;
 
       final result = await showScopedDialog<String>(

@@ -197,6 +197,23 @@ def check_validator_bites(document: dict) -> None:
         return bool(list(validator.iter_errors(payload)))
 
     cases = [
+        ("cacheomvang negatief", "ArtworkCacheStats", {"bytes": -1, "files": 0}),
+        ("cacheaantal geen integer", "ArtworkCacheStats", {"bytes": 0, "files": 0.5}),
+        ("cacheomvang met pad", "ArtworkCacheStats", {"bytes": 0, "files": 0, "path": "/media"}),
+        ("cachepurge zonder bevestiging", "ArtworkCachePurgeRequest", {}),
+        ("cachepurge verkeerde bevestiging", "ArtworkCachePurgeRequest", {"confirm": "PURGE"}),
+        ("cachepurge met vrij pad", "ArtworkCachePurgeRequest", {"confirm": "purge", "path": "/media"}),
+        ("ondertitels uit met een spoor", "PlaybackSubtitleSelection", {"mode": "off", "stream_id": "s"}),
+        ("burn zonder spoor", "PlaybackSubtitleSelection", {"mode": "burn"}),
+        ("onbekende ondertitelkeuze", "PlaybackSubtitleSelection", {"mode": "auto"}),
+        ("ondertitelkeuze zonder versie", "PlaybackPlanRequest", {"item_id": "i", "subtitle": {"mode": "burn", "stream_id": "s"}}),
+        ("audiokeuze zonder versie", "PlaybackPlanRequest", {"item_id": "i", "audio_stream_id": "a"}),
+        ("een kwaliteitscap zonder hoogte", "PlaybackPlanRequest",
+         {"item_id": "01a15486-f53b-7001-a2c0-dad3c02bbd3a", "quality": {"max_video_bitrate_kbps": 2000}}),
+        ("een onbekende kwaliteitsoptie", "PlaybackQuality",
+         {"max_video_bitrate_kbps": 2000, "max_height": 720, "preset": "fast"}),
+        ("een kwaliteitscap buiten bereik", "PlaybackQuality",
+         {"max_video_bitrate_kbps": 0, "max_height": 720}),
         (
             "een Plex-veldnaam in plaats van de neutrale",
             "UserState",
@@ -282,6 +299,29 @@ def check_error_domains(document: dict) -> None:
         report(PASS, f"alle {len(expected)} foutdomeinen komen door het patroon")
 
 
+def check_list_limits(document: dict) -> None:
+    """De pagineerde S19- en S20-lijsten delen de grens van hoofdstuk 8.
+
+    catalog.ClampLimit brengt terug naar 500. Een eigen maximum van 200 in het
+    schema noemt een aanvraag ongeldig die de server gewoon beantwoordt.
+    """
+    wanted = {"listCollections", "listCollectionItems", "listPlaylists", "listPlaylistItems", "listRatings"}
+    found = set()
+    for item in document["paths"].values():
+        for operation in item.values():
+            if not isinstance(operation, dict) or operation.get("operationId") not in wanted:
+                continue
+            refs = [p.get("$ref") for p in operation.get("parameters", [])]
+            own = [p for p in operation.get("parameters", []) if p.get("name") == "limit"]
+            if "#/components/parameters/Limit" in refs and not own:
+                found.add(operation["operationId"])
+    missing = sorted(wanted - found)
+    if missing:
+        report(FAIL, f"limit wijkt af van de gedeelde parameter op: {', '.join(missing)}")
+    else:
+        report(PASS, f"{len(wanted)} lijstoperaties gebruiken de gedeelde parameter Limit")
+
+
 def main() -> int:
     document = load_openapi()
     check_structure(document)
@@ -290,6 +330,7 @@ def main() -> int:
     check_fixtures(document)
     check_validator_bites(document)
     check_error_domains(document)
+    check_list_limits(document)
 
     print()
     if failures:

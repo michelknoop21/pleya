@@ -33,7 +33,9 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_panel_primitives.dart';
+import 'package:pleya/widgets/tv/tv_cinema_libraries.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:provider/provider.dart';
 
@@ -54,6 +56,14 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('tvLibraryActionsFor', () {
+    test('missing server identity never grants maintenance even with an affirmative caller', () {
+      const library = MediaLibrary(id: 'missing', backend: MediaBackend.plex, title: 'Missing', kind: MediaKind.movie);
+      expect(tvLibraryActionsFor(library, canManage: true), [
+        TvLibraryAction.openInCatalog,
+        TvLibraryAction.toggleVisibility,
+      ]);
+    });
+
     test('a Plex movie library gets the full set, in mockup order', () {
       final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s')), canManage: true);
       expect(actions, [
@@ -213,7 +223,7 @@ void main() {
     testWidgets('every row shows its title, grouped under its server', (tester) async {
       await pump(tester, [movie, show]);
 
-      expect(find.text('Films'), findsOneWidget);
+      expect(find.text('Films'), findsNWidgets(2));
       expect(find.text('Series'), findsOneWidget);
       expect(find.text('PLEYA'), findsOneWidget);
     });
@@ -284,12 +294,17 @@ void main() {
       await pressPanelButton(tester, t.libraries.reorder);
 
       expect(find.text(t.libraries.reorderIntro), findsOneWidget);
+      expect(
+        find.text(t.libraries.cinemaOptionsHint),
+        findsNothing,
+        reason: 'Select picks up/drops in reorder; it cannot open library options',
+      );
       expect(find.text(t.unifiedCatalog.homeRows.done), findsOneWidget);
 
       await pressPanelButton(tester, t.unifiedCatalog.homeRows.done);
 
       expect(find.text(t.libraries.reorderIntro), findsNothing);
-      expect(find.text('Films'), findsOneWidget);
+      expect(find.text('Films'), findsNWidgets(2));
     });
 
     testWidgets('DOWN from Klaar reaches the first reorder row', (tester) async {
@@ -304,6 +319,267 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(FocusManager.instance.primaryFocus?.debugLabel, movie.globalKey);
+    });
+
+    testWidgets('Cinema selection has a separate summary that follows focus without opening an action', (tester) async {
+      await pump(tester, [movie, show]);
+      state(tester).loadLibraryByKey(movie.globalKey);
+      await tester.pumpAndSettle();
+      expect(find.text('Films'), findsNWidgets(2));
+      final filmRects = tester.getTopLeft(find.text('Films').first).dx;
+      expect(tester.getTopLeft(find.text('Films').last).dx, greaterThan(filmRects + 200));
+      state(tester).loadLibraryByKey(show.globalKey);
+      await tester.pumpAndSettle();
+      expect(find.text('Series'), findsNWidgets(2));
+      expect(
+        find.text(t.libraries.openInAllSeries),
+        findsNothing,
+        reason: 'focus only selects the summary; Select opens the existing sheet',
+      );
+    });
+
+    testWidgets('empty list entry focuses the mounted refresh recovery action', (tester) async {
+      await pump(tester, []);
+      state(tester).focusActiveTabIfReady();
+      await tester.pump();
+      expect(find.widgetWithText(TvPanelButton, t.libraries.refreshAllLibraries), findsOneWidget);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvLibraries.refreshAll');
+    });
+
+    testWidgets('removing a picked library releases move mode instead of picking its replacement', (tester) async {
+      await pump(tester, [movie, show, music]);
+      await pressPanelButton(tester, t.libraries.reorder);
+      await selectRow(tester, show.globalKey);
+      expect(
+        tester
+            .widgetList<TvCinemaLibraryRow>(find.byType(TvCinemaLibraryRow))
+            .where((row) => row.moving)
+            .single
+            .library
+            .title,
+        'Series',
+      );
+      libraries.debugSetLibraries([movie, music]);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widgetList<TvCinemaLibraryRow>(find.byType(TvCinemaLibraryRow)).where((row) => row.moving),
+        isEmpty,
+      );
+    });
+
+    testWidgets('external insertion preserves the picked identity rather than its old index', (tester) async {
+      await pump(tester, [movie, show]);
+      await pressPanelButton(tester, t.libraries.reorder);
+      await selectRow(tester, show.globalKey);
+      libraries.debugSetLibraries([music, movie, show]);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widgetList<TvCinemaLibraryRow>(find.byType(TvCinemaLibraryRow))
+            .where((row) => row.moving)
+            .single
+            .library
+            .title,
+        'Series',
+      );
+    });
+
+    testWidgets('same-name servers keep distinct contiguous order and cannot move across groups', (tester) async {
+      final other = _lib('other', serverId: ServerId('other'), serverName: 'Pleya', title: 'Other');
+      await pump(tester, [movie, other, show]);
+      await pressPanelButton(tester, t.libraries.reorder);
+      expect(
+        tester.widgetList<TvCinemaLibraryRow>(find.byType(TvCinemaLibraryRow)).map((row) => row.library.globalKey),
+        [movie.globalKey, show.globalKey, other.globalKey],
+      );
+      await selectRow(tester, show.globalKey);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(
+        libraries.libraries.map((library) => library.globalKey),
+        [movie.globalKey, other.globalKey, show.globalKey],
+        reason: 'blocked move must not persist a cross-server order',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(libraries.libraries.map((library) => library.globalKey), [
+        show.globalKey,
+        movie.globalKey,
+        other.globalKey,
+      ]);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text(t.unifiedCatalog.homeRows.done), findsNothing);
+      expect(
+        libraries.libraries.first.globalKey,
+        show.globalKey,
+        reason: 'Back closes; existing immediate persistence is retained',
+      );
+    });
+
+    testWidgets('maintenance authority is checked for the selected server only', (tester) async {
+      final manager = _AuthorityManager()..managedServers = {'other'};
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      await pump(tester, [movie, show], multiServer: provider);
+      await selectRow(tester, movie.globalKey);
+      expect(find.text(t.libraries.refreshMetadata), findsNothing);
+      expect(find.text(t.libraries.scanLibraryFiles), findsNothing);
+      expect(find.text(t.libraries.hideLibrary), findsOneWidget);
+    });
+
+    testWidgets('losing the last focused library recovers to mounted refresh', (tester) async {
+      await pump(tester, [movie]);
+      state(tester).loadLibraryByKey(movie.globalKey);
+      await tester.pumpAndSettle();
+      libraries.debugSetLibraries([]);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvLibraries.refreshAll');
+      expect(find.byType(TvCinemaLibrarySummary), findsNothing);
+    });
+
+    testWidgets('dense libraries with long titles remain reachable and hidden summary follows profile state', (
+      tester,
+    ) async {
+      final dense = [
+        for (var i = 0; i < 9; i++)
+          _lib(
+            'dense$i',
+            serverId: ServerId('server${i ~/ 3}'),
+            serverName: 'Server ${i ~/ 3}',
+            title: i == 8 ? 'Een bijzonder lange bibliotheektitel die ook volledig bedienbaar blijft' : 'Library $i',
+          ),
+      ];
+      await pump(tester, dense);
+      state(tester).focusActiveTabIfReady();
+      await tester.pumpAndSettle();
+      for (var i = 1; i < dense.length; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+      expect(FocusManager.instance.primaryFocus?.debugLabel, dense.last.globalKey);
+      final row = tester.widget<TvCinemaLibraryRow>(find.byKey(ValueKey(dense.last.globalKey)).last);
+      expect(row.hidden, isFalse);
+      await tester.runAsync(() => hidden.hideLibrary(dense.last.globalKey));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TvCinemaLibrarySummary>(find.byType(TvCinemaLibrarySummary)).hidden, isTrue);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, dense.last.globalKey);
+      await tester.runAsync(() => hidden.unhideLibrary(dense.last.globalKey));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TvCinemaLibrarySummary>(find.byType(TvCinemaLibrarySummary)).hidden, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Menu on Klaar closes only reorder mode', (tester) async {
+      await pump(tester, [movie, show]);
+      await pressPanelButton(tester, t.libraries.reorder);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvLibraries.reorder');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text(t.unifiedCatalog.homeRows.done), findsNothing);
+      expect(find.widgetWithText(TvPanelButton, t.libraries.reorder), findsOneWidget);
+      expect(find.byType(TvLibrariesScreen), findsOneWidget);
+    });
+
+    testWidgets('removing a deeply scrolled focused row restores a mounted first row', (tester) async {
+      final many = [
+        for (var i = 0; i < 40; i++)
+          _lib('many$i', serverId: ServerId('srv'), serverName: 'Pleya', title: 'Deep library $i'),
+      ];
+      await pump(tester, many);
+      await tester.scrollUntilVisible(find.text(many.last.title), 200, scrollable: find.byType(Scrollable).first);
+      state(tester).loadLibraryByKey(many.last.globalKey);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, many.last.globalKey);
+      libraries.debugSetLibraries(many.sublist(0, many.length - 1));
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, many.first.globalKey);
+      expect(FocusManager.instance.primaryFocus?.context, isNotNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, many[1].globalKey);
+    });
+
+    testWidgets('Apple TV Menu down and release both belong to the reorder dismissal', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      await pump(tester, [movie, show]);
+      await pressPanelButton(tester, t.libraries.reorder);
+      expect(await tester.sendKeyDownEvent(LogicalKeyboardKey.escape), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text(t.unifiedCatalog.homeRows.done), findsNothing);
+      expect(
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.escape),
+        isTrue,
+        reason: 'release cannot pop the surrounding native route',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(TvLibrariesScreen), findsOneWidget);
+    });
+
+    testWidgets('remote repeat burst advances once per event and stops after release', (tester) async {
+      final rows = [for (var i = 0; i < 12; i++) _lib('remote$i', serverId: ServerId('srv'), title: 'Remote $i')];
+      await pump(tester, rows);
+      state(tester).loadLibraryByKey(rows.first.globalKey);
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 4; i++) {
+        await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(seconds: 2));
+      expect(FocusManager.instance.primaryFocus?.debugLabel, rows[5].globalKey);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, rows[4].globalKey);
+    });
+
+    testWidgets('held and repeated Select opens one sheet and the next press still works', (tester) async {
+      await pump(tester, [movie, show]);
+      state(tester).loadLibraryByKey(movie.globalKey);
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.openInAllMovies), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.openInAllMovies), findsNothing);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, movie.globalKey);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.openInAllMovies), findsOneWidget);
+    });
+
+    testWidgets('removal during a held reorder direction cannot move the replacement row', (tester) async {
+      await pump(tester, [movie, show, music]);
+      await pressPanelButton(tester, t.libraries.reorder);
+      await selectRow(tester, movie.globalKey);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(libraries.libraries.map((library) => library.globalKey), [
+        show.globalKey,
+        movie.globalKey,
+        music.globalKey,
+      ]);
+      libraries.debugSetLibraries([show, music]);
+      await tester.pumpAndSettle();
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(seconds: 2));
+      expect(libraries.libraries.map((library) => library.globalKey), [show.globalKey, music.globalKey]);
+      expect(
+        tester.widgetList<TvCinemaLibraryRow>(find.byType(TvCinemaLibraryRow)).where((row) => row.moving),
+        isEmpty,
+      );
+      expect(FocusManager.instance.primaryFocus?.debugLabel, music.globalKey);
     });
 
     testWidgets('a single library offers no Ordenen — nothing to reorder', (tester) async {
@@ -444,7 +720,8 @@ void main() {
 
 class _AuthorityManager extends MultiServerManager {
   bool canManage = false;
+  Set<String>? managedServers;
 
   @override
-  bool canManageServerMetadata(ServerId serverId) => canManage;
+  bool canManageServerMetadata(ServerId serverId) => managedServers?.contains(serverId) ?? canManage;
 }

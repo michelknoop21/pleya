@@ -30,6 +30,9 @@ class _MatchingClient implements MediaServerClient {
   final List<MediaItem> matches;
 
   @override
+  MediaBackend get backend => MediaBackend.plex;
+
+  @override
   Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => matches;
 
   @override

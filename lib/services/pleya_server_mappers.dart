@@ -3,11 +3,16 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_part.dart';
+import '../media/media_playlist.dart';
 import '../media/media_role.dart';
 import '../media/media_stream.dart';
+import '../media/media_source_info.dart';
 import '../media/media_version.dart';
+import '../media/unified/carried_external_ids.dart' show pleyaExternalIdsRawKey, pleyaExternalIdsSourceKey;
 import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
+import '../models/pleya_server/pleya_wire_lists.dart';
+import '../utils/external_ids.dart';
 import '../utils/resolution_label.dart';
 import '../utils/track_label_builder.dart';
 
@@ -49,6 +54,74 @@ class PleyaServerMappers {
     return id.isEmpty ? null : id;
   }
 
+  /// Uses canonical same-server sidecar URLs; wire URLs never receive bearer credentials.
+  static MediaSourceInfo mediaSourceInfo(
+    MediaVersion version, {
+    String baseUrl = '',
+    String? videoUrl,
+    bool deliverEmbeddedText = false,
+    int? selectedSubtitleId,
+  }) {
+    final streams = version.parts.firstOrNull?.streams ?? const <MediaStream>[];
+    int subtitleId(int i) => streams[i].index == null ? -(i + 1) : streams[i].index! + 1;
+    String? sidecarUrl(MediaStream stream) {
+      final id =
+          subtitleIdFromPath(stream.sidecarPath) ??
+          (deliverEmbeddedText && {'srt', 'ass', 'ssa', 'vtt'}.contains(stream.codec) ? stream.id : null);
+      return id == null ? null : '$baseUrl/pleya/v1/subtitles/${Uri.encodeComponent(id)}';
+    }
+
+    return MediaSourceInfo(
+      videoUrl: videoUrl ?? '$baseUrl/pleya/v1/stream/${Uri.encodeComponent(version.id)}',
+      mediaSourceId: version.id,
+      defaultSubtitleStreamIndex: selectedSubtitleId == 0
+          ? -1
+          : (selectedSubtitleId == null
+                ? null
+                : streams.indexed
+                      .where((s) => s.$2.kind == MediaStreamKind.subtitle && subtitleId(s.$1) == selectedSubtitleId)
+                      .firstOrNull
+                      ?.$2
+                      .index),
+      audioTracks: [
+        for (final stream in streams)
+          if (stream.kind == MediaStreamKind.audio && stream.index != null)
+            MediaAudioTrack(
+              id: stream.index!,
+              index: stream.index,
+              codec: stream.codec,
+              language: stream.language,
+              languageCode: stream.languageCode,
+              title: stream.title,
+              displayTitle: stream.displayTitle,
+              channels: stream.channels,
+              profile: stream.profile,
+              selected: stream.selected,
+            ),
+      ],
+      subtitleTracks: [
+        for (var i = 0; i < streams.length; i++)
+          if (streams[i].kind == MediaStreamKind.subtitle)
+            MediaSubtitleTrack(
+              id: subtitleId(i),
+              sourceStreamId: streams[i].id,
+              index: streams[i].index,
+              codec: streams[i].codec,
+              language: streams[i].language,
+              languageCode: streams[i].languageCode,
+              title: streams[i].title,
+              displayTitle: streams[i].displayTitle,
+              selected: selectedSubtitleId == null ? streams[i].selected : selectedSubtitleId == subtitleId(i),
+              forced: streams[i].forced,
+              key: sidecarUrl(streams[i]),
+              external: streams[i].isExternal,
+              usesExternalDelivery: sidecarUrl(streams[i]) != null,
+            ),
+      ],
+      chapters: const [],
+    );
+  }
+
   static MediaKind kindOf(PleyaItemKind kind) => switch (kind) {
     PleyaItemKind.movie => MediaKind.movie,
     PleyaItemKind.show => MediaKind.show,
@@ -87,6 +160,8 @@ class PleyaServerMappers {
     String? libraryId,
     String? libraryTitle,
     Map<String, PleyaItem> parents = const {},
+    bool useAppliedExternalIds = false,
+    bool identityKnown = true,
   }) => [
     for (final item in wire)
       if (item.kind != null)
@@ -98,6 +173,8 @@ class PleyaServerMappers {
           libraryTitle: libraryTitle,
           parent: parents[item.parentId],
           grandparent: _grandparentOf(item, parents),
+          useAppliedExternalIds: useAppliedExternalIds,
+          identityKnown: identityKnown,
         ),
   ];
 
@@ -112,6 +189,43 @@ class PleyaServerMappers {
   /// rows read. The contract carries only `parent_id`, so a caller that has the
   /// ancestors in hand passes them; one that has not leaves them null and the
   /// row renders with the ids alone rather than with a wrong title.
+  /// A collection as the app's list screens read it. `raw['is_owner']` carries
+  /// the server's per-collection write permission; see `isOwnCollection`.
+  static MediaItem collection(
+    PleyaCollection wire, {
+    required String serverId,
+    String? serverName,
+    String? libraryId,
+    String? libraryTitle,
+  }) => MediaItem(
+    id: wire.id,
+    backend: MediaBackend.pleyaServer,
+    kind: MediaKind.collection,
+    title: wire.title,
+    thumbPath: wire.artwork.isEmpty ? null : artworkPath(wire.artwork.first),
+    childCount: wire.itemCount,
+    addedAt: wire.createdAt.millisecondsSinceEpoch ~/ 1000,
+    raw: {'is_owner': wire.isOwner},
+    libraryId: libraryId,
+    libraryTitle: libraryTitle,
+    serverId: serverId,
+    serverName: serverName,
+  );
+
+  static MediaPlaylist playlist(PleyaPlaylist wire, {required String serverId, String? serverName}) => MediaPlaylist(
+    id: wire.id,
+    backend: MediaBackend.pleyaServer,
+    title: wire.title,
+    playlistType: 'video',
+    durationMs: wire.durationMs,
+    leafCount: wire.itemCount,
+    addedAt: wire.createdAt.millisecondsSinceEpoch ~/ 1000,
+    updatedAt: wire.updatedAt.millisecondsSinceEpoch ~/ 1000,
+    thumbPath: wire.artwork.isEmpty ? null : artworkPath(wire.artwork.first),
+    serverId: serverId,
+    serverName: serverName,
+  );
+
   static MediaItem mediaItem(
     PleyaItem wire, {
     required String serverId,
@@ -120,6 +234,8 @@ class PleyaServerMappers {
     String? libraryTitle,
     PleyaItem? parent,
     PleyaItem? grandparent,
+    bool useAppliedExternalIds = false,
+    bool identityKnown = true,
   }) {
     final kind = wire.kind;
     if (kind == null) {
@@ -157,6 +273,19 @@ class PleyaServerMappers {
       durationMs: wire.durationMs,
       viewOffsetMs: userState?.positionMs,
       viewCount: userState?.playCount,
+      userRating: wire.rating?.toDouble(),
+      raw: {
+        'favorite': wire.favorite,
+        // Only when the server sent the key: an older server leaves it out, and
+        // then nothing here may pass for "this title has no numbers".
+        if (kind == PleyaItemKind.movie || kind == PleyaItemKind.show) ...{
+          pleyaExternalIdsSourceKey: useAppliedExternalIds ? 'applied' : (identityKnown ? 'legacy' : 'unknown'),
+          if (identityKnown && (useAppliedExternalIds ? wire.appliedExternalIdsReported : wire.externalIdsReported))
+            pleyaExternalIdsRawKey: ExternalIds(
+              tmdb: (useAppliedExternalIds ? wire.appliedExternalIds : wire.externalIds).tmdb,
+            ).toJson(),
+        },
+      },
       // `updated_at` is when the state last moved, which is the closest thing
       // the contract has to "last viewed". Continue Watching sorts on it.
       lastViewedAt: userState == null ? null : userState.updatedAt.millisecondsSinceEpoch ~/ 1000,

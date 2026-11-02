@@ -149,10 +149,11 @@ class FixtureServerHandle {
   /// leave a live child process behind otherwise, with nothing left able to
   /// stop it: [stop] can only ever be called on the handle this method never
   /// got to return.
-  static Future<FixtureServerHandle> start({required Directory fixtureServerPackageDir}) async {
+  static Future<FixtureServerHandle> start({required Directory fixtureServerPackageDir, String? serverId}) async {
     final process = await Process.start('dart', [
       'run',
       'bin/serve.dart',
+      if (serverId != null) ...['--server-id', serverId],
     ], workingDirectory: fixtureServerPackageDir.path);
 
     Future<void> killOrphan() async {

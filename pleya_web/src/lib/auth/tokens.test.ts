@@ -89,3 +89,105 @@ describe('tokenopslag', () => {
     expect(tokens.refreshToken).toBeNull();
   });
 });
+
+describe('cookie credential storage', () => {
+  it('keeps access in memory and removes persistent credentials in cookie mode', () => {
+    const persistent = store({ 'pleya.refresh_token': 'legacy-R' });
+    const session = store({ 'pleya.access_token': 'legacy-A' });
+    const tokens = new TokenStore(persistent, session);
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    expect(tokens.accessToken).toBe('cookie-A');
+    expect(tokens.refreshToken).toBeNull();
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+    expect(new TokenStore(persistent, session).hasSomething).toBe(false);
+  });
+  it('onthoudt een cookiesessie over een herlaadbeurt, zonder credential', () => {
+    const persistent = store();
+    const tokens = new TokenStore(persistent, store());
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+
+    const reloaded = new TokenStore(persistent, store());
+    expect(reloaded.signedIn).toBe(true);
+    expect(reloaded.accessToken).toBeNull();
+    expect(reloaded.refreshToken).toBeNull();
+
+    // `GET /info` slaagt: de overstap naar geheugen wist de tokens, niet de aantekening.
+    reloaded.setMemoryOnly(true);
+    expect(reloaded.signedIn).toBe(true);
+    expect(new TokenStore(persistent, store()).signedIn).toBe(true);
+
+    reloaded.clear();
+    expect(new TokenStore(persistent, store()).signedIn).toBe(false);
+  });
+  it('telt een accesstoken in het geheugen niet als een ander tabblad uitlogde', () => {
+    const persistent = store();
+    const here = new TokenStore(persistent, store());
+    const other = new TokenStore(persistent, store());
+    here.setMemoryOnly(true);
+    other.setMemoryOnly(true);
+    other.set({ access_token: 'cookie-B', expires_in_ms: 900000 });
+    here.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    expect(here.signedIn).toBe(true);
+
+    other.clear();
+    expect(here.accessToken).toBe('cookie-A');
+    expect(here.signedIn).toBe(false);
+  });
+  it('telt ook een accesstoken in sessionStorage niet na een uitlog in een ander tabblad', () => {
+    const persistent = store(); const session = store();
+    const here = new TokenStore(persistent, session);
+    here.set({ access_token: 'legacy-A', refresh_token: 'legacy-R', expires_in_ms: 900000 });
+    new TokenStore(persistent, store()).clear();
+    const reloaded = new TokenStore(persistent, session);
+    expect(reloaded.accessToken).toBe('legacy-A');
+    expect(reloaded.signedIn).toBe(false);
+  });
+  it('kent zonder opslag alleen het geheugen', () => {
+    const tokens = new TokenStore(null, null);
+    expect(tokens.signedIn).toBe(false);
+    tokens.set({ access_token: 'A', expires_in_ms: 900000 });
+    expect(tokens.signedIn).toBe(true);
+  });
+  it('clearLocal laat staan wat gedeeld is', () => {
+    const persistent = store(); const session = store();
+    const tokens = new TokenStore(persistent, session);
+    tokens.set({ access_token: 'A', refresh_token: 'R', expires_in_ms: 900000 });
+    tokens.clearLocal();
+    expect(tokens.accessToken).toBeNull();
+    expect(session.getItem('pleya.access_token')).toBeNull();
+    expect(persistent.getItem('pleya.refresh_token')).toBe('R');
+  });
+  it('zegt niet dat een lege browser of een server zonder cookies een cookiesessie heeft', () => {
+    expect(new TokenStore(store(), store()).signedIn).toBe(false);
+
+    const persistent = store();
+    const tokens = new TokenStore(persistent, store());
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    tokens.setMemoryOnly(false);
+    tokens.set({ access_token: 'legacy-A', refresh_token: 'legacy-R', expires_in_ms: 900000 });
+    expect(persistent.getItem('pleya.cookie_session')).toBeNull();
+    expect(new TokenStore(persistent, store()).signedIn).toBe(true);
+  });
+  it('can use the existing legacy storage again for a server without cookies', () => {
+    const persistent = store(); const session = store();
+    const tokens = new TokenStore(persistent, session);
+    tokens.setMemoryOnly(true);
+    tokens.set({ access_token: 'cookie-A', expires_in_ms: 900000 });
+    tokens.setMemoryOnly(false);
+    tokens.set({ access_token: 'legacy-A', refresh_token: 'legacy-R', expires_in_ms: 900000 });
+    expect(persistent.getItem('pleya.refresh_token')).toBe('legacy-R');
+    expect(session.getItem('pleya.access_token')).toContain('legacy-A');
+  });
+});
+
+it('removes the legacy refresh credential even when session storage rejects removal', () => {
+  const persistent = store({ 'pleya.refresh_token': 'legacy-R' });
+  const blocked: TokenStorage = { getItem: () => null, setItem: () => { throw new Error('blocked'); }, removeItem: () => { throw new Error('blocked'); } };
+  const tokens = new TokenStore(persistent, blocked);
+  tokens.setMemoryOnly(true);
+  expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+});

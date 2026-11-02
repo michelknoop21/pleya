@@ -6,11 +6,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
 )
 
@@ -119,6 +122,53 @@ func TestPlanStartsASessionAndTheFilesAreServed(t *testing.T) {
 	}
 }
 
+func TestHLSSessionCookieUsesTheConversionVersion(t *testing.T) {
+	e, _ := transcodeEnv(t, 2)
+	plan := e.transcodePlan(e.findMovie("Grease").ID)
+	other := e.transcodePlan(e.findMovie("The Matrix").ID)
+	lease, cookie := e.openStreamSession(plan.VersionID, http.StatusOK)
+	query := "?ss=" + lease.StreamSessionID
+	for _, path := range []string{plan.StreamURL, strings.TrimSuffix(plan.StreamURL, "index.m3u8") + "seg_00000.m4s"} {
+		if rec := e.do(http.MethodGet, path+query, nil, withoutAuth, withCookie(cookie)); rec.Code != http.StatusOK {
+			t.Fatalf("HLS cookie delivery status %d", rec.Code)
+		}
+	}
+	if rec := e.do(http.MethodGet, plan.StreamURL+query, nil, withoutAuth); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("missing cookie status %d", rec.Code)
+	}
+	if rec := e.do(http.MethodGet, other.StreamURL+query, nil, withoutAuth, withCookie(cookie)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("wrong version cookie status %d", rec.Code)
+	}
+}
+
+// API refresh cannot renew a credential already captured by a native media transport.
+func TestRefreshDoesNotRenewTheHeaderAlreadyGivenToAPlayer(t *testing.T) {
+	e, _ := transcodeEnv(t, 1)
+	plan := e.transcodePlan(e.findMovie("Grease").ID)
+	original := e.access
+	if rec := e.do(http.MethodGet, plan.StreamURL, nil); rec.Code != http.StatusOK {
+		t.Fatalf("initial playlist status %d", rec.Code)
+	}
+	now := time.Now().Add(16 * time.Minute)
+	e.server.SetClock(func() time.Time { return now })
+	e.signer.SetClock(func() time.Time { return now })
+	refreshed := e.do(http.MethodPost, "/pleya/v1/auth/refresh", map[string]string{"refresh_token": e.refresh}, withoutAuth)
+	if refreshed.Code != http.StatusOK {
+		t.Fatalf("refresh status %d", refreshed.Code)
+	}
+	var pair api.TokenPair
+	if err := json.Unmarshal(refreshed.Body.Bytes(), &pair); err != nil {
+		t.Fatal(err)
+	}
+	e.access = pair.AccessToken
+	if rec := e.do(http.MethodGet, plan.StreamURL, nil); rec.Code != http.StatusOK {
+		t.Fatalf("fresh header playlist status %d", rec.Code)
+	}
+	if rec := e.do(http.MethodGet, plan.StreamURL, nil, asUser(original)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("captured expired header must remain rejected, status %d", rec.Code)
+	}
+}
+
 // De argumenten van ffmpeg zijn die van de planner en bevatten het pad uit de
 // catalogus, geen invoer van de client.
 func TestSessionRunsFFmpegWithTheFixedArguments(t *testing.T) {
@@ -186,6 +236,45 @@ func TestSessionBelongsToItsOwner(t *testing.T) {
 	}
 	if rec := e.do(http.MethodGet, plan.StreamURL, nil); rec.Code != http.StatusOK {
 		t.Fatalf("de eigenaar kon de lijst niet meer lezen: %d", rec.Code)
+	}
+}
+
+// Een streamcredential opent zijn versie, niet elke omzetting van die versie: twee
+// gebruikers die dezelfde film kijken lezen elkaars segmenten niet.
+func TestStreamCredentialsDoNotOpenAnotherUsersConversion(t *testing.T) {
+	e, _ := transcodeEnv(t, 2)
+	plan := e.transcodePlan(e.findMovie("Grease").ID)
+
+	other := e.createUser("member", "kijker")
+	e.grantLibrary(other, id.MustParse(e.libraryID("movies")), "view")
+	token := e.tokenFor(other)
+	rec := e.do(http.MethodPost, "/pleya/v1/auth/stream-session", map[string]string{"version_id": plan.VersionID}, asUser(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stream-session gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var lease api.StreamSession
+	e.decodeInto(rec, &lease)
+	var cookie *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == auth.StreamCookiePrefix+lease.StreamSessionID {
+			cookie = c
+		}
+	}
+	if cookie == nil {
+		t.Fatal("geen streamcookie")
+	}
+	rec = e.do(http.MethodPost, "/pleya/v1/auth/stream-token", map[string]string{"version_id": plan.VersionID}, asUser(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stream-token gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var tok api.StreamToken
+	e.decodeInto(rec, &tok)
+
+	if rec := e.do(http.MethodGet, plan.StreamURL+"?ss="+lease.StreamSessionID, nil, withoutAuth, withCookie(cookie)); rec.Code != http.StatusNotFound {
+		t.Fatalf("streamsessie van een ander gaf %d", rec.Code)
+	}
+	if rec := e.do(http.MethodGet, plan.StreamURL+"?stream_token="+url.QueryEscape(tok.StreamToken), nil, withoutAuth); rec.Code != http.StatusNotFound {
+		t.Fatalf("streamtoken van een ander gaf %d", rec.Code)
 	}
 }
 
@@ -288,5 +377,34 @@ func TestTranscodeSessionListWithoutTranscoder(t *testing.T) {
 	}
 	if rec := e.do(http.MethodDelete, "/pleya/v1/transcode-sessions/"+list.Hardware.Accel, nil); rec.Code != http.StatusNotFound {
 		t.Fatalf("stoppen zonder omzetter gaf %d", rec.Code)
+	}
+}
+
+func TestExplicitSelectionsReachTheSessionAndResponse(t *testing.T) {
+	e, m := transcodeEnv(t, 2)
+	movie := e.findMovie("Grease")
+	version := movie.Versions[0]
+	if len(version.AudioStreams) == 0 {
+		t.Fatal("fixture has no audio")
+	}
+	audio := version.AudioStreams[0]
+	plan, _ := e.planFor(map[string]any{"item_id": movie.ID, "version_id": version.ID, "audio_stream_id": audio.ID,
+		"quality": map[string]any{"max_video_bitrate_kbps": 2000, "max_height": 720}}, http.StatusOK)
+	if plan.EffectiveQuality == nil || plan.EffectiveQuality.MaxHeight != 720 || plan.SelectedAudioStreamID == nil || *plan.SelectedAudioStreamID != audio.ID {
+		t.Fatalf("selection missing: %+v", plan)
+	}
+	raw, err := os.ReadFile(filepath.Join(sessionDir(t, m, *plan.SessionID), "args.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"-map\n0:" + strconv.Itoa(audio.Index), "-maxrate\n2000k", "min(ih,720)"} {
+		if !strings.Contains(string(raw), want) {
+			t.Fatalf("missing %q in %s", want, raw)
+		}
+	}
+	rec := e.do(http.MethodPost, "/pleya/v1/playback/plan", map[string]any{"item_id": movie.ID, "version_id": version.ID,
+		"audio_stream_id": "01a159b2-221d-7000-b75d-cf3a0d1ba000"})
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown audio: %d %s", rec.Code, rec.Body.String())
 	}
 }

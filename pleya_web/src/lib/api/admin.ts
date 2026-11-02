@@ -11,6 +11,7 @@
  */
 import type { PleyaClient } from './client';
 import type {
+  ArtworkCacheStats,
   CreateLibraryRequest,
   Job,
   Library,
@@ -20,7 +21,8 @@ import type {
   StreamSessionSummary,
   TranscodeSessionList,
   UpdateLibraryRequest,
-  User
+  User,
+  WatchHistory
 } from './types';
 
 /** De paden hieronder, voor de test die bewijst dat een lid ze nooit raakt. */
@@ -29,6 +31,7 @@ export const ADMIN_PATHS = [
   '/scans',
   '/jobs',
   '/storage/roots',
+  '/artwork/cache',
   '/stream-sessions',
   '/transcode-sessions',
   // S10.5: instellingen en diagnostiek.
@@ -39,11 +42,16 @@ export const ADMIN_PATHS = [
   // S10.6: het auditlog (de tokenroutes zelf zijn klasse `authenticated`).
   '/audit',
   // S25.6: back-ups en terugzetten.
-  '/backups'
+  '/backups',
+  // S20.4: "Bekeken door" op het detailscherm.
+  '/watch-history'
 ] as const;
 
 export function adminApi(client: PleyaClient) {
   return {
+    watchHistory: async (days: number, signal?: AbortSignal): Promise<WatchHistory> =>
+      client.request((raw) => raw.GET('/watch-history', { params: { query: { days } }, signal })),
+
     users: async (signal?: AbortSignal): Promise<User[]> =>
       (await client.request((raw) => raw.GET('/users', { signal }))).items,
 
@@ -122,6 +130,17 @@ export function adminApi(client: PleyaClient) {
       }),
 
     // --- Opslag, scans en taken (S10.3, schermen 24 en 25) ---------------
+
+    artworkCacheStats: (signal?: AbortSignal): Promise<ArtworkCacheStats> =>
+      client.request((raw) => raw.GET('/artwork/cache', { signal })),
+
+    purgeArtworkCache: (signal?: AbortSignal): Promise<true> =>
+      client.request<true>(async (raw) => {
+        const result = await raw.DELETE('/artwork/cache', { body: { confirm: 'purge' }, signal });
+        return result.response.ok
+          ? { data: true, response: result.response }
+          : { error: result.error, response: result.response };
+      }),
 
     /**
      * Plant een meetronde in op elke geclaimde root. Het antwoord is een 202

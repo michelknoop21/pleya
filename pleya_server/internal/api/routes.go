@@ -108,6 +108,15 @@ func (s *Server) routeTable() []route {
 		// admin, in de handler zoals hierboven.
 		{"GET " + p + "/libraries/{library_id}/metadata-coverage", s.authenticated(s.handleMetadataCoverage)},
 		{"GET " + p + "/metadata/attention", s.authenticated(s.handleMetadataAttention)},
+		{"GET " + p + "/items/{item_id}/artwork-candidates", s.authenticated(s.handleArtworkCandidates)},
+		{"PUT " + p + "/items/{item_id}/artwork", s.authenticated(s.handleArtworkChoice)},
+		{"GET " + p + "/items/{item_id}/metadata", s.authenticated(s.handleMetadataFields)},
+		{"PUT " + p + "/items/{item_id}/overrides", s.authenticated(s.handleMetadataOverrides)},
+		{"DELETE " + p + "/items/{item_id}/overrides/{field}", s.authenticated(s.handleDeleteMetadataOverride)},
+		{"GET " + p + "/items/{item_id}/metadata-search", s.authenticated(s.handleMetadataSearch)},
+		{"GET " + p + "/items/{item_id}/metadata-candidates/{external_id}", s.authenticated(s.handleMetadataCandidate)},
+		{"GET " + p + "/items/{item_id}/metadata-candidate-artwork", s.authenticated(s.handleMetadataCandidateArtwork)},
+		{"GET " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleMetadataMatchStatus)},
 		{"PUT " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleSetMetadataMatch)},
 		{"DELETE " + p + "/items/{item_id}/metadata-match", s.authenticated(s.handleClearMetadataMatch)},
 
@@ -134,20 +143,44 @@ func (s *Server) routeTable() []route {
 		// De eigen opt-out op de activiteit van het huishouden (matrixregels 75 en
 		// 76). Elke rol, en altijd over de aanvrager: er staat geen id in het pad.
 		{"GET " + p + "/users/me/activity-sharing", s.authenticated(s.handleGetActivitySharing)},
-		{"PUT " + p + "/users/me/activity-sharing", s.authenticated(s.handleSetActivitySharing)},
+		{"PUT " + p + "/users/me/activity-sharing", s.ownDataWrite(s.handleSetActivitySharing)},
 
 		// De persoonlijke laag (venster 6 deel 2, S20, matrixregels 52 tot en met 60).
 		// Alles klasse authenticated, over de aanvrager zelf; een item buiten de
 		// bibliotheken van de aanvrager is een 404.
 		{"GET " + p + "/history", s.authenticated(s.handleHistory)},
+		{"DELETE " + p + "/history", s.ownDataWrite(s.handleClearHistory)},
+		{"DELETE " + p + "/history/{history_id}", s.ownDataWrite(s.handleDeleteHistoryEntry)},
 		{"GET " + p + "/favorites", s.authenticated(s.handleListFavorites)},
 		{"PUT " + p + "/favorites/{item_id}", s.authenticated(s.handleSetFavorite)},
 		{"DELETE " + p + "/favorites/{item_id}", s.authenticated(s.handleClearFavorite)},
+		{"GET " + p + "/ratings", s.authenticated(s.handleListRatings)},
 		{"PUT " + p + "/ratings/{item_id}", s.authenticated(s.handleSetRating)},
 		{"DELETE " + p + "/ratings/{item_id}", s.authenticated(s.handleClearRating)},
 		{"GET " + p + "/track-preferences/{item_id}", s.authenticated(s.handleGetTrackPreference)},
 		{"PUT " + p + "/track-preferences/{item_id}", s.authenticated(s.handleSetTrackPreference)},
 		{"DELETE " + p + "/track-preferences/{item_id}", s.authenticated(s.handleClearTrackPreference)},
+
+		// Verzamelingen en afspeellijsten (venster 6 deel 1, S19, matrixregels 80 tot en
+		// met 97). Klasse authenticated; zicht en eigendom beslist de store.
+		{"GET " + p + "/collections", s.authenticated(s.handleLists(collectionCodec))},
+		{"POST " + p + "/collections", s.ownDataWrite(s.handleCreateList(collectionCodec))},
+		{"GET " + p + "/collections/{collection_id}", s.authenticated(s.handleGetList(collectionCodec))},
+		{"PATCH " + p + "/collections/{collection_id}", s.ownDataWrite(s.handleUpdateList(collectionCodec))},
+		{"DELETE " + p + "/collections/{collection_id}", s.ownDataWrite(s.handleDeleteList(collectionCodec))},
+		{"GET " + p + "/collections/{collection_id}/items", s.authenticated(s.handleListItems(collectionCodec))},
+		{"PUT " + p + "/collections/{collection_id}/items", s.ownDataWrite(s.handleReplaceListItems(collectionCodec))},
+		{"POST " + p + "/collections/{collection_id}/items", s.ownDataWrite(s.handleAddListItems(collectionCodec))},
+		{"DELETE " + p + "/collections/{collection_id}/items/{item_id}", s.ownDataWrite(s.handleRemoveListItem(collectionCodec))},
+		{"GET " + p + "/playlists", s.authenticated(s.handleLists(playlistCodec))},
+		{"POST " + p + "/playlists", s.ownDataWrite(s.handleCreateList(playlistCodec))},
+		{"GET " + p + "/playlists/{playlist_id}", s.authenticated(s.handleGetList(playlistCodec))},
+		{"PATCH " + p + "/playlists/{playlist_id}", s.ownDataWrite(s.handleUpdateList(playlistCodec))},
+		{"DELETE " + p + "/playlists/{playlist_id}", s.ownDataWrite(s.handleDeleteList(playlistCodec))},
+		{"GET " + p + "/playlists/{playlist_id}/items", s.authenticated(s.handleListItems(playlistCodec))},
+		{"PUT " + p + "/playlists/{playlist_id}/items", s.ownDataWrite(s.handleReplaceListItems(playlistCodec))},
+		{"POST " + p + "/playlists/{playlist_id}/items", s.ownDataWrite(s.handleAddListItems(playlistCodec))},
+		{"DELETE " + p + "/playlists/{playlist_id}/items/{item_id}", s.ownDataWrite(s.handleRemoveListItem(playlistCodec))},
 
 		// Downloads voor offline kijken (venster 5 deel 3, S23, matrixregel 61 tot en
 		// met 65). Alles klasse authenticated en van de eigenaar; de trede download
@@ -175,6 +208,8 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/items/{item_id}/activity", s.authenticated(s.handleItemActivity)},
 		{"GET " + p + "/search", s.authenticated(s.handleSearch)},
 		{"GET " + p + "/hubs/{hub_id}", s.authenticated(s.handleHub)},
+		{"GET " + p + "/artwork/cache", s.authenticated(s.handleArtworkCacheStats)},
+		{"DELETE " + p + "/artwork/cache", s.authenticated(s.handleArtworkCachePurge)},
 		{"GET " + p + "/artwork/{artwork_id}", s.authenticated(s.handleArtwork)},
 		{"POST " + p + "/watch-state", s.authenticated(s.handleWatchStateReport)},
 		{"GET " + p + "/watch-state", s.authenticated(s.handleWatchStateList)},

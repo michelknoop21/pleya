@@ -39,8 +39,8 @@ class PlayQueueError extends PlayQueueResult {
 /// Backend-neutral playback launcher for collections and playlists.
 ///
 /// Plex uses server-side `/playQueues` (one round trip, server tracks
-/// queue state). Jellyfin has no equivalent — the concrete Jellyfin launcher
-/// builds an in-memory queue from playable descendants or playlist items.
+/// queue state). Jellyfin and Pleya Server have no equivalent, so the sequential
+/// launcher builds an in-memory queue from playable descendants or playlist items.
 /// [MediaListPlaybackLauncher.forItem] picks the implementation by inspecting
 /// the item's backend.
 abstract class MediaListPlaybackLauncher {
@@ -70,7 +70,7 @@ abstract class MediaListPlaybackLauncher {
   /// [MediaItem.backend] / [MediaPlaylist.backend].
   static MediaListPlaybackLauncher forItem(BuildContext context, Object item) {
     final backend = _backendOf(item);
-    if (backend == MediaBackend.jellyfin) {
+    if (backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer) {
       return JellyfinSequentialLauncher(context: context);
     }
     return PlexPlayQueueLauncher.forContext(context, item);

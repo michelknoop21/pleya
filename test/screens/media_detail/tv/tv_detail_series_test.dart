@@ -19,6 +19,10 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/source_coverage_state.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/media/unified/unified_route_context.dart';
 import 'package:pleya/navigation/main_screen_scope.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
@@ -96,6 +100,8 @@ class _Client implements MediaServerClient {
     this.seasonsFail = false,
     this.hubs = const [],
     this.show,
+    this.id = 'server_1',
+    this.playable = const [],
   }) : seasons = seasons ?? [_season(1, watched: 3), _season(2)],
        episodes =
            episodes ??
@@ -109,10 +115,12 @@ class _Client implements MediaServerClient {
   final bool seasonsFail;
   final List<MediaHub> hubs;
   final MediaItem? show;
+  final String id;
+  final List<MediaItem> playable;
   final pageCalls = <String>[];
 
   @override
-  ServerId get serverId => ServerId('server_1');
+  ServerId get serverId => ServerId(id);
   @override
   String? get serverName => 'Server';
   @override
@@ -148,6 +156,8 @@ class _Client implements MediaServerClient {
     );
   }
 
+  @override
+  Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async => playable;
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => const [];
   @override
@@ -202,12 +212,15 @@ void main() {
     String? seasonId,
     Size window = _panel,
     MediaItem? show,
+    UnifiedMediaRouteContext? unified,
+    List<_Client> others = const [],
   }) async {
     tester.view.physicalSize = window;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await SettingsService.getInstance();
     final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    others.forEach(manager.debugRegisterClientForTesting);
     final provider = MultiServerProvider(manager, DataAggregationService(manager));
     addTearDown(provider.dispose);
 
@@ -238,6 +251,7 @@ void main() {
                 initialEpisodeId: episode,
                 initialSeasonIndex: season,
                 initialSeasonId: seasonId,
+                unifiedRouteContext: unified,
               ),
             ),
           ),
@@ -467,6 +481,35 @@ void main() {
       );
     });
 
+    testWidgets('details on a title across servers keeps the choice, read-only', (tester) async {
+      await setAction(EpisodeAction.details);
+      final page = _show();
+      final other = page.copyWith(id: 'other_show', serverId: 'server_2', serverName: 'Attic');
+      UnifiedMediaSource source(MediaItem item) => UnifiedMediaSource(
+        sourceKey: item.globalKey,
+        item: item,
+        serverId: ServerId(item.serverId!),
+        serverName: item.serverName!,
+        backend: item.backend,
+      );
+      final route = UnifiedMediaRouteContext(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'MobLand', year: 2025),
+        sourceKey: page.globalKey,
+        availableSourceKeys: [page.globalKey, other.globalKey],
+        titleSources: [source(page), source(other)],
+        coverage: SourceCoverageState.complete({page.globalKey, other.globalKey}),
+        intent: UnifiedActivationIntent.details,
+      );
+      await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2', unified: route);
+
+      await _press(tester, LogicalKeyboardKey.enter);
+
+      expect(pages(tester).map((page) => page.metadata.id), ['show', 'e2-2']);
+      expect(pages(tester).last.unifiedRouteContext?.groupId, 'g');
+      expect(pages(tester).last.onChangeSource, isNull);
+    });
+
     testWidgets('an episode of this series on a row of the page follows the same setting', (tester) async {
       await setAction(EpisodeAction.play);
       final hubs = [
@@ -674,6 +717,61 @@ void main() {
 
       final ring = tester.widget<TvDetailProgressRing>(find.byType(TvDetailProgressRing));
       expect(ring.value, closeTo(0.5, 0.001));
+    });
+
+    testWidgets('on a title across servers the row reads the copy Play starts', (tester) async {
+      final page = _show();
+      final other = page.copyWith(id: 'other_show', serverId: 'server_2', serverName: 'Attic');
+      UnifiedMediaSource source(MediaItem item) => UnifiedMediaSource(
+        sourceKey: item.globalKey,
+        item: item,
+        serverId: ServerId(item.serverId!),
+        serverName: item.serverName!,
+        backend: item.backend,
+      );
+      final route = UnifiedMediaRouteContext(
+        groupId: 'g',
+        identity: CanonicalMediaIdentity.movie(title: 'MobLand', year: 2025),
+        sourceKey: other.globalKey,
+        pageSourceKey: page.globalKey,
+        playItem: other,
+        availableSourceKeys: [page.globalKey, other.globalKey],
+        titleSources: [source(other), source(page)],
+        coverage: SourceCoverageState.complete({page.globalKey, other.globalKey}),
+        intent: UnifiedActivationIntent.details,
+      );
+      final ownEpisode = _episode(1, 1);
+      final copy = _episode(
+        1,
+        1,
+        offset: 1200000,
+      ).copyWith(id: 'o-e1-1', parentId: 'other_season_1', grandparentId: 'other_show', serverId: 'server_2');
+
+      await pumpDetail(
+        tester,
+        _Client(
+          episodes: {
+            'season_1': [ownEpisode],
+            'season_2': const [],
+          },
+          playable: [ownEpisode],
+        ),
+        others: [
+          _Client(id: 'server_2', playable: [copy]),
+        ],
+        unified: route,
+      );
+      await _press(tester, LogicalKeyboardKey.arrowRight);
+
+      final ring = tester.widget<TvDetailProgressRing>(find.byType(TvDetailProgressRing));
+      expect(ring.value, closeTo(0.4, 0.001));
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is AutomationNode && widget.id == AutomationIds.mediaDetailAction && widget.instance == 'restart',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Menu on the actions of a walked-in season goes back to the Serie tab', (tester) async {

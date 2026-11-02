@@ -9,7 +9,9 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/providers/local_library_provider.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
+import 'package:pleya/services/local_library/local_library_sync.dart';
 import 'package:pleya/utils/deletion_notifier.dart';
 import '../services/local_library/local_library_store_test.dart' show library, film;
 import '../services/local_library/local_library_sync_test.dart' show Client;
@@ -34,6 +36,7 @@ void main() {
   late Directory root;
   late ChangeNotifier changes;
   late LocalLibraryProvider provider;
+  late Client client;
   var wifi = false;
   var visible = true;
   setUp(() async {
@@ -41,11 +44,12 @@ void main() {
     changes = ChangeNotifier();
     wifi = false;
     visible = true;
+    client = Client();
     provider = LocalLibraryProvider(
       profileId: 'a',
       directory: root,
       librariesForSync: () => [library],
-      clientFor: (_) => Client(),
+      clientFor: (_) => client,
       mayReadServer: (_) => visible,
       mayReadLibrary: (_) => true,
       networkConnected: () => true,
@@ -57,10 +61,151 @@ void main() {
     await provider.ready;
   });
   tearDown(() async {
-    provider.dispose();
+    if (!provider.isDisposed) provider.dispose();
+    await provider.pendingStoreWrites;
     changes.dispose();
     await root.delete(recursive: true);
   });
+
+  for (final boundary in ['provider', 'revoke', 'clear', 'profile']) {
+    test('$boundary change rejects a late poster in the actual provider', () async {
+      provider.dispose();
+      wifi = true;
+      // Keep the dependency signature stable before the late request: client
+      // identity, rather than newly populated membership, must invalidate it.
+      final seeded = LocalLibraryStore(root);
+      await seeded.load();
+      await seeded.saveLibrary(library, client.rows, complete: true);
+      final entered = Completer<void>();
+      final gate = Completer<LocalPosterResult>();
+      var calls = 0;
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) => visible,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => true,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+        posterRevalidator: (_, _, _) {
+          calls++;
+          if (!entered.isCompleted) entered.complete();
+          return gate.future;
+        },
+      );
+      await provider.ready;
+      await provider.setEnabled(true);
+      await entered.future;
+      final oldClient = client;
+      if (boundary == 'provider') {
+        client = Client();
+        changes.notifyListeners();
+      }
+      if (boundary == 'revoke') {
+        visible = false;
+        changes.notifyListeners();
+      }
+      if (boundary == 'clear') await provider.clear();
+      if (boundary == 'profile') provider.dispose();
+      gate.complete(LocalPosterResult(bytes: Uint8List.fromList([99]), variant: 'v', etag: 'late'));
+      if (boundary != 'profile') await until(provider, () => provider.state != LocalLibraryState.syncing);
+      // Wait for the disposed sync's guarded completion as well.
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(provider.posterPath('one', '/shared-poster'), isNull);
+      final check = LocalLibraryStore(root);
+      await check.load();
+      expect(check.posterFreshness('one', '/shared-poster')['validated'], isNull);
+      expect(check.posterPath('one', '/shared-poster'), isNull);
+      expect(calls, 1);
+      if (boundary == 'provider') expect(identical(client, oldClient), isFalse);
+    });
+  }
+
+  for (final count in [450, 5000]) {
+    test('query LRU holds eight keys and recomputes evicted offline results for $count items', () async {
+      provider.dispose();
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(
+        library,
+        List.generate(count, (i) => film('film-${i.toString().padLeft(4, '0')}')),
+        complete: true,
+      );
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) => visible,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+      );
+      await provider.ready;
+      // Both prefetch settings must permit complete local reads while offline.
+      for (final enabled in [false, true]) {
+        await provider.setEnabled(enabled);
+        const all = LibraryQuery(limit: 10000);
+        final original = provider.page(library.globalKey, all)!;
+        final originalIds = original.items.map((item) => item.id).toList();
+        expect(originalIds, hasLength(count));
+        for (var i = 0; i < 7; i++) {
+          provider.page(library.globalKey, LibraryQuery(search: '$i'));
+        }
+        expect(provider.cachedQueryKeys, hasLength(8));
+        // Pagination shares a key and a hit promotes it past the oldest filter.
+        final laterPage = provider.page(library.globalKey, all.copyWith(offset: count - 20, limit: 20))!;
+        expect(laterPage.items.map((item) => item.id), originalIds.skip(count - 20));
+        provider.page(library.globalKey, const LibraryQuery(search: '7'));
+        expect(provider.cachedQueryKeys, hasLength(8));
+        expect(provider.cachedQueryKeys.any((key) => key.query.search == null), isTrue);
+        expect(provider.cachedQueryKeys.any((key) => key.query.search == '0'), isFalse);
+        for (var i = 8; i < 16; i++) {
+          provider.page(library.globalKey, LibraryQuery(search: '$i'));
+          expect(provider.cachedQueryKeys, hasLength(8));
+        }
+        expect(provider.cachedQueryKeys.any((key) => key.query.search == null), isFalse);
+        final recomputed = provider.page(library.globalKey, all)!;
+        expect(recomputed.totalCount, count);
+        expect(recomputed.items.map((item) => item.id), originalIds);
+        expect(original.items.map((item) => item.id), originalIds, reason: 'eviction preserves held page references');
+        expect(provider.cachedQueryKeys, hasLength(8));
+        expect(client.entered.isCompleted, isFalse, reason: 'offline paging never requests provider metadata');
+        expect(client.idLookups, 0);
+        // Unsupported local queries do not consume the result budget.
+        expect(provider.page(library.globalKey, const LibraryQuery(favoritesOnly: true)), isNull);
+        expect(provider.cachedQueryKeys, hasLength(8));
+        await provider.clear();
+        expect(provider.cachedQueryKeys, isEmpty);
+        expect(provider.page(library.globalKey, all), isNull);
+        if (!enabled) {
+          // Reopen the same complete fixture for the enabled/offline case.
+          provider.dispose();
+          await store.saveLibrary(
+            library,
+            List.generate(count, (i) => film('film-${i.toString().padLeft(4, '0')}')),
+            complete: true,
+          );
+          provider = LocalLibraryProvider(
+            profileId: 'a',
+            directory: root,
+            librariesForSync: () => [library],
+            clientFor: (_) => client,
+            mayReadServer: (_) => visible,
+            mayReadLibrary: (_) => true,
+            networkConnected: () => false,
+            wifiConnected: () => false,
+            changes: changes,
+          );
+          await provider.ready;
+        }
+      }
+    });
+  }
 
   test('known authentication rejection persists until an authoritative successful bind', () async {
     provider.dispose();
@@ -131,6 +276,85 @@ void main() {
     expect(provider.page(library.globalKey, const LibraryQuery()), isNull);
   });
 
+  test(
+    'stored external ids: a Pleya Server snapshot with none sends the caller to the server, a proven one is used',
+    () async {
+      provider.dispose();
+      final store = LocalLibraryStore(root);
+      await store.load();
+      MediaItem pleya(String id, Map<String, Object?> ids, {bool final_ = true}) => MediaItem(
+        id: id,
+        backend: MediaBackend.pleyaServer,
+        kind: MediaKind.movie,
+        title: id,
+        serverId: 'one',
+        libraryId: 'films',
+        raw: {
+          'pleyaLocalExternalIds': ids,
+          'pleyaLocalExternalIdsFinal': final_,
+          'pleyaExternalIdsSource': final_ ? 'applied' : 'unknown',
+          if (final_) 'pleyaExternalIds': ids,
+        },
+      );
+      await store.saveLibrary(library, [
+        pleya('proven', {'tmdb': 5}),
+        pleya('empty', {}),
+        pleya('legacy-empty', {}, final_: false),
+        MediaItem(
+          id: 'nokey',
+          backend: MediaBackend.pleyaServer,
+          kind: MediaKind.movie,
+          title: 'n',
+          serverId: 'one',
+          libraryId: 'films',
+        ),
+        film('plex-empty').copyWith(raw: {'pleyaLocalExternalIds': <String, Object?>{}}),
+      ], complete: true);
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [],
+        clientFor: (_) => null,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+      );
+      await provider.ready;
+
+      expect(provider.externalIds('one', 'proven')?.tmdb, 5);
+      expect(
+        provider.externalIds('one', 'empty'),
+        const ExternalIds(),
+        reason: 'a final empty answer is kept: no network per screen',
+      );
+      expect(provider.externalIds('one', 'legacy-empty'), isNull, reason: 'not proof of nothing: ask the server');
+      expect(
+        provider.externalIds('one', 'plex-empty'),
+        isNotNull,
+        reason: 'Plex and Jellyfin keep their stored answer',
+      );
+      expect(provider.externalIds('one', 'unknown'), isNull);
+      // Rights: a library the profile may no longer read gives nothing, also no numbers.
+      provider.dispose();
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [],
+        clientFor: (_) => null,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => false,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+      );
+      await provider.ready;
+      expect(provider.externalIds('one', 'proven'), isNull, reason: 'withdrawn library: no cached identity leaks');
+      await provider.setEnabled(false);
+    },
+  );
+
   test('prefetch waits for wifi unless mobile data was explicitly enabled', () async {
     await provider.setEnabled(true);
     expect(provider.state, LocalLibraryState.wifi);
@@ -147,8 +371,10 @@ void main() {
     wifi = true;
     await provider.setEnabled(true);
     await until(provider, () => provider.state == LocalLibraryState.ready);
+    expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 2);
     visible = false;
     changes.notifyListeners();
+    expect(provider.cachedQueryKeys, isEmpty);
     expect(provider.items, isEmpty);
     expect(provider.posterPath('one', '/shared-poster'), isNull);
     expect(provider.page('one:films', const LibraryQuery()), isNull);
@@ -161,12 +387,12 @@ void main() {
     await provider.setEnabled(false);
     final revision = provider.revision;
     DeletionNotifier().notifyDeletedItem(item: film('a'));
-    await until(provider, () => provider.revision > revision);
+    await until(provider, () => provider.revision > revision && provider.libraries.isNotEmpty);
     expect(provider.items.map((i) => i.id), ['b']);
     expect(provider.posterPath('one', '/shared-poster'), isNotNull);
     final after = provider.revision;
     DeletionNotifier().notifyDeletedItem(item: film('b'));
-    await until(provider, () => provider.revision > after);
+    await until(provider, () => provider.revision > after && provider.libraries.isNotEmpty);
     expect(provider.items, isEmpty);
     expect(provider.posterPath('one', '/shared-poster'), isNull);
   });
@@ -188,5 +414,59 @@ void main() {
     ], complete: true);
     await store.removeConfirmed('one', 'same');
     expect(store.items.single.serverId, 'two');
+  });
+
+  test('clear retracts local reads before disk persistence completes', () async {
+    wifi = true;
+    await provider.setEnabled(true);
+    await until(provider, () => provider.state == LocalLibraryState.ready);
+    provider.page(library.globalKey, const LibraryQuery());
+    final clear = provider.clear();
+    expect(provider.cachedQueryKeys, isEmpty);
+    addTearDown(() => clear);
+    expect(provider.items, isEmpty);
+    expect(provider.item('one', 'a'), isNull);
+    expect(provider.posterPath('one', '/shared-poster'), isNull);
+    expect(provider.page(library.globalKey, const LibraryQuery()), isNull);
+    await clear;
+    expect(provider.items, isEmpty);
+  });
+
+  test('confirmed deletion retracts local reads when the event is delivered', () async {
+    wifi = true;
+    await provider.setEnabled(true);
+    await until(provider, () => provider.state == LocalLibraryState.ready);
+    await provider.setEnabled(false);
+    final delivered = DeletionNotifier().stream.first;
+    addTearDown(() => provider.setEnabled(false));
+    final before = provider.revision;
+    DeletionNotifier().notifyDeletedItem(item: film('a'));
+    await delivered;
+    expect(provider.item('one', 'a'), isNull);
+    expect(provider.page(library.globalKey, const LibraryQuery())?.items.map((i) => i.id), isNot(contains('a')));
+    await until(provider, () => provider.revision > before && provider.items.any((i) => i.id == 'b'));
+  });
+
+  test('content sync and network changes keep the read boundary; access loss advances it', () async {
+    wifi = true;
+    await provider.setEnabled(true);
+    await until(provider, () => provider.state == LocalLibraryState.ready);
+    final boundary = provider.readBoundaryRevision;
+    final revision = provider.revision;
+    expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 2);
+    client.rows = [film('a'), film('b'), film('c')];
+    await provider.synchronize();
+    expect(provider.cachedQueryKeys, isEmpty);
+    expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 3);
+    expect(provider.items.map((item) => item.id), ['a', 'b', 'c']);
+    expect(provider.revision, greaterThan(revision));
+    expect(provider.readBoundaryRevision, boundary);
+    wifi = false;
+    changes.notifyListeners();
+    expect(provider.readBoundaryRevision, boundary);
+    visible = false;
+    changes.notifyListeners();
+    expect(provider.readBoundaryRevision, greaterThan(boundary));
+    expect(provider.items, isEmpty);
   });
 }

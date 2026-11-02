@@ -35,6 +35,10 @@ part of '../../pleya_server_client.dart';
 /// can, and a credential that never enters a URL never enters a log, a referrer
 /// or a shell history either. [PleyaServerClient.streamHeaders] carries it.
 mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
+  /// Where deferred subtitles are written; the app's temporary directory unless a test says otherwise.
+  @visibleForTesting
+  Directory? subtitleTempDirectory;
+
   /// The watched fraction the server uses when a report carries no `completed`.
   /// Kept in step with `watch.WatchedFraction` on the server side.
   static const double _watchedFraction = 0.9;
@@ -53,6 +57,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// reason to refuse playback, because the device report may be wrong and the
   /// player is the better judge of last resort.
   Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async {
+    if (_closed) throw PlaybackException('The playback connection is closed.');
+    var effectiveOptions = options;
     final versions = options.metadata.mediaVersions ?? const <MediaVersion>[];
     if (versions.isEmpty) {
       return PlaybackInitializationResult(availableVersions: const []);
@@ -62,34 +68,140 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         ? options.selectedMediaIndex
         : 0;
 
-    final plan = await _planPlayback(options.metadata.id, versions, index);
+    final sourceId = options.selectedMediaSourceId;
+    if (sourceId != null) {
+      index = versions.indexWhere((version) => version.id == sourceId);
+      if (index < 0) throw PlaybackException('The selected media version is no longer available.');
+    }
+    final start = ++_transcodeStarts;
+    await _releaseTranscodeSession(options.metadata.id);
+    var plan = await _planPlayback(
+      options.metadata.id,
+      versions,
+      index,
+      explicit: sourceId != null || index != 0,
+      options: options,
+    );
     if (plan != null) {
-      final planned = versions.indexWhere((v) => v.id == plan.versionId);
+      final planned = versions.indexWhere((v) => v.id == plan?.versionId);
       if (planned >= 0) index = planned;
       appLogger.d('PleyaServerClient: plan ${plan.deliveryMode?.wire} because ${plan.reason.code}');
     }
+    int? preferredSubtitleId;
+    final selector = options.selectSourceTracks;
+    if (selector != null &&
+        (plan?.sessionId == null || plan?.deliveryMode == PleyaDeliveryMode.directPlay) &&
+        options.selectedSubtitleStreamId == null &&
+        wireCapabilities.transcode &&
+        wireCapabilities.playbackPlan &&
+        wireCapabilities.playbackSubtitles) {
+      preferredSubtitleId = await _directPlaySubtitle(selector, versions[index]);
+    }
+    if (selector != null &&
+        plan?.sessionId != null &&
+        plan?.deliveryMode != PleyaDeliveryMode.directPlay &&
+        (wireCapabilities.playbackAudioSelection || wireCapabilities.playbackSubtitles)) {
+      try {
+        final source = PleyaServerMappers.mediaSourceInfo(versions[index]);
+        final choice = await selector(source);
+        final audioIndex = options.selectedAudioStreamId ?? choice.audioStreamId;
+        final subtitleId = options.selectedSubtitleStreamId ?? choice.subtitleStreamId;
+        final defaultAudio = source.audioTracks.where((t) => t.selected).firstOrNull ?? source.audioTracks.firstOrNull;
+        final audioChanges =
+            options.selectedAudioStreamId == null &&
+            audioIndex != null &&
+            audioIndex != defaultAudio?.id &&
+            wireCapabilities.playbackAudioSelection;
+        final subtitle = source.subtitleTracks.where((t) => t.id == subtitleId).firstOrNull;
+        if (subtitleId != null && subtitleId != 0 && subtitle == null) {
+          throw PlaybackException('The selected subtitle stream is no longer available.');
+        }
+        final needsBurn =
+            options.selectedSubtitleStreamId == null &&
+            subtitle != null &&
+            {'pgs', 'dvdsub'}.contains(subtitle.codec) &&
+            wireCapabilities.playbackSubtitles;
+        preferredSubtitleId = subtitleId;
+        if (audioChanges || needsBurn) {
+          await _stopPlanSession(plan?.sessionId);
+          plan = null;
+          effectiveOptions = PlaybackInitializationOptions(
+            metadata: options.metadata,
+            selectedMediaIndex: index,
+            selectedMediaSourceId: versions[index].id,
+            qualityPreset: options.qualityPreset,
+            selectedAudioStreamId: audioChanges ? audioIndex : options.selectedAudioStreamId,
+            selectedSubtitleStreamId: needsBurn ? subtitleId : options.selectedSubtitleStreamId,
+            sessionIdentifier: options.sessionIdentifier,
+            transcodeSessionId: options.transcodeSessionId,
+          );
+          plan = await _planPlayback(options.metadata.id, versions, index, explicit: true, options: effectiveOptions);
+        }
+      } catch (_) {
+        await _stopPlanSession(plan?.sessionId);
+        rethrow;
+      }
+    }
     final version = versions[index];
+    final videoUrl = plan?.sessionId != null && plan?.deliveryMode != PleyaDeliveryMode.directPlay
+        ? '${connection.baseUrl}${plan!.streamUrl}'
+        : _streamUrl(version.id);
+    final mediaInfo = PleyaServerMappers.mediaSourceInfo(
+      version,
+      baseUrl: connection.baseUrl,
+      videoUrl: videoUrl,
+      selectedSubtitleId: effectiveOptions.selectedSubtitleStreamId ?? preferredSubtitleId,
+      deliverEmbeddedText:
+          wireCapabilities.embeddedSubtitles && plan != null && plan.deliveryMode != PleyaDeliveryMode.directPlay,
+    );
+    final subtitles = [
+      for (final track in mediaInfo.subtitleTracks)
+        if (plan?.subtitle?.action != 'burn' && track.isExternalFile && track.key != null)
+          SubtitleTrack.uri(
+            track.key!,
+            title: track.title,
+            language: track.languageCode,
+            codec: track.codec,
+            isDefault: track.selected,
+            isForced: track.forced,
+          ),
+    ];
+
+    final deferredSubtitle = plan?.subtitle?.action == 'burn' ? null : _deferredEmbeddedSubtitle(mediaInfo);
 
     // Warm the header before the player opens the URL. The token is short
     // lived and minted per request everywhere else; here mpv holds the URL, so
     // the one thing this call has to guarantee is that the header handed to it
     // is fresh at open time.
-    await _session.authHeaders();
+    try {
+      if (_closed) throw PlaybackException('The playback connection is closed.');
+      await _session.authHeaders();
+      if (_closed) throw PlaybackException('The playback connection is closed.');
+    } catch (_) {
+      await _stopPlanSession(plan?.sessionId);
+      rethrow;
+    }
 
     // A delivery the server converts comes with a session: the player opens
     // its HLS playlist, and this client keeps the session alive until the
     // playback is reported stopped.
     final sessionId = plan?.sessionId;
     if (plan != null && sessionId != null && plan.deliveryMode != PleyaDeliveryMode.directPlay) {
-      _holdTranscodeSession(options.metadata.id, sessionId);
+      _holdTranscodeSession(options.metadata.id, sessionId, start);
       return PlaybackInitializationResult(
         availableVersions: versions,
         videoUrl: '${connection.baseUrl}${plan.streamUrl}',
         selectedMediaIndex: index,
         isTranscoding: plan.deliveryMode == PleyaDeliveryMode.transcode,
+        activeAudioStreamId: plan.selectedAudioStreamId == null ? null : effectiveOptions.selectedAudioStreamId,
         playMethod: plan.deliveryMode == PleyaDeliveryMode.transcode ? 'Transcode' : 'DirectStream',
         playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
-        externalSubtitles: const [],
+        streamEvidence: PlaybackStreamEvidence(
+          subtitle: plan.subtitle?.action == 'burn' ? PlaybackSubtitleDecision.burn : null,
+        ),
+        mediaInfo: mediaInfo,
+        externalSubtitles: subtitles,
+        deferredSubtitle: deferredSubtitle,
       );
     }
 
@@ -99,19 +211,118 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       selectedMediaIndex: index,
       playMethod: 'DirectPlay',
       playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
-      externalSubtitles: const [],
+      mediaInfo: mediaInfo,
+      externalSubtitles: subtitles,
+      deferredSubtitle: deferredSubtitle,
     );
   }
 
+  /// The selected embedded track of an HLS delivery, which drops the track from
+  /// the stream. It stays out of [PlaybackInitializationResult.externalSubtitles]:
+  /// mpv loads those during open and does not repeat, so a track the server is
+  /// still reading would hold the film back and then fail. Unselected tracks
+  /// stay in the source controls and cost the server nothing until chosen.
+  DeferredSubtitle? _deferredEmbeddedSubtitle(MediaSourceInfo info) {
+    final track = info.subtitleTracks.where((t) => t.selected && !t.isExternalFile && t.key != null).firstOrNull;
+    final id = track?.sourceStreamId;
+    if (track == null || id == null) return null;
+    return DeferredSubtitle(
+      title: track.displayTitle ?? track.title,
+      language: track.languageCode,
+      load: (abort) async {
+        final text = await fetchPleyaSubtitleWhenReady(
+          abort: abort,
+          get: (attempt) {
+            if (_closed) throw const PleyaSubtitleUnavailable(null);
+            return _getSubtitle(id, attempt);
+          },
+        );
+        return writePleyaSubtitleFile(text, track.codec ?? 'srt', directory: subtitleTempDirectory);
+      },
+    );
+  }
+
+  Future<MediaSourceInfo?> fetchCachedMediaSourceInfo(String itemId) =>
+      CachedPlaybackMetadataService.fetchMediaSourceInfo(
+        backend: MediaBackend.pleyaServer,
+        cacheServerId: connection.id,
+        itemId: itemId,
+        baseUrl: connection.baseUrl,
+      );
+
+  Future<MediaFileInfo?> getFileInfo(MediaItem item) async {
+    final versions = item.mediaVersions;
+    if (versions == null || versions.isEmpty) return null;
+    final version = versions.first;
+    final source = PleyaServerMappers.mediaSourceInfo(version, baseUrl: connection.baseUrl);
+    final part = version.parts.firstOrNull;
+    final audio = source.audioTracks.firstOrNull;
+    return MediaFileInfo(
+      container: version.container,
+      videoCodec: version.videoCodec,
+      videoResolution: version.videoResolution,
+      width: version.width,
+      height: version.height,
+      bitrate: version.bitrate,
+      duration: part?.durationMs,
+      fileSize: part?.sizeBytes,
+      audioCodec: audio?.codec,
+      audioChannels: audio?.channels,
+      audioTracks: source.audioTracks,
+      subtitleTracks: source.subtitleTracks,
+    );
+  }
+
+  /// The subtitle the player will select after opening [version] directly.
+  ///
+  /// The file carries every track, so nothing needs planning; the source
+  /// controls just have to show what mpv is about to do. A preference that
+  /// cannot be resolved here is no reason to refuse the playback.
+  Future<int?> _directPlaySubtitle(SourceTrackSelector selector, MediaVersion version) async {
+    try {
+      final source = PleyaServerMappers.mediaSourceInfo(version);
+      final subtitleId = (await selector(source)).subtitleStreamId;
+      return subtitleId == 0 || source.subtitleTracks.any((t) => t.id == subtitleId) ? subtitleId : null;
+    } catch (e) {
+      appLogger.d('PleyaServerClient: no subtitle preference for direct play', error: e);
+      return null;
+    }
+  }
+
+  Future<void> _stopPlanSession(String? id) async {
+    if (id case final String sessionId) {
+      try {
+        await _adminSend('DELETE', '/playback/sessions/${Uri.encodeComponent(sessionId)}');
+      } catch (e) {
+        appLogger.d('PleyaServerClient: could not stop the unopened plan session', error: e);
+      }
+    }
+  }
+
   /// The transcode sessions this client keeps alive, by item id.
-  final Map<String, ({String sessionId, Timer timer})> _transcodeSessions = {};
+  final Map<String, ({String sessionId, Timer timer, int start})> _transcodeSessions = {};
+
+  /// Numbers each playback start, so two overlapping starts of one item can
+  /// tell which is the newer: they finish in either order.
+  int _transcodeStarts = 0;
 
   /// How often a held session is told it is still wanted. The server reaps a
   /// session after a minute without a heartbeat or a file request.
   static const Duration _heartbeatEvery = Duration(seconds: 15);
 
-  void _holdTranscodeSession(String itemId, String sessionId) {
-    unawaited(_releaseTranscodeSession(itemId));
+  /// One held session per item. Of two overlapping starts the newer one stays,
+  /// and the other is stopped here, or it would run on the server with nobody
+  /// watching it and a heartbeat nobody cancels.
+  void _holdTranscodeSession(String itemId, String sessionId, int start) {
+    final held = _transcodeSessions[itemId];
+    if (held != null && held.start > start) {
+      unawaited(_stopPlanSession(sessionId));
+      return;
+    }
+    if (held != null) {
+      held.timer.cancel();
+      unawaited(_stopPlanSession(held.sessionId));
+    }
     final timer = Timer.periodic(_heartbeatEvery, (t) async {
       try {
         await _adminSend('POST', '/playback/sessions/$sessionId/heartbeat');
@@ -122,7 +333,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         appLogger.d('PleyaServerClient: transcode heartbeat failed', error: e);
       }
     });
-    _transcodeSessions[itemId] = (sessionId: sessionId, timer: timer);
+    _transcodeSessions[itemId] = (sessionId: sessionId, timer: timer, start: start);
   }
 
   Future<void> _releaseTranscodeSession(String itemId) async {
@@ -147,25 +358,106 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// server does not offer one, the call failed, or the plan names a delivery
   /// this build does not know (an unknown mode must not change what we play).
   ///
-  /// The default selection (index 0) lets the server choose the cheapest
-  /// fitting version; any other index is the user's explicit choice and goes
-  /// out as `version_id`.
-  Future<PleyaPlaybackPlan?> _planPlayback(String itemId, List<MediaVersion> versions, int index) async {
+  /// An automatic first version lets the server choose. A stable source id
+  /// carries explicit intent, including selection of the first version.
+  Future<PleyaPlaybackPlan?> _planPlayback(
+    String itemId,
+    List<MediaVersion> versions,
+    int index, {
+    required bool explicit,
+    required PlaybackInitializationOptions options,
+  }) async {
+    final quality = options.qualityPreset;
+    final audioIndex = options.selectedAudioStreamId;
+    final subtitleIndex = options.selectedSubtitleStreamId;
+    final sourceSubtitles = PleyaServerMappers.mediaSourceInfo(versions[index]).subtitleTracks;
+    final subtitle = subtitleIndex == null || subtitleIndex == 0
+        ? null
+        : sourceSubtitles.where((s) => s.id == subtitleIndex).firstOrNull;
+    if (subtitleIndex != null && subtitleIndex != 0 && subtitle == null) {
+      throw PlaybackException('The selected subtitle stream is no longer available.');
+    }
+    final subtitleMode = subtitleIndex == null
+        ? null
+        : subtitleIndex == 0
+        ? 'off'
+        : {'pgs', 'dvdsub'}.contains(subtitle?.codec)
+        ? 'burn'
+        : 'external';
+    final requiresSession = !quality.isOriginal || audioIndex != null || subtitleMode == 'burn';
+    final selected = requiresSession || subtitleIndex != null;
+    if ((subtitleIndex != null && !wireCapabilities.playbackSubtitles) ||
+        (!quality.isOriginal && !wireCapabilities.playbackQuality) ||
+        (audioIndex != null && !wireCapabilities.playbackAudioSelection) ||
+        (selected && !wireCapabilities.playbackPlan)) {
+      throw PlaybackException('The server does not support this playback selection.');
+    }
     if (!wireCapabilities.playbackPlan) return null;
+    String? audioId;
+    if (audioIndex != null) {
+      audioId = versions[index].parts.firstOrNull?.streams
+          .where((stream) => stream.kind == MediaStreamKind.audio && stream.index == audioIndex)
+          .firstOrNull
+          ?.id;
+      if (audioId == null) throw PlaybackException('The selected audio stream is no longer available.');
+    }
+    String? receivedSessionId;
     try {
       final json = await _postJson('/playback/plan', {
         'item_id': itemId,
-        if (index != 0) 'version_id': versions[index].id,
+        if (explicit || audioId != null || subtitleIndex != null) 'version_id': versions[index].id,
+        if (audioId != null) 'audio_stream_id': audioId,
+        if (subtitleMode != null)
+          'subtitle': {'mode': subtitleMode, if (subtitle != null) 'stream_id': subtitle.sourceStreamId},
+        if (!quality.isOriginal)
+          'quality': {'max_video_bitrate_kbps': quality.videoBitrateKbps, 'max_height': quality.resolutionHeight},
         'capabilities': pleyaDeviceCapabilitiesToWire(DeviceCapabilitiesService.currentSnapshot),
       });
-      if (json == null) return null;
+      if (json == null) {
+        if (selected) throw PlaybackException('The requested playback selection could not be prepared.');
+        return null;
+      }
+      receivedSessionId = json['session_id'] is String ? json['session_id'] as String : null;
       final plan = PleyaPlaybackPlan.fromJson(json);
+      final wrongSource =
+          plan.itemId != itemId ||
+          !versions.any((v) => v.id == plan.versionId) ||
+          ((explicit || audioId != null || subtitleIndex != null) && plan.versionId != versions[index].id);
+      final wrongQuality =
+          !quality.isOriginal &&
+          (plan.deliveryMode != PleyaDeliveryMode.transcode ||
+              plan.maxVideoBitrateKbps != quality.videoBitrateKbps ||
+              plan.maxHeight != quality.resolutionHeight);
+      final wrongSubtitle =
+          subtitleMode != null &&
+          (plan.subtitle?.action != subtitleMode ||
+              (subtitle != null && plan.subtitle?.streamId != subtitle.sourceStreamId) ||
+              (subtitleMode == 'external' &&
+                  plan.subtitle?.url !=
+                      '$pleyaProtocolPrefix/subtitles/${Uri.encodeComponent(subtitle!.sourceStreamId!)}') ||
+              (subtitleMode == 'burn' && plan.deliveryMode != PleyaDeliveryMode.transcode));
+      if (wrongSource ||
+          (selected &&
+              (plan.deliveryMode == null ||
+                  wrongQuality ||
+                  wrongSubtitle ||
+                  (audioId != null && plan.selectedAudioStreamId != audioId) ||
+                  (requiresSession &&
+                      (plan.sessionId == null || plan.deliveryMode == PleyaDeliveryMode.directPlay))))) {
+        throw PlaybackException('The server did not apply the requested playback selection.');
+      }
       if (plan.deliveryMode == PleyaDeliveryMode.directPlay) return plan;
-      return plan.deliveryMode != null && plan.sessionId != null ? plan : null;
+      if (plan.deliveryMode != null && plan.sessionId != null) return plan;
+      await _stopPlanSession(receivedSessionId);
+      return null;
     } on PleyaWireFormatException catch (e) {
+      await _stopPlanSession(receivedSessionId);
+      if (selected) throw PlaybackException('The server returned an invalid playback selection.');
       appLogger.w('PleyaServerClient: playback plan did not match the contract', error: e);
       return null;
     } catch (e) {
+      await _stopPlanSession(receivedSessionId);
+      if (selected) throw PlaybackException('The requested playback selection could not be prepared.');
       appLogger.d('PleyaServerClient: no playback plan, playing directly', error: e);
       return null;
     }
@@ -179,7 +471,10 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   Future<String?> resolveExternalPlaybackUrl(MediaItem item, {int mediaIndex = 0, String? mediaSourceId}) async {
     final versions = item.mediaVersions ?? const <MediaVersion>[];
     if (versions.isEmpty) return null;
-    final index = mediaIndex >= 0 && mediaIndex < versions.length ? mediaIndex : 0;
+    final index = mediaSourceId != null
+        ? versions.indexWhere((version) => version.id == mediaSourceId)
+        : (mediaIndex >= 0 && mediaIndex < versions.length ? mediaIndex : 0);
+    if (index < 0) return null;
     final versionId = versions[index].id;
 
     // An external player URL is optional: a failed mint is "no URL", not an
@@ -231,6 +526,75 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     );
   }
 
+  /// A position on a watched copy is refused with `copy`, for the reason above
+  /// `applyExplicit` on the server, and without that flag no position goes out.
+  bool get movesCopyWithoutViewing => false;
+
+  /// `user_state` does not say whether a session holds a title, so a recent write
+  /// is the only sign of one: a live session ticks every ten seconds. Twice the
+  /// default lease of 90 seconds, because a session keeps its lease up to there
+  /// when one tick got lost. A clock ahead of this device counts as recent.
+  static const Duration _copyWaitsAfterWrite = Duration(seconds: 180);
+
+  bool _writtenJustNow(MediaItem item) {
+    final seconds = item.lastViewedAt;
+    if (seconds == null) return false;
+    final age = DateTime.now().millisecondsSinceEpoch ~/ 1000 - seconds;
+    return age < _copyWaitsAfterWrite.inSeconds;
+  }
+
+  /// Nobody watched here, so nothing that stands for a viewing goes out.
+  ///
+  /// With `capabilities.watch_state_copy` that is one event with `copy`: no
+  /// history, no threshold, no `last_played_at`, and nothing acquired (voorstel
+  /// DEC-XXX, kopie zonder kijkactie). `owned_by_this_session` says nothing here:
+  /// a copy acquires nothing, so the state in the answer says whether it landed.
+  /// One session for every copy, and no revision claim: this client did not act
+  /// on what it saw of this title.
+  ///
+  /// Without the flag every way to move a position is a viewing: `playback_started`
+  /// puts a row in the history, sets the title to watched from 90 percent and moves
+  /// `last_played_at`. A position therefore stays home, and false ends its row.
+  ///
+  /// A finished viewing is then `mark_watched`, which leaves no history. That is an
+  /// explicit action: it ignores the lease (rule 5) and sets the position to zero,
+  /// so right after a write it does not go out. False keeps that row, and the next
+  /// round ends it when the session ticked on, or lets it land. It lands only on an
+  /// answer that says watched: anything else says nothing, and the row stays too.
+  Future<bool> writeCopyState(
+    MediaItem item, {
+    required Duration position,
+    Duration? duration,
+    required bool watched,
+  }) async {
+    if (wireCapabilities.watchStateCopy) {
+      final state = await _applyWatchState(
+        itemId: item.id,
+        sessionId: _copySessionId,
+        position: position,
+        duration: duration,
+        completed: watched,
+        copy: true,
+      );
+      if (state == null) return false;
+      return watched ? state.watched : state.positionMs == position.inMilliseconds;
+    }
+    if (!watched) return false;
+    return markWatchedUnlessHeld(item);
+  }
+
+  /// `mark_watched` for a viewing that happened somewhere else: another source,
+  /// or offline. It ignores the lease (rule 5) and sets the position to zero, so
+  /// right after a write it does not go out. Answers whether the server now says
+  /// watched: anything else says nothing about the mark.
+  Future<bool> markWatchedUnlessHeld(MediaItem item) async {
+    if (_writtenJustNow(item)) return false;
+    final state = await _markWatched(item);
+    return state?.watched ?? false;
+  }
+
+  late final String _copySessionId = _mintSessionId();
+
   /// A passive progress tick. Never acquires ownership; a device that is not
   /// the owner reports into the void by design, and the answer tells it so.
   Future<void> reportPlaybackProgress({
@@ -265,15 +629,46 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     String? mediaSourceId,
     PlaybackReportMetadata report = const PlaybackReportMetadata.live(),
   }) async {
+    await _reportStopped(itemId: itemId, position: position, duration: duration, report: report);
+  }
+
+  /// A viewing that ran offline, with the answer: a backlog on a title that has a
+  /// state is history (rule 6), and that is a 200 like any other. Null when there
+  /// is no usable answer.
+  ///
+  /// The server keeps a backlog in the history even when it turns one down, one
+  /// row per session. So the session follows from [rowKey] and not from the ledger:
+  /// a retry, also after a restart, stays one viewing there.
+  Future<PleyaUserState?> reportOfflineViewing({
+    required String itemId,
+    required Duration position,
+    Duration? duration,
+    required DateTime recordedAt,
+    required String rowKey,
+  }) => _reportStopped(
+    itemId: itemId,
+    position: position,
+    duration: duration,
+    report: PlaybackReportMetadata.offlineReplay(recordedAt: recordedAt),
+    replaySession: const Uuid().v5(Namespace.url.value, 'pleya-offline-viewing:$rowKey'),
+  );
+
+  Future<PleyaUserState?> _reportStopped({
+    required String itemId,
+    required Duration position,
+    Duration? duration,
+    required PlaybackReportMetadata report,
+    String? replaySession,
+  }) async {
     final completed =
         duration != null &&
         duration.inMilliseconds > 0 &&
         position.inMilliseconds >= _watchedFraction * duration.inMilliseconds;
 
     await _releaseTranscodeSession(itemId);
-    await _applyWatchState(
+    final state = await _applyWatchState(
       itemId: itemId,
-      sessionId: _watchLedger.sessionFor(itemId, _mintSessionId),
+      sessionId: replaySession ?? _watchLedger.sessionFor(itemId, _mintSessionId),
       position: position,
       duration: duration,
       completed: completed,
@@ -281,8 +676,10 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       // history: it never acquires ownership and never moves a newer canonical
       // state. Reporting it as live would be a lie the server cannot detect.
       backlog: report.isOfflineReplay,
+      occurredAt: report.isOfflineReplay ? report.recordedAt : null,
     );
-    _watchLedger.closeSession(itemId);
+    if (replaySession == null) _watchLedger.closeSession(itemId);
+    return state;
   }
 
   // ---------------------------------------------------------------------------
@@ -290,7 +687,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   // ---------------------------------------------------------------------------
 
   /// Mark watched. Ignores another device's lease, by rule 5.
-  Future<void> markWatched(MediaItem item) async => _applyWatchState(
+  Future<void> markWatched(MediaItem item) async => _markWatched(item);
+
+  Future<PleyaUserState?> _markWatched(MediaItem item) => _applyWatchState(
     itemId: item.id,
     sessionId: _watchLedger.sessionFor(item.id, _mintSessionId),
     position: Duration.zero,
@@ -362,7 +761,8 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// Every caller goes through here so the three ownership fields are decided
   /// in one place. Scattering them would make "does this event acquire the
   /// lease" a property of the call site instead of of the action.
-  Future<void> _applyWatchState({
+  /// Answers the state the server reports: null when there is no usable answer.
+  Future<PleyaUserState?> _applyWatchState({
     required String itemId,
     required String sessionId,
     required Duration position,
@@ -371,39 +771,44 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     String? cause,
     bool completed = false,
     bool backlog = false,
+    DateTime? occurredAt,
+    bool copy = false,
   }) async {
-    if (!wireCapabilities.watchState) return;
+    if (!wireCapabilities.watchState) return null;
 
     final event = PleyaWatchStateEvent(
       itemId: itemId,
       sessionId: sessionId,
       positionMs: position.inMilliseconds,
       durationMs: duration?.inMilliseconds,
-      occurredAt: DateTime.now().toUtc(),
+      occurredAt: (occurredAt ?? DateTime.now()).toUtc(),
       completed: completed,
       action: action,
       cause: cause,
       backlog: backlog,
+      copy: copy,
       // Only under the capability, and the type drops it again when the flag is
       // off: the request schema is closed, so sending it to a server that
       // predates DEC-049 fails the whole call rather than dropping the field.
-      baseRevision: wireCapabilities.watchStateOwnership ? _watchLedger.revisionOf(itemId) : null,
+      baseRevision: wireCapabilities.watchStateOwnership && !copy ? _watchLedger.revisionOf(itemId) : null,
     );
 
     final body = event.toJson(ownership: wireCapabilities.watchStateOwnership);
     final json = await _postJson('/watch-state', body);
-    if (json == null) return;
+    if (json == null) return null;
     try {
       final state = PleyaUserState.fromJson(json);
       _watchLedger.remember(itemId, state.revision);
-      if (state.ownedByThisSession == false) {
+      if (state.ownedByThisSession == false && !copy) {
         // Not an error, and not something the user should see. Another device
         // holds the lease, and this client keeps reporting so it can take over
         // when the lease runs out.
         appLogger.d('PleyaServerClient: another session owns $itemId');
       }
+      return state;
     } on PleyaWireFormatException catch (e) {
       appLogger.w('PleyaServerClient: watch-state answer did not match the contract', error: e);
+      return null;
     }
   }
 

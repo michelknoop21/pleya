@@ -52,6 +52,7 @@ import '../../media/media_version.dart';
 import '../../screens/video_player_screen.dart';
 import '../../focus/key_event_utils.dart';
 import '../../services/keyboard_shortcuts_service.dart';
+import '../../services/deferred_subtitle_loader.dart';
 import '../../services/device_adjustment_service.dart';
 import '../../services/scrub_preview_source.dart';
 import '../../services/settings_service.dart';
@@ -253,6 +254,8 @@ class PlexVideoControls extends StatefulWidget {
   final int selectedMediaIndex;
   final TranscodeQualityPreset selectedQualityPreset;
   final bool serverSupportsTranscoding;
+  final bool serverSupportsAudioSelection;
+  final bool serverSupportsSubtitleSelection;
   final bool isTranscoding;
   final bool isOfflinePlayback;
   final List<MediaAudioTrack> sourceAudioTracks;
@@ -263,6 +266,7 @@ class PlexVideoControls extends StatefulWidget {
   /// during direct play.
   final List<MediaSubtitleTrack> sourceSubtitleMetadata;
   final int? selectedSubtitleStreamId;
+  final DeferredSubtitleLoader? deferredSubtitles;
   final int? sourcePartId;
   final PlaybackSourceChangeCallback? onPlaybackSourceChanged;
   final int boxFitMode;
@@ -380,6 +384,8 @@ class PlexVideoControls extends StatefulWidget {
     this.selectedMediaIndex = 0,
     this.selectedQualityPreset = TranscodeQualityPreset.original,
     this.serverSupportsTranscoding = false,
+    this.serverSupportsAudioSelection = true,
+    this.serverSupportsSubtitleSelection = false,
     this.isTranscoding = false,
     this.isOfflinePlayback = false,
     this.sourceAudioTracks = const [],
@@ -387,6 +393,7 @@ class PlexVideoControls extends StatefulWidget {
     this.sourceSubtitleTracks = const [],
     this.sourceSubtitleMetadata = const [],
     this.selectedSubtitleStreamId,
+    this.deferredSubtitles,
     this.sourcePartId,
     this.onPlaybackSourceChanged,
     this.boxFitMode = 0,

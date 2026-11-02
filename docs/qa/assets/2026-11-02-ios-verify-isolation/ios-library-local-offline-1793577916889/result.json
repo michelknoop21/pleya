@@ -1,0 +1,9 @@
+{
+  "run_id": "ios-library-local-offline-1793577916889",
+  "git_commit": "d69209da690615f6a76f5a53bbb3fff2385e60fc",
+  "dirty": false,
+  "target": "ios-sim",
+  "result": "PASS",
+  "duration_ms": 34995,
+  "scenario_hash": "8a9aa5e5a15e0f64113d2cc7579acf2dd3355ef6e85d4a8720f92f1ef0e85af0"
+}

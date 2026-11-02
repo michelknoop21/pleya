@@ -21,9 +21,10 @@ met drie voorwaarden: de bestaande architectuur en de Unified Library, aansluiti
 Pleya-clients en de webclient (reader-integratie hoort bij het productscope), en geen nieuwe DRM-,
 winkel- of abonnementsfunctionaliteit zonder afzonderlijk besluit.
 
-De vrijgave geeft slice S3 vrij en S6 niet: het locatorbesluit P5 blijft open en S6 hangt ervan af.
-**PS-15 en PS-16 blijven niet vrijgegeven**, en het protocolvenster voor boeken is niet geopend; dat
-vraagt een eigen besluit.
+DEC-149 gaf S3 vrij en S6 niet. De actuele vrijgave van P5, PS-15 en PS-16 staat uitsluitend in de
+masterlijst en de bijbehorende besluiten; dit instructiebestand houdt geen tweede fasestatus bij.
+S6 houdt zijn S3-/contractafhankelijkheden. Een protocolvenster voor boeken blijft een afzonderlijk
+besluit en de vereiste hardwaremeting blijft behouden.
 
 Twee grenzen gelden: de `media_*`-tabellen blijven audiovisueel, en de mobiele beperking is
 clientgedrag, dus er komt geen platform- of readerveld aan login of `sessions`. Deze regels staan in

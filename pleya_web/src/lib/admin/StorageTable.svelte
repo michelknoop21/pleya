@@ -44,7 +44,8 @@
   {#snippet empty()}{t('admin.sto.empty')}{/snippet}
   {#snippet cell(root, column)}
     {#if column.key === 'root'}
-      <!-- Breken mag alleen na een schuine streep, nooit midden in een mapnaam. -->
+      <!-- Bij voorkeur breken na een slash; een zeer lange mapnaam mag ook
+           breken zodat het volledige pad op een smal scherm leesbaar blijft. -->
       <span class="mono path"
         >{#each root.path.split('/') as part, i (i)}{#if i > 0}/<wbr />{/if}{part}{/each}</span
       >
@@ -79,7 +80,7 @@
   /* Vanaf 1400 houdt een pad zich op één regel, zoals de northstar; smaller
      breekt hij, anders schuift de statuskolom het paneel uit. */
   .path {
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
   }
 
   @media (min-width: 1400px) {

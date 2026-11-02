@@ -185,7 +185,7 @@ class AutomationServer {
     } catch (e, st) {
       // A route handler that throws must still answer — an unanswered
       // request hangs the caller forever instead of failing fast.
-      appLogger.d('[PleyaVerify] route handler error', error: e, stackTrace: st);
+      appLogger.w('[PleyaVerify] route handler error', error: e, stackTrace: st);
       try {
         request.response.statusCode = HttpStatus.internalServerError;
         await request.response.close();

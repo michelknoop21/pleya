@@ -292,6 +292,39 @@ List<PleyaPerson>? _peopleOrNull(Object? raw) {
   return out;
 }
 
+/// `ExternalIds`: the provider numbers a server has proven for a title.
+///
+/// Every key is optional and a server that does not know the field sends none
+/// of it, so an absent number means "no evidence" and never "no match". Only
+/// movies and shows carry them; a season or episode takes its identity from
+/// its show plus its numbers.
+class PleyaExternalIds {
+  const PleyaExternalIds({this.tmdb});
+
+  static const PleyaExternalIds none = PleyaExternalIds();
+
+  final int? tmdb;
+
+  bool get isEmpty => tmdb == null;
+
+  /// Whether [value] is what the contract allows: null, or an object whose
+  /// `tmdb` is absent, null or an integer of at least 1. A broken answer is not
+  /// reported, so it reads as unknown instead of as a final "no numbers".
+  static bool isWellFormed(Object? value) {
+    if (value == null) return true;
+    if (value is! Map<String, dynamic>) return false;
+    final tmdb = value['tmdb'];
+    return tmdb == null || (tmdb is int && tmdb > 0);
+  }
+
+  factory PleyaExternalIds.fromJson(Map<String, dynamic> json) {
+    // A number that is not a positive integer is not evidence. Dropping it is
+    // safer than parsing it into a token that could collide with another one.
+    final tmdb = integerOrNull(json, 'tmdb');
+    return PleyaExternalIds(tmdb: tmdb != null && tmdb > 0 ? tmdb : null);
+  }
+}
+
 /// `Item`.
 class PleyaItem {
   const PleyaItem({
@@ -311,9 +344,15 @@ class PleyaItem {
     this.childCount,
     this.episodeCount,
     this.watchedEpisodeCount,
+    this.externalIds = PleyaExternalIds.none,
+    this.externalIdsReported = false,
+    this.appliedExternalIds = PleyaExternalIds.none,
+    this.appliedExternalIdsReported = false,
     this.artwork = PleyaArtwork.none,
     this.versions = const [],
     this.userState,
+    this.favorite = false,
+    this.rating,
   });
 
   final String id;
@@ -347,18 +386,38 @@ class PleyaItem {
   final int? childCount;
   final int? episodeCount;
   final int? watchedEpisodeCount;
+
+  /// Empty for a server that predates the field, for a title without a proven
+  /// match, and for seasons and episodes.
+  final PleyaExternalIds externalIds;
+
+  /// Whether the answer carried the `external_ids` key at all, null or not. A
+  /// server that knows the field always sends it, so its absence is how a
+  /// client tells a server that predates it from a title that has no proven
+  /// number. The two must not read the same: only the second is a "no".
+  final bool externalIdsReported;
+
+  /// Only a well formed non-null applied object is evidence, never intent.
+  final PleyaExternalIds appliedExternalIds;
+  final bool appliedExternalIdsReported;
   final PleyaArtwork artwork;
   final List<PleyaVersion> versions;
   final PleyaUserState? userState;
+  final bool favorite;
+  final int? rating;
 
   factory PleyaItem.fromJson(Map<String, dynamic> json) {
     final artwork = json['artwork'];
     final userState = json['user_state'];
+    final externalIds = json['external_ids'];
+    final appliedIds = json['applied_external_ids'];
     return PleyaItem(
       id: str(json, 'id'),
       kind: PleyaItemKind.tryParse(strOrNull(json, 'kind')),
       title: str(json, 'title'),
       addedAt: timestamp(json, 'added_at'),
+      favorite: json['favorite'] == null ? false : boolean(json, 'favorite'),
+      rating: integerOrNull(json, 'rating'),
       sortTitle: strOrNull(json, 'sort_title'),
       year: integerOrNull(json, 'year'),
       summary: strOrNull(json, 'summary'),
@@ -371,6 +430,12 @@ class PleyaItem {
       childCount: integerOrNull(json, 'child_count'),
       episodeCount: integerOrNull(json, 'episode_count'),
       watchedEpisodeCount: integerOrNull(json, 'watched_episode_count'),
+      externalIds: externalIds is Map<String, dynamic> ? PleyaExternalIds.fromJson(externalIds) : PleyaExternalIds.none,
+      externalIdsReported: json.containsKey('external_ids') && PleyaExternalIds.isWellFormed(externalIds),
+      appliedExternalIds: appliedIds is Map<String, dynamic> && PleyaExternalIds.isWellFormed(appliedIds)
+          ? PleyaExternalIds.fromJson(appliedIds)
+          : PleyaExternalIds.none,
+      appliedExternalIdsReported: appliedIds is Map<String, dynamic> && PleyaExternalIds.isWellFormed(appliedIds),
       artwork: artwork is Map<String, dynamic> ? PleyaArtwork.fromJson(artwork) : PleyaArtwork.none,
       versions: [for (final v in objectList(json['versions'], 'versions')) PleyaVersion.fromJson(v)],
       userState: userState is Map<String, dynamic> ? PleyaUserState.fromJson(userState) : null,
@@ -429,6 +494,7 @@ class PleyaWatchStateEvent {
     this.cause,
     this.baseRevision,
     this.backlog = false,
+    this.copy = false,
   });
 
   final String itemId;
@@ -451,6 +517,10 @@ class PleyaWatchStateEvent {
   /// ownership and never moves a newer canonical state.
   final bool backlog;
 
+  /// The state of another source of this title: nobody watched here. Only
+  /// sendable when the server advertises `watch_state_copy`.
+  final bool copy;
+
   /// The body as the contract wants it.
   ///
   /// [ownership] is the server's `watch_state_ownership` flag. When it is false
@@ -468,6 +538,7 @@ class PleyaWatchStateEvent {
     if (ownership && cause != null && action == 'playback_started') 'cause': cause,
     if (ownership && backlog) 'backlog': true,
     if (ownership && baseRevision != null) 'base_revision': baseRevision,
+    if (copy) 'copy': true,
   };
 
   factory PleyaWatchStateEvent.fromJson(Map<String, dynamic> json) => PleyaWatchStateEvent(
@@ -481,6 +552,7 @@ class PleyaWatchStateEvent {
     cause: strOrNull(json, 'cause'),
     baseRevision: integerOrNull(json, 'base_revision'),
     backlog: booleanOr(json, 'backlog', orElse: false),
+    copy: booleanOr(json, 'copy', orElse: false),
   );
 
   /// RFC 3339 in UTC with a `Z` suffix, per chapter 2 of the specification.

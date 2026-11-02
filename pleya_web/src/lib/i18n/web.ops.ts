@@ -3,6 +3,24 @@
  * bestand klein te houden; web.ts voegt ze er letterlijk aan toe.
  */
 export const webOps = {
+  'admin.sto.cache.title': 'Resized images',
+  'admin.sto.cache.body': 'Only resized posters and backdrops are counted here. They are recreated when requested. Original images, pinned sources, media, settings and backups are preserved.',
+  'admin.sto.cache.summary.one': '{size} · {count} file',
+  'admin.sto.cache.summary.other': '{size} · {count} files',
+  'admin.sto.cache.purge': 'Empty image cache',
+  'admin.sto.cache.confirmTitle': 'Schedule emptying the image cache?',
+  'admin.sto.cache.confirm': 'Schedule emptying',
+  'admin.sto.cache.reload': 'Reload image cache',
+  'admin.sto.cache.loading': 'Reading image cache…',
+  'admin.sto.cache.accepted': 'Task received. Follow execution in Scans and tasks.',
+  'admin.sto.cache.succeeded': 'Image cache emptied.',
+  'admin.sto.cache.running': 'The image cache task is waiting or running.',
+  'admin.sto.cache.failed': 'The image cache task failed. View the error and retry in Scans and tasks.',
+  'admin.sto.cache.cancelled': 'The image cache task was cancelled. You can retry in Scans and tasks.',
+  'admin.sto.cache.monitorFailed': 'Task status could not be read. Reload or open Scans and tasks.',
+  'admin.sto.cache.activity': 'Scans and tasks',
+  'admin.act.job.cachePurge': 'Empty image cache',
+  'admin.act.job.runningTitle.cachePurge': 'Emptying image cache',
   // --- Opslag (24) ---------------------------------------------------------
   'admin.sto.summary.mounted.one': '{count} root mounted',
   'admin.sto.summary.mounted.other': '{count} roots mounted',

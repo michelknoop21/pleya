@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../media/media_source_info.dart';
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
 import '../../../mpv/mpv.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../services/apple_audio_session_service.dart';
@@ -16,6 +18,7 @@ import 'base_video_control_sheet.dart';
 import 'sheet_column_header.dart';
 import 'subtitle_search_sheet.dart';
 import '../models/track_controls_state.dart';
+import '../widgets/deferred_subtitle_status.dart';
 import '../helpers/track_filter_helper.dart';
 import '../helpers/track_selection_helper.dart';
 
@@ -227,32 +230,38 @@ class _SourceSubtitleColumnState extends State<_SourceSubtitleColumn> {
     return Column(
       children: [
         if (widget.showHeader) SheetColumnHeader(label: t.videoControls.subtitlesLabel),
+        if (widget.trackControlsState.deferredSubtitles case final loader?) DeferredSubtitleNote(loader: loader),
         Expanded(
           child: ListView.builder(
             controller: _initialScroll.controller,
             itemCount: widget.tracks.length + 1,
             itemBuilder: (context, index) {
-              if (index == 0) {
-                return TrackSelectionHelper.buildOffTile<SubtitleTrack>(
-                  context: context,
-                  key: _initialScroll.firstItemKey,
-                  isSelected: selectedId == 0,
-                  onTap: () {
-                    OverlaySheetController.of(context).close();
-                    widget.trackControlsState.onSwitchSubtitleStreamId!(0);
-                  },
-                );
-              }
-
-              final track = widget.tracks[index - 1];
-              return TrackSelectionHelper.buildTrackTile<SubtitleTrack>(
-                context: context,
-                label: track.labelForIndex(index - 1),
-                isSelected: track.id == selectedId,
-                onTap: () {
-                  OverlaySheetController.of(context).close();
-                  widget.trackControlsState.onSwitchSubtitleStreamId!(track.id);
-                },
+              final track = index == 0 ? null : widget.tracks[index - 1];
+              final id = track?.id ?? 0;
+              return AutomationNode(
+                id: AutomationIds.playerSourceChoice,
+                instance: index == 0 ? 'subtitle.off' : 'subtitle.${index - 1}',
+                role: 'button',
+                state: () => {'selected': selectedId == id},
+                child: track == null
+                    ? TrackSelectionHelper.buildOffTile<SubtitleTrack>(
+                        context: context,
+                        key: _initialScroll.firstItemKey,
+                        isSelected: selectedId == 0,
+                        onTap: () {
+                          OverlaySheetController.of(context).close();
+                          widget.trackControlsState.onSwitchSubtitleStreamId!(0);
+                        },
+                      )
+                    : TrackSelectionHelper.buildTrackTile<SubtitleTrack>(
+                        context: context,
+                        label: track.labelForIndex(index - 1),
+                        isSelected: track.id == selectedId,
+                        onTap: () {
+                          OverlaySheetController.of(context).close();
+                          widget.trackControlsState.onSwitchSubtitleStreamId!(track.id);
+                        },
+                      ),
               );
             },
           ),

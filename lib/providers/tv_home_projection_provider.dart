@@ -85,7 +85,10 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   }) : _discover = discover,
        _continueWatchingTitle = continueWatchingTitle,
        _latestMoviesTitle = latestMoviesTitle,
-       _service = HomeProjectionService(fetchExternalIds: externalIdsFetcherFor(multiServer)),
+       _service = HomeProjectionService(
+         fetchExternalIds: externalIdsFetcherFor(multiServer),
+         trustStoredIdentity: storedIdentityTrustFor(multiServer),
+       ),
        _featuredSelector = featuredSelector {
     _discover.addListener(_onDiscoverChanged);
     _onDiscoverChanged();

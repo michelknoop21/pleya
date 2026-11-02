@@ -1,0 +1,12 @@
+{
+  "item_id": "0198f2b0-1111-7000-8000-000000000001",
+  "requested_external_ids": {
+    "tmdb": 622
+  },
+  "applied_external_ids": {
+    "tmdb": 621
+  },
+  "application_state": "pending",
+  "error_code": null,
+  "updated_at": "2035-01-01T12:34:56.123456Z"
+}

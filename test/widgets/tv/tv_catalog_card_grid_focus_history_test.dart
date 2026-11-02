@@ -97,5 +97,13 @@ void main() {
     await tester.pumpAndSettle();
     await press(LogicalKeyboardKey.arrowLeft);
     expect(focused(), 'm${2 * columns}');
+
+    // DOWN, the other way into a row.
+    await press(LogicalKeyboardKey.arrowRight);
+    await press(LogicalKeyboardKey.arrowRight);
+    await press(LogicalKeyboardKey.arrowDown);
+    expect(focused(), 'm${3 * columns + 2}');
+    await press(LogicalKeyboardKey.arrowLeft);
+    expect(focused(), 'm${3 * columns + 1}');
   });
 }

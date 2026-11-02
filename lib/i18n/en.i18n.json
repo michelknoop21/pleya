@@ -551,6 +551,9 @@
   "videoControls": {
     "audioLabel": "Audio",
     "subtitlesLabel": "Subtitles",
+    "subtitlesPreparing": "Preparing subtitles",
+    "subtitlesPrepareFailed": "Subtitles could not be prepared",
+    "subtitlesPrepareRetry": "Retry",
     "resetToZero": "Reset to 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",
@@ -1001,6 +1004,12 @@
     "playbackServerErrorBody": "The server hit an error while transcoding"
   },
   "libraries": {
+    "cinemaReorderHint": "Select: pick up/drop · ↑↓: move · Menu: done",
+    "cinemaVisible": "Visible",
+    "cinemaHidden": "Hidden in this profile",
+    "cinemaOptionsHint": "Select for library options",
+    "cinemaSummaryTitle": "One library.",
+    "cinemaSummaryHint": "All options with Select.",
     "alphabetScrubber": "Browse alphabetically",
     "title": "Libraries",
     "fallbackTitle": "Library",
@@ -1350,6 +1359,7 @@
     "errorLoading": "Failed to load playlists",
     "errorAdding": "Failed to add to playlist",
     "errorReordering": "Failed to reorder playlist item",
+    "changedElsewhere": "This playlist changed elsewhere. It has been reloaded, so make your move again.",
     "errorRemoving": "Failed to remove from playlist"
   },
   "watchTogether": {

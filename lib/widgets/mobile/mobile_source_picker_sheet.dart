@@ -90,6 +90,7 @@ class MobileSourcePickerSheet extends StatelessWidget {
                 id: AutomationIds.sheetSourcePickerRow,
                 instance: '$i',
                 role: 'list.item',
+                state: () => {'server': descriptors[i].source.serverName, 'usable': descriptors[i].descriptor.isUsable},
                 child: _SourceRow(
                   entry: descriptors[i],
                   index: i,

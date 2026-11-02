@@ -2,7 +2,7 @@
   /items/{id}/play: de browserspeler (S13.2, S18.3). `?version=` kiest een
   versie, `?t=` een hervatpositie in seconden; die komt van de knop "Verder
   vanaf" op de detailpagina, die hem uit `user_state.position_ms` leest. De
-  speler zelf schrijft geen kijkstatus (S13.3).
+  speler rapporteert kijkstatus pas na werkelijk afspelen (S13.3).
 
   De route laadt het item voor titel, duur en sporen; het afspeelpad zelf loopt
   in Player via `POST /playback/plan`.
@@ -16,6 +16,8 @@
   import StateView from '#lib/components/StateView.svelte';
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import { session } from '#lib/stores/session.svelte.js';
+  import { listsApi, nextInList } from '#lib/api/lists.js';
+  import { playerHref } from '#lib/player/route.js';
   import { describeError } from '#lib/api/errors.js';
   import type { Item } from '#lib/api/types.js';
   import { t } from '#lib/i18n/index.js';
@@ -50,11 +52,25 @@
   });
 
   const version = $derived(
-    item?.versions?.find((v) => v.id === versionParam) ?? item?.versions?.[0]
+    versionParam !== null ? item?.versions?.find((v) => v.id === versionParam) : item?.versions?.[0]
   );
 
   function close(): void {
     void goto(`/items/${encodeURIComponent(itemId)}`);
+  }
+
+  // Binnen een afspeellijst gaat het volgende item door. Lukt het lezen niet, dan
+  // blijft de speler op het einde staan: de film is af, er is niets kapot.
+  const playlistId = $derived(page.url.searchParams.get('playlist'));
+  async function playNext(): Promise<void> {
+    const list = playlistId;
+    if (!list) return;
+    try {
+      const next = nextInList(await listsApi(session.client).allItems('playlist', list), itemId);
+      if (next) await goto(playerHref(next, undefined, undefined, list), { replaceState: true });
+    } catch {
+      // Zie boven.
+    }
   }
 
   // De schil stuurt bij `signed-out` zelf naar /login.
@@ -71,6 +87,12 @@
   </div>
 {:else if !item}
   <SkeletonPage variant="compact" />
+{:else if versionParam !== null && !version}
+  <div class="play-state">
+    <StateView kind="error" message={t('item.versionMissing')}>
+      {#snippet actions()}<a class="btn" href={`/items/${encodeURIComponent(itemId)}`}>{t('item.title')}</a>{/snippet}
+    </StateView>
+  </div>
 {:else}
   {#key `${item.id}:${version?.id ?? ''}`}
     <Player
@@ -80,6 +102,7 @@
       deps={browserPlayerDeps(session.client, session.capabilities)}
       onclose={close}
       onlogin={login}
+      onfinished={playlistId ? () => void playNext() : undefined}
     />
   {/key}
 {/if}

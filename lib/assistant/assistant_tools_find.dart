@@ -181,11 +181,13 @@ TitleRef _matchRef(FindMatch m) => TitleRef(
   kind: _tmdbKind(m.kind ?? MediaKind.movie),
   title: m.title,
   year: m.year,
-  tmdbId: m.seerr?.tmdbId ?? m.ids.tmdb,
-  imdb: m.ids.imdb,
-  tvdb: m.ids.tvdb,
+  tmdbId: m.seerr?.tmdbId ?? m.externalIds.tmdb ?? m.ids.tmdb,
+  imdb: m.externalIds.hasAny ? m.externalIds.imdb : m.ids.imdb,
+  tvdb: m.externalIds.hasAny ? m.externalIds.tvdb : m.ids.tvdb,
   item: m.library.firstOrNull,
   serverId: m.library.firstOrNull?.serverId,
+  idsAreExternal: m.seerr != null || m.externalIds.hasAny,
+  identityItem: m.identityItem,
 );
 
 /// Rows for the model and cards for the UI from [matches]: library copies
@@ -209,17 +211,86 @@ Future<({List<Map<String, Object?>> rows, List<AssistantTitleMatch> display, Map
   final rows = <Map<String, Object?>>[];
   final display = <AssistantTitleMatch>[];
   final gated = await _gateTitles(ctx, matches, _matchRef, age);
-  // The gate may look up facts; the profile or Seerr client can change meanwhile.
+  var libraryIncomplete = false;
+  bool visible(MediaItem item) {
+    final server = ServerId(item.serverId!);
+    if (!ctx.servers.isServerVisible(server)) return false;
+    final loader = ctx.catalog?.rowLoader;
+    return loader is! CatalogHomeCustomRowLoader || loader.isLibraryVisible(server, item.libraryId);
+  }
+
+  bool hiddenLibraryOnly(FindMatch match) =>
+      match.library.isNotEmpty && match.seerr == null && !match.externalIds.hasAny && !match.library.any(visible);
+  final prepared =
+      <
+        ({
+          int index,
+          FindMatch match,
+          TitleFacts? facts,
+          List<({AssistantTitleTarget target, bool Function() current})> targets,
+        })
+      >[];
+  // Complete every awaited qualification before issuing any targets or rights.
   live();
   for (final (i, (m, facts)) in gated.kept.indexed) {
-    final id = 'm${i + 1}';
+    if (hiddenLibraryOnly(m)) continue;
+    libraryIncomplete |= m.libraryLookupIncomplete;
+    final targets = <({AssistantTitleTarget target, bool Function() current})>[];
+    final requested = m.seerr?.tmdbId ?? m.externalIds.tmdb ?? m.ids.tmdb;
+    for (final item in m.library.where(visible)) {
+      final serverId = ServerId(item.serverId!);
+      final sourceClient = ctx.userClient(serverId);
+      final mode = sourceClient is PleyaServerClient ? sourceClient.externalIdentitySource : null;
+      bool contextCurrent() =>
+          visible(item) &&
+          identical(ctx.userClient(serverId), sourceClient) &&
+          (sourceClient is! PleyaServerClient || sourceClient.externalIdentitySource == mode);
+      bool Function() identityCurrent = () => true;
+      final isPleya = item.backend == MediaBackend.pleyaServer || sourceClient is PleyaServerClient;
+      if (isPleya &&
+          requested != null &&
+          !(sourceClient is PleyaServerClient && sourceClient.usesLegacyExternalIdentity)) {
+        final ids = await pleyaAppliedTitleIds(
+          item,
+          sourceClient is PleyaServerClient ? sourceClient : null,
+          identityItem: m.identityItem,
+        );
+        live();
+        final ordinalMatches =
+            item.kind != MediaKind.episode ||
+            (item.index != null && item.parentIndex != null && item.index == m.episode && item.parentIndex == m.season);
+        final targetId = continueWatchingExternalIdTarget(item)?.targetId;
+        identityCurrent = () =>
+            sourceClient is! PleyaServerClient ||
+            (targetId != null && sourceClient.isAppliedIdentityCurrent(targetId, ids));
+        if (ids.tmdb != requested || !ordinalMatches || !contextCurrent() || !identityCurrent()) {
+          libraryIncomplete = true;
+          continue;
+        }
+      }
+      targets.add((
+        target: (serverId: serverId, serverName: ctx.serverName(serverId), item: item),
+        current: () => contextCurrent() && identityCurrent(),
+      ));
+    }
+    prepared.add((index: i, match: m, facts: facts, targets: targets));
+  }
+  live();
+  // This final pass is synchronous: a later card cannot invalidate an earlier
+  // issued card while its own identity lookup is still awaiting.
+  for (final entry in prepared) {
+    final m = entry.match;
+    if (hiddenLibraryOnly(m)) continue;
+    final facts = entry.facts;
+    final id = 'm${entry.index + 1}';
     final kind = (m.kind ?? MediaKind.movie).name;
     final confidence = listing ? 'high' : m.confidence;
     final snippet = listing ? '' : clipText(m.snippet, 160);
-    final targets = <AssistantTitleTarget>[
-      for (final item in m.library)
-        (serverId: ServerId(item.serverId!), serverName: ctx.serverName(ServerId(item.serverId!)), item: item),
+    final targets = [
+      for (final t in entry.targets)
+        if (t.current()) t.target,
     ];
+    if (targets.length != entry.targets.length) libraryIncomplete = true;
     for (final t in targets) {
       ctx.showItem(t.serverId, t.item.id);
     }
@@ -274,5 +345,5 @@ Future<({List<Map<String, Object?>> rows, List<AssistantTitleMatch> display, Map
       ),
     );
   }
-  return (rows: rows, display: display, note: gated.note);
+  return (rows: rows, display: display, note: {...gated.note, if (libraryIncomplete) 'partial': true});
 }

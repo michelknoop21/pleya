@@ -11,6 +11,8 @@ import 'api_cache.dart';
 import 'jellyfin_api_cache.dart';
 import 'jellyfin_media_info_mapper.dart';
 import 'plex_mappers.dart';
+import 'pleya_server_api_cache.dart';
+import 'pleya_server_mappers.dart';
 
 class CachedPlaybackMetadataService {
   const CachedPlaybackMetadataService._();
@@ -20,12 +22,19 @@ class CachedPlaybackMetadataService {
     required String cacheServerId,
     required String itemId,
     int mediaIndex = 0,
+    String baseUrl = '',
   }) async {
     try {
       return switch (backend) {
         MediaBackend.plex => _fetchPlexMediaSourceInfo(ServerId(cacheServerId), itemId, mediaIndex: mediaIndex),
         MediaBackend.jellyfin => _fetchJellyfinMediaSourceInfo(cacheServerId, itemId, mediaIndex: mediaIndex),
-        MediaBackend.local || MediaBackend.pleyaServer => null,
+        MediaBackend.pleyaServer => _fetchPleyaMediaSourceInfo(
+          cacheServerId,
+          itemId,
+          mediaIndex: mediaIndex,
+          baseUrl: baseUrl,
+        ),
+        MediaBackend.local => null,
       };
     } catch (e) {
       appLogger.d('Cached media source info unavailable for $cacheServerId:$itemId', error: e);
@@ -63,6 +72,19 @@ class CachedPlaybackMetadataService {
       appLogger.d('Cached playback extras unavailable for $cacheServerId:$itemId', error: e);
       return null;
     }
+  }
+
+  static Future<MediaSourceInfo?> _fetchPleyaMediaSourceInfo(
+    String cacheServerId,
+    String itemId, {
+    required int mediaIndex,
+    required String baseUrl,
+  }) async {
+    final item = await PleyaServerApiCache.instance.getMetadata(ServerId(cacheServerId), itemId);
+    final versions = item?.mediaVersions;
+    if (versions == null || versions.isEmpty) return null;
+    final index = mediaIndex >= 0 && mediaIndex < versions.length ? mediaIndex : 0;
+    return PleyaServerMappers.mediaSourceInfo(versions[index], baseUrl: baseUrl);
   }
 
   static Future<MediaSourceInfo?> _fetchPlexMediaSourceInfo(

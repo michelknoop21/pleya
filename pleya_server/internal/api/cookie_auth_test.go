@@ -603,3 +603,71 @@ func TestForwardedProtoWithoutTrustedProxiesWarnsAboutBrokenCookieMode(t *testin
 		t.Fatal("een onbeheerde TLS-proxyconfiguratie gaf geen waarschuwing")
 	}
 }
+
+// refreshBody doet een refresh met het gegeven lichaam, zonder de sessie van de test.
+func (e *env) refreshBody(body map[string]string, opts ...func(*http.Request)) *httptest.ResponseRecorder {
+	e.t.Helper()
+	return e.do(http.MethodPost, refreshPath, body, append([]func(*http.Request){withoutAuth}, opts...)...)
+}
+
+// Een browser met een token uit localStorage stapt over zonder opnieuw in te loggen.
+func TestCookieUpgradeMovesATokenSessionIntoTheCookie(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	old := e.login("browser").RefreshToken
+
+	stale := &http.Cookie{Name: auth.RefreshCookieName, Value: "een-oude-cookie"}
+	rec := e.refreshBody(map[string]string{"refresh_token": old, "credential_mode": "cookie_upgrade"},
+		withHeader("Origin", sameOrigin), withCookie(stale))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("upgrade gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if pair := decodePair(t, rec); pair.RefreshToken != "" || pair.AccessToken == "" {
+		t.Fatalf("het antwoord hoort als cookiemodus te zijn: %+v", pair)
+	}
+	cookie := refreshCookie(t, rec)
+	if cookie == nil || !cookie.HttpOnly {
+		t.Fatalf("geen HttpOnly-cookie: %+v", cookie)
+	}
+
+	next := e.refreshBody(map[string]string{"credential_mode": "cookie"}, withHeader("Origin", sameOrigin), withCookie(cookie))
+	if next.Code != http.StatusOK {
+		t.Fatalf("de cookie werkt niet: %d %s", next.Code, next.Body.String())
+	}
+}
+
+// Dezelfde origin-eis als elke andere route die een cookie zet, en een weigering
+// raakt niets: de browser gaat door in tokenmodus.
+func TestCookieUpgradeFromARefusedOriginLeavesTheTokenGood(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	old := e.login("browser").RefreshToken
+
+	rec := e.refreshBody(map[string]string{"refresh_token": old, "credential_mode": "cookie_upgrade"}, withHeader("Origin", foreignOrigin))
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "auth.origin_rejected") {
+		t.Fatalf("gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec := e.refreshBody(map[string]string{"refresh_token": old}); rec.Code != http.StatusOK {
+		t.Fatalf("het token overleefde de weigering niet: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCookieUpgradeNeedsATokenAndExistsOnlyOnRefresh(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	rec := e.refreshBody(map[string]string{"credential_mode": "cookie_upgrade"}, withHeader("Origin", sameOrigin))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("zonder token gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	rec = e.do(http.MethodPost, loginPath, map[string]string{
+		"username": "michel", "password": "x", "credential_mode": "cookie_upgrade",
+	}, withoutAuth, withHeader("Origin", sameOrigin))
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "auth.invalid_credentials") {
+		t.Fatalf("login gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	var info api.Info
+	e.getJSON("/pleya/v1/info", "", http.StatusOK, &info)
+	if !info.Capabilities.CookieUpgrade {
+		t.Fatal("de vlag staat niet aan")
+	}
+}

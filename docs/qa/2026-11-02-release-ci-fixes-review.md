@@ -1,0 +1,21 @@
+# PR579 — independent scoped CI-fix review
+
+**SCOPED PASS — no Critical, Important or Minor findings in the five frozen fixes, counter correction or bounded dependency assessment.** Base/HEAD `c17e5b50e7398566d3569816c52ea3172a083f7c`. This is not combined-CI/release approval. No tests/reruns/builds/auth/review approvals/merge/source writes/delegation; only this report written, shells `login:false`.
+
+## Binding and findings
+
+Exact current five-file diff equals DIFF.patch SHA256 `6cdeb7083806bf6232a654820992f4efe6147f142666ec9c8f4a1c23fa6f7a5b`. All five source hashes and125 frozen evidence hashes match. The199-file retained Web build matches its manifest. Parent-owned masterlist diff is exact; new QA correctly separates local evidence from future combined CI/image gates.
+
+Critical: none. Important: none. Minor: none.
+
+- `cache_admin_test.go:310–399`: root still launches the real UID65534 child, requires EPERM, verifies the first sorted artifact was actually removed and protected bytes remain. The new ordinary-UID path uses real directory permissions, requires permission errors from Purge and Stats, verifies both ladder byte strings and restores modes before cleanup. No mocked failure/new skip or privilege assumption is substituted. Saved UID1000/65534 original REDs and root/1000/65534 GREENs support the change. Cache cohort14 top-level/22 including subtests passes; the existing opt-in tmpfs ENOSPC skip is explicitly retained rather than counted as exercised.
+- `ArtworkCredits.svelte:7`: existing translated TMDB key replaces the literal; no whitelist/key expansion. The retained render harness compiles exact before/after sources and uses the real translation implementation in both current locales; full rendered HTML is byte-identical, including alt=TMDB. Web53/check/build/freshness evidence matches. This adds no new layout claim.
+- `pleya_applied_refs_test.dart:876–877`: a local String type guard narrows the dynamic fixture id before the existing String-map lookup. No suppression, coercion or production behavior change. Saved47 focused tests and full ci_checks --with-unused pass, including the hard rule and unused sections.
+- `applied_identity_test.go:210`, `metadata_search_test.go:82,87`: three labels attach exact OpenAPI response schemas to existing real successful GETs. The unchanged getJSON harness captures only after status verification; the validator/harness/contract are unchanged. Two focused API tests produce five real responses; existing subset validation proves the three missing schemas, not full56-schema coverage. Original CI170-valid-but-missing-coverage failure remains preserved.
+- Masterlist changes only summary counts/blocks; all task rows are byte-identical. Static scoped row inspection agrees with163/91/31/41. Retained unchanged-checker output and ten positive/negative controls are successful; no status or requirement is dropped.
+
+## Dependency assessment and remaining gates
+
+Root assessment SHA256 `8947ed7fa676be13a1326bcc64d17ca56f1ea32f0c805f1dbca643b3cc232ef2` accurately bounds54 alerts by manifest/severity, retains maintenance, and treats Sparkle2.9.0 as actual macOS runtime. The [upstream XPC advisory](https://github.com/sparkle-project/Sparkle/security/advisories/GHSA-g3hp-f6mg-559v) and [delta advisory](https://github.com/sparkle-project/Sparkle/security/advisories/GHSA-hg88-v3cw-3qrh) both identify2.9.2 as patched; partial API fixed=null is not contrary proof. The source flag/update-source guards, ordinary lane and Info.plist support only the explicitly labelled disabled-path inference. Actual archive defines, plist, signing/sandbox and absence of an alternative native update action remain mandatory before macOS upload; uncertain/enabled updater means hold macOS. No blanket patched/security claim or dependency update is introduced.
+
+Normal commithooks, complete CI on the next final head, ordinary mainmerge and matching rebuilt Web/image remain required; no new native execution is inferred. Parent additionally reports a newly terminal Flutter Unit CI failure outside these five fixes, still being diagnosed. This scoped PASS does not clear that failure or authorize the held next push/release before its bounded disposition.

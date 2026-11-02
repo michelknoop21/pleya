@@ -4,9 +4,11 @@ import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/assistant/assistant_trakt_services.dart';
 import 'package:pleya/database/app_database.dart' show WatchedIdentity;
+import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
+import 'package:pleya/media/media_identity.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
@@ -40,10 +42,19 @@ class _FailingSearch extends FakeServer {
   Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => throw StateError('search failed');
 }
 
+/// A Pleya Server as the real client behaves: it can prove a title only by a
+/// TMDB number, and says "cannot tell" by throwing otherwise (never by
+/// answering an empty list).
 class _PleyaServer extends FakeServer {
   _PleyaServer(super.id);
   @override
   MediaBackend get backend => MediaBackend.pleyaServer;
+
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
+    if (identity.externalIds.tmdb == null) throw const IdentityLookupUnsupported('Pleya Server needs a TMDB number');
+    return const [];
+  }
 }
 
 CatalogHomeCustomRowLoader _loader(MultiServerManager m, {Set<String> visibleLibraries = const {'films'}}) =>
@@ -255,7 +266,7 @@ void main() {
       expect(_row(await _run(ctx), 'Obscure Film')['library_status'], 'not_checked');
     });
 
-    test('a server that cannot answer by identity makes a miss "not_checked"', () async {
+    test('a Pleya Server that cannot prove the title (no TMDB number) makes a miss "not_checked"', () async {
       manager.debugRegisterClientForTesting(_PleyaServer('ps'));
       final ctx = _ctx(
         manager,
@@ -263,6 +274,16 @@ void main() {
       );
 
       expect(_row(await _run(ctx), 'Obscure Film')['library_status'], 'not_checked');
+    });
+
+    test('a Pleya Server that was asked by TMDB number and does not hold the title is a real miss', () async {
+      manager.debugRegisterClientForTesting(_PleyaServer('ps'));
+      final ctx = _ctx(
+        manager,
+        trakt: _trakt(titles: [_title('Obscure Film', 2001, imdb: 'tt0000042', tmdb: 4242)]),
+      );
+
+      expect(_row(await _run(ctx), 'Obscure Film')['library_status'], isNot('not_checked'));
     });
 
     test('Trakt linked but personalization off says so, not "not connected"', () async {

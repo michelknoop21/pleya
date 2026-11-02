@@ -1689,6 +1689,15 @@ class TranslationsVideoControlsEn {
 	/// en: 'Subtitles'
 	String get subtitlesLabel => 'Subtitles';
 
+	/// en: 'Preparing subtitles'
+	String get subtitlesPreparing => 'Preparing subtitles';
+
+	/// en: 'Subtitles could not be prepared'
+	String get subtitlesPrepareFailed => 'Subtitles could not be prepared';
+
+	/// en: 'Retry'
+	String get subtitlesPrepareRetry => 'Retry';
+
 	/// en: 'Reset to 0ms'
 	String get resetToZero => 'Reset to 0ms';
 
@@ -2898,6 +2907,24 @@ class TranslationsLibrariesEn {
 
 	// Translations
 
+	/// en: 'Select: pick up/drop · ↑↓: move · Menu: done'
+	String get cinemaReorderHint => 'Select: pick up/drop · ↑↓: move · Menu: done';
+
+	/// en: 'Visible'
+	String get cinemaVisible => 'Visible';
+
+	/// en: 'Hidden in this profile'
+	String get cinemaHidden => 'Hidden in this profile';
+
+	/// en: 'Select for library options'
+	String get cinemaOptionsHint => 'Select for library options';
+
+	/// en: 'One library.'
+	String get cinemaSummaryTitle => 'One library.';
+
+	/// en: 'All options with Select.'
+	String get cinemaSummaryHint => 'All options with Select.';
+
 	/// en: 'Browse alphabetically'
 	String get alphabetScrubber => 'Browse alphabetically';
 
@@ -3807,6 +3834,9 @@ class TranslationsPlaylistsEn {
 
 	/// en: 'Failed to reorder playlist item'
 	String get errorReordering => 'Failed to reorder playlist item';
+
+	/// en: 'This playlist changed elsewhere. It has been reloaded, so make your move again.'
+	String get changedElsewhere => 'This playlist changed elsewhere. It has been reloaded, so make your move again.';
 
 	/// en: 'Failed to remove from playlist'
 	String get errorRemoving => 'Failed to remove from playlist';
@@ -10990,6 +11020,9 @@ extension on Translations {
 			_ => null,
 		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Subtitles',
+			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
+			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
+			'videoControls.subtitlesPrepareRetry' => 'Retry',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -11401,6 +11434,12 @@ extension on Translations {
 			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
 			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
 			'notices.playbackServerErrorBody' => 'The server hit an error while transcoding',
+			'libraries.cinemaReorderHint' => 'Select: pick up/drop · ↑↓: move · Menu: done',
+			'libraries.cinemaVisible' => 'Visible',
+			'libraries.cinemaHidden' => 'Hidden in this profile',
+			'libraries.cinemaOptionsHint' => 'Select for library options',
+			'libraries.cinemaSummaryTitle' => 'One library.',
+			'libraries.cinemaSummaryHint' => 'All options with Select.',
 			'libraries.alphabetScrubber' => 'Browse alphabetically',
 			'libraries.title' => 'Libraries',
 			'libraries.fallbackTitle' => 'Library',
@@ -11492,6 +11531,8 @@ extension on Translations {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
 			'about.title' => 'About',
+			_ => null,
+		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -11501,8 +11542,6 @@ extension on Translations {
 			'about.basedOnPlezy' => 'Based on Plezy',
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
-			_ => null,
-		} ?? switch (path) {
 			'about.licence' => 'Licence',
 			'about.sources' => 'Sources',
 			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P, and descriptions, genres, age ratings and artwork for titles on a Pleya Server.',
@@ -11708,6 +11747,7 @@ extension on Translations {
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
+			'playlists.changedElsewhere' => 'This playlist changed elsewhere. It has been reloaded, so make your move again.',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
 			'watchTogether.description' => 'Watch content in sync with friends and family',
@@ -12005,6 +12045,8 @@ extension on Translations {
 			'performanceOverlay.memory' => 'Memory',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'External Player',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -12015,8 +12057,6 @@ extension on Translations {
 			'externalPlayer.playerNameHint' => 'My Player',
 			'externalPlayer.playerCommand' => 'Command',
 			'externalPlayer.playerPackage' => 'Package Name',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL Scheme',
 			'externalPlayer.off' => 'Off',
 			'externalPlayer.launchFailed' => 'Failed to open external player',
@@ -12519,6 +12559,8 @@ extension on Translations {
 			'unifiedCatalog.oneSource' => '1 source',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
 			'unifiedCatalog.oneSeason' => '1 season',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
@@ -12529,8 +12571,6 @@ extension on Translations {
 			'unifiedCatalog.sort.titleAsc' => 'Title A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Title Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recently added',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oldest added',
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
@@ -13033,6 +13073,8 @@ extension on Translations {
 			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
 			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
 			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
@@ -13043,8 +13085,6 @@ extension on Translations {
 			'assistant.examples.trending.0' => 'What is popular right now?',
 			'assistant.examples.trending.1' => 'Which popular new movies don\'t I have yet?',
 			'assistant.examples.request.0' => 'Which thrillers from this year could I add to my library?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Find a science fiction series worth requesting.',
 			'assistant.examples.trakt.0' => 'Which titles on my Trakt watchlist can I watch here tonight?',
 			'assistant.examples.history.0' => 'What did I watch lately?',

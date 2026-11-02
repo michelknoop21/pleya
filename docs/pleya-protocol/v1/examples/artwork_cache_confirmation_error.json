@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "server.confirm_mismatch",
+    "message": "the confirmation does not match",
+    "retryable": false
+  }
+}

@@ -36,7 +36,10 @@ import 'multi_server_provider.dart';
 class TvDiscoveryLandingProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
   TvDiscoveryLandingProvider({required DiscoverProvider discover, required MultiServerProvider multiServer})
     : _discover = discover,
-      _service = HomeProjectionService(fetchExternalIds: externalIdsFetcherFor(multiServer)) {
+      _service = HomeProjectionService(
+        fetchExternalIds: externalIdsFetcherFor(multiServer),
+        trustStoredIdentity: storedIdentityTrustFor(multiServer),
+      ) {
     _discover.addListener(_onDiscoverChanged);
     _onDiscoverChanged();
   }

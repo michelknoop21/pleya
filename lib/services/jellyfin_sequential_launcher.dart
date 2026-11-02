@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../i18n/strings.g.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
@@ -16,9 +17,10 @@ import 'jellyfin_client.dart';
 import 'media_list_playback_launcher.dart';
 import 'playlist_items_loader.dart';
 
-/// Backend-neutral launcher for Jellyfin collections, playlists, and folders.
+/// Backend-neutral launcher for Jellyfin collections, playlists, and folders,
+/// and for the collections and playlists of Pleya Server.
 ///
-/// Jellyfin has no server-side queue resource — the client fetches
+/// Neither has a server-side queue resource — the client fetches
 /// children (collection) or playlist items, applies shuffle locally,
 /// and hands the flat list to [PlaybackStateProvider] via
 /// [PlaybackStateProvider.setPlaybackFromLocalQueue] which the player
@@ -84,6 +86,9 @@ class JellyfinSequentialLauncher extends MediaListPlaybackLauncher {
         List<MediaItem> items;
         if (facts.isPlaylist) {
           items = await fetchAllPlaylistItems(client, facts.id);
+        } else if (client.backend == MediaBackend.pleyaServer) {
+          // A Pleya collection is no catalogue item, so it has no children route.
+          items = await fetchAllPlayableCollectionItems(client, facts.id);
         } else {
           items = await client.fetchPlayableDescendants(facts.id);
         }
@@ -112,7 +117,7 @@ class JellyfinSequentialLauncher extends MediaListPlaybackLauncher {
           context: context,
           playbackState: playbackState,
           queue: LocalPlayQueue(
-            id: 'jellyfin:${facts.id}',
+            id: '${client.backend.id}:${facts.id}',
             items: items,
             currentIndex: startIndex,
             shuffled: shuffle,
@@ -228,8 +233,10 @@ class JellyfinSequentialLauncher extends MediaListPlaybackLauncher {
           return PlayQueueError(Exception('No client for server $serverId'));
         }
 
-        final raw = await client.fetchClientSideEpisodeQueue(seriesId);
-        if (raw == null || raw.isEmpty) return const PlayQueueEmpty();
+        // Null is the backend saying it has no episode queue of its own.
+        final raw =
+            await client.fetchClientSideEpisodeQueue(seriesId) ?? await client.fetchPlayableDescendants(seriesId);
+        if (raw.isEmpty) return const PlayQueueEmpty();
 
         final shuffled = List.of(raw)..shuffle(Random());
         final items = shuffled
@@ -246,7 +253,7 @@ class JellyfinSequentialLauncher extends MediaListPlaybackLauncher {
           context: context,
           playbackState: playbackState,
           queue: LocalPlayQueue(
-            id: 'jellyfin:$seriesId',
+            id: '${client.backend.id}:$seriesId',
             items: items,
             currentIndex: 0,
             shuffled: true,

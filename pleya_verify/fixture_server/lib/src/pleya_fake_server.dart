@@ -4,9 +4,11 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'fake_lists.dart';
 import 'fixture_clock.dart';
 import 'memory_fake_store.dart';
 import 'fixtures/sample_media.dart';
+import 'fixtures/sample_hls.dart';
 
 /// A Pleya Server routing kernel, good enough to browse.
 ///
@@ -28,6 +30,7 @@ class PleyaFakeServer {
     this.pageSizeCap = 100,
     this.artworkBytes = const [0x89, 0x50, 0x4e, 0x47],
     this.setupCode = 'VERIFY-SETUP-CODE',
+    this.serverId = 'srv-1',
     FixtureClock? clock,
   }) : clock = clock ?? FixtureClock(),
        _initialSetupRequired = setupRequired;
@@ -42,8 +45,19 @@ class PleyaFakeServer {
 
   /// Canonical state per item, the way the server keeps it. Deliberately thin:
   /// the six rules are tested against the real Go implementation, and repeating
-  /// them here would test the fake.
+  /// them here would test the fake. Rule 6 and a copy are the exceptions: the
+  /// client reads from the answer whether a backlog or a copy landed, so the handler
+  /// and [_copyEvent] replay those decisions.
   final Map<String, Map<String, dynamic>> watchStates = {};
+
+  /// Whether `/info` advertises `watch_state_copy`. Off by default, and a server
+  /// without it refuses `copy` whole: `WatchStateEvent` is a closed schema.
+  bool watchStateCopyCapability = false;
+
+  /// The session that holds each title. `playback_started` and the explicit
+  /// actions take it, which is rule 5: a mark ignores whoever is watching. A copy
+  /// reads it, the way `watch.Decide` refuses one on any live lease.
+  final Map<String, String> watchLeases = {};
 
   /// The next `POST /watch-state` answers with this owner verdict.
   bool ownedByThisSession = true;
@@ -60,6 +74,28 @@ class PleyaFakeServer {
   /// [planFailureStatus] makes the route fail with that status. Every request
   /// body lands in [planRequests].
   bool playbackPlanCapability = false;
+  bool playbackQualityCapability = false;
+  bool playbackAudioSelectionCapability = false;
+  bool embeddedSubtitlesCapability = false;
+  bool playbackSubtitlesCapability = false;
+
+  /// S19: the collection and playlist routes of chapter 14c.
+  bool listsCapability = false;
+
+  /// What the routes of [listsCapability] hold.
+  late final FakeLists lists = FakeLists(
+    itemKind: (id) => items[id]?['kind'] as String?,
+    page: _page,
+    posterOf: (id) => (items[id]?['artwork'] as Map?)?['poster_id'] as String?,
+    role: () => usersMeRole,
+  );
+
+  /// The role `/users/me` answers for the single fixture identity. A test moves
+  /// it to play a demotion on the server.
+  String usersMeRole = 'owner';
+
+  /// A status `/users/me` answers instead, for a role that cannot be read.
+  int? usersMeFailureStatus;
 
   /// S20: favorites, ratings and remembered tracks. The fake keeps them per
   /// item id and records each call so a test can read what the app sent.
@@ -118,6 +154,14 @@ class PleyaFakeServer {
   String planVersionId = 'version-1';
   String planDeliveryMode = 'direct_play';
   int? planFailureStatus;
+
+  /// Number each plan's session (`sess-1`, `sess-2`), in order of arrival.
+  bool numberPlanSessions = false;
+
+  /// Held per incoming plan: the answer waits for the next gate in line, so a
+  /// test can finish two overlapping plans in the order it wants.
+  final List<Future<void>> planGates = [];
+  int _planCount = 0;
   final List<Map<String, dynamic>> planRequests = [];
 
   /// Calls on `/playback/sessions/{id}` and below, as `METHOD path`.
@@ -127,6 +171,10 @@ class PleyaFakeServer {
   /// envelope, without recording the event. Reads (the 5xx regression of
   /// backlog 24.3) need a write that fails fast, not a timeout.
   int? watchStateFailureStatus;
+
+  /// While set, `POST /watch-state` answers 200 with this body as it stands. A
+  /// proxy or a broken build can do that, and it says nothing about the write.
+  String? watchStateRawAnswer;
 
   /// Whether `/info` advertises `users` and `administration` and `/users/me`
   /// answers with the signed-in account as `owner`. Off by default: every
@@ -173,6 +221,10 @@ class PleyaFakeServer {
   /// off this field (or `/__verify/state`) instead.
   final String setupCode;
 
+  /// The server id `/info` answers with. A scenario with two fixture servers
+  /// gives the second its own id, or the app would take both for one server.
+  final String serverId;
+
   /// username -> password, registered by a successful `/auth/setup` and
   /// checked by `/auth/login`. Empty on a fresh server with setup required.
   final Map<String, String> _credentials = {};
@@ -211,6 +263,7 @@ class PleyaFakeServer {
   /// version id -> playable bytes, auto-populated by [addItem] for every
   /// version it creates. `GET /stream/{version_id}` serves from here.
   final Map<String, List<int>> versionBytes = {};
+  final Map<String, String> subtitleFiles = {};
 
   /// `"<kind>/<slug>"` -> the id [applyNamedFixture] generated for it.
   ///
@@ -246,6 +299,10 @@ class PleyaFakeServer {
 
   /// query -> ordered result ids.
   final Map<String, List<String>> searchResults = {};
+
+  /// Whether items carry the `external_ids` key. False plays a server that
+  /// predates the field. Read by [addItem], so set it before adding items.
+  bool reportsExternalIds = true;
 
   int refreshCount = 0;
 
@@ -310,6 +367,7 @@ class PleyaFakeServer {
     searchResults.clear();
     artworkById.clear();
     versionBytes.clear();
+    subtitleFiles.clear();
     seededIds.clear();
     verifyWatchlistIds.clear();
     verifyDetail.clear();
@@ -324,9 +382,19 @@ class PleyaFakeServer {
     watchEvents.clear();
     watchStates.clear();
     ownedByThisSession = true;
+    watchStateCopyCapability = false;
+    watchLeases.clear();
     filtersCapability = false;
     playbackPlanCapability = false;
+    playbackQualityCapability = false;
+    playbackAudioSelectionCapability = false;
+    embeddedSubtitlesCapability = false;
+    playbackSubtitlesCapability = false;
     personalCapability = false;
+    listsCapability = false;
+    lists.clear();
+    usersMeRole = 'owner';
+    usersMeFailureStatus = null;
     itemActivityCapability = false;
     itemActivityRequests.clear();
     itemActivityFailureStatus = null;
@@ -350,9 +418,13 @@ class PleyaFakeServer {
     planVersionId = 'version-1';
     planDeliveryMode = 'direct_play';
     planFailureStatus = null;
+    numberPlanSessions = false;
+    planGates.clear();
+    _planCount = 0;
     planRequests.clear();
     sessionCalls.clear();
     watchStateFailureStatus = null;
+    watchStateRawAnswer = null;
     usersCapability = false;
     adminJobs.clear();
     scanRequests.clear();
@@ -462,6 +534,10 @@ class PleyaFakeServer {
     String addedAt = '2026-06-18T21:34:02Z',
     List<String>? genres,
     String? contentRating,
+
+    /// The provider numbers the server has proven for this title, as
+    /// `{'tmdb': 1100}`. Null is a title without a proven match.
+    Map<String, dynamic>? externalIds,
   }) {
     final item = <String, dynamic>{
       'id': id,
@@ -478,6 +554,10 @@ class PleyaFakeServer {
       'child_count': childCount,
       'episode_count': episodeCount,
       'watched_episode_count': watchedEpisodeCount,
+      // A server that knows the field always sends the key, null when it has
+      // no proof; `reportsExternalIds = false` leaves it out, the way a server
+      // that predates it does. Set it before adding items.
+      if (reportsExternalIds) 'external_ids': externalIds,
       'artwork': {'poster_id': posterId, 'backdrop_id': backdropId},
       'versions': durationMs == null
           ? <Map<String, dynamic>>[]
@@ -571,6 +651,54 @@ class PleyaFakeServer {
       if (watchStateOwnership) 'revision': revision,
       if (watchStateOwnership) 'owned_by_this_session': ownedByThisSession,
     };
+  }
+
+  /// A tick the server accepted from the session on [itemId]: `updated_at` moves
+  /// to [at], and every read of the item shows it. [at] comes from the test, so
+  /// this fake never reads a clock of its own.
+  void acceptTick(String itemId, {required int positionMs, required DateTime at}) {
+    items[itemId]?['user_state'] = {
+      'position_ms': positionMs,
+      'watched': false,
+      'play_count': 0,
+      'updated_at': at.toUtc().toIso8601String(),
+      'revision': 9,
+    };
+  }
+
+  /// The copy branch of `watch.Decide`, and the checks in front of it. A state
+  /// that lands also shows on the item, like every read on the real server.
+  http.Response _copyEvent(Map<String, dynamic> event) {
+    final malformed = event['copy'] != true || event['explicit_action'] != 'none' || event['backlog'] == true;
+    if (!watchStateCopyCapability || malformed) return _json(_error('session.invalid'), status: 400);
+
+    final itemId = event['item_id'] as String;
+    final current = watchStates[itemId] ?? (items[itemId]?['user_state'] as Map<String, dynamic>?);
+    final watched = current?['watched'] == true;
+    final completed = event['completed'] == true;
+    if (watchLeases.containsKey(itemId) || (!completed && watched)) {
+      return _json({
+        'position_ms': current?['position_ms'] ?? 0,
+        'watched': watched,
+        'play_count': current?['play_count'] ?? 0,
+        'updated_at': current?['updated_at'] ?? '2026-08-21T20:00:00Z',
+        'revision': current?['revision'] ?? 0,
+        'owned_by_this_session': false,
+      });
+    }
+    final playCount = (current?['play_count'] as int?) ?? 0;
+    final state = {
+      'position_ms': completed ? 0 : event['position_ms'],
+      'watched': completed,
+      // A copy counts no viewing. The wire keeps it at one or more while watched.
+      'play_count': completed && playCount == 0 ? 1 : playCount,
+      'updated_at': '2026-08-21T20:00:00Z',
+      'revision': ((current?['revision'] as int?) ?? 0) + 1,
+      'owned_by_this_session': false,
+    };
+    watchStates[itemId] = state;
+    items[itemId]?['user_state'] = state;
+    return _json(state);
   }
 
   http.Client asHttpClient() => MockClient(handle);
@@ -696,8 +824,9 @@ class PleyaFakeServer {
           'role': _memoryRoles[memoryUsername] ?? 'member',
         });
       }
+      if (usersMeFailureStatus case final status?) return _json(_error('server.internal'), status: status);
       // The old fixtures keep their original single owner identity.
-      return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': 'owner'});
+      return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': usersMeRole});
     }
     if (assistantMemoryCapability && (path == '/users/me/memory' || path == '/users/me/memory/clear')) {
       if (memoryUsername == null || !{'owner', 'admin', 'member'}.contains(_memoryRoles[memoryUsername] ?? 'member')) {
@@ -718,6 +847,9 @@ class PleyaFakeServer {
       if (failure != null) return _json(_error('playback.not_playable'), status: failure);
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       planRequests.add(body);
+      _planCount++;
+      final sessionId = numberPlanSessions ? 'sess-$_planCount' : 'sess-1';
+      if (planGates.isNotEmpty) await planGates.removeAt(0);
       final versionId = (body['version_id'] as String?) ?? planVersionId;
       final reason = {
         'code': planDeliveryMode == 'direct_play' ? 'direct.supported' : 'container.unsupported',
@@ -730,22 +862,42 @@ class PleyaFakeServer {
         'item_id': body['item_id'],
         'version_id': versionId,
         'delivery_mode': planDeliveryMode,
-        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/sess-1/index.m3u8',
+        if (body['subtitle'] case final Map sub)
+          'subtitle': {
+            'action': sub['mode'],
+            if (sub['stream_id'] != null) 'stream_id': sub['stream_id'],
+            if (sub['mode'] == 'external') 'url': '/pleya/v1/subtitles/${sub['stream_id']}',
+          },
+        if (body['quality'] != null) 'effective_quality': body['quality'],
+        if (body['audio_stream_id'] != null) 'selected_audio_stream_id': body['audio_stream_id'],
+        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/$sessionId/index.m3u8',
         'container': direct ? 'original' : 'hls',
-        'video': {'action': 'copy'},
+        'video': {'action': (body['subtitle'] as Map?)?['mode'] == 'burn' ? 'transcode' : 'copy'},
         'audio': {'action': 'copy'},
         'seekable': direct,
-        'session_id': direct ? null : 'sess-1',
+        'session_id': direct ? null : sessionId,
         'reason': reason,
         'reasons': [reason],
       });
     }
 
     if (path.startsWith('/playback/sessions/') && playbackPlanCapability) {
+      if (request.method == 'GET') {
+        final file = path.split('/').last;
+        final bytes = sampleHlsFiles[file];
+        if (bytes != null) {
+          if (!file.endsWith('.m3u8')) return _streamResponse(request, bytes);
+          return http.Response.bytes(bytes, 200, headers: {'content-type': 'application/vnd.apple.mpegurl'});
+        }
+      }
       sessionCalls.add('${request.method} $path');
       return http.Response('', 204);
     }
 
+    if (listsCapability) {
+      final answer = lists.handle(request, path);
+      if (answer != null) return answer;
+    }
     final activityMatch = RegExp(r'^/items/([^/]+)/activity$').firstMatch(path);
     if (activityMatch != null) {
       itemActivityRequests.add(path);
@@ -782,7 +934,17 @@ class PleyaFakeServer {
       if (failure != null) return _json(_error('server.internal'), status: failure);
       final event = jsonDecode(request.body) as Map<String, dynamic>;
       watchEvents.add(event);
+      final raw = watchStateRawAnswer;
+      if (raw != null) return http.Response(raw, 200, headers: {'content-type': 'application/json'});
+      if (event.containsKey('copy')) return _copyEvent(event);
       final itemId = event['item_id'] as String;
+      // Rule 6: a backlog is history once a title has a state. A 200 with that
+      // state, and nothing moved.
+      final current = watchStates[itemId] ?? (items[itemId]?['user_state'] as Map<String, dynamic>?);
+      if (event['backlog'] == true && ((current?['revision'] as int?) ?? 0) > 0) {
+        return _json({...current!, 'owned_by_this_session': false});
+      }
+      if ((event['explicit_action'] ?? 'none') != 'none') watchLeases[itemId] = event['session_id'] as String;
       final previous = watchStates[itemId];
       final revision = ((previous?['revision'] as int?) ?? 0) + 1;
       final state = {
@@ -825,6 +987,12 @@ class PleyaFakeServer {
       return http.Response.bytes(bytes, 200, headers: {'content-type': _imageContentType(bytes)});
     }
 
+    if (path.startsWith('/subtitles/')) {
+      final text = subtitleFiles[Uri.decodeComponent(path.split('/').last)];
+      return text == null
+          ? _json(_error('library.not_found'), status: 404)
+          : http.Response(text, 200, headers: {'content-type': 'application/x-subrip'});
+    }
     final streamMatch = RegExp(r'^/stream/([^/]+)$').firstMatch(path);
     if (streamMatch != null) {
       final versionId = Uri.decodeComponent(streamMatch.group(1)!);
@@ -837,7 +1005,19 @@ class PleyaFakeServer {
     if (libraryMatch != null) {
       final ids = libraryItems[Uri.decodeComponent(libraryMatch.group(1)!)];
       if (ids == null) return _json(_error('library.not_found'), status: 404);
-      final narrowed = filtersCapability ? _filtered(ids, request.url.queryParametersAll) : ids;
+      var narrowed = filtersCapability ? _filtered(ids, request.url.queryParametersAll) : ids;
+      final externalId = query['external_id'];
+      if (reportsExternalIds && externalId != null) {
+        // Like the real server: only a proven number on a movie or show.
+        final tmdb = externalId.startsWith('tmdb:') ? int.tryParse(externalId.substring(5)) : null;
+        if (tmdb == null || tmdb <= 0) {
+          return _json(_error('library.filter_invalid'), status: 400);
+        }
+        narrowed = [
+          for (final id in narrowed)
+            if ((items[id]!['external_ids'] as Map?)?['tmdb'] == tmdb) id,
+        ];
+      }
       return _json(_page(_sorted(narrowed, query['sort']), query));
     }
 
@@ -859,7 +1039,7 @@ class PleyaFakeServer {
     if (itemMatch != null) {
       final item = items[Uri.decodeComponent(itemMatch.group(1)!)];
       if (item == null) return _json(_error('library.not_found'), status: 404);
-      return _json(item);
+      return _json(_withPersonalMarks(item));
     }
 
     final hubMatch = RegExp(r'^/hubs/([^/]+)$').firstMatch(path);
@@ -1008,7 +1188,7 @@ class PleyaFakeServer {
     final window = ids.skip(start).take(limit).toList();
     final next = start + window.length;
     return {
-      'items': [for (final id in window) items[id]!],
+      'items': [for (final id in window) _withPersonalMarks(items[id]!)],
       'next_cursor': next < ids.length ? base64Url.encode(utf8.encode('$next')) : null,
       'total_estimate': ids.length,
     };
@@ -1016,7 +1196,7 @@ class PleyaFakeServer {
 
   Map<String, dynamic> _info() => {
     'protocol': {'major': 1, 'feature_level': 1, 'profile': 'full'},
-    'server': {'id': 'srv-1'},
+    'server': {'id': serverId},
     'capabilities': {
       'browse': true,
       'search': true,
@@ -1031,11 +1211,20 @@ class PleyaFakeServer {
       'administration': usersCapability,
       if (assistantMemoryCapability) 'assistant_memory': true,
       'watch_state_ownership': watchStateOwnership,
+      if (watchStateCopyCapability) 'watch_state_copy': true,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
+      if (reportsExternalIds) 'external_id_lookup': true,
       if (playbackPlanCapability) 'playback_plan': true,
+      if (playbackQualityCapability) 'playback_quality': true,
+      if (playbackQualityCapability || playbackAudioSelectionCapability || playbackSubtitlesCapability)
+        'transcode': true,
+      if (playbackAudioSelectionCapability) 'playback_audio_selection': true,
+      if (embeddedSubtitlesCapability) 'embedded_subtitles': true,
+      if (playbackSubtitlesCapability) 'playback_subtitles': true,
       if (downloadsCapability) 'downloads': true,
       if (personalCapability) ...{'history': true, 'favorites': true, 'ratings': true, 'track_preferences': true},
+      if (listsCapability) ...{'collections': true, 'playlists': true},
       if (itemActivityCapability) 'item_activity': true,
     },
     'auth': {
@@ -1143,7 +1332,15 @@ class PleyaFakeServer {
     'error': {'code': code, 'message': code, 'retryable': false},
   };
 
+  Map<String, dynamic> _withPersonalMarks(Map<String, dynamic> item) => {
+    ...item,
+    if (personalCapability) ...{'favorite': favoriteIds.contains(item['id']), 'rating': ratingsByItem[item['id']]},
+  };
+
   http.Response? _personal(http.Request request, String path) {
+    if (path == '/favorites' && request.method == 'GET') {
+      return _json(_page(favoriteIds.where(items.containsKey).toList(), request.url.queryParameters));
+    }
     final id = path.split('/').last;
     if (path.startsWith('/favorites/')) {
       if (request.method == 'PUT') favoriteIds.add(id);

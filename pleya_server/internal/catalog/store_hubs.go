@@ -82,6 +82,7 @@ func (s *Store) ContinueWatching(ctx context.Context, q HubQuery) (Page, error) 
 		"w.watched = false",
 		"w.position_ms > 0",
 		"i.kind IN ('movie', 'episode')",
+		ordinaryItemSQL("i"),
 	}
 	where = append(where, hubFilter(q, "i", &args)...)
 
@@ -103,7 +104,7 @@ func (s *Store) ContinueWatching(ctx context.Context, q HubQuery) (Page, error) 
 		LIMIT $%d`,
 		itemColumns, key, strings.Join(where, " AND "), key, len(args))
 
-	return s.itemPage(ctx, sql, args, SortWatchUpdatedDesc, limit, q.Cursor, "")
+	return s.itemPageRead(ctx, s.pool, sql, args, SortWatchUpdatedDesc, limit, q.Cursor, "", true)
 }
 
 // NextUp levert per begonnen serie precies één aflevering: de volgende.
@@ -138,6 +139,7 @@ func (s *Store) NextUp(ctx context.Context, q HubQuery) (Page, error) {
 	args := []any{q.Subject}
 	epWhere := []string{
 		"e.kind = 'episode'",
+		ordinaryItemSQL("e"),
 		"e.item_index IS NOT NULL",
 		"coalesce(season.item_index, 0) >= 1",
 	}
@@ -193,5 +195,5 @@ func (s *Store) NextUp(ctx context.Context, q HubQuery) (Page, error) {
 		strings.Join(epWhere, " AND "), itemColumns, key,
 		strings.Join(outerWhere, " AND "), key, len(args))
 
-	return s.itemPage(ctx, sql, args, SortNextUpDesc, limit, q.Cursor, "")
+	return s.itemPageRead(ctx, s.pool, sql, args, SortNextUpDesc, limit, q.Cursor, "", true)
 }

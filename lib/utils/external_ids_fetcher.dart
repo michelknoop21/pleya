@@ -8,6 +8,8 @@
 library;
 
 import '../media/ids.dart';
+import '../media/media_item.dart';
+import 'stored_identity_trust.dart';
 import '../providers/multi_server_provider.dart';
 import 'external_ids.dart';
 
@@ -20,3 +22,10 @@ Future<ExternalIds> Function(String serverId, String targetId) externalIdsFetche
     return client.fetchExternalIds(targetId);
   };
 }
+
+/// Carries the live source boundary into otherwise pure projections.
+bool Function(MediaItem) storedIdentityTrustFor(MultiServerProvider multiServer) =>
+    (item) => canTrustStoredIdentity(
+      item,
+      item.serverId == null ? null : multiServer.serverManager.getClient(ServerId(item.serverId!)),
+    );

@@ -41,6 +41,7 @@
 library;
 
 import '../../media/ids.dart';
+import '../../utils/global_key_utils.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../media/media_server_client.dart';
@@ -104,6 +105,15 @@ class CatalogHomeCustomRowLoader implements HomeCustomRowLoader {
   /// The round's own wait, passed through so a test that stalls a library on
   /// purpose does not have to spend the real two seconds per case.
   final Duration _grace;
+
+  /// Recheck exact hides after an await without treating library ids as a
+  /// whitelist: some servers return subfolder ids on otherwise visible copies.
+  bool isLibraryVisible(ServerId serverId, String? libraryId) {
+    if (!_isServerVisible(serverId)) return false;
+    if (libraryId == null) return true;
+    if (_hiddenLibraryKeys().contains(buildGlobalKey(serverId, libraryId))) return false;
+    return !_libraries().any((l) => l.serverId == serverId.value && l.id == libraryId && l.hidden);
+  }
 
   /// The libraries of [kind] this profile may see right now: visible
   /// servers, hidden libraries left out. Big P's find route reads the same

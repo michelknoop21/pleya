@@ -25,12 +25,13 @@ type fakeStore struct {
 	attempts   map[id.ID]int
 	applyErr   error
 	onApply    func(source string)
+	checked    map[id.ID]bool
 }
 
 func newFakeStore(ts ...catalog.MetadataTarget) *fakeStore {
 	return &fakeStore{targets: ts, candidates: map[id.ID]catalog.MetadataCandidate{},
 		applied: map[id.ID]catalog.MetadataDetails{}, art: map[string]catalog.ProviderArtwork{},
-		localPost: map[id.ID]bool{}, attempts: map[id.ID]int{}}
+		localPost: map[id.ID]bool{}, attempts: map[id.ID]int{}, checked: map[id.ID]bool{}}
 }
 
 func (f *fakeStore) MetadataDue(_ context.Context, _ string, _ int, exclude []id.ID, limit int) ([]catalog.MetadataTarget, error) {
@@ -40,17 +41,48 @@ func (f *fakeStore) MetadataDue(_ context.Context, _ string, _ int, exclude []id
 	}
 	var out []catalog.MetadataTarget
 	for _, t := range f.targets {
-		if _, done := f.candidates[t.ID]; !done && !skip[t.ID] && len(out) < limit {
+		if _, done := f.candidates[t.ID]; !done && !skip[t.ID] && !f.checked[t.ID] && len(out) < limit {
 			out = append(out, t)
 		}
 	}
 	return out, nil
+}
+func (f *fakeStore) CommitSidecar(ctx context.Context, target catalog.MetadataTarget, details *catalog.MetadataDetails) error {
+	if details != nil {
+		if err := f.ApplyMetadata(ctx, target.ID, catalog.SourceNFO, *details); err != nil {
+			return err
+		}
+	}
+	return f.MarkSidecarChecked(ctx, target.ID)
+}
+func (f *fakeStore) MarkSidecarChecked(_ context.Context, item id.ID) error {
+	f.checked[item] = true
+	return nil
 }
 func (f *fakeStore) SaveCandidate(_ context.Context, c catalog.MetadataCandidate) error {
 	f.attempts[c.ItemID]++
 	f.candidates[c.ItemID] = c
 	return nil
 }
+func (f *fakeStore) CommitMetadata(ctx context.Context, target catalog.MetadataTarget, c catalog.MetadataCandidate, details, sidecar *catalog.MetadataDetails, artwork []catalog.ProviderArtwork) error {
+	if details != nil {
+		if err := f.ApplyMetadata(ctx, target.ID, c.Provider, *details); err != nil {
+			return err
+		}
+	}
+	if sidecar != nil {
+		if err := f.ApplyMetadata(ctx, target.ID, catalog.SourceNFO, *sidecar); err != nil {
+			return err
+		}
+	}
+	for _, a := range artwork {
+		if err := f.UpsertProviderArtwork(ctx, a); err != nil {
+			return err
+		}
+	}
+	return f.SaveCandidate(ctx, c)
+}
+
 func (f *fakeStore) ApplyMetadata(_ context.Context, item id.ID, source string, d catalog.MetadataDetails) error {
 	if f.applyErr != nil {
 		return f.applyErr
@@ -476,5 +508,181 @@ func TestPassThreeRerunsEveryoneOnceAndTheCandidatesCarryIt(t *testing.T) {
 	}
 	if st.candidates[a.ID].Pass != currentPass || currentPass < 3 {
 		t.Fatalf("kandidaat op pass %d, huidige pass %d", st.candidates[a.ID].Pass, currentPass)
+	}
+}
+
+func TestSidecarOnlyWithoutProviderAppliesNFOWithoutProviderCandidates(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Local title"}
+	b := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Without sidecar"}
+	st := newFakeStore(a, b)
+	st.art[a.ID.String()+"poster"] = catalog.ProviderArtwork{ID: id.New(), ItemID: a.ID, FileName: "missing-provider.jpg"}
+	var sources []string
+	st.onApply = func(source string) { sources = append(sources, source) }
+	side := fakeSidecar{a.ID: {Kind: "movie", Summary: "Local plot", Genres: []string{"Drama"}, IDs: map[string]string{"tmdb": "123"}}}
+	stats, err := testRunner(st, nil, t.TempDir()).WithSidecar(side).Round(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Failed != 0 || stats.Matched != 0 || stats.Unmatched != 0 {
+		t.Fatalf("local metadata is not a provider match: %+v", stats)
+	}
+	if got := st.applied[a.ID]; got.Summary != "Local plot" || len(got.Genres) != 1 || got.Genres[0] != "Drama" {
+		t.Fatalf("NFO not applied: %+v", got)
+	}
+	if len(sources) != 1 || sources[0] != catalog.SourceNFO || len(st.candidates) != 0 {
+		t.Fatalf("source/candidates changed: %v %+v", sources, st.candidates)
+	}
+	if _, exists := st.applied[b.ID]; exists {
+		t.Fatal("missing sidecar must not clear metadata")
+	}
+	if len(st.art) != 1 {
+		t.Fatal("sidecar-only mode must not invalidate provider cache")
+	}
+}
+
+func TestWithoutAProviderAnItemIsHandledOnce(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Met nfo"}
+	b := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Zonder nfo"}
+	st := newFakeStore(a, b)
+	applied := 0
+	st.onApply = func(string) { applied++ }
+	runner := testRunner(st, nil, t.TempDir()).WithSidecar(fakeSidecar{a.ID: {Summary: "Lokaal"}})
+	for range 3 {
+		if _, err := runner.Round(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if applied != 1 || !st.checked[a.ID] || !st.checked[b.ID] {
+		t.Fatalf("toegepast %d keer, nagelopen %v", applied, st.checked)
+	}
+	if len(st.candidates) != 0 {
+		t.Fatalf("een ronde zonder provider schreef kandidaten: %+v", st.candidates)
+	}
+}
+
+func TestSidecarOnlyFailureDoesNotWriteAProviderCandidate(t *testing.T) {
+	a := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Local"}
+	st := newFakeStore(a)
+	st.applyErr = errors.New("temporary database failure")
+	stats, err := testRunner(st, nil, t.TempDir()).WithSidecar(fakeSidecar{a.ID: {Summary: "Local"}}).Round(context.Background())
+	if err != nil || stats.Failed != 1 {
+		t.Fatalf("stats=%+v err=%v", stats, err)
+	}
+	if len(st.candidates) != 0 {
+		t.Fatalf("local error wrote a provider candidate: %+v", st.candidates)
+	}
+	if st.checked[a.ID] {
+		t.Fatal("a failed item must stay due")
+	}
+}
+
+// uncertainCommitStore laat de client een fout zien voordat de serverpublicatie
+// zichtbaar is. Een gewone read ziet in dat venster terecht nog de oude toestand.
+type uncertainCommitStore struct {
+	*fakeStore
+	commitErr error
+	publish   func() error
+	prepared  []catalog.ProviderArtwork
+}
+
+func (s *uncertainCommitStore) CommitMetadata(ctx context.Context, target catalog.MetadataTarget, c catalog.MetadataCandidate, details, sidecar *catalog.MetadataDetails, artwork []catalog.ProviderArtwork) error {
+	s.prepared = append([]catalog.ProviderArtwork(nil), artwork...)
+	s.publish = func() error {
+		return s.fakeStore.CommitMetadata(ctx, target, c, details, sidecar, artwork)
+	}
+	return s.commitErr
+}
+
+func TestUncertainMetadataCommitKeepsArtworkUntilLatePublication(t *testing.T) {
+	for _, commitErr := range []error{context.DeadlineExceeded, errors.New("verbinding weg na COMMIT")} {
+		t.Run(commitErr.Error(), func(t *testing.T) {
+			target := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Fixture", ManualExternalID: "1"}
+			store := &uncertainCommitStore{fakeStore: newFakeStore(target), commitErr: commitErr}
+			dir := t.TempDir()
+			var stats RoundStats
+			if err := testRunner(store, &fakeProvider{}, dir).one(context.Background(), target, &stats); !errors.Is(err, commitErr) {
+				t.Fatalf("commituitkomst: %v", err)
+			}
+			if len(store.prepared) != 2 || store.publish == nil {
+				t.Fatal("providerartwork/uitgestelde publicatie ontbreekt")
+			}
+			if len(store.art) != 0 {
+				t.Fatal("de onzekere commit is nog niet zichtbaar")
+			}
+			for _, a := range store.prepared {
+				if _, err := os.Stat(filepath.Join(dir, "artwork", a.FileName)); err != nil {
+					t.Errorf("cleanup verwijdert bytes vóór late commit: %v", err)
+				}
+			}
+			// Pas na de cleanup wordt de oorspronkelijke COMMIT zichtbaar.
+			if err := store.publish(); err != nil {
+				t.Fatal(err)
+			}
+			for _, a := range store.art {
+				if _, err := os.Stat(filepath.Join(dir, "artwork", a.FileName)); err != nil {
+					t.Errorf("late commit publiceert een ontbrekend bestand: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestSupersededMetadataCommitCleansOnlyPreparedArtwork(t *testing.T) {
+	target := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Fixture", ManualExternalID: "1"}
+	store := &uncertainCommitStore{fakeStore: newFakeStore(target), commitErr: catalog.ErrMetadataSuperseded}
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "artwork"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "artwork", "current.jpg"), []byte("live bytes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	store.art[target.ID.String()+"poster"] = catalog.ProviderArtwork{ID: id.New(), ItemID: target.ID, Kind: "poster", Provider: ProviderTMDB, SourceRef: "old", FileName: "current.jpg"}
+	var stats RoundStats
+	if err := testRunner(store, &fakeProvider{}, dir).one(context.Background(), target, &stats); !errors.Is(err, catalog.ErrMetadataSuperseded) {
+		t.Fatal(err)
+	}
+	for _, a := range store.prepared {
+		if _, err := os.Stat(filepath.Join(dir, "artwork", a.FileName)); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("bewezen stale bestand bleef achter: %v", err)
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "artwork", "current.jpg"))
+	if err != nil || string(data) != "live bytes" {
+		t.Fatalf("bestaand artwork aangeraakt: %q %v", data, err)
+	}
+}
+
+func TestUncertainUnpublishedArtworkWaitsForExistingGC(t *testing.T) {
+	target := catalog.MetadataTarget{ID: id.New(), Kind: "movie", Title: "Fixture", ManualExternalID: "1"}
+	store := &uncertainCommitStore{fakeStore: newFakeStore(target), commitErr: errors.New("commituitkomst onbekend")}
+	dir := t.TempDir()
+	runner := testRunner(store, &fakeProvider{}, dir)
+	var stats RoundStats
+	if err := runner.one(context.Background(), target, &stats); err == nil {
+		t.Fatal("onzekere commitfout ontbreekt")
+	}
+	if err := runner.repairCache(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range store.prepared {
+		name := filepath.Join(dir, "artwork", a.FileName)
+		if _, err := os.Stat(name); err != nil {
+			t.Fatalf("jonge bytes te vroeg opgeruimd: %v", err)
+		}
+		old := time.Now().Add(-2 * time.Hour)
+		if err := os.Chtimes(name, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Deze onbekende poging publiceert uiteindelijk niets. Vanaf een uur oud
+	// ruimt de eerstvolgende bestaande cache-repair uitsluitend de orphans op.
+	if err := runner.repairCache(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range store.prepared {
+		if _, err := os.Stat(filepath.Join(dir, "artwork", a.FileName)); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("oude orphan niet opgeruimd: %v", err)
+		}
 	}
 }

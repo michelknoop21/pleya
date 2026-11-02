@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -190,4 +191,48 @@ func (s *Server) handleClearMetadataMatch(w http.ResponseWriter, r *http.Request
 	}
 	s.auditEvent(r, auditClearMetadataMatch, itemID.String(), audit.OutcomeOK, nil)
 	writeJSON(w, http.StatusOK, MetadataMatch{ItemID: itemID.String(), State: catalog.CandidateRejected})
+}
+
+// MetadataMatchStatus scheidt ontvangen keuze van daadwerkelijk toegepaste metadata.
+type MetadataMatchStatus struct {
+	ItemID               string       `json:"item_id"`
+	RequestedExternalIDs *ExternalIDs `json:"requested_external_ids"`
+	AppliedExternalIDs   *ExternalIDs `json:"applied_external_ids"`
+	ApplicationState     string       `json:"application_state"`
+	ErrorCode            *string      `json:"error_code"`
+	UpdatedAt            *string      `json:"updated_at"`
+}
+
+func statusExternalIDs(provider, raw *string) *ExternalIDs {
+	if provider == nil || *provider != metadataProvider || raw == nil {
+		return nil
+	}
+	n, err := strconv.Atoi(*raw)
+	if err != nil || n <= 0 || strconv.Itoa(n) != *raw {
+		return nil
+	}
+	return &ExternalIDs{TMDB: &n}
+}
+func (s *Server) handleMetadataMatchStatus(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	itemID, ok := s.pathID(w, r, "item_id")
+	if !ok {
+		return
+	}
+	status, err := s.opts.Catalog.MetadataMatchStatus(r.Context(), itemID)
+	if err != nil {
+		s.writeStoreError(w, err)
+		return
+	}
+	var updated *string
+	if status.UpdatedAt != nil {
+		v := status.UpdatedAt.UTC().Format(time.RFC3339Nano)
+		updated = &v
+	}
+	writeJSON(w, http.StatusOK, MetadataMatchStatus{ItemID: itemID.String(),
+		RequestedExternalIDs: statusExternalIDs(status.RequestedProvider, status.RequestedExternalID),
+		AppliedExternalIDs:   statusExternalIDs(status.AppliedProvider, status.AppliedExternalID),
+		ApplicationState:     status.State, ErrorCode: status.ErrorCode, UpdatedAt: updated})
 }

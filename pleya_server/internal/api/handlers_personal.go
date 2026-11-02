@@ -258,94 +258,6 @@ func (s *Server) handleClearTrackPreference(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// HistoryEntryWire is één afspeelsessie, met het item erbij.
-type HistoryEntryWire struct {
-	ID              string  `json:"id"`
-	Item            Item    `json:"item"`
-	StartedAt       string  `json:"started_at"`
-	EndedAt         string  `json:"ended_at"`
-	StartPositionMs int64   `json:"start_position_ms"`
-	EndPositionMs   int64   `json:"end_position_ms"`
-	DurationMs      *int64  `json:"duration_ms"`
-	Completed       bool    `json:"completed"`
-	DeviceName      *string `json:"device_name"`
-}
-
-// HistoryPage is een pagina geschiedenis.
-type HistoryPage struct {
-	Items      []HistoryEntryWire `json:"items"`
-	NextCursor *string            `json:"next_cursor"`
-}
-
-func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Personal == nil {
-		writeError(w, s.log, CodeNotFound, "unknown endpoint", nil)
-		return
-	}
-	user, err := s.subjectID(r)
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-	visible, err := s.opts.Catalog.VisibleLibraries(r.Context(), user)
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-	rawLimit, _ := queryInt(r, "limit")
-	page, err := s.opts.Personal.History(r.Context(), user, visible, catalog.ClampLimit(rawLimit),
-		strings.TrimSpace(r.URL.Query().Get("cursor")))
-	if err != nil {
-		if errors.Is(err, personal.ErrCursorInvalid) {
-			writeError(w, s.log, CodeCursorInvalid, "cursor is invalid", nil)
-			return
-		}
-		writeInternal(w, s.log, err)
-		return
-	}
-
-	ids := make([]id.ID, 0, len(page.Entries))
-	for _, e := range page.Entries {
-		ids = append(ids, e.ItemID)
-	}
-	items, err := s.opts.Catalog.ItemsByIDs(r.Context(), ids)
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-	wire := make([]Item, len(items))
-	for i, it := range items {
-		wire[i] = mapItem(it)
-	}
-	s.hydrateItems(r, wire)
-	byID := make(map[string]Item, len(wire))
-	for _, it := range wire {
-		byID[it.ID] = it
-	}
-
-	out := HistoryPage{Items: make([]HistoryEntryWire, 0, len(page.Entries))}
-	for _, e := range page.Entries {
-		it, ok := byID[e.ItemID.String()]
-		if !ok {
-			continue
-		}
-		entry := HistoryEntryWire{
-			ID: e.ID.String(), Item: it, StartedAt: formatTime(e.StartedAt), EndedAt: formatTime(e.LastEventAt),
-			StartPositionMs: e.StartPositionMs, EndPositionMs: e.EndPositionMs, DurationMs: e.DurationMs, Completed: e.Completed,
-		}
-		if e.DeviceName != "" {
-			name := e.DeviceName
-			entry.DeviceName = &name
-		}
-		out.Items = append(out.Items, entry)
-	}
-	if page.NextCursor != "" {
-		c := page.NextCursor
-		out.NextCursor = &c
-	}
-	writeJSON(w, http.StatusOK, out)
-}
-
 func (s *Server) handleListFavorites(w http.ResponseWriter, r *http.Request) {
 	if s.opts.Personal == nil {
 		writeError(w, s.log, CodeNotFound, "unknown endpoint", nil)
@@ -368,6 +280,37 @@ func (s *Server) handleListFavorites(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page, err := s.opts.Catalog.Favorites(r.Context(), catalog.HubQuery{
+		Subject: user.String(), LibraryIDs: visible, Cursor: cursor, Limit: rawLimit,
+	})
+	if err != nil {
+		s.writeStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, nil)))
+}
+
+func (s *Server) handleListRatings(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Personal == nil {
+		writeError(w, s.log, CodeNotFound, "unknown endpoint", nil)
+		return
+	}
+	user, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	visible, err := s.opts.Catalog.VisibleLibraries(r.Context(), user)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	rawLimit, _ := queryInt(r, "limit")
+	cursor, err := catalog.DecodeCursor(strings.TrimSpace(r.URL.Query().Get("cursor")), catalog.SortRatedDesc)
+	if err != nil {
+		writeError(w, s.log, CodeCursorInvalid, "cursor is invalid", nil)
+		return
+	}
+	page, err := s.opts.Catalog.Ratings(r.Context(), catalog.HubQuery{
 		Subject: user.String(), LibraryIDs: visible, Cursor: cursor, Limit: rawLimit,
 	})
 	if err != nil {

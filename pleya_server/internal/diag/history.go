@@ -38,9 +38,12 @@ type Watched struct {
 }
 
 // WatchHistory geeft de kijkstatusregels van alle gebruikers die sinds since
-// zijn bijgewerkt en een afgekeken item betreffen (watched, of play_count
-// boven nul), nieuwste eerst, ten hoogste limit. truncated zegt dat er meer
-// was.
+// echt zijn bekeken en een afgekeken item betreffen (play_count boven nul),
+// nieuwste eerst, ten hoogste limit. truncated zegt dat er meer was.
+//
+// Het moment is last_played_at en niet updated_at, en watched telt niet mee: een
+// kopie verzet updated_at en zet watched, en raakt last_played_at en play_count
+// niet. Zo is een kopie geen kijkbeurt en dateert ze oud kijken niet op.
 //
 // Alleen films en afleveringen: een serie of seizoen draagt zelf geen
 // kijkstatus die iets over kijken zegt.
@@ -49,16 +52,16 @@ func (s *Store) WatchHistory(ctx context.Context, since time.Time, limit int) ([
 		SELECT u.id, u.username,
 		       mi.id, mi.title, mi.kind,
 		       show.id, coalesce(show.title, ''),
-		       ws.watched, ws.play_count, ws.updated_at
+		       ws.watched, ws.play_count, ws.last_played_at
 		FROM watch_states ws
 		JOIN users u ON u.id = ws.subject
 		JOIN media_items mi ON mi.id = ws.item_id
 		LEFT JOIN media_items season ON mi.kind = 'episode' AND season.id = mi.parent_id
 		LEFT JOIN media_items show ON show.id = season.parent_id
-		WHERE ws.updated_at >= $1
-		  AND (ws.watched OR ws.play_count > 0)
+		WHERE ws.last_played_at >= $1
+		  AND ws.play_count > 0
 		  AND mi.kind IN ('movie', 'episode')
-		ORDER BY ws.updated_at DESC, ws.subject, ws.item_id
+		ORDER BY ws.last_played_at DESC, ws.subject, ws.item_id
 		LIMIT $2`
 
 	rows, err := s.pool.Query(ctx, query, since, limit+1)

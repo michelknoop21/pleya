@@ -639,6 +639,8 @@ Future<Set<String>> _hiddenLibraryKeys(AssistantToolContext ctx, ServerId id) as
 
 Future<List<UnifiedMediaGroup>> _merge(AssistantToolContext ctx, List<MediaItem> items) async {
   final resolver = UnifiedIdentityResolver(
+    trustStoredIdentity: (item) =>
+        canTrustStoredIdentity(item, item.serverId == null ? null : ctx.userClient(ServerId(item.serverId!))),
     fetchExternalIds: (serverId, targetId) =>
         (ctx.userClient(ServerId(serverId)) ?? (throw StateError('server gone'))).fetchExternalIds(targetId),
   );

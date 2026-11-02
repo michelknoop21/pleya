@@ -2,7 +2,9 @@ package transcode_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -274,5 +276,113 @@ func TestCopiedAviGivesPlaylistWithRealDurations(t *testing.T) {
 		if err := m.Stop(s.ID); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestQualityOutputAndSelectedAudioAreMeasured(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg ontbreekt")
+	}
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("ffprobe ontbreekt")
+	}
+	root := t.TempDir()
+	input := filepath.Join(root, "two-audio.mkv")
+	cmd := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=640x360:rate=25",
+		"-f", "lavfi", "-i", "sine=sample_rate=44100", "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+		"-t", "2", "-map", "0:v", "-map", "1:a", "-map", "2:a", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", input)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("fixture: %v %s", err, out)
+	}
+	for _, height := range []int{180, 720} {
+		dir := filepath.Join(root, fmt.Sprint(height))
+		if err := os.Mkdir(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		index := 2
+		args, err := transcode.BuildArgs(transcode.Job{InputPath: input, OutDir: dir, Mode: transcode.ModeTranscode,
+			MaxVideoBitrateKbps: 500, MaxHeight: height, AudioStreamIndex: &index})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
+			t.Fatalf("encode: %v %s", err, out)
+		}
+		out, err := exec.Command("ffprobe", "-v", "error", "-show_streams", "-of", "json", filepath.Join(dir, transcode.PlaylistName)).Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var probe struct {
+			Streams []struct {
+				CodecType string `json:"codec_type"`
+				Height    int    `json:"height"`
+				Channels  int    `json:"channels"`
+			} `json:"streams"`
+		}
+		if err := json.Unmarshal(out, &probe); err != nil {
+			t.Fatal(err)
+		}
+		video, audio := false, false
+		for _, stream := range probe.Streams {
+			if stream.CodecType == "video" {
+				video = true
+				if stream.Height != min(height, 360) {
+					t.Fatalf("height %d for cap %d", stream.Height, height)
+				}
+			}
+			if stream.CodecType == "audio" {
+				audio = true
+				if stream.Channels != 2 {
+					t.Fatalf("wrong audio: %+v", stream)
+				}
+			}
+		}
+		if !video || !audio {
+			t.Fatalf("missing output streams: %s", out)
+		}
+	}
+}
+
+func TestTextSubtitleBurnRendersPixelsWithSpecialCachePath(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg ontbreekt")
+	}
+	root := t.TempDir()
+	input, caption := filepath.Join(root, "black.mp4"), filepath.Join(root, "caption.srt")
+	if err := os.WriteFile(caption, []byte("1\n00:00:00,000 --> 00:00:03,000\nPleya visible subtitle\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=black:size=640x360:rate=25:duration=4", "-c:v", "libx264", "-pix_fmt", "yuv420p", input).CombinedOutput()
+	if err != nil {
+		t.Fatalf("fixture: %v %s", err, out)
+	}
+	m, err := transcode.New(transcode.Options{FFmpegPath: "ffmpeg", Dir: filepath.Join(root, "cache's: [x],;"), Max: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+	session, err := m.Start(context.Background(), transcode.Params{UserID: id.New(), VersionID: id.New(), Job: transcode.Job{
+		InputPath: input, Mode: transcode.ModeTranscode, SubtitlePath: caption, MaxVideoBitrateKbps: 500, MaxHeight: 180,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame, err := exec.Command("ffmpeg", "-v", "error", "-i", filepath.Join(session.Dir, transcode.PlaylistName), "-ss", "1", "-frames:v", "1", "-pix_fmt", "gray", "-f", "rawvideo", "pipe:1").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(frame) != 320*180 {
+		details, _ := exec.Command("ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", filepath.Join(session.Dir, transcode.PlaylistName)).CombinedOutput()
+		playlist, _ := os.ReadFile(filepath.Join(session.Dir, transcode.PlaylistName))
+		t.Fatalf("unexpected resolution: %d bytes; playlist %s; probe %s", len(frame), playlist, details)
+	}
+	bright := 0
+	for _, pixel := range frame {
+		if pixel > 150 {
+			bright++
+		}
+	}
+	if bright < 20 {
+		t.Fatalf("caption not burned into black source: %d bright pixels", bright)
 	}
 }

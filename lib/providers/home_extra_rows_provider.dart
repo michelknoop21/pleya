@@ -60,7 +60,11 @@ class HomeExtraRowsProvider extends ChangeNotifier with DisposableChangeNotifier
        _watchlistTitle = watchlistTitle,
        _liveTvTitle = liveTvTitle,
        _watchlistProjection =
-           watchlistProjection ?? HomeProjectionService(fetchExternalIds: externalIdsFetcherFor(multiServer)),
+           watchlistProjection ??
+           HomeProjectionService(
+             fetchExternalIds: externalIdsFetcherFor(multiServer),
+             trustStoredIdentity: storedIdentityTrustFor(multiServer),
+           ),
        _loadLiveTvOverride = loadLiveTv,
        _tuneChannel = tuneChannel {
     _layout.addListener(_refresh);

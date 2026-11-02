@@ -18,7 +18,11 @@
     subtitles: TrackOption[];
     subtitleId: string | null;
     skippedSubtitles: number;
+    error?: string | null;
+    loading?: boolean;
+    preparing?: boolean;
     onsubtitle: (id: string | null) => void;
+    onsubtitleretry?: (() => void) | null;
     onclose: () => void;
   }
 
@@ -30,18 +34,24 @@
     subtitles,
     subtitleId,
     skippedSubtitles,
+    error = null,
+    loading = false,
+    preparing = false,
     onsubtitle,
+    onsubtitleretry = null,
     onclose
   }: Props = $props();
 
   let panel = $state<HTMLElement | null>(null);
 
   onMount(() => {
+    const opener = document.activeElement;
     panel?.querySelector<HTMLInputElement>('input:checked, input')?.focus();
+    return () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus(); };
   });
 </script>
 
-<div class="menu" role="dialog" aria-label={t('player.tracks')} bind:this={panel}>
+<div class="menu" aria-busy={loading} role="dialog" aria-label={t('player.tracks')} bind:this={panel}>
   <div class="menu__head">
     <h2 class="menu__title">{t('player.tracks')}</h2>
     <button class="menu__close" type="button" aria-label={t('player.closeMenu')} onclick={onclose}>
@@ -70,6 +80,13 @@
 
   <fieldset class="group">
     <legend class="group__title">{t('player.subtitles')}</legend>
+    {#if loading}<p class="note" role="status">{preparing ? t('player.subtitlePreparing') : t('loading')}</p>{/if}
+    {#if error}
+      <p class="note" role="alert">{error}</p>
+      {#if onsubtitleretry}
+        <button class="retry" type="button" onclick={onsubtitleretry}>{t('player.subtitleRetry')}</button>
+      {/if}
+    {/if}
     <label class="row">
       <input
         type="radio"
@@ -186,6 +203,15 @@
     font-size: var(--text-small-size);
     line-height: var(--text-small-line);
     color: rgba(255, 255, 255, 0.65);
+  }
+
+  .retry {
+    min-height: var(--touch-target);
+    padding: 0;
+    color: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: underline;
   }
 
   .menu :focus-visible {

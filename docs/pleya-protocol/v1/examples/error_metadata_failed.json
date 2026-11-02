@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.metadata_failed",
+    "message": "metadata provider request failed",
+    "retryable": true
+  }
+}

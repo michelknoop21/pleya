@@ -226,7 +226,7 @@ extension _VideoPlayerAssistantPlayback on VideoPlayerScreenState {
                 );
               }
             }
-            if (session.isTranscoding) {
+            if (session.isTranscoding && _serverSupportsAudioSelection) {
               for (final (index, track) in (session.mediaInfo?.audioTracks ?? const <MediaAudioTrack>[]).indexed) {
                 if (track.id == _selectedAudioStreamId) continue;
                 if (session.metadata.backend == MediaBackend.plex && session.mediaInfo?.partId == null) continue;
@@ -249,7 +249,7 @@ extension _VideoPlayerAssistantPlayback on VideoPlayerScreenState {
                   ),
                 );
               }
-              if (session.metadata.backend == MediaBackend.plex && session.mediaInfo?.partId != null) {
+              if (_canSwitchSourceSubtitles) {
                 final sourceSubtitles = _sourceSubtitleTracksForControls();
                 actions.addAll(
                   assistantSourceSubtitleActions(

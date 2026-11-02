@@ -139,11 +139,10 @@ extension _MediaDetailTvMoreActions on _MediaDetailScreenState {
   }
 
   /// Bronnen on a unified title: the picker the source line under the actions
-  /// opens. A pick replaces this route, so the label is the new page's.
+  /// opens. The next time the panel opens, the label is the new source's.
   TvDetailActionRow? _tvDetailSourceRow(BuildContext sheetContext) {
-    final routeContext = widget.unifiedRouteContext;
-    final onChangeSource = widget.onChangeSource;
-    if (routeContext == null || !routeContext.hasAlternativeSources || onChangeSource == null) return null;
+    final routeContext = _routeContext;
+    if (routeContext == null || !routeContext.hasAlternativeSources || widget.onChangeSource == null) return null;
     return TvDetailActionRow(
       id: 'source',
       icon: Symbols.dns_rounded,
@@ -153,7 +152,7 @@ extension _MediaDetailTvMoreActions on _MediaDetailScreenState {
         SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
         OverlaySheetController.closeAdaptive(sheetContext, () async {
           final pageContext = _contextMenuKey.currentContext ?? context;
-          await onChangeSource(pageContext);
+          await _changeUnifiedSource(pageContext);
         });
       },
     );

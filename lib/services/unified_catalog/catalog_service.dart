@@ -19,6 +19,7 @@ library;
 import 'dart:async';
 import '../../media/ids.dart';
 import '../../media/library_query.dart';
+import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -28,6 +29,9 @@ import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/external_ids.dart';
+import '../../utils/global_key_utils.dart';
+import '../../utils/stored_identity_trust.dart';
+import '../pleya_server_client.dart';
 import '../../utils/media_server_http_client.dart';
 import '../../utils/media_server_timeouts.dart';
 import 'grouping_service.dart';
@@ -598,8 +602,24 @@ class UnifiedCatalogService {
   Future<void> _recomputeGroups() async {
     final generation = _generation;
     final resolver = UnifiedIdentityResolver(
+      trustStoredIdentity: (item) =>
+          canTrustStoredIdentity(item, item.serverId == null ? null : _clientFor(ServerId(item.serverId!))),
       fetchExternalIds: (serverId, targetId) async {
-        final cached = cachedExternalIds?.call(serverId, targetId);
+        final currentClient = _clientFor(ServerId(serverId));
+        // This callback returns bare ids, without their proof source. Only
+        // an explicitly old Pleya server may reuse that legacy cache.
+        final recordedItem = _resolvableCache[buildGlobalKey(ServerId(serverId), targetId)]?.item;
+        final isPleyaSource =
+            currentClient is PleyaServerClient ||
+            recordedItem?.backend == MediaBackend.pleyaServer ||
+            _cursors.any(
+              (cursor) =>
+                  cursor.library.serverId.value == serverId && cursor.library.backend == MediaBackend.pleyaServer,
+            );
+        final canReuseBareIds =
+            !isPleyaSource || (currentClient is PleyaServerClient && currentClient.usesLegacyExternalIdentity);
+        if (!canReuseBareIds) _externalIdCache.remove('$serverId:$targetId');
+        final cached = canReuseBareIds ? cachedExternalIds?.call(serverId, targetId) : null;
         if (cached != null) return cached;
         final key = '$serverId:$targetId';
         final cache = _externalIdCache;

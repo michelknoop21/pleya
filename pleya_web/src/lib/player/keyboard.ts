@@ -33,6 +33,7 @@ export const VOLUME_STEP = 0.1;
 
 export function keyAction(input: KeyInput): KeyAction | null {
   if (input.ctrlKey || input.metaKey || input.altKey) return null;
+  if (input.key === 'Escape') return { kind: 'escape' };
   const tag = input.targetTag ?? '';
   const onButton = tag === 'BUTTON' || tag === 'A' || tag === 'SELECT';
   const onRange = tag === 'INPUT' && input.targetType === 'range';
@@ -60,8 +61,6 @@ export function keyAction(input: KeyInput): KeyAction | null {
     case 'm':
     case 'M':
       return { kind: 'mute' };
-    case 'Escape':
-      return { kind: 'escape' };
     default:
       return null;
   }

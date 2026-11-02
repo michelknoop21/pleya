@@ -732,6 +732,9 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Audio';
 	@override String get subtitlesLabel => 'Ondertitels';
+	@override String get subtitlesPreparing => 'Ondertitels voorbereiden';
+	@override String get subtitlesPrepareFailed => 'Ondertitels konden niet worden voorbereid';
+	@override String get subtitlesPrepareRetry => 'Opnieuw';
 	@override String get resetToZero => 'Reset naar 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -1214,6 +1217,12 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get cinemaReorderHint => 'Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar';
+	@override String get cinemaVisible => 'Zichtbaar';
+	@override String get cinemaHidden => 'Verborgen in dit profiel';
+	@override String get cinemaOptionsHint => 'Select voor bibliotheekopties';
+	@override String get cinemaSummaryTitle => 'Eén bibliotheek.';
+	@override String get cinemaSummaryHint => 'Alle mogelijkheden bij Select.';
 	@override String get alphabetScrubber => 'Alfabetisch bladeren';
 	@override String get title => 'Bibliotheken';
 	@override String get fallbackTitle => 'Bibliotheek';
@@ -1594,6 +1603,7 @@ class _TranslationsPlaylistsNl extends TranslationsPlaylistsEn {
 	@override String get errorLoading => 'Fout bij laden afspeellijsten';
 	@override String get errorAdding => 'Fout bij toevoegen aan afspeellijst';
 	@override String get errorReordering => 'Fout bij herschikken van afspeellijstitem';
+	@override String get changedElsewhere => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.';
 	@override String get errorRemoving => 'Fout bij verwijderen uit afspeellijst';
 }
 
@@ -5125,6 +5135,9 @@ extension on TranslationsNl {
 			_ => null,
 		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
+			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
+			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
+			'videoControls.subtitlesPrepareRetry' => 'Opnieuw',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -5536,6 +5549,12 @@ extension on TranslationsNl {
 			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
 			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
 			'notices.playbackServerErrorBody' => 'De server liep vast tijdens het transcoderen',
+			'libraries.cinemaReorderHint' => 'Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar',
+			'libraries.cinemaVisible' => 'Zichtbaar',
+			'libraries.cinemaHidden' => 'Verborgen in dit profiel',
+			'libraries.cinemaOptionsHint' => 'Select voor bibliotheekopties',
+			'libraries.cinemaSummaryTitle' => 'Eén bibliotheek.',
+			'libraries.cinemaSummaryHint' => 'Alle mogelijkheden bij Select.',
 			'libraries.alphabetScrubber' => 'Alfabetisch bladeren',
 			'libraries.title' => 'Bibliotheken',
 			'libraries.fallbackTitle' => 'Bibliotheek',
@@ -5627,6 +5646,8 @@ extension on TranslationsNl {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
 			'about.title' => 'Over',
+			_ => null,
+		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -5636,8 +5657,6 @@ extension on TranslationsNl {
 			'about.basedOnPlezy' => 'Gebaseerd op Plezy',
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
-			_ => null,
-		} ?? switch (path) {
 			'about.licence' => 'Licentie',
 			'about.sources' => 'Bronnen',
 			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P, en beschrijvingen, genres, kijkwijzers en afbeeldingen van titels op een Pleya Server.',
@@ -5843,6 +5862,7 @@ extension on TranslationsNl {
 			'playlists.errorLoading' => 'Fout bij laden afspeellijsten',
 			'playlists.errorAdding' => 'Fout bij toevoegen aan afspeellijst',
 			'playlists.errorReordering' => 'Fout bij herschikken van afspeellijstitem',
+			'playlists.changedElsewhere' => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.',
 			'playlists.errorRemoving' => 'Fout bij verwijderen uit afspeellijst',
 			'watchTogether.title' => 'Samen Kijken',
 			'watchTogether.description' => 'Kijk synchroon met vrienden en familie',
@@ -6140,6 +6160,8 @@ extension on TranslationsNl {
 			'performanceOverlay.memory' => 'Geheugen',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'Externe speler',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6150,8 +6172,6 @@ extension on TranslationsNl {
 			'externalPlayer.playerNameHint' => 'Mijn speler',
 			'externalPlayer.playerCommand' => 'Commando',
 			'externalPlayer.playerPackage' => 'Pakketnaam',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.playerUrlScheme' => 'URL-schema',
 			'externalPlayer.off' => 'Uit',
 			'externalPlayer.launchFailed' => 'Kan externe speler niet openen',
@@ -6654,6 +6674,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.oneSource' => '1 bron',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
 			'unifiedCatalog.oneSeason' => '1 seizoen',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
@@ -6664,8 +6686,6 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.titleAsc' => 'Titel A–Z',
 			'unifiedCatalog.sort.titleDesc' => 'Titel Z–A',
 			'unifiedCatalog.sort.recentlyAdded' => 'Recent toegevoegd',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
@@ -7168,6 +7188,8 @@ extension on TranslationsNl {
 			'assistant.examples.tonight.1' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
 			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
@@ -7178,8 +7200,6 @@ extension on TranslationsNl {
 			'assistant.examples.trending.0' => 'Wat is er nu populair?',
 			'assistant.examples.trending.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.examples.request.0' => 'Welke thrillers van dit jaar kan ik aan mijn bibliotheek toevoegen?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.request.1' => 'Zoek een sciencefictionserie die het aanvragen waard is.',
 			'assistant.examples.trakt.0' => 'Welke titels van mijn Trakt-kijklijst kan ik hier vanavond kijken?',
 			'assistant.examples.history.0' => 'Wat heb ik de laatste tijd gekeken?',

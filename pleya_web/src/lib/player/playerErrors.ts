@@ -72,9 +72,15 @@ export function playerProblemFromCode(code: string): PlayerProblem {
   return { code, message: t('player.err.generic', { code }), wayOut: 'retry' };
 }
 
-export function playerProblem(error: unknown): PlayerProblem {
+/**
+ * `refreshUnavailable`: de verversing gaf op zonder oordeel over het token. De 401
+ * die daarna doorkomt is dan een storing en geen verlopen sessie; inloggen zou een
+ * sessie weggooien die na de storing gewoon werkt.
+ */
+export function playerProblem(error: unknown, refreshUnavailable = false): PlayerProblem {
   if (error instanceof DeliveryError) return playerProblemFromCode(error.code);
   if (error instanceof ApiError) {
+    if (error.status === 401 && refreshUnavailable) return playerProblemFromCode('client.transport');
     if (error.code === 'playback.not_playable') return notPlayable(error);
     if (KNOWN[error.code]) return playerProblemFromCode(error.code);
     if (error.code === 'server.internal') {

@@ -44,6 +44,38 @@ Map<String, Object?>? _declaredById(String id) {
 
 void main() {
   group('AutomationNode reports current state, not the state it mounted with', () {
+    testWidgets('a deactivated node is absent while its replacement builds', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AutomationNode(id: 'transition.node', role: 'button', child: SizedBox(width: 10, height: 10)),
+        ),
+      );
+      expect(_declaredById('transition.node'), isNotNull);
+      Map<String, Object?>? duringBuild;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (_) {
+              duringBuild = _declaredById('transition.node');
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(duringBuild, isNull);
+    });
+
+    testWidgets('a reparented node registers again without duplicate ids', (tester) async {
+      final key = GlobalKey();
+      Widget node() =>
+          AutomationNode(key: key, id: 'moved.node', role: 'button', child: const SizedBox(width: 10, height: 10));
+      await tester.pumpWidget(MaterialApp(home: Row(children: [node(), const SizedBox()])));
+      await tester.pumpWidget(MaterialApp(home: Row(children: [const SizedBox(), node()])));
+      expect(_declaredById('moved.node'), isNotNull);
+      expect(AutomationRegistry.instance.snapshot()['duplicates'], isEmpty);
+    });
+
     testWidgets('a rebuild with a new state closure is visible in /v1/ui_tree', (tester) async {
       final key = GlobalKey<_RebuildableState>();
 

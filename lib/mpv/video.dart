@@ -43,6 +43,7 @@ class Video extends StatefulWidget {
 class _VideoState extends State<Video> {
   Rect? _lastRect;
   bool _hasFirstFrame = false;
+  bool _observedPlaybackRestart = false;
   StreamSubscription<void>? _playbackRestartSubscription;
 
   @override
@@ -62,6 +63,7 @@ class _VideoState extends State<Video> {
       _syncExternalFirstFrame();
     }
     if (oldWidget.player != widget.player) {
+      _observedPlaybackRestart = false;
       _playbackRestartSubscription?.cancel();
       _listenForPlaybackRestart();
       _syncExternalFirstFrame();
@@ -77,6 +79,7 @@ class _VideoState extends State<Video> {
 
   void _listenForPlaybackRestart() {
     _playbackRestartSubscription = widget.player.streams.playbackRestart.listen((_) {
+      _observedPlaybackRestart = true;
       _setHasFirstFrame(true);
     });
   }
@@ -84,6 +87,7 @@ class _VideoState extends State<Video> {
   void _syncExternalFirstFrame() {
     final external = widget.hasFirstFrame;
     if (external == null) return;
+    if (!external.value) _observedPlaybackRestart = false;
     _setHasFirstFrame(external.value);
   }
 
@@ -101,6 +105,10 @@ class _VideoState extends State<Video> {
     final plan = player.plannedLoudness;
     final applied = player.effectiveLoudness;
     return {
+      'first_frame': _observedPlaybackRestart,
+      'subtitle_track_id': widget.player.state.track.subtitle?.id,
+      'subtitle_title': widget.player.state.track.subtitle?.title,
+      'external_subtitle_count': player.state.tracks.subtitle.where((track) => track.isExternal).length,
       'loudness': plan.mode.name,
       'loudness_gain_db': plan.programmeGainDb,
       'loudness_limit': plan.gainLimit.name,

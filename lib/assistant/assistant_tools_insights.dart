@@ -231,6 +231,8 @@ Future<({List<MediaItem> missing, bool lookupsCapped})> _missingOn(
   }
 
   final resolver = UnifiedIdentityResolver(
+    trustStoredIdentity: (item) =>
+        canTrustStoredIdentity(item, item.serverId == null ? null : ctx.adminClient(ServerId(item.serverId!))),
     fetchExternalIds: (serverId, targetId) async {
       final client = ctx.adminClient(ServerId(serverId));
       if (client == null || budget.spent) throw StateError('no lookup');

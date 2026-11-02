@@ -1,0 +1,40 @@
+{
+  "item_id": "00000000-0000-7000-8000-000000000001",
+  "fields": {
+    "title": {
+      "value": "Handmatige titel",
+      "source": "manual",
+      "locked": true
+    },
+    "year": {
+      "value": null,
+      "source": "manual",
+      "locked": true
+    },
+    "summary": {
+      "value": "",
+      "source": "manual",
+      "locked": true
+    },
+    "genres": {
+      "value": [],
+      "source": "manual",
+      "locked": true
+    },
+    "content_rating": {
+      "value": "12",
+      "source": "tmdb",
+      "locked": false
+    },
+    "people": {
+      "value": [
+        {
+          "name": "Synthetic actor",
+          "role": "actor"
+        }
+      ],
+      "source": "nfo",
+      "locked": false
+    }
+  }
+}
