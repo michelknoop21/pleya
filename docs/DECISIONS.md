@@ -5613,9 +5613,9 @@ beschrijving wijzigde, dus de regels van hoofdstuk 3 worden niet geraakt.
 
 <a id="metadata-venster-2026-11-01"></a>
 
-## DEC-XXX: additief metadata-venster voor het server-gapplan
+## DEC-172: additief metadata-venster voor het server-gapplan
 
-**Verwijzing tot merge:** [additief metadata-venster voor het server-gapplan](#metadata-venster-2026-11-01). Dit is het unieke besluitanker. Het definitieve DEC-nummer wordt volgens AGENTS.md pas bij merge toegewezen; deze lokale ontwikkelbranch heeft geen mergevrijgave en kent daarom nog geen nummer. Bestaande besluiten worden niet hernummerd.
+**Definitieve verwijzing:** DEC-172; het bestaande [metadata-anker](#metadata-venster-2026-11-01) blijft werken. Nummer toegewezen na de normale merge van [PR579](https://github.com/michelknoop21/pleya/pull/579), main `b74c630da4f0d1e6d6dc2b0cedb65b7d4b48dfab`, conform AGENTS.md. Bestaande besluiten zijn niet hernummerd.
 
 1 november 2026. Michel koos op de concrete venstervraag: “Open dit additieve metadata-venster (aanbevolen)”. [Exacte scope en acceptatie](plans/2026-11-01-server-gap/METADATA-VENSTERVOORSTEL.md), Roadmap C-05/S4/S22/S14.5. Additief toegepast-identiteitsbewijs met capability en aparte lookup/status, itemzoekflow titel/jaar/kandidaat/veilige vaste-host-beeldpreview, afzonderlijke veld-overrides/locks en artworkkeuze/pins. Legacy `external_ids`/filter behouden hun betekenis. Nieuwe clients gebruiken bij capability true uitsluitend applied-bewijs, inclusief caches/opgeslagen identiteit. Benodigde lokale opslagmigraties krijgen synthetisch upgrade-/backup-/restorebewijs en onafhankelijke review.
 
@@ -5623,12 +5623,12 @@ Dit besluit opent uitsluitend de genoemde metadataoppervlakken; alle overige pro
 
 <a id="cachebeheer-venster-2026-11-02"></a>
 
-## DEC-XXX: begrensd artworkcache-beheervenster voor S4.6
+## DEC-173: begrensd artworkcache-beheervenster voor S4.6
 
-**Datum:** 2026-11-02. **Status:** expliciet geopend door Michel. **Roadmap:** C-05/S4.6; bestaande richting uit deelJ (`GET /artwork/cache`, `DELETE /artwork/cache`). Unieke verwijzing tot merge: [cachebeheer-venster-2026-11-02](#cachebeheer-venster-2026-11-02). Definitief DEC-nummer pas bij merge conform AGENTS; geen bestaande nummers overschrijven.
+**Datum:** 2026-11-02. **Status:** expliciet geopend door Michel. **Roadmap:** C-05/S4.6; bestaande richting uit deelJ (`GET /artwork/cache`, `DELETE /artwork/cache`). Definitieve verwijzing DEC-173, toegewezen na de normale merge van PR579 conform AGENTS; het bestaande [cachebeheer-anker](#cachebeheer-venster-2026-11-02) blijft werken. Geen bestaande nummers overschreven.
 
 Michel koos op de concrete vraag bij het vooraf onafhankelijk gereviewde voorstel: “Open dit beperkte cachebeheer-venster (aanbevolen)”. [Exacte additieve scope en acceptatie](plans/2026-11-01-server-gap/CACHE-BEHEER-VENSTERVOORSTEL.md): admin GETomvang/aantal en DELETE met exacte purgebevestiging, optionele artwork_cache_admin-capability en één bestaande duurzamejob met zichtbare uitkomst in de bestaande Opslag-/takenbediening. Ontvangst202 is geen voltooide opschoning. Geen generiek cache-/operationsframework.
 
 Alleen reproduceerbare ladderbestanden; media, originelen/providerbestanden, gepinde bronbytes en intentie, persoonlijke gegevens, config, sleutels, backups en andere cachetypen blijven behouden. Actieve render/openrespons, pad-/symlinkgrens, gedeeltelijke fouten, annulering, rollen/intrekking/origin, compatibiliteitsregels en onafhankelijke security-/visueleacceptatie blijven verplicht. Quota/automatischbeleid en andere cachevereisten uit het volledige gapplan blijven afzonderlijk open; ze worden niet geschrapt.
 
-Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaaldeaanroeprechten of NAS/publicatie. Het aparte publieke GitHub-bestemmingsbesluit blijft pending. Goedkeuring is geen implementatie-/runtime-/releasebewijs; getest checkpoint e8aba921f blijft bewaard en pin-cache503herstel heeft zijn eigen bewijsgrens.
+Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaaldeaanroeprechten of NAS/publicatie. Het aparte publieke GitHub-bestemmingsbesluit was bij deze vensteropening nog pending. De latere afzonderlijke toestemming voor de publieke GitHub-repository, NAS en TestFlight verandert de scope van dit venster niet; PR579 is inmiddels normaal gemerged, maar NAS- en TestFlightacceptatie blijven afzonderlijke gates. Goedkeuring is geen implementatie-/runtime-/releasebewijs; getest checkpoint e8aba921f blijft bewaard en pin-cache503herstel heeft zijn eigen bewijsgrens.
