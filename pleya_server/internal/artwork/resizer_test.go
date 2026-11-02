@@ -13,6 +13,8 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
 
+const cacheTestKey = "019a0000-0000-7000-8000-000000000001_1"
+
 func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
 func widthOf(t *testing.T, path string) int {
@@ -96,7 +98,7 @@ func TestMakeResizesCachesAndSingleFlights(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			p, ok := r.Make(context.Background(), src, "abc_1", 480)
+			p, ok := r.Make(context.Background(), src, cacheTestKey, 480)
 			if !ok {
 				t.Error("Make mislukte")
 			}
@@ -114,21 +116,31 @@ func TestMakeResizesCachesAndSingleFlights(t *testing.T) {
 	}
 
 	before, _ := os.Stat(paths[0])
-	again, ok := r.Make(context.Background(), src, "abc_1", 480)
+	again, ok := r.Make(context.Background(), src, cacheTestKey, 480)
 	after, _ := os.Stat(again)
 	if !ok || !after.ModTime().Equal(before.ModTime()) {
 		t.Fatal("een tweede aanvraag maakte het bestand opnieuw")
 	}
 
 	// Een andere generation is een andere bron en krijgt een eigen bestand.
-	other, _ := r.Make(context.Background(), src, "abc_2", 480)
+	other, _ := r.Make(context.Background(), src, "019a0000-0000-7000-8000-000000000001_2", 480)
 	if other == paths[0] {
 		t.Fatal("een andere generation hergebruikte de oude afgeleide")
 	}
 
+	otherInfo, err := os.Stat(other)
+	if err != nil {
+		t.Fatal(err)
+	}
 	bytes, files, err := r.Stats()
-	if err != nil || files != 2 || bytes <= 0 {
+	if err != nil || files != 2 || bytes != before.Size()+otherInfo.Size() {
 		t.Fatalf("Stats = %d bytes, %d bestanden, %v", bytes, files, err)
+	}
+	if !r.CacheAdminAvailable() {
+		if err := r.Purge(); err == nil {
+			t.Fatal("onbewezen platform biedt toch purge aan")
+		}
+		return
 	}
 	if err := r.Purge(); err != nil {
 		t.Fatal(err)
@@ -142,7 +154,7 @@ func TestMakeFailureFallsBackInsteadOfLeavingFiles(t *testing.T) {
 	r := newResizer(t)
 	bad := filepath.Join(t.TempDir(), "kapot.jpg")
 	testsupport.WriteFile(t, bad, "geen jpeg")
-	if _, ok := r.Make(context.Background(), bad, "k_1", 480); ok {
+	if _, ok := r.Make(context.Background(), bad, cacheTestKey, 480); ok {
 		t.Fatal("een kapot bestand gaf toch een afgeleide")
 	}
 	if _, files, _ := r.Stats(); files != 0 {

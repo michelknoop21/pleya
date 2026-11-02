@@ -208,6 +208,8 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/items/{item_id}/activity", s.authenticated(s.handleItemActivity)},
 		{"GET " + p + "/search", s.authenticated(s.handleSearch)},
 		{"GET " + p + "/hubs/{hub_id}", s.authenticated(s.handleHub)},
+		{"GET " + p + "/artwork/cache", s.authenticated(s.handleArtworkCacheStats)},
+		{"DELETE " + p + "/artwork/cache", s.authenticated(s.handleArtworkCachePurge)},
 		{"GET " + p + "/artwork/{artwork_id}", s.authenticated(s.handleArtwork)},
 		{"POST " + p + "/watch-state", s.authenticated(s.handleWatchStateReport)},
 		{"GET " + p + "/watch-state", s.authenticated(s.handleWatchStateList)},

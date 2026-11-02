@@ -1,5 +1,23 @@
 /** Nederlandse teksten van Opslag (24) en Scans en taken (25), S10.3. */
 export const webOpsNl = {
+  'admin.sto.cache.title': 'Verkleinde afbeeldingen',
+  'admin.sto.cache.body': 'Hier tellen alleen verkleinde posters en achtergronden mee. Ze worden op aanvraag opnieuw gemaakt. Originele afbeeldingen, vastgezette bronnen, media, instellingen en back-ups blijven behouden.',
+  'admin.sto.cache.summary.one': '{size} · {count} bestand',
+  'admin.sto.cache.summary.other': '{size} · {count} bestanden',
+  'admin.sto.cache.purge': 'Afbeeldingscache leegmaken',
+  'admin.sto.cache.confirmTitle': 'Afbeeldingscache laten leegmaken?',
+  'admin.sto.cache.confirm': 'Leegmaken inplannen',
+  'admin.sto.cache.reload': 'Afbeeldingscache herladen',
+  'admin.sto.cache.loading': 'Afbeeldingscache lezen…',
+  'admin.sto.cache.accepted': 'Taak ontvangen. Volg de uitvoering bij Scans en taken.',
+  'admin.sto.cache.succeeded': 'Afbeeldingscache leeggemaakt.',
+  'admin.sto.cache.running': 'De cachetaak wacht of wordt uitgevoerd.',
+  'admin.sto.cache.failed': 'De cachetaak is mislukt. Bekijk de fout en probeer opnieuw bij Scans en taken.',
+  'admin.sto.cache.cancelled': 'De cachetaak is geannuleerd. Je kunt opnieuw proberen bij Scans en taken.',
+  'admin.sto.cache.monitorFailed': 'De taakstatus kon niet worden gelezen. Herlaad of open Scans en taken.',
+  'admin.sto.cache.activity': 'Scans en taken',
+  'admin.act.job.cachePurge': 'Afbeeldingscache leegmaken',
+  'admin.act.job.runningTitle.cachePurge': 'Afbeeldingscache wordt leeggemaakt',
   // --- Opslag (24) ---------------------------------------------------------
   'admin.sto.summary.mounted.one': '{count} root gemount',
   'admin.sto.summary.mounted.other': '{count} roots gemount',

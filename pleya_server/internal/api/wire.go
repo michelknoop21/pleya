@@ -117,7 +117,8 @@ type Capabilities struct {
 
 	// ArtworkSizes (venster 3, C1). Aan zodra /artwork/{id} afgeleide maten van de
 	// ladder kan maken. Belooft niets over andere routes.
-	ArtworkSizes bool `json:"artwork_sizes"`
+	ArtworkSizes      bool `json:"artwork_sizes"`
+	ArtworkCacheAdmin bool `json:"artwork_cache_admin"`
 
 	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen

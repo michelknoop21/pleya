@@ -131,8 +131,10 @@ func (s *Server) serveArtworkFile(w http.ResponseWriter, r *http.Request, file c
 	served := file
 	if step > 0 {
 		key := file.ID.String() + "_" + strconv.FormatInt(file.Generation, 10)
-		if path, ok := s.opts.Artwork.Make(r.Context(), file.AbsPath, key, step); ok {
-			served.AbsPath = path
+		if opened, err := s.opts.Artwork.Open(r.Context(), file.AbsPath, key, step); err == nil {
+			defer opened.Close()
+			s.serveOpenFile(w, r, opened, file, "image/jpeg")
+			return
 		} else {
 			// Terugval op het origineel, met de validator van het origineel: een
 			// cache mag de originele bytes niet onder de validator van een trede bewaren.
@@ -258,7 +260,12 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, file catalog.
 		return
 	}
 	defer f.Close()
+	s.serveOpenFile(w, r, f, file, contentType)
+}
 
+// De descriptor is al onder de artwork-purgegrens geopend; trage HTTP-I/O
+// mag de purge niet blokkeren. copyRange behoudt zijn intrekkingscontrole.
+func (s *Server) serveOpenFile(w http.ResponseWriter, r *http.Request, f *os.File, file catalog.FileOnDisk, contentType string) {
 	info, err := f.Stat()
 	if err != nil {
 		writeInternal(w, s.log, err)

@@ -43,6 +43,7 @@ export type User = S['User'];
 export type Role = S['Role'];
 export type Scan = S['Scan'];
 export type Job = S['Job'];
+export type ArtworkCacheStats = S['ArtworkCacheStats'];
 export type StorageRoot = S['StorageRoot'];
 export type StreamSessionSummary = S['StreamSessionSummary'];
 export type TranscodeSessionList = S['TranscodeSessionList'];

@@ -727,6 +727,22 @@
       "file": "info_artwork_choices.json",
       "schema": "Info",
       "note": "S22.5 artworkkeuze/pins binnen geopend metadata-venster"
+    },
+    {
+      "file": "artwork_cache_stats.json",
+      "schema": "ArtworkCacheStats"
+    },
+    {
+      "file": "artwork_cache_purge_request.json",
+      "schema": "ArtworkCachePurgeRequest"
+    },
+    {
+      "file": "artwork_cache_confirmation_error.json",
+      "schema": "ErrorEnvelope"
+    },
+    {
+      "file": "info_artwork_cache_admin.json",
+      "schema": "Info"
     }
   ]
 }
