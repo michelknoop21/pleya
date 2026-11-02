@@ -3250,6 +3250,51 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /artwork/cache:
+    get:
+      tags: [administration]
+      operationId: getArtworkCacheStats
+      summary: Omvang van de reproduceerbare artworkladdercache.
+      description: |
+        Klasse admin, capability artwork_cache_admin. Alleen gewone afgeleide
+        ladderbestanden; geen bron-, pin-, provider-, tijdelijke of andere cachebestanden.
+        Een ontbrekende cache is nul; een onleesbare cache is een fout.
+      responses:
+        "200":
+          description: Actuele bytes en aantal afgeleide bestanden.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArtworkCacheStats" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [administration]
+      operationId: purgeArtworkCache
+      summary: Plan het leegmaken van de artworkladdercache in.
+      description: |
+        Klasse admin, capability artwork_cache_admin. De exacte bevestiging purge
+        plant één duurzame artwork_cache_purge-taak in; pending/running dedupliceren.
+        202 bevestigt ontvangst, niet voltooiing. Volg resultaat, fout, cancel en retry
+        via de bestaande jobsroutes. Verkleinde posters/achtergronden worden opnieuw gemaakt.
+        Bronbestanden, artwork-pins, metadata, config en backups blijven behouden.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArtworkCachePurgeRequest" }
+      responses:
+        "202": { description: Taak ontvangen; geen antwoordlichaam of job-id. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: server.confirm_mismatch. Exacte bevestiging ontbreekt of de gesloten body is ongeldig.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /artwork/{artwork_id}:
     get:
       tags: [library]
@@ -3901,6 +3946,9 @@ components:
             en POST /auth/logout. Een client stuurt device_id/device_name pas
             wanneer deze vlag waar is; zonder de vlag krijgt de sessie
             device_id NULL en een vaste plaatshouder als naam.
+        artwork_cache_admin:
+          type: boolean
+          description: Optioneel; afwezig is false. Alleen true bij volledige geregistreerde stats-/purgeketen.
         artwork_sizes:
           type: boolean
           default: false
@@ -4522,6 +4570,21 @@ components:
       properties:
         id: { $ref: "#/components/schemas/Id" }
         title: { type: string }
+
+    ArtworkCacheStats:
+      type: object
+      additionalProperties: false
+      required: [bytes, files]
+      properties:
+        bytes: { type: integer, format: int64, minimum: 0 }
+        files: { type: integer, minimum: 0 }
+
+    ArtworkCachePurgeRequest:
+      type: object
+      additionalProperties: false
+      required: [confirm]
+      properties:
+        confirm: { type: string, const: purge }
 
     StorageRoot:
       type: object

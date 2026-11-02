@@ -1,0 +1,22 @@
+{
+  "scope": "Four representative originals from sixteen-state fixture journey; no normal-image claim",
+  "source": "/tmp/task5-artwork-cache-admin-1102/screens-manifest.json",
+  "files": [
+    {
+      "file": "320-cache-ready-full.png",
+      "sha256": "84c31245f049c1bd0cf998eba3403e346579a98b649a4780e07f284b47437358"
+    },
+    {
+      "file": "390-cache-confirm.png",
+      "sha256": "106c54720e23f6d8b8da43e8b19b08c8024c47588a1bb44753d2b7d34cc2cd13"
+    },
+    {
+      "file": "1440-cache-succeeded.png",
+      "sha256": "2d153acec0a021a2b54e81c78eff05447694e1f250557bb50361ca754fb2acfc"
+    },
+    {
+      "file": "1440-cache-job-failed-full.png",
+      "sha256": "5495240027d9ec8775d83ea746079dff85572587f37c9488092daeb22380930d"
+    }
+  ]
+}

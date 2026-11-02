@@ -65,7 +65,8 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			Search:          true,
 			Artwork:         true,
 			// ArtworkSizes: de ladder bestaat zodra ffmpeg en een cachemap er zijn.
-			ArtworkSizes: s.opts.Artwork.Available(),
+			ArtworkSizes:      s.opts.Artwork.Available(),
+			ArtworkCacheAdmin: s.artworkCacheAdminAvailable(),
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
 			// ExternalIDLookup: de filterparameter external_id en het itemveld bestaan.

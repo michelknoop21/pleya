@@ -197,6 +197,12 @@ def check_validator_bites(document: dict) -> None:
         return bool(list(validator.iter_errors(payload)))
 
     cases = [
+        ("cacheomvang negatief", "ArtworkCacheStats", {"bytes": -1, "files": 0}),
+        ("cacheaantal geen integer", "ArtworkCacheStats", {"bytes": 0, "files": 0.5}),
+        ("cacheomvang met pad", "ArtworkCacheStats", {"bytes": 0, "files": 0, "path": "/media"}),
+        ("cachepurge zonder bevestiging", "ArtworkCachePurgeRequest", {}),
+        ("cachepurge verkeerde bevestiging", "ArtworkCachePurgeRequest", {"confirm": "PURGE"}),
+        ("cachepurge met vrij pad", "ArtworkCachePurgeRequest", {"confirm": "purge", "path": "/media"}),
         ("ondertitels uit met een spoor", "PlaybackSubtitleSelection", {"mode": "off", "stream_id": "s"}),
         ("burn zonder spoor", "PlaybackSubtitleSelection", {"mode": "burn"}),
         ("onbekende ondertitelkeuze", "PlaybackSubtitleSelection", {"mode": "auto"}),

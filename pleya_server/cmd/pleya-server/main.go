@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
-	"github.com/edde746/plezy/pleya_server/internal/artwork"
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/backup"
@@ -228,6 +227,10 @@ func run() int {
 	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner"), onScanned))
 	downloadStore := downloads.NewStore(pool)
 	runner.Register(api.JobDownloadDigest, downloads.DigestHandler(downloadStore, catalogStore, logging.Component(log, "downloads")))
+	resizer, cacheAdminReady := newArtworkResizer(ctx, catalogStore, cfg, backups.Dir(), logging.Component(log, "artwork"))
+	if cacheAdminReady {
+		runner.Register(api.JobArtworkCachePurge, func(ctx context.Context, _ jobs.Job) error { return resizer.PurgeContext(ctx) })
+	}
 	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
 	runner.Register(backup.JobCreate, backup.CreateHandler(backups, runner))
 	runner.Register(backup.JobVerify, backup.VerifyHandler(backups))
@@ -338,7 +341,7 @@ func run() int {
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
 		MetadataProvider:   metadataProvider,
-		Artwork:            artwork.New(cfg.FFmpegPath, cfg.CacheDir, logging.Component(log, "artwork")),
+		Artwork:            resizer,
 		Jobs:               runner,
 		Signer:             signer,
 		Logger:             logging.Component(log, "http"),

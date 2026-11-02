@@ -11,6 +11,7 @@
  */
 import type { PleyaClient } from './client';
 import type {
+  ArtworkCacheStats,
   CreateLibraryRequest,
   Job,
   Library,
@@ -30,6 +31,7 @@ export const ADMIN_PATHS = [
   '/scans',
   '/jobs',
   '/storage/roots',
+  '/artwork/cache',
   '/stream-sessions',
   '/transcode-sessions',
   // S10.5: instellingen en diagnostiek.
@@ -128,6 +130,17 @@ export function adminApi(client: PleyaClient) {
       }),
 
     // --- Opslag, scans en taken (S10.3, schermen 24 en 25) ---------------
+
+    artworkCacheStats: (signal?: AbortSignal): Promise<ArtworkCacheStats> =>
+      client.request((raw) => raw.GET('/artwork/cache', { signal })),
+
+    purgeArtworkCache: (signal?: AbortSignal): Promise<true> =>
+      client.request<true>(async (raw) => {
+        const result = await raw.DELETE('/artwork/cache', { body: { confirm: 'purge' }, signal });
+        return result.response.ok
+          ? { data: true, response: result.response }
+          : { error: result.error, response: result.response };
+      }),
 
     /**
      * Plant een meetronde in op elke geclaimde root. Het antwoord is een 202
