@@ -89,11 +89,11 @@ func (s Sort) Descending() bool { return len(s) > 0 && s[0] == '-' }
 // aflevering eronder: de versies hangen aan afleveringen, niet aan de serie zelf.
 // De tweede tak is leeg voor een film en kost er niets.
 const durationMax = `greatest(
-		(SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id),
+		(SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id AND (` + ordinaryVersionSQL + `)),
 		(SELECT max(v.duration_ms) FROM media_items se
 			JOIN media_items ep ON ep.parent_id = se.id AND ep.kind = 'episode'
 			JOIN media_versions v ON v.item_id = ep.id
-			WHERE i.kind = 'show' AND se.parent_id = i.id))`
+			WHERE i.kind = 'show' AND se.parent_id = i.id AND (` + ordinaryVersionSQL + `)))`
 
 // keyExpression is de SQL waarop gesorteerd en vergeleken wordt.
 //

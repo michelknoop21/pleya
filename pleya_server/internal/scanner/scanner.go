@@ -444,7 +444,7 @@ func (s *Scanner) judge(root catalog.StorageLocation, index *catalog.FileIndex, 
 	layerOneSame := c.prev.SizeBytes == e.Size && c.prev.MtimeUnix == e.Mtime &&
 		(c.prev.Inode == nil || e.Inode == 0 || *c.prev.Inode == e.Inode)
 
-	if root.InodeTrusted && layerOneSame && c.prev.IsAttached() {
+	if root.InodeTrusted && layerOneSame && (c.prev.IsAttached() || c.prev.AuxiliaryKind != "") {
 		c.action = actionUnchanged
 		return c, nil
 	}
@@ -465,7 +465,7 @@ func (s *Scanner) judge(root catalog.StorageLocation, index *catalog.FileIndex, 
 	// laag 2 dat kan zeggen, én al ergens aan gehangen. Een bestand dat nergens
 	// aan hangt hoort elke ronde opnieuw een kans te krijgen, want de media
 	// ernaast kan er inmiddels wel zijn.
-	if c.prev.Signature != "" && c.prev.Signature == c.signature && c.prev.IsAttached() {
+	if c.prev.Signature != "" && c.prev.Signature == c.signature && (c.prev.IsAttached() || c.prev.AuxiliaryKind != "") {
 		c.action = actionUnchanged
 		return c, nil
 	}
@@ -517,11 +517,42 @@ type probeResult struct {
 
 func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root catalog.StorageLocation, media []candidate, stats *Stats, tracker *progress, log *slog.Logger) error {
 	todo := make([]int, 0, len(media))
-	for i, c := range media {
-		if c.action == actionUnchanged {
-			continue
+	for i := range media {
+		c := &media[i]
+		auxiliary := nameparse.ClassifyAuxiliaryVideo(lib.Kind, c.entry.RelPath)
+		// Reconcile observed legacy/renamed files before either unchanged exit.
+		// A classification never changes presence or an existing binding.
+		if c.prev != nil && c.prev.AuxiliaryKind != auxiliary {
+			if err := s.store.ReconcileAuxiliary(ctx, c.fileID, auxiliary); err != nil {
+				return err
+			}
 		}
-		todo = append(todo, i)
+		if auxiliary != "" && (c.prev == nil || !c.prev.IsAttached()) {
+			if c.prev == nil {
+				if err := s.store.InsertFile(ctx, &catalog.File{
+					ID: c.fileID, StorageLocationID: root.ID, RelativePath: c.entry.RelPath,
+					Role: catalog.RoleMedia, AuxiliaryKind: auxiliary,
+					SizeBytes: c.entry.Size, MtimeUnix: c.entry.Mtime,
+					Inode: inodePtr(c.entry.Inode), Signature: c.signature,
+				}); err != nil {
+					return err
+				}
+			} else {
+				signature := c.signature
+				if signature == "" {
+					signature = c.prev.Signature
+				}
+				if err := s.store.ObserveAuxiliary(ctx, c.fileID, c.entry.Size, c.entry.Mtime, inodePtr(c.entry.Inode), signature); err != nil {
+					return err
+				}
+			}
+			c.action = actionUnchanged // tracked, but no ordinary item or probe
+		} else if c.prev != nil && c.prev.AuxiliaryKind != "" && !c.prev.IsAttached() {
+			c.action = actionChanged // a formerly unbound extra can now attach
+		}
+		if c.action != actionUnchanged {
+			todo = append(todo, i)
+		}
 	}
 
 	// Analyseren gebeurt parallel en wegschrijven serieel. ffprobe is op een NAS
@@ -627,7 +658,14 @@ func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root ca
 		}
 		stats.FilesProbed++
 
-		versionID, partIndex, err := s.attach(ctx, lib, c.entry, res.result, stats)
+		var versionID id.ID
+		var partIndex int
+		var err error
+		if c.prev != nil && c.prev.VersionID != nil && nameparse.ClassifyAuxiliaryVideo(lib.Kind, c.entry.RelPath) != "" {
+			versionID, partIndex = *c.prev.VersionID, c.prev.PartIndex
+		} else {
+			versionID, partIndex, err = s.attach(ctx, lib, c.entry, res.result, stats)
+		}
 		if err != nil {
 			stats.Errors++
 			stats.LastError = err.Error()

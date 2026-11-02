@@ -29,7 +29,7 @@ func TestArtworkPinsSchema32UpgradeEncryptedRestoreEnProcesherstart(t *testing.T
 	}
 	seedRollback24(t, pool)
 	before := applicationBackupSnapshot(t, pool, false)
-	if result, err := migrate.Run(ctx, pool, nil); err != nil || result.From != 32 || result.To != 33 || len(result.Applied) != 1 {
+	if result, err := migrate.RunTo(ctx, pool, nil, 33); err != nil || result.From != 32 || result.To != 33 || len(result.Applied) != 1 {
 		t.Fatalf("upgrade32->33 %+v %v", result, err)
 	}
 	after := applicationBackupSnapshot(t, pool, false)

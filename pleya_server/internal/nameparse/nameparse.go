@@ -204,7 +204,7 @@ func ParseEpisode(relPath string) Episode {
 			}
 			break
 		}
-		if strings.EqualFold(segments[i], "specials") || strings.EqualFold(segments[i], "extras") {
+		if i > 0 && (strings.EqualFold(segments[i], "specials") || strings.EqualFold(segments[i], "extras")) {
 			e.Season = 0
 			if i > 0 {
 				showSegment = segments[i-1]

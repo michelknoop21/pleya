@@ -412,6 +412,7 @@ func (s *Store) LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdro
 // genreGate bewaart de uitkomst van de dekkingspoort per bibliotheek, kort.
 type genreGate struct {
 	mu      sync.Mutex
+	epoch   uint64
 	entries map[id.ID]genreGateEntry
 }
 
@@ -433,11 +434,18 @@ func (s *Store) genresVisible(ctx context.Context, libraryID id.ID) bool {
 }
 
 func (s *Store) genresVisibleRead(ctx context.Context, reader itemReader, libraryID id.ID) bool {
+	// A transaction owns its earlier read snapshot. It must neither consume
+	// the current pool gate nor publish its snapshot into that shared cache.
+	if _, snapshot := reader.(pgx.Tx); snapshot {
+		cov, err := s.metadataCoverageRead(ctx, reader, libraryID)
+		return err != nil || cov.GateMet
+	}
 	s.genres.mu.Lock()
 	if e, ok := s.genres.entries[libraryID]; ok && time.Since(e.at) < genreGateTTL {
 		s.genres.mu.Unlock()
 		return e.open
 	}
+	epoch := s.genres.epoch
 	s.genres.mu.Unlock()
 
 	cov, err := s.metadataCoverageRead(ctx, reader, libraryID)
@@ -448,9 +456,20 @@ func (s *Store) genresVisibleRead(ctx context.Context, reader itemReader, librar
 	if s.genres.entries == nil {
 		s.genres.entries = map[id.ID]genreGateEntry{}
 	}
-	s.genres.entries[libraryID] = genreGateEntry{open: cov.GateMet, at: time.Now()}
+	// A classification change may have invalidated this library while the
+	// measurement was in flight. Its older snapshot must not repopulate cache.
+	if s.genres.epoch == epoch {
+		s.genres.entries[libraryID] = genreGateEntry{open: cov.GateMet, at: time.Now()}
+	}
 	s.genres.mu.Unlock()
 	return cov.GateMet
+}
+
+func (s *Store) invalidateGenreGate(libraryID id.ID) {
+	s.genres.mu.Lock()
+	defer s.genres.mu.Unlock()
+	s.genres.epoch++
+	delete(s.genres.entries, libraryID)
 }
 
 // attachMetadata leest beschrijving, artwork en identiteitsbewijs in één
@@ -815,7 +834,7 @@ func (s *Store) metadataCoverageRead(ctx context.Context, reader itemReader, lib
 		       count(*) FILTER (WHERE people IS NOT NULL OR metadata_sources @> '{"summary":"nfo"}'
 		                        OR metadata_sources @> '{"genres":"nfo"}' OR metadata_sources @> '{"content_rating":"nfo"}'),
 		       count(summary), count(genres)
-		FROM media_items WHERE library_id = $1 AND kind IN ('movie', 'show')`, libraryID).
+		FROM media_items i WHERE library_id = $1 AND kind IN ('movie', 'show') AND `+ordinaryItemSQL("i"), libraryID).
 		Scan(&c.Items, &c.WithSidecar, &c.WithSummary, &c.WithGenres)
 	if err != nil {
 		return Coverage{}, err

@@ -49,7 +49,7 @@ func (q Query) scope() string {
 // sortering en cursor. Items en Count delen ze, zodat het getal bij een lijst
 // precies de rijen telt die de lijst kan tonen.
 func (q Query) conditions() ([]string, []any) {
-	where := []string{"1 = 1"}
+	where := []string{ordinaryItemSQL("i")}
 	args := []any{}
 
 	add := func(clause string, value any) {
@@ -148,9 +148,9 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 			return Page{}, fmt.Errorf("applied snapshot openen: %w", err)
 		}
 		defer tx.Rollback(ctx)
-		return s.itemPageRead(ctx, tx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()))
+		return s.itemPageRead(ctx, tx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()), true)
 	}
-	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()))
+	return s.itemPageRead(ctx, s.pool, sql, args, q.Sort, limit, q.Cursor, q.Filters.CursorTag(q.Sort, q.scope()), true)
 }
 
 // tieOrder is het ORDER BY-stuk voor de tweede sorteersleutel, met de komma
@@ -174,7 +174,7 @@ const itemColumns = `i.id, i.library_id, i.parent_id, i.kind, i.title,
 // itemPage voert een query uit die itemColumns plus een sorteersleutel levert,
 // knipt de pagina op limit, zet de volgende cursor en hydrateert.
 func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort, limit int, cursor *Cursor, filter string) (Page, error) {
-	return s.itemPageRead(ctx, s.pool, sql, args, sort, limit, cursor, filter)
+	return s.itemPageRead(ctx, s.pool, sql, args, sort, limit, cursor, filter, false)
 }
 
 // itemReader is uitsluitend de Query die selectie en metadatahydratatie delen.
@@ -183,7 +183,7 @@ type itemReader interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-func (s *Store) itemPageRead(ctx context.Context, reader itemReader, sql string, args []any, sort Sort, limit int, cursor *Cursor, filter string) (Page, error) {
+func (s *Store) itemPageRead(ctx context.Context, reader itemReader, sql string, args []any, sort Sort, limit int, cursor *Cursor, filter string, ordinary bool) (Page, error) {
 	rows, err := reader.Query(ctx, sql, args...)
 	if err != nil {
 		return Page{}, cursorOrWrap(cursor, err, "items lezen")
@@ -207,7 +207,7 @@ func (s *Store) itemPageRead(ctx context.Context, reader itemReader, sql string,
 		page.Items = page.Items[:limit]
 	}
 
-	if err := s.hydrateRead(ctx, reader, page.Items); err != nil {
+	if err := s.hydrateRead(ctx, reader, page.Items, ordinary, ordinary); err != nil {
 		return Page{}, err
 	}
 	return page, nil
@@ -252,7 +252,7 @@ func (s *Store) Item(ctx context.Context, itemID id.ID) (Item, error) {
 	}
 
 	items := []Item{it}
-	if err := s.hydrate(ctx, items); err != nil {
+	if err := s.hydrateRead(ctx, s.pool, items, false, true); err != nil {
 		return it, err
 	}
 	return items[0], nil
@@ -260,10 +260,10 @@ func (s *Store) Item(ctx context.Context, itemID id.ID) (Item, error) {
 
 // hydrate vult versies, sporen, artwork en de afgeleide aantallen aan.
 func (s *Store) hydrate(ctx context.Context, items []Item) error {
-	return s.hydrateRead(ctx, s.pool, items)
+	return s.hydrateRead(ctx, s.pool, items, false, false)
 }
 
-func (s *Store) hydrateRead(ctx context.Context, reader itemReader, items []Item) error {
+func (s *Store) hydrateRead(ctx context.Context, reader itemReader, items []Item, ordinary, ordinaryCounts bool) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -275,23 +275,28 @@ func (s *Store) hydrateRead(ctx context.Context, reader itemReader, items []Item
 		byID[items[i].ID] = &items[i]
 	}
 
-	if err := s.attachVersions(ctx, reader, ids, byID); err != nil {
+	if err := s.attachVersions(ctx, reader, ids, byID, ordinary); err != nil {
 		return err
 	}
 	if err := s.attachMetadata(ctx, reader, ids, byID); err != nil {
 		return err
 	}
-	return s.attachCounts(ctx, reader, ids, byID)
+	return s.attachCounts(ctx, reader, ids, byID, ordinaryCounts)
 }
 
-func (s *Store) attachVersions(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item) error {
+func (s *Store) attachVersions(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item, ordinary bool) error {
+	filter := ""
+	if ordinary {
+		filter = " AND (" + ordinaryVersionSQL + ")"
+	}
 	rows, err := reader.Query(ctx, `
 		SELECT v.id, v.item_id, v.container, v.duration_ms, coalesce(v.edition, ''), v.bitrate_bps,
 		       (SELECT count(*) FROM media_files f
-		         WHERE f.version_id = v.id AND f.role = 'media' AND f.missing_since IS NULL)
+		         WHERE f.version_id = v.id AND f.role = 'media' AND f.missing_since IS NULL),
+		       NOT (`+ordinaryVersionSQL+`)
 		FROM media_versions v
-		WHERE v.item_id = ANY($1)
-		ORDER BY v.item_id, v.created_at, v.id`, ids)
+		WHERE v.item_id = ANY($1)`+filter+`
+		ORDER BY v.item_id, (`+ordinaryVersionSQL+`) DESC, v.created_at, v.id`, ids)
 	if err != nil {
 		return fmt.Errorf("versies lezen: %w", err)
 	}
@@ -303,7 +308,7 @@ func (s *Store) attachVersions(ctx context.Context, reader itemReader, ids []id.
 		var v Version
 		var fileCount int64
 		if err := rows.Scan(&v.ID, &v.ItemID, &v.Container, &v.DurationMs, &v.Edition,
-			&v.BitrateBps, &fileCount); err != nil {
+			&v.BitrateBps, &fileCount, &v.AuxiliaryOnly); err != nil {
 			rows.Close()
 			return err
 		}
@@ -377,10 +382,25 @@ func (s *Store) attachVersions(ctx context.Context, reader itemReader, ids []id.
 	return streamRows.Err()
 }
 
-func (s *Store) attachCounts(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item) error {
+func (s *Store) attachCounts(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item, ordinary bool) error {
+	childFilter, episodeFilter := "", ""
+	if ordinary {
+		childFilter = " AND " + ordinaryItemSQL("child")
+		episodeFilter = " AND " + ordinaryItemSQL("episode")
+		for _, item := range byID {
+			zero := 0
+			if item.Kind == "show" || item.Kind == "season" {
+				item.ChildCount = &zero
+			}
+			if item.Kind == "show" {
+				item.EpisodeCount = &zero
+				item.WatchedEpisodeCount = &zero
+			}
+		}
+	}
 	rows, err := reader.Query(ctx, `
-		SELECT parent_id, count(*) FROM media_items
-		WHERE parent_id = ANY($1) GROUP BY parent_id`, ids)
+		SELECT parent_id, count(*) FROM media_items child
+		WHERE parent_id = ANY($1)`+childFilter+` GROUP BY parent_id`, ids)
 	if err != nil {
 		return fmt.Errorf("aantallen lezen: %w", err)
 	}
@@ -407,7 +427,7 @@ func (s *Store) attachCounts(ctx context.Context, reader itemReader, ids []id.ID
 		SELECT season.parent_id, count(*)
 		FROM media_items episode
 		JOIN media_items season ON season.id = episode.parent_id
-		WHERE episode.kind = 'episode' AND season.parent_id = ANY($1)
+		WHERE episode.kind = 'episode' AND season.parent_id = ANY($1)`+episodeFilter+`
 		GROUP BY season.parent_id`, ids)
 	if err != nil {
 		return fmt.Errorf("afleveringen tellen: %w", err)
@@ -451,7 +471,7 @@ func (s *Store) ItemCount(ctx context.Context, libraryID *id.ID, kinds []string)
 	err := s.pool.QueryRow(ctx, `
 		SELECT count(*) FROM media_items i
 		WHERE ($1::uuid IS NULL OR i.library_id = $1)
-		  AND (cardinality($2::text[]) = 0 OR i.kind = ANY($2))`, libraryID, kinds).Scan(&n)
+		  AND (cardinality($2::text[]) = 0 OR i.kind = ANY($2)) AND `+ordinaryItemSQL("i"), libraryID, kinds).Scan(&n)
 	return int(n), err
 }
 

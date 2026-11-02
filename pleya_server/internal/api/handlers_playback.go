@@ -137,7 +137,20 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	var subtitleStream *catalog.Stream
 	var sources []playback.Source
+	hasOrdinary := false
 	for _, v := range item.Versions {
+		if !v.AuxiliaryOnly {
+			hasOrdinary = true
+			break
+		}
+	}
+	for _, v := range item.Versions {
+		// Historical explicit versions remain addressable; an automatic Play
+		// prefers an ordinary source when one exists. A known all-auxiliary item
+		// keeps its existing direct playback behavior (e.g. from history).
+		if wantVersion == nil && hasOrdinary && v.AuxiliaryOnly {
+			continue
+		}
 		if wantVersion != nil && v.ID != *wantVersion {
 			continue
 		}

@@ -138,7 +138,7 @@ const resolutionClass = `CASE
 // voor één facet.
 const (
 	streamOwner      = `CASE WHEN vi.kind = 'episode' THEN se.parent_id ELSE vi.id END`
-	streamOwnerJoins = `JOIN media_versions v ON v.id = st.version_id
+	streamOwnerJoins = `JOIN media_versions v ON v.id = st.version_id AND (` + ordinaryVersionSQL + `)
 		JOIN media_items vi ON vi.id = v.item_id
 		LEFT JOIN media_items se ON se.id = vi.parent_id AND vi.kind = 'episode'`
 )
@@ -157,11 +157,13 @@ func watchPredicate(w WatchFilter, subjectArg int) string {
 	watchedRow := fmt.Sprintf("EXISTS (SELECT 1 FROM watch_states w WHERE w.subject = %s AND w.item_id = %%s AND w.watched)", s)
 	touchedRow := fmt.Sprintf("EXISTS (SELECT 1 FROM watch_states w WHERE w.subject = %s AND w.item_id = %%s AND (w.watched OR w.position_ms > 0))", s)
 
-	epExists := "EXISTS (SELECT 1 FROM media_items se JOIN media_items e ON e.parent_id = se.id WHERE se.parent_id = i.id)"
-	epNotWatched := fmt.Sprintf(`EXISTS (SELECT 1 FROM media_items se JOIN media_items e ON e.parent_id = se.id
-		WHERE se.parent_id = i.id AND NOT %s)`, fmt.Sprintf(watchedRow, "e.id"))
-	epTouched := fmt.Sprintf(`EXISTS (SELECT 1 FROM media_items se JOIN media_items e ON e.parent_id = se.id
-		WHERE se.parent_id = i.id AND %s)`, fmt.Sprintf(touchedRow, "e.id"))
+	// Compute show owners once rather than rescan all episodes per outer show.
+	// Non-null parents preserve EXISTS' two-valued behavior for metadata-only rows.
+	ordinary := ordinaryItemSQL("e")
+	episodeOwners := "SELECT se.parent_id FROM media_items se JOIN media_items e ON e.parent_id=se.id WHERE se.parent_id IS NOT NULL AND " + ordinary
+	epExists := "i.id IN (" + episodeOwners + ")"
+	epNotWatched := fmt.Sprintf("i.id IN (%s AND NOT %s)", episodeOwners, fmt.Sprintf(watchedRow, "e.id"))
+	epTouched := fmt.Sprintf("i.id IN (%s AND %s)", episodeOwners, fmt.Sprintf(touchedRow, "e.id"))
 
 	switch w {
 	case WatchUnwatched:

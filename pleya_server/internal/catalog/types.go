@@ -68,6 +68,7 @@ type File struct {
 	StorageLocationID id.ID
 	RelativePath      string
 	Role              FileRole
+	AuxiliaryKind     string
 	VersionID         *id.ID
 	ItemID            *id.ID
 	PartIndex         int
@@ -149,6 +150,8 @@ type Version struct {
 	BitrateBps *int64
 	FileCount  int
 	Streams    []Stream
+	// Internal source eligibility; never a wire field or an authorization rule.
+	AuxiliaryOnly bool
 }
 
 // Stream is één spoor, ingebed of los.

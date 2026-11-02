@@ -112,10 +112,10 @@ func (s *Store) RecomputeVersionDuration(ctx context.Context, versionID id.ID) e
 // InsertFile legt een nieuw ontdekt bestand vast.
 func (s *Store) InsertFile(ctx context.Context, f *File) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO media_files (id, storage_location_id, relative_path, role, size_bytes, mtime_unix, inode, scan_signature)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		INSERT INTO media_files (id, storage_location_id, relative_path, role, size_bytes, mtime_unix, inode, scan_signature, auxiliary_kind)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		f.ID, f.StorageLocationID, f.RelativePath, string(f.Role),
-		f.SizeBytes, f.MtimeUnix, f.Inode, nullString(f.Signature))
+		f.SizeBytes, f.MtimeUnix, f.Inode, nullString(f.Signature), nullString(f.AuxiliaryKind))
 	if err != nil {
 		return fmt.Errorf("bestand %s vastleggen: %w", f.RelativePath, err)
 	}
