@@ -34,7 +34,7 @@ bool _needsFixture(Scenario scenario) =>
     [...scenario.setup, ...scenario.steps].any((s) => _fixtureVerbs.contains(s.verb));
 
 /// A second fixture server, for a scenario with two servers at once (unified,
-/// DEC-XXX). Started only when a scenario names it, with its own server id so
+/// DEC-192). Started only when a scenario names it, with its own server id so
 /// the app sees two servers and not one twice.
 const Set<String> _secondFixtureVerbs = {'seed_second', 'fixture_mutate_second'};
 

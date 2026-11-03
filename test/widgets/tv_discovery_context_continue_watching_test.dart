@@ -17,7 +17,7 @@ import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import '../test_helpers/golden.dart';
 import '../test_helpers/tv_discovery_fixtures.dart';
 
-/// The focus line of the tvOS Verder kijken row (A-06, DEC-XXX Verder kijken):
+/// The focus line of the tvOS Verder kijken row (A-06, DEC-177 Verder kijken):
 /// the row says `Nieuwe aflevering` or `Nieuw seizoen` for the same provable
 /// cases as the cards and Top Shelf, and `Volgende aflevering` otherwise.
 void main() {

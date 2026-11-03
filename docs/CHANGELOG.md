@@ -51,7 +51,7 @@ DEC-XXX (Eén titel over servers heen), Roadmap A-07, op branch `feat/unified-on
 
 Dezelfde serie op Plex en Pleya Server stond twee keer in Series, Films, Zoeken, Home en Verder kijken,
 omdat DEC-063 Pleya Server uit elke samenvoeging hield (`_neverMergedBackends`) en de server geen
-nummers doorgaf. DEC-XXX (Pleya Server in unified), Roadmap A-07, vervangt dat voor Pleya Server; Pleya Share blijft apart.
+nummers doorgaf. DEC-192 (Pleya Server in unified), Roadmap A-07, vervangt dat voor Pleya Server; Pleya Share blijft apart.
 
 - Server: `Item.external_ids {tmdb}` voor een geslaagde match, anders `null`; additief optioneel
   antwoordveld, openapi, protocol 9.4a, fixture, web-types opnieuw gegenereerd.

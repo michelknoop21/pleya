@@ -74,7 +74,7 @@ de bestaande HTTP-stack (`pleya_share_aware.dart`). Volgorde: LAN -> Aware;
 relaystap over. Pleya Share opent zo geen verbinding met `ice.pleya.app`. De relaycode en de
 `relay`-parameter in de QR blijven bestaan: Wi-Fi Aware herkent de host aan dezelfde id.
 Watch Together heeft een eigen service (`watch_together_peer_service.dart`) en is niet geraakt.
-Zie [DEC-XXX](DECISIONS.md) voor het besluit.
+Zie [DEC-176](DECISIONS.md) voor het besluit.
 
 Twee metingen van 11 oktober 2026 liggen eronder.
 

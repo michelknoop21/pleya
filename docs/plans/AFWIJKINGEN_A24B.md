@@ -106,7 +106,7 @@ Een onafhankelijke review vond één Critical en vijf Important; elk is geverifi
 - I4: in de Big P-categorie stapt Menu eerst terug uit een conceptprovider (`assistant_settings_screen_test`, scenario `tvos.settings.bigp-inline-back`).
 - I5: een schakelaarrij leest zijn verborgen uitleg als VoiceOver-hint; bij beide schakelaarrijen zat de hint buiten de samengevoegde schakelaarknoop en ging verloren (`settings_row_anatomy_test`).
 - M5: koraal als tekst is in Licht `#AD412E` (4,5:1 op kaart, pagina en `#F1E8E3`); de schakelaar houdt `#C94E3C`.
-- M1 tot en met M3: DEC-XXX en de pariteitstabel zeggen nu wat waar is over automation-ids, testnamen en bronnen per profiel.
+- M1 tot en met M3: DEC-182 en de pariteitstabel zeggen nu wat waar is over automation-ids, testnamen en bronnen per profiel.
 
 Vervolgpunten, niet in deze PR: M4 (een rij "…-bronnen beheren" verschijnt ook als alleen een ander profiel die bron heeft en opent dan een lege lijst), M6 (enkele bevestigingsdialogen in Instellingen tonen het monoTheme-palet), M7 (de verwijderkiezer voor een eigen rij opent op TV zonder focus; de Big P-categorie trekt na SELECT de focus naar zich toe), M8 (`settings_section.dart` is 540 regels).
 

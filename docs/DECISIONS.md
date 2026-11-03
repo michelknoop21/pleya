@@ -55,7 +55,7 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 ## DEC-005: Trakt inbound en ambient trailer-previews uitstellen
 
 **Date:** 2026-07-03
-**Status:** accepted; het inlezen van Trakt-historie en -watchlist is vervangen door het Trakt-besluit DEC-XXX (hieronder, "DEC-005 voor Trakt teruggedraaid"). Trakt-aanbevelingen en -trending en de ambient trailer-previews blijven uitgesteld
+**Status:** accepted; het inlezen van Trakt-historie en -watchlist is vervangen door het Trakt-besluit DEC-175 (hieronder, "DEC-005 voor Trakt teruggedraaid"). Trakt-aanbevelingen en -trending en de ambient trailer-previews blijven uitgesteld
 **Context:** Het oorspronkelijke plan was A+B+Trakt-inbound plus trailer-autoplay op de billboard.
 **Decision:** Trakt read-endpoints (`recommendations/trending/popular`) zijn toegevoegd, maar de mapping-naar-bibliotheek en de rijen zijn uitgesteld: Trakt is dormant zonder Michels keys en de fuzzy matching heeft live data nodig om te tunen. Ambient trailer-previews (singleton mpv-player) zijn uitgesteld omdat de mpv-lifecycle + TV-perf + audio-focus op device getest moeten worden en niet veilig ongetest vlak vóór een review te shippen zijn.
 **Consequences:** Beide zijn post-build follow-ups. De read-endpoints staan klaar zodra keys geconfigureerd zijn.
@@ -596,7 +596,7 @@ Wat bewust open blijft staan:
 
 *Afbakening tegen [DEC-020](#dec-020).* DEC-020 legt vast dat watchlist-verwijdering een titel uit **alle** `WatchlistMembership`-records tegelijk haalt, zonder bronkeuze — dat blijft ongewijzigd. De source picker uit hoofdstuk 14 introduceert géén bronkeuze voor verwijderen uit de watchlist. De picker geldt uitsluitend voor: availability tonen (hoofdstuk 14.7/14.8), een item openen, de detailpagina met source switching (hoofdstuk 15), en afspelen. Watchlist-add/-remove, de partially-failed-afhandeling en de ordinale bronvolgorde uit DEC-020 lopen buiten de unified-picker om.
 
-*Cross-server mergen van Pleya Server, local en Pleya Share.* Zoals hoofdstuk 11 en 33.6 (conflictpunt 3) al specificeren: een `UnifiedMediaGroup` mag een Pleya Server-, local- of Pleya Share-bron als **single-source** groep bevatten, maar die bronnen worden **niet** cross-server gemerged met Plex- of Jellyfin-bronnen, noch onderling met elkaar. Waar de goedgekeurde mockups "Emby" tonen is dat te lezen als Pleya Server of Pleya Share. *Bijgesteld door [DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend):* Emby bestaat sinds oktober 2026 als variant van de Jellyfin-backend en merget zoals Jellyfin. *Bijgesteld door [DEC-XXX](#dec-xxx-pleya-server-voegt-mee-in-de-unified-bibliotheek-op-bewezen-providernummers):* Pleya Server merget sinds 29 oktober 2026 op bewezen providernummers; de local-uitzondering (Pleya Share) blijft.
+*Cross-server mergen van Pleya Server, local en Pleya Share.* Zoals hoofdstuk 11 en 33.6 (conflictpunt 3) al specificeren: een `UnifiedMediaGroup` mag een Pleya Server-, local- of Pleya Share-bron als **single-source** groep bevatten, maar die bronnen worden **niet** cross-server gemerged met Plex- of Jellyfin-bronnen, noch onderling met elkaar. Waar de goedgekeurde mockups "Emby" tonen is dat te lezen als Pleya Server of Pleya Share. *Bijgesteld door [DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend):* Emby bestaat sinds oktober 2026 als variant van de Jellyfin-backend en merget zoals Jellyfin. *Bijgesteld door [DEC-192](#dec-192-pleya-server-voegt-mee-in-de-unified-bibliotheek-op-bewezen-providernummers):* Pleya Server merget sinds 29 oktober 2026 op bewezen providernummers; de local-uitzondering (Pleya Share) blijft.
 **Consequences:** DEC-023, DEC-002 en DEC-020 blijven allemaal `accepted` en worden niet op `superseded` gezet: dit is per paragraaf een partiële supersede/afbakening, geen vervanging van de hele beslissing. Toekomstige lezers van DEC-002 moeten de kleurwaarden hier lezen, niet de oorspronkelijke hexcodes; toekomstige lezers van DEC-023 moeten voor tvOS naar hoofdstuk 6/7 van het unified-plan, voor mobiel blijft DEC-023 zelf de bron. De zes architectuurbesluiten hierboven zijn vanaf nu bindend voor elke fase van Pleya Unified TV 2026 en worden, net als de rest van dit besluit, niet per fase herwogen — een latere fase die een van deze punten wil heropenen heeft een nieuw ADR nodig, geen stille afwijking in code of plan.
 
 
@@ -4338,7 +4338,7 @@ Big P antwoordde op "wie heeft de afgelopen dagen het meest gekeken?" bij Pleya 
 
 Genummerd als DEC-144 bij het samenvoegen met main, waar DEC-119 al twee keer vergeven was. De commits 16428415, 80bb0706 en 199f88ab noemen dit besluit nog DEC-119.
 
-Aangevuld op 16 oktober 2026 door DEC-XXX (Verder kijken-volgorde): een volgende aflevering is alleen nog "nooit oud" als het een nieuwe aflevering of een nieuw seizoen is, en de statusregel kent `Nieuwe aflevering` en `Nieuw seizoen`.
+Aangevuld op 16 oktober 2026 door DEC-177 (Verder kijken-volgorde): een volgende aflevering is alleen nog "nooit oud" als het een nieuwe aflevering of een nieuw seizoen is, en de statusregel kent `Nieuwe aflevering` en `Nieuw seizoen`.
 
 4 oktober 2026. Mockups 38 A, 38 C en 22 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`),
 beoordeeld en vrijgegeven door Michel dezelfde dag. Dit is fase 1 van de overzichtsronde; het
@@ -4535,7 +4535,7 @@ Een titel die op desktop verborgen is kan terugkomen als de representatieve bron
 samengevoegde titel wisselt; dat lost zich op zodra desktop unified rijen tekent. De focusbare
 Alles-ingang bij de TV-rijtitel en de 16:9-rustvorm uit 38 A en D wachten op een eigen ronde.
 
-## DEC-XXX: MPVKit komt uit een eigen fork, met een teardown-fix in de avfoundation-audio-output
+## DEC-174: MPVKit komt uit een eigen fork, met een teardown-fix in de avfoundation-audio-output
 
 Build 332 crashte op tvOS bij een wissel naar AirPods tijdens het afspelen (`EXC_BREAKPOINT` in
 `_dispatch_sync_f`, crashrapport `Runner-2026-10-05-120055.ips`). Twee threads tegelijk: de
@@ -4649,7 +4649,7 @@ zijn in dezelfde commit bijgewerkt; de taakstatus en de tellers staan niet ander
 een vrijgave maakt geen taak af. De volgorde is vast: eerst het ontwerp van het contractvenster
 voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.
 
-## DEC-XXX: DEC-005 voor Trakt teruggedraaid, Trakt inlezen komt terug als BP-07 achter een poort
+## DEC-175: DEC-005 voor Trakt teruggedraaid, Trakt inlezen komt terug als BP-07 achter een poort
 
 **Date:** 2026-10-11 (punt 1, 2 en 4: besluit van Michel van 5 oktober 2026, `docs/big-p-behaviour-contract.md` besluit 2; punt 3 is een aanscherping uit de planreview van 11 oktober die door het poortresultaat niet is ingegaan; punt 5 volgt uit het poortresultaat)
 **Status:** accepted
@@ -4664,7 +4664,7 @@ voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.
 
 **Consequences:** BP-07 staat op "wacht op Trakt-poort, Michel moet activeren"; er is geen code of branch voor gebouwd. De activatie kan alleen Michel doen. De bouw (leeskant via de bestaande provider-rebind, mapping op `ExternalIds`, Pleya Server als vastgelegd capaciteitsgat omdat die geen externe id's levert) krijgt een eigen adversariële review en volgt de poort.
 
-## DEC-XXX: Pleya Share is alleen lokaal, de internetrelay staat uit
+## DEC-176: Pleya Share is alleen lokaal, de internetrelay staat uit
 
 **Date:** 2026-10-11
 **Status:** accepted
@@ -4672,7 +4672,7 @@ voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.
 **Decision:** `PleyaShareRelay.enabled` staat op `false`. De host start geen relay-listener en de guest slaat de relaystap over bij verbinden en bij QR-pairing. De relaycode blijft staan, net als de `relay`-id in de QR, die Wi-Fi Aware gebruikt om de host te herkennen. Watch Together is niet gewijzigd.
 **Consequences:** Delen tussen verschillende netwerken vervalt; handleiding, site en de uitleg in de app noemen het niet meer. Een guest die de host niet lokaal bereikt, toont de opgeslagen catalogus en probeert het lokaal opnieuw. DEC-006 blijft `accepted` en wordt niet op `superseded` gezet: dit is een partiële supersede van alleen het relaydeel, de byte-pipe-keuze geldt onverkort voor Wi-Fi Aware. De eis aan `ice.pleya.app` uit DEC-006 (frames van ongeveer 90 KB) is hiermee van tafel. De hardwareronde met iPhone-hotspot, vergrendelde host en datateller staat open, zie [PLEYA_SHARE](PLEYA_SHARE.md#open-hardware).
 
-## DEC-XXX: Verder kijken heeft één volgorde, en alleen een nieuwe aflevering of een nieuw seizoen gaat voor ouderdom
+## DEC-177: Verder kijken heeft één volgorde, en alleen een nieuwe aflevering of een nieuw seizoen gaat voor ouderdom
 
 16 oktober 2026, besluit van Michel. Vult DEC-144 aan; hoofdstuk 11.8 van `docs/tvos-unified-experience.md` (groeperen op exacte aflevering) blijft ongewijzigd.
 
@@ -4691,7 +4691,7 @@ De laatste kijkdatum van de serie komt uit Jellyfin en Emby (`DateCreated` in Ne
 
 Het label staat op Home, in de overzichten en in Top Shelf (contextregel, achteraan). Android TV Watch Next en iOS-widgets krijgen het bewust niet: ze volgen de lijstvolgorde, maar een eigen labelweergave vraagt platformspecifiek werk dat niet bij deze wijziging past. Bewust niet gebouwd: series samenvoegen over servers heen. Een voortgang per aflevering blijft de eenheid (11.8).
 
-## DEC-XXX: Alle ontwikkeling is unified-first, met Pleya Server voorbereid en niet volledig
+## DEC-178: Alle ontwikkeling is unified-first, met Pleya Server voorbereid en niet volledig
 
 **Date:** 2026-10-17
 **Status:** accepted. Productbesluit van Michel op 10 oktober 2026 ("zorg ook dat unified de basis is voor alle ontwikkelingen"), met de verduidelijking over Pleya Server van dezelfde dag; bindend gemaakt op 17 oktober 2026 via #218. De regel zelf staat in [`docs/ROADMAP.md#unified-first`](ROADMAP.md#unified-first); dit record legt het besluit en de afbakening vast en herhaalt de regel niet.
@@ -4783,7 +4783,7 @@ hoofdstuk 3). De velden zijn getoetst met `check_protocol.sh`, `verify-protocol.
 Dart-parser. De TMDB-sleutel staat als `PLEYA_SERVER_TMDB_KEY` in de omgeving; zonder sleutel verandert er
 niets aan het gedrag.
 
-## DEC-XXX: Playback Handoff gaat over de Companion Remote-verbinding en speelt als expliciete startpositie
+## DEC-179: Playback Handoff gaat over de Companion Remote-verbinding en speelt als expliciete startpositie
 
 **Date:** 2026-10-19
 **Status:** accepted; northstar `docs/assets/playback-handoff/` (45-a tot en met 45-t2) goedgekeurd door Michel op 19 oktober 2026, ter vervanging van het eerste voorstel
@@ -4961,7 +4961,7 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 
 
 
-## DEC-XXX: tvOS brede bibliotheek met volgende rij als doorkijk
+## DEC-180: tvOS brede bibliotheek met volgende rij als doorkijk
 
 **Date:** 2026-10-22
 **Status:** accepted (Michel)
@@ -4970,7 +4970,7 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 **Decision:** De bibliotheekcatalogus (Alle films/series en dezelfde gedeelde catalogusroute voor een bron of Alles bekijken) gebruikt op standaarddensity het brede raster, met zes grote posters op het TV-referentiecanvas. De actieve rij blijft volledig zichtbaar; een volgende rij mag deels zichtbaar zijn. De dichtheidsvoorkeur blijft werken. De gemeenschappelijke TV-kaart krijgt vaste extra ruimte tussen art/focusring en titel; kaarten verschuiven niet bij focus.
 **Consequences:** Dit vervangt voor de catalogus de eerdere eis van twee volledige rijen uit A06B-ROOM1. Andere rasters behouden hun expliciete tweerijen-fit. Gedeelde kaartafstand en veilige zijmarges gelden ook daar; hun bestaande acties, metadata, focus en rechten blijven behouden. Unified impact: alleen gedeelde TV-presentatie, geen leverancierspad, bron-/rechtensamenvoeging of backendwijziging. TestFlight en simulatorbewijs zijn geen fysieke Apple TV-acceptatie.
 
-## DEC-XXX: Big P is eigen werk van Michel en valt niet onder de GPL
+## DEC-181: Big P is eigen werk van Michel en valt niet onder de GPL
 
 **Date:** 2026-10-25
 **Status:** accepted (Michel)
@@ -5042,7 +5042,7 @@ Migratie `0019_transcode_sessions.sql` (de masterlijst noemde `0017`, dat was be
 8. Faalpaden: `storage.full` (volle schijf, ook via `writeInternal` op elk endpoint), `server.database_unavailable` (nieuw, 503, herhaalbaar), `playback.transcode_failed` (crashende omzetter) en `playback.file_corrupt` (nieuw, 422): mislukt een omzetting, dan beslist een tweede ffprobe van de bron of het bestand stuk is.
 **Consequences:** Venster 7 krijgt vijf operaties (tachtig in totaal), matrixregels 66 tot en met 70, capability `backups` en vijf codes in bestaande domeinen (`server.maintenance`, `server.database_unavailable`, `server.backup_busy`, `server.backup_not_restorable`, `playback.file_corrupt`); geen nieuw foutdomein. Niet gebouwd uit J.5c: `POST /server/maintenance-mode` en `Server.upgrade{}`; de onderhoudsmodus bestaat alleen tijdens een restore, en de upgrade-informatie hoort bij scherm 35. Bekende beperkingen: na een restore is de geschiedenis van hersteltests van vóór de restore weg; de hersteltest heeft het recht `CREATEDB` nodig; de failure-domain-waarschuwing vergelijkt alleen apparaatnummers; een back-up met geheimen is zonder de wachtzin niet volledig terug te zetten.
 
-## DEC-XXX: A-24b bouwt Instellingen en Mijn Pleya na volgens de northstars, met de groepen van de borden
+## DEC-182: A-24b bouwt Instellingen en Mijn Pleya na volgens de northstars, met de groepen van de borden
 
 **Date:** 2026-10-25
 **Status:** accepted (Michel, ontwerpkeuzes 24 oktober 2026 en het A-24b-pakket)
@@ -5134,7 +5134,7 @@ of externe/publicatie naar App Review.
 **Consequences:** Dit vervangt het TV-deel van het A-24b-besluit voor Mijn Pleya (het besluit "A-24b bouwt Instellingen en Mijn Pleya na volgens de northstars": de Editorial-indeling op Apple TV, de rechterkolom van 440 pt en de twee titelregels op een kijklijstkaart). Het iPhone-deel blijft van kracht. Instellingen is op TV geen geneste route van Mijn Pleya meer maar een eigen bestemming; de Instellingen-subpagina's blijven geneste routes binnen de shell zoals [PB-1](tvos-redesign-implementatiecontract.md#pb-1-topnav-blijft-staan-op-tv-contentroutes) ze opent, nu onder Instellingen in plaats van onder Mijn Pleya. De bestemming Instellingen en haar subpagina's houden de inklapbare balk van [DEC-166](#dec-166-instellingen-op-apple-tv-zonder-vaste-bovenbalk-en-de-rail-past-in-het-venster): de ingang staat in het topmenu, op de pagina's zelf schuift de balk weg en UP haalt hem terug. De oude Beheer-tegels, de profielregel en de voetregel verdwijnen; elke route uit die tegels heeft een ingang in `pariteit-v4.csv`. Afwijkingen van de borden staan in [`docs/plans/AFWIJKINGEN_A24B.md`](plans/AFWIJKINGEN_A24B.md) onder "Mijn Pleya op Apple TV, v4". Simulatorbewijs is geen hardware-acceptatie; de Siri Remote-controle op een toestel staat open in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen tvOS-presentatie en navigatie, geen backend, protocol of datamodel.
 
 
-## DEC-XXX: P5 en PS-15 vrijgegeven voor afronding van Pleya Server en apps
+## DEC-183: P5 en PS-15 vrijgegeven voor afronding van Pleya Server en apps
 
 **Date:** 2026-10-29
 **Status:** accepted. Michel koos expliciet “P5 en PS-15 vrijgeven” tijdens de uitvoering van het gezamenlijke plan.
@@ -5143,7 +5143,7 @@ of externe/publicatie naar App Review.
 
 **Consequences:** P5 en de PS-15-fasevrijgave zijn geen open productbesluiten meer. Contractcompatibiliteit, S3-afhankelijkheden, fysieke acceptatie en de overige releasepoorten blijven hun eigen bewijs vragen. Het DEC-nummer wordt bij merge toegewezen.
 
-## DEC-XXX: playbackvenster voor kwaliteit en audiokeuze vrijgegeven
+## DEC-184: playbackvenster voor kwaliteit en audiokeuze vrijgegeven
 
 **Status:** geaccepteerd door Michel op 29 oktober 2026.
 
@@ -5153,7 +5153,7 @@ en een stabiel audiospoor-ID, aparte capabilities en effectieve antwoordvelden,
 planner-/ffmpeg-consumptie, validatie en compatibiliteitsbewijs. Alleen dit venster
 is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
 
-## DEC-XXX: ondertitelvenster voor HLS-levering en selectie vrijgegeven
+## DEC-185: ondertitelvenster voor HLS-levering en selectie vrijgegeven
 
 **Status:** geaccepteerd door Michel op 29 oktober 2026.
 
@@ -5170,7 +5170,7 @@ Nummer volgt bij integratie.
 
 Michel koos “Migratie eerst afbakenen”. Werk eerst de noodzakelijke scope, identiteit-/accountkoppeling, conflictregels, proefimport, herstelbaarheid en volgorde ten opzichte van S15.5 uit in een afzonderlijk voorstel. Dit is geen keuze om leeg te beginnen en geen vrijgave van PS-12 of een import. S15.9 blijft open totdat het voorstel en het definitieve besluit over de kijkgeschiedenis vaststaan. De bestaande PS-12-vrijgave na S15 moet vóór uitvoering expliciet met de S15.5-gate worden uitgelijnd; dit besluit verplaatst die vrijgave niet stilzwijgend. Productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
 
-## DEC-XXX: ondertitelvenster voor doorlopende voorbereiding van ingebedde sporen vrijgegeven
+## DEC-186: ondertitelvenster voor doorlopende voorbereiding van ingebedde sporen vrijgegeven
 
 **Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 1 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
 
@@ -5185,7 +5185,7 @@ de kijker dat spoor gekozen houdt; Flutter geeft mpv daarvoor een lokaal tijdeli
 plaats van de URL. Alleen dit venster is geopend; productie, merge en release blijven
 afzonderlijk. Nummer volgt bij integratie.
 
-## DEC-XXX: venster voor persoonlijke gegevens vrijgegeven
+## DEC-187: venster voor persoonlijke gegevens vrijgegeven
 
 **Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 2 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
 
@@ -5203,7 +5203,7 @@ los hoeft te onderhandelen. Geen veld hernoemd, geen enum uitgebreid, geen verpl
 Regel 77, 78 en 79 staan in de matrix van hoofdstuk 16.4. Alleen dit venster is geopend; productie,
 merge en release blijven afzonderlijk. Nummer volgt bij integratie.
 
-## DEC-XXX: venster voor de velden van downloads en bibliotheken vrijgegeven
+## DEC-188: venster voor de velden van downloads en bibliotheken vrijgegeven
 
 **Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 3 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
 
@@ -5219,7 +5219,7 @@ toont dan "Toestel onbekend". "Bekeken door" blijft klasse admin: wat een huisge
 Ruimte per toestel valt buiten dit venster. Alleen dit venster is geopend; productie, merge en
 release blijven afzonderlijk. Nummer volgt bij integratie.
 
-## DEC-XXX: venster voor 429 op /auth/refresh vrijgegeven
+## DEC-189: venster voor 429 op /auth/refresh vrijgegeven
 
 **Status:** geaccepteerd door Michel op 30 oktober 2026, het `429`-deel van besluit 5 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`.
 
@@ -5251,7 +5251,7 @@ tegelijk verversen (lage bevinding in het rapport) is niet opgelost en niet erge
 De opruimjob voor `stream_sessions` ontbrak en draait nu mee in de dagelijkse sessieronde. Alleen dit venster
 is geopend; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
 
-## DEC-XXX: venster voor verzamelingen en afspeellijsten vrijgegeven
+## DEC-190: venster voor verzamelingen en afspeellijsten vrijgegeven
 
 **Status:** geaccepteerd door Michel op 30 oktober 2026, besluit 4 uit `docs/qa/2026-10-30-pleya-windows-docker-report.md`: één venster per onderdeel en S19 eerst. S21 en S16 blijven dicht.
 
@@ -5328,7 +5328,7 @@ het bereik. Het gedrag blijft zoals het is, want het raakt alleen eigen gegevens
 de rol en gaan dicht. Alleen de zin is gewijzigd. Dit zijn twee passages in `pleya-protocol-v1.md`;
 `openapi.yaml` wijzigt niet, en beide operationId's bestonden al.
 
-## DEC-XXX: reviewronde op het ondertitelvenster, de refreshketen en herordenen
+## DEC-191: reviewronde op het ondertitelvenster, de refreshketen en herordenen
 
 **Status:** geaccepteerd door Michel op 31 oktober 2026 ("Fix alles"), op de bevindingen uit de review van de proefmerge. Alleen de drie onderdelen hieronder zijn open; productie, merge en release blijven afzonderlijk. Nummer volgt bij integratie.
 
@@ -5542,7 +5542,7 @@ beschrijving wijzigde, dus de regels van hoofdstuk 3 worden niet geraakt.
 
 **Consequences:** Pleya Server krijgt in Meer acties geen Add to List en geen Add to Playlist / Collection. Afspeellijsten en collecties staan niet in het protocol (G1). Favorieten staan er wel in, maar de kijklijst eist een identiteit die over servers heen geldt (`watchlistKeyForItem`) en een Pleya Server-item draagt geen guid of externe id op de wire; dat oplossen is een protocolwijziging of een besluit over de kijklijst, en hoort niet in A-25. De NAS draait het nieuwe endpoint nog niet: tot de deploy ziet een Pleya Server-gebruiker alleen de eigen regel. Plex-reviews verschijnen alleen op films. Afwijkingen per beeld staan in `docs/design-audits/tvos-detail-2026-10/PARITEITSCHECK.md`.
 
-## DEC-XXX: Pleya Server voegt mee in de unified bibliotheek, op bewezen providernummers
+## DEC-192: Pleya Server voegt mee in de unified bibliotheek, op bewezen providernummers
 
 **Date:** 2026-10-29
 **Status:** accepted (opdracht Michel, 29 en 30 oktober 2026; protocolvenster bekrachtigd op 30 oktober 2026, zie "Keuze" onderaan). Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit besluit in verwijzingen DEC-XXX (Pleya Server in unified).
@@ -5576,7 +5576,7 @@ beschrijving wijzigde, dus de regels van hoofdstuk 3 worden niet geraakt.
 
 **Gevolg:** Wijzigen op de detailpagina vervangt de route niet meer zolang de hoofdbron de pagina houdt. Menu-acties op die pagina (verwijderen, metadata) werken op de gekozen bron, want de bron die de pagina toont is niet per se de bron die de kijker koos. Rechten worden per beslissing getoetst: een verborgen server, een verborgen bibliotheek of een auth-fout wordt niet aangesproken, en een kinderprofiel komt voor een ontbrekende aflevering niet bij een derde server. Downloaden op de detailpagina blijft op de hoofdbron; een externe speler schrijft niet door naar andere bronnen. Regels staan in hoofdstuk 4.6, 13.2 en 15. **Unified impact:** gedeelde eigenaar is `UnifiedTitlePlayback` met `SourceEpisodeIndex`, `UnifiedProgressMirror`, `UnifiedTitleDiscovery` en de wachtrijrijen `mirroredProgress`, `mirroredWatched` en `mirroredUnwatched`; gekoppeld zijn alle `MediaServerClient`-backends via `fetchPlayableDescendants`, zonder protocolwijziging.
 
-## DEC-XXX: iPad Home krijgt liggend de tvOS-billboard en staand de iPhone-kaart
+## DEC-193: iPad Home krijgt liggend de tvOS-billboard en staand de iPhone-kaart
 
 **Date:** 2026-10-31
 **Status:** accepted (Michel, 31 oktober 2026)

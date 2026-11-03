@@ -1,6 +1,6 @@
 name: ios.unified.two-servers
 target: ios-sim
-# Unified with two servers at once (DEC-XXX). Two Pleya-protocol fixture
+# Unified with two servers at once (DEC-192). Two Pleya-protocol fixture
 # servers, each with its own server id: A is signed in through the normal
 # sign-in flow, B is a connection that already exists (`connections_seed`).
 # Both hold Severance under TMDB 95396, under another title and year, and a

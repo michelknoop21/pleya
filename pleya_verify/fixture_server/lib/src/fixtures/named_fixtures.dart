@@ -866,7 +866,7 @@ void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
   );
 }
 
-/// One half of a two-server unified scenario (DEC-XXX). Side `a` and side `b`
+/// One half of a two-server unified scenario (DEC-192). Side `a` and side `b`
 /// both hold Severance under the same TMDB number, but with another title and
 /// year, so only identity can fold them into one card; each side also holds a
 /// Battlestar Galactica with its own number (the 1978 series and the 2004
