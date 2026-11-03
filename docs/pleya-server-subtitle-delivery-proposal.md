@@ -1,6 +1,6 @@
 # S14/S18: ondertitels behouden bij HLS
 
-Status: geaccepteerd; Michel heeft dit afgebakende venster op 29 oktober 2026 expliciet geopend (DEC-XXX).
+Status: geaccepteerd; Michel heeft dit afgebakende venster op 29 oktober 2026 expliciet geopend (DEC-185).
 
 Direct play bevat de ingebedde sporen. De bestaande HLS-uitvoerder gebruikt
 `-sn`; `/subtitles/{id}` levert uitsluitend sidecars. Daardoor verdwijnt een

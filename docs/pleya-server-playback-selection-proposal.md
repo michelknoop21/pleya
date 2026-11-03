@@ -1,6 +1,6 @@
 # S14/S17/S18: expliciete kwaliteit en audiokeuze
 
-Status: geaccepteerd en afgebakend venster geopend door Michel op 29 oktober 2026 (DEC-XXX).
+Status: geaccepteerd en afgebakend venster geopend door Michel op 29 oktober 2026 (DEC-184).
 
 De publieke appinterface draagt al `qualityPreset`, `selectedAudioStreamId` en
 `selectedMediaSourceId`. Alleen de stabiele versie past in het bestaande

@@ -1,7 +1,7 @@
 # Big P: gedragscontract
 
 Status: akkoord van Michel op 5 oktober 2026, met de preciseringen hieronder verwerkt. Roadmap: BP-00. Uitgangsstand: `github/main` 1b93c50d (5 oktober 2026).
-Besluiten: `DEC-XXX` (intent-laag vóór de model-lus) en `DEC-XXX` (DEC-005 terugdraaien: Trakt inlezen komt terug via BP-07). Nummers volgen bij de merge.
+Besluiten: `DEC-XXX` (intent-laag vóór de model-lus) en `DEC-175` (DEC-005 terugdraaien: Trakt inlezen komt terug via BP-07). Nummers volgen bij de merge.
 
 ## Doel
 
