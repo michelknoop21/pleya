@@ -104,12 +104,13 @@ describe('Hero', () => {
 
   it('valt terug op de poster als er geen backdrop is', async () => {
     const loader = vi.fn().mockResolvedValue(new Blob(['x']));
-    render(Hero, {
+    const { container } = render(Hero, {
       props: { item: movie({ artwork: { poster_id: 'p1' } }) },
       context: new Map([[ARTWORK_LOADER_KEY, loader]])
     });
     await vi.waitFor(() => expect(loader).toHaveBeenCalled());
     expect(loader.mock.calls[0]?.[0]).toBe('p1');
+    expect(container.querySelector('.hero')).toHaveClass('hero--poster');
   });
 
   it('tekent zonder artwork het paneel, zonder beeldvlak en zonder waas', () => {

@@ -1,0 +1,16 @@
+section.hero.hero--cinema { margin: 0; border-radius: 0; aspect-ratio: auto; height: clamp(470px, 43vw, 680px); background: var(--bg); }
+section.hero.hero--cinema .hero__body { left: var(--inset); right: 32px; bottom: 60px; max-width: 600px; }
+section.hero.hero--cinema .hero__title { font-family: var(--font-sans); font-weight: 700; font-size: clamp(32px, 3.4vw, 56px); letter-spacing: -.02em; line-height: 1.1; text-transform: none; }
+section.hero.hero--cinema .hero__scrim { background: linear-gradient(90deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 68%, transparent) 28%, transparent 70%), linear-gradient(0deg, var(--bg), transparent 55%); }
+section.hero.hero--cinema .hero__summary { max-width: 58ch; }
+@media(max-width:899px) {
+ section.hero.hero--cinema { height: 490px; margin: 0 16px 48px; border-radius: 16px; }
+ section.hero.hero--cinema .hero__body { left:20px; right:20px; bottom:24px; text-align:center; max-width:none; }
+ section.hero.hero--cinema .hero__title {font-size:30px;padding:0;}
+ section.hero.hero--cinema .hero__scrim {background:linear-gradient(0deg,var(--bg) 0%,color-mix(in srgb,var(--bg) 80%,transparent) 30%,transparent 85%);}
+ section.hero.hero--cinema .hero__summary {font-size:13px;line-height:1.5;}
+}
+
+.skp.skp--cinema .skel--hero { margin:0; aspect-ratio:auto; height:clamp(470px,43vw,680px); border-radius:0; }
+.skp.skp--cinema .skp__rails { padding-top:0; position:relative; margin-top:-24px; }
+@media(max-width:899px) { .skp.skp--cinema .skel--hero {height:490px; margin:0 16px 48px; border-radius:16px;} }

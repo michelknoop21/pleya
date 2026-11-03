@@ -69,8 +69,7 @@
 
   // De loader komt uit de context (galerij, tests) of is de echte client.
   const contextLoader = getArtworkLoader();
-  // `shape` en `role` veranderen niet gedurende het leven van de component.
-  const ladderRole: ArtworkRole = untrack(() =>
+  const ladderRole: ArtworkRole = $derived(
     role ?? (shape === 'poster' ? 'poster' : 'backdrop')
   );
 
@@ -174,7 +173,11 @@
   class:artwork--flat={flat}
 >
   {#if objectUrl}
-    <img src={objectUrl} {alt} decoding="async" />
+    <img src={objectUrl} {alt} decoding="async" onerror={(event) => {
+      if (event.currentTarget.getAttribute('src') !== objectUrl) return;
+      release();
+      status = 'error';
+    }} />
   {:else if (status === 'error' || (!artworkId && visible)) && fallback}
     {@render fallback()}
   {:else if status === 'error' || (!artworkId && visible)}

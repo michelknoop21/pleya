@@ -7,6 +7,7 @@
   import '../styles/tokens.css';
   import '../styles/base.css';
 
+  import ConsumerSidebar from '#lib/components/ConsumerSidebar.svelte';
   import TopNav from '#lib/components/TopNav.svelte';
   import MobileHeader from '#lib/components/MobileHeader.svelte';
   import TabBar from '#lib/components/TabBar.svelte';
@@ -61,6 +62,7 @@
   const searchActive = $derived(page.url.pathname.startsWith('/search'));
   // De Beheer-pil alleen voor eigenaar of beheerder (S10.1); in beheer zelf
   // wordt de mobiele kop een terugkop naar de index of naar Pleya.
+  let sidebarCompact = $state(false);
   const inAdmin = $derived(isAdminPath(page.url.pathname));
   const adminBack = $derived.by(() => {
     const href = adminBackHref(page.url.pathname);
@@ -152,8 +154,10 @@
     {@render children()}
   </main>
 {:else}
-  <div class="shell" class:shell--wide={viewport.wide}>
-    {#if viewport.wide}
+  <div class="shell" class:shell--wide={viewport.wide} class:shell--consumer={viewport.wide && !inAdmin} class:shell--compact={sidebarCompact}>
+    {#if viewport.wide && !inAdmin}
+      <ConsumerSidebar {items} {activeId} {showSearch} {searchActive} showAdmin={session.canAdminister} showFavorites={!unreachable && session.capabilities?.favorites === true} favoritesActive={page.url.pathname.startsWith('/server/favorites')} bind:compact={sidebarCompact} />
+    {:else if viewport.wide}
       <TopNav
         {items}
         {activeId}
@@ -201,6 +205,9 @@
     display: flex;
     flex-direction: column;
   }
+
+  .shell--consumer { margin-left: 232px; --inset: 40px; }
+  .shell--consumer.shell--compact { margin-left: 80px; }
 
   .shell__main {
     flex: 1 1 auto;
