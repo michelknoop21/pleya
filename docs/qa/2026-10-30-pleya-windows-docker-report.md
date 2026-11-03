@@ -1,8 +1,21 @@
 # Pleya Server en webclient op Windows Docker, 30 oktober 2026
 
-Status: lokaal bewijs op een tijdelijke stack. Geen push, merge, deployment of echte migratie. De NAS, productie en Plex zijn niet aangeraakt.
+Status: het werk staat op main en in productie, zie "Na de merge". Het testbewijs in dit rapport is lokaal verzameld op een tijdelijke stack; de NAS, productie en Plex zijn tijdens deze test niet aangeraakt.
 
-De eindstand staat onder "Eindstand op 4848e0724". De tabellen daarvoor beschrijven de eerste ronde op `84174b1bb`, voor zover daar niet anders staat.
+"Na de merge" beschrijft waar de code nu staat. Daaronder volgt de eindstand op `4848e0724`. De tabellen daarna beschrijven de eerste ronde op `84174b1bb`, voor zover daar niet anders staat.
+
+## Na de merge
+
+De laatste commit van de branch is `62c14082dbfec150a39d234fe452381c0ac35b91`. Ten opzichte van `4848e0724` kwamen erbij: een schrijfgrens op refreshtokens van 120 plus 2 per seconde, met aparte emmers voor rotaties en herhalingen; migratie `0030` met indexen op `replaced_by` en `session_id`; opruiming die eerst de sessie neemt; en een begrensde loginroute (Argon2-slot van 2, daarna `429` met `Retry-After`, emmer per adres, auditregel pas na het antwoord). Het bewijs op die commit staat in `.build/pleya-completion-evidence/final-62c14082d/` van de worktree `pleya-server-personal`: `internal/api` 364 tests zonder fout of skip, `internal/auth` en `internal/migrate` groen inclusief 24 naar 30, `tabs.spec.ts` 4 van 4 in Chromium.
+
+`62c14082d` is via `4826d5c68` opgenomen in de gezamenlijke kandidaat `4b439ee6f` en kwam met PR #579 (`b74c630da`) op main. Op `d54d27018` zijn CI - Sanity Checks, CI - Server en Web en Pleya Verify geslaagd (afgelezen op 3 november). In run 41461294059 draaide de stap "Run tests" van de job Unit Tests echt, niet overgeslagen door het scopefilter, en die slaagde; dezelfde jobs slaagden op `b74c630da` en op `699026e1b`. De 89 golden-fouten die lokaal op macOS optraden, komen op Linux dus niet voor.
+
+Productie draait volgens de releasestatus sinds 1 november `699026e1b`, op schema 30. Die commit staat op main. Zelf niet op de NAS gecontroleerd.
+
+Open:
+- `PLEYA_SERVER_TRUSTED_PROXIES` ontbreekt volgens de releasestatus in de productie-`.env`. Alle tunnelclients delen dan één adresemmer, en één client met foute wachtwoorden kan de logins van anderen op `429` zetten. Instellen vraagt een NAS-wijziging met eigen akkoord.
+- Terug naar een oudere versie kan alleen via de dump van vóór de upgrade: een oudere binary weigert schema 30. De restore op schema 30 is niet uitgeprobeerd.
+- De besluiten over het refreshvenster en de reviewronde staan op main nog als `DEC-XXX`, samen met twintig andere. Nummeren hoort bij één eigenaar van `docs/DECISIONS.md`.
 
 ## Eindstand op 4848e0724
 
