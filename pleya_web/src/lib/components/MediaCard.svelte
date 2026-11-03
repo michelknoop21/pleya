@@ -32,6 +32,8 @@
 
   interface Props {
     item: Item;
+    /** Display title only; navigation and watch state still belong to item. */
+    title?: string;
     /** Het beeld meteen laden, voor kaarten die altijd in beeld staan. */
     eager?: boolean;
     onHighlight?: (item: Item) => void;
@@ -56,6 +58,7 @@
 
   let {
     item,
+    title,
     eager = false,
     shape: shapeOverride,
     onHighlight,
@@ -114,7 +117,7 @@
       />
     </div>
     <div class="card__caption">
-      <span class="card__title" id="{uid}-title">{item.title}</span>
+      <span class="card__title" id="{uid}-title">{title ?? item.title}</span>
       <span class="card__meta" id="{uid}-meta">{subtitle ?? ''}</span>
     </div>
   </a>

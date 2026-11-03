@@ -21,10 +21,12 @@
   Hij staat om dezelfde reden buiten de bezige container.
 -->
 <script lang="ts">
+  import './consumerHero.css';
   import Skeleton from './Skeleton.svelte';
   import { t } from '../i18n';
 
   interface Props {
+    cinema?: boolean;
     variant?: 'home' | 'grid' | 'detail' | 'compact';
     /** Wat de schermlezer hoort; standaard de gedeelde laadtekst. */
     label?: string;
@@ -32,7 +34,7 @@
     heading?: string | undefined;
   }
 
-  let { variant = 'home', label = t('loading'), heading }: Props = $props();
+  let { cinema = false, variant = 'home', label = t('loading'), heading }: Props = $props();
 
   // Genoeg kaarten om een rij op 1600 en een raster op een groot scherm te
   // vullen; wat buiten beeld valt, kost niets.
@@ -41,7 +43,7 @@
   const railTitles = ['220px', '160px'];
 </script>
 
-<div class="skp skp--{variant}">
+<div class="skp skp--{variant}" class:skp--cinema={cinema}>
   {#if heading}
     <h1 class="visually-hidden">{heading}</h1>
   {/if}

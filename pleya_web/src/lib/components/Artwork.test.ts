@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 
 import Artwork from './Artwork.svelte';
@@ -38,6 +38,15 @@ beforeEach(() => {
 });
 
 describe('Artwork', () => {
+  it('releases an undecodable image and shows the fallback', async () => {
+    artworkBlob.mockResolvedValue(new Blob(['broken image']));
+    const { container } = render(Artwork, { props: { artworkId: 'broken', alt: 'Cover', eager: true } });
+    const image = await screen.findByAltText('Cover');
+    await fireEvent.error(image);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('.artwork__fallback')).not.toBeNull();
+    expect(revoked).toEqual(created);
+  });
   it('haalt de bytes op via de client en hangt ze als object-URL aan het element', async () => {
     artworkBlob.mockResolvedValue(new Blob(['bytes']));
     render(Artwork, { props: { artworkId: 'a1', alt: 'Poster', eager: true } });

@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
-  import { centralVisibleCard } from '#lib/util/visible-card.js';
-  import LibraryAtmosphere from '#lib/components/LibraryAtmosphere.svelte';
+  import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
 
@@ -14,7 +12,7 @@
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import { session } from '#lib/stores/session.svelte.js';
   import { describeError } from '#lib/api/errors.js';
-  import { SORT_OPTIONS, LEGACY_SORT_OPTIONS, isSortOption, type SortOption, type Item, type Facets } from '#lib/api/types.js';
+  import { SORT_OPTIONS, LEGACY_SORT_OPTIONS, isSortOption, type SortOption, type Facets } from '#lib/api/types.js';
   import { emptyPager, loadNext, type PagerState } from '#lib/util/paging.js';
   import { formatCount } from '#lib/util/format.js';
   import { plural, t } from '#lib/i18n/index.js';
@@ -57,38 +55,6 @@
   });
   let pager = $state<PagerState>(emptyPager());
   let sentinel = $state<HTMLDivElement | null>(null);
-  let highlighted = $state<Item | null>(null);
-  let gridHost = $state<HTMLDivElement | null>(null);
-  let highlightTimer: ReturnType<typeof setTimeout> | undefined;
-
-  function highlight(item: Item): void {
-    clearTimeout(highlightTimer);
-    highlightTimer = setTimeout(() => {
-      if (pager.items.some((candidate) => candidate.id === item.id)) highlighted = item;
-    }, 150);
-  }
-
-  function sampleVisible(): void {
-    // Pointer/keyboard selection remains the desktop cursor.
-    if (window.matchMedia('(hover: hover)').matches || !gridHost) return;
-    const cards = Array.from(gridHost.querySelectorAll('li'), (card) => {
-      const rect = card.getBoundingClientRect();
-      return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, id: card.dataset['itemId'] };
-    });
-    const selected = centralVisibleCard(cards, innerWidth, innerHeight);
-    const nearest = pager.items.find((item) => item.id === selected?.id);
-    if (nearest) highlight(nearest);
-  }
-
-  $effect(() => {
-    const items = pager.items;
-    const current = untrack(() => highlighted);
-    highlighted = items.find((item) => item.id === current?.id) ?? items[0] ?? null;
-    let active = true;
-    void tick().then(() => { if (active) sampleVisible(); });
-    return () => { active = false; clearTimeout(highlightTimer); };
-  });
-
   const sortLabels: Record<SortOption, string> = {
     title: t('libraries.sort.title'),
     '-title': t('libraries.sort.-title'),
@@ -207,10 +173,9 @@
 
 <svelte:head><title>{library?.title ?? t('libraries.title')} · {t('app.name')}</title></svelte:head>
 
-<svelte:window onscroll={sampleVisible} onresize={sampleVisible} />
+
 
 <div class="page">
-  <LibraryAtmosphere artworkId={highlighted?.artwork?.backdrop_id ?? highlighted?.artwork?.poster_id} />
   <PageHeader title={library?.title ?? t('libraries.title')} sub={countLabel ?? RESERVED_LINE}>
     {#snippet actions()}
       <div class="page__sort">
@@ -270,8 +235,8 @@
     </StateView>
   {:else}
     {#if pager.items.length > 0}
-      <div bind:this={gridHost}>
-        <MediaGrid items={pager.items} onHighlight={highlight} label={library?.title ?? t('libraries.title')} />
+      <div>
+        <MediaGrid items={pager.items} label={library?.title ?? t('libraries.title')} />
       </div>
     {/if}
 

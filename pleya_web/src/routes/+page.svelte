@@ -1,5 +1,6 @@
 <script lang="ts">
   import HubRail from '#lib/components/HubRail.svelte';
+  import ContinueWatchingRail from '#lib/components/ContinueWatchingRail.svelte';
   import Hero from '#lib/components/Hero.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import StateView from '#lib/components/StateView.svelte';
@@ -9,6 +10,7 @@
   import type { Item } from '#lib/api/types.js';
   import { t } from '#lib/i18n/index.js';
   import { playerHref } from '#lib/player/route.js';
+  import { homeHero } from '#lib/util/homeArtwork.js';
 
   let items = $state<Item[]>([]);
   let continuing = $state<Item[]>([]);
@@ -52,7 +54,7 @@
     return () => controller.abort();
   });
 
-  const hero = $derived(items[0]);
+  const hero = $derived(homeHero(items));
   const empty = $derived(items.length === 0 && continuing.length === 0 && next.length === 0 && recent.every((row) => row.items.length === 0));
 </script>
 
@@ -65,7 +67,7 @@
   "Boeken" boven de lege staat in 13.
 -->
 {#if loading}
-  <SkeletonPage variant="home" heading={t('home.title')} />
+  <SkeletonPage cinema variant="home" heading={t('home.title')} />
 {:else if error}
   <div class="home-page">
     <PageHeader title={t('home.title')} />
@@ -90,11 +92,11 @@
   </div>
 {:else}
   {#if hero}
-    <Hero item={hero} playHref={session.capabilities?.playback_plan === true && (hero.kind === 'movie' || hero.kind === 'episode') && (hero.versions?.length ?? 0) > 0 ? playerHref(hero.id) : undefined} />
+    <Hero cinema item={hero} summary={hero.summary ?? undefined} playHref={session.capabilities?.playback_plan === true && (hero.kind === 'movie' || hero.kind === 'episode') && (hero.versions?.length ?? 0) > 0 ? playerHref(hero.id) : undefined} />
   {/if}
-  <div class="home">
+  <div class="home" class:home--with-hero={Boolean(hero)}>
     {#if !hero}<h1 class="sr-only">{t('home.title')}</h1>{/if}
-    <HubRail title={t('home.continueWatching')} items={continuing} />
+    <ContinueWatchingRail items={continuing} />
     <HubRail title={t('home.nextUp')} items={next} />
     {#each recent as row (row.id)}
       <HubRail title={`${t('home.recentlyAdded')} · ${row.title}`} items={row.items} href={`/libraries/${encodeURIComponent(row.id)}`} />
@@ -109,8 +111,12 @@
     display: flex;
     flex-direction: column;
     gap: var(--section-gap);
-    padding-top: var(--section-gap);
+    padding-top: 0;
+    position: relative;
+
   }
+
+  .home--with-hero { margin-top: -24px; }
 
   /* web.css .page: de inzet van de pagina, 8 boven de kop. */
   .home-page {
