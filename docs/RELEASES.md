@@ -50,6 +50,24 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 431 · 2 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: b74c630da4f0d1e6d6dc2b0cedb65b7d4b48dfab -->
+
+### New
+
+- **A Cinema-style Libraries screen on Apple TV.** My Pleya presents libraries by server, with the existing refresh, ordering and library actions together.
+
+### Fixed
+
+- **The selected film stays in place as more results arrive on Apple TV.** Late catalog updates preserve the selected card's position and focus ring.
+- **Poster changes refresh more reliably.** Catalog and local-library caches recheck visible artwork and renew invalidated image references.
+- **More careful matching between copies on different servers.** Source lookups and caches preserve verified identity and distinguish incomplete results. Older Pleya Servers continue to use their supported legacy capabilities.
+
+### Notes
+
+- This is an internal iOS/tvOS TestFlight build. Pleya Server administration updates are deployed separately.
+
 ## 2.8.1 · build 430 · 1 November 2026 · iPhone and iPad
 
 <!-- commit: c0f5b06d -->
