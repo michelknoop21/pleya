@@ -19,32 +19,20 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 LANES="${*:-ios tvos macos}"
 TIMEOUT="${TESTFLIGHT_LANE_TIMEOUT:-30m}"
 
-# coreutils timeout: `timeout` (linux) of `gtimeout` (brew coreutils op macOS).
-TO="$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || true)"
-[ -n "$TO" ] || echo "WAARSCHUWING: geen (g)timeout gevonden — lanes draaien zonder hang-guard." >&2
-
-# Ruim stale flutter-build processen op: een achtergebleven `flutter build`
-# houdt de flutter-toollock vast en laat de volgende build hangen op
-# "Building ... for device". Dit was de oorzaak van de vorige vastloper.
-pkill -f "flutter_tools.snapshot build" 2>/dev/null || true
-pkill -f "flutter build ios" 2>/dev/null || true
-pkill -f "flutter build macos" 2>/dev/null || true
+# Elke lane gaat door de gedeelde wachtrij voor zwaar werk. Die wacht op andere
+# builds in plaats van ze te stoppen: dit script ruimde vroeger met `pkill`
+# elke `flutter build` op de machine op, ook die van een andere sessie.
+# Andere plek voor de wachtrij: PLEYA_HEAVY=/pad/naar/pleya-heavy.
+HEAVY="${PLEYA_HEAVY:-$HOME/bin/pleya-heavy}"
+[ -x "$HEAVY" ] || { echo "FOUT: wachtrij $HEAVY ontbreekt; zet PLEYA_HEAVY." >&2; exit 1; }
 
 status=""
 for pf in $LANES; do
   lane="${pf}_beta"
   echo "=== $lane (timeout $TIMEOUT) — $(date '+%H:%M:%S') ==="
-  # -k 15: 15s na SIGTERM alsnog SIGKILL. Eigen sessie (setsid indien aanwezig)
-  # zodat de hele proces-tree meegaat bij een hang.
-  if [ -n "$TO" ]; then
-    if command -v setsid >/dev/null 2>&1; then
-      setsid "$TO" -k 15 "$TIMEOUT" fastlane "$lane"
-    else
-      "$TO" -k 15 "$TIMEOUT" fastlane "$lane"
-    fi
-  else
-    fastlane "$lane"
-  fi
+  # De wachtrij begrenst de lane met zijn eigen procesgroep: na de timeout
+  # SIGTERM, 15 s later SIGKILL, en exit 124 zoals coreutils timeout.
+  "$HEAVY" run --label "$lane" --run-timeout "$TIMEOUT" --kill-after 15s -- fastlane "$lane"
   rc=$?
   case "$rc" in
     0)   status="$status ${pf}:ok" ;;
