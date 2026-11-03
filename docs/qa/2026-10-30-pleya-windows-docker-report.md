@@ -15,7 +15,7 @@ Productie draait volgens de releasestatus sinds 1 november `699026e1b`, op schem
 Open:
 - `PLEYA_SERVER_TRUSTED_PROXIES` ontbreekt volgens de releasestatus in de productie-`.env`. Alle tunnelclients delen dan één adresemmer, en één client met foute wachtwoorden kan de logins van anderen op `429` zetten. Instellen vraagt een NAS-wijziging met eigen akkoord.
 - Terug naar een oudere versie kan alleen via de dump van vóór de upgrade: een oudere binary weigert schema 30. De restore op schema 30 is niet uitgeprobeerd.
-- De besluiten over het refreshvenster en de reviewronde staan op main nog als `DEC-XXX`, samen met twintig andere. Nummeren hoort bij één eigenaar van `docs/DECISIONS.md`.
+- De besluiten zijn genummerd: het refreshvenster is DEC-189, de reviewronde DEC-191, en de achttien andere gemergede besluiten kregen DEC-174 tot en met DEC-193. "Eén titel over servers heen" (PR #574) en het voorstel "kopie zonder kijkactie" houden `DEC-XXX` tot hun eigen merge.
 
 ## Eindstand op 4848e0724
 
