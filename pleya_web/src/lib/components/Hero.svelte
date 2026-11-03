@@ -31,6 +31,8 @@
 
   interface Props {
     item: Item;
+    /** Original episode title when the heading supplies series context. */
+    subtitle?: string;
     cinema?: boolean;
     /** Korte inhoud onder de metaregel; zonder waarde geen alinea. */
     summary?: string;
@@ -40,7 +42,7 @@
     label?: string;
   }
 
-  let { item, cinema = false, summary, playHref, label = t('home.recentlyAdded') }: Props = $props();
+  let { item, subtitle, cinema = false, summary, playHref, label = t('home.recentlyAdded') }: Props = $props();
 
   const artworkId = $derived(item.artwork?.backdrop_id ?? item.artwork?.poster_id);
   const posterOnly = $derived(!item.artwork?.backdrop_id && Boolean(item.artwork?.poster_id));
@@ -49,6 +51,7 @@
   const meta = $derived(
     [
       t(`hero.kind.${item.kind}` as MessageKey),
+      subtitle,
       item.genres?.join(', '),
       item.year ? String(item.year) : null,
       formatDuration(item.duration_ms),

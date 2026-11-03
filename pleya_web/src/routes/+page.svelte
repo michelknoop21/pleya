@@ -11,8 +11,10 @@
   import { t } from '#lib/i18n/index.js';
   import { playerHref } from '#lib/player/route.js';
   import { homeHero } from '#lib/util/homeArtwork.js';
+  import { videoContext } from '#lib/util/videoContext.js';
 
   let items = $state<Item[]>([]);
+  let episodeTitles = $state(new Map<string, string>());
   let continuing = $state<Item[]>([]);
   let next = $state<Item[]>([]);
   let recent = $state<{ id: string; title: string; items: Item[] }[]>([]);
@@ -36,7 +38,31 @@
         })))
       ]);
       if (signal.aborted) return;
+      // Resolve the small hero candidate set only. Library rows and playback
+      // continue using their own items; parent reads share this load's cache.
+      const parents = new Map<string, Promise<Item>>();
+      const getParent = (id: string, active: AbortSignal) => {
+        let pending = parents.get(id);
+        if (!pending) { pending = session.client.item(id, active); parents.set(id, pending); }
+        return pending;
+      };
       items = page.items;
+      episodeTitles = new Map();
+      for (const item of page.items) {
+        void videoContext(item, getParent, signal).then(context => {
+          if (signal.aborted || item.kind !== 'episode' || !context.show) return;
+          const show = context.show;
+          episodeTitles = new Map(episodeTitles).set(item.id, item.title);
+          items = items.map(candidate => candidate.id !== item.id ? candidate : {
+            ...candidate, title: show.title,
+            summary: candidate.summary ?? show.summary,
+            artwork: {
+              poster_id: show.artwork?.poster_id ?? context.season?.artwork?.poster_id ?? candidate.artwork?.poster_id,
+              backdrop_id: candidate.artwork?.backdrop_id ?? show.artwork?.backdrop_id ?? context.season?.artwork?.backdrop_id
+            }
+          });
+        });
+      }
       continuing = continuePage.items;
       next = nextPage.items;
       recent = libraryPages;
@@ -92,7 +118,7 @@
   </div>
 {:else}
   {#if hero}
-    <Hero cinema item={hero} summary={hero.summary ?? undefined} playHref={session.capabilities?.playback_plan === true && (hero.kind === 'movie' || hero.kind === 'episode') && (hero.versions?.length ?? 0) > 0 ? playerHref(hero.id) : undefined} />
+    <Hero cinema item={hero} subtitle={episodeTitles.get(hero.id)} summary={hero.summary ?? undefined} playHref={session.capabilities?.playback_plan === true && (hero.kind === 'movie' || hero.kind === 'episode') && (hero.versions?.length ?? 0) > 0 ? playerHref(hero.id) : undefined} />
   {/if}
   <div class="home" class:home--with-hero={Boolean(hero)}>
     {#if !hero}<h1 class="sr-only">{t('home.title')}</h1>{/if}

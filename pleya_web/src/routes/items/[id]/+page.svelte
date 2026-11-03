@@ -19,10 +19,12 @@
   import { t } from '#lib/i18n/index.js';
   import { playerHref } from '#lib/player/route.js';
   import { formatPlayTime } from '#lib/player/keyboard.js';
+  import { videoContext, type VideoContext } from '#lib/util/videoContext.js';
 
   const itemId = $derived(page.params['id'] ?? '');
 
   let item = $state<Item | null>(null);
+  let context = $state<VideoContext>({});
   let childPager = $state<PagerState>(emptyPager());
   const children = $derived(childPager.items);
   let loadSignal: AbortSignal | undefined;
@@ -35,6 +37,7 @@
     loading = true;
     error = null;
     item = null;
+    context = {};
     childPager = emptyPager();
     loadSignal = signal;
     selectedVersionId = '';
@@ -42,6 +45,10 @@
       const loaded = await session.client.item(id, signal);
       if (signal.aborted || id !== itemId) return;
       item = loaded;
+      // Ancestor failures leave this item's metadata, playback and children
+      // available. Do not make the whole page wait for inherited artwork.
+      void videoContext(loaded, (parentId, active) => session.client.item(parentId, active), signal)
+        .then(value => { if (!signal.aborted && id === itemId) context = value; });
 
       // Seizoenen van een serie en afleveringen van een seizoen komen uit
       // /children. Voor een film is dat een lege lijst en geen fout, dus die
@@ -97,6 +104,8 @@
       : null
   );
   const childHeading = $derived(item?.kind === 'show' ? t('item.seasons') : t('item.episodes'));
+  const backdropId = $derived(item?.artwork?.backdrop_id ?? context.show?.artwork?.backdrop_id ?? context.season?.artwork?.backdrop_id);
+  const posterId = $derived(item?.artwork?.poster_id ?? context.season?.artwork?.poster_id ?? context.show?.artwork?.poster_id);
 
   const facts = $derived.by(() => {
     if (!item) return [] as { label: string; value: string }[];
@@ -128,15 +137,16 @@
   </div>
 {:else if item}
   <article class="detail">
-    <header class="detail__head" class:detail__head--artwork={Boolean(item.artwork?.backdrop_id)}>
-      {#if item.artwork?.backdrop_id}
-        <div class="detail__backdrop" aria-hidden="true"><Artwork artworkId={item.artwork.backdrop_id} alt="" shape="free" role="backdrop" eager flat /></div>
+    <header class="detail__head" class:detail__head--artwork={Boolean(backdropId)}>
+      {#if backdropId}
+        <div class="detail__backdrop" aria-hidden="true"><Artwork artworkId={backdropId} alt="" shape="free" role="backdrop" eager flat /></div>
       {/if}
-      <div class="detail__poster">
+      <div class="detail__poster" class:detail__poster--portrait={Boolean(posterId)}>
         <Artwork
-          artworkId={item.artwork?.backdrop_id ?? item.artwork?.poster_id}
+          artworkId={posterId ?? backdropId}
           alt=""
           shape="free"
+          role={posterId ? 'poster' : 'backdrop'}
           eager
         />
       </div>
@@ -144,7 +154,7 @@
       <div class="detail__meta">
         {#if item.parent_id}
           <a class="detail__parent t-small" href="/items/{item.parent_id}">
-            {t('item.backToShow')}
+            {context.show ? [context.show.title, item.kind === 'episode' ? context.season?.title : null].filter(Boolean).join(' · ') : t('item.backToShow')}
           </a>
         {/if}
         <h1 class="t-headline">{item.title}</h1>
@@ -258,11 +268,12 @@
     background: var(--panel);
   }
   .detail__poster { aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--radius-md); }
+  .detail__poster--portrait { aspect-ratio: 2 / 3; max-width: 180px; }
   .detail__poster :global(.artwork) { height: 100%; }
   .detail__backdrop { display: none; }
   @media (min-width: 900px) {
     .detail__head { grid-template-columns: minmax(160px, 220px) minmax(0, 1fr); align-items: start; }
-    .detail__poster { aspect-ratio: 2 / 3; }
+    .detail__poster { aspect-ratio: 2 / 3; max-width: none; }
     .detail__head--artwork { grid-template-columns: minmax(0, 1fr); min-height: 460px; padding: clamp(24px, 4vw, 48px); }
     .detail__head--artwork .detail__poster { display: none; }
     .detail__meta { max-width: 720px; }

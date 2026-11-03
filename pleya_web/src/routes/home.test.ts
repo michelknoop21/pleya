@@ -4,12 +4,13 @@ import type { Item, Library } from '../lib/api/types';
 
 const h = vi.hoisted(() => ({
   hub: vi.fn(),
+  item: vi.fn(),
   capabilities: { watch_state: true, playback_plan: true },
   libraries: [] as Library[]
 }));
 vi.mock('../lib/stores/session.svelte.js', () => ({
   session: {
-    client: { hub: h.hub },
+    client: { hub: h.hub, item: h.item },
     get capabilities() { return h.capabilities; },
     get libraries() { return h.libraries; }
   }
@@ -27,6 +28,7 @@ beforeEach(() => {
     { id: 'shows', title: 'Series', kind: 'shows', item_count: 1 }
   ];
   h.hub.mockReset();
+  h.item.mockReset();
   h.hub.mockImplementation(async (id: string, query: { library_id?: string }) => ({
     items: id === 'continue_watching' ? [item('Resume me')]
       : id === 'next_up' ? [item('Next episode', 'episode')]
@@ -35,6 +37,46 @@ beforeEach(() => {
 });
 
 describe('Home uses the current server capabilities and libraries', () => {
+  it('gives an episode-only Home its series context while preserving episode playback', async () => {
+    h.libraries = [];
+    h.hub.mockImplementation(async (id: string) => ({ items: id === 'recently_added'
+      ? [{ ...item('episode', 'episode'), title: 'Testing 1-2-3', parent_id: 'season' }] : [] }));
+    h.item.mockImplementation(async id => id === 'season'
+      ? { ...item('season', 'season'), parent_id: 'show' }
+      : { ...item('show', 'show'), title: 'The Simpsons', summary: 'A family in Springfield.', artwork: { backdrop_id: 'series-background' } });
+    const { container } = render(Home);
+    expect(await screen.findByRole('heading', { name: 'The Simpsons' })).toBeInTheDocument();
+    expect(screen.getByText('Testing 1-2-3')).toBeInTheDocument();
+    expect(screen.getByText('A family in Springfield.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Play' })).toHaveAttribute('href', '/items/episode/play');
+    expect(screen.getByRole('link', { name: 'More info' })).toHaveAttribute('href', '/items/episode');
+    expect(container.querySelector('.hero--none')).toBeNull();
+  });
+  it('renders Home immediately when a parent read is still pending and aborts it on leave', async () => {
+    h.libraries = [];
+    h.hub.mockImplementation(async (id: string) => ({ items: id === 'recently_added'
+      ? [{ ...item('episode', 'episode'), parent_id: 'season' }] : [] }));
+    h.item.mockImplementation(() => new Promise(() => {}));
+    const { unmount } = render(Home);
+    await screen.findByRole('heading', { name: 'episode' });
+    expect(screen.getByRole('link', { name: 'Play' })).toHaveAttribute('href', '/items/episode/play');
+    expect(h.item).toHaveBeenCalled();
+    const active = h.item.mock.calls[0]![1] as AbortSignal;
+    unmount();
+    expect(active.aborted).toBe(true);
+  });
+  it('retains the episode poster when neither ancestor has artwork', async () => {
+    h.libraries = [];
+    h.hub.mockImplementation(async (id: string) => ({ items: id === 'recently_added'
+      ? [{ ...item('episode', 'episode'), parent_id: 'season', artwork: { poster_id: 'own-poster' } }] : [] }));
+    h.item.mockImplementation(async id => id === 'season'
+      ? { ...item('season', 'season'), parent_id: 'show' }
+      : { ...item('show', 'show'), title: 'The Simpsons' });
+    const { container } = render(Home);
+    await screen.findByRole('heading', { name: 'The Simpsons' });
+    expect(container.querySelector('.hero')).toHaveClass('hero--poster');
+    expect(container.querySelector('.hero--none')).toBeNull();
+  });
   it('shows personal hubs and separate recent rows for each video library', async () => {
     render(Home);
     expect(await screen.findByRole('heading', { name: 'Continue watching' })).toBeInTheDocument();
