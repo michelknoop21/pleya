@@ -128,6 +128,10 @@ export const web = {
   'home.emptyBody': 'Once the server has scanned your media, new titles show up here.',
   'home.emptyAction': 'Go to My Pleya',
 
+  'hero.featured': 'Featured films',
+  'hero.previous': 'Previous featured film',
+  'hero.next': 'Next featured film',
+  'hero.resume': 'Resume',
   'hero.play': 'Play',
   'hero.moreInfo': 'More info',
   'hero.kind.movie': 'Movie',

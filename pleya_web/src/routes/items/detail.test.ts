@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item } from '../../lib/api/types';
+import { ARTWORK_LOADER_KEY } from '../../lib/components/artworkLoader';
 const h=vi.hoisted(()=>({item:vi.fn(),children:vi.fn(),playback:true,personal:false,admin:false,overrides:false,favorite:vi.fn()}));
 vi.mock('$app/state',()=>({page:{params:{id:'movie'},url:new URL('http://client.test/items/movie')}}));
 vi.mock('../../lib/stores/session.svelte.js',()=>({session:{client:{item:h.item,children:h.children},get canAdminister(){return h.admin;},get capabilities(){return {playback_plan:h.playback,favorites:h.personal,metadata_overrides:h.overrides};}}}));
@@ -9,6 +10,25 @@ import Detail from './[id]/+page.svelte';
 const movie:Item={id:'movie',kind:'movie',title:'Fixture film',added_at:'2026-10-29T12:00:00Z',summary:'A real plot from NFO.',genres:['Science Fiction'],content_rating:'PG',people:[{name:'Director name',role:'director'},{name:'Actor name',role:'actor',character:'Character name'},{name:'Writer name',role:'writer'}],versions:[{id:'first',container:'mkv',edition:'Theatrical',duration_ms:60000,file_count:1},{id:'second',container:'mp4',edition:'Extended',duration_ms:70000,file_count:1}],user_state:{position_ms:12000,watched:false,play_count:0,updated_at:'2026-10-29T12:00:00Z'}};
 beforeEach(()=>{h.playback=true;h.personal=false;h.admin=false;h.overrides=false;h.favorite.mockReset().mockResolvedValue(undefined);h.item.mockReset();h.children.mockReset();h.item.mockResolvedValue(structuredClone(movie));h.children.mockResolvedValue({items:[],next_cursor:null});});
 describe('public detail consumer',()=>{
+ it('inherits a validated series backdrop while resume and versions stay on the episode', async()=>{
+  h.item.mockImplementation(async id => id === 'movie'
+   ? { ...movie, kind:'episode', parent_id:'season', artwork:undefined }
+   : id === 'season' ? { id:'season', kind:'season', parent_id:'show', title:'Season 38' }
+   : { id:'show', kind:'show', title:'The Simpsons', artwork:{backdrop_id:'show-background',poster_id:'show-poster'} });
+  const loader=vi.fn(async()=>new Blob(['image']));
+  render(Detail,{context:new Map([[ARTWORK_LOADER_KEY,loader]])});
+  expect(await screen.findByRole('link',{name:'The Simpsons · Season 38'})).toHaveAttribute('href','/items/season');
+  expect(screen.getByRole('heading',{name:'Fixture film'})).toBeInTheDocument();
+  expect(screen.getByRole('link',{name:/Resume/})).toHaveAttribute('href','/items/movie/play?t=12&version=first');
+  expect(loader.mock.calls.length).toBeGreaterThan(0);
+ });
+ it('loads the actual poster for the poster slot even when a backdrop exists', async()=>{
+  h.item.mockResolvedValue({...movie,artwork:{poster_id:'portrait',backdrop_id:'landscape'}});
+  const loader=vi.fn(async(_id:string)=>new Blob(['image']));
+  render(Detail,{context:new Map([[ARTWORK_LOADER_KEY,loader]])});
+  await screen.findByRole('heading',{name:'Fixture film'});
+  await vi.waitFor(()=>expect(loader.mock.calls.map(call=>call[0])).toContain('portrait'));
+ });
  it('shows existing metadata without invented person navigation',async()=>{
   render(Detail);await screen.findByRole('heading',{name:'Fixture film'});
   expect(screen.getByText('A real plot from NFO.')).toBeInTheDocument();

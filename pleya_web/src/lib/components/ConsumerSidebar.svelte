@@ -35,7 +35,7 @@
 </aside>
 
 <style>
-  .consumer-sidebar { position: fixed; inset: 12px auto 12px 12px; width: 208px; z-index: 30; display: flex; flex-direction: column; padding: 16px 12px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 20px; overflow-y: auto; }
+  .consumer-sidebar { position: fixed; inset: 12px auto 12px 12px; width: 248px; z-index: 30; display: flex; flex-direction: column; padding: 16px 12px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 28px; overflow-y: auto; }
   .consumer-sidebar__brand { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 32px; }
   .consumer-sidebar__brand button { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: none; background: transparent; color: var(--ink-2); border-radius: 50%; cursor: pointer; }
   .consumer-sidebar__brand button:hover { background: var(--fill); color: var(--ink); }
@@ -46,7 +46,7 @@
   nav a[aria-current] { background: var(--ink); color: var(--bg); font-weight: 600; }
   .consumer-sidebar__label { margin: 24px 12px 6px; font-size: 11px; color: var(--ink-3); }
   .consumer-sidebar__mark { display: none; }
-  .consumer-sidebar--compact { width: 56px; padding-inline: 5px; }
+  .consumer-sidebar--compact { width: 72px; padding-inline: 9px; }
   .consumer-sidebar--compact .consumer-sidebar__brand { flex-direction: column; gap: 12px; }
   .consumer-sidebar--compact .consumer-sidebar__mark { display: block; width: 32px; height: 32px; }
   .consumer-sidebar--compact .consumer-sidebar__wordmark, .consumer-sidebar--compact nav span, .consumer-sidebar--compact .consumer-sidebar__label { display: none; }

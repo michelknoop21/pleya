@@ -14,3 +14,17 @@ section.hero.hero--cinema .hero__summary { max-width: 58ch; }
 .skp.skp--cinema .skel--hero { margin:0; aspect-ratio:auto; height:clamp(470px,43vw,680px); border-radius:0; }
 .skp.skp--cinema .skp__rails { padding-top:0; position:relative; margin-top:-24px; }
 @media(max-width:899px) { .skp.skp--cinema .skel--hero {height:490px; margin:0 16px 48px; border-radius:16px;} }
+
+section.hero.hero--billboard {height:100%;min-height:360px;margin:0;border-radius:0;overflow:visible;background:transparent}
+section.hero.hero--billboard .hero__art,section.hero.hero--billboard .hero__scrim {height:calc(100svh - 38px);bottom:auto}
+section.hero.hero--billboard .hero__art img {object-position:50% 35%}
+section.hero.hero--billboard .hero__body {bottom:26px;left:44px;max-width:573px;text-align:left}
+section.hero.hero--billboard .hero__title {font-size:40px;line-height:1.28;letter-spacing:1.2px;margin-bottom:10px}
+section.hero.hero--billboard .hero__meta {font-size:16.5px;gap:9px}
+section.hero.hero--billboard .hero__summary {font-size:16px;line-height:1.28;min-height:41px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+section.hero.hero--billboard .hero__btn {min-height:40px;height:40px;border-radius:20px;padding:0 20px}
+section.hero.hero--billboard .hero__scrim {background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 92%,transparent) 0%,color-mix(in srgb,var(--bg) 70%,transparent) 28%,color-mix(in srgb,var(--bg) 12%,transparent) 56%,transparent 100%),linear-gradient(180deg,color-mix(in srgb,var(--bg) 66%,transparent) 0%,transparent 18%,transparent 52%,color-mix(in srgb,var(--bg) 70%,transparent) 78%,var(--bg) 96%)}
+@media(max-width:899px){section.hero.hero--billboard{margin:0}section.hero.hero--billboard .hero__body{left:22px;right:22px;bottom:36px}section.hero.hero--billboard .hero__title{font-size:32px;padding:0}section.hero.hero--billboard .hero__meta{font-size:12px}section.hero.hero--billboard .hero__summary{font-size:14px}}
+
+[data-theme='light'] section.hero.hero--billboard .hero__scrim{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 54%,transparent) 0%,color-mix(in srgb,var(--bg) 54%,transparent) 51%,color-mix(in srgb,var(--bg) 7.2%,transparent) 73.6%,transparent 100%),linear-gradient(180deg,transparent 52%,color-mix(in srgb,var(--bg) 70%,transparent) 78%,var(--bg) 96%)}
+.skp.skp--cinema .skel--hero{height:calc(100svh - 186px);min-height:360px}.skp.skp--cinema .skp__rails{margin-top:0}@media(max-width:899px){.skp.skp--cinema .skel--hero{height:calc(100svh - 250px);min-height:490px;margin:0;border-radius:0}}

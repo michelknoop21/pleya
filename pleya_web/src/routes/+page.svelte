@@ -1,7 +1,7 @@
 <script lang="ts">
   import HubRail from '#lib/components/HubRail.svelte';
   import ContinueWatchingRail from '#lib/components/ContinueWatchingRail.svelte';
-  import Hero from '#lib/components/Hero.svelte';
+  import HomeBillboard from '#lib/components/HomeBillboard.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import StateView from '#lib/components/StateView.svelte';
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
@@ -9,10 +9,11 @@
   import { describeError } from '#lib/api/errors.js';
   import type { Item } from '#lib/api/types.js';
   import { t } from '#lib/i18n/index.js';
-  import { playerHref } from '#lib/player/route.js';
-  import { homeHero } from '#lib/util/homeArtwork.js';
+  import { videoContext } from '#lib/util/videoContext.js';
 
   let items = $state<Item[]>([]);
+  let episodeTitles = $state(new Map<string, string>());
+  let released = $state<Item[]>([]);
   let continuing = $state<Item[]>([]);
   let next = $state<Item[]>([]);
   let recent = $state<{ id: string; title: string; items: Item[] }[]>([]);
@@ -26,7 +27,7 @@
       const libraries = session.libraries.filter((library) => library.kind === 'movies' || library.kind === 'shows');
       const watchState = session.capabilities?.watch_state === true;
       const [page, continuePage, nextPage, libraryPages] = await Promise.all([
-        session.client.hub('recently_added', { limit: 5 }, signal),
+        session.client.hub('recently_added', { limit: 24 }, signal),
         watchState ? session.client.hub('continue_watching', { limit: 24 }, signal) : { items: [] },
         watchState ? session.client.hub('next_up', { limit: 24 }, signal) : { items: [] },
         Promise.all(libraries.map(async (library) => ({
@@ -36,7 +37,36 @@
         })))
       ]);
       if (signal.aborted) return;
+      // Resolve the small hero candidate set only. Library rows and playback
+      // continue using their own items; parent reads share this load's cache.
+      const parents = new Map<string, Promise<Item>>();
+      const getParent = (id: string, active: AbortSignal) => {
+        let pending = parents.get(id);
+        if (!pending) { pending = session.client.item(id, active); parents.set(id, pending); }
+        return pending;
+      };
       items = page.items;
+      released = [];
+      // Bounded year-ordered film pool; the protocol has no full release date.
+      void Promise.all(libraries.filter(library=>library.kind==='movies').map(library=>
+        session.client.libraryItems(library.id,{sort:'-year',limit:12},signal).then(page=>page.items).catch(()=>[] as Item[])
+      )).then(pages=>{if(!signal.aborted) released=pages.flat()});
+      episodeTitles = new Map();
+      for (const item of page.items) {
+        void videoContext(item, getParent, signal).then(context => {
+          if (signal.aborted || item.kind !== 'episode' || !context.show) return;
+          const show = context.show;
+          episodeTitles = new Map(episodeTitles).set(item.id, item.title);
+          items = items.map(candidate => candidate.id !== item.id ? candidate : {
+            ...candidate, title: show.title,
+            summary: candidate.summary ?? show.summary,
+            artwork: {
+              poster_id: show.artwork?.poster_id ?? context.season?.artwork?.poster_id ?? candidate.artwork?.poster_id,
+              backdrop_id: candidate.artwork?.backdrop_id ?? show.artwork?.backdrop_id ?? context.season?.artwork?.backdrop_id
+            }
+          });
+        });
+      }
       continuing = continuePage.items;
       next = nextPage.items;
       recent = libraryPages;
@@ -54,7 +84,12 @@
     return () => controller.abort();
   });
 
-  const hero = $derived(homeHero(items));
+  const featured = $derived.by(() => {
+    const films = (released.length ? released : items).filter(i=>i.kind==='movie' && (!i.year || i.year<=new Date().getFullYear())).sort((a,b)=>(b.year??0)-(a.year??0));
+    const pool = films.length ? films : items;
+    return pool.filter((item,index)=>pool.findIndex(i=>i.id===item.id)===index).slice(0,12);
+  });
+  const hero = $derived(featured[0]);
   const empty = $derived(items.length === 0 && continuing.length === 0 && next.length === 0 && recent.every((row) => row.items.length === 0));
 </script>
 
@@ -92,7 +127,7 @@
   </div>
 {:else}
   {#if hero}
-    <Hero cinema item={hero} summary={hero.summary ?? undefined} playHref={session.capabilities?.playback_plan === true && (hero.kind === 'movie' || hero.kind === 'episode') && (hero.versions?.length ?? 0) > 0 ? playerHref(hero.id) : undefined} />
+    <HomeBillboard items={featured} subtitles={episodeTitles} />
   {/if}
   <div class="home" class:home--with-hero={Boolean(hero)}>
     {#if !hero}<h1 class="sr-only">{t('home.title')}</h1>{/if}
@@ -116,7 +151,7 @@
 
   }
 
-  .home--with-hero { margin-top: -24px; }
+  .home--with-hero { margin-top: 0; }
 
   /* web.css .page: de inzet van de pagina, 8 boven de kop. */
   .home-page {
