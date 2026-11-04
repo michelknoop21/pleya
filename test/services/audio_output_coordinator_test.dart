@@ -86,6 +86,14 @@ class _FakePlayer implements Player {
     properties.add(MapEntry(name, value));
   }
 
+  /// Mirrors the audio-path arbiter: off 1.0x the bitstream request is kept
+  /// but `audio-spdif` is not written, so nothing reloads.
+  double rate = 1.0;
+  bool _bitstreaming = false;
+
+  @override
+  bool get audioPassthroughActive => _bitstreaming;
+
   @override
   Future<void> setAudioPassthrough(bool enabled) async {
     passthroughCalls.add(enabled);
@@ -93,6 +101,7 @@ class _FakePlayer implements Player {
       failNextPassthrough = false;
       throw StateError('native passthrough write failed');
     }
+    _bitstreaming = enabled && rate == 1.0;
   }
 
   final List<List<String>> commands = [];
@@ -660,10 +669,10 @@ void main() {
       maximumOutputNumberOfChannels: 8,
     );
 
-    List<List<String>> reloadsAfter(void Function(FakeAsync, AudioOutputCoordinator) act) {
+    List<List<String>> reloadsAfter(void Function(FakeAsync, AudioOutputCoordinator) act, {double rate = 1.0}) {
       late List<List<String>> reloads;
       fakeAsync((async) {
-        final player = _FakePlayer();
+        final player = _FakePlayer()..rate = rate;
         final coordinator = AudioOutputCoordinator(player: player, settings: settings);
         coordinator.prepare(audioCodec: 'eac3');
         async.flushMicrotasks();
@@ -706,6 +715,20 @@ void main() {
           c.onModeChanged();
         }),
         isEmpty,
+      );
+    });
+
+    test('a passthrough request the arbiter holds back off 1.0x still reloads', () {
+      // At 1.25x the arbiter keeps the bitstream down and writes nothing, so
+      // the decision change did not reload the AO and the silence would stay.
+      expect(
+        reloadsAfter((async, c) {
+          c.debugRouteChanged(airpods);
+          settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+          async.flushMicrotasks();
+          c.onModeChanged();
+        }, rate: 1.25),
+        hasLength(1),
       );
     });
   });

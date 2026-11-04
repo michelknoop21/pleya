@@ -476,8 +476,11 @@ class AudioOutputCoordinator {
 
       if (decision != _lastDecision) {
         if (PlatformDetector.supportsAudioPassthrough()) {
+          // Off 1.0x the arbiter keeps the request but writes no `audio-spdif`,
+          // so only a bitstream state that actually moved counts as a reload.
+          final wasBitstreaming = player.audioPassthroughActive;
           await player.setAudioPassthrough(decision == AudioOutputDecision.passthrough);
-          reloaded = true;
+          if (player.audioPassthroughActive != wasBitstreaming) reloaded = true;
         }
         _lastDecision = decision;
         if (decision == AudioOutputDecision.passthrough) {
