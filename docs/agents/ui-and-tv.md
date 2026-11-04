@@ -66,9 +66,12 @@ als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. An
 Volgorde: profielavatar, zoeken, Home, Series, Films, Live TV (alleen met de capability), Mijn
 Pleya, Instellingen. Het woordmerk rechts is geen focusstop. Instellingen is een eigen bestemming,
 geen sectie van Mijn Pleya; Servers, Logboeken en Over Pleya hangen eronder (Koppelingen >
-Servers opent `TvServersPage`). De ring verplaatst alleen de focus: bij elke bestemming wisselt de
-pagina pas op Select, DOWN gaat de pagina in die op het scherm staat en Menu zet de ring eerst terug
-op de pil van die pagina (afgeleid in review 557-M6) (LEESMIJ-v4; vervangt het remotecontract van 2 september 2026). De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
+Servers opent `TvServersPage`). De ring op een bestemmingspil is de pagina: die wisselt meteen,
+de focus blijft in de balk, DOWN gaat de pagina in en Select op de pil waar je staat ook, zonder
+refresh. Een sweep met minder dan 150 ms per druk wisselt alleen op de pil waar de ring tot rust
+komt (`TvRingSettle`). Menu in de balk geeft de app op Home aan tvOS en gaat elders naar Home, met de
+ring mee. De avatar en het herverbindingsitem wisselen niets bij focus (DEC-XXX, besluit Michel
+4 november 2026; vervangt punt 3 van DEC-167). De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
 Back sluit het en zet de focus terug op de avatar. De bestemming Instellingen gebruikt dezelfde
 inklapbare balk als hierboven. Besluit Michel, 26 oktober 2026 (A-24c,
 DEC-167).

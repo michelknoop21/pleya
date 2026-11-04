@@ -2960,6 +2960,10 @@ naam en toetst na elke druk `active: false` op de pil met focus en `active: true
 blijft staan, en pas na Select `active: true` op de gekozen pil. De invariant voor de gate blijft de
 `active`-state.
 
+**Bijgewerkt door DEC-XXX (topmenu wisselt bij focus, 4 november 2026):** de ring wisselt de pagina
+weer. Het scenario toetst na elke druk `active: true` op de pil met focus en `active: false` op de
+vorige, ook op Instellingen, en Menu op een andere pagina brengt ring en pagina naar Home.
+
 ## DEC-120: AC3 ("onmiddellijk ongeldig") wordt een in-process intrekkingsregister met een grens van twee seconden
 
 **Date:** 2026-08-24
@@ -5133,6 +5137,8 @@ of externe/publicatie naar App Review.
 6. Tekst op tvOS gaat niet onder 23 pt en wordt niet kleiner dan voorheen (besluit Michel, 26 oktober 2026). De kleine kapitalen die het bord op ongeveer 17 pt tekent, worden op 23 pt gebouwd en de layout schuift mee. Op het canvas van 1038 x 584 past de pagina zonder scrollen, met de laatste rij bereikbaar en heel.
 **Consequences:** Dit vervangt het TV-deel van het A-24b-besluit voor Mijn Pleya (het besluit "A-24b bouwt Instellingen en Mijn Pleya na volgens de northstars": de Editorial-indeling op Apple TV, de rechterkolom van 440 pt en de twee titelregels op een kijklijstkaart). Het iPhone-deel blijft van kracht. Instellingen is op TV geen geneste route van Mijn Pleya meer maar een eigen bestemming; de Instellingen-subpagina's blijven geneste routes binnen de shell zoals [PB-1](tvos-redesign-implementatiecontract.md#pb-1-topnav-blijft-staan-op-tv-contentroutes) ze opent, nu onder Instellingen in plaats van onder Mijn Pleya. De bestemming Instellingen en haar subpagina's houden de inklapbare balk van [DEC-166](#dec-166-instellingen-op-apple-tv-zonder-vaste-bovenbalk-en-de-rail-past-in-het-venster): de ingang staat in het topmenu, op de pagina's zelf schuift de balk weg en UP haalt hem terug. De oude Beheer-tegels, de profielregel en de voetregel verdwijnen; elke route uit die tegels heeft een ingang in `pariteit-v4.csv`. Afwijkingen van de borden staan in [`docs/plans/AFWIJKINGEN_A24B.md`](plans/AFWIJKINGEN_A24B.md) onder "Mijn Pleya op Apple TV, v4". Simulatorbewijs is geen hardware-acceptatie; de Siri Remote-controle op een toestel staat open in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen tvOS-presentatie en navigatie, geen backend, protocol of datamodel.
 
+**Bijgewerkt door DEC-XXX (topmenu wisselt bij focus, 4 november 2026):** punt 3 is vervallen. De ring op een bestemmingspil wisselt de pagina meteen, Menu in de balk volgt weer de regel van vóór A-24c, en de avatar blijft een bediening zonder paginawissel. De punten 1, 2, 4, 5 en 6 blijven van kracht.
+
 
 ## DEC-183: P5 en PS-15 vrijgegeven voor afronding van Pleya Server en apps
 
@@ -5632,3 +5638,19 @@ Michel koos op de concrete vraag bij het vooraf onafhankelijk gereviewde voorste
 Alleen reproduceerbare ladderbestanden; media, originelen/providerbestanden, gepinde bronbytes en intentie, persoonlijke gegevens, config, sleutels, backups en andere cachetypen blijven behouden. Actieve render/openrespons, pad-/symlinkgrens, gedeeltelijke fouten, annulering, rollen/intrekking/origin, compatibiliteitsregels en onafhankelijke security-/visueleacceptatie blijven verplicht. Quota/automatischbeleid en andere cachevereisten uit het volledige gapplan blijven afzonderlijk open; ze worden niet geschrapt.
 
 Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaaldeaanroeprechten of NAS/publicatie. Het aparte publieke GitHub-bestemmingsbesluit was bij deze vensteropening nog pending. De latere afzonderlijke toestemming voor de publieke GitHub-repository, NAS en TestFlight verandert de scope van dit venster niet; PR579 is inmiddels normaal gemerged, maar NAS- en TestFlightacceptatie blijven afzonderlijke gates. Goedkeuring is geen implementatie-/runtime-/releasebewijs; getest checkpoint e8aba921f blijft bewaard en pin-cache503herstel heeft zijn eigen bewijsgrens.
+
+## DEC-XXX: Besluit Michel 4 nov 2026: topmenu wisselt pagina bij focus
+
+**Date:** 2026-11-04
+**Status:** accepted (Michel, 4 november 2026). Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit besluit in verwijzingen DEC-XXX (topmenu wisselt bij focus).
+**Roadmap:** A-24 (vervolg op A-24c).
+
+**Context:** Sinds DEC-167 punt 3 verplaatste de ring in het topmenu op Apple TV alleen de focus en wisselde de pagina pas na Select. Michel vond de app daardoor traag aanvoelen: wie Films wil zien, moet na de pijl nog een keer klikken, en tussen ring en pagina zit steeds een verschil dat de kijker zelf moet onthouden.
+
+**Decision:**
+1. De ring op een bestemmingspil (Zoeken, Home, Series, Films, Live TV, Mijn Pleya, Instellingen) zet die pagina meteen op het scherm. De focus blijft in de balk. DOWN gaat de pagina in die op het scherm staat; UP komt terug op haar pil. Select op de pil waar je staat gaat de pagina in en start geen netwerkrefresh (de bestaande guard in `MainScreen._selectTvDestination`).
+2. De avatar, het herverbindingsitem en het woordmerk zijn geen bestemmingen en wisselen niets bij focus.
+3. Menu in de balk volgt weer de regel van vóór A-24c: op Home gaat Menu naar tvOS (passthrough), op een andere pagina gaat Menu naar Home en de ring gaat mee. De A-24c-stap "Menu zet de ring eerst terug op de pil van de pagina" (review 557-M6) vervalt, want ring en pagina vallen samen.
+4. Een sweep wordt samengevoegd. Eén druk wisselt meteen. Een volgende pijl binnen 150 ms van de vorige herstart alleen het venster; de pagina volgt de pil waarop de ring tot rust komt (`TvRingSettle`, `lib/navigation/tv/tv_ring_settle.dart`). DOWN of Select binnen dat venster zet eerst de pagina onder de ring. 150 ms ligt boven de herhaling van 80 ms van een vastgehouden pijl in de engine-fork en onder een bewuste tweede klik. Een vastgehouden sweep van Home naar Instellingen kost zo twee paginawissels in plaats van vier, en een sweep over Home slaat de refresh van Verder kijken en de lokale-mapscan (`DiscoverScreen.refresh`) over die elke `_selectTab` naar Home start. De meting staat in de PR.
+
+**Consequences:** Punt 3 van DEC-167 is hiermee vervallen; de rest van DEC-167 blijft staan. Bord `A13` (ring op Instellingen terwijl Mijn Pleya actief blijft) is geen doelbeeld meer, en het accountmenu opent boven de pagina van de laatste pil die de ring passeerde, meestal Zoeken, in plaats van boven Mijn Pleya zoals `A14` tekent. De regel geldt voor de hele TV-shell, dus ook voor Android TV, net als DEC-167 punt 3. `tvos.nav.focus-switches-destination` en `tvos.nav.walk` toetsen na elke echte HID-druk `active: true` op de pil met focus; de referentiegate van DEC-120 houdt de `active`-state als invariant. De Verify-scenario's die na een pijl nog Select en DOWN drukten, drukken nu één van de twee. Simulatorbewijs is geen hardware-acceptatie: of een vastgehouden pijl op de Siri Remote soepel over de balk loopt, staat als HARDWARE ONLY in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen tvOS-navigatie, geen backend, protocol of datamodel.
