@@ -21,6 +21,15 @@ import '../download_artwork_helpers.dart';
 
 class LocalLibraryPaused implements Exception {}
 
+/// The scan enumerated the whole library and saved it, but [skipped] titles
+/// without a stored row got no detail answer and are not in the snapshot.
+class LocalLibraryPartialScan implements Exception {
+  const LocalLibraryPartialScan(this.skipped);
+  final int skipped;
+  @override
+  String toString() => 'LocalLibraryPartialScan: $skipped titles left for the next scan';
+}
+
 class LocalPosterResult {
   const LocalPosterResult({this.bytes, this.etag, this.lastModified, required this.variant});
   final Uint8List? bytes; // null means a successful conditional 304.
@@ -101,9 +110,20 @@ class LocalLibrarySync {
       };
     }
 
-    Future<void> keep(MediaItem candidate) async {
+    // Titles left out of `next` with no stored row to keep in their place.
+    var skipped = 0;
+
+    /// Whether the title has a row in `next` afterwards.
+    Future<bool> keep(MediaItem candidate) async {
       await check();
       final old = previous[candidate.globalKey];
+      // Retain full descriptive fields, but use fresh per-user watch state.
+      final retained = old?.copyWith(
+        viewCount: candidate.viewCount,
+        viewOffsetMs: candidate.viewOffsetMs,
+        viewedLeafCount: candidate.viewedLeafCount,
+        lastViewedAt: candidate.lastViewedAt,
+      );
       MediaItem? detail;
       if (old != null &&
           candidate.updatedAt != null &&
@@ -111,18 +131,34 @@ class LocalLibrarySync {
           candidate.thumbPath == old.thumbPath &&
           candidate.title == old.title &&
           candidate.year == old.year) {
-        // Retain full descriptive fields, but use fresh per-user watch state.
-        detail = old.copyWith(
-          viewCount: candidate.viewCount,
-          viewOffsetMs: candidate.viewOffsetMs,
-          viewedLeafCount: candidate.viewedLeafCount,
-          lastViewedAt: candidate.lastViewedAt,
-        );
+        detail = retained!;
       } else {
-        detail = await client.fetchItem(candidate.id).timeout(const Duration(seconds: 20));
+        try {
+          detail = await client.fetchItem(candidate.id).timeout(const Duration(seconds: 20));
+        } on TimeoutException {
+          detail = null;
+        } on MediaServerHttpException {
+          detail = null;
+        }
+        if (detail == null) {
+          // One slow or failing title must not abort the whole scan, which then
+          // restarted from zero and never completed. No answer counts the same:
+          // Pleya Server and Jellyfin return null for a failed detail call, not
+          // only for a gone title. Keep the stored row (its stale updatedAt makes
+          // the next scan ask again) or leave the title for the next scan, which
+          // then also leaves the library incomplete.
+          await check();
+          if (retained != null) {
+            next[retained.globalKey] = retained;
+          } else {
+            skipped++;
+          }
+          done++;
+          onProgress?.call(done, candidate.displayTitle);
+          return retained != null;
+        }
       }
       await check();
-      if (detail == null) throw StateError('Item disappeared during library scan');
       final item = detail.copyWith(
         serverId: library.serverId,
         serverName: library.serverName,
@@ -210,6 +246,7 @@ class LocalLibrarySync {
             );
       done++;
       onProgress?.call(done, item.displayTitle);
+      return true;
     }
 
     late Future<void> Function(MediaItem) scanChildren;
@@ -236,8 +273,8 @@ class LocalLibrarySync {
             libraryId: library.id,
             libraryTitle: library.title,
           );
-          await keep(bound);
-          if (item.kind == MediaKind.show || item.kind == MediaKind.season) {
+          // Children of a dropped show or season would be rows without a parent.
+          if (await keep(bound) && (item.kind == MediaKind.show || item.kind == MediaKind.season)) {
             await scanChildren(item);
           }
         }
@@ -298,10 +335,24 @@ class LocalLibrarySync {
       }
       await check();
       if (client is LocalFolderClient && client.hasIncompleteScan) throw StateError('Folder scan is incomplete');
-      await store.saveLibrary(library, next.values.toList(), complete: true, isCurrent: valid);
+      // The enumeration proved membership either way, so the rows are replaced
+      // and titles deleted on the server go. A skipped title had no stored row,
+      // so nothing stored is lost; but a complete save would let the catalog
+      // serve the library without it. A partial save leaves a first scan
+      // incomplete, so the catalog keeps reading the server. A library that
+      // was complete stays complete without the new title until a later scan
+      // gets its detail.
+      await store.saveLibrary(
+        library,
+        next.values.toList(),
+        complete: skipped == 0,
+        partial: skipped > 0,
+        isCurrent: valid,
+      );
       if (posterLoader != null || posterRevalidator != null) {
         await syncPosters(next.values, (_) => client, isCurrent: valid);
       }
+      if (skipped > 0) throw LocalLibraryPartialScan(skipped);
     }
   }
 

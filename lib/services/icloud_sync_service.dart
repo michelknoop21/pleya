@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../connection/connection.dart';
+import '../utils/app_logger.dart';
 import 'base_shared_preferences_service.dart';
 import 'preferences/icloud_kvs_transport.dart';
 import 'preferences/preference_merge_strategies.dart';
@@ -101,6 +102,12 @@ class ICloudSyncService {
     coordinator.markAvailabilityUnknown();
     final svc = _wire(settings, coordinator);
     await coordinator.refreshAvailability();
+    // The one line that says the engine runs at all: every held-back path
+    // below is silent, so without it a log cannot tell "off" from "never ran".
+    appLogger.i(
+      'preference sync: started via ${coordinator.transport?.name}, '
+      'enabled=${svc._enabled}, availability=${coordinator.status.value.availability.name}',
+    );
     // A key-value store can change while the process is suspended, and the
     // notification for that change can be delivered to nobody. Coming back to
     // the foreground is therefore a reconcile trigger, not a hope.

@@ -16,8 +16,9 @@ import '../download_artwork_helpers.dart';
 /// Artwork is separate from the bounded transient image cache and downloads.
 /// All mutations, including clear, share one queue so late IO cannot undo clear.
 class LocalLibraryStore {
-  LocalLibraryStore(this.directory);
+  LocalLibraryStore(this.directory, {DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
   final Directory directory;
+  final DateTime Function() _clock;
   bool enabled = false;
   bool wifiOnly = true;
   final Map<String, Set<String>> libraryAccess = {};
@@ -25,6 +26,9 @@ class LocalLibraryStore {
   final Map<String, MediaLibrary> _libraries = {};
   final Map<String, Map<String, MediaItem>> _items = {};
   final Map<String, DateTime> _completed = {};
+  // The last scan that enumerated the whole library, complete or with titles
+  // left out, and the server's `updatedAt` for the library at that scan.
+  final Map<String, ({DateTime at, int? updatedAt})> _lastScan = {};
   final Map<String, String> _posters = {};
   final Map<String, Map<String, dynamic>> _posterFreshness = {};
   final List<({DateTime at, bool priority})> _posterAttempts = [];
@@ -89,6 +93,8 @@ class LocalLibraryStore {
   List<MediaItem> get items => _items.values.expand((v) => v.values).toList(growable: false);
   List<MediaLibrary> get libraries => _libraries.values.toList(growable: false);
   bool isComplete(String key) => _completed.containsKey(key);
+  DateTime? completedAt(String key) => _completed[key];
+  ({DateTime at, int? updatedAt})? lastScan(String key) => _lastScan[key];
   DateTime? get lastSync =>
       _completed.values.isEmpty ? null : _completed.values.reduce((a, b) => a.isBefore(b) ? a : b);
   MediaItem? item(String serverId, String id) {
@@ -171,11 +177,19 @@ class LocalLibraryStore {
           final item = MediaItem.fromJson(value as Map<String, dynamic>);
           rows[item.globalKey] = item;
         }
-        return (library: library, rows: rows, completed: DateTime.tryParse(data['completed'] as String? ?? ''));
+        return (
+          library: library,
+          rows: rows,
+          completed: DateTime.tryParse(data['completed'] as String? ?? ''),
+          scanned: DateTime.tryParse(data['scanned'] as String? ?? ''),
+          scannedUpdatedAt: data['scannedUpdatedAt'] as int?,
+        );
       });
       _libraries[snapshot.library.globalKey] = snapshot.library;
       _items[snapshot.library.globalKey] = snapshot.rows;
       if (snapshot.completed != null) _completed[snapshot.library.globalKey] = snapshot.completed!;
+      if (snapshot.scanned case final at?)
+        _lastScan[snapshot.library.globalKey] = (at: at, updatedAt: snapshot.scannedUpdatedAt);
     }
     final posters = Directory('${directory.path}/posters');
     if (await posters.exists()) {
@@ -252,26 +266,36 @@ class LocalLibraryStore {
     await _atomic(_optionsFile, jsonEncode(_options), () => true);
   });
 
-  /// An interrupted/partial scan may add fresh rows but never proves removal.
+  /// An interrupted scan (a checkpoint) may add fresh rows but never proves
+  /// removal. A [complete] scan replaces the rows and marks the library
+  /// complete. A [partial] scan enumerated the whole library but left titles
+  /// out that had no stored row: it proves removal and replaces the rows too,
+  /// but keeps the completion the library had.
   Future<void> saveLibrary(
     MediaLibrary library,
     List<MediaItem> items, {
     required bool complete,
+    bool partial = false,
     bool Function()? isCurrent,
   }) => _serial(() async {
+    assert(!(complete && partial));
     bool valid() => isCurrent?.call() ?? true;
     if (!valid()) return;
     final key = library.globalKey;
-    final next = <String, MediaItem>{if (!complete) ...?_items[key], for (final item in items) item.globalKey: item};
-    final completed = complete ? DateTime.now() : _completed[key];
-    await _persistLibrary(library, next, completed, valid);
-    if (valid() && complete) await _pruneUnreferencedPosters();
+    final replace = complete || partial;
+    final next = <String, MediaItem>{if (!replace) ...?_items[key], for (final item in items) item.globalKey: item};
+    final now = _clock();
+    final completed = complete ? now : _completed[key];
+    final scan = replace ? (at: now, updatedAt: library.updatedAt) : _lastScan[key];
+    await _persistLibrary(library, next, completed, scan, valid);
+    if (valid() && replace) await _pruneUnreferencedPosters();
   });
 
   Future<void> _persistLibrary(
     MediaLibrary library,
     Map<String, MediaItem> next,
     DateTime? completed,
+    ({DateTime at, int? updatedAt})? scan,
     bool Function() valid,
   ) async {
     final key = library.globalKey;
@@ -285,7 +309,11 @@ class LocalLibraryStore {
         'serverName': library.serverName,
       },
     });
-    final tail = jsonEncode({'completed': completed?.toIso8601String()});
+    final tail = jsonEncode({
+      'completed': completed?.toIso8601String(),
+      'scanned': scan?.at.toIso8601String(),
+      'scannedUpdatedAt': scan?.updatedAt,
+    });
     await _atomicRows(
       _libraryFile(key),
       '${head.substring(0, head.length - 1)},"items":[',
@@ -297,6 +325,7 @@ class LocalLibraryStore {
     _libraries[key] = library;
     _items[key] = next;
     if (completed != null) _completed[key] = completed;
+    if (scan != null) _lastScan[key] = scan;
   }
 
   /// A confirmed source deletion changes membership without certifying an
@@ -322,6 +351,7 @@ class LocalLibraryStore {
             if (!removed.contains(i.id)) i.globalKey: i,
         },
         _completed[library.globalKey],
+        _lastScan[library.globalKey],
         valid,
       );
     }
@@ -429,6 +459,7 @@ class LocalLibraryStore {
     _libraries.clear();
     _items.clear();
     _completed.clear();
+    _lastScan.clear();
     _posters.clear();
     _posterFreshness.clear();
     _artworkVariants.clear();

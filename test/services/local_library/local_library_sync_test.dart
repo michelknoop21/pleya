@@ -35,7 +35,13 @@ class Client implements MediaServerClient {
     AbortController? abort,
   }) async {
     if (childrenFail) throw StateError('Unverified child page');
-    return LibraryPage(items: [], totalCount: 0, offset: start ?? 0);
+    childrenAsked.add(parentId);
+    final rows = childRows[parentId] ?? const <MediaItem>[];
+    return LibraryPage(
+      items: rows.skip(start ?? 0).take(size ?? rows.length).toList(),
+      totalCount: rows.length,
+      offset: start ?? 0,
+    );
   }
 
   @override
@@ -50,8 +56,22 @@ class Client implements MediaServerClient {
     return const ExternalIds();
   }
 
+  final Map<String, List<MediaItem>> childRows = {};
+  final List<String> childrenAsked = [];
+  final Map<String, Object> itemErrors = {};
+  // Ids whose detail call answers null, the way Pleya Server and Jellyfin
+  // report a failed call.
+  final Set<String> itemNull = {};
+  final List<String> itemsAsked = [];
   @override
-  Future<MediaItem?> fetchItem(String id) async => rows.where((i) => i.id == id).firstOrNull;
+  Future<MediaItem?> fetchItem(String id) async {
+    itemsAsked.add(id);
+    final error = itemErrors[id];
+    if (error != null) throw error;
+    if (itemNull.contains(id)) return null;
+    return [...rows, for (final c in childRows.values) ...c].where((i) => i.id == id).firstOrNull;
+  }
+
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
     String libraryId, {
@@ -239,6 +259,19 @@ void main() {
       },
     );
 
+    test('one title whose detail call fails does not fail the scan (Pleya answers such a call with null)', () async {
+      final (fake, rescan) = await live(reportsExternalIds: true);
+      fake.addItem(id: 'other', kind: 'show', title: 'D', libraryId: 'lib-series', year: 2023);
+      fake.queueFailure(pathPrefix: '/items/later', status: 500, errorCode: 'server.internal');
+
+      await expectLater(rescan(), throwsA(isA<LocalLibraryPartialScan>()));
+
+      expect(store.items.map((i) => i.id), ['other']);
+      expect(fake.requests.where((r) => r.contains('/items/later/children')), isEmpty);
+      expect(store.isComplete(store.libraries.single.globalKey), isFalse);
+      expect((await rescan()).keys.toSet(), {'later', 'other'});
+    });
+
     test('a server that predates the field stores nothing final', () async {
       final raw = await scan(reportsExternalIds: false);
 
@@ -305,6 +338,85 @@ void main() {
       isTrue,
       reason: 'nothing stored as final',
     );
+  });
+
+  test('a title whose detail times out keeps its stored row, with fresh watch state, and the scan completes', () async {
+    final stored = film('b').copyWith(summary: 'stored detail', viewOffsetMs: 100);
+    await store.saveLibrary(library, [film('a'), stored], complete: true);
+    client.rows = [film('a'), film('b').copyWith(viewCount: 1, viewOffsetMs: 5000)];
+    client.itemErrors['b'] = TimeoutException('slow');
+
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+
+    expect(store.items.map((i) => i.id), ['a', 'b']);
+    final b = store.items.firstWhere((i) => i.id == 'b');
+    expect(b.summary, 'stored detail');
+    expect((b.viewCount, b.viewOffsetMs), (1, 5000), reason: 'the list answer carries the current watch state');
+    expect(store.isComplete(library.globalKey), isTrue);
+  });
+
+  final partialScan = throwsA(isA<LocalLibraryPartialScan>().having((e) => e.skipped, 'skipped', 1));
+
+  test('on a first scan a failing title is left for the next scan, which leaves the library incomplete', () async {
+    client.itemErrors['b'] = MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 500);
+
+    await expectLater(LocalLibrarySync(store: store).syncLibrary(library, client), partialScan);
+
+    expect(store.items.map((i) => i.id), ['a']);
+    expect(store.isComplete(library.globalKey), isFalse, reason: 'the catalog keeps reading the server');
+
+    client.itemErrors.clear();
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+    expect(store.items.map((i) => i.id), ['a', 'b']);
+    expect(store.isComplete(library.globalKey), isTrue);
+  });
+
+  test('a detail call that answers null counts as a failed call, not as a failed scan', () async {
+    await store.saveLibrary(library, [film('a').copyWith(summary: 'stored a')], complete: true);
+    client.itemNull.addAll({'a', 'b'});
+
+    await expectLater(LocalLibrarySync(store: store).syncLibrary(library, client), partialScan);
+
+    expect(store.items.map((i) => i.id), ['a'], reason: 'a keeps its row, b is left for the next scan');
+    expect(store.items.single.summary, 'stored a');
+  });
+
+  test('a complete library with a skipped new title still drops what the server deleted, and stays complete', () async {
+    await store.saveLibrary(library, [film('a'), film('gone')], complete: true);
+    client.itemErrors['b'] = TimeoutException('slow');
+
+    await expectLater(LocalLibrarySync(store: store).syncLibrary(library, client), partialScan);
+
+    expect(store.items.map((i) => i.id), ['a'], reason: 'the enumeration proved gone is gone');
+    expect(store.isComplete(library.globalKey), isTrue);
+    expect(store.lastScan(library.globalKey), isNotNull, reason: 'the attempt counts for the rescan window');
+  });
+
+  group('a show whose detail fails', () {
+    final shows = library.copyWith(kind: MediaKind.show);
+    final show = film('show').copyWith(kind: MediaKind.show);
+    final season = film('season').copyWith(kind: MediaKind.season, parentId: 'show');
+    setUp(() {
+      client.rows = [show];
+      client.childRows['show'] = [season];
+      client.itemErrors['show'] = TimeoutException('slow');
+    });
+
+    test('on a first scan stores none of its seasons or episodes', () async {
+      await expectLater(LocalLibrarySync(store: store).syncLibrary(shows, client), partialScan);
+
+      expect(store.items, isEmpty);
+      expect(client.childrenAsked, isEmpty);
+    });
+
+    test('with a stored row still scans its children', () async {
+      await store.saveLibrary(shows, [show], complete: true);
+
+      await LocalLibrarySync(store: store).syncLibrary(shows, client);
+
+      expect(store.items.map((i) => i.id), ['show', 'season']);
+      expect(client.childrenAsked.toSet(), {'show', 'season'});
+    });
   });
 
   test('an unexpected StateError still fails the scan: only lookup failures are tolerated', () async {
