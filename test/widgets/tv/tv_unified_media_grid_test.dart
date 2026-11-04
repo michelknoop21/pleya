@@ -560,6 +560,31 @@ void main() {
       expect(Focus.of(tester.element(find.text('Title 0'))).hasPrimaryFocus, isTrue);
       expect(find.descendant(of: firstCard, matching: find.byType(OptimizedMediaImage)), findsOneWidget);
     });
+
+    testWidgets('a row far from the focus is laid out but not painted', (tester) async {
+      await pumpGrid(tester, count: 400);
+      await focusCard(tester, 'Title 0');
+
+      Visibility rowOf(String title) =>
+          tester.widget<Visibility>(find.ancestor(of: find.text(title), matching: find.byType(Visibility)).first);
+      expect(rowOf('Title 0').visible, isTrue);
+      expect(rowOf('Title 399').visible, isFalse, reason: 'a Column paints every child on every scroll frame');
+      expect(tester.getSize(find.text('Title 399')), isNot(Size.zero), reason: 'layout stays for traversal');
+    });
+
+    testWidgets('moving the window does not rebuild cards far from it', (tester) async {
+      await pumpGrid(tester, count: 400);
+      final columns = columnsOf(tester);
+      await focusCard(tester, 'Title 0');
+      TvUnifiedMediaCard card(String title) => tester.widget<TvUnifiedMediaCard>(
+        find.ancestor(of: find.text(title), matching: find.byType(TvUnifiedMediaCard)),
+      );
+      final far = card('Title 399');
+
+      await focusCard(tester, 'Title ${columns * (tvCatalogArtworkWindowRows ~/ 2 + 1)}');
+
+      expect(identical(card('Title 399'), far), isTrue, reason: 'a recenter must not rebuild every card');
+    });
   });
 
   testWidgets('J3: the grid renders and focuses without overflow at the lowest supported TV surface', (tester) async {
