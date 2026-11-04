@@ -101,9 +101,20 @@ class LocalLibrarySync {
       };
     }
 
-    Future<void> keep(MediaItem candidate) async {
+    // Titles left out of `next` with no stored row to keep in their place.
+    var skipped = 0;
+
+    /// Whether the title has a row in `next` afterwards.
+    Future<bool> keep(MediaItem candidate) async {
       await check();
       final old = previous[candidate.globalKey];
+      // Retain full descriptive fields, but use fresh per-user watch state.
+      final retained = old?.copyWith(
+        viewCount: candidate.viewCount,
+        viewOffsetMs: candidate.viewOffsetMs,
+        viewedLeafCount: candidate.viewedLeafCount,
+        lastViewedAt: candidate.lastViewedAt,
+      );
       MediaItem? detail;
       if (old != null &&
           candidate.updatedAt != null &&
@@ -111,36 +122,34 @@ class LocalLibrarySync {
           candidate.thumbPath == old.thumbPath &&
           candidate.title == old.title &&
           candidate.year == old.year) {
-        // Retain full descriptive fields, but use fresh per-user watch state.
-        detail = old.copyWith(
-          viewCount: candidate.viewCount,
-          viewOffsetMs: candidate.viewOffsetMs,
-          viewedLeafCount: candidate.viewedLeafCount,
-          lastViewedAt: candidate.lastViewedAt,
-        );
+        detail = retained!;
       } else {
-        var failed = false;
         try {
           detail = await client.fetchItem(candidate.id).timeout(const Duration(seconds: 20));
         } on TimeoutException {
-          failed = true;
+          detail = null;
         } on MediaServerHttpException {
-          failed = true;
+          detail = null;
         }
-        if (failed) {
+        if (detail == null) {
           // One slow or failing title must not abort the whole scan, which then
-          // restarted from zero and never completed. Keep the stored row (its
-          // stale updatedAt makes the next scan ask again) or, on a first scan,
-          // leave the title for the next one.
+          // restarted from zero and never completed. No answer counts the same:
+          // Pleya Server and Jellyfin return null for a failed detail call, not
+          // only for a gone title. Keep the stored row (its stale updatedAt makes
+          // the next scan ask again) or leave the title for the next scan, which
+          // then also leaves the library incomplete.
           await check();
-          if (old != null) next[old.globalKey] = old;
+          if (retained != null) {
+            next[retained.globalKey] = retained;
+          } else {
+            skipped++;
+          }
           done++;
           onProgress?.call(done, candidate.displayTitle);
-          return;
+          return retained != null;
         }
       }
       await check();
-      if (detail == null) throw StateError('Item disappeared during library scan');
       final item = detail.copyWith(
         serverId: library.serverId,
         serverName: library.serverName,
@@ -228,6 +237,7 @@ class LocalLibrarySync {
             );
       done++;
       onProgress?.call(done, item.displayTitle);
+      return true;
     }
 
     late Future<void> Function(MediaItem) scanChildren;
@@ -254,8 +264,8 @@ class LocalLibrarySync {
             libraryId: library.id,
             libraryTitle: library.title,
           );
-          await keep(bound);
-          if (item.kind == MediaKind.show || item.kind == MediaKind.season) {
+          // Children of a dropped show or season would be rows without a parent.
+          if (await keep(bound) && (item.kind == MediaKind.show || item.kind == MediaKind.season)) {
             await scanChildren(item);
           }
         }
@@ -316,7 +326,10 @@ class LocalLibrarySync {
       }
       await check();
       if (client is LocalFolderClient && client.hasIncompleteScan) throw StateError('Folder scan is incomplete');
-      await store.saveLibrary(library, next.values.toList(), complete: true, isCurrent: valid);
+      // A skipped title is missing from `next`; a complete save would let the
+      // catalog serve the library without it. A checkpoint merge keeps the
+      // library on the server and the next trigger scans it again.
+      await store.saveLibrary(library, next.values.toList(), complete: skipped == 0, isCurrent: valid);
       if (posterLoader != null || posterRevalidator != null) {
         await syncPosters(next.values, (_) => client, isCurrent: valid);
       }
