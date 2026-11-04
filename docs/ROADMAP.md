@@ -22,6 +22,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 5. Premium tvOS-afwerking is P2 en gebruikt bestaande pakketten en goedgekeurde Northstars: alleen aantoonbare problemen of expliciet goedgekeurde voorstellen; geen nieuwe shell, componentframework of herbouw.
 6. Sluit de gekozen scope af via bestaande registers, onafhankelijke reviews, gerichte tests, codegate, Pleya Verify met beoordeelde screenshots en toepasselijke fysieke acceptatie. Release exact de geaccepteerde SHA/archive. Pleya Server/Web/e-books behouden hun fase- en protocolpoorten.
 
+**Roadmap deviation, approved by Michel on 31 October 2026:** add one shared local queue for heavy Pleya builds, tests and code generation across sessions/worktrees. This tooling task does not change product priorities, functional gates or publication authority. Implementation and measurement contract: [heavy-work queue](agents/heavy-work.md).
+
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.

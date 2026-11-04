@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+. "$(dirname "$0")/heavy_queue.sh"
+pleya_queue_script "$0" bash "$@"
 set -euo pipefail
 # background_downloader eist iOS 14.0, maar de door Flutter gegenereerde
 # FlutterGeneratedPluginSwiftPackage/Package.swift zet standaard .iOS("13.0").

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Direct commands: scripts/pleya-heavy run -- flutter test test/example_test.dart
+exec python3 "$(dirname "${BASH_SOURCE[0]}")/heavy_queue.py" "$@"

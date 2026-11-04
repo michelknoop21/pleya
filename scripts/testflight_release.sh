@@ -99,10 +99,7 @@ fi
 # opgelost, en clean kost juist een volledige hercompilatie. De tvOS-lane kan
 # er tegenwoordig tegen, want fetch_engine.sh herstelt de artefacten waar een
 # clean hem vroeger op brak (zie de toelichting in fastlane/Fastfile).
-if [[ "$DO_CLEAN" == "1" ]]; then
-  echo "$LOG_PREFIX --clean: flutter clean vooraf"
-  flutter clean
-fi
+# Cleaning and the lane share one queue slot; metadata checks and the commit do not.
 
 # Exitcode zelf opvangen in plaats van set -e het script laten afkappen: bij een
 # gefaalde lane wil je de markerrapportage hieronder juist wél zien. Verderop
@@ -110,7 +107,9 @@ fi
 # gelijk: een mislukte lane commit geen buildnummer.
 set +e
 # `${arr[@]+"${arr[@]}"}`: an empty array is "unbound" under `set -u` on macOS bash 3.2.
-fastlane "$LANE" ${LANE_OPTS[@]+"${LANE_OPTS[@]}"}
+python3 "$ROOT/scripts/heavy_queue.py" run --label "testflight-$LANE" -- \
+  bash -c 'clean=$1; shift; if [[ "$clean" == "1" ]]; then flutter clean || exit $?; fi; exec fastlane "$@"' \
+  -- "$DO_CLEAN" "$LANE" ${LANE_OPTS[@]+"${LANE_OPTS[@]}"}
 fastlane_status=$?
 set -e
 
