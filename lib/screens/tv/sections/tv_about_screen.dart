@@ -23,6 +23,7 @@ import '../../../focus/focus_memory_tracker.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../utils/layout_constants.dart';
+import '../../../widgets/settings/settings_studio_theme.dart';
 import '../../../widgets/tv/tv_menu_grid.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
 import '../../../widgets/tv/tv_unified_layout.dart';
@@ -73,7 +74,7 @@ class _TvAboutScreenState extends State<TvAboutScreen> {
   // listening, fall back to the plain push everywhere else (off TV, tests).
   void _openLicenses() {
     Widget builder(BuildContext _) => const LicensesScreen();
-    final nested = openTvContentRoute(id: 'tvAboutLicenses', builder: builder);
+    final nested = openTvContentRoute(id: 'tvAboutLicenses', builder: builder, topNav: tvSettingsTopNavFor(context));
     if (nested == null) {
       Navigator.push(context, MaterialPageRoute<void>(builder: builder));
     }

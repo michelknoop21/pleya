@@ -89,6 +89,80 @@ func TestMetadataDueSkipsDoneAmbiguousAndSeasons(t *testing.T) {
 	}
 }
 
+// Zonder sleutel draait de ronde op naam 'nfo': een nagelopen item komt niet meer
+// terug, en dat zegt niets over wat een provider er later van vindt.
+func TestSidecarRoundRemembersWhatItChecked(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+	due := func(provider string) map[id.ID]bool {
+		t.Helper()
+		targets, err := store.MetadataDue(ctx, provider, 3, nil, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[id.ID]bool{}
+		for _, target := range targets {
+			out[target.ID] = true
+		}
+		return out
+	}
+	if !due(catalog.SourceNFO)[ids["alien"]] {
+		t.Fatal("een nieuw item hoort aan de beurt te zijn")
+	}
+	if err := store.MarkSidecarChecked(ctx, ids["alien"]); err != nil {
+		t.Fatal(err)
+	}
+	if due(catalog.SourceNFO)[ids["alien"]] {
+		t.Fatal("een nagelopen item kwam terug")
+	}
+	if !due(catalog.SourceNFO)[ids["heat"]] {
+		t.Fatal("een ander item viel weg")
+	}
+	if !due("tmdb")[ids["alien"]] {
+		t.Fatal("een provider hoort het item nog te zien")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET sidecar_checked_at = now() - interval '8 days' WHERE id = $1`, ids["alien"]); err != nil {
+		t.Fatal(err)
+	}
+	if !due(catalog.SourceNFO)[ids["alien"]] {
+		t.Fatal("een bijgewerkte .nfo komt zo nooit meer door")
+	}
+}
+
+// updated_at is wat clients op verversen zetten, dus dezelfde waarden opnieuw
+// schrijven raakt de rij niet.
+func TestApplyMetadataLeavesTheItemAloneWithoutChanges(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+	details := catalog.MetadataDetails{Summary: "Plot", Genres: []string{"Horror"}, ContentRating: "16",
+		People: []catalog.Person{{Name: "Ridley Scott", Role: "director"}}}
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, details); err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET updated_at = $2 WHERE id = $1`, ids["alien"], stamp); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, details); err != nil {
+		t.Fatal(err)
+	}
+	var got time.Time
+	if err := pool.QueryRow(ctx, `SELECT updated_at FROM media_items WHERE id = $1`, ids["alien"]).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.Equal(stamp) {
+		t.Fatalf("ongewijzigde gegevens raakten de rij: %v", got)
+	}
+	details.Summary = "Nieuwe plot"
+	if err := store.ApplyMetadata(ctx, ids["alien"], catalog.SourceNFO, details); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT updated_at FROM media_items WHERE id = $1`, ids["alien"]).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Equal(stamp) {
+		t.Fatal("een echte wijziging zette updated_at niet")
+	}
+}
+
 func TestApplyMetadataRespectsFieldPrecedence(t *testing.T) {
 	store, ctx, ids, pool := metadataFixture(t)
 
@@ -188,7 +262,11 @@ func TestFailedAndMatchedWithArtworkRetryComeBackWhenDue(t *testing.T) {
 
 	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateFailed, NextAttempt: &past})
 	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["heat"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "949", NextAttempt: &future})
-	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1"})
+	// Een voltooid item vraagt echte publicatie; SaveCandidate is onbewezen intentie.
+	d := catalog.MetadataDetails{}
+	if err := store.CommitMetadata(ctx, catalog.MetadataTarget{ID: ids["show"]}, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 1}, &d, nil, nil); err != nil {
+		t.Fatal(err)
+	}
 
 	due, err := store.MetadataDue(ctx, "tmdb", 1, nil, 10)
 	if err != nil || len(due) != 1 || due[0].ID != ids["alien"] {
@@ -225,24 +303,34 @@ func TestDropProviderArtworkPutsTheItemBackInTheQueue(t *testing.T) {
 	}
 }
 
-func TestRaisingThePassPutsEveryItemBackExceptNothingIsLost(t *testing.T) {
+func TestRaisingThePassKeepsAmbiguityAndPublishedIdentity(t *testing.T) {
 	store, ctx, ids, _ := metadataFixture(t)
+	d := catalog.MetadataDetails{}
 	for _, k := range []string{"alien", "heat"} {
-		_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids[k], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 1})
+		item := ids[k]
+		if err := store.CommitMetadata(ctx, catalog.MetadataTarget{ID: item}, catalog.MetadataCandidate{ItemID: item, Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 1}, &d, nil, nil); err != nil {
+			t.Fatal(err)
+		}
 	}
-	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateAmbiguous, Pass: 1})
-
-	if due, _ := store.MetadataDue(ctx, "tmdb", 1, nil, 10); len(due) != 0 {
-		t.Fatalf("pass 1 hoort niets te geven: %+v", due)
+	if err := store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["show"], Provider: "tmdb", State: catalog.CandidateAmbiguous, Pass: 1}); err != nil {
+		t.Fatal(err)
 	}
-	due, _ := store.MetadataDue(ctx, "tmdb", 2, nil, 10)
-	if len(due) != 3 {
-		t.Fatalf("pass 2 hoort alle drie opnieuw aan de beurt te zetten (ook de ambigue), kreeg %d", len(due))
+	if due, err := store.MetadataDue(ctx, "tmdb", 1, nil, 10); err != nil || len(due) != 0 {
+		t.Fatalf("bewezen pass 1: %+v %v", due, err)
 	}
-	// Eenmaal vastgelegd op pass 2 komt een item niet nog eens.
-	_ = store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: ids["alien"], Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 2})
-	if due, _ = store.MetadataDue(ctx, "tmdb", 2, nil, 10); len(due) != 2 {
-		t.Fatalf("na vastleggen op pass 2 horen er twee over te zijn, kreeg %d", len(due))
+	due, err := store.MetadataDue(ctx, "tmdb", 2, nil, 10)
+	if err != nil || len(due) != 2 {
+		t.Fatalf("pass 2 mag ambigu niet kiezen: %+v %v", due, err)
+	}
+	for _, target := range due {
+		if target.ID == ids["alien"] {
+			if err := store.CommitMetadata(ctx, target, catalog.MetadataCandidate{ItemID: target.ID, Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1", Pass: 2}, &d, nil, nil); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if due, err = store.MetadataDue(ctx, "tmdb", 2, nil, 10); err != nil || len(due) != 1 || due[0].ID != ids["heat"] {
+		t.Fatalf("herpublicatie niet begrensd: %+v %v", due, err)
 	}
 }
 
@@ -429,5 +517,80 @@ func TestManualMatchRejectAndAttention(t *testing.T) {
 	}
 	if _, total, _ := store.MetadataAttention(ctx, 10); total != 0 {
 		t.Fatal("kiezen na afwijzen hoort de afwijzing op te heffen")
+	}
+}
+
+// Een toekomstige bestaande timestamp bootst klokterugloop na zonder DB-klokwijziging.
+// Elke kandidaatwriter moet de duurzame generatie ook dan strikt verhogen.
+func TestMetadataGenerationIsMonotoneAndCommitIsAtomic(t *testing.T) {
+	store, ctx, ids, pool := metadataFixture(t)
+	item := ids["alien"]
+	if err := store.SetManualMatch(ctx, item, "tmdb", "1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE metadata_candidates SET updated_at='2100-01-01' WHERE item_id=$1`, item); err != nil {
+		t.Fatal(err)
+	}
+	artID := id.New()
+	if err := store.UpsertProviderArtwork(ctx, catalog.ProviderArtwork{ID: artID, ItemID: item, Kind: "poster", Provider: "tmdb", SourceRef: "old", FileName: "old.jpg", SHA256: "old"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range []func() error{
+		func() error { return store.SetManualMatch(ctx, item, "tmdb", "1") },
+		func() error {
+			return store.SaveCandidate(ctx, catalog.MetadataCandidate{ItemID: item, Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "1"})
+		},
+		func() error { return store.DropProviderArtwork(ctx, artID) },
+		func() error { _, err := store.RejectMatch(ctx, item, "tmdb"); return err },
+	} {
+		var before, after time.Time
+		if err := pool.QueryRow(ctx, `SELECT updated_at FROM metadata_candidates WHERE item_id=$1`, item).Scan(&before); err != nil {
+			t.Fatal(err)
+		}
+		if err := change(); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `SELECT updated_at FROM metadata_candidates WHERE item_id=$1`, item).Scan(&after); err != nil {
+			t.Fatal(err)
+		}
+		if !after.After(before) {
+			t.Fatalf("generation niet strikt hoger: %s -> %s", before, after)
+		}
+	}
+	if err := store.SetManualMatch(ctx, item, "tmdb", "2"); err != nil {
+		t.Fatal(err)
+	}
+	targets, err := store.MetadataDue(ctx, "tmdb", 3, nil, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var target catalog.MetadataTarget
+	for _, v := range targets {
+		if v.ID == item {
+			target = v
+		}
+	}
+	if target.ID != item {
+		t.Fatal("doel ontbreekt")
+	}
+	candidate := catalog.MetadataCandidate{ItemID: item, Provider: "tmdb", State: catalog.CandidateMatched, ExternalID: "2", Pass: 3}
+	details := catalog.MetadataDetails{Summary: "mag niet half publiceren"}
+	err = store.CommitMetadata(ctx, target, candidate, &details, nil, []catalog.ProviderArtwork{{ID: id.New(), ItemID: item, Kind: "ongeldig", Provider: "tmdb", SourceRef: "fixture", FileName: "fixture.jpg", SHA256: "fixture"}})
+	if err == nil {
+		t.Fatal("ongeldig artwork geaccepteerd")
+	}
+	var summary string
+	var generation time.Time
+	if err := pool.QueryRow(ctx, `SELECT coalesce(i.summary,''),c.updated_at FROM media_items i JOIN metadata_candidates c ON c.item_id=i.id WHERE i.id=$1`, item).Scan(&summary, &generation); err != nil {
+		t.Fatal(err)
+	}
+	if summary != "" || !generation.Equal(*target.CandidateUpdatedAt) {
+		t.Fatal("mislukte commit publiceerde gedeeltelijk")
+	}
+	if err := store.CommitMetadata(ctx, target, candidate, &details, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CommitMetadata(ctx, target, candidate, &details, nil, nil); !errors.Is(err, catalog.ErrMetadataSuperseded) {
+		t.Fatalf("tweede commit van oude generatie: %v", err)
 	}
 }

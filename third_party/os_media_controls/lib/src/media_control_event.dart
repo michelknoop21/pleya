@@ -1,15 +1,16 @@
 /// Base class for all media control events received from the OS
 abstract class MediaControlEvent {
-  const MediaControlEvent();
+  final bool isSystemCommand;
+  const MediaControlEvent({this.isSystemCommand = false});
 
   /// Creates a [MediaControlEvent] from a platform channel map
   factory MediaControlEvent.fromMap(Map<dynamic, dynamic> map) {
     final type = map['type'] as String;
     switch (type) {
       case 'play':
-        return const PlayEvent();
+        return PlayEvent(isSystemCommand: map['source'] == 'commandCenter');
       case 'pause':
-        return const PauseEvent();
+        return PauseEvent(isSystemCommand: map['source'] == 'commandCenter');
       case 'stop':
         return const StopEvent();
       case 'next':
@@ -21,29 +22,21 @@ abstract class MediaControlEvent {
         return SeekEvent(Duration(milliseconds: (position * 1000).round()));
       case 'skipForward':
         final interval = (map['interval'] as num?)?.toDouble();
-        return SkipForwardEvent(
-          interval != null
-              ? Duration(milliseconds: (interval * 1000).round())
-              : null,
-        );
+        return SkipForwardEvent(interval != null ? Duration(milliseconds: (interval * 1000).round()) : null);
       case 'skipBackward':
         final interval = (map['interval'] as num?)?.toDouble();
-        return SkipBackwardEvent(
-          interval != null
-              ? Duration(milliseconds: (interval * 1000).round())
-              : null,
-        );
+        return SkipBackwardEvent(interval != null ? Duration(milliseconds: (interval * 1000).round()) : null);
+      case 'subtitle':
+        return SubtitleOptionEvent(map['id'] as String?, enabled: map['enabled'] == true);
       case 'setSpeed':
         final speed = (map['speed'] as num).toDouble();
         return SetSpeedEvent(speed);
       case 'togglePlayPause':
-        return const TogglePlayPauseEvent();
+        return TogglePlayPauseEvent(isSystemCommand: map['source'] == 'commandCenter');
       case 'audioInterruptionBegan':
         return const AudioInterruptionBeganEvent();
       case 'audioInterruptionEnded':
-        return AudioInterruptionEndedEvent(
-          shouldResume: map['shouldResume'] == true,
-        );
+        return AudioInterruptionEndedEvent(shouldResume: map['shouldResume'] == true);
       case 'audioRouteOldDeviceUnavailable':
         return const AudioRouteOldDeviceUnavailableEvent();
       case 'audioRouteNewDeviceAvailable':
@@ -56,7 +49,7 @@ abstract class MediaControlEvent {
 
 /// Event triggered when the play button is pressed
 class PlayEvent extends MediaControlEvent {
-  const PlayEvent();
+  const PlayEvent({super.isSystemCommand});
 
   @override
   String toString() => 'PlayEvent()';
@@ -64,7 +57,7 @@ class PlayEvent extends MediaControlEvent {
 
 /// Event triggered when the pause button is pressed
 class PauseEvent extends MediaControlEvent {
-  const PauseEvent();
+  const PauseEvent({super.isSystemCommand});
 
   @override
   String toString() => 'PauseEvent()';
@@ -80,7 +73,7 @@ class StopEvent extends MediaControlEvent {
 
 /// Event triggered when the toggle play/pause button is pressed (iOS/macOS)
 class TogglePlayPauseEvent extends MediaControlEvent {
-  const TogglePlayPauseEvent();
+  const TogglePlayPauseEvent({super.isSystemCommand});
 
   @override
   String toString() => 'TogglePlayPauseEvent()';
@@ -102,14 +95,12 @@ class AudioInterruptionEndedEvent extends MediaControlEvent {
   const AudioInterruptionEndedEvent({required this.shouldResume});
 
   @override
-  String toString() =>
-      'AudioInterruptionEndedEvent(shouldResume: $shouldResume)';
+  String toString() => 'AudioInterruptionEndedEvent(shouldResume: $shouldResume)';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is AudioInterruptionEndedEvent &&
-        other.shouldResume == shouldResume;
+    return other is AudioInterruptionEndedEvent && other.shouldResume == shouldResume;
   }
 
   @override
@@ -226,4 +217,11 @@ class SetSpeedEvent extends MediaControlEvent {
 
   @override
   int get hashCode => speed.hashCode;
+}
+
+/// A public MediaPlayer language-option command. Null means subtitles off.
+class SubtitleOptionEvent extends MediaControlEvent {
+  final String? id;
+  final bool enabled;
+  const SubtitleOptionEvent(this.id, {required this.enabled});
 }

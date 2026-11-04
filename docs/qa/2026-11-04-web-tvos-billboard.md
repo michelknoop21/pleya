@@ -1,0 +1,11 @@
+# Web Home: gedeelde tvOS-richting
+
+Roadmap C-05/S8. Michel keurde3november uitvoering goed tot macOSTestFlight/NAS. Deze Webslice is onafhankelijk van het nog open macOS-resizeonderzoek. Geen release/deploy voltooid.
+
+Home gebruikt echte catalogusitems, geen ontwerpdata. Bounded zichtbare filmbibliotheken leveren elk maximaal12 films gesorteerd op jaar; Webv1 draagt geen volledige releasedatum of clearlogo, dus geen gefingeerde datum/afbeelding. Tot die optionele reads klaar zijn en bij lege filmselectie blijft de bestaande hero met geverifieerde afleveringscontext beschikbaar. Abort bewaakt alle late updates. De oorspronkelijke item-ID, versies, rechten en persoonlijke status blijven leidend.
+
+Carrousel:8s aanvankelijk, na bediening8s inactiviteit plus8s interval zoals bestaande Pleya tvOS; eindige handmatige pijlen/swipe, automatische wrap, korte indicator, geen automatische wisseling bij reducedmotion/overlay/verborgenvenster/scroll/rijfocus. CTA blijft gemount terwijl alleen artwork wisselt; Hervatten geeft opgeslagen positie aan bestaande playerHref. Sidebar72/248px met96px contentinzet, bestaande toegestane routes blijven. Details behouden acties/metadatabronnen en krijgen sansseriftitel/pilvorm/helderder artwork.
+
+Bewijs buitenbron in task4/review: web-final-tests.log28PASS, web-final-check.log0errors/0warnings, web-final-build.logPASS, implementation-browser-final.logPASS (echte routes met uitsluitend onderschepte synthetische API, geen NAS). billboard-resume-negative.log is echtFAIL zonder savedposition. Onafhankelijke web-final-fix-review.md sluit productbevindingen; na testtypecorrectie is de typecheckgroen. Multi-slideunit-tests bewijzen8s/reducedmotion/eindstops/focusnode; browserbewijs toont episode/context/playbacklink/mobile, geen echte mediadecoderingclaim. Oude51contexttests en aa532e8cc-bewijs blijven afzonderlijk geldig.
+
+Unified impact: bestaande identities/routes/capabilities; geen nieuwprotocol, accountrecht, servermutatie of testcatalogus. macOS89gerichtePASS en echteHomecapture bestaan, maar resizeSIGSEGV in FlutterMacOSAccessibilityBridge is nog geen geaccepteerde native release. S8 blijft gedeeltelijk; NASacceptatie/mainCI/deployment volgen na normale review/merge. iOS/tvOSrelease niet aangevraagd.

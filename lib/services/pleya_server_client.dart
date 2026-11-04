@@ -1,17 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Directory;
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
+import '../media/deferred_subtitle.dart';
+import '../automation/pleya_verify.dart';
 import '../utils/continue_watching_merge.dart';
+import '../exceptions/identity_lookup_exceptions.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
+import '../media/external_rating.dart';
 import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../media/ids.dart';
+import '../media/item_watcher.dart';
 import '../media/library_filter_result.dart';
 import '../media/media_filter.dart';
 import '../media/library_first_character.dart';
@@ -19,32 +27,46 @@ import '../media/library_query.dart';
 import '../media/live_tv_dvr_support.dart';
 import '../media/live_tv_support.dart';
 import '../media/media_backend.dart';
+import '../media/unified/carried_external_ids.dart';
+import '../mpv/models.dart' show SubtitleTrack;
 import '../media/media_file_info.dart';
 import '../media/media_hub.dart';
 import '../media/media_identity.dart';
 import '../media/media_item.dart';
+import '../media/track_language_choice.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_playlist.dart';
+import '../media/media_review.dart';
+import '../media/media_role.dart';
 import '../media/media_server_client.dart';
 import '../media/media_sort.dart';
 import '../media/media_source_info.dart';
+import '../media/media_stream.dart';
 import '../media/media_version.dart';
 import '../media/noop_live_tv_support.dart';
 import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
 import '../i18n/strings.g.dart';
 import '../models/pleya_server/pleya_wire.dart';
+import '../models/pleya_server/pleya_wire_activity.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
+import '../models/pleya_server/pleya_wire_lists.dart';
 import '../models/pleya_server/pleya_wire_playback.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
 import '../utils/language_codes.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
+import 'pleya_subtitle_fetcher.dart';
 import 'api_cache.dart';
+import 'cached_playback_metadata_service.dart';
+import 'download_artwork_helpers.dart';
+import 'memory/memory_models.dart';
+import 'memory/memory_sync_models.dart';
 import 'device_capabilities_service.dart';
 import 'playback_initialization_types.dart';
+import 'playback_stream_evidence.dart';
 import 'pleya_server_api_cache.dart';
 import 'pleya_server_auth_service.dart';
 import 'image_cache_service.dart';
@@ -62,9 +84,12 @@ part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
 part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/personal.dart';
+part 'pleya_server_client/parts/lists.dart';
+part 'pleya_server_client/parts/memory.dart';
 part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
+part 'pleya_server_client/parts/verify_detail.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
 ///
@@ -86,8 +111,8 @@ part 'pleya_server_client/parts/admin.dart';
 ///
 /// PS-3 brought libraries, browsing, children, hubs, search and artwork. PS-4
 /// adds direct play and watch state, with the ownership model from DEC-049
-/// behind it. Downloads, playlists, collections, favourites, ratings and Live
-/// TV are later phases and answer through `_PleyaServerUnsupportedMethods`.
+/// behind it. Personal features, downloads, collections and playlists have
+/// their own parts; Live TV still answers through `_PleyaServerUnsupportedMethods`.
 /// Scans, jobs and user administration live in `_PleyaServerAdminMethods`.
 // The private fields below are assigned from named constructor parameters
 // rather than through initializing formals, because Dart has no private named
@@ -102,11 +127,19 @@ class PleyaServerClient
         _PleyaServerArtworkMethods,
         _PleyaServerPlaybackMethods,
         _PleyaServerPersonalMethods,
+        _PleyaServerListMethods,
         _PleyaServerDownloadMethods,
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
+        _PleyaVerifyDetailMethods,
         ServerAuthorityGuard
-    implements MediaServerClient, FreshMediaItemClient, ScopedMediaServerClient, GracefullyCloseable {
+    implements
+        MediaServerClient,
+        FreshMediaItemClient,
+        HouseholdActivityClient,
+        CopyStateClient,
+        ScopedMediaServerClient,
+        GracefullyCloseable {
   @override
   Future<MediaItem?> fetchFreshItem(String id) async {
     if (!wireCapabilities.watchState) return null;
@@ -114,6 +147,30 @@ class PleyaServerClient
     // catalogue-only answer cannot replace this session's local stop.
     final item = await fetchItem(id);
     return item?.viewOffsetMs == null ? null : item;
+  }
+
+  /// Not [fetchFreshItem]: a title nobody touched carries `user_state: null`,
+  /// and for a copy that is an answer. `play_count` stays where it was after a
+  /// mark as unwatched, so what counts here is `watched`.
+  @override
+  Future<MediaItem?> readCopyState(String id) async {
+    if (_offlineMode) throw StateError('Offline: no answer about $id');
+    final response = await _authorizedGet('/items/${Uri.encodeComponent(id)}');
+    if (response.statusCode == 404) return null;
+    final data = response.data;
+    if (response.statusCode >= 400 || data is! Map<String, dynamic>) {
+      throw StateError('No answer about $id: ${response.statusCode}');
+    }
+    final wire = PleyaItem.fromJson(data);
+    final item = PleyaServerMappers.mediaItem(
+      wire,
+      serverId: serverId.toString(),
+      serverName: serverName,
+      useAppliedExternalIds: wireCapabilities.appliedExternalIdentity,
+      identityKnown: _identityCapabilitiesKnown,
+    );
+    final state = wire.userState;
+    return item.copyWith(viewCount: state != null && state.watched ? math.max(state.playCount, 1) : 0);
   }
 
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
@@ -156,6 +213,7 @@ class PleyaServerClient
   final PleyaServerSession _session;
   @override
   final MediaServerHttpClient _http;
+  bool _closed = false;
 
   @override
   final PleyaServerCursorLedger _cursors = PleyaServerCursorLedger();
@@ -163,7 +221,22 @@ class PleyaServerClient
   @override
   final PleyaServerWatchLedger _watchLedger = PleyaServerWatchLedger();
 
+  /// Personal facts use this account's existing session; never a library cache.
+  MemorySyncTransport assistantMemoryTransport({required bool Function() isCurrent}) =>
+      _PleyaMemoryTransport(this, isCurrent);
+
   bool _offlineMode = false;
+  bool _identityCapabilitiesKnown = false;
+  @override
+  bool get identityCapabilitiesKnown => _identityCapabilitiesKnown;
+  @override
+  String get externalIdentitySource =>
+      !_identityCapabilitiesKnown ? 'unknown' : (wireCapabilities.appliedExternalIdentity ? 'applied' : 'legacy');
+
+  /// Unqualified stored numbers need an explicitly old server, never unknown info.
+  bool get usesLegacyExternalIdentity => _identityCapabilitiesKnown && !wireCapabilities.appliedExternalIdentity;
+
+  bool canUseStoredExternalIds(MediaItem item) => hasAppliedExternalIds(item) || usesLegacyExternalIdentity;
   ServerCapabilities _capabilities = PleyaServerCapabilityResolver.unknown;
   PleyaCapabilities _wireCapabilities = PleyaCapabilities.unknown;
 
@@ -237,12 +310,20 @@ class PleyaServerClient
   /// it returns is openable straight away.
   @override
   Map<String, String> get streamHeaders {
+    if (_closed) return const {};
     final token = _session.cachedAccessToken;
     return token == null ? const {} : {'Authorization': 'Bearer $token'};
   }
 
   @override
   void close() {
+    if (_closed) return;
+    _closed = true;
+    _session.close();
+    for (final held in _transcodeSessions.values) {
+      held.timer.cancel();
+    }
+    _transcodeSessions.clear();
     _unregisterArtworkAuthorization();
     _http.close();
   }
@@ -266,6 +347,11 @@ class PleyaServerClient
       final data = response.data;
       if (data is! Map<String, dynamic>) return null;
       final info = PleyaInfo.fromJson(data);
+      if (!_identityCapabilitiesKnown ||
+          _wireCapabilities.appliedExternalIdentity != info.capabilities.appliedExternalIdentity) {
+        _recentExternalIds.clear();
+      }
+      _identityCapabilitiesKnown = true;
       _wireCapabilities = info.capabilities;
       _capabilities = PleyaServerCapabilityResolver.resolve(info.capabilities);
       return info;
@@ -314,17 +400,25 @@ class PleyaServerClient
   /// Re-read the signed-in user's role, so a promotion or demotion on the
   /// server reaches the client's authority checks without a re-login. Best
   /// effort: a failed read keeps the last known role, and the server checks
-  /// the role on every admin request anyway.
-  Future<void> _refreshRole() async {
+  /// the role on every admin request anyway. True when the role now held
+  /// is what the server just said, so a write that needs the current role
+  /// can refuse on false.
+  @override
+  Future<bool> _refreshRole() async {
     try {
       final response = await _authorizedGet('/users/me', timeout: MediaServerTimeouts.jellyfinProbe);
-      // The account is gone: whatever role it had no longer applies.
-      if (response.statusCode == 404) return _session.adoptRole('');
+      if (response.statusCode == 404) {
+        // The account is gone: whatever role it had no longer applies.
+        await _session.adoptRole('');
+        return true;
+      }
       final data = response.data;
-      if (response.statusCode != 200 || data is! Map<String, dynamic>) return;
+      if (response.statusCode != 200 || data is! Map<String, dynamic>) return false;
       await _session.adoptRole(PleyaUser.fromJson(data).role);
+      return true;
     } catch (e) {
       appLogger.d('PleyaServerClient: /users/me unavailable', error: e);
+      return false;
     }
   }
 
@@ -395,6 +489,15 @@ class PleyaServerClient
     );
   }
 
+  /// One attempt at a subtitle. The limit sits above the server's 30 s answer,
+  /// so a slow track ends in a repeat and not in a timeout on this side.
+  @override
+  Future<MediaServerResponse> _getSubtitle(String subtitleId, AbortController abort) => _authorizedGet(
+    '/subtitles/${Uri.encodeComponent(subtitleId)}',
+    timeout: const Duration(seconds: 40),
+    abort: abort,
+  );
+
   /// POST a protocol path with a JSON body and hand back its JSON object.
   ///
   /// A failed write throws. Offline mode is the one quiet case and answers null,
@@ -450,20 +553,31 @@ class PleyaServerClient
     Map<String, dynamic>? queryParameters,
     Duration? timeout,
     AbortController? abort,
+  }) async => (await _getJsonDetailed(path, queryParameters: queryParameters, timeout: timeout, abort: abort)).json;
+
+  /// Like [_getJson], but also says which protocol error code a failed answer
+  /// carried. A caller that must tell "this cursor is stale" from "the network
+  /// is down" needs the code; everyone else keeps reading null as failure.
+  @override
+  Future<({Map<String, dynamic>? json, String? errorCode})> _getJsonDetailed(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Duration? timeout,
+    AbortController? abort,
   }) async {
-    if (_offlineMode) return null;
+    if (_offlineMode) return (json: null, errorCode: null);
     try {
       final response = await _authorizedGet(path, queryParameters: queryParameters, timeout: timeout, abort: abort);
       if (response.statusCode >= 400) {
         final error = PleyaError.tryParse(response.data);
         appLogger.d('PleyaServerClient: $path -> ${response.statusCode} ${error?.code ?? ''}');
-        return null;
+        return (json: null, errorCode: error?.code);
       }
       final data = response.data;
-      return data is Map<String, dynamic> ? data : null;
+      return (json: data is Map<String, dynamic> ? data : null, errorCode: null);
     } catch (e) {
       appLogger.d('PleyaServerClient: $path failed', error: e);
-      return null;
+      return (json: null, errorCode: null);
     }
   }
 }

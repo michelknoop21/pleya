@@ -27,6 +27,10 @@ steps:
   - wait_until: {focused: nav.search, timeout: 5000}
   - press: select
   - settle: 2000
+  # A-24c (LEESMIJ-v4): Select put Zoeken on screen with the remote on the
+  # pill; Down takes it to the field.
+  - press: down
+  - settle: 1000
   - snapshot: 00-search-empty
   - press: select
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 8000}

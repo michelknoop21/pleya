@@ -28,6 +28,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/memory"
 	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
@@ -307,6 +308,7 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 		Auth:               authStore,
 		Watch:              watchStore,
 		Personal:           personal.NewStore(pool),
+		Memory:             memory.NewStore(pool),
 		Downloads:          downloads.NewStore(pool),
 		Metrics:            reg,
 		Signer:             signer,

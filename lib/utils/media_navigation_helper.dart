@@ -15,6 +15,7 @@ import '../screens/main_screen.dart';
 import '../screens/media_detail_screen.dart';
 import '../screens/playlist/playlist_detail_screen.dart';
 import '../services/settings_service.dart';
+import '../services/unified_catalog/unified_title_scope.dart';
 import '../utils/global_key_utils.dart';
 import 'platform_detector.dart';
 import 'plex_library_section_helpers.dart';
@@ -41,7 +42,18 @@ enum MediaNavigationResult {
 /// and the replacement route land inside the profile navigator the screen is
 /// mounted in — a context from further up would push on the root navigator and
 /// throw `ProfileNavigationScope is required for profile routes`.
-typedef UnifiedSourceChangeCallback = Future<void> Function(BuildContext detailContext);
+///
+/// [current] is the route as the page holds it now, after any earlier change.
+/// [pageFailed] says the page itself could not load: the choice then becomes
+/// the page. Answers the new context when the page stays and only what Play
+/// starts changes, so the page keeps its state and its focus. Null when the
+/// viewer cancelled, or when the route was replaced.
+typedef UnifiedSourceChangeCallback =
+    Future<UnifiedMediaRouteContext?> Function(
+      BuildContext detailContext,
+      UnifiedMediaRouteContext current, {
+      bool pageFailed,
+    });
 
 class MediaDetailNavigationTarget {
   final MediaItem metadata;
@@ -59,11 +71,18 @@ class MediaDetailNavigationTarget {
 
 /// [openSeasonItself] keeps a season as its own page (the iPhone, DEC-140);
 /// everywhere else a season opens its series at that season.
+///
+/// [openEpisodeItself] keeps an episode as its own page, for a caller that is
+/// on that episode's series already: the series at this episode would be the
+/// same page a second time.
 MediaDetailNavigationTarget mediaDetailNavigationTargetFor(
   MediaItem item, {
   MediaItem? metadataOverride,
   bool openSeasonItself = false,
+  bool openEpisodeItself = false,
 }) {
+  if (openEpisodeItself && item.isEpisode) return MediaDetailNavigationTarget(metadata: metadataOverride ?? item);
+
   if (item.isEpisode && item.grandparentId != null) {
     return MediaDetailNavigationTarget(
       metadata:
@@ -138,10 +157,12 @@ MediaDetailNavigationTarget mediaDetailNavigationTargetIn(
   BuildContext context,
   MediaItem item, {
   MediaItem? metadataOverride,
+  bool openEpisodeItself = false,
 }) => mediaDetailNavigationTargetFor(
   item,
   metadataOverride: metadataOverride,
   openSeasonItself: PlatformDetector.isPhone(context),
+  openEpisodeItself: openEpisodeItself,
 );
 
 bool shouldOpenEpisodeDetailsForActivation({
@@ -295,6 +316,10 @@ Future<MediaNavigationResult> navigateToMediaItem(
     );
   }
 
+  final unifiedTitle = isOffline ? null : unifiedTitleFor(context, unifiedRouteContext);
+  // Without a title the context is all there is. With one, the position is
+  // read at the start, from the session's newest watch state.
+  final carriedResume = unifiedTitle == null ? unifiedRouteContext?.carriedResume : null;
   final settings = SettingsService.instanceOrNull;
   final continueWatchingAction = settings?.read(SettingsService.continueWatchingAction) ?? ContinueWatchingAction.play;
   final episodeAction = settings?.read(SettingsService.episodeAction) ?? EpisodeAction.play;
@@ -394,6 +419,8 @@ Future<MediaNavigationResult> navigateToMediaItem(
         metadata: restartFromBeginning ? mi.copyWith(viewOffsetMs: 0) : mi,
         isOffline: isOffline,
         resolveWatchState: !restartFromBeginning,
+        startPosition: restartFromBeginning ? null : carriedResume,
+        unifiedTitle: unifiedTitle,
         onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
       );
       if (context.mounted) {
@@ -404,16 +431,19 @@ Future<MediaNavigationResult> navigateToMediaItem(
     case MediaKind.movie:
       if (playDirectly && !shouldOpenContinueWatchingDetails) {
         recorder.close(traceId, SelectTraceOutcome.player);
+        final played = unifiedRouteContext?.playItem ?? mi;
         final result = await navigateToVideoPlayer(
           context,
-          metadata: restartFromBeginning ? mi.copyWith(viewOffsetMs: 0) : mi,
+          metadata: restartFromBeginning ? played.copyWith(viewOffsetMs: 0) : played,
           isOffline: isOffline,
           resolveWatchState: !restartFromBeginning,
+          startPosition: restartFromBeginning ? null : carriedResume,
+          unifiedTitle: unifiedTitle,
           onPlaybackInitFailed: unifiedRouteContext == null ? null : onPlaybackInitFailed,
         );
         if (context.mounted) {
           handlePlaybackReturn(
-            mi,
+            played,
             playerPopResult: result,
             onRefresh: onRefresh,
             onPlaybackReturned: onPlaybackReturned,
@@ -491,8 +521,17 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   UnifiedMediaRouteContext? unifiedRouteContext,
   UnifiedSourceChangeCallback? onChangeSource,
   TvFocusRestoreTarget? restoreTarget,
+  bool openEpisodeItself = false,
 }) async {
-  final target = mediaDetailNavigationTargetIn(context, mi, metadataOverride: metadataOverride);
+  final target = mediaDetailNavigationTargetIn(
+    context,
+    mi,
+    metadataOverride: metadataOverride,
+    openEpisodeItself: openEpisodeItself,
+  );
+  // A season or episode opened from a title's page keeps that title's choice.
+  // Read-only there: the source is changed on the title's own page.
+  unifiedRouteContext ??= UnifiedTitleScope.maybeOf(context)?.routeFor(mi);
   // The route boundary, not the activation site: comparing this against the
   // expected target recorded back at the row is what catches a swap in between.
   SelectTraceRecorder.instance.link(
@@ -514,11 +553,14 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   //
   // DEC-115: film and series detail open with the bar tucked away, so the
   // synopsis gets the height the bar used to take.
+  final screenKey = GlobalKey();
   final nested = openTvContentRoute(
     id: tvDetailRouteId(target),
     topNav: TvTopNavPresentation.collapsible,
     restoreTarget: restoreTarget,
+    screenKey: screenKey,
     builder: (_) => mediaDetailPage(
+      key: screenKey,
       metadata: target.metadata,
       isOffline: isOffline,
       initialSeasonIndex: target.initialSeasonIndex,

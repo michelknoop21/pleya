@@ -40,150 +40,19 @@
 /// merge engine does, not a backend.
 library;
 
+import '../../media/library_menu_definition.dart';
 import '../../media/library_query.dart';
-import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
 import '../../utils/global_key_utils.dart';
+import 'content_rating_labels.dart';
 import 'source_cursor.dart';
+import 'unified_catalog_capabilities.dart';
 import 'unified_catalog_query.dart';
+import 'unified_catalog_sort.dart';
 
-/// One entry in hoofdstuk 10.5's "eerste betrouwbare set" of sorts.
-///
-/// An enum rather than a free (field, direction) pair because the pair has
-/// combinations the contract does not offer — "oudst bekeken" is expressible
-/// and meaningless — and because a stored preference needs a stable name to
-/// serialise on. Rating sort is deliberately absent: 10.5 holds it back until
-/// Plex's audience rating and Jellyfin's community rating are proven to be the
-/// same scale, and inventing that equivalence here would silently answer a
-/// question the contract left open.
-enum UnifiedCatalogSort {
-  titleAsc(UnifiedCatalogSortField.title, LibrarySortDirection.ascending),
-  titleDesc(UnifiedCatalogSortField.title, LibrarySortDirection.descending),
-  recentlyAdded(UnifiedCatalogSortField.addedAt, LibrarySortDirection.descending),
-  oldestAdded(UnifiedCatalogSortField.addedAt, LibrarySortDirection.ascending),
-  newestRelease(UnifiedCatalogSortField.releaseDate, LibrarySortDirection.descending),
-  oldestRelease(UnifiedCatalogSortField.releaseDate, LibrarySortDirection.ascending),
-  recentlyWatched(UnifiedCatalogSortField.recentlyWatched, LibrarySortDirection.descending);
-
-  const UnifiedCatalogSort(this.field, this.direction);
-
-  final UnifiedCatalogSortField field;
-  final LibrarySortDirection direction;
-
-  static UnifiedCatalogSort? byName(String? name) {
-    if (name == null) return null;
-    for (final sort in values) {
-      if (sort.name == name) return sort;
-    }
-    return null;
-  }
-}
-
-/// Hoofdstuk 10.4's watch-state filter, reduced to what a backend can answer.
-///
-/// Every state is a field on the neutral query, so the backend applies it
-/// before the merge and paging keeps its meaning (see this library's doc):
-///
-/// - [unwatched]: `includeWatched: false`, Plex `unwatched=1`, Jellyfin
-///   `Filters=IsUnplayed`.
-/// - [inProgress]: `inProgressOnly`, Plex `inProgress=1` (a documented
-///   boolean section filter), Jellyfin `Filters=IsResumable`.
-/// - [watched]: `watchedOnly`, Jellyfin `Filters=IsPlayed`. Plex has no
-///   documented "watched only" filter (`unwatched=0` is unmeasured), so this
-///   state is gated by [UnifiedFilterCapabilities.supportsWatchedFilter] and
-///   absent whenever a Plex library takes part.
-enum UnifiedWatchFilter {
-  all,
-  unwatched,
-  inProgress,
-  watched;
-
-  static UnifiedWatchFilter byName(Object? name) {
-    for (final value in values) {
-      if (value.name == name) return value;
-    }
-    return all;
-  }
-}
-
-/// Which filters the participating backends can execute correctly.
-class UnifiedFilterCapabilities {
-  /// Genre and year, both of which ride on the neutral query's typed fields.
-  final bool supportsMetadataFilters;
-
-  /// `includeWatched: false` and `inProgressOnly`.
-  final bool supportsWatchFilter;
-
-  /// `watchedOnly`, which only Jellyfin executes.
-  final bool supportsWatchedFilter;
-
-  const UnifiedFilterCapabilities({
-    required this.supportsMetadataFilters,
-    required this.supportsWatchFilter,
-    this.supportsWatchedFilter = false,
-  });
-
-  /// The answer for an empty catalog: nothing participates, so nothing is
-  /// promised. Rendering a filter panel here would offer choices over no data.
-  static const none = UnifiedFilterCapabilities(supportsMetadataFilters: false, supportsWatchFilter: false);
-
-  /// Whether [state] can be executed by every participating backend.
-  bool supportsWatchState(UnifiedWatchFilter state) => switch (state) {
-    UnifiedWatchFilter.all => true,
-    UnifiedWatchFilter.unwatched || UnifiedWatchFilter.inProgress => supportsWatchFilter,
-    UnifiedWatchFilter.watched => supportsWatchFilter && supportsWatchedFilter,
-  };
-
-  @override
-  bool operator ==(Object other) =>
-      other is UnifiedFilterCapabilities &&
-      other.supportsMetadataFilters == supportsMetadataFilters &&
-      other.supportsWatchFilter == supportsWatchFilter &&
-      other.supportsWatchedFilter == supportsWatchedFilter;
-
-  @override
-  int get hashCode => Object.hash(supportsMetadataFilters, supportsWatchFilter, supportsWatchedFilter);
-}
-
-/// What [backends] can all honour.
-///
-/// Deliberately the intersection, not the union: a filter is a promise about
-/// the whole result list, and one backend ignoring it makes the promise false
-/// for every row that backend contributed. An empty set yields
-/// [UnifiedFilterCapabilities.none] rather than "everything is supported",
-/// because a vacuous truth here would light up a filter panel on a catalog with
-/// no libraries in it.
-UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> backends) {
-  final all = backends.toSet();
-  if (all.isEmpty) return UnifiedFilterCapabilities.none;
-  return UnifiedFilterCapabilities(
-    supportsMetadataFilters: all.every(_executesMetadataFilters),
-    supportsWatchFilter: all.every(_executesWatchFilter),
-    supportsWatchedFilter: all.every(_executesWatchedFilter),
-  );
-}
-
-/// Whether [backend]'s client translates `genres`/`years` into its own request.
-///
-/// Verified against `library_query_translator.dart`, which is the one place
-/// either backend turns a [LibraryQuery] into wire parameters — Plex at
-/// `genre`/`year`, Jellyfin at `Genres`/`Years`. The Pleya Server client
-/// (`pleya_server_client/parts/browse.dart`) sends them as repeated protocol
-/// parameters, and the local folder client browses a filesystem with no such
-/// index.
-bool _executesMetadataFilters(MediaBackend backend) =>
-    backend == MediaBackend.plex || backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
-
-/// Whether [backend]'s client translates `includeWatched: false` and
-/// `inProgressOnly`.
-bool _executesWatchFilter(MediaBackend backend) =>
-    backend == MediaBackend.plex || backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
-
-/// Whether [backend]'s client translates `watchedOnly`. Jellyfin and Pleya
-/// Server (`watch=watched`): the Plex translator ignores it until a live server
-/// proves what `unwatched=0` returns.
-bool _executesWatchedFilter(MediaBackend backend) =>
-    backend == MediaBackend.jellyfin || backend == MediaBackend.pleyaServer;
+export 'content_rating_labels.dart';
+export 'unified_catalog_capabilities.dart';
+export 'unified_catalog_sort.dart';
 
 /// One catalog's current narrowing, as the user set it.
 ///
@@ -201,7 +70,24 @@ class UnifiedCatalogFilterSelection {
   final Set<String> officialRatings;
 
   final Set<int> years;
+
+  /// First year of each chosen decade. Runs as the years it holds, on every
+  /// backend that filters on year: there is nothing to imitate.
+  final Set<int> decades;
   final UnifiedWatchFilter watchState;
+
+  /// One of [libraryMediaQuickFilters], or null. The quick choices take one at a
+  /// time, so choosing one clears [watchState] and the other way around.
+  final LibraryQuickFilter? mediaFilter;
+
+  /// The `filter` value of a boolean the servers list and the definition has no
+  /// row for, or null. Takes the same single slot as [mediaFilter]: choosing
+  /// one clears the other.
+  final String? extraFilter;
+
+  /// Choices in the non-boolean categories the servers list beyond the five of
+  /// the definition: `filter` value to the chosen values.
+  final Map<String, Set<String>> serverFilters;
 
   /// Stable server ids. Empty means every visible server, which is not the same
   /// as "all of them explicitly selected": a server that appears later is
@@ -217,7 +103,11 @@ class UnifiedCatalogFilterSelection {
     this.audioLanguages = const {},
     this.officialRatings = const {},
     this.years = const {},
+    this.decades = const {},
     this.watchState = UnifiedWatchFilter.all,
+    this.mediaFilter,
+    this.extraFilter,
+    this.serverFilters = const {},
     this.serverIds = const {},
     this.libraryKeys = const {},
   });
@@ -234,7 +124,10 @@ class UnifiedCatalogFilterSelection {
       (audioLanguages.isEmpty ? 0 : 1) +
       (officialRatings.isEmpty ? 0 : 1) +
       (years.isEmpty ? 0 : 1) +
+      (decades.isEmpty ? 0 : 1) +
       (watchState == UnifiedWatchFilter.all ? 0 : 1) +
+      (mediaFilter == null && extraFilter == null ? 0 : 1) +
+      serverFilters.length +
       (serverIds.isEmpty ? 0 : 1) +
       (libraryKeys.isEmpty ? 0 : 1);
 
@@ -254,18 +147,65 @@ class UnifiedCatalogFilterSelection {
       (audioLanguages.isEmpty ? 0 : 1) +
       (officialRatings.isEmpty ? 0 : 1) +
       (years.isEmpty ? 0 : 1) +
-      (watchState == UnifiedWatchFilter.all ? 0 : 1);
+      (decades.isEmpty ? 0 : 1) +
+      (watchState == UnifiedWatchFilter.all ? 0 : 1) +
+      (mediaFilter == null && extraFilter == null ? 0 : 1) +
+      serverFilters.length;
 
   /// Whether anything here narrows *which sources take part*, as opposed to
   /// which items they return. Drives the "Alle bronnen" action's own label.
   bool get restrictsSources => serverIds.isNotEmpty || libraryKeys.isNotEmpty;
+
+  /// Which quick row carries the tick.
+  LibraryQuickFilter get quickFilter =>
+      mediaFilter ??
+      switch (watchState) {
+        UnifiedWatchFilter.all => LibraryQuickFilter.all,
+        UnifiedWatchFilter.unwatched => LibraryQuickFilter.unwatched,
+        UnifiedWatchFilter.inProgress => LibraryQuickFilter.inProgress,
+        UnifiedWatchFilter.watched => LibraryQuickFilter.watched,
+      };
+
+  /// This selection with the quick choice set to [filter].
+  UnifiedCatalogFilterSelection withQuickFilter(LibraryQuickFilter filter) => UnifiedCatalogFilterSelection(
+    genres: genres,
+    audioLanguages: audioLanguages,
+    officialRatings: officialRatings,
+    years: years,
+    decades: decades,
+    watchState: switch (filter) {
+      LibraryQuickFilter.unwatched => UnifiedWatchFilter.unwatched,
+      LibraryQuickFilter.inProgress => UnifiedWatchFilter.inProgress,
+      LibraryQuickFilter.watched => UnifiedWatchFilter.watched,
+      _ => UnifiedWatchFilter.all,
+    },
+    mediaFilter: libraryMediaQuickFilters.contains(filter) ? filter : null,
+    serverFilters: serverFilters,
+    serverIds: serverIds,
+    libraryKeys: libraryKeys,
+  );
+
+  /// This selection with the boolean [key] the servers list as the quick choice.
+  UnifiedCatalogFilterSelection withExtraFilter(String key) => UnifiedCatalogFilterSelection(
+    genres: genres,
+    audioLanguages: audioLanguages,
+    officialRatings: officialRatings,
+    years: years,
+    decades: decades,
+    extraFilter: key,
+    serverFilters: serverFilters,
+    serverIds: serverIds,
+    libraryKeys: libraryKeys,
+  );
 
   UnifiedCatalogFilterSelection copyWith({
     Set<String>? genres,
     Set<String>? audioLanguages,
     Set<String>? officialRatings,
     Set<int>? years,
+    Set<int>? decades,
     UnifiedWatchFilter? watchState,
+    Map<String, Set<String>>? serverFilters,
     Set<String>? serverIds,
     Set<String>? libraryKeys,
   }) => UnifiedCatalogFilterSelection(
@@ -273,7 +213,11 @@ class UnifiedCatalogFilterSelection {
     audioLanguages: audioLanguages ?? this.audioLanguages,
     officialRatings: officialRatings ?? this.officialRatings,
     years: years ?? this.years,
+    decades: decades ?? this.decades,
     watchState: watchState ?? this.watchState,
+    mediaFilter: mediaFilter,
+    extraFilter: extraFilter,
+    serverFilters: serverFilters ?? this.serverFilters,
     serverIds: serverIds ?? this.serverIds,
     libraryKeys: libraryKeys ?? this.libraryKeys,
   );
@@ -300,7 +244,14 @@ class UnifiedCatalogFilterSelection {
     audioLanguages: capabilities.supportsMetadataFilters ? audioLanguages : const {},
     officialRatings: capabilities.supportsMetadataFilters ? officialRatings : const {},
     years: capabilities.supportsMetadataFilters ? years : const {},
+    decades: capabilities.supportsMetadataFilters ? decades : const {},
     watchState: capabilities.supportsWatchState(watchState) ? watchState : UnifiedWatchFilter.all,
+    mediaFilter: mediaFilter != null && capabilities.supportsQuickFilter(mediaFilter!) ? mediaFilter : null,
+    extraFilter: extraFilter != null && capabilities.supportsExtraFilter(extraFilter!) ? extraFilter : null,
+    serverFilters: {
+      for (final entry in serverFilters.entries)
+        if (capabilities.supportsServerCategory(entry.key)) entry.key: entry.value,
+    },
     serverIds: serverIds,
     libraryKeys: libraryKeys,
   );
@@ -343,7 +294,11 @@ class UnifiedCatalogFilterSelection {
           _setEquals(other.audioLanguages, audioLanguages) &&
           _setEquals(other.officialRatings, officialRatings) &&
           _setEquals(other.years, years) &&
+          _setEquals(other.decades, decades) &&
           other.watchState == watchState &&
+          other.mediaFilter == mediaFilter &&
+          other.extraFilter == extraFilter &&
+          _mapOfSetsEqual(other.serverFilters, serverFilters) &&
           _setEquals(other.serverIds, serverIds) &&
           _setEquals(other.libraryKeys, libraryKeys);
 
@@ -353,7 +308,13 @@ class UnifiedCatalogFilterSelection {
     Object.hashAllUnordered(audioLanguages),
     Object.hashAllUnordered(officialRatings),
     Object.hashAllUnordered(years),
+    Object.hashAllUnordered(decades),
     watchState,
+    mediaFilter,
+    extraFilter,
+    Object.hashAll(
+      ([...serverFilters.keys]..sort()).map((k) => Object.hash(k, Object.hashAllUnordered(serverFilters[k]!))),
+    ),
     Object.hashAllUnordered(serverIds),
     Object.hashAllUnordered(libraryKeys),
   );
@@ -361,6 +322,9 @@ class UnifiedCatalogFilterSelection {
   @override
   String toString() => 'UnifiedCatalogFilterSelection($activeCount active)';
 }
+
+bool _mapOfSetsEqual(Map<String, Set<String>> a, Map<String, Set<String>> b) =>
+    a.length == b.length && a.entries.every((e) => b[e.key] != null && _setEquals(b[e.key]!, e.value));
 
 bool _setEquals<T>(Set<T> a, Set<T> b) => a.length == b.length && a.containsAll(b);
 
@@ -396,13 +360,41 @@ class UnifiedCatalogPreferences {
   UnifiedCatalogPreferences copyWith({UnifiedCatalogSort? sort, UnifiedCatalogFilterSelection? filters}) =>
       UnifiedCatalogPreferences(sort: sort ?? this.sort, filters: filters ?? this.filters);
 
+  /// The sort in force: the stored one, the year where a backend taking part has
+  /// no date (a stored Nieuwste release must not read A to Z on Pleya Server,
+  /// whose release sort has always run on the year), or else title.
+  ///
+  /// The catalog screens, both Home row wizards and the query all read it here,
+  /// so their label, their tick and what runs say the same. That holds because a
+  /// catalog screen derives its query again whenever the libraries taking part
+  /// change (`_onCatalogChanged`). [sort] itself is only for what is stored.
+  ///
+  /// **Never write the result back**, for the reason on
+  /// [UnifiedCatalogFilterSelection.constrainedTo]: the set of backends is
+  /// itself something the user changes, and lifting the source restriction has
+  /// to bring the score sort back.
+  UnifiedCatalogSort effectiveSort(UnifiedFilterCapabilities capabilities) {
+    if (capabilities.supportsSort(sort.field)) return sort;
+    if (sort.field == UnifiedCatalogSortField.releaseDate && capabilities.supportsSort(UnifiedCatalogSortField.year)) {
+      return sort.direction == LibrarySortDirection.descending
+          ? UnifiedCatalogSort.yearNewest
+          : UnifiedCatalogSort.yearOldest;
+    }
+    return UnifiedCatalogSort.titleAsc;
+  }
+
   Map<String, dynamic> toJson() => {
     'sort': sort.name,
     if (filters.genres.isNotEmpty) 'genres': filters.genres.toList()..sort(),
     if (filters.audioLanguages.isNotEmpty) 'audioLanguages': filters.audioLanguages.toList()..sort(),
     if (filters.officialRatings.isNotEmpty) 'officialRatings': filters.officialRatings.toList()..sort(),
     if (filters.years.isNotEmpty) 'years': filters.years.toList()..sort(),
+    if (filters.decades.isNotEmpty) 'decades': filters.decades.toList()..sort(),
     if (filters.watchState != UnifiedWatchFilter.all) 'watch': filters.watchState.name,
+    if (filters.mediaFilter != null) 'media': filters.mediaFilter!.name,
+    if (filters.extraFilter != null) 'extra': filters.extraFilter,
+    if (filters.serverFilters.isNotEmpty)
+      'serverFilters': {for (final e in filters.serverFilters.entries) e.key: e.value.toList()..sort()},
     if (filters.serverIds.isNotEmpty) 'servers': filters.serverIds.toList()..sort(),
     if (filters.libraryKeys.isNotEmpty) 'libraries': filters.libraryKeys.toList()..sort(),
   };
@@ -421,7 +413,11 @@ class UnifiedCatalogPreferences {
       audioLanguages: _stringSet(json['audioLanguages']),
       officialRatings: _stringSet(json['officialRatings']),
       years: _intSet(json['years']),
+      decades: _intSet(json['decades']),
       watchState: UnifiedWatchFilter.byName(json['watch']),
+      mediaFilter: _mediaFilter(json['media']),
+      extraFilter: json['extra'] is String && (json['extra'] as String).isNotEmpty ? json['extra'] as String : null,
+      serverFilters: _serverFilters(json['serverFilters']),
       serverIds: _stringSet(json['servers']),
       libraryKeys: _stringSet(json['libraries']),
     ),
@@ -433,6 +429,38 @@ class UnifiedCatalogPreferences {
 
   @override
   int get hashCode => Object.hash(sort, filters);
+}
+
+Map<String, Set<String>> _serverFilters(Object? raw) {
+  if (raw is! Map) return const {};
+  final result = <String, Set<String>>{};
+  for (final entry in raw.entries) {
+    final values = _stringSet(entry.value);
+    if (entry.key is String && values.isNotEmpty) result[entry.key as String] = values;
+  }
+  return result;
+}
+
+LibraryQuickFilter? _mediaFilter(Object? name) {
+  for (final filter in libraryMediaQuickFilters) {
+    if (filter.name == name) return filter;
+  }
+  return null;
+}
+
+/// The years a selection narrows to. A decade is the ten years it holds; a year
+/// chosen beside it has to lie inside it, the two being AND-ed like every other
+/// pair of fields.
+List<int>? _queryYears(UnifiedCatalogFilterSelection filters) {
+  if (filters.decades.isEmpty) return filters.years.isEmpty ? null : (filters.years.toList()..sort());
+  final inDecades = {
+    for (final decade in filters.decades)
+      for (var year = decade; year < decade + 10; year++) year,
+  };
+  final years = filters.years.isEmpty ? inDecades : inDecades.intersection(filters.years);
+  // A year outside every chosen decade: nothing matches, and year 0 is how a
+  // query says so on every backend.
+  return years.isEmpty ? const [0] : (years.toList()..sort());
 }
 
 /// The neutral query these preferences produce for [kind], with [capabilities]
@@ -450,10 +478,11 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
   required UnifiedFilterCapabilities capabilities,
 }) {
   final filters = preferences.filters.constrainedTo(capabilities);
+  final sort = preferences.effectiveSort(capabilities);
   return UnifiedCatalogQuery(
     kind: kind,
-    sortField: preferences.sort.field,
-    sortDirection: preferences.sort.direction,
+    sortField: sort.field,
+    sortDirection: sort.direction,
     includeWatched: filters.watchState != UnifiedWatchFilter.unwatched,
     inProgressOnly: filters.watchState == UnifiedWatchFilter.inProgress,
     watchedOnly: filters.watchState == UnifiedWatchFilter.watched,
@@ -462,54 +491,17 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
     officialRatings: filters.officialRatings.isEmpty
         ? null
         : ({for (final value in filters.officialRatings) ...value.split(contentRatingValueSeparator)}.toList()..sort()),
-    years: filters.years.isEmpty ? null : (filters.years.toList()..sort()),
+    years: _queryYears(filters),
+    // The `field` is the `filter` value the server listed, never a key of ours.
+    filters: [
+      if (capabilities.mediaFilterKeys[filters.mediaFilter] case final key?)
+        LibraryFilter(field: key, values: const ['1']),
+      if (filters.extraFilter case final key?) LibraryFilter(field: key, values: const ['1']),
+      for (final entry in filters.serverFilters.entries)
+        LibraryFilter(field: entry.key, values: entry.value.toList()..sort()),
+    ],
   );
 }
-
-/// One Leeftijd choice can stand for several raw ratings: Plex `gb/12` and
-/// Jellyfin `12` are both "12", and each only matches on its own server. The
-/// choice stores them joined by this, and [buildUnifiedCatalogQuery] sends
-/// all of them to every library.
-const String contentRatingValueSeparator = '|';
-
-/// What a stored Leeftijd value reads as: the rating without its country
-/// prefix, so `gb/12` and `12` are the same "12" in the panel, the rail tags
-/// and a Home row's name.
-String contentRatingLabel(String value) {
-  final first = value.split(contentRatingValueSeparator).first;
-  return first.substring(first.lastIndexOf('/') + 1);
-}
-
-/// Numeric ages in age order ("6" before "12"), named ratings after them.
-int compareContentRatingLabels(String a, String b) {
-  final ageA = int.tryParse(a);
-  final ageB = int.tryParse(b);
-  if (ageA != null && ageB != null) return ageA.compareTo(ageB);
-  if (ageA != null || ageB != null) return ageA != null ? -1 : 1;
-  return a.toLowerCase().compareTo(b.toLowerCase());
-}
-
-/// Whether the Leeftijd choice [label] is on. Compared by label, not by the
-/// stored value: which raw ratings a choice joins depends on which servers were
-/// online when it was ticked, so a stored `12|gb/12` is still the "12" a panel
-/// offers as plain `12` while the Plex server is offline.
-bool isContentRatingSelected(Set<String> stored, String label) =>
-    stored.any((value) => contentRatingLabel(value) == label);
-
-/// [stored] with the Leeftijd choice [label] switched: off removes every stored
-/// value that reads as [label], on adds [value] (the raw ratings the reachable
-/// servers name for it right now).
-Set<String> toggleContentRating(Set<String> stored, {required String label, required String value}) =>
-    isContentRatingSelected(stored, label)
-    ? {
-        for (final v in stored)
-          if (contentRatingLabel(v) != label) v,
-      }
-    : {...stored, value};
-
-/// The labels of [ratings], each once, in display order.
-List<String> contentRatingLabels(Iterable<String> ratings) =>
-    {for (final rating in ratings) contentRatingLabel(rating)}.toList()..sort(compareContentRatingLabels);
 
 /// A screen's `_restorePreferences` step, factored out so the TV and mobile
 /// catalog screens share one answer instead of two (CAT20).

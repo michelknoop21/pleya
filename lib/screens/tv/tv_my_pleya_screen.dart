@@ -1,30 +1,33 @@
-/// Mijn Pleya on TV, the personal hub, in the Editorial layout of A-24b
-/// (northstar `docs/assets/a24b-northstars/02-Mijn-Pleya/images/01-tvos-landing.png`).
+/// Mijn Pleya on TV, the personal viewing space of A-24c (northstar
+/// `docs/assets/a24c-northstars/02-Mijn-Pleya-v4/images/A10-mijn-pleya-dark.png`).
 ///
-/// The mobile [MyPleyaScreen] is a phone list; this is the ten-foot page.
-/// Both read the same function mapping ([buildTvMyPleyaGroups]) and the same
-/// kijklijst and Big P pieces (`my_pleya_shared.dart`), so the two platforms
-/// show the same destinations under the same names.
+/// The mobile [MyPleyaScreen] is a phone list; this is the ten-foot page. Both
+/// read the same kijklijst and Big P rules (`my_pleya_shared.dart`) and the
+/// same [TvMyPleyaSection] routes, so the two platforms open the same screens
+/// under the same names.
 ///
-/// Composition: title, a profile line with `Profiel wisselen` and the
-/// non-focusable server status, a hairline, then two columns. Left: the
-/// kijklijst as a poster rail with `Bekijk alles`, Mijn content and
-/// Bibliotheken en bronnen. Right, behind a vertical line: Pleya (the Big P
-/// card) and Beheer (Instellingen, Logboeken, Over Pleya, Uitloggen).
+/// Composition, top to bottom: the heading (`Jouw wereld, <naam>.` with its
+/// line underneath), then Big P large on the left as one focus object and the
+/// kijklijst once on the right as a poster rail with `Bekijk alles`, then one
+/// fixed row `Snel naar` with the daily destinations. There is no Beheer column
+/// and no profile block: Instellingen is a destination in the top navigation,
+/// and switching profile or signing out lives behind the avatar there
+/// (`showTvAccountMenu`).
 ///
-/// **Every tile opens something that already exists.** Each tile is a route
-/// into a screen this app already shipped, and the two actions (switch
-/// profile, sign out) call the same `AccountUiActions` the other shells call.
-/// Conditional tiles close up rather than render disabled (hoofdstuk 18.3,
-/// 33.8); a group with nothing left disappears, and Beheer then sits directly
-/// under Pleya (northstar 04).
+/// **Every tile opens something that already exists** (`pariteit-v4.csv`).
+/// Conditional tiles close up rather than render disabled, so a profile
+/// without Seerr or Tautulli gets a shorter row and no empty places (`A15`).
+///
+/// **Type.** Measured in HIG points ([TvHig.of]), which land 1:1 on the
+/// 1920 x 1080 canvas the northstar is drawn on, and never under the 23 pt
+/// tvOS minimum: the northstar's small capitals are drawn at about 17, and
+/// the layout makes room for them at 23 instead.
 library;
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_controller.dart';
@@ -35,33 +38,28 @@ import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
-import '../../media/ids.dart';
-import '../../media/unified/source_row_descriptor.dart' show backendDisplayLabel;
 import '../../media/watchlist_entry.dart';
 import '../../mixins/refreshable.dart';
 import '../../profiles/active_profile_provider.dart';
-import '../../profiles/profile.dart';
-import '../../profiles/profile_avatar.dart';
-import '../../providers/download_provider.dart';
-import '../../providers/libraries_provider.dart';
-import '../../providers/multi_server_provider.dart';
 import '../../providers/now_watching_provider.dart';
 import '../../providers/personal_media_provider.dart';
 import '../../providers/seerr_provider.dart';
 import '../../providers/watchlist_provider.dart';
-import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_navigation_helper.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/tv_hig.dart';
+import '../../widgets/big_p/big_p_rig.dart' show bigPAsset;
+import '../../widgets/tv/tv_catalog_card.dart' show TvCatalogWatchedBadge;
 import '../../widgets/tv/tv_unified_layout.dart';
-import '../../widgets/tv/tv_catalog_card.dart';
 import '../../widgets/tv/tv_watchlist_card.dart' show tvWatchlistSemanticLabel;
 import '../my_pleya_shared.dart';
+import 'tv_my_pleya_dock.dart';
 import 'tv_my_pleya_groups.dart';
 import 'tv_my_pleya_sections.dart';
 
+export 'tv_my_pleya_dock.dart';
 export 'tv_my_pleya_groups.dart';
 
 part 'tv_my_pleya_big_p.dart';
@@ -71,17 +69,9 @@ part 'tv_my_pleya_tiles.dart';
 part 'tv_my_pleya_watchlist.dart';
 
 class TvMyPleyaScreen extends StatefulWidget {
-  const TvMyPleyaScreen({
-    super.key,
-    required this.onOpenSection,
-    required this.onSwitchProfile,
-    required this.onSignOut,
-    required this.onExitUp,
-  });
+  const TvMyPleyaScreen({super.key, required this.onOpenSection, required this.onExitUp});
 
   final ValueChanged<TvMyPleyaSection> onOpenSection;
-  final VoidCallback onSwitchProfile;
-  final VoidCallback onSignOut;
 
   /// UP out of the top row, back to the top navigation (hoofdstuk 7.5 step 4).
   final VoidCallback onExitUp;
@@ -91,7 +81,7 @@ class TvMyPleyaScreen extends StatefulWidget {
 }
 
 class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTab {
-  /// The sections that have a tile as of the last build. OFF6: the shell
+  /// The sections that have a way in as of the last build. OFF6: the shell
   /// asks this after a rebind, to close a section that no longer exists.
   /// Kijklijst counts while the page offers it, as the rail's `Bekijk alles`.
   Set<TvMyPleyaSection> get availableSections => _availableSections;
@@ -101,29 +91,20 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
   /// server going offline must not dispose the node the remote is standing on.
   final FocusMemoryTracker nodes = FocusMemoryTracker(debugLabelPrefix: 'tvMyPleya');
   final Map<String, String> _cameFrom = {};
+  final _RailReveal _rail = _RailReveal();
 
-  String? _appVersion;
+  /// The first content action of the last build: Big P when he is offered,
+  /// otherwise the first poster, `Bekijk alles` or the first tile.
+  String? _firstKey;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadVersion());
     // Big P's card depends on entitlement, servers and the provider config;
     // the controller computes that only when an entry point asks.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(context.read<AssistantController?>()?.refreshAvailability());
     });
-  }
-
-  Future<void> _loadVersion() async {
-    try {
-      final info = await PackageInfo.fromPlatform();
-      if (!mounted) return;
-      setState(() => _appVersion = info.version);
-    } catch (_) {
-      // A missing version leaves the footer as "Signed in as Michel · Pleya",
-      // which is worth strictly more than an error state on a hub screen.
-    }
   }
 
   @override
@@ -132,16 +113,16 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
     super.dispose();
   }
 
-  /// DOWN out of the top navigation. Restores the last position on this hub
+  /// DOWN out of the top navigation. Restores the last position on this page
   /// where there is one, so leaving Mijn Pleya and coming back does not reset
-  /// the remote to the first tile (hoofdstuk 7.6).
+  /// the remote (hoofdstuk 7.6); the first visit lands on Big P.
   @override
   void focusActiveTabIfReady() {
     final last = nodes.lastFocusedKey;
     if (last != null && nodes.nodeFor(last)?.context != null) {
       focusKey(last);
     } else {
-      focusKey(_switchProfileKey);
+      focusKey(_firstKey);
     }
   }
 
@@ -153,23 +134,18 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
     if (node.canRequestFocus) node.requestFocus();
   }
 
-  String? get appVersion => _appVersion;
-
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
     final pt = TvHig.of(context);
-    final tk = tokens(context);
     final profile = context.watch<ActiveProfileProvider?>()?.active;
-    final servers = context.watch<MultiServerProvider>();
     final watchlist = context.watch<WatchlistProvider?>();
-    final downloads = context.watch<DownloadProvider?>();
     final personalMedia = context.watch<PersonalMediaProvider?>();
-    final libraries = context.watch<LibrariesProvider?>();
-    final personalLoaded = personalMedia?.state == PersonalMediaLoadState.loaded;
+    final showBigP =
+        (context.watch<AssistantController?>()?.availability ?? AssistantAvailability.hidden) !=
+        AssistantAvailability.hidden;
 
-    final groups = buildTvMyPleyaGroups(
-      hasWatchlist: watchlist?.hasWatchlist ?? false,
+    final dock = buildTvMyPleyaDock(
       hasSeerr: context.watch<SeerrProvider?>()?.isConfigured ?? false,
       // Hoofdstuk 18.3: Downloads never appears on Apple TV. The same predicate
       // `NavigationTab.getVisibleTabs` uses, so the tile and the tab cannot
@@ -179,153 +155,87 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
       showActivity: context.watch<NowWatchingProvider?>()?.isAvailable ?? false,
       showCollections: personalMedia?.supportsCollections ?? false,
       showPlaylists: personalMedia?.supportsPlaylists ?? false,
-      showAssistant:
-          (context.watch<AssistantController?>()?.availability ?? AssistantAvailability.hidden) !=
-          AssistantAvailability.hidden,
-      watchlistCount: watchlist?.entriesByRecentlyAdded.length,
-      downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
-      collectionCount: personalLoaded ? personalMedia?.collections.length : null,
-      playlistCount: personalLoaded ? personalMedia?.playlists.length : null,
-      libraryCount: libraries?.libraries.length,
-      onlineServerCount: servers.onlineServerCount,
-      totalServerCount: servers.totalServerCount,
     );
-
-    _availableSections = {
-      for (final group in groups)
-        for (final tile in group.tiles) ?tile.section,
-    };
-
-    // The kijklijst is a rail with `Bekijk alles` here, not a tile.
-    final leftGroups = [
-      for (final group in groups)
-        if (group.kind != TvMyPleyaGroupKind.pleya)
-          TvMyPleyaGroup(
-            kind: group.kind,
-            label: group.label,
-            tiles: group.tiles.where((tile) => tile.section != TvMyPleyaSection.watchlist).toList(),
-          ),
-    ].where((group) => group.tiles.isNotEmpty).toList();
-    final pleyaTiles = groups.where((g) => g.kind == TvMyPleyaGroupKind.pleya).expand((g) => g.tiles).toList();
-    final bigP = pleyaTiles.where((tile) => tile.section == TvMyPleyaSection.assistant).firstOrNull;
-    final manageTiles = pleyaTiles.where((tile) => tile.section != TvMyPleyaSection.assistant).toList();
     final entries = watchlist != null && watchlist.hasWatchlist ? myPleyaWatchlistEntries(watchlist) : null;
 
-    final map = _HubFocusMap(
-      nodes: nodes,
-      railKeys: [
-        if (entries != null) ...[for (final entry in entries) _posterKey(entry), _seeAllKey],
-      ],
-      tileRows: [
-        for (final group in leftGroups)
-          for (final row in _rowsOf(group.tiles)) [for (final tile in row) tile.focusKey],
-      ],
-      rightKeys: [?bigP?.focusKey, for (final tile in manageTiles) tile.focusKey],
-      cameFrom: _cameFrom,
-    );
+    _availableSections = {
+      if (showBigP) TvMyPleyaSection.assistant,
+      if (entries != null) TvMyPleyaSection.watchlist,
+      for (final tile in dock) ?tile.section,
+    };
 
-    void open(TvMyPleyaTile tile) => tile.section == null ? widget.onSignOut() : widget.onOpenSection(tile.section!);
+    final map = _PageFocusMap(
+      nodes: nodes,
+      bigPKey: showBigP ? _bigPKey : null,
+      posterKeys: [
+        if (entries != null)
+          for (final entry in entries) _posterKey(entry),
+      ],
+      seeAllKey: entries != null ? _seeAllKey : null,
+      dockKeys: [for (final tile in dock) tile.focusKey],
+      cameFrom: _cameFrom,
+      onExitUp: widget.onExitUp,
+      rail: _rail,
+    );
+    _firstKey = map.firstKey;
 
     // The page is inset by the ring gap less, and everything that carries no
-    // focus ring of its own adds it back, so every tile fill and every piece
-    // of text starts on the same line.
+    // focus ring of its own adds it back, so every card edge and every line of
+    // text starts on the same line.
     final ringGap = TvMyPleyaLayout.tileFocusRingGap * scale;
     final textInset = EdgeInsets.symmetric(horizontal: ringGap);
 
-    final leftColumn = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (entries != null && watchlist != null)
-          _WatchlistBlock(
+    final bigP = showBigP ? _BigPCard(map: map, onOpen: () => widget.onOpenSection(TvMyPleyaSection.assistant)) : null;
+    final watchlistPanel = entries != null && watchlist != null
+        ? _WatchlistPanel(
             entries: entries,
             provider: watchlist,
             map: map,
-            seeAllNode: nodes.get(_seeAllKey, debugLabel: _seeAllKey),
             onOpenAll: () => widget.onOpenSection(TvMyPleyaSection.watchlist),
-          ),
-        for (final (index, group) in leftGroups.indexed) ...[
-          if (index > 0 || entries != null) SizedBox(height: kTvMyPleyaGroupGapPt * pt),
-          _GroupLabel(group.label),
-          SizedBox(height: kTvMyPleyaLabelGapPt * pt),
-          _TileGrid(tiles: group.tiles, map: map, onOpen: open),
-        ],
-      ],
-    );
-
-    final rightColumn = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _GroupLabel(t.tvMyPleya.groupPleya),
-        SizedBox(height: kTvMyPleyaLabelGapPt * pt),
-        if (bigP != null) ...[
-          _BigPCard(tile: bigP, map: map, onOpen: () => open(bigP)),
-          SizedBox(height: kTvMyPleyaGroupGapPt * pt),
-          _GroupLabel(t.settingsStudio.manage),
-          SizedBox(height: kTvMyPleyaLabelGapPt * pt),
-        ],
-        for (final (index, tile) in manageTiles.indexed) ...[
-          if (index > 0) SizedBox(height: kTvMyPleyaRowGapPt * pt),
-          _Tile(tile: tile, map: map, onSelect: () => open(tile)),
-        ],
-      ],
-    );
+          )
+        : null;
 
     // Its own screen id: `screen.main` is mounted for the entire session and
     // says nothing about which destination is showing.
     return AutomationScreen(
       id: AutomationIds.screenMyPleya,
       readiness: () => const AutomationReadiness.ready(),
+      // A safety net, not the layout: the page is measured to fit the
+      // 1038 x 584 canvas without scrolling (A-24c). A locale with longer
+      // words or a larger system text size can still reach the dock.
       child: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: TvTopNavLayout.pageInset * scale - ringGap,
-          right: TvTopNavLayout.pageInset * scale - ringGap,
-          bottom: TvCatalogLayout.topSafeInset * scale,
+        padding: EdgeInsets.fromLTRB(
+          TvTopNavLayout.pageInset * scale - ringGap,
+          _Pt.pageTop * pt,
+          TvTopNavLayout.pageInset * scale - ringGap,
+          _Pt.pageBottom * pt,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
               padding: textInset,
-              child: Text(
-                t.navigation.myPleya,
-                style: TextStyle(
-                  color: tk.text,
-                  fontSize: TvMyPleyaLayout.pageTitleFontSize * scale,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.2,
+              child: _PageHeading(name: profile?.displayName),
+            ),
+            if (bigP != null || watchlistPanel != null) ...[
+              SizedBox(height: _Pt.headingToCards * pt),
+              SizedBox(
+                height: _Pt.cardHeight * pt + 2 * ringGap,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (bigP != null) Expanded(flex: _Pt.bigPFlex, child: bigP),
+                    if (bigP != null && watchlistPanel != null)
+                      SizedBox(width: (_Pt.cardGap * pt - 2 * ringGap).clamp(0.0, double.infinity)),
+                    if (watchlistPanel != null) Expanded(flex: _Pt.watchlistFlex, child: watchlistPanel),
+                  ],
                 ),
               ),
-            ),
-            SizedBox(height: TvMyPleyaLayout.titleGap * scale),
-            Padding(
-              padding: textInset,
-              child: _ProfileHeader(
-                profile: profile,
-                servers: servers,
-                scale: scale,
-                node: nodes.get(_switchProfileKey, debugLabel: _switchProfileKey),
-                onSwitchProfile: widget.onSwitchProfile,
-                onExitUp: widget.onExitUp,
-                onNavigateDown: () => focusKey(map.firstBelowProfile),
-              ),
-            ),
-            Padding(
-              padding: textInset,
-              child: Divider(height: 1, thickness: 1, color: tk.outline),
-            ),
-            SizedBox(height: kTvMyPleyaColumnsTopPt * pt),
-            _TwoColumns(left: leftColumn, right: rightColumn),
-            SizedBox(height: kTvMyPleyaFooterGapPt * pt),
-            Padding(
-              padding: textInset,
-              child: Text(
-                t.tvMyPleya.signedInAs(name: profile?.displayName ?? '', version: _appVersion ?? ''),
-                style: TextStyle(
-                  color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                  fontSize: TvHig.caption2 * pt,
-                ),
-              ),
-            ),
+            ],
+            SizedBox(height: _Pt.cardsToDock * pt),
+            Padding(padding: textInset, child: _SectionLabel(t.tvMyPleya.quickLinks)),
+            SizedBox(height: (_Pt.labelGap * pt - ringGap).clamp(0.0, double.infinity)),
+            _Dock(tiles: dock, map: map, onOpen: (tile) => widget.onOpenSection(tile.section!)),
           ],
         ),
       ),
@@ -333,21 +243,53 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
   }
 }
 
-const String _switchProfileKey = 'tvMyPleya_switchProfile';
+/// Big P carries the assistant section's own focus key, so the pop back from
+/// his screen lands on the card (hoofdstuk 7.6).
+final String _bigPKey = TvMyPleyaSection.assistant.tileFocusKey;
 
 /// `Bekijk alles` carries the kijklijst section's own focus key, so the pop
-/// back from the kijklijst lands on it (hoofdstuk 7.6).
+/// back from the kijklijst lands on it.
 final String _seeAllKey = TvMyPleyaSection.watchlist.tileFocusKey;
 
 String _posterKey(WatchlistEntry entry) => 'tvMyPleya_poster_${entry.key}';
 
-/// Northstar 01, in HIG points on the 1920 x 1080 canvas.
-const double kTvMyPleyaAvatarPt = 64;
-const double kTvMyPleyaColumnsTopPt = 18;
-const double kTvMyPleyaRightColumnPt = 440;
-const double kTvMyPleyaDividerGapLeftPt = 52;
-const double kTvMyPleyaDividerGapRightPt = 36;
-const double kTvMyPleyaGroupGapPt = 20;
-const double kTvMyPleyaLabelGapPt = 8;
-const double kTvMyPleyaRowGapPt = 8;
-const double kTvMyPleyaFooterGapPt = 34;
+/// Northstar A10, in HIG points on the 1920 x 1080 canvas. Text sizes are
+/// [TvHig] tokens and never under [TvHig.caption2].
+abstract final class _Pt {
+  static const double pageTop = 22;
+  static const double pageBottom = 40;
+
+  static const double eyebrowGap = 14;
+  static const double headingGap = 6;
+
+  /// The line under the heading and the Big P card's sentence (A10: 26).
+  static const double subline = 26;
+  static const double headingToCards = 36;
+
+  /// The Big P card and the kijklijst panel share one height (A10: 290).
+  static const double cardHeight = 290;
+  static const double cardGap = 25;
+  static const double cardRadius = 24;
+
+  /// A10 draws the two cards 883 and 828 wide.
+  static const int bigPFlex = 883;
+  static const int watchlistFlex = 828;
+
+  static const double cardsToDock = 30;
+  static const double labelGap = 14;
+
+  static const double tileHeight = 148;
+  static const double tileGap = 24;
+  static const double tileRadius = 18;
+  static const double tilePadding = 22;
+
+  /// Room for the icon and a label on two lines inside [tileHeight].
+  static const double tilePaddingVertical = 18;
+  static const double tileIcon = 36;
+
+  /// The dock's labels, a little over [TvHig.caption1] as A10 draws them.
+  static const double tileTitle = 26;
+
+  /// Letter spacing of the small capitals, per point of type.
+  static const double capsTracking = 0.12;
+}

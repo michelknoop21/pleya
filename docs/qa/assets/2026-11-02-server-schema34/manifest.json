@@ -1,0 +1,26 @@
+{
+  "source": "0ae3ca2022b3b08077a1196b18c81ee6ca871bd3",
+  "image": "sha256:16c1f89d9909463677f009450ca02934f4bf2643b09de0b22009fdb0bcf2156a",
+  "screens": [
+    {
+      "file": "docs/qa/assets/2026-11-02-server-schema34/01-source-preview.png",
+      "size": "1440x1100",
+      "sha256": "e941cf7c91823fee8b73e3933fb25f38aa03dcb7b18f9858d7c81f6748783ebe",
+      "source": "/tmp/task5-image-schema34-1102/ui-corrected/01-source-preview.png"
+    },
+    {
+      "file": "docs/qa/assets/2026-11-02-server-schema34/02-pinned.png",
+      "size": "1440x1100",
+      "sha256": "70620f4dfc529c621a7a49792702e8a2877fb25ed0ceed1bc40e1267a8dcd85e",
+      "source": "/tmp/task5-image-schema34-1102/ui-corrected/02-pinned.png"
+    },
+    {
+      "file": "docs/qa/assets/2026-11-02-server-schema34/03-source-after-unpin.png",
+      "size": "1440x1100",
+      "sha256": "92838bdfa99d7e5064bfa49051d9640307b308d465a7dca0ce1328501d8d3283",
+      "source": "/tmp/task5-image-schema34-1102/ui-corrected/03-source-after-unpin.png"
+    }
+  ],
+  "runtime_evidence": "/tmp/task5-image-schema34-1102/evidence-manifest.json",
+  "corrected_ui_evidence": "/tmp/task5-image-schema34-1102/ui-corrected/evidence-manifest.json"
+}

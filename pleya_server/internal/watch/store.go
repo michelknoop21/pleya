@@ -61,6 +61,19 @@ func (s *Store) Apply(ctx context.Context, subject string, itemID id.ID, ev Even
 	if err != nil {
 		return out, err
 	}
+	// Zonder rij heeft FOR UPDATE niets om op te wachten: twee eerste schrijvers
+	// beslissen dan allebei op een lege toestand, en de laatste commit wist de
+	// eigenaar van de ander. Daarom wacht een schrijver hier op de vorige en leest
+	// hij opnieuw. Geen lege rij: een geweigerd event laat niets achter.
+	if !cur.Exists {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+			subject+"/"+itemID.String()); err != nil {
+			return out, err
+		}
+		if cur, err = lockState(ctx, tx, subject, itemID); err != nil {
+			return out, err
+		}
+	}
 
 	out = Decide(cur, ev, now, lease)
 	// De geschiedenis kent meer dan de toestand: een geweigerd event van een
@@ -78,7 +91,7 @@ func (s *Store) Apply(ctx context.Context, subject string, itemID id.ID, ev Even
 		return out, nil
 	}
 
-	if err := upsertState(ctx, tx, subject, itemID, out.Next); err != nil {
+	if err := upsertState(ctx, tx, subject, itemID, out.Next, ev.Copy); err != nil {
 		return out, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -124,7 +137,10 @@ func lockState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID) (St
 	return st, nil
 }
 
-func upsertState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, st State) error {
+// upsertState schrijft de toestand. keepLastPlayed laat last_played_at staan: dat is het
+// moment van laatst gekeken, en op een kopie keek niemand. updated_at beweegt wel,
+// anders ziet een ander toestel de kopie niet.
+func upsertState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, st State, keepLastPlayed bool) error {
 	var ownerSession *string
 	if st.OwnerSessionID != "" {
 		ownerSession = &st.OwnerSessionID
@@ -139,7 +155,7 @@ func upsertState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, s
 		                          revision, owner_session_id, owner_lease_until,
 		                          last_explicit_at, last_explicit_kind, updated_at, last_played_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-		        CASE WHEN $3::bigint > 0 OR $5::boolean THEN $12::timestamptz END)
+		        CASE WHEN NOT $13::boolean AND ($3::bigint > 0 OR $5::boolean) THEN $12::timestamptz END)
 		ON CONFLICT (subject, item_id) DO UPDATE SET
 			position_ms        = EXCLUDED.position_ms,
 			duration_ms        = EXCLUDED.duration_ms,
@@ -153,12 +169,12 @@ func upsertState(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, s
 			updated_at         = EXCLUDED.updated_at,
 			-- Een schrijving met voortgang verzet het moment van laatst gekeken; een
 			-- mark_unwatched of restart zet positie en watched terug en laat het staan.
-			last_played_at     = CASE WHEN EXCLUDED.position_ms > 0 OR EXCLUDED.watched
+			last_played_at     = CASE WHEN NOT $13::boolean AND (EXCLUDED.position_ms > 0 OR EXCLUDED.watched)
 			                          THEN EXCLUDED.updated_at
 			                          ELSE watch_states.last_played_at END`,
 		subject, itemID, st.PositionMs, st.DurationMs, st.Watched, st.PlayCount,
 		st.Revision, ownerSession, st.OwnerLeaseUntil,
-		st.LastExplicitAt, explicitKind, st.UpdatedAt)
+		st.LastExplicitAt, explicitKind, st.UpdatedAt, keepLastPlayed)
 	return err
 }
 

@@ -1,8 +1,8 @@
 # Pinned plugins with Swift Package Manager packaging
 
 Roadmap: A-18. These copies add Swift Package Manager support missing from the
-exact plugin revisions already used by Pleya. No Dart or native implementation
-was upgraded. `upstream.json` records original package-cache identities and SHA-256
+exact plugin revisions already used by Pleya. The reviewed local runtime changes
+are listed below. `upstream.json` records original package-cache identities and SHA-256
 hashes for every copied runtime file. Licences are included. Examples, upstream
 tests and build output are not part of these runtime copies.
 
@@ -14,6 +14,11 @@ hashes, reapply packaging, resolve the lockfile and rerun the package/native gat
 Remove the override when the selected upstream revision supports SPM itself.
 
 Local differences:
+
+- `os_media_controls`: IOS-SYSTEM-REMOTE1 adds public subtitle language options,
+  preserves explicit play/pause intent and removes only owned command targets.
+  `upstream.json` retains original hashes plus reviewed `local_files` hashes.
+  Check the native lifecycle with `python3 scripts/test_tvos_system_remote.py`.
 
 - `Package.swift` per supported Apple platform; library product names use hyphens.
 - `Classes` moved under `<platform>/<name>/Sources/<name>` and CocoaPods source paths

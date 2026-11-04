@@ -44,12 +44,406 @@ Nothing user-facing since the last published build.
 - **Signing in registers the device, not just the account.** Each device gets its own session,
   which means signing out on a phone that was lost leaves the television logged in. The owner
   can see and end anyone's sessions; everyone else sees and ends their own.
-
 ### Improved
 
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+
+## 2.8.1 · build 431 · 2 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: b74c630da4f0d1e6d6dc2b0cedb65b7d4b48dfab -->
+
+### New
+
+- **A Cinema-style Libraries screen on Apple TV.** My Pleya presents libraries by server, with the existing refresh, ordering and library actions together.
+
+### Fixed
+
+- **The selected film stays in place as more results arrive on Apple TV.** Late catalog updates preserve the selected card's position and focus ring.
+- **Poster changes refresh more reliably.** Catalog and local-library caches recheck visible artwork and renew invalidated image references.
+- **More careful matching between copies on different servers.** Source lookups and caches preserve verified identity and distinguish incomplete results. Older Pleya Servers continue to use their supported legacy capabilities.
+
+### Notes
+
+- This is an internal iOS/tvOS TestFlight build. Pleya Server administration updates are deployed separately.
+
+## 2.8.1 · build 430 · 1 November 2026 · iPhone and iPad
+
+<!-- commit: c0f5b06d -->
+
+### New
+
+- **A new Home hero on iPad.** In landscape it fills the screen like on Apple TV, in portrait it is a card like on iPhone.
+- **Collections and playlists on Pleya Server.** Add titles to your own lists and play them from there.
+
+### Improved
+
+- **Synced positions are not viewings.** A position or watched mark copied to another Pleya Server no longer counts as a play or appears in watch history. Titles still show as watched.
+
+### Fixed
+
+- **Offline viewing on Pleya Server.** A film you finished offline now lands on the server, also when the title already had a position. A newer position from another device is kept.
+
+### Notes
+
+- Watch history shows the last real viewing. Marking a title unwatched no longer moves it there.
+
+### Worth checking
+
+- Rotate an iPad on Home, then open a title from the hero.
+- Finish a film offline, go back online, and check the state on the server.
+- Watch a title on one server and confirm the other server shows the position, with no new entry in watch history.
+- Switch profiles while a device reconnects: nothing should appear under the other profile.
+
+## 2.8.1 · build 429 · 1 November 2026 · Apple TV
+
+<!-- commit: 699026e1 -->
+
+### New
+
+- **Collections and playlists on Pleya Server.** Add titles to your own lists and play them from there.
+
+### Improved
+
+- **Synced positions are not viewings.** A position or watched mark copied to another Pleya Server no longer counts as a play or appears in watch history. Titles still show as watched.
+
+### Fixed
+
+- **Offline viewing on Pleya Server.** A film you finished offline now lands on the server, also when the title already had a position. A newer position from another device is kept.
+
+### Notes
+
+- Watch history shows the last real viewing. Marking a title unwatched no longer moves it there.
+
+### Worth checking
+
+- Watch a title on one server and confirm the other server shows the position, with no new entry in watch history.
+- Switch sources on a title and check that the position follows.
+- Add a title to a playlist on Pleya Server and play the list.
+
+## 2.8.1 · build 428 · 31 October 2026 · iPhone and iPad
+
+<!-- commit: c78aca1d -->
+
+### New
+
+- **One page per title.** A film or series on two servers keeps the same artwork and description, whichever server plays it. The technical details and tracks follow the server you chose.
+- **Your place travels with you.** A title continues at your last position on the other server, and progress and watched marks now go to every server with that title.
+- **A missing episode just plays.** If your chosen server lacks an episode, it plays from a server that has it.
+
+### Notes
+
+- Progress and watched marks are written to your real servers.
+
+### Worth checking
+
+- Watch a title on one server, stop, and open it from the other: it continues at your position.
+- Stop halfway on one server and check the position on the other.
+- Let a series run on to the next episode, also where one server lacks it.
+
+## 2.8.1 · build 427 · 31 October 2026 · Apple TV
+
+<!-- commit: fcd80e3f -->
+
+### New
+
+- **One page per title.** A film or series on two servers keeps the same artwork and description, whichever server plays it. The technical details and tracks follow the server you chose.
+- **Your place travels with you.** A title continues at your last position on the other server, and progress and watched marks now go to every server with that title.
+- **A missing episode just plays.** If your chosen server lacks an episode, it plays from a server that has it.
+
+### Fixed
+
+- **Scrolling on Apple TV.** A library scan no longer holds back the remote, and uses far less memory during playback.
+
+### Notes
+
+- Progress and watched marks are written to your real servers.
+
+### Worth checking
+
+- Watch a title on one server, stop, and open it from the other: it continues at your position.
+- Stop halfway on one server and check the position on the other.
+- Let a series run on to the next episode, also where one server lacks it.
+- Scroll the Home rows, and step Volume boost during a film.
+
+## 2.8.1 · build 423 · 30 October 2026 · Apple TV
+
+<!-- commit: 43aa2871 -->
+
+### Fixed
+
+- **The selection stays where you put it.** In All Films, All Series, the watchlist, the Home and
+  landing rows and the Home customize panel, pressing left or right no longer jumps to a card you
+  left earlier, also after sorting or filtering.
+- **Right on the last card stays put.** It no longer jumps a row up from a short last row.
+
+### Notes
+
+- This test build also carries the Plex and Pleya Server card from build 421.
+
+### Worth checking
+
+- Move right, then up or down a few rows, then left: the selection stays in the new row.
+- Do the same after changing the sort or a filter, and after coming back from a title.
+- In the Home customize panel, moving a row changes the row you selected.
+
+## 2.8.1 · build 422 · 30 October 2026 · iPhone and iPad
+
+<!-- commit: 70a1507b -->
+
+### New
+
+- **A title on both Plex and Pleya Server shows up once.** When both servers carry the same TMDB
+  number, Series, Films, Search, Home and Continue Watching show one card with both sources.
+  You still pick which server plays it. A title without a proven match stays as two cards.
+
+### Fixed
+
+- **Choosing a source works on iPhone.** A card with two sources opens the source choice, and the
+  source row on the detail page responds to a tap.
+
+### Notes
+
+- This is a test build for the two-server check. It needs a Pleya Server updated on 30 October.
+
+### Worth checking
+
+- Severance shows one card with Plex and Pleya Server as sources, and both play, with the right
+  seasons and episodes per source.
+- Tapping the source row on a detail page changes the source.
+- Search, Home and Continue Watching show the title once.
+
+## 2.8.1 · build 421 · 30 October 2026 · Apple TV
+
+<!-- commit: 257e11a8 -->
+
+### New
+
+- **A title on both Plex and Pleya Server shows up once.** When both servers carry the same TMDB
+  number, Series, Films, Search, Home and Continue Watching show one card with both sources.
+  You still pick which server plays it. A title without a proven match stays as two cards.
+
+### Notes
+
+- This is a test build for the two-server check. It needs a Pleya Server updated on 30 October.
+
+### Worth checking
+
+- Severance shows one card with Plex and Pleya Server as sources, and both play, with the right
+  seasons and episodes per source.
+- With the Pleya Server switched off the card still opens on Plex, and the choice comes back when
+  the server does.
+- Search, Home and Continue Watching show the title once.
+- These Woods are Haunted and Star Wars: The Force Awakens stay as two cards.
+
+## 2.8.1 · build 420 · 29 October 2026 · Apple TV
+
+<!-- commit:8558d26c -->
+
+### Fixed
+
+- **Plex Home account switching accepts text review-language preferences.** A correct PIN no
+  longer leads to a failed-switch message because Pleya expected this preference to be a list.
+- **Profile-switch error notices leave the screen.** They disappear after eight seconds, or
+  immediately after a successful profile switch. Other error notices remain unchanged.
+
+### Notes
+
+- The main account and second Home profile were switched in both directions on the bedroom
+  Apple TV with candidate build 420. The unexpected QR re-login remains a separate, unconfirmed issue.
+
+## 2.8.1 · build 419 · 29 October 2026 · Apple TV
+
+<!-- commit: 7bdcccaa -->
+
+### Fixed
+
+- **Holding Select enters only one PIN digit.** Repeated key events no longer add extra
+  digits in the profile PIN keypad. Cancelling PIN entry no longer creates a switch-failure
+  notice; genuine failures still report an error.
+- **Home customization keeps the current preview and focus.** Adding or editing a row waits
+  for the preview of its current definition. A late or failed response cannot enable saving.
+  Action columns line up, nested panels preserve their parent, and a newly added row receives
+  focus after loading.
+
+### Notes
+
+- The unexpected QR re-login and Plex Home main-account switch failure reported on the
+  bedroom Apple TV have not been confirmed resolved. Physical remote and backend validation
+  remain open. Existing error notices are not automatically cleared by a successful switch.
+
+## 2.8.1 · build 417 · 28 October 2026 · Apple TV
+
+<!-- commit: 0e4ee15f -->
+
+### Improved
+
+- **One glass selector in the Apple TV top bar.** The capsule follows remote focus without
+  a second active-tab background or a separate focus outline. Moving across tabs keeps the
+  current page open; Select opens the focused tab. Returning from the page starts on its
+  active tab. Reduce Motion and Reduce Transparency have quiet, clear alternatives.
+
+### Fixed
+
+- **Pleya Server episodes without an episode number appear at the end** instead of being
+  shown as S1E0. Browsing also recovers when a saved server cursor has expired.
+
+### Worth checking
+
+- With the Siri Remote, move quickly left and right across the top bar, enter content and
+  return. Check Home and Series, the profile button, and the accessibility alternatives on
+  your Apple TV. Physical touch-surface and overscan acceptance remain open.
+
+## 2.8.1 · build 416 · 27 October 2026 · Apple TV
+
+### New
+
+- **My Pleya on Apple TV is your own space.** Big P on the left, your watchlist once on the right
+  with See all, and one row of quick links underneath: Watch together, Collections, Playlists,
+  Requests, Libraries and Activity, each only when it applies to you.
+
+- **Settings has its own place in the Apple TV top bar,** right after My Pleya. Servers, Logs and
+  About now live under Settings; Connections, Servers opens the same server page as before.
+
+- **The avatar on Apple TV opens a small account menu** with Switch profile and Sign out.
+
+### Improved
+
+- **Settings on Apple TV uses the whole screen.** The top bar slides away while you are in the
+  page and comes back when you press Up on the top row, also on About, Logs and Servers. All
+  eight categories fit on screen without smaller text.
+
+- **Walking the Apple TV top bar no longer swaps the page.** The page changes when you press
+  Select. Down goes into the page on screen, and Menu first brings the ring back to that page.
+
+- **A server that needs a new sign-in is named in Settings on Apple TV,** in the Servers row
+  under Connections, and the Connections category carries the same amber dot as the top bar.
+
+### Worth checking
+
+- On a real Apple TV: press Up on the top row of Settings. The top bar slides back over the
+  page and the avatar sits on the page title. Is that acceptable?
+- On a 77-inch set: the Settings category rail now has 12 pt between categories. Does it still
+  read as a list rather than one stack?
+- With the Siri Remote: walk the top bar and check that the page only changes on Select, and
+  that Menu with the ring on another pill brings it back to the page you are on.
+
+<!-- commit: 229c728e040217036056991b721d3cf0455f8e89 -->
+
+## 2.8.1 · build 415 · 26 October 2026 · iPhone and iPad
+
+<!-- commit: 466c2e8acee79499993fd1d3a322e4503077b1ba -->
+
+### New
+
+- **Big P can share personal memories through your own Pleya Server account.** Open Settings,
+  Big P, Memory, then Sync via Pleya Server. Choose your account and confirm which local memories
+  to share. Changes and deletions travel between connected devices; offline changes are retained.
+  Conflicting edits ask for your choice. Restored server memories need confirmation before use.
+
+### Improved
+
+- **The iPhone scroll crown stays halfway down the right edge.** Swipe up or down over
+  the wheel to turn it and scroll. Lift your finger and turn again to continue from the
+  current position. The letter beside the wheel has been removed.
+
+### Fixed
+
+- **Downloads on iPhone has a back button to My Pleya.** The Downloads tab root now returns to
+  the screen that opened it, like the other My Pleya pages.
+
+### Notes
+
+- This upload updates iPhone and iPad. The fixed crown is an iPhone change. Check its
+  scrolling speed and haptic feedback on a real iPhone; simulator checks are complete,
+  physical-device acceptance remains open.
+
+- Memory sync requires an updated Pleya Server advertising `assistant_memory`. This build includes
+  the client; it does not upgrade an existing server installation. Until the server is updated,
+  memory stays local. Household memories, children's profiles and conversations are excluded from
+  this sync. Turning memory use off stays a local choice.
+- Worth checking on iPhone: add and remove a memory, reconnect after being offline, return
+  from Downloads to My Pleya, and try longer memories and increased text size. Once a separate
+  Apple TV build includes this sync client, also test the same account across iPhone and Apple TV
+  and check Siri Remote navigation. Physical-device acceptance is still open.
+- The device-information and sharing libraries were updated on main before this build. Check
+  sharing a file and opening the system share sheet on an iPhone.
+
+## 2.8.1 · build 414 · 26 October 2026 · Apple TV
+
+<!-- commit: 539ec1d8 -->
+
+### Improved
+
+- **Pleya connects playback controls to the iPhone's built-in Apple TV Remote.**
+  Play and pause keep their separate meaning. Forward and backward jumps use the requested
+  interval, stay within the video and are disabled when seeking is unavailable.
+- **Subtitle selection shares the television player's tracks and settings.** Available tracks,
+  the selected track and hidden subtitles are reported through Apple's public language-option
+  APIs. Remote handlers are cleaned up when playback ends and registered once on replay.
+
+### Notes
+
+- Apple decides which controls appear on the iPhone. Their visibility and operation on a real
+  paired iPhone and Apple TV have not yet been verified. Please check play/pause, both jump
+  buttons, subtitles on/off and changing tracks from both devices, including a video without
+  subtitles and a stream that cannot seek. Physical Siri Remote compatibility remains open.
+
+## 2.8.1 · build 413 · 26 October 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 68cc2c5fd8dd2a5323448aa9d4cff2ccf8e7841c -->
+
+### New
+
+- **Big P can share personal memories through your own Pleya Server account.** Open Settings,
+  Big P, Memory, then Sync via Pleya Server. Choose your account and confirm which local memories
+  to share. Changes and deletions travel between connected devices; offline changes are retained.
+  Conflicting edits ask for your choice. Restored server memories need confirmation before use.
+
+### Fixed
+
+- **Downloads on iPhone has a back button to My Pleya.** The Downloads tab root now returns to
+  the screen that opened it, like the other My Pleya pages.
+
+### Notes
+
+- Memory sync requires an updated Pleya Server advertising `assistant_memory`. This build includes
+  the client; it does not upgrade an existing server installation. Until the server is updated,
+  memory stays local. Household memories, children's profiles and conversations are excluded from
+  this sync. Turning memory use off stays a local choice.
+- Worth checking on real devices: connect the same account on an iPhone and Apple TV, add and
+  remove a memory, reconnect after being offline, and return from Downloads to My Pleya. Check
+  Siri Remote navigation, longer memories and increased text size. Physical-device acceptance is
+  still open.
+- The device-information and sharing libraries were updated on main before this build. Check
+  sharing a file and opening the system share sheet on an iPhone.
+
+## 2.8.1 · build 412 · 26 October 2026 · iPhone and iPad
+
+<!-- commit: 9cd63fa61862df5f8dfa968e02e26480bbcda13c -->
+
+### Improved
+
+- **The Settings header on iPhone now runs up behind the status bar.** The warm background and
+  the artwork reach the top edge, behind the clock and the Dynamic Island, instead of starting
+  below a plain strip in the page colour. The title, the back chevron and the Pleya mark in the
+  artwork stay below the status bar.
+- **The bar that appears when you scroll Settings can be see-through.** With Liquid Glass on it
+  is a translucent glass bar; with Liquid Glass off, which is the default, it stays solid as
+  before.
+
+### Notes
+
+- Worth checking on an iPhone: the top of Settings at rest and after scrolling, in light, dark
+  and OLED, on a phone with a Dynamic Island and on one without a notch. The clock and battery
+  should stay readable over the artwork. This was checked in the iPhone simulator and in unit
+  tests, not on a device.
+- Worth checking: picking a file or a folder. The file picker library was upgraded to a new
+  major version in this build, so check importing or saving a backup and choosing a local
+  folder.
+- Other screens with a plain bar, such as the detail page bar and the remaining Settings pages,
+  keep their solid bar for now.
 
 ## 2.8.1 · build 411 · 26 October 2026 · Apple TV
 

@@ -279,11 +279,9 @@ Future<void> _runValidate(List<String> args, {required bool jsonOutput}) async {
     // automation_ids.yaml or any other unexpected failure here must still
     // produce the one JSON error object `--json` promises, not an
     // uncaught Future error with nothing on stdout at all.
-    _reportErrors(
-      file.path,
-      [ScenarioError(sourcePath: file.path, message: 'unexpected error: ${redact('$e')}')],
-      jsonOutput: jsonOutput,
-    );
+    _reportErrors(file.path, [
+      ScenarioError(sourcePath: file.path, message: 'unexpected error: ${redact('$e')}'),
+    ], jsonOutput: jsonOutput);
     exitCode = 70; // EX_SOFTWARE
   }
 }

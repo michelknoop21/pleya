@@ -53,6 +53,19 @@ const (
 	// SortFavoritedDesc ordent favorieten op wanneer ze zijn toegevoegd,
 	// aflopend (S20). Ook geen aanvraagwaarde.
 	SortFavoritedDesc Sort = "-favorited_at"
+	// SortRatedDesc ordent waarderingen op wanneer ze zijn gegeven, aflopend.
+	// Ook geen aanvraagwaarde.
+	SortRatedDesc Sort = "-rated_at"
+	// SortListPosition ordent de inhoud van een verzameling of afspeellijst op
+	// zijn plek in die lijst (S19). Ook geen aanvraagwaarde.
+	SortListPosition Sort = "list_position"
+)
+
+// De sorteringen van GET /collections en GET /playlists zelf (S19). Ze horen bij
+// de rijen van een lijst en niet bij items, dus ParseSort kent ze niet.
+const (
+	SortListUpdatedDesc Sort = "-updated_at"
+	SortListTitle       Sort = "list_title"
 )
 
 // ParseSort leest de sort-parameter. Leeg levert de default.
@@ -76,11 +89,11 @@ func (s Sort) Descending() bool { return len(s) > 0 && s[0] == '-' }
 // aflevering eronder: de versies hangen aan afleveringen, niet aan de serie zelf.
 // De tweede tak is leeg voor een film en kost er niets.
 const durationMax = `greatest(
-		(SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id),
+		(SELECT max(v.duration_ms) FROM media_versions v WHERE v.item_id = i.id AND (` + ordinaryVersionSQL + `)),
 		(SELECT max(v.duration_ms) FROM media_items se
 			JOIN media_items ep ON ep.parent_id = se.id AND ep.kind = 'episode'
 			JOIN media_versions v ON v.item_id = ep.id
-			WHERE i.kind = 'show' AND se.parent_id = i.id))`
+			WHERE i.kind = 'show' AND se.parent_id = i.id AND (` + ordinaryVersionSQL + `)))`
 
 // keyExpression is de SQL waarop gesorteerd en vergeleken wordt.
 //
@@ -96,7 +109,9 @@ func (s Sort) keyExpression() string {
 	case SortYear, SortYearDesc:
 		return "coalesce(i.year, 0)"
 	case SortIndex:
-		return "coalesce(i.item_index, 0)"
+		// Genummerd eerst; wat geen nummer heeft staat erachter, op titel (tieExpression).
+		// Een eindwaarde en geen 0: nul zet ongenummerde afleveringen voor aflevering 1.
+		return "coalesce(i.item_index, " + indexLast + ")"
 	case SortDuration:
 		return "coalesce(" + durationMax + ", 9223372036854775807)"
 	case SortDurationDesc:
@@ -107,9 +122,34 @@ func (s Sort) keyExpression() string {
 		return "a.activity_at"
 	case SortFavoritedDesc:
 		return "f.created_at"
+	case SortRatedDesc:
+		return "r.updated_at"
+	case SortListPosition:
+		return "li.position"
+	case SortListUpdatedDesc:
+		return "l.updated_at"
+	case SortListTitle:
+		return "lower(l.title)"
 	default:
 		return "coalesce(i.sort_title, i.title)"
 	}
+}
+
+// indexLast is de sorteerwaarde van een item zonder nummer: de grootste integer,
+// zodat het na elk echt nummer komt. Specials (nummer 0) blijven vooraan.
+const indexLast = "2147483647"
+
+// tieExpression is de tweede sorteersleutel, voor sorteringen waar de eerste
+// vaak gelijk is. Bij SortIndex hebben alle afleveringen zonder nummer dezelfde
+// sleutel, en dan bepaalt de titel de volgorde in plaats van het toeval van
+// de invoegvolgorde. Leeg als de sortering geen tweede sleutel heeft.
+//
+// Net als keyExpression nooit NULL, anders slaat de cursorvergelijking rijen over.
+func (s Sort) tieExpression() string {
+	if s == SortIndex {
+		return "coalesce(i.sort_title, i.title)"
+	}
+	return ""
 }
 
 // needsSubject zegt of de sorteersleutel van de aanvrager afhangt.
@@ -137,9 +177,9 @@ func (s Sort) castSuffix() string {
 	switch s {
 	case SortLastPlayed, SortLastPlayedDesc:
 		return "::timestamptz"
-	case SortDuration, SortDurationDesc:
+	case SortDuration, SortDurationDesc, SortListPosition:
 		return "::bigint"
-	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc, SortFavoritedDesc:
+	case SortAddedAt, SortAddedAtDesc, SortWatchUpdatedDesc, SortNextUpDesc, SortFavoritedDesc, SortRatedDesc, SortListUpdatedDesc:
 		return "::timestamptz"
 	case SortYear, SortYearDesc, SortIndex:
 		return "::integer"
@@ -160,6 +200,9 @@ type Cursor struct {
 	// Filter is de vingerafdruk van de filterset waar deze cursor bij hoort
 	// (D1.7); leeg zonder filters.
 	Filter string `json:"f,omitempty"`
+	// Tie is de waarde van de tweede sorteersleutel (tieExpression) van het laatste
+	// item op de pagina. Nil voor sorteringen zonder tweede sleutel.
+	Tie *string `json:"t,omitempty"`
 }
 
 // Encode maakt de string die de client terugkrijgt.
@@ -200,6 +243,12 @@ func DecodeCursorFor(raw string, want Sort, filter string) (*Cursor, error) {
 	if _, err := id.Parse(c.ID); err != nil {
 		return nil, ErrCursorInvalid
 	}
+	// Een cursor van vóór de tweede sleutel mist de titel; hem hier hervatten zou
+	// het laatste item van de vorige pagina opnieuw tonen. Weigeren en opnieuw
+	// beginnen is de enige veilige reactie.
+	if (want.tieExpression() != "") != (c.Tie != nil) {
+		return nil, fmt.Errorf("%w: tweede sorteersleutel past niet bij sortering %q", ErrCursorInvalid, want)
+	}
 	if !want.keyValid(c.Key) {
 		return nil, fmt.Errorf("%w: sleutel past niet bij sortering %q", ErrCursorInvalid, want)
 	}
@@ -218,7 +267,7 @@ func (s Sort) keyValid(key string) bool {
 	case SortYear, SortYearDesc, SortIndex:
 		_, err := strconv.Atoi(key)
 		return err == nil
-	case SortDuration, SortDurationDesc:
+	case SortDuration, SortDurationDesc, SortListPosition:
 		_, err := strconv.ParseInt(key, 10, 64)
 		return err == nil
 	case SortLastPlayed, SortLastPlayedDesc:

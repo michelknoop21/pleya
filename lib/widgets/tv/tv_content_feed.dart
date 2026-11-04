@@ -71,6 +71,7 @@ import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/home_custom_row_view_all.dart';
+import '../../services/unified_catalog/home_custom_row.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
@@ -123,6 +124,9 @@ class TvContentFeedState extends State<TvContentFeed>
 
   /// A1a's footer row, one DOWN below the last content row.
   final _customizeFocus = FocusNode(debugLabel: 'tvHomeCustomizeFooter');
+
+  HomeCustomRow? _pendingAddedRow;
+  FocusNode? _addedRowLauncher;
 
   bool _rowHasFocus = false;
   bool _atTop = true;
@@ -475,24 +479,6 @@ class TvContentFeedState extends State<TvContentFeed>
   /// made silently.
   ///
 
-  /// Hoofdstuk 9.5's last sentence, and fase-8 brief §22's "0 hero groups":
-  /// when the deduplicated recent-film pool is genuinely empty — a show-only
-  /// library, or every recent film ineligible — the billboard falls through to
-  /// the first Continue Watching title, then to the first hub's, exactly as
-  /// `DiscoverScreen` did before this phase. Existing behaviour, not new
-  /// fallback semantics.
-  ///
-  /// One slide, never a rotation over the whole library: this is a stand-in for
-  /// a featured title, and rotating it would claim these are new releases. And
-  /// it is still a group, so its Afspelen resolves through the fase-4
-  /// coördinator like every other card on the page.
-  List<UnifiedMediaGroup> _fallbackHero(List<UnifiedMediaHub> rows) {
-    for (final row in rows) {
-      if (row.groups.isNotEmpty) return [row.groups.first];
-    }
-    return const [];
-  }
-
   @override
   Widget build(BuildContext context) {
     final projection = context.watch<TvHomeProjectionProvider>();
@@ -510,24 +496,17 @@ class TvContentFeedState extends State<TvContentFeed>
     // literal here would be a second definition that can drift from it.
     final continueWatchingHubId = projection.continueWatching?.hubId;
 
-    // Hoofdstuk 9.7: an empty `heroGroups` for the films Home is *currently*
-    // showing is an answer; an empty one because the projection has not yet
-    // consumed the films that just landed is not. The two get different
-    // treatment — the fallback billboard for the first, reserved space for the
-    // second — because flashing a Continue Watching title as the billboard and
-    // then replacing it a beat later with a film is the exact "hero mag niet
-    // boven een al gefocuste rij ingevoegd worden" jump 9.7 forbids.
-    final heroSettled =
-        projection.hasProjectedHero && identical(projection.projectedLatestMovies, discover.latestMovies);
-    final heroGroups = projection.heroGroups.isNotEmpty
-        ? projection.heroGroups
-        : (heroSettled ? _fallbackHero(rows) : const <UnifiedMediaGroup>[]);
-    final reserveHeroSpace = heroGroups.isEmpty && !heroSettled;
+    final billboard = homeBillboardGroups(projection: projection, latestMovies: discover.latestMovies, rows: rows);
+    final heroGroups = billboard.groups;
+    final reserveHeroSpace = heroGroups.isEmpty && !billboard.settled;
     _hasHero = heroGroups.isNotEmpty;
     // In draw order, so "the row below this one" follows the page rather than
     // the order the keys were first created in — a Home-layout reorder or a
     // re-projection changes the former and not the latter.
     _rowStack.layOut(rows.map((row) => row.hubId));
+    if (_pendingAddedRow != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusAddedRow());
+    }
 
     if (rows.isEmpty && heroGroups.isEmpty && !reserveHeroSpace) {
       return _emptyOrLoading(discover, hasSavedRows: customRows?.hasSavedRows ?? false);
@@ -716,7 +695,50 @@ class TvContentFeedState extends State<TvContentFeed>
     );
   }
 
-  Future<void> _openCustomize() => openTvHomeCustomizePanel(context, clientFor: _clientFor);
+  Future<void> _openCustomize() async {
+    _pendingAddedRow = null;
+    // The context-menu entry runs after its close future, before its launcher
+    // restoration has committed. Capture the real Home launcher after it.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final launcher = FocusManager.instance.primaryFocus;
+    final row = await openTvHomeCustomizePanel(context, clientFor: _clientFor);
+    if (!mounted || row == null) return;
+    // The overlay restores its launcher in a post-frame callback. Let that
+    // focus transaction finish before checking ownership of the new intent.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    setState(() {
+      _pendingAddedRow = row;
+      _addedRowLauncher = launcher;
+    });
+  }
+
+  void _focusAddedRow() {
+    final row = _pendingAddedRow;
+    if (!mounted || row == null) return;
+    if (!_destinationActive || _addedRowLauncher?.hasPrimaryFocus != true) {
+      _pendingAddedRow = null;
+      return;
+    }
+    final layout = context.read<HomeLayoutProvider?>();
+    final customRows = context.read<HomeCustomRowsProvider?>();
+    final exists = layout?.customRowById(row.id) != null && !layout!.isRowHidden(row.layoutRowId);
+    // Provider notifications rebuild Home when the request finishes. Keep the
+    // launcher usable meanwhile; no polling or timing assumption is needed.
+    if (exists && (customRows?.isLoading(row.id) ?? false)) return;
+    _pendingAddedRow = null;
+    if (exists && customRows?.contentFor(row.id)?.isEmpty == false) {
+      final rail = _rowStack.keyFor(UnifiedMediaHub.synthesizedHubId(row.hubSlug)).currentState;
+      if (rail?.focusColumn(0) ?? false) return;
+    }
+    // Removed, hidden, failed or empty: return to an existing Home control.
+    if (_customizeFocus.context != null && _customizeFocus.canRequestFocus) {
+      _customizeFocus.requestFocus();
+    } else {
+      if (!focusPrimary()) widget.onNavigateUp?.call();
+    }
+  }
 
   MediaServerClient? Function(String serverId) get _clientFor =>
       (serverId) => context.read<MultiServerProvider>().serverManager.getClient(ServerId(serverId));

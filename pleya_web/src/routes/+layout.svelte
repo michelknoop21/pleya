@@ -2,22 +2,26 @@
   import { onMount, type Snippet } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { dev } from '$app/environment';
+  import { dev } from '$app/env';
 
   import '../styles/tokens.css';
   import '../styles/base.css';
 
-  import TopNav from '$lib/components/TopNav.svelte';
-  import MobileHeader from '$lib/components/MobileHeader.svelte';
-  import TabBar from '$lib/components/TabBar.svelte';
-  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
-  import UnreachableState from '$lib/components/UnreachableState.svelte';
-  import { activeItemId, navItems } from '$lib/components/navItems';
-  import { adminBackHref, isAdminPath } from '$lib/admin/sections';
-  import { session } from '$lib/stores/session.svelte';
-  import { theme } from '$lib/stores/theme.svelte';
-  import { viewport } from '$lib/stores/viewport.svelte';
-  import { initLocale, t } from '$lib/i18n';
+  import ConsumerSidebar from '#lib/components/ConsumerSidebar.svelte';
+  import TopNav from '#lib/components/TopNav.svelte';
+  import MobileHeader from '#lib/components/MobileHeader.svelte';
+  import TabBar from '#lib/components/TabBar.svelte';
+  import SkeletonPage from '#lib/components/SkeletonPage.svelte';
+  import UnreachableState from '#lib/components/UnreachableState.svelte';
+  import AddToListDialog from '#lib/components/lists/AddToListDialog.svelte';
+  import { activeItemId, navItems } from '#lib/components/navItems.js';
+  import { adminBackHref, isAdminPath } from '#lib/admin/sections.js';
+  import { isPlayerPath } from '#lib/player/route.js';
+  import { session } from '#lib/stores/session.svelte.js';
+  import { theme } from '#lib/stores/theme.svelte.js';
+  import { viewport } from '#lib/stores/viewport.svelte.js';
+  import { setupDestination } from '#lib/setup/route.js';
+  import { initLocale, t } from '#lib/i18n/index.js';
 
   // Vóór de eerste markup: `t()` is niet reactief, dus de taal moet vaststaan
   // voordat een kind rendert. In `onMount` kwam dit te laat en bleef de pagina
@@ -40,6 +44,17 @@
         : null
       : session.capabilities
   );
+  // Geen afgeleide: localStorage is niet reactief, en een ander tabblad kan uitloggen terwijl deze staat open is.
+  let stillSignedIn = $state(false);
+  $effect(() => {
+    if (!unreachable) return;
+    const read = () => {
+      stillSignedIn = session.client.tokens.signedIn;
+    };
+    read();
+    window.addEventListener('storage', read);
+    return () => window.removeEventListener('storage', read);
+  });
   const items = $derived(navItems(navCapabilities, navLibraries));
   const activeId = $derived(activeItemId(items, page.url.pathname, navLibraries));
   // Zoeken vraagt de server; zolang die niet antwoordt, staat de actie er niet.
@@ -47,6 +62,7 @@
   const searchActive = $derived(page.url.pathname.startsWith('/search'));
   // De Beheer-pil alleen voor eigenaar of beheerder (S10.1); in beheer zelf
   // wordt de mobiele kop een terugkop naar de index of naar Pleya.
+  let sidebarCompact = $state(true);
   const inAdmin = $derived(isAdminPath(page.url.pathname));
   const adminBack = $derived.by(() => {
     const href = adminBackHref(page.url.pathname);
@@ -55,9 +71,8 @@
   // De primitievengalerij heeft geen server nodig en hoort niet achter de
   // sessiepoort; buiten `vite dev` is `dev` onwaar en valt deze tak weg.
   const isDevGallery = $derived(dev && page.url.pathname.startsWith('/dev/'));
-  const isAuthRoute = $derived(
-    page.url.pathname === '/login' || page.url.pathname === '/setup'
-  );
+  // De speler (mockup 50) vult het hele venster, zonder topnav of tabbalk.
+  const isPlayer = $derived(isPlayerPath(page.url.pathname));
 
   onMount(() => {
     const stopTheme = theme.start();
@@ -77,8 +92,8 @@
   const expectedPath = $derived.by(() => {
     if (isDevGallery) return null;
     if (session.phase === 'setup') return '/setup';
-    if (session.phase === 'signed-out') return '/login';
-    if (session.phase === 'ready' && isAuthRoute) return '/';
+    if (session.phase === 'signed-out') return page.url.pathname === '/setup' ? '/login?next=/setup' : '/login';
+    if (session.phase === 'ready' && page.url.pathname === '/login') return setupDestination(page.url.searchParams.get('next'),session.canAdminister);
     return null;
   });
 
@@ -100,8 +115,8 @@
   // beschermt is de API, die zonder geldig token niets geeft.
   $effect(() => {
     const target = expectedPath;
-    if (target !== null && page.url.pathname !== target) {
-      void goto(target, { replaceState: true });
+    if (target !== null && page.url.pathname !== target.split('?')[0]) {
+      void goto(target, { replace: true });
     }
   });
 
@@ -132,9 +147,17 @@
   </main>
 {:else if !routeMatchesPhase}
   <SkeletonPage variant="compact" />
+{:else if page.url.pathname === '/setup' && !unreachable}
+  <main id="main" class="auth-shell">{@render children()}</main>
+{:else if isPlayer && !unreachable}
+  <main id="main" class="player-shell">
+    {@render children()}
+  </main>
 {:else}
-  <div class="shell" class:shell--wide={viewport.wide}>
-    {#if viewport.wide}
+  <div class="shell" class:shell--wide={viewport.wide} class:shell--consumer={viewport.wide && !inAdmin} class:shell--compact={sidebarCompact}>
+    {#if viewport.wide && !inAdmin}
+      <ConsumerSidebar {items} {activeId} {showSearch} {searchActive} showAdmin={session.canAdminister} showFavorites={!unreachable && session.capabilities?.favorites === true} favoritesActive={page.url.pathname.startsWith('/server/favorites')} bind:compact={sidebarCompact} />
+    {:else if viewport.wide}
       <TopNav
         {items}
         {activeId}
@@ -161,7 +184,7 @@
           name={session.lastContact?.name ?? page.url.host}
           host={page.url.host}
           lastContactAt={session.lastContact?.at ?? null}
-          signedIn={session.client.tokens.refreshToken !== null}
+          signedIn={stillSignedIn}
           onRetry={() => session.start()}
         />
       {:else}
@@ -173,6 +196,7 @@
       <TabBar {items} {activeId} />
     {/if}
   </div>
+  {#if !unreachable}<AddToListDialog />{/if}
 {/if}
 
 <style>
@@ -181,6 +205,9 @@
     display: flex;
     flex-direction: column;
   }
+
+  .shell--consumer { margin-left: 96px; --inset: 40px; }
+  .shell--consumer.shell--compact { margin-left: 96px; }
 
   .shell__main {
     flex: 1 1 auto;
@@ -195,7 +222,8 @@
     );
   }
 
-  .dev-shell {
+  .dev-shell,
+  .player-shell {
     min-height: 100dvh;
   }
 

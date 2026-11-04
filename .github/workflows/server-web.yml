@@ -115,7 +115,7 @@ jobs:
 
       - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
         name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: pleya_server/go.mod
           cache-dependency-path: pleya_server/go.sum

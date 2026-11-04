@@ -1,0 +1,377 @@
+{
+  "base": "http://127.0.0.1:8853",
+  "fixture": "own synthetic DB/role/container; genuine HTTP/scanner",
+  "frames": [
+    {
+      "screen": "/setup",
+      "state": "owner before any setup mutation",
+      "file": "1600-dark-owner.png",
+      "fullFile": "1600-dark-owner-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 625.296875,
+          "top": 60,
+          "right": 1110,
+          "bottom": 685.296875,
+          "left": 490
+        }
+      },
+      "fileSha256": "aa00788a3b7519a8d3c25f7dcf2e7ddeed1a3746a8402d3ec8f92d5e1cd404f4",
+      "fullFileSha256": "aa00788a3b7519a8d3c25f7dcf2e7ddeed1a3746a8402d3ec8f92d5e1cd404f4"
+    },
+    {
+      "screen": "/setup",
+      "state": "owner narrow",
+      "file": "390-light-owner.png",
+      "fullFile": "390-light-owner-full.png",
+      "width": 390,
+      "height": 844,
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "box": {
+          "x": 16,
+          "y": 24,
+          "width": 358,
+          "height": 647.046875,
+          "top": 24,
+          "right": 374,
+          "bottom": 671.046875,
+          "left": 16
+        }
+      },
+      "fileSha256": "beab4a405dca04f4f37554e3a7a0a63c6a1e4900c1fcd38220d3e4cb3bf35a57",
+      "fullFileSha256": "3ac74c13c65df55381be7435970f321b15eeb4d08bf3f1b35f36339adff441b5"
+    },
+    {
+      "screen": "/setup",
+      "state": "reload after real owner persists; storage candidates",
+      "file": "1600-dark-storage.png",
+      "fullFile": "1600-dark-storage-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 512.34375,
+          "top": 60,
+          "right": 1110,
+          "bottom": 572.34375,
+          "left": 490
+        }
+      },
+      "fileSha256": "32a633cde2c300177b4aa3e6056b6b79d413088c7c0789bb34cf857a3f6239fe",
+      "fullFileSha256": "32a633cde2c300177b4aa3e6056b6b79d413088c7c0789bb34cf857a3f6239fe"
+    },
+    {
+      "screen": "/setup",
+      "state": "available roots narrow",
+      "file": "320-oled-storage.png",
+      "fullFile": "320-oled-storage-full.png",
+      "width": 320,
+      "height": 844,
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "box": {
+          "x": 16,
+          "y": 24,
+          "width": 288,
+          "height": 606.6875,
+          "top": 24,
+          "right": 304,
+          "bottom": 630.6875,
+          "left": 16
+        }
+      },
+      "fileSha256": "63ffacb79e87c8e2e5959861b099e69a53a56ef4e856aed0f326c026fb04e3f1",
+      "fullFileSha256": "63ffacb79e87c8e2e5959861b099e69a53a56ef4e856aed0f326c026fb04e3f1"
+    },
+    {
+      "screen": "/setup",
+      "state": "real fixture HTTP503 availability failure",
+      "file": "1600-dark-read-error.png",
+      "fullFile": "1600-dark-read-error-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 638.640625,
+          "top": 60,
+          "right": 1110,
+          "bottom": 698.640625,
+          "left": 490
+        }
+      },
+      "fileSha256": "1b26cfcd042d57dfc3cf0dedf24d7b9472b015537e83fa704b3ac8e1216073fc",
+      "fullFileSha256": "586cfc7618467b6a90f99d878f322bbd87ff9f6107bc4417d04e43fbe14bbefa"
+    },
+    {
+      "screen": "/setup",
+      "state": "validated URL draft resumes without serverwrite",
+      "file": "1600-dark-library.png",
+      "fullFile": "1600-dark-library-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 554.59375,
+          "top": 60,
+          "right": 1110,
+          "bottom": 614.59375,
+          "left": 490
+        }
+      },
+      "fileSha256": "5b3f3adac02ec3943cd2e2290ad46689e54813fe4f5bf19bd2762b5536eb3dfd",
+      "fullFileSha256": "5b3f3adac02ec3943cd2e2290ad46689e54813fe4f5bf19bd2762b5536eb3dfd"
+    },
+    {
+      "screen": "/setup",
+      "state": "first library narrow",
+      "file": "390-light-library.png",
+      "fullFile": "390-light-library-full.png",
+      "width": 390,
+      "height": 844,
+      "geometry": {
+        "viewport": 390,
+        "document": 390,
+        "box": {
+          "x": 16,
+          "y": 24,
+          "width": 358,
+          "height": 663.34375,
+          "top": 24,
+          "right": 374,
+          "bottom": 687.34375,
+          "left": 16
+        }
+      },
+      "fileSha256": "fc31a084b3dd65187de850a452799079085d038f92e2c743755cfc868e42a791",
+      "fullFileSha256": "a09e1fa4b73bc73837a62e8de1055964a76b28afcc13e45fc64ab12ee85de834"
+    },
+    {
+      "screen": "/setup",
+      "state": "real durable library resumes before first scan",
+      "file": "1600-dark-scan-ready.png",
+      "fullFile": "1600-dark-scan-ready-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 490.59375,
+          "top": 60,
+          "right": 1110,
+          "bottom": 550.59375,
+          "left": 490
+        }
+      },
+      "fileSha256": "35f3ccc6d7934c46ce7e409a6015002408e71e107619ed0740d2ff96c64959eb",
+      "fullFileSha256": "35f3ccc6d7934c46ce7e409a6015002408e71e107619ed0740d2ff96c64959eb"
+    },
+    {
+      "screen": "/setup",
+      "state": "queued/running actual scan, no second POST after reload",
+      "file": "1600-dark-scanning.png",
+      "fullFile": "1600-dark-scanning-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 446.59375,
+          "top": 60,
+          "right": 1110,
+          "bottom": 506.59375,
+          "left": 490
+        }
+      },
+      "fileSha256": "d004189631c4c41c6c4f68dd14282187f3cf94ac6ecd29534608755bb5054658",
+      "fullFileSha256": "d004189631c4c41c6c4f68dd14282187f3cf94ac6ecd29534608755bb5054658"
+    },
+    {
+      "screen": "/setup",
+      "state": "real scanner found one title, existing card preview",
+      "file": "1600-dark-done.png",
+      "fullFile": "1600-dark-done-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 765.53125,
+          "top": 60,
+          "right": 1110,
+          "bottom": 825.53125,
+          "left": 490
+        }
+      },
+      "fileSha256": "2f9c5b8f4567b312367d6f1ecb7ec36c5c4bd2a5a8cf5398958b343cac6ae4e3",
+      "fullFileSha256": "3fb50996f4da0bb84c890d39869109e89c58a17137c5e42b6a3acedecf940e75"
+    },
+    {
+      "screen": "/setup",
+      "state": "completed scan and Home action narrow",
+      "file": "320-light-done.png",
+      "fullFile": "320-light-done-full.png",
+      "width": 320,
+      "height": 844,
+      "geometry": {
+        "viewport": 320,
+        "document": 320,
+        "box": {
+          "x": 16,
+          "y": 24,
+          "width": 288,
+          "height": 814.875,
+          "top": 24,
+          "right": 304,
+          "bottom": 838.875,
+          "left": 16
+        }
+      },
+      "fileSha256": "6c6c6e4b457066d20cec0392b3c7e181ded53ef940795c4edda4cfc22a7b6832",
+      "fullFileSha256": "8e3b31fd0248a2a718baea9f96998938ecaa1c95f4bb86a89f01fd9f20900584"
+    },
+    {
+      "screen": "/",
+      "state": "golden journey1 actual Home contains scanned title",
+      "file": "320-light-home.png",
+      "fullFile": "320-light-home-full.png",
+      "width": 320,
+      "height": 844,
+      "geometry": {
+        "viewport": 320,
+        "document": 320
+      },
+      "fileSha256": "02fcd34937ad310335e83e56b0ea49ecbdf8a5c6d0f61fa953eb37ce4c10910e",
+      "fullFileSha256": "a26d8209764f19e9d05709c090a32a141b94bd57cbd74c59c3887571c89b648f"
+    },
+    {
+      "screen": "/setup",
+      "state": "actual env config library offered for adoption",
+      "file": "1600-dark-adopt.png",
+      "fullFile": "1600-dark-adopt-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 369.09375,
+          "top": 60,
+          "right": 1110,
+          "bottom": 429.09375,
+          "left": 490
+        }
+      },
+      "fileSha256": "c566ad600fb3e990cdba17db12b159d23ed1ace99e08d1de33a167ddb4f0ebff",
+      "fullFileSha256": "c566ad600fb3e990cdba17db12b159d23ed1ace99e08d1de33a167ddb4f0ebff"
+    },
+    {
+      "screen": "/setup",
+      "state": "actual scanner success on empty library, no failure claim",
+      "file": "1600-dark-empty.png",
+      "fullFile": "1600-dark-empty-full.png",
+      "width": 1600,
+      "height": 1000,
+      "geometry": {
+        "viewport": 1600,
+        "document": 1600,
+        "box": {
+          "x": 490,
+          "y": 60,
+          "width": 620,
+          "height": 609.59375,
+          "top": 60,
+          "right": 1110,
+          "bottom": 669.59375,
+          "left": 490
+        }
+      },
+      "fileSha256": "01efefde705beb27421b96a42e70073cbe06cd0f23fb020dcd63bd8d54f37093",
+      "fullFileSha256": "01efefde705beb27421b96a42e70073cbe06cd0f23fb020dcd63bd8d54f37093"
+    }
+  ],
+  "checks": [
+    {
+      "axe": "320-light",
+      "violations": 0
+    },
+    {
+      "journey1": true,
+      "reloadBoundaries": [
+        "owner",
+        "roots-draft",
+        "library",
+        "scan"
+      ],
+      "counts": {
+        "libraries": 1,
+        "owners": 1,
+        "scans": 1
+      }
+    },
+    {
+      "adoptPreservesId": true,
+      "emptyScanIsSuccess": true
+    },
+    {
+      "role": "member",
+      "adminReads": 0
+    },
+    {
+      "role": "restricted",
+      "adminReads": 0
+    }
+  ],
+  "writes": [
+    "/pleya/v1/auth/setup",
+    "/pleya/v1/libraries",
+    "/pleya/v1/libraries/01a19a0a-ff27-7000-ba03-3c7364159821/scan",
+    "/pleya/v1/libraries/01a19a0b-1aba-7000-82bc-d1125ba80597/adopt",
+    "/pleya/v1/libraries/01a19a0b-1aba-7000-82bc-d1125ba80597/scan"
+  ],
+  "pageErrors": [],
+  "source_manifest": "source-freeze.json",
+  "source_manifest_sha256": "d7cd24036292f27df28fab3f6b0c8236883ed163c057b6700c9b186a694e4f12",
+  "zoom": 1,
+  "dpr": 1,
+  "visual_reference": "docs/assets/pleya-web-northstar/40-44; 620px setup; original14viewportframes personally viewed by writer"
+}

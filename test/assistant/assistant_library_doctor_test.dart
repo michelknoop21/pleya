@@ -153,6 +153,8 @@ class _StrictServer extends _Server implements JellyfinClient {
   @override
   bool Function()? canManageServerMetadata;
   @override
+  bool Function()? canManageCollections;
+  @override
   bool Function()? canAdministerServer;
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryContent(

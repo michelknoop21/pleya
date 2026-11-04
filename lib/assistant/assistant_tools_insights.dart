@@ -6,12 +6,16 @@ part of 'assistant_tools.dart';
 /// these tools out of the run. Rights never come from here: both tools act
 /// only on servers the profile administers ([AssistantToolContext.adminClient]).
 class AssistantInsightServices {
-  const AssistantInsightServices({required this.tautulliFor});
+  const AssistantInsightServices({required this.tautulliFor, this.canReadPersonalHistory});
 
   /// The paired Tautulli for [serverId], or null when that server has none.
   /// Hand in `TautulliProvider.clientForServer`: it answers only for the server
   /// Tautulli monitors, so a rating key never resolves on the wrong server.
   final TautulliClient? Function(ServerId serverId) tautulliFor;
+
+  /// Live profile and opt-in checks for personal use, including recommendations.
+  /// Absent means denied; administration statistics keep their own rights gate.
+  final bool Function(ServerId serverId)? canReadPersonalHistory;
 }
 
 /// Titles on [serverName] that [otherServerName] lacks, for the UI.
@@ -227,6 +231,8 @@ Future<({List<MediaItem> missing, bool lookupsCapped})> _missingOn(
   }
 
   final resolver = UnifiedIdentityResolver(
+    trustStoredIdentity: (item) =>
+        canTrustStoredIdentity(item, item.serverId == null ? null : ctx.adminClient(ServerId(item.serverId!))),
     fetchExternalIds: (serverId, targetId) async {
       final client = ctx.adminClient(ServerId(serverId));
       if (client == null || budget.spent) throw StateError('no lookup');

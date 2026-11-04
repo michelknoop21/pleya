@@ -1,9 +1,13 @@
+import '../media/deferred_subtitle.dart';
 import '../media/media_item.dart';
 import '../media/media_source_info.dart';
 import '../media/media_version.dart';
 import '../models/transcode_quality_preset.dart';
 import '../mpv/mpv.dart';
 import 'playback_stream_evidence.dart';
+
+/// Resolves existing language preferences against the version actually chosen by the server.
+typedef SourceTrackSelector = Future<({int? audioStreamId, int? subtitleStreamId})> Function(MediaSourceInfo source);
 
 /// Inputs for [MediaServerClient.getPlaybackInitialization]. Most fields
 /// are backend-specific knobs (transcode preset, audio stream, session ids).
@@ -26,6 +30,11 @@ class PlaybackInitializationOptions {
   /// server pick".
   final int? selectedAudioStreamId;
 
+  /// Shared source-subtitle id; zero means off, null preserves selection policy.
+  final int? selectedSubtitleStreamId;
+
+  final SourceTrackSelector? selectSourceTracks;
+
   /// Plex transcode `X-Plex-Session-Identifier`. Required for Plex transcode.
   final String? sessionIdentifier;
 
@@ -39,6 +48,8 @@ class PlaybackInitializationOptions {
     this.selectedMediaSourceId,
     this.qualityPreset = TranscodeQualityPreset.original,
     this.selectedAudioStreamId,
+    this.selectedSubtitleStreamId,
+    this.selectSourceTracks,
     this.sessionIdentifier,
     this.transcodeSessionId,
   });
@@ -59,6 +70,10 @@ class PlaybackInitializationResult {
   final String? videoUrl;
   final MediaSourceInfo? mediaInfo;
   final List<SubtitleTrack> externalSubtitles;
+
+  /// The selected track when the backend has to prepare it first; the player
+  /// adds it after opening, while the film plays.
+  final DeferredSubtitle? deferredSubtitle;
   final bool isOffline;
 
   /// `true` when [videoUrl] points at a backend transcoding stream.
@@ -97,6 +112,7 @@ class PlaybackInitializationResult {
     this.videoUrl,
     this.mediaInfo,
     this.externalSubtitles = const [],
+    this.deferredSubtitle,
     this.isOffline = false,
     this.isTranscoding = false,
     this.streamEvidence = const PlaybackStreamEvidence(),

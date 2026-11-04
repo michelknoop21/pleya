@@ -21,6 +21,7 @@ class DetailActivityCard extends StatelessWidget {
     required this.playCount,
     required this.viewerCount,
     required this.isSeries,
+    this.scope,
     this.ownProgressLabel,
   });
 
@@ -29,6 +30,9 @@ class DetailActivityCard extends StatelessWidget {
   final int? playCount;
   final int? viewerCount;
   final bool isSeries;
+
+  /// What the list supports claiming, when that is more than [isSeries] says.
+  final ItemWatchersScope? scope;
 
   /// "Jij bent bij S1 A3"; only shown for a series.
   final String? ownProgressLabel;
@@ -71,9 +75,13 @@ class DetailActivityCard extends StatelessWidget {
               children: [
                 if (watchers.isNotEmpty)
                   Text(
-                    isSeries
-                        ? t.discover.watchingSeriesBy(names: WatchedByRow.namesSentence(watchers))
-                        : t.discover.watchedBy(names: WatchedByRow.namesSentence(watchers)),
+                    switch ((scope, isSeries)) {
+                      (ItemWatchersScope.activity, _) => t.discover.activityBy(
+                        names: WatchedByRow.namesSentence(watchers, you: t.discover.activityByYou),
+                      ),
+                      (_, true) => t.discover.watchingSeriesBy(names: WatchedByRow.namesSentence(watchers)),
+                      (_, false) => t.discover.watchedBy(names: WatchedByRow.namesSentence(watchers)),
+                    },
                     style: TextStyle(color: onSurface, fontSize: 15, fontWeight: .w700),
                     maxLines: 2,
                     overflow: .ellipsis,
@@ -132,7 +140,12 @@ class DetailActivityCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFF141414), width: 2),
                 ),
-                child: WatcherAvatar(displayName: shown[i].displayName, thumbUrl: shown[i].thumbUrl, size: _avatarSize),
+                child: WatcherAvatar(
+                  displayName: shown[i].displayName,
+                  thumbUrl: shown[i].thumbUrl,
+                  initials: shown[i].initials,
+                  size: _avatarSize,
+                ),
               ),
             ),
         ],

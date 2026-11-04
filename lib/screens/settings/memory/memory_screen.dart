@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../navigation/profile_memory_sync.dart';
+import 'memory_sync_screen.dart';
 
 import '../../../assistant/assistant_controller_session.dart';
 import '../../../assistant/assistant_kids_ages_store.dart';
@@ -43,7 +47,8 @@ MemoryScreenModel memoryScreenModelForSession(BuildContext context) {
 /// one, as an ordinary page otherwise.
 void openAssistantMemoryScreen(BuildContext context) {
   final builder = settingsStudioBuilder(context, (_) => const AssistantMemoryScreen());
-  if (openTvContentRoute(id: 'tvSettings_assistantMemory', builder: builder) != null) return;
+  final topNav = tvSettingsTopNavFor(context);
+  if (openTvContentRoute(id: 'tvSettings_assistantMemory', builder: builder, topNav: topNav) != null) return;
   unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
 }
 
@@ -93,19 +98,56 @@ class _AssistantMemoryScreenState extends State<AssistantMemoryScreen> {
 
   void _openList() {
     final builder = settingsStudioBuilder(context, (_) => MemoryListScreen(model: _model, speech: _speech));
-    if (openTvContentRoute(id: 'tvSettings_assistantMemoryList', builder: builder) != null) return;
+    final topNav = tvSettingsTopNavFor(context);
+    if (openTvContentRoute(id: 'tvSettings_assistantMemoryList', builder: builder, topNav: topNav) != null) return;
+    unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
+  }
+
+  void _openSync() {
+    final binding = context.read<ProfileMemorySync?>();
+    if (binding == null) return;
+    final builder = settingsStudioBuilder(context, (_) => MemorySyncScreen(binding: binding));
+    // The shell's ambient content focus does not remember this nested tile.
+    final launcher = FocusManager.instance.primaryFocus;
+    final nested = openTvContentRoute(
+      id: 'tvSettings_assistantMemorySync',
+      builder: builder,
+      topNav: tvSettingsTopNavFor(context),
+    );
+    if (nested != null) {
+      unawaited(
+        nested.whenComplete(() {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && launcher != null && launcher.context != null && launcher.canRequestFocus) {
+              launcher.requestFocus();
+            }
+          });
+        }),
+      );
+      return;
+    }
     unawaited(Navigator.of(context).push(MaterialPageRoute<void>(builder: builder)));
   }
 
   /// "Alle herinneringen wissen": nothing goes without the yes of the dialog.
   Future<void> _clear() async {
-    if (!await confirmClearMemory(context)) return;
+    final linked = context.read<ProfileMemorySync?>()?.sync.accountKey != null;
+    final confirmed = linked
+        ? await showMemoryConfirm(
+            context,
+            title: t.assistant.memory.screen.clearDialog.title,
+            body: t.assistant.memory.sync.clearEverywhere,
+            confirm: t.assistant.memory.screen.clearDialog.confirm,
+          )
+        : await confirmClearMemory(context);
+    if (!confirmed) return;
     final result = await _model.clearAll();
     if (!result.ok && mounted) showErrorSnackBar(context, memoryCodeMessage(result.code));
   }
 
   late final _actions = MemoryActionCallbacks(
     openList: _openList,
+    sync: context.read<ProfileMemorySync?>() == null ? null : _openSync,
     toggle: () => toggleMemory(_model),
     rewrite: () => unawaited(_model.rewrite()),
     clear: () => unawaited(_clear()),

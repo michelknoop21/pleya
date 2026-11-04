@@ -3,8 +3,12 @@
 /// `tv_settings_categories.dart`, which keeps the layout and the focus walk.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../i18n/strings.g.dart';
+import '../../theme/mono_theme.dart' show kAccentAlt;
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/tv_hig.dart';
@@ -12,12 +16,19 @@ import '../app_icon.dart';
 import 'tv_settings_studio_style.dart';
 import 'tv_unified_layout.dart';
 
-/// VIS-0926-S1 (DEC-139), in HIG points. VIS-0925-G packed the rail to a
-/// 12 pt pill inset with 8 pt between pills, which read as one stack on the
-/// 77 inch set; 18 and 16 make it a list.
-const double kTvCategoryPillInsetPt = 18;
+/// The pill's vertical inset, in HIG points. VIS-0925-G packed the rail to
+/// 12 pt with 8 pt between pills, which read as one stack on the 77 inch set;
+/// VIS-0926-S1 (DEC-139) made that 18 and 16. A-24 (DEC-166): with the top
+/// bar gone from Instellingen, eight pills at 18 and 16 still ran 876 pt in a
+/// column of about 760, so Big P and Geavanceerd were cut off. 12 here and
+/// 12 between pills fit all eight with room to spare; the label stays Body
+/// (29 pt) and the pill stays well above the 56 pt minimum button.
+const double kTvCategoryPillInsetPt = 12;
 
 /// The category name over the rows, in the Studio accent ink.
+///
+/// A-24 (DEC-166): never under the tvOS minimum of 23 pt (HIG, Typography).
+/// The group-label token alone came out at 22 pt on an Apple TV.
 class TvStudioEyebrow extends StatelessWidget {
   const TvStudioEyebrow(this.label, {super.key});
 
@@ -26,13 +37,14 @@ class TvStudioEyebrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
+    final minimum = TvHig.caption2 * TvHig.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: TvMyPleyaLayout.groupLabelGap * scale),
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
           color: tvStudioEyebrow(tokens(context)),
-          fontSize: TvMyPleyaLayout.groupLabelFontSize * scale,
+          fontSize: math.max(TvMyPleyaLayout.groupLabelFontSize * scale, minimum),
           fontWeight: FontWeight.w700,
           letterSpacing: 1.4,
         ),
@@ -84,16 +96,24 @@ class TvStudioCategoryPill extends StatelessWidget {
     required this.focused,
     required this.pt,
     this.icon,
+    this.needsAttention = false,
   });
 
   /// Finds the bar in a test.
   static const Key markerKey = Key('tv-studio-category-marker');
+
+  /// Finds the attention dot in a test.
+  static const Key attentionKey = Key('tv-studio-category-attention');
 
   final String title;
   final IconData? icon;
   final bool selected;
   final bool focused;
   final double pt;
+
+  /// The amber dot after the label (A-24c, review 557-M2): an expired server
+  /// session, the same mark and colour the top bar puts on Instellingen.
+  final bool needsAttention;
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +148,18 @@ class TvStudioCategoryPill extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (needsAttention) ...[
+                  SizedBox(width: 12 * pt),
+                  Semantics(
+                    label: t.tvNavigation.attentionRequired,
+                    child: Container(
+                      key: attentionKey,
+                      width: 12 * pt,
+                      height: 12 * pt,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: kAccentAlt),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

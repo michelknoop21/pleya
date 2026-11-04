@@ -1,255 +1,100 @@
 part of 'tv_my_pleya_screen.dart';
 
-/// Avatar, name, how many servers answered, and the one action that belongs to
-/// an identity rather than to a section.
-///
-/// Hoofdstuk 18.4 is the rule on the right-hand list: one server down among
-/// several healthy ones is a line in this list, not a banner over the content,
-/// and an auth failure is an amber line rather than a blocking red one.
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    required this.profile,
-    required this.servers,
-    required this.scale,
-    required this.node,
-    required this.onSwitchProfile,
-    required this.onExitUp,
-    required this.onNavigateDown,
-  });
+/// `JOUW PERSOONLIJKE RUIMTE`, `Jouw wereld, <naam>.` and the line under it
+/// (northstar A10). No profile block and no server status: who is signed in
+/// is the avatar in the top navigation, and the servers live under
+/// Instellingen ▸ Koppelingen ▸ Servers.
+class _PageHeading extends StatelessWidget {
+  const _PageHeading({required this.name});
 
-  final Profile? profile;
-  final MultiServerProvider servers;
-  final double scale;
-  final FocusNode node;
-  final VoidCallback onSwitchProfile;
-  final VoidCallback onExitUp;
-  final VoidCallback onNavigateDown;
+  /// The active profile's name, or null before a profile resolved.
+  final String? name;
 
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    final total = servers.totalServerCount;
-    final online = servers.onlineServerCount;
-
-    // VIS-0925-C: no tinted box of its own. On the tv the header's fill read
-    // as a loose grey bar under the navigation; the avatar, name and action
-    // sit on the page like the title above them.
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: TvMyPleyaLayout.headerPadding / 2 * scale),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          ExcludeSemantics(
-            child: ProfileAvatar(profile: profile, size: kTvMyPleyaAvatarPt * TvHig.of(context)),
+    final pt = TvHig.of(context);
+    final name = this.name;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.tvMyPleya.eyebrow.toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: tvMyPleyaEyebrowInk(tk),
+            fontSize: TvHig.caption2 * pt,
+            fontWeight: FontWeight.w600,
+            letterSpacing: TvHig.caption2 * _Pt.capsTracking * pt,
           ),
-          SizedBox(width: TvMyPleyaLayout.headerGap * scale),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                profile?.displayName ?? '',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: tk.text,
-                  fontSize: TvMyPleyaLayout.headerNameFontSize * scale,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                total == 0 ? t.tvMyPleya.noServers : t.tvMyPleya.serversOnline(online: '$online', total: '$total'),
-                style: TextStyle(
-                  color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                  fontSize: TvMyPleyaLayout.headerMetaFontSize * scale,
-                ),
-              ),
-            ],
+        ),
+        SizedBox(height: _Pt.eyebrowGap * pt),
+        Semantics(
+          header: true,
+          child: Text(
+            name == null || name.isEmpty ? t.tvMyPleya.headingNoName : t.tvMyPleya.heading(name: name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: tk.text,
+              fontSize: TvHig.title1 * pt,
+              height: 1.1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.02 * TvHig.title1 * pt,
+            ),
           ),
-          SizedBox(width: TvMyPleyaLayout.headerGap * scale),
-          _SwitchProfileAction(
-            node: node,
-            scale: scale,
-            onSelect: onSwitchProfile,
-            onNavigateUp: onExitUp,
-            onNavigateDown: onNavigateDown,
+        ),
+        SizedBox(height: _Pt.headingGap * pt),
+        Text(
+          t.tvMyPleya.subline,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+            fontSize: _Pt.subline * pt,
           ),
-          const Spacer(),
-          Flexible(
-            child: _ServerStatusList(servers: servers, scale: scale),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _SwitchProfileAction extends StatelessWidget {
-  const _SwitchProfileAction({
-    required this.node,
-    required this.scale,
-    required this.onSelect,
-    required this.onNavigateUp,
-    required this.onNavigateDown,
-  });
+/// The eyebrow's ink: the brand red pulled towards the page's own ink, so it
+/// reads as a warm tint on dark and as a deep red on light (A10, A11).
+Color tvMyPleyaEyebrowInk(MonoTokens tk) => Color.lerp(tk.accent, tk.text, 0.35)!;
 
-  final FocusNode node;
-  final double scale;
-  final VoidCallback onSelect;
-  final VoidCallback onNavigateUp;
-  final VoidCallback onNavigateDown;
+/// A small-capitals heading over a block (`SNEL NAAR`, `JE KIJKLIJST`), at
+/// the 23 pt minimum where the northstar draws about 17.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label, {this.trailing});
+
+  final String label;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    const shape = StadiumBorder();
-    return FocusableWrapper(
-      focusNode: node,
-      onSelect: onSelect,
-      onNavigateUp: onNavigateUp,
-      onNavigateDown: onNavigateDown,
-      // The server status to the right is a readout, not a focus stop, so the
-      // pill is both ends of its row.
-      onNavigateLeft: () {},
-      onNavigateRight: () {},
-      focusShapeBorder: shape,
-      disableScale: true,
-      semanticLabel: t.myPleya.switchProfile,
-      child: Container(
-        // The ring gap as a margin rather than a Padding around this Container:
-        // a Container lays out margin, then decoration, then padding, so the two
-        // are the same picture with one widget less.
-        margin: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
-        decoration: ShapeDecoration(
-          shape: shape,
-          color: tk.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha),
-        ),
-        padding: EdgeInsets.symmetric(
-          horizontal: TvTopNavLayout.pillPaddingHorizontal * scale,
-          vertical: TvTopNavLayout.pillPaddingVertical * scale,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Symbols.swap_horiz_rounded,
-              size: TvMyPleyaLayout.tileIconSize * scale,
-              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-            ),
-            SizedBox(width: TvCatalogLayout.actionIconGap * scale),
-            Text(
-              t.myPleya.switchProfile,
+    final pt = TvHig.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(
+              label.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: tk.text,
-                fontSize: TvTopNavLayout.itemFontSize * scale,
+                color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                fontSize: TvHig.caption2 * pt,
                 fontWeight: FontWeight.w600,
+                letterSpacing: TvHig.caption2 * _Pt.capsTracking * pt,
               ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-}
-
-/// The right-hand server list: a dot per server, and the auth line underneath.
-///
-/// Not focusable. It is a status readout, and a remote that has to walk past
-/// three servers to reach the first tile is a remote fighting the page. It is
-/// still announced, as one node, so a VoiceOver user hears the same summary a
-/// sighted user reads.
-class _ServerStatusList extends StatelessWidget {
-  const _ServerStatusList({required this.servers, required this.scale});
-
-  final MultiServerProvider servers;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    final rows = servers.serverIds.map((id) {
-      final backend = servers.serverManager.getClient(ServerId(id))?.backend;
-      final name = servers.serverManager.serverDisplayName(ServerId(id));
-      return (
-        id: id,
-        // Northstar 01: "Plex · Woonkamer", the kind of server before its name.
-        name: backend == null ? name : '${backendDisplayLabel(backend, serverId: id)} · $name',
-        online: servers.onlineServerIds.contains(id),
-      );
-    }).toList();
-    if (rows.isEmpty) return const SizedBox.shrink();
-
-    final authErrors = servers.authErrorServers;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final row in rows)
-          Padding(
-            padding: EdgeInsets.only(bottom: TvMyPleyaLayout.serverRowGap * scale),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  // Keyed on the server id, not the name: two servers can share a
-                  // display name, and a rename must not orphan this key (TOK2).
-                  key: ValueKey('tv.my-pleya.server-dot.${row.id}.${row.online ? 'online' : 'offline'}'),
-                  width: TvMyPleyaLayout.serverDotSize * scale,
-                  height: TvMyPleyaLayout.serverDotSize * scale,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    // Red here is a status dot on a status list, not navigation
-                    // chrome — hoofdstuk 33 reserves the brand red for the
-                    // progress line and small semantic marks, and this is one.
-                    // Groen komt uit dezelfde autoriteit als rood: `kSuccess` in
-                    // mono_theme.dart. Hier stond `#3FBF5F`, de laatste losse
-                    // statuskleur in lib (TOK2, na TOK-1 en TOK-3).
-                    color: row.online ? kSuccess : kAccent,
-                  ),
-                ),
-                SizedBox(width: TvMyPleyaLayout.serverRowGap * scale),
-                // Flexible, so a long "Jellyfin · NAS op zolder" ellipsizes in
-                // the room the profile line leaves instead of overflowing it.
-                Flexible(
-                  child: Text(
-                    row.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-                      fontSize: TvMyPleyaLayout.serverRowFontSize * scale,
-                    ),
-                  ),
-                ),
-                // Online is the dot alone, as in the northstar; offline is
-                // also said in words, so the state never rests on colour.
-                if (!row.online) ...[
-                  SizedBox(width: TvMyPleyaLayout.serverRowGap * scale),
-                  Text(
-                    t.tvMyPleya.statusOffline,
-                    style: TextStyle(
-                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                      fontSize: TvMyPleyaLayout.serverRowFontSize * scale,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        // Hoofdstuk 18.4: amber, one line, and never a blocking banner over the
-        // content.
-        if (authErrors.isNotEmpty)
-          Text(
-            authErrors.length == 1
-                ? t.connections.sessionExpiredOne(name: authErrors.first.displayName)
-                : t.connections.sessionExpiredMany(count: '${authErrors.length}'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: kAccentAlt, fontSize: TvMyPleyaLayout.serverRowFontSize * scale),
-          ),
+        ?trailing,
       ],
     );
   }

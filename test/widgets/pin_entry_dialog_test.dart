@@ -218,6 +218,30 @@ void main() {
     expect(find.byType(PinEntryDialog), findsNothing);
   });
 
+  for (final key in [LogicalKeyboardKey.select, LogicalKeyboardKey.enter]) {
+    testWidgets('TV PIN selects once per press including repeats: $key', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      String? result;
+      await _pumpPinDialogLauncher(tester, onResult: (pin) => result = pin);
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final physical = key == LogicalKeyboardKey.select ? PhysicalKeyboardKey.select : PhysicalKeyboardKey.enter;
+      for (var digit = 1; digit <= 4; digit++) {
+        _dispatchKey(KeyDownEvent(physicalKey: physical, logicalKey: key, timeStamp: Duration.zero));
+        _dispatchKey(KeyRepeatEvent(physicalKey: physical, logicalKey: key, timeStamp: Duration.zero));
+        _dispatchKey(KeyUpEvent(physicalKey: physical, logicalKey: key, timeStamp: Duration.zero));
+        await tester.pump();
+        if (digit < 4) {
+          expect(find.byType(PinEntryDialog), findsOneWidget);
+          await _pressKeyboardMappedKey(tester, LogicalKeyboardKey.arrowRight, PhysicalKeyboardKey.arrowRight);
+        }
+      }
+      await tester.pumpAndSettle();
+      expect(result, '1233');
+    });
+  }
+
   testWidgets('Android TV keyboard-mapped enter/select activates highlighted PIN key', (tester) async {
     TvDetectionService.debugSetAppleTVOverride(true);
     String? result;

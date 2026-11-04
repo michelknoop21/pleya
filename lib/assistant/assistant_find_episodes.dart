@@ -7,7 +7,7 @@ import 'assistant_find_match.dart';
 import 'assistant_find_route.dart';
 import 'assistant_plot_index.dart';
 
-typedef _Episode = ({String title, String summary, int? season, int? number, MediaItem? item});
+typedef _Episode = ({String title, String summary, int? season, int? number, MediaItem? item, MediaItem? identityItem});
 
 /// An episode is found inside its series: the series first, then its seasons
 /// from the media server (episode summaries included) or, when it is not in
@@ -44,13 +44,20 @@ Future<void> findEpisode(FindRun run) async {
           final children = await client.fetchChildren(s.id);
           if (run.settled) return;
           for (final e in children) {
-            final item = e.serverId == series.serverId ? e : e.copyWith(serverId: series.serverId);
+            final item = e.copyWith(
+              serverId: series.serverId,
+              libraryId: e.libraryId ?? series.libraryId,
+              grandparentId: e.grandparentId ?? series.id,
+              parentId: e.parentId ?? s.id,
+              parentIndex: e.parentIndex ?? s.index,
+            );
             episodes.add((
               title: e.title ?? '',
               summary: e.summary ?? '',
               season: e.parentIndex ?? s.index,
               number: e.index,
               item: item,
+              identityItem: series,
             ));
           }
         }),
@@ -89,6 +96,7 @@ Future<void> _seerrEpisodes(
             season: n,
             number: number is num ? number.toInt() : null,
             item: null,
+            identityItem: null,
           ));
         }
       }),
@@ -169,6 +177,9 @@ bool _add(FindRun run, FindMatch show, _Episode? best, [FindSource? source]) {
   if (best == null || run.settled) return false;
   final match = FindMatch(best.title, year: show.year, kind: MediaKind.episode, sources: {...show.sources, ?source})
     ..ids = show.ids
+    ..externalIds = show.externalIds
+    ..identityItem = best.identityItem
+    ..libraryLookupIncomplete = show.libraryLookupIncomplete
     ..seerr = show.seerr
     ..snippet = best.summary
     ..series = show.title

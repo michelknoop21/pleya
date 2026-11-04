@@ -7,11 +7,11 @@
   ontwikkeling.
 -->
 <script lang="ts">
-  import Alert from '$lib/components/Alert.svelte';
-  import Panel from '$lib/components/Panel.svelte';
-  import StatTile from '$lib/components/StatTile.svelte';
-  import StatusPill from '$lib/components/StatusPill.svelte';
-  import StorageMeter from '$lib/components/StorageMeter.svelte';
+  import Alert from '#lib/components/Alert.svelte';
+  import Panel from '#lib/components/Panel.svelte';
+  import StatTile from '#lib/components/StatTile.svelte';
+  import StatusPill from '#lib/components/StatusPill.svelte';
+  import StorageMeter from '#lib/components/StorageMeter.svelte';
   import GallerySection from './GallerySection.svelte';
   import OverviewTable from './OverviewTable.svelte';
   import OverviewSide from './OverviewSide.svelte';

@@ -1,0 +1,25 @@
+{
+  "item_id": "018f4a20-5a10-7000-8000-000000000021",
+  "base_token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pins": {
+    "poster": {
+      "artwork_id": "018f4a20-5a10-7000-8000-000000000022",
+      "source": "tmdb",
+      "state": "ready",
+      "error_code": null
+    },
+    "backdrop": null
+  },
+  "provider_state": "available",
+  "candidates": [
+    {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "role": "poster",
+      "source": "tmdb",
+      "artwork_id": null,
+      "preview_ref": "/poster.png",
+      "language": null,
+      "available": true
+    }
+  ]
+}

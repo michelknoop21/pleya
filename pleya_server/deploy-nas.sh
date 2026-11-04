@@ -14,9 +14,14 @@ cd "$(dirname "$0")"
 # signing key). Productie is de standaard en verandert niet. Zie README.md.
 INSTANCE=${PLEYA_INSTANCE:-prod}
 SSH_HOST=synology
+DEPLOY_ROOT=${PLEYA_DEPLOY_ROOT-/volume1/docker}
+case "$DEPLOY_ROOT" in
+  /volume1/docker|/volume1/pleya-private) ;;
+  *) echo "✗ onbekende PLEYA_DEPLOY_ROOT (alleen /volume1/docker of /volume1/pleya-private)" >&2; exit 1 ;;
+esac
 case "$INSTANCE" in
-  prod) REMOTE_DIR=/volume1/docker/pleya-server ;;
-  test) REMOTE_DIR=/volume1/docker/pleya-server-test ;;
+  prod) REMOTE_DIR=$DEPLOY_ROOT/pleya-server ;;
+  test) REMOTE_DIR=$DEPLOY_ROOT/pleya-server-test ;;
   *) echo "✗ onbekende PLEYA_INSTANCE '$INSTANCE' (prod of test)" >&2; exit 1 ;;
 esac
 
@@ -41,7 +46,7 @@ fi
 # als dat mislukt. Zonder back-upmap op de NAS zou de eerste deploy met een
 # migratie dus een server opleveren die niet opkomt; dat hoort hier te stoppen
 # en niet pas bij readyz.
-BACKUP_HOST=$(ssh "$SSH_HOST" "grep -E '^PLEYA_SERVER_BACKUP_HOST=' $REMOTE_DIR/.env | cut -d= -f2" 2>/dev/null)
+BACKUP_HOST=$(ssh "$SSH_HOST" "grep -E '^PLEYA_SERVER_BACKUP_HOST=' $REMOTE_DIR/.env | tail -n 1 | cut -d= -f2-" 2>/dev/null)
 BACKUP_HOST=${BACKUP_HOST:-./data/backups}
 if ! ssh "$SSH_HOST" "cd $REMOTE_DIR && test -d '$BACKUP_HOST'" 2>/dev/null; then
   echo "✗ de back-upmap $BACKUP_HOST bestaat niet op de NAS — zie docs/pleya-server-operator-backup.md" >&2
@@ -75,7 +80,7 @@ ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; cd $REMOTE_DIR && docker com
 
 echo "→ wachten tot de server gereed is"
 ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; \
-  port=\$(grep -E '^PLEYA_SERVER_HOST_PORT=' $REMOTE_DIR/.env | cut -d= -f2); \
+  port=\$(grep -E '^PLEYA_SERVER_HOST_PORT=' $REMOTE_DIR/.env | tail -n 1 | cut -d= -f2-); \
   port=\${port:-8832}; \
   for i in \$(seq 1 30); do \
     if curl -fsS -m 5 http://127.0.0.1:\$port/readyz >/dev/null 2>&1; then \

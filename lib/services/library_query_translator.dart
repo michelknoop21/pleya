@@ -57,7 +57,7 @@ class PlexLibraryQueryTranslator implements LibraryQueryTranslator {
     final sort = query.sort;
     if (sort != null) {
       final dir = sort.direction == LibrarySortDirection.descending ? ':desc' : ':asc';
-      filters['sort'] = '${sort.field}$dir';
+      filters['sort'] = '${_plexSortField(sort.field)}$dir';
     }
     if (query.search != null && query.search!.isNotEmpty) {
       filters['title'] = query.search!;
@@ -98,6 +98,11 @@ class PlexLibraryQueryTranslator implements LibraryQueryTranslator {
     }
     return filters;
   }
+
+  /// The neutral names are Plex's own, except the critic score: Plex calls that
+  /// `rating`, and on Jellyfin `rating` means the community score (saved browse
+  /// preferences depend on that), so the unified catalog asks for it by name.
+  static String _plexSortField(String neutral) => neutral == 'criticRating' ? 'rating' : neutral;
 
   static int? _plexTypeNumberFor(MediaKind? kind) {
     if (kind == null) return null;
@@ -266,8 +271,17 @@ class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
     }
     final sort = query.sort;
     if (sort != null) {
-      params['SortBy'] = _sortFieldFor(sort.field, query.kind);
-      params['SortOrder'] = sort.direction == LibrarySortDirection.descending ? 'Descending' : 'Ascending';
+      final field = _sortFieldFor(sort.field, query.kind);
+      final descending = sort.direction == LibrarySortDirection.descending;
+      // Without a second key the server decides how equal values fall per
+      // request, so a title can drop out between two pages. One SortOrder runs
+      // every key that way (measured on Jellyfin 12.4.0: `Descending` and
+      // `Descending,Descending` give the same order, `Descending,Ascending` does
+      // not), so equal values read Z to A in a descending sort. The merge's
+      // comparator reads ties A to Z, which only decides the source that pops
+      // next. Emby is not tested live: it gets the same single value.
+      params['SortBy'] = field != 'Random' && !field.contains('SortName') ? '$field,SortName' : field;
+      params['SortOrder'] = descending ? 'Descending' : 'Ascending';
     }
     if (query.search != null && query.search!.isNotEmpty) {
       params['SearchTerm'] = query.search;
@@ -314,9 +328,10 @@ class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
       'name' => 'SortName',
       'rating' || 'communityRating' => 'CommunityRating',
       'viewCount' || 'playCount' => 'PlayCount',
-      'productionYear' => 'ProductionYear',
-      'runtime' => 'Runtime',
-      'officialRating' => 'OfficialRating',
+      'productionYear' || 'year' => 'ProductionYear',
+      'runtime' || 'duration' => 'Runtime',
+      'officialRating' || 'contentRating' => 'OfficialRating',
+      'audienceRating' => 'CommunityRating',
       'criticRating' => 'CriticRating',
       'startDate' => 'StartDate',
       'airTime' => 'AirTime',

@@ -1,6 +1,6 @@
 # Pleya Server: back-ups, terugzetten en upgraden
 
-Dit document is voor wie de server beheert. Het zegt waar de back-ups staan, wat erin zit, hoe je er een terugzet en wat er bij een upgrade gebeurt. Het gedrag is getest in `pleya_server/internal/backup/backup_test.go`, `pleya_server/internal/api/backups_api_test.go` en `pleya_server/cmd/pleya-server/backupwork_test.go`. Het beheerscherm (S25.6) is nog niet gebouwd. Een kopie buiten de NAS (S25.7) doet de server niet zelf; die loopt via de voorziening die de NAS al heeft, en staat onder "Een kopie buiten de NAS".
+Dit document is voor wie de server beheert. Het zegt waar de back-ups staan, wat erin zit, hoe je er een terugzet en wat er bij een upgrade gebeurt. Het gedrag is getest in `pleya_server/internal/backup/backup_test.go`, `pleya_server/internal/api/backups_api_test.go` en `pleya_server/cmd/pleya-server/backupwork_test.go`. Het beheerscherm staat in Pleya Web onder Serverbeheer, Diagnostiek, Onderhoud (`/admin/diagnostics/maintenance`, S25.6): de lijst, de instellingen met hun variabelenaam (alleen lezen), de waarschuwingen, Nu een back-up maken, Hersteltest en Terugzetten met de bevestigingszin. Een downloadknop heeft het niet, want er is geen route. Een kopie buiten de NAS (S25.7) doet de server niet zelf; die loopt via de voorziening die de NAS al heeft, en staat onder "Een kopie buiten de NAS".
 
 ## De instellingen
 
@@ -65,6 +65,20 @@ Gebruik hier geen `--delete`. De server ruimt zijn eigen map op na `PLEYA_SERVER
 
 Welke bestemming en waar de wachtzin buiten de NAS staat zijn keuzes van de beheerder; dit document legt ze niet vast.
 
+## Zo staat het op de productie-NAS
+
+Sinds 26 oktober 2026 staat de back-upmap van productie op een andere fysieke schijf dan `/config`. `PLEYA_SERVER_BACKUP_HOST=/volumeUSB3/usbshare/pleya-backups` in `/volume1/docker/pleya-server/.env` hangt die map als `/backups` in de container (ext4 op de USB3-schijf, `/volume1` is de interne pool; map met modus 700, tars met 600). De waarschuwing `same_failure_domain` komt daardoor niet meer terug.
+
+`PLEYA_SERVER_BACKUP_KEY` staat in dezelfde `.env` (modus 600, 40 tekens, op de NAS gegenereerd en nergens getoond). Sinds die sleutel er is, zitten de geheimen versleuteld in nieuwe back-ups; de scherm-rij zegt dan "geheimen erin, versleuteld" in plaats van "zonder geheimen". Eerdere back-ups zijn zonder sleutel gemaakt en blijven dat. De sleutel lees je zelf met `ssh synology "sed -n 's/^PLEYA_SERVER_BACKUP_KEY=//p' /volume1/docker/pleya-server/.env"`, in een eigen terminal en niet in een gedeelde sessie.
+
+Op dezelfde dag is de keten op productie gemeten, na een back-up van de database en `.env` vooraf: de container is opnieuw aangemaakt (zonder rebuild), `readyz` was na ongeveer 6 seconden groen, de status werd `healthy` en het log bevat geen foutregels. Een handmatige back-up gaf schema 22 met 577 titels en geheimen erin. De hersteltest op die back-up slaagde met 577 van 577 titels.
+
+Wat hier nog niet klopt:
+
+- De sleutel staat alleen op de NAS. Bewaar een kopie in een wachtwoordkluis buiten de NAS, anders is de ondertekensleutel uit een back-up verloren zodra de NAS weg is. Dat is aan de beheerder.
+- Er draait nog geen kopie buiten de NAS. De USB3-schijf beschermt tegen een kapotte interne pool, niet tegen brand, diefstal of het verlies van de hele NAS. Hyper Backup of rsync (zie hierboven) is nog niet ingesteld.
+- Is de USB-schijf niet gemount bij het opstarten, dan maakt Docker de hostmap `/volumeUSB3/usbshare/pleya-backups` niet zelf op de schijf aan en schrijft de server in een lege map op het systeemvolume. Controleer na een herstart van de NAS dat `GET /backups` de bestaande tars nog toont; staan ze op `missing`, dan is de schijf niet gemount.
+
 ## Handmatig, gepland en de hersteltest
 
 Elke dag op `PLEYA_SERVER_BACKUP_TIME` zet de server een back-up in de jobwachtrij. Is de laatste geslaagde hersteltest ouder dan zeven dagen, dan volgt er direct een hersteltest op die back-up.
@@ -90,9 +104,8 @@ Een restore zet de database en `/config` terug naar het moment van de back-up. A
 ```sh
 # De zin staat in restore_confirmation van de back-up en moet letterlijk terug.
 curl -s -H "Authorization: Bearer $A" $B/backups/<id> | jq -r .restore_confirmation
-curl -s -X POST -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
-  -d '{"confirm":"herstel 2026-10-23T01:30:00Z: kijkstatus, gebruikers, sessies, instellingen en scans van daarna gaan verloren"}' \
-  $B/backups/<id>/restore
+# Lees en beoordeel de volledige zin hierboven voordat je hem gebruikt.
+# Zet die exacte actuele tekst als confirm in de aanvraagbody; neem geen oude voorbeeldzin over.
 ```
 
 Wat er dan gebeurt:
@@ -111,7 +124,20 @@ Zonder Pleya kan het ook: `tar -xf <back-up>.tar database.sql.gz` en `zcat datab
 
 Een nieuwe image die migraties meebrengt, maakt vóór de eerste migratie zelf een back-up (`trigger: upgrade`). Lukt die niet, bijvoorbeeld omdat `/backups` niet gemount of niet beschrijfbaar is, dan start de server niet en zegt het log waarom. Dat is opzet: migraties lopen alleen vooruit, en zonder back-up is er geen weg terug.
 
-Start je een oudere image op een database die een nieuwere image al gemigreerd heeft, dan weigert de server te starten met de melding dat de database nieuwer is dan de binary. Terug naar de oude versie gaat alleen door de upgrade-back-up terug te zetten met die oude versie, of door de nieuwe image weer te starten.
+Start je een oudere image op een database die een nieuwere image al gemigreerd heeft, dan weigert de server te starten met de melding dat de database nieuwer is dan de binary. Die weigering betekent ook dat je de restore-API van die oude image niet kunt gebruiken om de nieuwere database eerst terug te zetten.
+
+Een rollback omvat de upgrade-back-up van de database, de bijbehorende `/config` en de passende oude image. Voorkom dat na herstel de nieuwe image automatisch opnieuw start: die zou de teruggezette database meteen weer vooruit migreren. Kies vooraf een gevalideerde herstelroute met gestopte server en passende versie, of een afzonderlijk bewezen procedure die de nieuwe server na de restore laat stoppen zonder automatische herstart. Het gewone Terugzetten op een container met `restart: unless-stopped` is daarom op zichzelf geen versie-rollback.
+
+De lokale [schema30/32-imageproef met restartpolicy](qa/2026-11-02-server-rollback-restart.md) bewijst de volgende beperkte operatorroute:
+
+1. Bewaar de juiste oude image, de passende geslaagde back-up en de config/signingkey. Leg de actuele container en oorspronkelijke restartpolicy vast.
+2. Zet uitsluitend de huidige servercontainer vóór Terugzetten op `docker update --restart=no <huidige-servercontainer>` en controleer policy `no`. Laat Compose de nieuwe image tussendoor niet opnieuw aanmaken: dat kan de policy weer overschrijven.
+3. Gebruik de gewone restore-API met de exacte `restore_confirmation`. Wacht na202 de echte proces-exit75 af en controleer het teruggezette schema en de configuratie. Laat de nieuwe image nu gestopt.
+4. Start exact de bewaarde oude image met de herstelde database en config, pas voor deze image weer met de normale restartpolicy. Controleer readyz, schema, IDs, rechten en voortgang. Start nooit alleen een oude binary op het nog nieuwe schema.
+
+Een weigering vóór onderhoud is geen geslaagde restore. Herstel de oorspronkelijke restartpolicy alleen nadat is vastgesteld dat de huidige binary nog bij het bestaande schema past; schakel hem niet blind terug in na een onzekere hersteluitkomst.
+
+Deze route is lokaal op historische schema30/32-images bewezen, inclusief een negatieve proef waarin `unless-stopped` de teruggezette database meteen opnieuw naar32 migreerde. De volledige herstelronde met de exact bewaarde productieimage op de NAS blijft afzonderlijk open; ook schema33/pins en off-site herstel vallen buiten dit bewijs. Wijzigingen na het tijdstip van de teruggezette back-up gaan bij rollback verloren.
 
 ## Vier foutcodes
 
@@ -123,3 +149,7 @@ Start je een oudere image op een database die een nieuwere image al gemigreerd h
 | bronbestand kapot | `playback.file_corrupt` (422) | `POST /playback/plan` als ook een tweede analyse van het bestand mislukt |
 
 De test `TestFailurePathsEachHaveTheirOwnCode` laat alle vier met een echte oorzaak optreden: `/dev/full` als schijf, een database op een poort waar niets luistert, een ffmpeg die aan een segfault sterft en een bestand vol rommel.
+
+## Lokale versiegrensproef
+
+De synthetische [schema-24/30-rehearsal](qa/2026-11-01-server-gap-rollback.md) bewijst echte versleutelde backup, upgrade, datamutaties en restore van database plus config. De versieguard weigert 24 op 30, accepteert de teruggezette 24 en de nieuwe versie migreert daarna opnieuw vooruit. Dit is geen oude-image- of productieherstelproef. Gebruik deze uitkomst niet als toestemming om zonder bewezen image-/herstartprocedure een NAS-rollback te doen.

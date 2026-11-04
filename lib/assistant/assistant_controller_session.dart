@@ -18,6 +18,7 @@ import '../providers/tautulli_provider.dart';
 import '../screens/video_player_screen.dart' show VideoPlayerScreenState;
 import '../services/download_manager_service.dart';
 import '../services/memory/memory_service.dart';
+import '../services/settings_service.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/trakt/trakt_sync_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
@@ -217,7 +218,18 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
             profileId: profileId,
             activeProfileId: () => activeProfile.activeId ?? '',
           ),
-    insights: tautulli == null ? null : AssistantInsightServices(tautulliFor: tautulli.clientForServer),
+    insights: tautulli == null
+        ? null
+        : AssistantInsightServices(
+            tautulliFor: tautulli.clientForServer,
+            canReadPersonalHistory: (id) =>
+                profileId != null &&
+                activeProfile.activeId == profileId &&
+                !activeProfile.isBinding &&
+                activeProfile.lastBindingSucceeded &&
+                (SettingsService.instanceOrNull?.read(SettingsService.personalizedRecommendations) ?? false) &&
+                tautulli.enabledImportServerIds().contains(id.value),
+          ),
     requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
     // One per ask, so the lookup budget starts fresh. The TMDB key and the
     // online switch are read per lookup, so a change in the settings counts

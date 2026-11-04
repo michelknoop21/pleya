@@ -88,6 +88,10 @@ type Event struct {
 	// Backlog markeert een event uit een offline wachtrij.
 	Backlog bool
 
+	// Copy zegt dat deze positie uit een andere bron van dezelfde titel komt.
+	// Niemand keek hier: het is geen afspelen, en het verwerft niets.
+	Copy bool
+
 	// AuthSessionID is de inlogsessie die het event stuurde, voor de naam van
 	// het toestel in de geschiedenis. Nil als die niet bekend is.
 	AuthSessionID *id.ID
@@ -95,9 +99,9 @@ type Event struct {
 
 // recordsPlay zegt of een event een afspeelsessie voortzet. Alleen markeren als
 // gezien of ongezien is geen afspelen, en zonder sessie-id valt er niets te
-// groeperen.
+// groeperen. Een kopie is geen afspelen, ook niet wanneer ze afgewezen wordt.
 func (e Event) recordsPlay() bool {
-	if e.SessionID == "" {
+	if e.SessionID == "" || e.Copy {
 		return false
 	}
 	return e.Action != ActionMarkWatched && e.Action != ActionMarkUnwatched
@@ -111,6 +115,7 @@ const (
 	ReasonStaleBase        = "stale_base_revision"
 	ReasonNotOwner         = "not_owner"
 	ReasonLeaseHeld        = "lease_held_by_other"
+	ReasonCopyOnWatched    = "copy_on_watched"
 )
 
 // Outcome is wat Decide ervan maakt.
@@ -147,6 +152,16 @@ func Decide(cur State, ev Event, now time.Time, lease time.Duration) Outcome {
 	// het eerst ziet. Alleen bij revision 0 valt er niets te beschermen.
 	if ev.Backlog {
 		if cur.Revision > 0 {
+			// De uitzondering: gezien zonder telling komt alleen uit een kopie, dus een
+			// afgeronde backlog is de eerste echte kijkbeurt. Hij telt en verzet het
+			// moment, en verder niets. Ook de revision blijft: op de lijn verandert
+			// alleen updated_at, en een sessie die kijkt mag hier niet op stranden.
+			if cur.Watched && cur.PlayCount == 0 && backlogFinished(cur, ev) {
+				next := cur
+				next.PlayCount = 1
+				next.UpdatedAt = now
+				return Outcome{Accepted: true, Next: next, OwnedByThisSession: isOwner}
+			}
 			return reject(ReasonBacklogIsHistory)
 		}
 		next := applyProgress(cur, ev)
@@ -167,6 +182,23 @@ func Decide(cur State, ev Event, now time.Time, lease time.Duration) Outcome {
 	// het scherm dat hij zag, en een achtergrondping hoort dat niet te blokkeren.
 	if ev.BaseRevision != nil && *ev.BaseRevision != cur.Revision && !explicit {
 		return reject(ReasonStaleBase)
+	}
+
+	// Een kopie is geen kijkactie (voorstel DEC-XXX, kopie zonder kijkactie). Ze verwerft
+	// niets en neemt een kijkende sessie nooit over, wie die sessie ook is. Op een
+	// gezien item zet ze geen positie, om de reden boven applyExplicit.
+	if ev.Copy {
+		if leaseHeld {
+			return reject(ReasonLeaseHeld)
+		}
+		if !ev.Completed && cur.Watched {
+			return reject(ReasonCopyOnWatched)
+		}
+		next := applyCopy(cur, ev)
+		next.Revision = cur.Revision + 1
+		next.UpdatedAt = now
+		next.Exists = true
+		return Outcome{Accepted: true, Next: next}
 	}
 
 	switch {
@@ -229,7 +261,9 @@ func applyProgress(cur State, ev Event) State {
 		next.DurationMs = ev.DurationMs
 	}
 	if completed(ev, next.DurationMs) {
-		if !next.Watched {
+		// Gezien zonder telling komt alleen uit een kopie: dan is dit de eerste
+		// echte kijkbeurt.
+		if !next.Watched || next.PlayCount == 0 {
 			next.PlayCount++
 		}
 		next.Watched = true
@@ -249,7 +283,8 @@ func applyExplicit(cur State, ev Event) State {
 	}
 	switch ev.Action {
 	case ActionMarkWatched:
-		if !next.Watched {
+		// Gezien zonder telling komt alleen uit een kopie, zoals in applyProgress.
+		if !next.Watched || next.PlayCount == 0 {
 			next.PlayCount++
 		}
 		next.Watched = true
@@ -262,6 +297,34 @@ func applyExplicit(cur State, ev Event) State {
 		next.PositionMs = ev.PositionMs
 	}
 	return next
+}
+
+// applyCopy zet de overgenomen stand op een kopie.
+//
+// Geen drempel: uit 90 procent op een kopie valt niet af te leiden dat iemand de
+// kopie keek, dus alleen de vlag telt. PlayCount blijft staan: hij telt kijkbeurten
+// en markeringen, en hier keek niemand. Een oudere client leest gezien uit
+// play_count (MediaItem.viewCount); die bedient mapUserState op de lijn.
+func applyCopy(cur State, ev Event) State {
+	next := cur
+	if ev.DurationMs != nil {
+		next.DurationMs = ev.DurationMs
+	}
+	if !ev.Completed {
+		next.PositionMs = ev.PositionMs
+		return next
+	}
+	next.Watched = true
+	next.PositionMs = 0
+	return next
+}
+
+// backlogFinished is completed voor een event dat de toestand zelf niet verzet.
+func backlogFinished(cur State, ev Event) bool {
+	if ev.DurationMs != nil {
+		return completed(ev, ev.DurationMs)
+	}
+	return completed(ev, cur.DurationMs)
 }
 
 // completed zegt of dit event het item uitgekeken maakt.

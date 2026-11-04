@@ -1,4 +1,6 @@
 #!/bin/bash
+. "$(dirname "$0")/heavy_queue.sh"
+case "${1:-}" in android|ios|all|clean) pleya_queue_script "$0" bash "$@" ;; esac
 
 set -e
 

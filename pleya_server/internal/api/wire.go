@@ -53,13 +53,18 @@ type InfoAuth struct {
 
 // Capabilities is wat deze server werkelijk aanbiedt, en is altijd leidend.
 type Capabilities struct {
-	Browse       bool `json:"browse"`
-	Search       bool `json:"search"`
-	Artwork      bool `json:"artwork"`
-	WatchState   bool `json:"watch_state"`
-	PlaybackPlan bool `json:"playback_plan"`
-	Transcode    bool `json:"transcode"`
-	Downloads    bool `json:"downloads"`
+	PlaybackSubtitles      bool `json:"playback_subtitles"`
+	EmbeddedSubtitles      bool `json:"embedded_subtitles"`
+	AssistantMemory        bool `json:"assistant_memory"`
+	Browse                 bool `json:"browse"`
+	Search                 bool `json:"search"`
+	Artwork                bool `json:"artwork"`
+	WatchState             bool `json:"watch_state"`
+	PlaybackQuality        bool `json:"playback_quality"`
+	PlaybackAudioSelection bool `json:"playback_audio_selection"`
+	PlaybackPlan           bool `json:"playback_plan"`
+	Transcode              bool `json:"transcode"`
+	Downloads              bool `json:"downloads"`
 	// Backups (venster 7, S25). Aan zodra de back-upservice en de wachtrij er
 	// zijn: GET/POST /backups, GET /backups/{id} en de hersteltest en restore
 	// eronder bestaan dan voor klasse admin.
@@ -72,6 +77,16 @@ type Capabilities struct {
 	// niets over boeken.
 	Filters bool `json:"filters"`
 
+	// ExternalIDLookup (unified). Aan zodra /libraries/{id}/items de parameter
+	// external_id kent en Item.external_ids bestaat. Een server zonder de vlag
+	// negeert de parameter stil en levert de hele bibliotheek.
+	ExternalIDLookup        bool `json:"external_id_lookup"`
+	AppliedExternalIdentity bool `json:"applied_external_identity"`
+	ArtworkChoices          bool `json:"artwork_choices"`
+	MetadataOverrides       bool `json:"metadata_overrides"`
+	MetadataSearch          bool `json:"metadata_search"`
+	MetadataMatchStatus     bool `json:"metadata_match_status"`
+
 	// History, Favorites, Ratings en TrackPreferences (venster 6 deel 2, S20).
 	// Elk is aan zodra de persoonlijke opslag er is; ze belooft niets over
 	// verzamelingen.
@@ -80,9 +95,30 @@ type Capabilities struct {
 	Ratings          bool `json:"ratings"`
 	TrackPreferences bool `json:"track_preferences"`
 
+	// Collections en Playlists (venster 6 deel 1, S19, DEC-190). Aan zodra de
+	// routes er zijn; de tabellen komen met de migraties mee, dus er is geen
+	// toestand waarin de server ze niet heeft. Twee vlaggen omdat het twee
+	// resources zijn en een client ze los toont.
+	Collections bool `json:"collections"`
+	Playlists   bool `json:"playlists"`
+
+	// PersonalData (DEC-187, S20.4). Aan zodra de persoonlijke opslag er is:
+	// DELETE /history, DELETE /history/{id}, kind op GET /history en GET /ratings
+	// bestaan. Eén vlag, omdat een client ze niet los hoeft te onderhandelen. Een
+	// eigen vlag naast history en ratings, omdat een oudere server met die twee
+	// vlaggen op waar kind stil negeert en de andere routes niet kent.
+	PersonalData bool `json:"personal_data"`
+
+	// ItemActivity (DEC-169, activiteit van het huishouden). Aan zodra de
+	// persoonlijke opslag er is: GET /items/{id}/activity en de opt-out onder
+	// /users/me/activity-sharing bestaan dan samen, want het ene zonder het
+	// andere zou activiteit tonen die niemand kan regelen.
+	ItemActivity bool `json:"item_activity"`
+
 	// ArtworkSizes (venster 3, C1). Aan zodra /artwork/{id} afgeleide maten van de
 	// ladder kan maken. Belooft niets over andere routes.
-	ArtworkSizes bool `json:"artwork_sizes"`
+	ArtworkSizes      bool `json:"artwork_sizes"`
+	ArtworkCacheAdmin bool `json:"artwork_cache_admin"`
 
 	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
@@ -96,6 +132,10 @@ type Capabilities struct {
 	// een 400 krijgen van een oudere server.
 	WatchStateOwnership bool `json:"watch_state_ownership"`
 	StreamSessions      bool `json:"stream_sessions"`
+
+	// WatchStateCopy (voorstel DEC-XXX, kopie zonder kijkactie): de server kent `copy` op
+	// WatchStateEvent. Hetzelfde gesloten schema, dus dezelfde onderhandeling.
+	WatchStateCopy bool `json:"watch_state_copy"`
 
 	// Sessions (DEC-123, DEC-124). Aan sinds stap 6 van PS-9. De vlag zegt drie
 	// dingen tegelijk: de client mag device_id en device_name meesturen bij
@@ -118,6 +158,10 @@ type Capabilities struct {
 	// credential_mode meestuurt een weigering krijgen van een oudere server in
 	// plaats van een veld dat stil wegvalt.
 	CookieAuth bool `json:"cookie_auth"`
+	// CookieUpgrade zegt dat POST /auth/refresh credential_mode cookie_upgrade kent. Een
+	// aparte vlag: cookie_auth bestaat al op servers die die waarde weigeren, en een
+	// browser die hem daar stuurt verliest zijn sessie.
+	CookieUpgrade bool `json:"cookie_upgrade"`
 
 	// Administration (J.2 rij 1). Aan sinds S1.6, en hij dekt wat S1.2 tot en
 	// met S1.5 hebben gebouwd: GET/PATCH /settings, de vier routes onder
@@ -214,6 +258,10 @@ type Library struct {
 	Title     string `json:"title"`
 	Kind      string `json:"kind"`
 	ItemCount int    `json:"item_count"`
+
+	// Permission is het eigen recht van de aanvrager (S23.4): view, download of
+	// manage. Alleen op GET /libraries.
+	Permission *string `json:"permission,omitempty"`
 
 	Managed             *string `json:"managed,omitempty"`
 	ScanIntervalSeconds **int   `json:"scan_interval_seconds,omitempty"`
@@ -360,6 +408,7 @@ type WatchStateEvent struct {
 	Cause        string `json:"cause"`
 	BaseRevision *int64 `json:"base_revision"`
 	Backlog      bool   `json:"backlog"`
+	Copy         bool   `json:"copy"`
 }
 
 // WatchStateEntry is één regel in de lijst van GET /watch-state.
@@ -403,6 +452,12 @@ type Item struct {
 	EpisodeCount        *int     `json:"episode_count"`
 	WatchedEpisodeCount *int     `json:"watched_episode_count"`
 
+	// ExternalIDs staat er alleen als de server een bewezen providermatch heeft;
+	// anders null. Een client die het veld niet kent negeert het (regel 1, §3).
+	ExternalIDs *ExternalIDs `json:"external_ids"`
+	// AppliedExternalIDs is publicatiebewijs, ook tijdens een nieuwe pending/failure.
+	AppliedExternalIDs *ExternalIDs `json:"applied_external_ids"`
+
 	// Favorite en Rating zijn de aantekeningen van de aanvrager bij dit item
 	// (S20). Ze staan los van user_state: een favoriet die nooit is gekeken heeft
 	// geen kijkstatus, en null betekent daar "nooit geopend".
@@ -411,6 +466,18 @@ type Item struct {
 	Artwork   Artwork    `json:"artwork"`
 	Versions  []Version  `json:"versions"`
 	UserState *UserState `json:"user_state"`
+}
+
+// ExternalIDs zijn de nummers bij externe catalogi. Nu alleen TMDB.
+type ExternalIDs struct {
+	TMDB *int `json:"tmdb"`
+}
+
+func mapExternalIDs(in catalog.ExternalIDs) *ExternalIDs {
+	if in.IsZero() {
+		return nil
+	}
+	return &ExternalIDs{TMDB: in.TMDB}
 }
 
 // Person is één persoon bij een item (B4).
@@ -461,6 +528,8 @@ func mapItem(it catalog.Item) Item {
 		ChildCount:          it.ChildCount,
 		EpisodeCount:        it.EpisodeCount,
 		WatchedEpisodeCount: it.WatchedEpisodeCount,
+		ExternalIDs:         mapExternalIDs(it.ExternalIDs),
+		AppliedExternalIDs:  mapExternalIDs(it.AppliedExternalIDs),
 		Artwork: Artwork{
 			PosterID:   optID(it.PosterID),
 			BackdropID: optID(it.BackdropID),

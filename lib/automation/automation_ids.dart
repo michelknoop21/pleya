@@ -9,6 +9,8 @@ import '../navigation/navigation_tab_id.dart';
 /// [navTab] — never a raw string literal at the call site. Enforced by
 /// test/architecture/automation_ids_test.dart.
 class AutomationIds {
+  static const navigationBack = 'navigation.back';
+
   AutomationIds._();
 
   /// The first-start authentication composition. Ready as soon as the
@@ -37,11 +39,17 @@ class AutomationIds {
   static String navTab(NavigationTabId id) => 'nav.${id.name}';
 
   /// The TV shell's profile chip, at the far left of the top bar. Not a
-  /// [NavigationTabId]: the chip opens the profile picker on the root
-  /// navigator and never becomes an active destination. It carries a `nav` id
+  /// [NavigationTabId]: the chip opens the account menu ([accountMenu], A-24c)
+  /// and never becomes an active destination. It carries a `nav` id
   /// anyway because it is a focus stop in the bar, and a walk over that bar
   /// has to be able to name where the leftmost hop lands.
   static const String navProfile = 'nav.profile';
+
+  /// A-24c: the small account menu the TV profile chip opens, and its two
+  /// actions (`account_menu.action[switch_profile]`,
+  /// `account_menu.action[logout]`).
+  static const String accountMenu = 'account_menu';
+  static const String accountMenuAction = 'account_menu.action';
 
   /// OFF-1: the TV bar's reconnect item, shown only while offline. Not a
   /// [NavigationTabId] for the same reason [navProfile] isn't — it triggers
@@ -141,6 +149,12 @@ class AutomationIds {
   static const String tvosNativeTextEntry = 'tvos.native_text_entry';
 
   /// The Discover hero billboard as a whole.
+  static const String homeCustomizeOpen = 'home.customize.open';
+  static const String homeCustomizePanel = 'home.customize.panel';
+  static const String homeCustomizeAction = 'home.customize.action';
+  static const String homeRowWizard = 'home.row_wizard';
+  static const String homeRowWizardAction = 'home.row_wizard.action';
+
   static const String discoverHero = 'discover.hero';
 
   /// The hero's smart-play button.
@@ -188,16 +202,25 @@ class AutomationIds {
   /// One row in [mediaDetailEpisodeList]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailEpisodeListItem = 'media-detail.episode-list.item';
 
-  /// The horizontal seizoenchips row on TV series detail (PB-4, DEC-109), the
-  /// only focus row that changes which season [mediaDetailEpisodeList] shows.
-  static const String mediaDetailSeasonChips = 'media-detail.season-chips';
+  /// The tabs above a series page on TV (Serie, Season 1, ...).
+  static const String mediaDetailTabs = 'media-detail.tabs';
 
-  /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
-  static const String mediaDetailSeasonChip = 'media-detail.season-chip';
+  /// One tab in [mediaDetailTabs]. Instanceable: suffixed `[series]`,
+  /// `[episodes]` or `[<season index>]`.
+  static const String mediaDetailTab = 'media-detail.tab';
+
+  /// Who watched this, on TV. Its state carries `names`, how many people the
+  /// sentence stands for, so a scenario can tell the line from an empty one.
+  static const String mediaDetailActivity = 'media-detail.activity';
 
   /// The play button in the media-detail action row. On TV the page opens
   /// with the ring here, and Menu from the detail rail comes back to it.
   static const String mediaDetailPlay = 'media-detail.play';
+
+  /// The "Bron" card on the iPhone detail of a title with more than one
+  /// source; its state names the server the page is bound to, and a tap opens
+  /// the source picker to switch (unified, DEC-192).
+  static const String mediaDetailSource = 'media-detail.source';
 
   /// Visible preparation feedback; each concurrent notice has its own instance.
   static const String noticeBusy = 'notice.busy';
@@ -216,6 +239,27 @@ class AutomationIds {
   /// One poster in the iPhone seasons rail (DEC-140). Instanceable: suffixed
   /// `[<index>]`.
   static const String mediaDetailSeasonPoster = 'media-detail.season-poster';
+
+  /// One section under the TV detail hero. Instanceable: suffixed
+  /// `[<section id>]`, e.g. `[cast]`, `[reviews]`, `[extras]`.
+  static const String mediaDetailSection = 'media-detail.section';
+
+  /// One card in a [mediaDetailSection]. Instanceable: suffixed
+  /// `[<section id>.<index>]`.
+  static const String mediaDetailSectionItem = 'media-detail.section.item';
+
+  /// The "Meer lezen" action under a truncated TV synopsis.
+  static const String mediaDetailReadMore = 'media-detail.read-more';
+
+  /// The panel the TV detail page's ⋮ opens, and any page pushed inside it.
+  static const String mediaDetailActionPanel = 'media-detail.action-panel';
+
+  /// One row of [mediaDetailActionPanel]. Instanceable: suffixed `[<row id>]`,
+  /// e.g. `[audio]`, `[watch]`, `[manage]`.
+  static const String mediaDetailActionPanelRow = 'media-detail.action-panel.row';
+
+  /// "Wijzigen" on the source line of a unified title.
+  static const String mediaDetailSourceChange = 'media-detail.source-change';
 
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
@@ -373,6 +417,7 @@ class AutomationIds {
   /// The list "Herinneringen" behind "Herinneringen beheren" (43 D). State
   /// carries `count` (shown) and `total`.
   static const String screenMemoryList = 'screen.memory_list';
+  static const String screenMemorySync = 'screen.memory_sync';
 
   /// A control of the memory screens: `[menu]`, `[manage]`, `[use]` (reports
   /// `selected`), `[rewrite]`, `[clear]`, `[turnOn]`, `[retry]`, `[send]`,
@@ -482,6 +527,15 @@ class AutomationIds {
   /// only thing a scenario could read was a chip's own `selected` flag, and a
   /// chip that marks itself is not evidence that the page behind it changed.
   static const String libraryHeader = 'library.header';
+  static const String libraryHeaderSearch = 'library.header.search';
+  static const String libraryHeaderWatchlist = 'library.header.watchlist';
+  static const String libraryHeaderAvatar = 'library.header.avatar';
+
+  /// The three dots of the iPhone library filter row: manage and refresh.
+  static const String libraryFilterMore = 'library.filter.more';
+  static const String libraryFilterCount = 'library.filter.count';
+  static const String sheetLibrarySort = 'sheet.library_sort';
+  static const String sheetLibraryFilter = 'sheet.library_filter';
 
   /// The video player's rendering surface (`lib/mpv/video.dart`).
   static const String playerSurface = 'player.surface';
@@ -501,6 +555,11 @@ class AutomationIds {
   /// The TV player panel (`TvInfoPanel`) as a whole; `state` carries the active
   /// tab and sub-view, so a scenario can prove which layer is open.
   static const String playerPanel = 'player.panel';
+
+  /// Version/quality choices in the shared picker.
+  static const String playerSourceChoice = 'player.source_choice';
+  static const String playerSettingsQuality = 'player.settings.quality';
+  static const String playerTracksButton = 'player.tracks_button';
 
   /// One pill of the panel. Instanceable: `[information|video|audio|subtitles]`;
   /// `state.active` says whether it is the open tab.
@@ -532,8 +591,13 @@ class AutomationIds {
   /// (`profile.tile[0]`); `state` carries the name and whether it is active.
   static const String profileTile = 'profile.tile';
 
+  /// PIN keypad progress and cursor, without exposing entered digits.
+  static const String profilePin = 'profile.pin';
+
   /// The mobile bottom navigation bar as a whole (bounds, not per-tab). The
   /// per-tab nodes are [navTab], mounted on both the side rail and this bar.
+  /// On TV the top navigation, with `hidden`, `overlay` and `scrollAway` from
+  /// the presentation of the route under it (DEC-115, A-24).
   static const String navBar = 'nav.bar';
 
   /// The mobile Home header (lockup, and on Home the conditional actions,
@@ -784,11 +848,17 @@ class AutomationIds {
     settingsTile,
     settingsCategory,
     mediaDetailEpisodeListItem,
-    mediaDetailSeasonChip,
+    mediaDetailTab,
     mediaDetailAction,
     mediaDetailSeasonPoster,
+    mediaDetailSection,
+    mediaDetailSectionItem,
+    mediaDetailActionPanelRow,
     discoverRail,
     discoverRailItem,
+    accountMenuAction,
+    homeCustomizeAction,
+    homeRowWizardAction,
     myPleyaTile,
     myPleyaSection,
     myPleyaSectionContent,
@@ -812,6 +882,7 @@ class AutomationIds {
     bigpLibraryAsk,
     playerPanelTab,
     playerPanelRow,
+    playerSourceChoice,
     requestsMineItem,
     requestsForm,
     requestsFormOption,
@@ -859,6 +930,7 @@ class AutomationIds {
     tvCatalogHeader,
     offlineHomeAction,
     profileTile,
+    profilePin,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -893,8 +965,11 @@ class AutomationIds {
     {'id': localLibrarySync, 'role': 'button', 'instanceable': false},
     {'id': localLibraryClear, 'role': 'button', 'instanceable': false},
     {'id': localLibraryAction, 'role': 'button', 'instanceable': true},
+    {'id': navigationBack, 'role': 'button', 'instanceable': false},
     for (final tab in NavigationTabId.values) {'id': navTab(tab), 'role': 'nav', 'instanceable': false},
     {'id': navProfile, 'role': 'nav', 'instanceable': false},
+    {'id': accountMenu, 'role': 'dialog', 'instanceable': false},
+    {'id': accountMenuAction, 'role': 'button', 'instanceable': true},
     {'id': navReconnect, 'role': 'nav', 'instanceable': false},
     {'id': navBar, 'role': 'nav', 'instanceable': false},
     {'id': sidebarRail, 'role': 'sidebar', 'instanceable': false},
@@ -902,9 +977,21 @@ class AutomationIds {
     {'id': libraryGrid, 'role': 'grid', 'instanceable': false},
     {'id': libraryGridItem, 'role': 'grid.item', 'instanceable': true},
     {'id': libraryHeader, 'role': 'region', 'instanceable': false},
+    {'id': libraryHeaderSearch, 'role': 'button', 'instanceable': false},
+    {'id': libraryHeaderWatchlist, 'role': 'button', 'instanceable': false},
+    {'id': libraryHeaderAvatar, 'role': 'button', 'instanceable': false},
+    {'id': libraryFilterMore, 'role': 'button', 'instanceable': false},
+    {'id': libraryFilterCount, 'role': 'region', 'instanceable': false},
+    {'id': sheetLibrarySort, 'role': 'sheet', 'instanceable': false},
+    {'id': sheetLibraryFilter, 'role': 'sheet', 'instanceable': false},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterFilters, 'role': 'filter', 'instanceable': false},
     {'id': libraryFilterSort, 'role': 'filter', 'instanceable': false},
+    {'id': homeCustomizeOpen, 'role': 'button', 'instanceable': false},
+    {'id': homeCustomizePanel, 'role': 'region', 'instanceable': false},
+    {'id': homeCustomizeAction, 'role': 'button', 'instanceable': true},
+    {'id': homeRowWizard, 'role': 'region', 'instanceable': false},
+    {'id': homeRowWizardAction, 'role': 'button', 'instanceable': true},
     {'id': discoverHero, 'role': 'hero', 'instanceable': false},
     {'id': discoverHeroPlay, 'role': 'button', 'instanceable': false},
     {'id': discoverContinueWatching, 'role': 'rail', 'instanceable': false},
@@ -913,14 +1000,22 @@ class AutomationIds {
     {'id': discoverSafeArea, 'role': 'region', 'instanceable': false},
     {'id': mediaDetailEpisodeList, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
-    {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
-    {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailTabs, 'role': 'list', 'instanceable': false},
+    {'id': mediaDetailTab, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailActivity, 'role': 'text', 'instanceable': false},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailSource, 'role': 'button', 'instanceable': false},
     {'id': noticeBusy, 'role': 'status', 'instanceable': true},
     {'id': serverStatus, 'role': 'dialog', 'instanceable': false},
     {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},
     {'id': mediaDetailAction, 'role': 'button', 'instanceable': true},
     {'id': mediaDetailSeasonPoster, 'role': 'grid.item', 'instanceable': true},
+    {'id': mediaDetailSection, 'role': 'region', 'instanceable': true},
+    {'id': mediaDetailSectionItem, 'role': 'list.item', 'instanceable': true},
+    {'id': mediaDetailReadMore, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailActionPanel, 'role': 'region', 'instanceable': false},
+    {'id': mediaDetailActionPanelRow, 'role': 'list.item', 'instanceable': true},
+    {'id': mediaDetailSourceChange, 'role': 'button', 'instanceable': false},
     {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchField, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchInbox, 'role': 'button', 'instanceable': false},
@@ -959,6 +1054,7 @@ class AutomationIds {
     {'id': assistantMemoryLink, 'role': 'button', 'instanceable': false},
     {'id': screenMemory, 'role': 'screen', 'instanceable': false},
     {'id': screenMemoryList, 'role': 'screen', 'instanceable': false},
+    {'id': screenMemorySync, 'role': 'screen', 'instanceable': false},
     {'id': settingsMemoryAction, 'role': 'button', 'instanceable': true},
     {'id': settingsMemoryInput, 'role': 'field', 'instanceable': false},
     {'id': settingsMemoryOverview, 'role': 'region', 'instanceable': false},
@@ -993,6 +1089,9 @@ class AutomationIds {
     {'id': playerPanel, 'role': 'region', 'instanceable': false},
     {'id': playerPanelTab, 'role': 'tab', 'instanceable': true},
     {'id': playerPanelRow, 'role': 'list.item', 'instanceable': true},
+    {'id': playerSourceChoice, 'role': 'button', 'instanceable': true},
+    {'id': playerSettingsQuality, 'role': 'button', 'instanceable': false},
+    {'id': playerTracksButton, 'role': 'button', 'instanceable': false},
     {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
     {'id': playerHandoffButton, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
@@ -1070,5 +1169,6 @@ class AutomationIds {
     {'id': playerPlayPause, 'role': 'button', 'instanceable': false},
     {'id': offlineHomeAction, 'role': 'button', 'instanceable': true},
     {'id': profileTile, 'role': 'grid.item', 'instanceable': true},
+    {'id': profilePin, 'role': 'dialog', 'instanceable': false},
   ];
 }

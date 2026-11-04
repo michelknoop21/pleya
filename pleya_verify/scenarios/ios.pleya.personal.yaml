@@ -1,0 +1,27 @@
+name: ios.pleya.personal
+target: ios-sim
+# Add a production Pleya favorite through the shared context menu, then
+# verify its card on Mijn Pleya. No Verify watchlist is seeded.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: personal.app.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 2500
+  - tap: {id: "home.rail.item[0.0]", holdMs: 600}
+  - wait_until: {id: sheet.context_menu, timeout: 10000}
+  - snapshot: personal-context-menu
+  # Mark watched/unwatched is row 0; add to watchlist is row 1 for an online
+  # title that is not on the list yet.
+  - tap: {id: "sheet.context_menu.item[1]"}
+  - settle: 1500
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - wait_until: {id: "my_pleya.watchlist_item[0]", timeout: 15000}
+  - snapshot: personal-mijn-pleya
+  - assert: {id: "my_pleya.watchlist_item[0]", insideViewport: true, state: {title: Aurora, playable: true}}
+  - snapshot: pleya-favorite-added

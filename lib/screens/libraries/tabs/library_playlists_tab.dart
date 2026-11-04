@@ -13,6 +13,7 @@ import '../../../utils/media_server_http_client.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../widgets/focusable_media_card.dart';
 import '../../../widgets/media_grid_delegate.dart';
+import '../../../widgets/mobile/library_phone_look.dart';
 import '../../../widgets/settings_builder.dart';
 import '../../../widgets/skeleton_media_card.dart';
 import '../../../widgets/sliver_cross_axis_layout_builder.dart';
@@ -138,6 +139,7 @@ class _LibraryPlaylistsTabState extends BaseLibraryTabState<MediaPlaylist, Libra
   static const double _focusDecorationPadding = 3.0;
 
   EdgeInsets get _effectivePadding {
+    if (LibraryPhoneLook.of(context)) return LibraryPhoneMetrics.gridPaddingOf(context);
     final base = GridLayoutConstants.gridPadding;
     return base.copyWith(top: base.top + _focusDecorationPadding);
   }
@@ -158,12 +160,14 @@ class _LibraryPlaylistsTabState extends BaseLibraryTabState<MediaPlaylist, Libra
       padding: _effectivePadding,
       sliver: SliverCrossAxisLayoutBuilder(
         builder: (context, crossAxisExtent) {
-          final geometry = MediaGridGeometry.resolve(
-            context: context,
-            crossAxisExtent: crossAxisExtent,
-            density: density,
-            fullBleedImage: fullCardLayout,
-          );
+          final geometry = LibraryPhoneLook.of(context)
+              ? MediaGridGeometry.phoneLibrary(context: context, crossAxisExtent: crossAxisExtent, density: density)
+              : MediaGridGeometry.resolve(
+                  context: context,
+                  crossAxisExtent: crossAxisExtent,
+                  density: density,
+                  fullBleedImage: fullCardLayout,
+                );
           return SliverGrid.builder(
             gridDelegate: geometry.delegate,
             itemCount: totalSize,

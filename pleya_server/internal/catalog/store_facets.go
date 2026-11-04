@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
 )
@@ -53,6 +54,7 @@ func (s *Store) Facets(ctx context.Context, libraryID id.ID, subject string) (Fa
 
 	var out Facets
 	rows := func(sql string, args ...any) ([]FacetValue, error) {
+		sql = strings.ReplaceAll(sql, "i.library_id = $1", "("+ordinaryItemSQL("i")+") AND i.library_id = $1")
 		r, err := s.pool.Query(ctx, sql, args...)
 		if err != nil {
 			return nil, err
@@ -119,7 +121,7 @@ func (s *Store) Facets(ctx context.Context, libraryID id.ID, subject string) (Fa
 
 	err = s.pool.QueryRow(ctx, fmt.Sprintf(`
 		SELECT count(*) FILTER (WHERE %s)::int, count(*) FILTER (WHERE %s)::int, count(*) FILTER (WHERE %s)::int
-		FROM media_items i WHERE i.library_id = $1 AND i.kind = $3`,
+		FROM media_items i WHERE i.library_id = $1 AND i.kind = $3 AND `+ordinaryItemSQL("i"),
 		watchPredicate(WatchUnwatched, 2), watchPredicate(WatchInProgress, 2), watchPredicate(WatchWatched, 2)),
 		libraryID, subject, kind).Scan(&out.Watch.Unwatched, &out.Watch.InProgress, &out.Watch.Watched)
 	if err != nil {

@@ -71,16 +71,19 @@ tvos/scripts/fetch_engine.sh
 
 xcrun devicectl list devices           # zoek de Apple TV en pak zijn identifier
 
+# build/ is vaak een symlink naar /Volumes/SSD/pleya-builds; geef xcodebuild het echte pad
+DD="$(mkdir -p build && cd build && pwd -P)/tvbuild"
+
 xcodebuild \
   -workspace tvos/Runner.xcworkspace \
   -scheme Runner \
   -configuration Release \
   -destination "platform=tvOS,id=<device-id>" \
-  -derivedDataPath build/tvbuild \
+  -derivedDataPath "$DD" \
   -allowProvisioningUpdates \
   build
 
-APP=build/tvbuild/Build/Products/Release-appletvos/Runner.app
+APP="$DD/Build/Products/Release-appletvos/Runner.app"
 xcrun devicectl device install app --device <device-id> "$APP"
 xcrun devicectl device process launch --device <device-id> nl.michelknoop.pleya
 ```
@@ -127,6 +130,24 @@ scheme-configuratie.
 De eerste minuten lijkt xcodebuild te hangen zonder een enkele compileregel. Hij haalt dan de
 MPVKit-XCFrameworks binnen, goed voor ongeveer een gigabyte in `SourcePackages`. Wachten, niet
 afbreken.
+
+Geef `-derivedDataPath` altijd het echte pad, nooit het pad door de `build`-symlink. Kent Xcode
+dezelfde buildmap onder twee spellingen, dan ziet het bij een volgende build de oude spelling als
+verouderd en verwijdert het via de symlink het bestand dat het net heeft gemaakt. Op 4 november
+liep build 435 zo vast op `ld: framework 'lcms2' not found`, met in de log
+`Removed stale file .../Release-appletvos/lcms2.framework`. Herstel: de `Build`-map onder het
+echte pad weggooien (`SourcePackages` mag blijven) en opnieuw bouwen met het echte pad.
+
+Faalt de Flutter-stap op `.../flutter-tvos-engine/.../dartaotruntime: No such file or directory`,
+dan is de engine-cache tijdens of na `fetch_engine.sh` gewist. Draai `fetch_engine.sh` opnieuw en
+bouw daarna. Het script slaat de download over zolang `.installed-<versie>` in
+`~/.cache/flutter-tvos-engine/v<versie>` staat; is maar een deel van de cache weg, gooi dan eerst die
+hele `v<versie>`-map weg. De opruimapp "Schijf opruimen" sloeg die cache tot 4 november niet over; kijk bij
+twijfel in `~/Library/Logs/cleanup-menu.log`.
+
+Lees de uitkomst van xcodebuild af aan zijn exitcode en aan `** BUILD SUCCEEDED **`, niet aan een
+gefilterde uitvoer. Controleer vóór de installatie dat `CFBundleVersion` het nieuwe nummer is: een
+mislukte build laat de vorige `Runner.app` gewoon staan.
 
 De Apple TV moet aan staan en op hetzelfde netwerk zitten. `xcrun devicectl list devices` toont
 hem als `available (paired)`; staat daar iets anders, dan is dat het probleem en niet de build.

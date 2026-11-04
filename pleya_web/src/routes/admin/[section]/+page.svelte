@@ -4,11 +4,11 @@
   deel komt, zodat geen link in de zijbalk dood is.
 -->
 <script lang="ts">
-  import AdminOverview from '$lib/admin/AdminOverview.svelte';
-  import OverviewLoader from '$lib/admin/OverviewLoader.svelte';
-  import { ADMIN_ROOT, sectionById } from '$lib/admin/sections';
-  import StateView from '$lib/components/StateView.svelte';
-  import { t } from '$lib/i18n';
+  import AdminOverview from '#lib/admin/AdminOverview.svelte';
+  import OverviewLoader from '#lib/admin/OverviewLoader.svelte';
+  import { ADMIN_ROOT, sectionById } from '#lib/admin/sections.js';
+  import StateView from '#lib/components/StateView.svelte';
+  import { t } from '#lib/i18n/index.js';
 
   let { data }: { data: { section: string } } = $props();
 

@@ -4,6 +4,7 @@ import '../media/ids.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
+import '../media/library_menu_definition.dart';
 import '../media/library_query.dart';
 import '../media/media_backend.dart';
 import '../media/media_hub.dart';
@@ -155,7 +156,9 @@ class _HubDetailScreenState extends State<HubDetailScreen>
         appLogger.d('Loading sorts for section: $sectionId');
 
         final client = context.tryGetMediaClientForServer(ServerId(serverId));
-        final sorts = client == null ? const <MediaSort>[] : await client.fetchSortOptions('$sectionId');
+        final sorts = client == null
+            ? const <MediaSort>[]
+            : libraryMenuOrderedSorts(await client.fetchSortOptions('$sectionId'), backend: client.backend);
 
         appLogger.d('Loaded ${sorts.length} sorts');
 

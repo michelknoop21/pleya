@@ -200,7 +200,7 @@ class _HostState extends State<_Host> {
       _nav.activate(destination);
       _focusContent(restorePreviousFocus: false);
     },
-    onFocusDestination: _nav.activate,
+    onFocusDestination: _nav.focusDestination,
     onFocusContent: _focusContent,
     onFocusNav: _focusNav,
     onOpenProfiles: () {},

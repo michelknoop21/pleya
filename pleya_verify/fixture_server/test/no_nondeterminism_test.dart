@@ -9,7 +9,11 @@ import 'package:test/test.dart';
 /// excluded too: it mints the `/__verify` control token once at process
 /// startup, which is security-relevant randomness, not response content —
 /// no `/pleya/v1/*` body is built from it.
-const _responsePathFiles = ['lib/src/pleya_fake_server.dart', 'lib/src/fixtures/named_fixtures.dart'];
+const _responsePathFiles = [
+  'lib/src/pleya_fake_server.dart',
+  'lib/src/fixtures/named_fixtures.dart',
+  'lib/src/memory_fake_store.dart',
+];
 
 void main() {
   test('no DateTime.now() or Random() in the response-shaping source files', () {

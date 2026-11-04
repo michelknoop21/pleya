@@ -59,7 +59,19 @@ const skippedRootMsg = "root valt samen met of overlapt een root van een bibliot
 // meteen het bestandssysteem onder elke root.
 func syncLibraries(ctx context.Context, store *catalog.Store, cfg *config.Config, log *slog.Logger) ([]catalog.Library, error) {
 	if len(cfg.Libraries) == 0 {
-		log.Warn("geen bibliotheken geconfigureerd; PLEYA_SERVER_LIBRARIES is leeg")
+		// Een lege omgeving is de gewone stand zodra de bibliotheken in de
+		// database worden beheerd: de sync raakt dan niets aan. Alleen zonder
+		// enige bibliotheek is het een waarschuwing waard.
+		existing, err := store.Libraries(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("bibliotheken lezen: %w", err)
+		}
+		if len(existing) == 0 {
+			log.Warn("geen bibliotheken geconfigureerd; PLEYA_SERVER_LIBRARIES is leeg en de database heeft er geen")
+		} else {
+			log.Info("PLEYA_SERVER_LIBRARIES is leeg; de bibliotheken staan in de database",
+				slog.Int("libraries", len(existing)))
+		}
 		return nil, nil
 	}
 

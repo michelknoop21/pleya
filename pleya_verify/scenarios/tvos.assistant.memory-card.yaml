@@ -27,11 +27,13 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
-  - settle: 600
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  # A-24b: Big P heads the right column; Right along Bronnen crosses to it.
-  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
+  - settle: 600
+  # A-24c: Select on the Mijn Pleya pill puts the remote in the page, on Big P,
+  # its first content action.
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
   - press: select
   - wait_until: {focused: "assistant.button[setup]", timeout: 10000}
   - press: select

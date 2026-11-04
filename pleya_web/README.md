@@ -233,7 +233,7 @@ bovenaan de layout, vóór de eerste markup, en zet `<html lang>`.
 
 Een taalwissel herlaadt de pagina. `t()` leest een gewone variabele en geen `$state`, en labels die
 in een `<script>`-blok worden berekend (`ThemePicker`, `navItems`) zouden anders in de oude taal
-blijven staan. De sessie overleeft het herladen, want het refreshtoken staat in `localStorage`.
+blijven staan. De sessie wordt na herladen hersteld via de HttpOnly-cookie, of via het bestaande tokenpad op oudere servers en legacy-sessies.
 Weigert de opslag, dan gaat de taal alleen in het geheugen om.
 
 `web.nl.ts` gebruikt `satisfies Record<WebKey, string>`: een ontbrekende of overtollige sleutel is
@@ -261,18 +261,37 @@ Een pad dat het contract niet kent bestaat in `client.ts` niet, want dan compile
 
 ## Auth
 
-Het accesstoken staat alleen in het geheugen. Het refreshtoken staat in `localStorage`, en dat is
-een **vastgelegde afweging en geen eindmodel**: een strikte CSP maakt XSS moeilijker, niet
-onmogelijk, en rotatie met hergebruikdetectie aan de serverkant begrenst de schade zonder hem op te
-heffen. Het model dat dit werkelijk oplost is een door de server gezette `HttpOnly`-refreshcookie,
-en dat is een wijziging van het authcontract met een CSRF-afweging eraan vast. Zie onderdeel 4.2
-van het voorstel.
+Achter `capabilities.cookie_auth` vragen nieuwe setup/logins de bestaande cookiemodus: access
+blijft in geheugen, refresh staat in een HttpOnly/SameSiteStrict-cookie. Herladen vraagt een
+nieuwe access via die cookie. De browser-POST moet van een toegestane origin komen; er is geen
+stille terugval op een JavaScript-refreshcredential wanneer cookieherstel wordt geweigerd.
 
-Vernieuwen gebeurt hoogstens één keer tegelijk. Het refreshtoken roteert bij elk gebruik, dus twee
-gelijktijdige verzoeken zijn per definitie hergebruik, en dan trekt de server de hele keten in.
+Oude servers krijgen geen `credential_mode`. Een bestaande token-sessie gebruikt zijn huidige
+opslag (access per tab in `sessionStorage`, refresh in `localStorage`) tot zijn eerstvolgende
+verversing. Staat `capabilities.cookie_upgrade` aan, dan ruilt die verversing het token in voor de
+cookie en wist hij het uit `localStorage`. Weigert de server de origin, dan blijft de sessie op het
+token. Niemand hoeft daarvoor opnieuw in te loggen, en een ander tabblad volgt bij zijn volgende
+verversing.
 
-Er wordt niet uitgelogd bij de server: het protocol heeft geen uitlogendpoint. Afmelden gooit het
-token weg; `POST /auth/logout` hoort bij PS-9 (voorstel 5.2).
+Eén verversing tegelijk tussen tabbladen loopt over `navigator.locks` (`tokenRefresher.ts`). Die API
+bestaat alleen in een secure context, dus op `http://` blijft het bij het respijt van de server.
+
+Vernieuwen wordt per accountgeneratie samengevoegd. Late antwoorden mogen een nieuw account
+niet vervangen of een oude aanvraag met diens credential herhalen. Afmelden gebruikt het bestaande
+`POST /auth/logout` achter `capabilities.sessions` en wist daarna de eigen lokale toestand.
+
+## Browserspeler
+
+De bestaande `PlayerSession` volgt het playbackplan; `Player` rapporteert pas na werkelijk
+spelen via `WatchProgress`, met vaste kijkronde-ID, serverrevision en passieve voortgang.
+Bladeren schrijft geen kijkstatus. Sluiten verstuurt de laatste stand met keepalive; een
+concurrerende verouderde CAS mag de server veilig weigeren.
+
+Externe SRT/VTT gebruikt de bestaande geautoriseerde ondertitelroute en blob-URLs. SRT wordt
+begrensd naar WebVTT omgezet; ingebedde tekst verschijnt alleen achter de leveringscapability.
+Laden/vervangen is annuleerbaar, mislukken behoudt het actieve spoor en Uit ruimt het op.
+ASS/bitmap-burnconsumptie en andere open acceptatie staan in de servermasterlijst; deze
+tekst sluit geen fase, hardware- of releasepoort.
 
 ## Artwork
 
@@ -293,7 +312,7 @@ oordeel op dat er geslaagd uitziet en niets bewijst.
 
 ## Content Security Policy
 
-De CSP staat in `svelte.config.js` en komt als meta-tag in de gegenereerde HTML, niet als
+De CSP staat in `pleya_web/csp.ts` en komt als meta-tag in de gegenereerde HTML, niet als
 Go-header. SvelteKit schrijft één bootstrapscript inline en zet de hash daarvan in die meta-tag;
 een browser doorsnijdt alle policies, dus een Go-header met `script-src 'self'` zou datzelfde
 script alsnog blokkeren. De Go-laag stuurt `frame-ancestors 'none'`, de enige directive die een
@@ -302,7 +321,7 @@ meta-tag niet mag dragen, plus de headers buiten CSP.
 `style-src` is `'self'` zonder `'unsafe-inline'`, en dat vraagt dat geen enkele component een
 `style`-attribuut zet. Enige uitzondering is SvelteKit's eigen routeaankondiging
 (`#svelte-announcer`): die stijlt zichzelf inline na hydratie, buiten Kits hashmechanisme om. Daarom
-staat naast `'unsafe-hashes'` de hash van die ene stijltekst in `svelte.config.js`; elk ander
+staat naast `'unsafe-hashes'` de hash van die ene stijltekst in `pleya_web/csp.ts`; elk ander
 inline stijlattribuut blijft geblokkeerd. `src/csp.test.ts` rekent die hash uit Kits broncode na
 en faalt bij een Kit-versie die de tekst wijzigt. Browsers zonder `unsafe-hashes`-ondersteuning
 melden een schendingsregel in de console, zonder functioneel effect: `base.css` houdt het element

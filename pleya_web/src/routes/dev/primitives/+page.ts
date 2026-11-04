@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 
 /**
  * De primitievengalerij is gereedschap voor ontwikkeling en review, geen

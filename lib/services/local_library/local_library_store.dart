@@ -16,8 +16,9 @@ import '../download_artwork_helpers.dart';
 /// Artwork is separate from the bounded transient image cache and downloads.
 /// All mutations, including clear, share one queue so late IO cannot undo clear.
 class LocalLibraryStore {
-  LocalLibraryStore(this.directory);
+  LocalLibraryStore(this.directory, {DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
   final Directory directory;
+  final DateTime Function() _clock;
   bool enabled = false;
   bool wifiOnly = true;
   final Map<String, Set<String>> libraryAccess = {};
@@ -25,14 +26,75 @@ class LocalLibraryStore {
   final Map<String, MediaLibrary> _libraries = {};
   final Map<String, Map<String, MediaItem>> _items = {};
   final Map<String, DateTime> _completed = {};
+  // The last scan that enumerated the whole library, complete or with titles
+  // left out, and the server's `updatedAt` for the library at that scan.
+  final Map<String, ({DateTime at, int? updatedAt})> _lastScan = {};
   final Map<String, String> _posters = {};
+  final Map<String, Map<String, dynamic>> _posterFreshness = {};
+  final List<({DateTime at, bool priority})> _posterAttempts = [];
+  final Map<String, Map<String, dynamic>> _artworkVariants = {};
+  Future<void> invalidateArtworkVariants() {
+    _artworkVariants.clear();
+    return saveAccess();
+  }
+
+  Map<String, dynamic> artworkVariant(String identity) => Map.of(_artworkVariants[identity] ?? const {});
+  Future<void> saveArtworkVariant(String identity, Map<String, dynamic> state, {required bool Function() isCurrent}) =>
+      _serial(() async {
+        if (!isCurrent()) return;
+        final next = {..._artworkVariants}..remove(identity);
+        next[identity] = state;
+        if (next.length > 60) next.remove(next.keys.first);
+        await _atomic(_optionsFile, jsonEncode({..._options, 'artworkVariants': next}), isCurrent);
+        if (!isCurrent()) return;
+        _artworkVariants
+          ..clear()
+          ..addAll(next);
+      });
+  ({int total, int priority}) posterBudget(DateTime now) {
+    _posterAttempts.removeWhere((a) => now.difference(a.at) >= const Duration(minutes: 10));
+    return (total: _posterAttempts.length, priority: _posterAttempts.where((a) => a.priority).length);
+  }
+
+  void reservePosterAttempt(DateTime now, {required bool priority}) =>
+      _posterAttempts.add((at: now, priority: priority));
+  final Set<String> _posterPriority = {};
+  Iterable<MediaItem> get artworkItems => _items.values.expand((rows) => rows.values);
+
+  Map<String, dynamic> posterFreshness(String serverId, String path) =>
+      Map.of(_posterFreshness[_posterKey(serverId, path)] ?? const {});
+
+  bool posterIsPriority(String serverId, String path) => _posterPriority.contains(_posterKey(serverId, path));
+  void prioritizePoster(String serverId, String path) {
+    final key = _posterKey(serverId, path);
+    _posterPriority.remove(key);
+    _posterPriority.add(key);
+    if (_posterPriority.length > 20) _posterPriority.remove(_posterPriority.first);
+  }
+
+  Future<void> savePosterFreshness(
+    String serverId,
+    String path,
+    Map<String, dynamic> state, {
+    required bool Function() isCurrent,
+  }) => _serial(() async {
+    if (!isCurrent()) return;
+    _posterFreshness[_posterKey(serverId, path)] = state;
+    await _atomic(_optionsFile, jsonEncode(_options), isCurrent);
+  });
   Future<void> _pending = Future.value();
+  Future<void> get pendingWrites => _pending;
 
   static String digest(String value) => sha256.convert(utf8.encode(value)).toString();
   static String _posterKey(String serverId, String path) => digest('$serverId|${artworkStorageKey(path)}');
+  static Set<String> _posterKeys(Set<(String, String)> posters) => {
+    for (final (serverId, path) in posters) _posterKey(serverId, path),
+  };
   List<MediaItem> get items => _items.values.expand((v) => v.values).toList(growable: false);
   List<MediaLibrary> get libraries => _libraries.values.toList(growable: false);
   bool isComplete(String key) => _completed.containsKey(key);
+  DateTime? completedAt(String key) => _completed[key];
+  ({DateTime at, int? updatedAt})? lastScan(String key) => _lastScan[key];
   DateTime? get lastSync =>
       _completed.values.isEmpty ? null : _completed.values.reduce((a, b) => a.isBefore(b) ? a : b);
   MediaItem? item(String serverId, String id) {
@@ -44,7 +106,12 @@ class LocalLibraryStore {
   }
 
   List<MediaItem> libraryItems(String key) => _items[key]?.values.toList(growable: false) ?? const [];
+  static const _encodeBatch = 500;
+
   File get _optionsFile => File('${directory.path}/options.json');
+
+  /// Written before a clear starts and removed when it is done.
+  File get clearMarker => File('${directory.path}/clearing');
   File _libraryFile(String key) => File('${directory.path}/library-${digest(key)}.json');
 
   Future<T> _serial<T>(Future<T> Function() action) {
@@ -65,10 +132,30 @@ class LocalLibraryStore {
       final data = jsonDecode(await _optionsFile.readAsString()) as Map<String, dynamic>;
       enabled = data['enabled'] == true;
       wifiOnly = data['wifiOnly'] != false;
+      for (final entry in (data['artworkVariants'] as Map<String, dynamic>? ?? {}).entries.take(60)) {
+        _artworkVariants[entry.key] = Map<String, dynamic>.from(entry.value as Map);
+      }
+      for (final raw in (data['posterAttempts'] as List? ?? const [])) {
+        final value = raw as Map;
+        final at = DateTime.tryParse(value['at'] as String? ?? '');
+        if (at != null) _posterAttempts.add((at: at, priority: value['priority'] == true));
+      }
+      for (final entry in (data['posterFreshness'] as Map<String, dynamic>? ?? {}).entries) {
+        _posterFreshness[entry.key] = Map<String, dynamic>.from(entry.value as Map);
+      }
       serverAccess.addAll((data['serverAccess'] as Map<String, dynamic>? ?? {}).cast<String, bool>());
       for (final entry in (data['libraryAccess'] as Map<String, dynamic>? ?? {}).entries) {
         libraryAccess[entry.key] = (entry.value as List).cast<String>().toSet();
       }
+    }
+    if (await clearMarker.exists()) {
+      enabled = false;
+      _posterFreshness.clear();
+      _artworkVariants.clear();
+      _posterAttempts.clear();
+      await _atomic(_optionsFile, jsonEncode(_options), () => true);
+      await _removeContent();
+      return;
     }
     await for (final entity in directory.list()) {
       if (entity is! File || !entity.path.endsWith('.json') || !entity.uri.pathSegments.last.startsWith('library-'))
@@ -90,11 +177,19 @@ class LocalLibraryStore {
           final item = MediaItem.fromJson(value as Map<String, dynamic>);
           rows[item.globalKey] = item;
         }
-        return (library: library, rows: rows, completed: DateTime.tryParse(data['completed'] as String? ?? ''));
+        return (
+          library: library,
+          rows: rows,
+          completed: DateTime.tryParse(data['completed'] as String? ?? ''),
+          scanned: DateTime.tryParse(data['scanned'] as String? ?? ''),
+          scannedUpdatedAt: data['scannedUpdatedAt'] as int?,
+        );
       });
       _libraries[snapshot.library.globalKey] = snapshot.library;
       _items[snapshot.library.globalKey] = snapshot.rows;
       if (snapshot.completed != null) _completed[snapshot.library.globalKey] = snapshot.completed!;
+      if (snapshot.scanned case final at?)
+        _lastScan[snapshot.library.globalKey] = (at: at, updatedAt: snapshot.scannedUpdatedAt);
     }
     final posters = Directory('${directory.path}/posters');
     if (await posters.exists()) {
@@ -117,9 +212,48 @@ class LocalLibraryStore {
     }
   }
 
+  /// Writes `head`, the rows as comma-separated JSON and `tail` to [target].
+  ///
+  /// The rows go through an isolate [_encodeBatch] at a time. Handing an isolate
+  /// a whole library copies it on the calling thread first, which on a 34 MB
+  /// library held the remote's key presses back by up to 148 ms on Apple TV.
+  Future<void> _atomicRows(File target, String head, List<MediaItem> rows, String tail, bool Function() valid) async {
+    final temporary = File('${target.path}.pending');
+    final file = await temporary.open(mode: FileMode.write);
+    try {
+      await file.writeString(head);
+      for (var start = 0; start < rows.length && valid(); start += _encodeBatch) {
+        final end = start + _encodeBatch < rows.length ? start + _encodeBatch : rows.length;
+        final encoded = await _encodeRows(rows.sublist(start, end));
+        if (start > 0) await file.writeString(',');
+        // Without the array brackets of this batch.
+        await file.writeFrom(encoded, 1, encoded.length - 1);
+      }
+      await file.writeString(tail);
+      await file.flush();
+    } finally {
+      await file.close();
+    }
+    if (valid()) {
+      await temporary.rename(target.path);
+    } else if (await temporary.exists()) {
+      await temporary.delete();
+    }
+  }
+
+  // A function of its own so the isolate's closure holds this batch and nothing
+  // else from the caller's scope.
+  static Future<Uint8List> _encodeRows(List<MediaItem> rows) =>
+      tryIsolateRun(() => utf8.encode(jsonEncode([for (final row in rows) row.toJson()])));
+
   Map<String, Object?> get _options => {
     'enabled': enabled,
     'wifiOnly': wifiOnly,
+    'artworkVariants': _artworkVariants,
+    'posterAttempts': [
+      for (final a in _posterAttempts) {'at': a.at.toIso8601String(), 'priority': a.priority},
+    ],
+    'posterFreshness': _posterFreshness,
     'serverAccess': serverAccess,
     'libraryAccess': {for (final e in libraryAccess.entries) e.key: e.value.toList()},
   };
@@ -132,51 +266,66 @@ class LocalLibraryStore {
     await _atomic(_optionsFile, jsonEncode(_options), () => true);
   });
 
-  /// An interrupted/partial scan may add fresh rows but never proves removal.
+  /// An interrupted scan (a checkpoint) may add fresh rows but never proves
+  /// removal. A [complete] scan replaces the rows and marks the library
+  /// complete. A [partial] scan enumerated the whole library but left titles
+  /// out that had no stored row: it proves removal and replaces the rows too,
+  /// but keeps the completion the library had.
   Future<void> saveLibrary(
     MediaLibrary library,
     List<MediaItem> items, {
     required bool complete,
+    bool partial = false,
     bool Function()? isCurrent,
   }) => _serial(() async {
+    assert(!(complete && partial));
     bool valid() => isCurrent?.call() ?? true;
     if (!valid()) return;
     final key = library.globalKey;
-    final next = <String, MediaItem>{if (!complete) ...?_items[key], for (final item in items) item.globalKey: item};
-    final completed = complete ? DateTime.now() : _completed[key];
-    await _persistLibrary(library, next, completed, valid);
-    if (valid() && complete) await _pruneUnreferencedPosters();
+    final replace = complete || partial;
+    final next = <String, MediaItem>{if (!replace) ...?_items[key], for (final item in items) item.globalKey: item};
+    final now = _clock();
+    final completed = complete ? now : _completed[key];
+    final scan = replace ? (at: now, updatedAt: library.updatedAt) : _lastScan[key];
+    await _persistLibrary(library, next, completed, scan, valid);
+    if (valid() && replace) await _pruneUnreferencedPosters();
   });
 
   Future<void> _persistLibrary(
     MediaLibrary library,
     Map<String, MediaItem> next,
     DateTime? completed,
+    ({DateTime at, int? updatedAt})? scan,
     bool Function() valid,
   ) async {
     final key = library.globalKey;
-    final rows = next.values.toList();
-    // Encoding all descriptive fields happens off the UI isolate too.
-    final encoded = await tryIsolateRun(
-      () => jsonEncode({
-        'library': {
-          'id': library.id,
-          'backend': library.backend.name,
-          'title': library.title,
-          'kind': library.kind.id,
-          'serverId': library.serverId,
-          'serverName': library.serverName,
-        },
-        'items': rows.map((i) => i.toJson()).toList(),
-        'completed': completed?.toIso8601String(),
-      }),
+    final head = jsonEncode({
+      'library': {
+        'id': library.id,
+        'backend': library.backend.name,
+        'title': library.title,
+        'kind': library.kind.id,
+        'serverId': library.serverId,
+        'serverName': library.serverName,
+      },
+    });
+    final tail = jsonEncode({
+      'completed': completed?.toIso8601String(),
+      'scanned': scan?.at.toIso8601String(),
+      'scannedUpdatedAt': scan?.updatedAt,
+    });
+    await _atomicRows(
+      _libraryFile(key),
+      '${head.substring(0, head.length - 1)},"items":[',
+      next.values.toList(),
+      '],${tail.substring(1)}',
+      valid,
     );
-    if (!valid()) return;
-    await _atomic(_libraryFile(key), encoded, valid);
     if (!valid()) return;
     _libraries[key] = library;
     _items[key] = next;
     if (completed != null) _completed[key] = completed;
+    if (scan != null) _lastScan[key] = scan;
   }
 
   /// A confirmed source deletion changes membership without certifying an
@@ -202,6 +351,7 @@ class LocalLibraryStore {
             if (!removed.contains(i.id)) i.globalKey: i,
         },
         _completed[library.globalKey],
+        _lastScan[library.globalKey],
         valid,
       );
     }
@@ -211,37 +361,62 @@ class LocalLibraryStore {
   static int _version(String? path) =>
       path == null ? 0 : int.tryParse(path.split('/').last.split('.').elementAtOrNull(1) ?? '') ?? 0;
 
-  Future<void> savePoster(String serverId, String path, Uint8List bytes, {bool Function()? isCurrent}) =>
-      _serial(() async {
-        bool valid() => isCurrent?.call() ?? true;
-        if (!valid()) return;
-        final key = _posterKey(serverId, path);
-        final hash = sha256.convert(bytes).toString();
-        if (_posters[key]?.endsWith('.$hash.image') ?? false) return;
-        final priorVersion = _version(_posters[key]);
-        final now = DateTime.now().microsecondsSinceEpoch;
-        final version = now > priorVersion ? now : priorVersion + 1;
-        final folder = Directory('${directory.path}/posters');
-        await folder.create(recursive: true);
-        final pending = File('${folder.path}/$key.pending');
-        await pending.writeAsBytes(bytes, flush: true);
-        if (!valid()) {
-          await pending.delete();
-          return;
+  Future<void> savePoster(
+    String serverId,
+    String path,
+    Uint8List bytes, {
+    bool Function()? isCurrent,
+    bool retirePrevious = false,
+  }) => _serial(() async {
+    bool valid() => isCurrent?.call() ?? true;
+    if (!valid()) return;
+    final key = _posterKey(serverId, path);
+    final hash = sha256.convert(bytes).toString();
+    if ((_posters[key]?.endsWith('.$hash.image') ?? false) && await File(_posters[key]!).exists()) return;
+    final prior = _posters[key];
+    final priorVersion = _version(prior);
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final version = now > priorVersion ? now : priorVersion + 1;
+    final folder = Directory('${directory.path}/posters');
+    await folder.create(recursive: true);
+    final pending = File('${folder.path}/$key.pending');
+    await pending.writeAsBytes(bytes, flush: true);
+    if (!valid()) {
+      await pending.delete();
+      return;
+    }
+    final saved = await pending.rename('${folder.path}/$key.$version.$hash.image');
+    if (valid()) {
+      _posters[key] = saved.path;
+      // Visible updates may run with catalog fill off. Retire only the
+      // superseded version of this already stored poster after publication.
+      if (retirePrevious && prior != null && prior != saved.path) {
+        try {
+          await File(prior).delete();
+        } on FileSystemException {
+          /* Existing complete-scan pruning retries. */
         }
-        final saved = await pending.rename('${folder.path}/$key.$version.$hash.image');
-        if (valid()) _posters[key] = saved.path;
-      });
-
-  String? posterPath(String serverId, String path) => _posters[_posterKey(serverId, path)];
-
-  Future<void> _pruneUnreferencedPosters() async {
-    final referenced = <String>{};
-    for (final item in items) {
-      for (final path in [item.thumbPath, item.parentThumbPath, item.grandparentThumbPath]) {
-        if (item.serverId != null && path != null) referenced.add(_posterKey(item.serverId!, path));
       }
     }
+  });
+
+  String? posterPath(String serverId, String path) {
+    final saved = _posters[_posterKey(serverId, path)];
+    return saved != null && File(saved).existsSync() ? saved : null;
+  }
+
+  Future<void> _pruneUnreferencedPosters() async {
+    final posters = <(String, String)>{};
+    for (final item in items) {
+      for (final path in [item.thumbPath, item.parentThumbPath, item.grandparentThumbPath]) {
+        if (item.serverId != null && path != null) posters.add((item.serverId!, path));
+      }
+    }
+    // A hash per poster, in the hundreds of thousands on a large library: off
+    // the UI thread, like the rest of a scan.
+    final referenced = await tryIsolateRun(() => _posterKeys(posters));
+    _posterFreshness.removeWhere((key, _) => !referenced.contains(key));
+    _posterPriority.removeWhere((key) => !referenced.contains(key));
     for (final key in _posters.keys.where((k) => !referenced.contains(k)).toList()) {
       final file = File(_posters.remove(key)!);
       if (await file.exists()) await file.delete();
@@ -274,15 +449,30 @@ class LocalLibraryStore {
   });
 
   Future<void> clear() => _serial(() async {
+    // The files go one at a time, and what a crash leaves behind would load as
+    // content on the next start: [load] finishes what this marker says. First,
+    // so no moment exists with the option off and the files without a marker.
+    await clearMarker.writeAsString('', flush: true);
     enabled = false;
     // Persist off before removing data; a crash must not restart the download.
     await _atomic(_optionsFile, jsonEncode(_options), () => true);
     _libraries.clear();
     _items.clear();
     _completed.clear();
+    _lastScan.clear();
     _posters.clear();
-    await for (final entity in directory.list(followLinks: false)) {
-      if (entity.path != _optionsFile.path) await entity.delete(recursive: true);
-    }
+    _posterFreshness.clear();
+    _artworkVariants.clear();
+    _posterPriority.clear();
+    _posterAttempts.clear();
+    await _removeContent();
+    await _atomic(_optionsFile, jsonEncode(_options), () => true);
   });
+
+  Future<void> _removeContent() async {
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity.path != _optionsFile.path && entity.path != clearMarker.path) await entity.delete(recursive: true);
+    }
+    await clearMarker.delete();
+  }
 }

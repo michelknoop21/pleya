@@ -8,19 +8,22 @@ setup:
 steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
-  - press: right
-  - press: right
-  - press: right
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  # A-24c: Servers lives under Instellingen > Koppelingen; its row opens the
+  # same TvServersPage Mijn Pleya opened before.
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
   - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  - press: right
-  - wait_until: {focused: "my_pleya.tile[servers]", timeout: 5000}
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
+  - press: left
+  - walk: {direction: down, steps: 6, stopAt: "settings.category[5]", timeout: 75000, settle: 400}
   - press: select
-  - wait_until: {id: "my_pleya.section[servers]", timeout: 15000}
-  - wait_until: {focused: "my_pleya.section.tile[servers.servers_add]", timeout: 8000}
+  - wait_until: {id: "settings.category[5]", state: {selected: true}, timeout: 5000}
+  - press: right
+  - wait_until: {focused: "my_pleya.section.tile[settings.trackers]", timeout: 5000}
+  - walk: {direction: down, steps: 12, stopAt: "my_pleya.section.tile[settings.servers]", timeout: 150000, settle: 400}
+  - press: select
+  - wait_until: {focused: "my_pleya.section.tile[servers.servers_add]", timeout: 15000}
   - press: select
   - wait_until: {id: "my_pleya.section.content[add_connection]", timeout: 8000}
   # TvNestedSurface places the entry focus a frame after the route mounts.

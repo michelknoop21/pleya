@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
+import '../../navigation/main_screen_scope.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/tv_hig.dart';
 import 'tv_page_surface.dart';
@@ -24,8 +25,9 @@ import 'tv_unified_layout.dart';
 export 'tv_studio_category_pill.dart';
 
 /// VIS-0926-S1 (DEC-139), in HIG points: the gap between pills, the air
-/// between the page title and both columns, and under the eyebrow.
-const double kTvCategoryGapPt = 16;
+/// between the page title and both columns, and under the eyebrow. The gap
+/// went from 16 to 12 with A-24's rail fit, see [kTvCategoryPillInsetPt].
+const double kTvCategoryGapPt = 12;
 const double kTvAppearanceColumnsTopPt = 12;
 const double kTvAppearanceLabelGapPt = 6;
 
@@ -43,6 +45,7 @@ class TvSettingsCategory {
     this.icon,
     this.heading,
     this.preview,
+    this.needsAttention = false,
   });
 
   /// Stable across rebuilds, so the chosen category survives a category
@@ -61,6 +64,11 @@ class TvSettingsCategory {
   /// Shown to the right of the rows. Null gives that room to the rows; a
   /// preview is only there when it shows something the rows cannot.
   final Widget? preview;
+
+  /// Something in this category waits on the viewer, such as a server whose
+  /// session expired (Koppelingen, A-24c): the pill carries the amber dot the
+  /// top bar puts on Instellingen, so the dot leads somewhere.
+  final bool needsAttention;
 }
 
 class TvSettingsCategories extends StatefulWidget {
@@ -151,6 +159,16 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
 
   void _select(int index) => setState(() => _selectedId = widget.categories[index].id);
 
+  /// Chooses the category with [id] as SELECT on its pill would, for an entry
+  /// from outside the page ("Servers beheren", A-24c). False when there is no
+  /// such category.
+  bool choose(String id) {
+    final index = widget.categories.indexWhere((c) => c.id == id);
+    if (index < 0) return false;
+    _select(index);
+    return true;
+  }
+
   /// Gives the page the remote back (a return from another destination, a
   /// page pushed on top closing): to the chosen category's pill when the
   /// remote last left from the rail, else to the row it last stood on, else
@@ -209,8 +227,8 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
   /// the chosen category. UP and DOWN step through the column in the order
   /// the rows are drawn, whichever group or page drew them (A-24b mounts
   /// whole settings pages here), and DOWN holds on the last row instead of
-  /// wandering into the preview beside it. UP from the top row is left to the
-  /// shell, which takes the remote to the top bar.
+  /// wandering into the preview beside it. UP from the top row goes to the
+  /// top bar ([_toTopBar]).
   KeyEventResult _handleRowsKey(FocusNode _, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
@@ -230,7 +248,10 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
         .where((node) => node.canRequestFocus && node.context != null && node != current)
         .where((node) => down ? node.rect.top > top + 1 : node.rect.top < top - 1)
         .toList();
-    if (rows.isEmpty) return down ? KeyEventResult.handled : KeyEventResult.ignored;
+    if (rows.isEmpty) {
+      if (down) return KeyEventResult.handled;
+      return _toTopBar() ? KeyEventResult.handled : KeyEventResult.ignored;
+    }
     // The nearest row in that direction; level rows (two buttons side by
     // side) by their leading edge.
     rows.sort((a, b) {
@@ -239,6 +260,18 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
     });
     rows.first.requestFocus();
     return KeyEventResult.handled;
+  }
+
+  /// UP from the top of either column: the top bar. Wired here, as the shell
+  /// asks of every screen with a header (`TvRootShell`), rather than left to
+  /// traversal, which stops at the content scope. Under the collapsible bar
+  /// of A-24 (DEC-166) this press is also what brings the bar back. False
+  /// where no shell listens, such as a test that mounts the page on its own.
+  bool _toTopBar() {
+    final shell = MainScreenFocusScope.of(context, listen: false);
+    if (shell == null) return false;
+    shell.focusSidebar();
+    return true;
   }
 
   @override
@@ -268,7 +301,11 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
                   child: FocusableWrapper(
                     automationId: widget.categoryAutomationId,
                     automationInstance: index.toString(),
-                    automationState: () => {'selected': selected == index, 'title': categories[index].title},
+                    automationState: () => {
+                      'selected': selected == index,
+                      'title': categories[index].title,
+                      'attention': categories[index].needsAttention,
+                    },
                     focusNode: _categoryNode(index),
                     autofocus: widget.autofocusFirstCategory && index == 0,
                     disableScale: true,
@@ -276,6 +313,9 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
                     // one ring gap out.
                     borderRadius: FocusTheme.ringRadiusAround(tk.radiusMd, gap: TvMyPleyaLayout.tileFocusRingGap * pt),
                     onSelect: () => _select(index),
+                    onNavigateUp: index == 0 && MainScreenFocusScope.of(context, listen: false) != null
+                        ? _toTopBar
+                        : null,
                     onNavigateRight: () => _enterCategory(index),
                     child: GestureDetector(
                       onTap: () => _select(index),
@@ -289,6 +329,7 @@ class TvSettingsCategoriesState extends State<TvSettingsCategories> {
                             icon: categories[index].icon,
                             selected: selected == index,
                             focused: Focus.of(context).hasFocus,
+                            needsAttention: categories[index].needsAttention,
                             pt: pt,
                           ),
                         ),

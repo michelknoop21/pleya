@@ -22,6 +22,7 @@ library;
 
 import '../../providers/offline_mode_provider.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -63,7 +64,6 @@ import '../../widgets/mobile/mobile_media_rail.dart' show mobileRailGutter, mobi
 import '../../widgets/mobile/mobile_refresh_scope.dart';
 import '../../widgets/mobile/mobile_unified_context_menu.dart';
 import '../../widgets/overlay_sheet.dart';
-import '../../widgets/skeleton_media_card.dart';
 import '../../widgets/scroll_crown/scroll_crown.dart';
 
 /// Which catalogue this is. Deliberately its own enum, not [MediaKind]
@@ -140,6 +140,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   double _headerScrollTravel = 0;
   final _panelKey = GlobalKey();
 
+  /// Below this screen's [OverlaySheetHost], which [context] is not; a pushed
+  /// route has no host above it. Stable, unlike a card's context, which the
+  /// grid replaces when a refresh arrives.
+  BuildContext? _sheetContext;
+
   /// Height of the translucent top panel (status bar inset, title row, chips
   /// and count line), measured after layout. The grid scrolls under the panel
   /// and carries this much padding on top, so at offset 0 the first row starts
@@ -150,6 +155,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
 
   UnifiedCatalogPreferences _preferences = UnifiedCatalogPreferences.defaults;
   bool _preferencesLoaded = false;
+  bool _loadMoreScheduled = false;
+  double _gridCardWidth = 0;
+  double _gridRowExtent = 0;
 
   @override
   void initState() {
@@ -171,7 +179,18 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   }
 
   void _onCatalogChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) _maybeLoadMore(_scrollController.position);
+      });
+    }
+    // See `TvUnifiedCatalogScreen._onCatalogChanged`: a library that joins or
+    // leaves changes what can run, and only this screen holds the preferences.
+    // Only then, or two screens on one catalog write each other back forever.
+    if (mounted && _preferencesLoaded && !setEquals(_knownLibraryKeys, _appliedLibraryKeys)) {
+      unawaited(_applyQuery());
+    }
   }
 
   Set<String> get _knownServerIds => {for (final library in _catalog.eligibleLibraries) library.serverId.value};
@@ -186,6 +205,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   /// already carry the user's filters instead of loading unfiltered and
   /// replacing it a frame later.
   Future<void> _restorePreferences() async {
+    // See `TvUnifiedCatalogScreen._restorePreferences`: never inside a build.
+    await Future<void>.value();
+    if (!mounted) return;
     final override = widget.initialFilterOverride;
     final stored = override ?? await UnifiedCatalogQueryStore.read(widget.kind.mediaKind);
     if (!mounted) return;
@@ -210,14 +232,18 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   }
 
   UnifiedFilterCapabilities get _capabilities =>
-      unifiedFilterCapabilitiesFor(_catalog.participatingLibraries.map((l) => l.backend));
+      unifiedFilterCapabilitiesFor(_catalog.participatingLibraries.map((l) => l.backend), kind: widget.kind.mediaKind);
 
   UnifiedCatalogFilterSelection get _effectiveFilters => _preferences.filters.constrainedTo(_capabilities);
 
+  /// The eligible libraries the last [_applyQuery] ran against.
+  Set<String> _appliedLibraryKeys = const {};
+
   Future<void> _applyQuery({bool startIfNeeded = false}) {
+    _appliedLibraryKeys = _knownLibraryKeys;
     final selection = _preferences.filters;
     final participating = _catalog.eligibleLibraries.where(selection.selects);
-    final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend));
+    final capabilities = unifiedFilterCapabilitiesFor(participating.map((l) => l.backend), kind: widget.kind.mediaKind);
     final query = buildUnifiedCatalogQuery(
       kind: widget.kind.mediaKind,
       preferences: _preferences,
@@ -255,7 +281,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   /// `OverlaySheetController.of`, which only looks upward. See the note on the
   /// host in [build] (CAT9).
   Future<void> _openSort(BuildContext sheetContext) async {
-    final result = await showMobileCatalogSortSheet(sheetContext, current: _preferences.sort);
+    final result = await showMobileCatalogSortSheet(
+      sheetContext,
+      current: _preferences.effectiveSort(_capabilities),
+      capabilities: _capabilities,
+    );
     if (result == null || !mounted) return;
     await _updatePreferences(_preferences.copyWith(sort: result));
   }
@@ -291,6 +321,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     group: group,
     intent: UnifiedActivationIntent.details,
     availabilityFor: _availabilityFor,
+    pickerContext: _sheetContext,
     coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
   );
 
@@ -378,16 +409,52 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     setState(() => _headerHidden = hidden);
   }
 
+  // Loading notifies this screen synchronously. Start only after layout,
+  // coalescing scroll/metrics notifications into one bounded page request.
+  void _scheduleLoadMore() {
+    if (_loadMoreScheduled || _catalog.isLoadingMore || !_catalog.snapshot.hasMore) return;
+    _loadMoreScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMoreScheduled = false;
+      if (!mounted || _catalog.isInitialLoading || _catalog.isLoadingMore || !_catalog.snapshot.hasMore) return;
+      if (!_scrollController.hasClients || _catalog.snapshot.failedLibraryIds.isNotEmpty) return;
+      final metrics = _scrollController.position;
+      if (!_needsMore(metrics)) return;
+      unawaited(_catalog.loadMore());
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  void _maybeLoadMore(ScrollMetrics metrics) {
+    // Keep two viewports ahead, not the entire library. Failed pages wait for
+    // an explicit retry so a stationary viewport cannot hammer a dead server.
+    if (metrics.axis != Axis.vertical ||
+        _catalog.isInitialLoading ||
+        _catalog.snapshot.groups.isEmpty ||
+        _catalog.snapshot.failedLibraryIds.isNotEmpty)
+      return;
+    if (_needsMore(metrics)) _scheduleLoadMore();
+  }
+
+  bool _needsMore(ScrollMetrics metrics) {
+    if (_gridRowExtent <= 0) return false;
+    // The sliver's estimated max extent may still describe the previous page.
+    // Use the actual row geometry and current item count to bound the buffer.
+    final loadedExtent = (_catalog.snapshot.groups.length / 3).ceil() * _gridRowExtent + _panelHeight + 8;
+    return loadedExtent - metrics.pixels <= metrics.viewportDimension * 3;
+  }
+
   void _onScroll() {
+    if (_scrollController.hasClients) _maybeLoadMore(_scrollController.position);
     final prefetcher = _prefetcher;
     if (prefetcher == null || !_scrollController.hasClients) return;
     final groups = _catalog.snapshot.groups;
     if (groups.isEmpty) return;
     final metrics = _scrollController.position;
     final columns = 3;
-    final cardWidth = _cardWidth(metrics.viewportDimension);
-    final cardHeight = cardWidth / (2 / 3) + MediaCardGridLayout.textExtentFor(context);
-    final rowExtent = cardHeight + mobileRailGutter;
+    final cardWidth = _gridCardWidth;
+    final rowExtent = _gridRowExtent;
+    if (cardWidth <= 0 || rowExtent <= 0) return;
     final firstRow = (metrics.pixels / rowExtent).floor().clamp(0, 1 << 30);
     final visibleRows = (metrics.viewportDimension / rowExtent).ceil() + 1;
     final firstIndex = firstRow * columns;
@@ -439,6 +506,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         child: Builder(
           // Below the host, so the chips can reach it.
           builder: (sheetContext) {
+            _sheetContext = sheetContext;
             _schedulePanelMeasure();
             final safe = MediaQuery.paddingOf(context);
             final background = Theme.of(context).scaffoldBackgroundColor;
@@ -536,7 +604,11 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       // of on a line of its own.
       child: MobileDenseTitleRow(
         title: widget.kind.title,
-        count: t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
+        count: _catalog.snapshot.isComplete
+            ? (_catalog.snapshot.groups.length == 1
+                  ? t.unifiedCatalog.oneTitle
+                  : t.unifiedCatalog.titleCount(count: _catalog.snapshot.groups.length))
+            : null,
         countAutomationId: AutomationIds.catalogCount,
         automationInstance: widget.kind.automationInstance,
         onBack: () => Navigator.of(context).maybePop(),
@@ -600,7 +672,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
             child: FocusableFilterChip(
               variant: FilterChipVariant.toolbar,
               icon: Symbols.swap_vert_rounded,
-              label: mobileCatalogSortLabel(_preferences.sort),
+              label: mobileCatalogSortLabel(_preferences.effectiveSort(_capabilities)),
               onPressed: () => _openSort(sheetContext),
             ),
           ),
@@ -680,9 +752,12 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         builder: (context, constraints) {
           final cardWidth = _cardWidth(constraints.maxWidth);
           final cardHeight = cardWidth / (2 / 3) + MediaCardGridLayout.textExtentFor(context);
+          _gridCardWidth = cardWidth;
+          _gridRowExtent = cardHeight + mobileRailGutter;
           return NotificationListener<ScrollMetricsNotification>(
             onNotification: (notification) {
               _onHeaderMetrics(notification.metrics);
+              _maybeLoadMore(notification.metrics);
               return false;
             },
             child: NotificationListener<ScrollNotification>(
@@ -700,6 +775,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                         id: AutomationIds.catalogGrid,
                         instance: widget.kind.automationInstance,
                         role: 'grid',
+                        state: () => {'count': snapshot.groups.length, 'complete': !snapshot.hasMore},
                         child: SliverGrid(
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
@@ -707,32 +783,61 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                             crossAxisSpacing: mobileRailGutter,
                             childAspectRatio: cardWidth / cardHeight,
                           ),
-                          delegate: SliverChildBuilderDelegate((context, index) {
-                            if (index >= snapshot.groups.length) {
-                              if (snapshot.hasMore && !_catalog.isLoadingMore) {
-                                unawaited(_catalog.loadMore());
-                              }
-                              return const SkeletonMediaCard();
-                            }
-                            final group = snapshot.groups[index];
-                            return AutomationNode(
-                              id: AutomationIds.catalogGridItem,
-                              instance: '${widget.kind.automationInstance}.$index',
-                              role: 'grid.item',
-                              child: Builder(
-                                builder: (cardContext) => MobileMediaCard(
-                                  group: group,
-                                  shape: MobileCardShape.portrait,
-                                  width: cardWidth,
-                                  onTap: () => _openDetails(group),
-                                  onLongPress: () => unawaited(_openQuickMenu(cardContext, group)),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final group = snapshot.groups[index];
+                              return AutomationNode(
+                                key: ValueKey((group.groupId, group.sources.first.sourceKey)),
+                                id: AutomationIds.catalogGridItem,
+                                instance: '${widget.kind.automationInstance}.$index',
+                                role: 'grid.item',
+                                // One card per title with every source under it
+                                // is what unified promises; Verify reads it here.
+                                state: () => {
+                                  'title': group.representativeSource.item.title,
+                                  'sources': group.sources.length,
+                                },
+                                child: Builder(
+                                  builder: (cardContext) => MobileMediaCard(
+                                    group: group,
+                                    shape: MobileCardShape.portrait,
+                                    width: cardWidth,
+                                    onTap: () => _openDetails(group),
+                                    onLongPress: () => unawaited(_openQuickMenu(cardContext, group)),
+                                  ),
                                 ),
-                              ),
-                            );
-                          }, childCount: snapshot.groups.length + (snapshot.hasMore ? 3 : 0)),
+                              );
+                            },
+                            childCount: snapshot.groups.length,
+                            findChildIndexCallback: (key) {
+                              // Ambiguous editions can share a groupId. The first concrete
+                              // membership distinguishes those cards and survives appends.
+                              final index = snapshot.groups.indexWhere(
+                                (group) => ValueKey((group.groupId, group.sources.first.sourceKey)) == key,
+                              );
+                              return index < 0 ? null : index;
+                            },
+                          ),
                         ),
                       ),
                     ),
+                    if (snapshot.hasMore)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: snapshot.failedLibraryIds.isNotEmpty && !_catalog.isLoadingMore
+                                ? TextButton(
+                                    onPressed: () => unawaited(_catalog.loadMore()),
+                                    child: Text(t.common.retry),
+                                  )
+                                : Text(
+                                    t.unifiedCatalog.loadingMore,
+                                    style: TextStyle(color: tokens(context).textMuted),
+                                  ),
+                          ),
+                        ),
+                      ),
                     SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
                   ],
                 ),

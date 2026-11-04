@@ -1,0 +1,42 @@
+{
+  "source_commit": "d69209da690615f6a76f5a53bbb3fff2385e60fc",
+  "screen_size": "1206x2622",
+  "screenshots": [
+    {
+      "file": "ios-catalog-header-collapse-1793577758137/catalog-bottom-edge.png",
+      "sha256": "a633d3848ab5de0467633d4bfd76b4ef04facf07b99c6067e5e380ff9056eb52"
+    },
+    {
+      "file": "ios-catalog-header-collapse-1793577758137/catalog-top-back-mid-list.png",
+      "sha256": "bd66d4b25e3b353b5fdd11e0d9be4819167bf1fbe07a07526ffeffc4cdfee7e1"
+    },
+    {
+      "file": "ios-catalog-header-collapse-1793577758137/catalog-top-hidden.png",
+      "sha256": "a633d3848ab5de0467633d4bfd76b4ef04facf07b99c6067e5e380ff9056eb52"
+    },
+    {
+      "file": "ios-catalog-header-collapse-1793577758137/catalog-top-shown.png",
+      "sha256": "15e0179f14a126774fce2b7447265a467680018f160a7338a9b96472ebd385f1"
+    },
+    {
+      "file": "ios-library-local-offline-1793577916889/01-defaults.png",
+      "sha256": "299c75325196a6c913b04b1b598e3af0deb7e6eb7c82dfaacee70e72f2669aac"
+    },
+    {
+      "file": "ios-library-local-offline-1793577916889/02-stored.png",
+      "sha256": "1efd62fd2bec08755779724efe4781618e3213790e92f428990cebe0985caa43"
+    },
+    {
+      "file": "ios-library-local-offline-1793577916889/03-offline-posters.png",
+      "sha256": "89476d0b18a030281f19e5149114ebd2097a06a303942adccf4ccbb398df7b26"
+    },
+    {
+      "file": "ios-library-local-offline-1793577916889/04-offline-search.png",
+      "sha256": "e1759adb7c30adf522e8a6e799930f77e9336d9430b0fcba783cd5dc43450853"
+    },
+    {
+      "file": "ios-library-local-offline-1793577916889/05-offline-detail.png",
+      "sha256": "7672b2e649af311abea1411b9949f3cbfd9963993c696664722a148bff195841"
+    }
+  ]
+}

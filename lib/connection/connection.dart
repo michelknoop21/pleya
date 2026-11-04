@@ -711,6 +711,9 @@ class PleyaServerConnection extends Connection {
   /// Owner and admin administer the server; the server treats them alike.
   bool get isServerAdministrator => role == 'owner' || role == 'admin';
 
+  /// The one owner of this server. Canonical collections are his alone.
+  bool get isServerOwner => role == 'owner';
+
   /// The server account this connection signed in as, taken from the id
   /// ([pleyaServerConnectionId]); null for a legacy connection whose id has no
   /// account part. Not the display [userName].

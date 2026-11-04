@@ -508,6 +508,9 @@ class _TranslationsMediaMenuRu extends TranslationsMediaMenuEn {
 	final TranslationsRu _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Смотреть';
+	@override String get manage => 'Управление';
+	@override String get moreWaysToWatch => 'Другие способы просмотра';
 	@override String get markAsWatched => 'Отметить как просмотренное';
 	@override String get markAsUnwatched => 'Отметить как непросмотренное';
 	@override String get removeFromContinueWatching => 'Удалить из «Продолжить просмотр»';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesRu extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Управление библиотеками';
 	@override String get sort => 'Сортировка';
 	@override String get sortBy => 'Сортировать по';
+	@override String get filterBy => 'Фильтровать по';
 	@override String get filters => 'Фильтры';
 	@override String get confirmActionMessage => 'Вы уверены, что хотите выполнить это действие?';
 	@override String get showLibrary => 'Показать библиотеку';
@@ -1826,11 +1830,9 @@ class _TranslationsTvMyPleyaRu extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} из ${total} серверов в сети';
 	@override String get noServers => 'Нет подключённых серверов';
 	@override String get statusOnline => 'В сети';
-	@override String get statusOffline => 'Не в сети';
 	@override String get servers => 'Серверы';
 	@override String get activity => 'Активность';
 	@override String get logs => 'Журналы и диагностика';
-	@override String signedInAs({required Object name, required Object version}) => 'Вы вошли как ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Сохранённые фильмы и сериалы';
 	@override String get requestsSubtitle => 'Запросы и подборки';
 	@override String get downloadsSubtitle => 'Офлайн и правила синхронизации';
@@ -1881,7 +1883,6 @@ class _TranslationsSettingsStudioRu extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Ваша библиотека';
 	@override String get viewPreview => 'Открыть предпросмотр';
 	@override String get playbackExperience => 'Воспроизведение';
-	@override String get manage => 'Управление';
 	@override String get yourWatchlist => 'Ваш список';
 	@override String get yourContent => 'Ваш контент';
 	@override String get lightMode => 'Светлая тема';
@@ -2696,6 +2697,9 @@ extension on TranslationsRu {
 			'fileInfo.duration' => 'Длительность',
 			'fileInfo.optimizedForStreaming' => 'Оптимизировано для стриминга',
 			'fileInfo.has64bitOffsets' => '64-битные смещения',
+			'mediaMenu.watch' => 'Смотреть',
+			'mediaMenu.manage' => 'Управление',
+			'mediaMenu.moreWaysToWatch' => 'Другие способы просмотра',
 			'mediaMenu.markAsWatched' => 'Отметить как просмотренное',
 			'mediaMenu.markAsUnwatched' => 'Отметить как непросмотренное',
 			'mediaMenu.removeFromContinueWatching' => 'Удалить из «Продолжить просмотр»',
@@ -2853,11 +2857,11 @@ extension on TranslationsRu {
 			'messages.noEpisodesFoundGeneral' => 'Эпизоды не найдены',
 			'messages.episodesLoadFailed' => 'Не удалось загрузить эпизоды',
 			'messages.noResultsFound' => 'Результаты не найдены',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Таймер сна установлен на ${label}',
 			'messages.noItemsAvailable' => 'Нет доступных элементов',
 			'messages.failedToCreatePlayQueueNoItems' => 'Не удалось создать очередь воспроизведения — нет элементов',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Не удалось ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Переключение на совместимый плеер...',
 			'messages.serverLimitTitle' => 'Ошибка воспроизведения',
@@ -3031,6 +3035,7 @@ extension on TranslationsRu {
 			'libraries.manageLibraries' => 'Управление библиотеками',
 			'libraries.sort' => 'Сортировка',
 			'libraries.sortBy' => 'Сортировать по',
+			'libraries.filterBy' => 'Фильтровать по',
 			'libraries.filters' => 'Фильтры',
 			'libraries.confirmActionMessage' => 'Вы уверены, что хотите выполнить это действие?',
 			'libraries.showLibrary' => 'Показать библиотеку',
@@ -3366,12 +3371,12 @@ extension on TranslationsRu {
 			'companionRemote.session.serverRunningDescription' => 'Мобильные устройства в вашей сети могут подключаться к этому приложению',
 			'companionRemote.session.serverStoppedDescription' => 'Запустите сервер, чтобы разрешить подключение мобильных устройств',
 			'companionRemote.session.usePhoneToControl' => 'Используйте мобильное устройство для управления этим приложением',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Запустить сервер',
 			'companionRemote.session.stopServer' => 'Остановить сервер',
 			'companionRemote.session.minimize' => 'Свернуть',
 			'companionRemote.pairing.discoveryDescription' => 'Устройства Pleya с тем же аккаунтом Plex появятся здесь',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Подключение...',
 			'companionRemote.pairing.searchingForDevices' => 'Поиск устройств...',
@@ -3775,11 +3780,9 @@ extension on TranslationsRu {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} из ${total} серверов в сети',
 			'tvMyPleya.noServers' => 'Нет подключённых серверов',
 			'tvMyPleya.statusOnline' => 'В сети',
-			'tvMyPleya.statusOffline' => 'Не в сети',
 			'tvMyPleya.servers' => 'Серверы',
 			'tvMyPleya.activity' => 'Активность',
 			'tvMyPleya.logs' => 'Журналы и диагностика',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Вы вошли как ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Сохранённые фильмы и сериалы',
 			'tvMyPleya.requestsSubtitle' => 'Запросы и подборки',
 			'tvMyPleya.downloadsSubtitle' => 'Офлайн и правила синхронизации',
@@ -3813,7 +3816,6 @@ extension on TranslationsRu {
 			'settingsStudio.yourLibrary' => 'Ваша библиотека',
 			'settingsStudio.viewPreview' => 'Открыть предпросмотр',
 			'settingsStudio.playbackExperience' => 'Воспроизведение',
-			'settingsStudio.manage' => 'Управление',
 			'settingsStudio.yourWatchlist' => 'Ваш список',
 			'settingsStudio.yourContent' => 'Ваш контент',
 			'settingsStudio.lightMode' => 'Светлая тема',

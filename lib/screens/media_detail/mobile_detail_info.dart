@@ -80,7 +80,12 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     final isNumericRating = _getMediaClientForMetadata(context)?.capabilities.numericUserRating ?? true;
     final trailer = _getPrimaryTrailer();
     final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
-    final canDownload = !metadata.isShow && !widget.isOffline && !PlatformDetector.isAppleTV();
+    final canDownload =
+        !metadata.isShow &&
+        !widget.isOffline &&
+        !PlatformDetector.isAppleTV() &&
+        (_getMediaClientForMetadata(context)?.capabilities.clientDownloads ??
+            (metadata.backend != MediaBackend.pleyaServer));
 
     void openMore() {
       final box = _contextMenuKey.currentContext?.findRenderObject() as RenderBox?;
@@ -158,12 +163,12 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
 
     return MediaContextMenu(
       key: _contextMenuKey,
-      item: metadata,
-      onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+      item: _menuItem(metadata),
+      onRefresh: (_) => unawaited(_refreshItemInPlace(metadata.id)),
       onPlayTrailer: trailer == null ? null : () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
       onShare: () {
         final anchor = _contextMenuKey.currentContext;
-        if (anchor != null) unawaited(_shareMobileItem(anchor, metadata));
+        if (anchor != null) unawaited(shareMediaItem(anchor, metadata));
       },
       onRequest: (seerrConfigured && !widget.isOffline && (metadata.isMovie || metadata.isShow))
           ? () => unawaited(_handleRequestPressed(metadata))
@@ -192,6 +197,7 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     };
     return DetailActionItem(
       key: const Key('media-detail.action.download'),
+      active: downloadProvider.isDownloaded(globalKey),
       icon: icon,
       label: t.detailActions.download,
       semanticLabel: semanticLabel,
@@ -202,35 +208,19 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// The restart button: the context menu's "Play from beginning" core
   /// ([playFromBeginning]), then the same refresh a normal play gets.
   Future<void> _handlePlayFromStartPressed(MediaItem target) async {
-    final pick = _detailTrackPickFor(target);
+    final title = _unifiedTitle;
+    final played = title == null ? target : (await title.targetFor(target)).item;
+    if (!mounted) return;
+    final pick = _detailTrackPickFor(played);
     await playFromBeginning(
       context,
-      target,
+      played,
       isOffline: widget.isOffline,
       preferredAudioTrack: pick.audio,
       preferredSubtitleTrack: pick.subtitle,
+      unifiedTitle: title,
     );
     if (!widget.isOffline && mounted) unawaited(refreshAfterPlayback(playedItemId: target.id));
-  }
-
-  /// The iOS share sheet anchored to the tapped button. share_plus needs
-  /// `sharePositionOrigin` for the popover (required on iPad, and without it
-  /// the sheet could fail to appear or leave the UI unresponsive); Michel saw
-  /// exactly that on 24 September ("delen werkt niet"). A failure to present
-  /// the sheet is shown, a dismissed sheet is not.
-  Future<void> _shareMobileItem(BuildContext buttonContext, MediaItem metadata) async {
-    final box = buttonContext.findRenderObject() as RenderBox?;
-    final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
-    final year = metadata.year;
-    final text = year == null ? metadata.displayTitle : '${metadata.displayTitle} ($year)';
-    try {
-      await SharePlus.instance.share(
-        ShareParams(text: text, subject: metadata.displayTitle, sharePositionOrigin: origin),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      showErrorSnackBar(context, t.errors.failedToLoad(context: t.common.share));
-    }
   }
 
   /// Section heading over the inline episodes, extras and cast blocks: the

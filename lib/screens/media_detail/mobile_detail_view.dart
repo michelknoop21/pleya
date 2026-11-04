@@ -176,6 +176,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
         : null;
     return DetailActivityCard(
       watchers: _watchers?.watchers ?? const [],
+      scope: _watchers?.scope,
       nowWatchingName: session?.userName,
       playCount: _watchStats?.totalPlays,
       viewerCount: _watchStats?.userCount,

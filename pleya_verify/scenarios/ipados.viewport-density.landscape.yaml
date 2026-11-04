@@ -13,7 +13,10 @@ steps:
   - settle: 3500
   - configure_view: {orientation: landscapeLeft}
   - assert_viewport: {orientation: landscape}
-  - assert: {id: discover.continue_watching, insideViewport: true}
+  # The billboard takes the landing here and the first rail peeks under it, as
+  # on tvOS (A-17): under the hero, with its top edge on screen above the bar.
+  - wait_until: {id: discover.hero, timeout: 5000}
+  - assert: {id: discover.continue_watching, below: discover.hero, peeksAbove: nav.bar}
   - assert: {id: nav.bar, insideViewport: true}
   - assert: {id: nav.search, insideViewport: true}
   - snapshot: home-landscape

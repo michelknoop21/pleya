@@ -20,17 +20,25 @@ class _SettingsSystemPage extends StatefulWidget {
   State<_SettingsSystemPage> createState() => _SettingsSystemPageState();
 }
 
-class _SettingsSystemPageState extends State<_SettingsSystemPage> with _SettingsActions<_SettingsSystemPage> {
+class _SettingsSystemPageState extends State<_SettingsSystemPage>
+    with _SettingsActions<_SettingsSystemPage>, _SettingsActivitySharing<_SettingsSystemPage> {
   @override
   bool get _showsUpdateTile => widget.kind == _SystemPageKind.updates;
 
   @override
   Widget build(BuildContext context) {
+    final sharing = widget.kind == _SystemPageKind.advanced
+        ? _syncActivitySharing(context.watch<MultiServerProvider?>())
+        : const <ActivitySharingController>[];
     return switch (widget.kind) {
       _SystemPageKind.advanced => SettingsPage(
         title: Text(t.settings.advanced),
         hideDescriptions: true,
         children: [
+          if (sharing.isNotEmpty) ...[
+            SettingsSectionHeader(t.settings.privacy),
+            for (final controller in sharing) _buildActivitySharingRow(controller),
+          ],
           SettingsSectionHeader(t.settingsStudio.maintenance),
           ..._buildMaintenanceRows(),
           if (_keyboardShortcutsSupported && _keyboardService != null) ...[

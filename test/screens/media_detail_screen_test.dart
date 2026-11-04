@@ -23,6 +23,7 @@ import 'package:pleya/media/media_review.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/media_source_info.dart';
+import 'package:pleya/focus/focusable_action_bar.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_availability.dart';
@@ -34,6 +35,7 @@ import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/screens/tv/tv_media_source_picker_route.dart';
 import 'package:pleya/screens/tv/tv_unified_activation.dart';
 import 'package:pleya/services/unified_catalog/source_preference_store.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
@@ -50,6 +52,8 @@ import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart
 import 'package:pleya/screens/media_detail/mobile/detail_dark_style.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_seasons_rail.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_page.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_tab_pill.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
@@ -59,8 +63,12 @@ import 'package:pleya/services/download_storage_service.dart';
 import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/unified_catalog/mobile_media_source_picker_route.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_preference_store.dart';
+import 'package:pleya/services/unified_catalog/unified_title_scope.dart';
+import 'package:pleya/utils/media_navigation_helper.dart';
+import 'package:pleya/utils/deletion_notifier.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/screens/video_player_screen.dart';
 import 'package:pleya/media/pleya_profile_language_preferences.dart';
@@ -70,6 +78,7 @@ import 'package:pleya/services/pleya_share/pleya_share_device_name.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/collapsible_text.dart';
+import 'package:pleya/widgets/media_context_menu.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
@@ -330,13 +339,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // PB-4: both seasons are season-chip choices now, so "Specials" is
-    // visible — the thing that matters is which season's episodes render,
-    // and that stays Season 1, not Specials.
-    expect(find.text('Season 1'), findsOneWidget);
-    expect(find.text('Specials'), findsOneWidget);
-    expect(find.text('S1E1'), findsOneWidget);
-    expect(find.text('Special 1'), findsNothing);
+    // Both seasons are tabs, so "Specials" is visible; what matters is which
+    // season the page loads for Play, and that stays Season 1.
+    expect(_tvTab('Season 1'), findsOneWidget);
+    expect(_tvTab('Specials'), findsOneWidget);
+    expect(client.childrenPageCalls.first.parentId, season1.id);
   });
 
   testWidgets('TV detail summary uses light theme foreground color', (tester) async {
@@ -472,8 +479,8 @@ void main() {
     // Every season tab is derived from the season list, so both appear
     // immediately. TV warms only the selected first page plus the adjacent first
     // page; it still does not walk the whole show or load page 2+.
-    expect(find.text('Season 1'), findsOneWidget);
-    expect(find.text('Season 2'), findsOneWidget);
+    expect(_tvTab('Season 1'), findsOneWidget);
+    expect(_tvTab('Season 2'), findsOneWidget);
     expect(client.childrenPageCalls.map((call) => call.parentId), containsAll([season1.id, season2.id]));
     expect(client.childrenPageCalls.every((call) => call.start == 0 && call.size == 200), isTrue);
   });
@@ -567,8 +574,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('Season 1'), findsOneWidget);
-    expect(find.text('Season 2'), findsOneWidget);
+    expect(_tvTab('Season 1'), findsOneWidget);
+    expect(_tvTab('Season 2'), findsOneWidget);
   });
 
   testWidgets('TV detail completes adjacent prefetch after focus moves to that season', (tester) async {
@@ -659,8 +666,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    // PB-4: switching season is a chip RIGHT, not a vertical step within the
-    // rail — there is only ever one active season rail now.
+    // Switching season is a RIGHT on the tabs, and there is only one row.
     FocusNode seasonChipFocusNode(int index) {
       for (final element in tester.allElements) {
         final widget = element.widget;
@@ -676,357 +682,14 @@ void main() {
     await tester.pump();
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
-    expect(find.text('Episode 2'), findsNothing);
+    List<String> shown() => tester.widget<TvDetailPage>(find.byType(TvDetailPage)).sections.single.itemIds;
+    expect(shown(), isNot(contains(episode2.id)));
 
     season2Completer.complete([episode2]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('Episode 2'), findsOneWidget);
-  });
-
-  testWidgets('TV detail shows one active season chip row and no chips for a single-season show', (tester) async {
-    await SettingsService.getInstance();
-
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final episode1 = MediaItem(
-      id: 'episode_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.episode,
-      title: 'Episode 1',
-      index: 1,
-      parentId: season1.id,
-      parentIndex: season1.index,
-      grandparentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1],
-        season1.id: [episode1],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    // One season is nothing to choose between (PB-4): no chip row.
-    expect(
-      find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips),
-      findsNothing,
-    );
-    expect(find.text('Episode 1'), findsOneWidget);
-  });
-
-  testWidgets('TV detail season chip switch keeps pagination and restores per-season focus memory', (tester) async {
-    await SettingsService.getInstance();
-
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final season2 = MediaItem(
-      id: 'season_2',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 2',
-      index: 2,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    MediaItem episodeOf(MediaItem season, int index, String title) => MediaItem(
-      id: '${season.id}_e$index',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.episode,
-      title: title,
-      index: index,
-      parentId: season.id,
-      parentIndex: season.index,
-      grandparentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final alpha = episodeOf(season1, 1, 'Alpha');
-    final bravo = episodeOf(season1, 2, 'Bravo');
-    final charlie = episodeOf(season2, 1, 'Charlie');
-
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1, season2],
-        season1.id: [alpha, bravo],
-        season2.id: [charlie],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    expect(
-      find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips),
-      findsOneWidget,
-    );
-
-    FocusNode seasonChipFocusNode(int index) {
-      for (final element in tester.allElements) {
-        final widget = element.widget;
-        if (widget is Focus && widget.focusNode?.debugLabel == 'season_tab_$index') return widget.focusNode!;
-      }
-      throw StateError('No season chip focus node at index $index');
-    }
-
-    // The rail reveals with focus on its own scope; entering it (DOWN, which
-    // `TvBrowseRail` treats as "enter the topmost hub") lands on Alpha. UP
-    // from there is PB-4's contract: the active season chip, not the action
-    // row — the rail's own per-item focus is virtualised (a repainted ring
-    // driven by an internal index, not real `FocusNode`s per card), so this
-    // suite checks the chip/rail contract at the level that is actually a
-    // `FocusNode`: the chip.
-    tester.state<TvBrowseRailState>(find.byType(TvBrowseRail)).requestFocus();
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'season_tab_0');
-
-    // RIGHT switches to Season 2 — pagination for it is fetched fresh.
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('Charlie'), findsOneWidget);
-    expect(find.text('Alpha'), findsNothing);
-    expect(find.text('Bravo'), findsNothing);
-    expect(seasonChipFocusNode(1).hasPrimaryFocus, isTrue);
-
-    // LEFT back to Season 1: its episodes render again from the pager's
-    // cache (no second fetch is asserted here — `_fetchSeasonEpisodes` owns
-    // that — this is about the chip and the rail agreeing on what to show).
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('Alpha'), findsOneWidget);
-    expect(find.text('Bravo'), findsOneWidget);
-    expect(find.text('Charlie'), findsNothing);
-
-    // DOWN from the chip reaches the rail again (the other half of the
-    // chip/rail contract). Exactly which episode the rail's own
-    // `HubFocusMemory` restores there — keyed by the season's now-stable hub
-    // id — is this suite's known gap: it is a real `FocusNode` on the chip
-    // but not on the rail's own cards, so it is not provable at this level.
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
-  });
-
-  testWidgets('TV detail hero swaps to the focused episode\'s own summary', (tester) async {
-    // MOC-10 (mockup 37 C) asked for a per-card synopsis under the focused
-    // episode; the hero already swaps its metadata line and description to
-    // the focused episode via `_tvDetailFocusedEpisode`
-    // (`_buildTvDetailMetadataLine`/`_tvDetailDescription`), which delivers
-    // the same read-without-navigating-away outcome without a new
-    // focus-dependent-height component on the shared `TvBrowseRail`. This
-    // locks that behavior in.
-    await SettingsService.getInstance();
-
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      summary: 'Show-level summary.',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final season2 = MediaItem(
-      id: 'season_2',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 2',
-      index: 2,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    MediaItem episodeOf(MediaItem season, int index, String title, String summary) => MediaItem(
-      id: '${season.id}_e$index',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.episode,
-      title: title,
-      summary: summary,
-      index: index,
-      parentId: season.id,
-      parentIndex: season.index,
-      grandparentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final alpha = episodeOf(season1, 1, 'Alpha', 'Alpha episode summary.');
-    final bravo = episodeOf(season1, 2, 'Bravo', 'Bravo episode summary.');
-    final charlie = episodeOf(season2, 1, 'Charlie', 'Charlie episode summary.');
-
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1, season2],
-        season1.id: [alpha, bravo],
-        season2.id: [charlie],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    // A show's TV detail opens with focus already on the rail's first
-    // episode (DEC-109/PB-4), so the hero already shows Alpha, not the show.
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'tv_browse_rail');
-    expect(find.text('Alpha episode summary.'), findsOneWidget);
-    expect(find.text('Show-level summary.'), findsNothing);
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-
-    expect(find.text('Bravo episode summary.'), findsOneWidget);
-    expect(find.text('Alpha episode summary.'), findsNothing);
-
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-
-    // The chip is still part of the episode-browsing context (PB-4), so the
-    // hero deliberately keeps showing the last-focused episode here.
-    expect(FocusManager.instance.primaryFocus?.debugLabel, 'season_tab_0');
-    expect(find.text('Alpha episode summary.'), findsOneWidget);
-
-    // A second UP reaches the action row, which is the actual "leave episode
-    // context" signal (`_focusTvDetailActionRow` clears it explicitly).
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-
-    expect(find.text('Show-level summary.'), findsOneWidget);
-    expect(find.text('Alpha episode summary.'), findsNothing);
+    expect(shown(), contains(episode2.id));
   });
 
   group('watch state freshness (phone layout)', () {
@@ -1092,7 +755,8 @@ void main() {
       bool scopeAboveNavigator = false,
       ThemeData? theme,
       UnifiedMediaRouteContext? unifiedRouteContext,
-      Future<void> Function(BuildContext detailContext)? onChangeSource,
+      UnifiedSourceChangeCallback? onChangeSource,
+      List<MediaServerClient> otherClients = const [],
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1114,6 +778,10 @@ void main() {
       await downloadProvider.ensureInitialized();
 
       final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+      otherClients.forEach(manager.debugRegisterClientForTesting);
+      for (final server in [client, ...otherClients]) {
+        manager.debugMarkAdministeredForTesting(server.serverId);
+      }
       final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
       final watchStateOverlay = WatchStateStore();
       final offlineWatchSync = OfflineWatchSyncService(database: db, serverManager: manager);
@@ -1745,6 +1413,498 @@ void main() {
         expect(player.screens.single.preferredSubtitleTrack, isNull, reason: 'no subtitle was picked');
       });
 
+      testWidgets('a page whose server has no client settles instead of rebuilding every frame', (tester) async {
+        final orphan = MediaItem(
+          id: 'film_gone',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: 'server_gone',
+          serverName: 'Gone',
+        );
+        final client = _FakeMediaServerClient(show: orphan, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, orphan, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 20; i++) {
+          await tester.pump();
+        }
+
+        expect(tester.binding.hasScheduledFrame, isFalse);
+      });
+
+      group('one title on two servers', () {
+        MediaItem film(String server, {int? viewOffsetMs, int? lastViewedAt}) => MediaItem(
+          id: 'film_$server',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: server,
+          serverName: server,
+          durationMs: 7200000,
+          viewOffsetMs: viewOffsetMs,
+          lastViewedAt: lastViewedAt,
+        );
+
+        MediaFileInfo tracks(String code) => MediaFileInfo(
+          audioTracks: [MediaAudioTrack(id: 1, languageCode: code, codec: 'aac', channels: 2, selected: true)],
+        );
+
+        UnifiedMediaRouteContext routeTo(List<MediaItem> items, String chosen) {
+          final sources = [
+            for (final item in items)
+              UnifiedMediaSource.fromItem(
+                item,
+                availability: SourceAvailability.online,
+                externalIds: const ExternalIds(tmdb: 45745),
+              ),
+          ];
+          final page = sources.first.sourceKey;
+          final picked = sources.firstWhere((s) => s.item.serverId == chosen);
+          return UnifiedMediaRouteContext(
+            groupId: 'g1',
+            identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+            sourceKey: picked.sourceKey,
+            pageSourceKey: page,
+            playItem: picked.sourceKey == page ? null : picked.item,
+            titleSources: [picked, ...sources.where((s) => s != picked)],
+            availableSourceKeys: [for (final s in sources) s.sourceKey],
+            coverage: SourceCoverageState.complete(const {'server_1', 'server_2'}),
+            intent: UnifiedActivationIntent.details,
+          );
+        }
+
+        testWidgets('the table and the tracks come from the chosen server, the page from the main one', (tester) async {
+          final main = film('server_1').copyWith(summary: 'MAIN_SOURCE_SYNOPSIS');
+          final other = film('server_2').copyWith(summary: 'OTHER_SOURCE_SYNOPSIS');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {}, fileInfo: tracks('eng'));
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            fileInfo: tracks('nld'),
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(find.textContaining('MAIN_SOURCE_SYNOPSIS'), findsOneWidget);
+          expect(find.textContaining('OTHER_SOURCE_SYNOPSIS'), findsNothing);
+          expect(find.text('Dutch (AAC Stereo)'), findsOneWidget);
+          expect(find.text('English (AAC Stereo)'), findsNothing);
+        });
+
+        testWidgets('a change of source during a load does not land the old server\'s tracks', (tester) async {
+          final slow = Completer<MediaFileInfo?>();
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {}, fileInfoFuture: slow.future);
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            fileInfo: tracks('nld'),
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_1'),
+            onChangeSource: (_, _, {pageFailed = false}) async => routeTo([main, other], 'server_2'),
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final row = find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSource);
+          await tester.ensureVisible(row);
+          await tester.pumpAndSettle();
+          await tester.tap(row);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          slow.complete(tracks('eng'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(find.text('Dutch (AAC Stereo)'), findsOneWidget);
+          expect(find.text('English (AAC Stereo)'), findsNothing);
+        });
+
+        testWidgets('Play starts the chosen source at the session\'s newest position', (tester) async {
+          final main = film('server_1', viewOffsetMs: 2400000, lastViewedAt: 1000);
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          // Played further on this page: the group the route holds is older.
+          WatchStateNotifier().notifyProgress(item: main, viewOffset: 3000000, duration: 7200000);
+          await tester.pump();
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.serverId, 'server_2');
+          expect(player.screens.single.startPosition, const Duration(milliseconds: 3000000));
+          expect(player.screens.single.unifiedTitle, isNotNull);
+        });
+
+        testWidgets('a track picked on the page reaches the player on the chosen server', (tester) async {
+          TrackPreferenceStore.resetForTesting();
+          TrackPreferenceStore.deviceNameProvider = () async => 'Test';
+          addTearDown(() => TrackPreferenceStore.deviceNameProvider = pleyaShareDeviceName);
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            fileInfo: MediaFileInfo(
+              audioTracks: [
+                MediaAudioTrack(id: 1, languageCode: 'eng', codec: 'aac', channels: 2, selected: true),
+                MediaAudioTrack(id: 2, languageCode: 'nld', codec: 'eac3', channels: 6, selected: false),
+              ],
+            ),
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final audioRow = find.text('English (AAC Stereo)');
+          await tester.ensureVisible(audioRow);
+          await tester.pumpAndSettle();
+          await tester.tap(audioRow);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Dutch'));
+          await tester.pumpAndSettle();
+          for (var i = 0; i < 5; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.serverId, 'server_2');
+          expect(player.screens.single.preferredAudioTrack?.id, '2');
+        });
+
+        testWidgets('a series plays the episode on the chosen server, at the position of the page', (tester) async {
+          MediaItem show(String server) => MediaItem(
+            id: 'show_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.show,
+            title: 'Severance',
+            serverId: server,
+            serverName: server,
+          );
+          MediaItem episode(String server, {int? viewOffsetMs, int? lastViewedAt}) => MediaItem(
+            id: 'ep_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.episode,
+            title: 'Hello, Ms. Cobel',
+            grandparentId: 'show_$server',
+            parentIndex: 1,
+            index: 2,
+            durationMs: 3000000,
+            viewOffsetMs: viewOffsetMs,
+            lastViewedAt: lastViewedAt,
+            serverId: server,
+          );
+          final main = show('server_1');
+          final other = show('server_2');
+          final atPosition = episode('server_1', viewOffsetMs: 600000, lastViewedAt: 2000);
+          final client = _FakeMediaServerClient(
+            show: main,
+            childrenByParent: const {},
+            onDeck: atPosition,
+            episodes: [atPosition],
+          );
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            episodes: [episode('server_2')],
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.globalKey, 'server_2:ep_server_2');
+          expect(player.screens.single.startPosition, const Duration(milliseconds: 600000));
+        });
+
+        testWidgets('a series whose server names no next episode still moves on across its sources', (tester) async {
+          MediaItem show(String server) => MediaItem(
+            id: 'show_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.show,
+            title: 'Severance',
+            serverId: server,
+            serverName: server,
+          );
+          MediaItem episode(String server, int index, {int? viewCount}) => MediaItem(
+            id: 'e${index}_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.episode,
+            title: 'Episode $index',
+            parentId: 'season_$server',
+            grandparentId: 'show_$server',
+            parentIndex: 1,
+            index: index,
+            durationMs: 3000000,
+            viewCount: viewCount,
+            serverId: server,
+          );
+          final main = show('server_1');
+          final other = show('server_2');
+          final season = MediaItem(
+            id: 'season_server_1',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.season,
+            title: 'Season 1',
+            index: 1,
+            parentId: 'show_server_1',
+            serverId: 'server_1',
+          );
+          final pageEpisodes = [episode('server_1', 1), episode('server_1', 2)];
+          final client = _FakeMediaServerClient(
+            show: main,
+            childrenByParent: {
+              'show_server_1': [season],
+              'season_server_1': pageEpisodes,
+            },
+            episodes: pageEpisodes,
+          );
+          // Held open so the page's own fallback lands first, as it does when
+          // the other server answers later than the page's season list.
+          final otherList = Completer<List<MediaItem>>();
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+            playableFuture: otherList.future,
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          otherList.complete([episode('server_2', 1, viewCount: 1), episode('server_2', 2)]);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.globalKey, 'server_2:e2_server_2');
+        });
+
+        testWidgets('the watched button on the page reaches the other source too', (tester) async {
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final watched = find.byKey(const Key('media-detail.action.watched'));
+          await tester.ensureVisible(watched);
+          await tester.pumpAndSettle();
+          await tester.tap(watched);
+          for (var i = 0; i < 10 && second.markedWatched.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+            await tester.pump();
+          }
+
+          expect(client.markedWatched, ['film_server_1']);
+          expect(second.markedWatched, ['film_server_2']);
+        });
+
+        testWidgets('a chosen copy that is deleted stops being played and named', (tester) async {
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+          final player = _PlayerRouteSpy();
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(find.text('server_2'), findsOneWidget);
+
+          DeletionNotifier().notifyDeletedItem(item: other);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(find.text('server_2'), findsNothing);
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(player.screens.single.metadata.serverId, 'server_1');
+        });
+
+        testWidgets('the menu on the page acts on the chosen source, never on the main one by accident', (
+          tester,
+        ) async {
+          final main = film('server_1');
+          final other = film('server_2');
+          final client = _FakeMediaServerClient(show: main, childrenByParent: const {});
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: other,
+            childrenByParent: const {},
+          );
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            otherClients: [second],
+            unifiedRouteContext: routeTo([main, other], 'server_2'),
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
+          );
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final menu = tester.widget<MediaContextMenu>(find.byType(MediaContextMenu).first);
+          expect((menu.item as MediaItem).serverId, 'server_2');
+        });
+      });
+
       testWidgets('a Jellyfin item shows no activity card', (tester) async {
         final movie = MediaItem(
           id: 'movie_jellyfin_activity',
@@ -2005,7 +2165,7 @@ void main() {
             coverage: SourceCoverageState.complete(keys.toSet()),
             intent: UnifiedActivationIntent.details,
           ),
-          onChangeSource: (_) async {},
+          onChangeSource: (_, _, {pageFailed = false}) async => null,
         );
 
         double contrast(Color a, Color b) {
@@ -2018,6 +2178,41 @@ void main() {
           final color = tester.widget<Text>(find.text(label)).style!.color!;
           expect(contrast(color, page), greaterThan(4.5), reason: '"$label" must read on the dark page');
         }
+      });
+
+      testWidgets('a tap on the source row opens the source change', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+        final keys = ['${movie.serverId}:${movie.id}', 'server_2:${movie.id}'];
+        BuildContext? changedFrom;
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          unifiedRouteContext: UnifiedMediaRouteContext(
+            groupId: 'g1',
+            identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+            sourceKey: keys.first,
+            availableSourceKeys: keys,
+            coverage: SourceCoverageState.complete(keys.toSet()),
+            intent: UnifiedActivationIntent.details,
+          ),
+          onChangeSource: (detailContext, _, {pageFailed = false}) async {
+            changedFrom = detailContext;
+            return null;
+          },
+        );
+
+        await tester.ensureVisible(find.text(t.sourcePicker.change));
+        await tester.pump();
+        await tester.tap(find.text(t.sourcePicker.change));
+        await tester.pump();
+
+        expect(changedFrom, isNotNull);
+        expect(OverlaySheetController.maybeOf(changedFrom!), isNotNull);
       });
 
       testWidgets('a film keeps its title and a white play button (D-01)', (tester) async {
@@ -2398,7 +2593,10 @@ void main() {
               sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
               sourceKey: 'server_1:movie_1',
             ),
-            onChangeSource: (_) async => chooseAnotherCalled = true,
+            onChangeSource: (_, _, {pageFailed = false}) async {
+              chooseAnotherCalled = true;
+              return null;
+            },
           ),
         ),
       );
@@ -2438,7 +2636,7 @@ void main() {
               sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
               sourceKey: 'server_1:movie_1',
             ),
-            onChangeSource: (_) async {},
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
           ),
         ),
       );
@@ -2533,7 +2731,7 @@ void main() {
               sourceKeys: ['server_1:movie_1', 'server_2:movie_1'],
               sourceKey: 'server_1:movie_1',
             ),
-            onChangeSource: (_) async {},
+            onChangeSource: (_, _, {pageFailed = false}) async => null,
           ),
         ),
       );
@@ -2600,7 +2798,7 @@ void main() {
       },
     );
 
-    testWidgets('taking the offer replaces the route and rebuilds the page from the chosen source', (tester) async {
+    testWidgets('taking the offer keeps the page and moves only what Play starts', (tester) async {
       await SettingsService.getInstance();
       tester.view.physicalSize = const Size(2560, 1440);
       tester.view.devicePixelRatio = 1;
@@ -2679,6 +2877,11 @@ void main() {
       final pushesBefore = observer.pushes;
       final popsBefore = observer.pops;
 
+      // A remote reaches it from the action row: the row sends DOWN by hand.
+      tester.widget<FocusableActionBar>(find.byType(FocusableActionBar)).onNavigateDown!();
+      await tester.pump();
+      expect(Focus.of(tester.element(find.text(t.sourcePicker.change))).hasPrimaryFocus, isTrue);
+
       // Hoofdstuk 15's always-visible "[ Wijzigen ]" chip.
       await _activateByLabel(tester, t.sourcePicker.change);
       await tester.pumpAndSettle();
@@ -2690,19 +2893,375 @@ void main() {
       expect(
         find.text(t.sourcePicker.sourceLabel(source: 'server_2')),
         findsOneWidget,
-        reason: 'the page is now reading the chosen source, not the one it was opened on',
+        reason: 'the page says which source Play starts from',
       );
-      expect(find.text('Season 2'), findsWidgets, reason: 'and the whole season path came with it (hoofdstuk 15)');
+      expect(find.text('Season 2'), findsNothing, reason: 'the seasons stay those of the main source');
+      expect(observer.pops - popsBefore, 0, reason: 'one page: nothing was replaced');
+      expect(observer.pushes - pushesBefore, 0);
       expect(
-        observer.pops - popsBefore,
-        1,
-        reason: 'the route is replaced, not stacked: Back must not walk back through the old source',
+        Focus.of(tester.element(find.text(t.sourcePicker.change))).hasPrimaryFocus,
+        isTrue,
+        reason: 'focus comes back to the control that opened the picker',
       );
-      expect(observer.pushes - pushesBefore, 1);
 
       await tester.runAsync(() async {
         expect(await SourcePreferenceStore.read(unified.identity), 'server_2:show_1');
       });
+    });
+
+    testWidgets('on a phone the same offer keeps the page and moves only what Play starts', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      await SettingsService.getInstance();
+      // Wider than a phone: the test font makes the picker's button twice as wide.
+      tester.view.physicalSize = const Size(1560, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      PlexApiCache.initialize(db);
+      JellyfinApiCache.initialize(db);
+      final downloadManager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) => null,
+      );
+      downloadManager.recoveryFuture = Future<void>.value();
+      final downloads = DownloadProvider.forTesting(downloadManager: downloadManager, database: db);
+      await downloads.ensureInitialized();
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      final watchState = WatchStateStore();
+      final offlineSync = OfflineWatchSyncService(database: db, serverManager: manager);
+      addTearDown(() async {
+        watchState.dispose();
+        offlineSync.dispose();
+        downloads.dispose();
+        downloadManager.dispose();
+        provider.dispose();
+        await db.close();
+      });
+
+      final observer = _RouteLog();
+      final unified = group();
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+              ChangeNotifierProvider<DownloadProvider>.value(value: downloads),
+              ChangeNotifierProvider<WatchStateStore>.value(value: watchState),
+              ChangeNotifierProvider<OfflineWatchSyncService>.value(value: offlineSync),
+            ],
+            child: MaterialApp(
+              navigatorObservers: [observer],
+              builder: withNoticeLayer(
+                (context, child) => OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: TextButton(
+                      onPressed: () => unawaited(
+                        openMobileMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          availabilityFor: (_) => SourceAvailability.online,
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('server_1').last);
+      await tester.pumpAndSettle();
+      expect(find.text('server_1'), findsOneWidget, reason: 'the card says which source the page reads');
+
+      final pushesBefore = observer.pushes;
+      final popsBefore = observer.pops;
+
+      await tester.ensureVisible(find.text(t.sourcePicker.change));
+      await tester.tap(find.text(t.sourcePicker.change));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('server_2').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('server_2'), findsOneWidget, reason: 'the card says which source Play starts from');
+      expect(find.text('Season 2'), findsNothing, reason: 'the seasons stay those of the main source');
+      expect(observer.pops - popsBefore, 0, reason: 'one page: nothing was replaced');
+      expect(observer.pushes - pushesBefore, 0);
+    });
+
+    testWidgets('a first choice of another source already keeps the main page', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 2));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      // As a catalog page hands it over: nobody has checked these servers yet.
+      final served = [UnifiedMediaSource.fromItem(show('server_1')), UnifiedMediaSource.fromItem(show('server_2'))];
+      final unified = UnifiedMediaGroup(
+        groupId: 'g1',
+        identity: CanonicalMediaIdentity.show(title: 'The Show'),
+        sources: served,
+        representativeSourceKey: served.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: served.first.sourceKey),
+      );
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.sourcePicker.sourceLabel(source: 'server_2')), findsOneWidget);
+      expect(find.text('Season 2'), findsNothing, reason: 'the page is the main source, whichever one plays');
+    });
+
+    testWidgets('a switch after a play starts at the last position, not the one the group was built with', (
+      tester,
+    ) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      MediaItem film(String server, {int? viewOffsetMs}) => MediaItem(
+        id: 'film',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'Sintel',
+        serverId: server,
+        serverName: server,
+        durationMs: 7200000,
+        viewOffsetMs: viewOffsetMs,
+        lastViewedAt: viewOffsetMs == null ? null : 1000,
+      );
+      final held = film('server_1', viewOffsetMs: 2400000);
+      final sources = [
+        UnifiedMediaSource.fromItem(held, availability: SourceAvailability.online),
+        UnifiedMediaSource.fromItem(film('server_2'), availability: SourceAvailability.online),
+      ];
+      final unified = UnifiedMediaGroup(
+        groupId: 'g1',
+        identity: CanonicalMediaIdentity.movie(title: 'Sintel', year: 2010),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: selectRepresentativeWatchState({for (final s in sources) s.sourceKey: s.item}),
+      );
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(
+          _FakeMediaServerClient(id: 'server_1', name: 'server_1', show: held, childrenByParent: const {}),
+        )
+        ..debugRegisterClientForTesting(
+          _FakeMediaServerClient(id: 'server_2', name: 'server_2', show: film('server_2'), childrenByParent: const {}),
+        );
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      final store = WatchStateStore();
+      addTearDown(store.dispose);
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+              ChangeNotifierProvider<WatchStateStore>.value(value: store),
+            ],
+            child: MaterialApp(
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_1');
+      await tester.pumpAndSettle();
+
+      // What a play on this page reported on its way out.
+      WatchStateNotifier().notifyProgress(item: held, viewOffset: 3000000, duration: 7200000, isFinal: true);
+      await tester.pump();
+
+      await _activateByLabel(tester, t.sourcePicker.change);
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      final route = tester.widget<UnifiedTitleScope>(find.byType(UnifiedTitleScope)).title?.routeContext;
+      expect(route?.sourceKey, 'server_2:film');
+      expect(route?.carriedResume, const Duration(milliseconds: 3000000));
+    });
+
+    testWidgets('a deleted copy does not come back with the next switch', (tester) async {
+      await SettingsService.getInstance();
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(clientFor('server_1', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_2', seasons: 1))
+        ..debugRegisterClientForTesting(clientFor('server_3', seasons: 1));
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(provider.dispose);
+      final sources = [source('server_1'), source('server_2'), source('server_3')];
+      final unified = UnifiedMediaGroup(
+        groupId: 'g1',
+        identity: CanonicalMediaIdentity.show(title: 'The Show'),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: sources.first.sourceKey),
+      );
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ChangeNotifierProvider<MultiServerProvider>.value(
+            value: provider,
+            child: MaterialApp(
+              builder: withNoticeLayer(
+                (context, child) => InputModeTracker(
+                  child: OverlaySheetHost(child: withProfileNavigationScope(child: child!)),
+                ),
+              ),
+              theme: monoTheme(dark: true),
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: FocusableWrapper(
+                      semanticLabel: 'open',
+                      onSelect: () => unawaited(
+                        activateUnifiedMediaGroup(
+                          context,
+                          group: unified,
+                          intent: UnifiedActivationIntent.details,
+                          environment: buildUnifiedActivationEnvironment(
+                            group: unified,
+                            health: unifiedServerHealth(isOnline: (_) => true, authErrorServerIds: const {}),
+                            catalogServerIds: const {'server_1', 'server_2', 'server_3'},
+                            availabilityRevision: ValueNotifier<int>(0),
+                          ),
+                        ),
+                      ),
+                      child: const Text('open'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await _activateByLabel(tester, 'open');
+      await tester.pumpAndSettle();
+      await _activateByLabel(tester, 'server_2');
+      await tester.pumpAndSettle();
+
+      DeletionNotifier().notifyDeletedItem(item: show('server_2'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      await _activateByLabel(tester, t.sourcePicker.change);
+      await tester.pumpAndSettle();
+      expect(find.text('server_2'), findsNothing, reason: 'no longer a choice');
+      await _activateByLabel(tester, 'server_3');
+      await tester.pumpAndSettle();
+
+      final route = tester.widget<UnifiedTitleScope>(find.byType(UnifiedTitleScope)).title?.routeContext;
+      expect(route?.sourceKey, 'server_3:show_1');
+      expect(route?.availableSourceKeys, unorderedEquals(['server_1:show_1', 'server_3:show_1']));
+      expect(route?.titleSources.map((s) => s.sourceKey), isNot(contains('server_2:show_1')));
     });
 
     testWidgets('F19/A14: the failure panel is the other door to the same switch', (tester) async {
@@ -3403,7 +3962,7 @@ void main() {
       final movie = MediaItem(
         id: 'movie_det3',
         backend: MediaBackend.jellyfin,
-        kind: MediaKind.movie,
+        kind: MediaKind.season,
         title: 'A Moderate Motion Picture Title',
         summary: longSummary,
         genres: const ['Drama'],
@@ -3499,7 +4058,7 @@ void main() {
       final movie = MediaItem(
         id: 'movie_det7_light',
         backend: MediaBackend.jellyfin,
-        kind: MediaKind.movie,
+        kind: MediaKind.season,
         title: 'A Moderate Motion Picture Title',
         summary: longSummary,
         genres: const ['Drama'],
@@ -3528,182 +4087,6 @@ void main() {
       );
     });
 
-    testWidgets('a series with season chips, cast and extras keeps title and the action row on screen', (tester) async {
-      final show = MediaItem(
-        id: 'show_det2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.show,
-        title: 'A Very Long Series Title For Overflow Testing',
-        summary: longSummary,
-        genres: const ['Drama', 'Mystery'],
-        roles: castRoles(8),
-        serverId: 'server_1',
-        serverName: 'Server',
-      );
-      final season1 = MediaItem(
-        id: 'season_1',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 1',
-        index: 1,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final season2 = MediaItem(
-        id: 'season_2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 2',
-        index: 2,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final episode1 = MediaItem(
-        id: 'episode_1',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.episode,
-        title: 'Episode 1',
-        index: 1,
-        parentId: season1.id,
-        parentIndex: season1.index,
-        grandparentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final episode2 = MediaItem(
-        id: 'episode_2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.episode,
-        title: 'Episode 2',
-        index: 1,
-        parentId: season2.id,
-        parentIndex: season2.index,
-        grandparentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-
-      final client = _FakeMediaServerClient(
-        show: show,
-        childrenByParent: {
-          show.id: [season1, season2],
-          season1.id: [episode1],
-          season2.id: [episode2],
-        },
-        extras: extraItems(6),
-      );
-      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-      final provider = MultiServerProvider(manager, DataAggregationService(manager));
-      addTearDown(provider.dispose);
-
-      const panelSize = Size(1038, 584);
-      await pumpNestedDetail(tester, show, provider, panelSize: panelSize, nestedBoxSize: const Size(1038, 480));
-
-      expect(tester.takeException(), isNull);
-
-      expect(find.text('Season 1'), findsOneWidget);
-      // See the movie test above for why the synopsis specifically is not
-      // asserted here: the active episode rail (forced to full-width
-      // thumbnails, MOC-10) plus the season chip row already claims most of
-      // this adversarial 584-logical-px panel.
-      expect(find.text(show.title!), findsWidgets);
-
-      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
-      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
-    });
-
-    testWidgets('a series with season chips opened as a destination root keeps at least one line of synopsis', (
-      tester,
-    ) async {
-      // The follow-up to the two adversarial tests above: cast+extras
-      // together are enough to justify dropping the synopsis, but a lone
-      // season-chips + episode-rail hub on its own is ordinary content, not
-      // an edge case, and was still landing on the zero-line mandatory
-      // floor before the minimal tier was added. Opened as a destination
-      // root (see the moderate movie test above for why that matters) —
-      // nested under the shell topnav (INV-1's shorter content box), the
-      // same fixture still lands on zero: season chips plus any episode
-      // rail already exceed even the minimal budget in that box. That is a
-      // known, reported limitation (the shell-nested case feeling too
-      // dense for its available height), not something this tier fixes.
-      final show = MediaItem(
-        id: 'show_det2_minimal',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.show,
-        title: 'A Series With Season Chips And No Extra Hubs',
-        summary: longSummary,
-        genres: const ['Drama', 'Mystery'],
-        serverId: 'server_1',
-        serverName: 'Server',
-      );
-      final season1 = MediaItem(
-        id: 'season_1',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 1',
-        index: 1,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      // A second season only to satisfy `_tvDetailShowsSeasonChips`
-      // (`_seasons.length > 1`) — the chip row itself is what this test is
-      // about, so it needs to actually be showing.
-      final season2 = MediaItem(
-        id: 'season_2',
-        backend: MediaBackend.jellyfin,
-        kind: MediaKind.season,
-        title: 'Season 2',
-        index: 2,
-        parentId: show.id,
-        serverId: show.serverId,
-        serverName: show.serverName,
-      );
-      final episodes = [
-        for (var i = 1; i <= 4; i++)
-          MediaItem(
-            id: 'episode_$i',
-            backend: MediaBackend.jellyfin,
-            kind: MediaKind.episode,
-            title: 'Episode $i',
-            index: i,
-            parentId: season1.id,
-            parentIndex: season1.index,
-            grandparentId: show.id,
-            serverId: show.serverId,
-            serverName: show.serverName,
-          ),
-      ];
-
-      final client = _FakeMediaServerClient(
-        show: show,
-        childrenByParent: {
-          show.id: [season1, season2],
-          season1.id: episodes,
-          season2.id: const [],
-        },
-      );
-      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-      final provider = MultiServerProvider(manager, DataAggregationService(manager));
-      addTearDown(provider.dispose);
-
-      const panelSize = Size(1038, 584);
-      await pumpNestedDetail(tester, show, provider, panelSize: panelSize, nestedBoxSize: panelSize);
-
-      expect(tester.takeException(), isNull);
-      expect(find.text('Season 1'), findsOneWidget);
-
-      final summaryFinder = find.text(show.summary!);
-      expect(summaryFinder, findsOneWidget, reason: 'the minimal tier should keep at least one synopsis line');
-      final summaryText = tester.widget<Text>(summaryFinder);
-      expect(summaryText.maxLines, greaterThanOrEqualTo(1));
-
-      final playButtonRect = rectOfFocusLabel(tester, 'play_button');
-      expect(playButtonRect.bottom, lessThanOrEqualTo(panelSize.height));
-    });
-
     testWidgets('a title with more genres than fit on one line wraps to a second instead of hiding them', (
       tester,
     ) async {
@@ -3729,7 +4112,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
 
-      final genreFinder = find.text(movie.genres!.join('  •  '));
+      final genreFinder = find.text(movie.genres!.join(', '));
       expect(genreFinder, findsOneWidget, reason: 'the full genre list should still render as one string, wrapped');
       final genreText = tester.widget<Text>(genreFinder);
       expect(
@@ -3746,121 +4129,9 @@ void main() {
   // ---------------------------------------------------------------------------
   // DET4: de seizoenchiprij reserveert de hoogte die een chip werkelijk vraagt
   // ---------------------------------------------------------------------------
-
-  testWidgets('DET4: a season chip fits inside the band the row reserves for it', (tester) async {
-    await SettingsService.getInstance();
-
-    // Dezelfde show/seizoen/aflevering-opbouw als 'TV detail completes adjacent
-    // prefetch after focus moves to that season'. Twee seizoenen, want
-    // `_tvDetailShowsSeasonChips` vraagt `_seasons.length > 1`.
-    final show = MediaItem(
-      id: 'show_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.show,
-      title: 'The Show',
-      serverId: 'server_1',
-      serverName: 'Server',
-    );
-    final season1 = MediaItem(
-      id: 'season_1',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 1',
-      index: 1,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final season2 = MediaItem(
-      id: 'season_2',
-      backend: MediaBackend.jellyfin,
-      kind: MediaKind.season,
-      title: 'Season 2',
-      index: 2,
-      parentId: show.id,
-      serverId: show.serverId,
-      serverName: show.serverName,
-    );
-    final client = _FakeMediaServerClient(
-      show: show,
-      childrenByParent: {
-        show.id: [season1, season2],
-        season1.id: const <MediaItem>[],
-      },
-    );
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-    final provider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(provider.dispose);
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: ChangeNotifierProvider<MultiServerProvider>.value(
-          value: provider,
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: withProfileNavigationScope(
-              child: SizedBox(width: 1280, height: 720, child: MediaDetailScreen(metadata: show)),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    final band = find.byWidgetPredicate((w) => w is AutomationNode && w.id == AutomationIds.mediaDetailSeasonChips);
-    expect(band, findsOneWidget);
-
-    // De band die de rij krijgt, en de hoogte die de eerste chip werkelijk
-    // oplevert. `_tvDetailSeasonChipContentHeight` meet alleen tekst plus de
-    // verticale padding: niet de 1px border van de chip zelf, en niet de
-    // 2.5px border die `FocusTheme.focusDecoration` onvoorwaardelijk om het
-    // kind legt, ook ongefocust en ook transparant.
-    final bandHeight = tester.getSize(band).height;
-    final chipFinder = find.descendant(of: band, matching: find.byType(FocusableWrapper)).first;
-    final chipHeight = tester.getSize(chipFinder).height;
-
-    expect(
-      chipHeight,
-      lessThanOrEqualTo(bandHeight),
-      reason:
-          'the rendered size stays clamped to the band by construction (Row/SizedBox); this only '
-          'guards that clamp still holding, it cannot prove the chip actually fits, see the '
-          'intrinsic-height assertion below for that',
-    );
-
-    // `tester.getSize` reads the chip's *rendered* size, which the `SizedBox`
-    // around the row's `Row` already clamps to `bandHeight` via a tight
-    // cross-axis constraint (RenderFlex hands every child a loose constraint
-    // capped at that same maxHeight). A chip that wants more height than the
-    // reservation would silently report the same clamped number as a chip
-    // that genuinely fits, so `chipHeight == bandHeight` above cannot by
-    // itself distinguish the two. `getMaxIntrinsicHeight` asks the chip's
-    // render tree what height it wants with no ceiling at all, which the
-    // clamp above cannot mask.
-    final chipIntrinsicHeight = tester.renderObject<RenderBox>(chipFinder).getMaxIntrinsicHeight(double.infinity);
-
-    expect(
-      chipIntrinsicHeight,
-      lessThanOrEqualTo(bandHeight),
-      reason:
-          'the chip\'s true, unclamped desired height must fit the band; a clamped '
-          'tester.getSize comparison alone cannot tell a fit from a squeeze',
-    );
-
-    // VIS2/37 C: the heading and the chips are one line, and the rail under
-    // it does not name the season hub a second time.
-    final heading = find.descendant(of: band, matching: find.text(t.libraries.groupings.episodes));
-    expect(heading, findsOneWidget);
-    expect(find.text(t.libraries.groupings.episodes), findsOneWidget);
-    expect(tester.getCenter(heading).dy, moreOrLessEquals(tester.getCenter(chipFinder).dy, epsilon: 1));
-    expect(tester.getTopLeft(chipFinder).dx, greaterThan(tester.getTopRight(heading).dx));
-  });
 }
+
+Finder _tvTab(String label) => find.descendant(of: find.byType(TvDetailTabPill), matching: find.text(label));
 
 Future<void> _press(WidgetTester tester, LogicalKeyboardKey key) async {
   await tester.sendKeyDownEvent(key);
@@ -3976,15 +4247,35 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.pendingPlayableDescendants,
     this.extras = const [],
     this.fileInfo,
+    this.fileInfoFuture,
+    this.onDeck,
+    this.episodes = const [],
+    this.playableFuture,
     this.id = 'server_1',
     this.name = 'Server',
   });
+
+  final markedWatched = <String>[];
+
+  @override
+  Future<void> markWatched(MediaItem item) async => markedWatched.add(item.id);
+
+  /// Held open by a test that changes the source while the table loads.
+  final Future<MediaFileInfo?>? fileInfoFuture;
+  final MediaItem? onDeck;
+  final List<MediaItem> episodes;
+
+  /// Held open by a test in which this server answers later than the page.
+  final Future<List<MediaItem>>? playableFuture;
+
+  @override
+  Future<List<MediaItem>> fetchPlayableDescendants(String parentId) async => playableFuture ?? episodes;
 
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => extras;
 
   @override
-  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => fileInfo;
+  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => fileInfoFuture ?? fileInfo;
 
   /// D14 mounts two of these at once, so the server a fake speaks for has to
   /// be a parameter rather than a constant.
@@ -4005,7 +4296,7 @@ class _FakeMediaServerClient implements MediaServerClient {
 
   @override
   Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async {
-    return (item: show, onDeckEpisode: null);
+    return (item: show, onDeckEpisode: onDeck);
   }
 
   @override
@@ -4045,6 +4336,14 @@ class _FakeMediaServerClient implements MediaServerClient {
 
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => const [];
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchPersonMediaPage(
+    String personId, {
+    int? start,
+    int? size,
+    AbortController? abort,
+  }) async => const LibraryPage(items: [], totalCount: 0);
 
   @override
   Future<MediaItem?> fetchItem(String id) async {

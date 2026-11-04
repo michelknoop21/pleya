@@ -10,6 +10,79 @@ import 'package:pleya/utils/media_server_http_client.dart';
 
 void main() {
   group('PlexAuthService', () {
+    test('getUserProfile accepts a text review language without losing audio preferences', () async {
+      final client = MediaServerHttpClient(
+        client: MockClient(
+          (request) async => http.Response(
+            jsonEncode({
+              'profile': {
+                'mediaReviewsLanguages': 'en',
+                'defaultAudioLanguages': ['nld'],
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+      addTearDown(client.close);
+      final auth = PlexAuthService.forTesting(http: client);
+
+      final profile = await auth.getUserProfile('account-token');
+
+      expect(profile.mediaReviewsLanguages, ['en']);
+      expect(profile.defaultAudioLanguages, ['nld']);
+    });
+
+    for (final status in [401, 403]) {
+      test('switchToUser still rejects HTTP $status', () async {
+        final client = MediaServerHttpClient(
+          client: MockClient(
+            (request) async => http.Response('{"errors":[]}', status, headers: {'content-type': 'application/json'}),
+          ),
+        );
+        addTearDown(client.close);
+        final auth = PlexAuthService.forTesting(http: client);
+
+        await expectLater(
+          auth.switchToUser('home-user', 'account-token', pin: '1234'),
+          throwsA(isA<MediaServerHttpException>().having((e) => e.statusCode, 'statusCode', status)),
+        );
+      });
+    }
+
+    for (final admin in [true, false]) {
+      for (final languages in <Object?>[
+        'en',
+        <String>['en', 'nl'],
+        null,
+      ]) {
+        test('switchToUser parses review languages $languages for homeAdmin=$admin', () async {
+          final client = MediaServerHttpClient(
+            client: MockClient((request) async {
+              expect(request.url.path, '/api/v2/home/users/home-user/switch');
+              return http.Response(
+                jsonEncode(_userSwitchJson(admin: admin, reviewLanguages: languages)),
+                200,
+                headers: {'content-type': 'application/json'},
+              );
+            }),
+          );
+          addTearDown(client.close);
+          final auth = PlexAuthService.forTesting(http: client);
+
+          final user = await auth.switchToUser('home-user', 'account-token', pin: '1234');
+
+          expect(user.authToken, 'user-token');
+          expect(user.homeAdmin, admin);
+          expect(user.protected, isTrue);
+          expect(user.profile.mediaReviewsLanguages, languages is String ? [languages] : languages);
+          expect(user.profile.defaultAudioLanguages, ['nld']);
+          expect(user.profile.defaultSubtitleLanguages, ['eng']);
+        });
+      }
+    }
+
     test('fetchServers retries resources through plex.tv after clients host transport failure', () async {
       final hosts = <String>[];
       final client = MediaServerHttpClient(
@@ -106,6 +179,30 @@ void main() {
     });
   });
 }
+
+Map<String, dynamic> _userSwitchJson({required bool admin, Object? reviewLanguages}) => {
+  'id': 1,
+  'uuid': 'home-user',
+  'title': 'Test Home user',
+  'confirmed': true,
+  'joinedAt': 0,
+  'emailOnlyAuth': false,
+  'hasPassword': true,
+  'protected': true,
+  'thumb': '',
+  'authToken': 'user-token',
+  'restricted': !admin,
+  'home': true,
+  'guest': false,
+  'homeSize': 2,
+  'homeAdmin': admin,
+  'maxHomeSize': 15,
+  'twoFactorEnabled': false,
+  'backupCodesCreated': false,
+  'defaultAudioLanguages': ['nld'],
+  'defaultSubtitleLanguages': ['eng'],
+  'mediaReviewsLanguages': reviewLanguages,
+};
 
 Map<String, dynamic> _serverJson({
   String name = 'Home Server',

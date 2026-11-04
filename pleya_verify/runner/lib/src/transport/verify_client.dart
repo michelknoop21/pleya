@@ -209,6 +209,9 @@ class VerifyClient {
   Future<Map<String, Object?>> configureWindow(double width, double height) =>
       _postJson('/v1/window', {'width': width, 'height': height});
 
+  Future<Map<String, Object?>> configureOrientation(String orientation) =>
+      _postJson('/v1/window', {'orientation': orientation});
+
   Future<Map<String, Object?>> overlay({bool? enabled, bool? showIds, bool? showBounds}) => _postJson('/v1/overlay', {
     if (enabled != null) 'enabled': enabled,
     if (showIds != null) 'showIds': showIds,
@@ -234,11 +237,13 @@ class VerifyClient {
     required String username,
     required String password,
     String? setupCode,
+    String? backend,
   }) => _postJson('/v1/signin', {
     'base_url': baseUrl,
     'username': username,
     'password': password,
     if (setupCode != null) 'setup_code': setupCode,
+    if (backend != null) 'backend': backend,
   }, limit: signinTimeout);
 
   Future<Map<String, Object?>> connectionsSeed({
@@ -263,8 +268,8 @@ class VerifyClient {
   Future<Map<String, Object?>> seedSeerr({required String baseUrl, required String apiKey}) =>
       _postJson('/v1/seerr/seed', {'base_url': baseUrl, 'api_key': apiKey});
 
-  Future<Map<String, Object?>> seedProfile({required String displayName}) =>
-      _postJson('/v1/profiles/seed', {'display_name': displayName});
+  Future<Map<String, Object?>> seedProfile({required String displayName, String? pin}) =>
+      _postJson('/v1/profiles/seed', {'display_name': displayName, 'pin': ?pin});
 
   void close() => _http.close();
 

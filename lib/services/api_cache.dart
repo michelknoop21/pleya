@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import '../media/ids.dart';
 
 import 'package:drift/drift.dart';
@@ -20,6 +21,8 @@ import '../utils/isolate_helper.dart';
 /// implement the abstract [getMetadata] / [pinForOffline] / [deleteForItem]
 /// methods so callers can dispatch via [forBackend] instead of switching on
 /// the backend type at every call site.
+typedef ApiCacheEncoder = Future<String> Function(Map<String, dynamic> data);
+
 abstract class ApiCache {
   static ApiCache? _instance;
 
@@ -56,7 +59,9 @@ abstract class ApiCache {
 
   final AppDatabase _db;
 
-  ApiCache(this._db);
+  ApiCache(this._db, {ApiCacheEncoder? encoder}) : _encoder = encoder ?? _encodeJson;
+  final ApiCacheEncoder _encoder;
+  static Future<String> _encodeJson(Map<String, dynamic> data) => tryIsolateRun(() => jsonEncode(data));
 
   /// Direct database access for services that need to query the cache table
   /// outside the standard get/put surface (e.g. playback initialisation that
@@ -78,12 +83,43 @@ abstract class ApiCache {
 
   Future<void> put(ServerId serverId, String endpoint, Map<String, dynamic> data) async {
     final key = _buildKey(serverId, endpoint);
-    final encoded = await tryIsolateRun(() => jsonEncode(data));
+    final encoded = await _encoder(data);
     await _db
         .into(_db.apiCache)
         .insertOnConflictUpdate(
           ApiCacheCompanion(cacheKey: Value(key), data: Value(encoded), cachedAt: Value(DateTime.now())),
         );
+  }
+
+  // Fixed stripes in the client isolate share order across wrapper instances. No key
+  // map grows with the catalog. Collisions only serialize unrelated guarded
+  // writes; ordinary put is unchanged. Reserve before encode, release after SQL.
+  static final _guardedPublications = List<Future<void>>.generate(16, (_) => Future<void>.value());
+
+  Future<void> putIfCurrent(
+    ServerId serverId,
+    String endpoint,
+    Map<String, dynamic> data,
+    bool Function() isCurrent,
+  ) async {
+    final key = _buildKey(serverId, endpoint);
+    final lane = key.hashCode & 15;
+    final previous = _guardedPublications[lane];
+    final complete = Completer<void>();
+    _guardedPublications[lane] = complete.future;
+    try {
+      final encoded = await _encoder(data);
+      await previous;
+      if (!isCurrent()) return;
+      await _db
+          .into(_db.apiCache)
+          .insertOnConflictUpdate(
+            ApiCacheCompanion(cacheKey: Value(key), data: Value(encoded), cachedAt: Value(DateTime.now())),
+          );
+    } finally {
+      await previous; // Encoding/guard failures must also retain FIFO order.
+      complete.complete();
+    }
   }
 
   /// Drop a single cached endpoint. Pinned rows are removed too; call

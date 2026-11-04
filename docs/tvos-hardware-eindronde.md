@@ -60,12 +60,12 @@ terrein.
 | Speler | `tvos.player.osd` | controle |
 | Spelerpaneel | `tvos.player.panel` | na PLR6 |
 | Zoeken | `tvos.search.results` | controle |
-| Mijn Pleya | `tvos.my-pleya.sections`, `tvos.my-pleya.regression` | controle |
+| Mijn Pleya | `tvos.my-pleya.v4`, `tvos.my-pleya.regression` | controle |
 | Bibliotheken | `tvos.my-pleya.libraries-bronbeheer` | controle, plus REV1b |
 | Kijklijst | geen (WL2 ACCEPTANCE GAP) | HARDWARE ONLY |
 | Aanvragen | `tvos.my-pleya.requests-discover` zonder Menu | HARDWARE ONLY |
 | Activiteit | geen (ACT1 wacht op PS-9) | HARDWARE ONLY |
-| Instellingen | `tvos.settings.*`, `tvos.my-pleya.section-settings` | controle, plus DENS1 |
+| Instellingen | `tvos.settings.*`, `tvos.server.status` | controle, plus DENS1 |
 | Profielwissel | `tvos.profile.picker` | controle, plus PROF1 |
 | Offline | `tvos.offline.home` zonder Menu | HARDWARE ONLY |
 | Herstel na verbroken server | `tvos.nav.reconnect-pill-focus` zonder Menu | HARDWARE ONLY |

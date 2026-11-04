@@ -169,8 +169,37 @@ void main() {
       expect(titleSort['SortOrder'], 'Ascending');
 
       final addedSort = translator.toQueryParameters(const LibraryQuery(sort: LibrarySort(field: 'addedAt')));
-      expect(addedSort['SortBy'], 'DateCreated');
+      expect(addedSort['SortBy'], 'DateCreated,SortName');
       expect(addedSort['SortOrder'], 'Descending');
+    });
+
+    group('equal values page stably', () {
+      Map<String, dynamic> params(String field, LibrarySortDirection direction) => translator.toQueryParameters(
+        LibraryQuery(
+          kind: MediaKind.movie,
+          sort: LibrarySort(field: field, direction: direction),
+        ),
+      );
+
+      test('every sort ends on SortName, so a page boundary cannot fall inside a tie arbitrarily', () {
+        expect(params('addedAt', LibrarySortDirection.ascending)['SortBy'], 'DateCreated,SortName');
+        expect(params('year', LibrarySortDirection.ascending)['SortOrder'], 'Ascending');
+      });
+
+      test('one SortOrder: the direction, which both Jellyfin and Emby read', () {
+        final descending = params('criticRating', LibrarySortDirection.descending);
+        expect(descending['SortBy'], 'CriticRating,SortName');
+        expect(descending['SortOrder'], 'Descending');
+      });
+
+      test('a sort on the name needs no second key', () {
+        expect(params('title', LibrarySortDirection.descending)['SortBy'], 'SortName');
+        expect(params('title', LibrarySortDirection.descending)['SortOrder'], 'Descending');
+      });
+
+      test('Random stays random', () {
+        expect(params('random', LibrarySortDirection.ascending)['SortBy'], 'Random');
+      });
     });
 
     test('Streamyfin broad sort keys map to Jellyfin ItemSortBy values', () {
@@ -188,7 +217,7 @@ void main() {
 
       for (final entry in cases.entries) {
         final params = translator.toQueryParameters(LibraryQuery(sort: LibrarySort(field: entry.key)));
-        expect(params['SortBy'], entry.value, reason: entry.key);
+        expect((params['SortBy'] as String).split(',').first, entry.value.split(',').first, reason: entry.key);
       }
     });
 
@@ -199,7 +228,7 @@ void main() {
           sort: LibrarySort(field: 'lastViewedAt'),
         ),
       );
-      expect(showSort['SortBy'], 'SeriesDatePlayed');
+      expect(showSort['SortBy'], 'SeriesDatePlayed,SortName');
 
       final movieSort = translator.toQueryParameters(
         const LibraryQuery(
@@ -207,7 +236,7 @@ void main() {
           sort: LibrarySort(field: 'lastViewedAt'),
         ),
       );
-      expect(movieSort['SortBy'], 'DatePlayed');
+      expect(movieSort['SortBy'], 'DatePlayed,SortName');
     });
 
     test('episode added sort maps to Jellyfin series content added sort', () {

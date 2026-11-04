@@ -500,6 +500,7 @@ class AssistantIntent {
         if (unseenInLibrary) return (args: out, error: 'use_search_catalog');
         if (tonightPick) return (args: out, error: 'use_search_catalog');
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        if (days.explicit) out['days'] = days.value;
     }
     return (args: out, error: null);
   }

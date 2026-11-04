@@ -22,14 +22,13 @@ steps:
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
-  - settle: 600
-  # With Seerr connected the content group starts with Aanvragen.
+  # A-24c: Select changes the page and leaves the remote on the pill;
+  # DOWN takes it in (LEESMIJ-v4, review 557-I4).
   - press: down
-  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
-  # A-24b: Aanvragen is level with the Big P card at the top of the right
-  # column, so Right from it crosses straight onto Big P.
-  - press: right
-  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - settle: 600
+  # A-24c: Down from the pill puts the remote on Big P, the first content
+  # action.
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - press: select
   - wait_until: {focused: "assistant.button[setup]", timeout: 10000}
   - press: select

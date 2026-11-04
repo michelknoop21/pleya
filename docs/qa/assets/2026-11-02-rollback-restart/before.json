@@ -1,0 +1,13 @@
+{
+  "schema_migrations": "30:3fd5d949b6a333f42d73a3bcfe45a34f",
+  "server_instance": "1:7773ab919d41b40ae2145a38ceb9549f",
+  "users": "4:0a5c984260818cbccba622b78d9a8361",
+  "libraries": "1:e4ac31b20fcd7ab8a09d0b1b174c8f2a",
+  "media_items": "1:6d26dade3773ab04750b8c5f6e649da9",
+  "library_permissions": "2:da2fc129b0b22c529666c658f942f145",
+  "watch_states": "2:027befa6b1c428f0b46e6e5029ec2fe7",
+  "favorites": "1:230f525a29803b2221bb56ef662c16fb",
+  "ratings": "1:105aabe6a6b057f9d7588d8de7396ff2",
+  "server_settings": "1:6c35e0b3701e7e437b9657b6ce232237",
+  "signing_sha256": "b595a3f0b50158e441d6a7a4857b74ec5c4d183f6fb4105478abed19c1d4153b"
+}

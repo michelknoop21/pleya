@@ -1,0 +1,10 @@
+import { render,screen,waitFor } from '@testing-library/svelte';
+import userEvent from '@testing-library/user-event';
+import {expect,it,vi} from 'vitest';
+import {setLocale} from '../i18n';
+const h=vi.hoisted(()=>({admin:false,next:null as string|null,goto:vi.fn(),login:vi.fn(async()=>{}),afterAuth:vi.fn(async()=>{})}));
+vi.mock('#lib/stores/session.svelte.js',()=>({session:{get canAdminister(){return h.admin;},capabilities:null,error:null,client:{login:h.login},afterAuth:h.afterAuth}}));
+vi.mock('$app/navigation',()=>({goto:h.goto}));
+vi.mock('$app/state',()=>({page:{get url(){const u=new URL('http://localhost/login');if(h.next)u.searchParams.set('next',h.next);return u;}}}));
+import Login from '../../routes/login/+page.svelte';
+for(const admin of [true,false])for(const next of [null,'/setup','https://bad.test'])it(`echte login admin=${admin} next=${next}`,async()=>{setLocale('nl');h.goto.mockClear();h.admin=admin;h.next=next;const user=userEvent.setup();render(Login);await user.type(screen.getByLabelText('Gebruikersnaam'),'owner');await user.type(screen.getByLabelText('Wachtwoord',{exact:true}),'fixture');await user.click(screen.getByRole('button',{name:'Inloggen'}));await waitFor(()=>expect(h.goto).toHaveBeenCalledWith(next==='/setup'&&admin?'/setup':'/',{replace:true}));});

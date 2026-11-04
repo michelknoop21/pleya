@@ -1,0 +1,344 @@
+{
+  "source": "0ae3ca2022b3b08077a1196b18c81ee6ca871bd3",
+  "full_evidence": "/tmp/task5-combined-native-1102",
+  "selected": [
+    {
+      "scenario": "ios.catalog.header-collapse",
+      "screen": "catalog-top-back-mid-list",
+      "size": "750x1334",
+      "file": "bundles/ios-catalog-header-collapse-1793607385540/screenshots/catalog-top-back-mid-list.png",
+      "sha256": "0472c408353887c0295a7923e5f13a1035f3083ee39a720dc8b495e1f8b519fb",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/ios.catalog.header-collapse.png"
+    },
+    {
+      "scenario": "ios.library.local-offline",
+      "screen": "03-offline-posters",
+      "size": "750x1334",
+      "file": "bundles/ios-library-local-offline-1793607532514/screenshots/03-offline-posters.png",
+      "sha256": "d698d40bf059d75ea6a8e3d365ae1159e98e49b8c4212c4806bb81c2414d5956",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/ios.library.local-offline.png"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "screen": "01-row2",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-grid-1793607653771/screenshots/01-row2.png",
+      "sha256": "260fbe66b7e9cdf78bf4a4cc7f8eedb774714a39b3b64b1fa1b19d01cae09f63",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/tvos.catalog.full-bleed.grid.png"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "screen": "03-landed-on-b",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-jump-1793607718289/screenshots/03-landed-on-b.png",
+      "sha256": "42288c98c19a3273e341e6586cdcf4128d4887be0610c471335ae29e3c0c258f",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/tvos.catalog.full-bleed.jump.png"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "00-bronbeheer-list",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/00-bronbeheer-list.png",
+      "sha256": "af1d4e03e497d0b33a7912103da7e075471eed1f174d3453cd707d30cd65a1a4",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/tvos.my-pleya.libraries-cinema.png"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-remote-hold",
+      "screen": "02-followup-input-still-works",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-remote-hold-1793607799485/screenshots/02-followup-input-still-works.png",
+      "sha256": "5e7448faa6a2e2f7e522d2ac7cb578a3d6fa8271601b3f3d35be1d593c8cb658",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/tvos.my-pleya.libraries-remote-hold.png"
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "screen": "01-held-left-lands-on-home",
+      "size": "3840x2160",
+      "file": "bundles/tvos-nav-held-press-lands-once-1793607842567/screenshots/01-held-left-lands-on-home.png",
+      "sha256": "1907c8e68bdd2d35de0e6a7ef7879e10fc0cefe9c9089e0c7b0b82b6c373ca3e",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/tvos.nav.held-press-lands-once.png"
+    },
+    {
+      "scenario": "tvos.profile.picker",
+      "screen": "01-picker",
+      "size": "3840x2160",
+      "file": "bundles/tvos-profile-picker-1793607871125/screenshots/01-picker.png",
+      "sha256": "051a45c2259db0a1c2b1d3d44b9934739f5eec6d9904031fcd40c6eeae08bbfa",
+      "personally_viewed": true,
+      "tracked_file": "docs/qa/assets/2026-11-02-server-gap-native34/tvos.profile.picker.png"
+    }
+  ],
+  "all_screenshots": [
+    {
+      "scenario": "ios.catalog.header-collapse",
+      "screen": "catalog-bottom-edge",
+      "size": "750x1334",
+      "file": "bundles/ios-catalog-header-collapse-1793607385540/screenshots/catalog-bottom-edge.png",
+      "sha256": "e74a59d46a046c7cd2778b83a2ba89f078d681c0743003c83abc3afa6c64d2b8",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.catalog.header-collapse",
+      "screen": "catalog-top-back-mid-list",
+      "size": "750x1334",
+      "file": "bundles/ios-catalog-header-collapse-1793607385540/screenshots/catalog-top-back-mid-list.png",
+      "sha256": "0472c408353887c0295a7923e5f13a1035f3083ee39a720dc8b495e1f8b519fb",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.catalog.header-collapse",
+      "screen": "catalog-top-hidden",
+      "size": "750x1334",
+      "file": "bundles/ios-catalog-header-collapse-1793607385540/screenshots/catalog-top-hidden.png",
+      "sha256": "d0976cae90e75f9fd78fbed68155fd71a6a139e3d04b3133ccf1cb71d0688c0b",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.catalog.header-collapse",
+      "screen": "catalog-top-shown",
+      "size": "750x1334",
+      "file": "bundles/ios-catalog-header-collapse-1793607385540/screenshots/catalog-top-shown.png",
+      "sha256": "5cc3da2d85a8bf2a48fcc8b758b33f966826e62ea83c6ccf00bb8ee043847857",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.library.local-offline",
+      "screen": "01-defaults",
+      "size": "750x1334",
+      "file": "bundles/ios-library-local-offline-1793607532514/screenshots/01-defaults.png",
+      "sha256": "a5cae37cbc958fb2083b9babf9fa2265f40efc4577a8f83ff20992182c1819ff",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.library.local-offline",
+      "screen": "02-stored",
+      "size": "750x1334",
+      "file": "bundles/ios-library-local-offline-1793607532514/screenshots/02-stored.png",
+      "sha256": "adfd9f67b3b12508b34149082f13172c19b26584451b76efb19be1ae6a261032",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.library.local-offline",
+      "screen": "03-offline-posters",
+      "size": "750x1334",
+      "file": "bundles/ios-library-local-offline-1793607532514/screenshots/03-offline-posters.png",
+      "sha256": "d698d40bf059d75ea6a8e3d365ae1159e98e49b8c4212c4806bb81c2414d5956",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.library.local-offline",
+      "screen": "04-offline-search",
+      "size": "750x1334",
+      "file": "bundles/ios-library-local-offline-1793607532514/screenshots/04-offline-search.png",
+      "sha256": "fabb3c6ca847a3d2022ecba7bf525e46c9a4c0eff0da2f0b3cb935892135b120",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "ios.library.local-offline",
+      "screen": "05-offline-detail",
+      "size": "750x1334",
+      "file": "bundles/ios-library-local-offline-1793607532514/screenshots/05-offline-detail.png",
+      "sha256": "8ea73085993e0cd2c60c6d960a396769b06c437d141a3fe1ed707b1a36fcbd9f",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "screen": "00-rest",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-grid-1793607653771/screenshots/00-rest.png",
+      "sha256": "d936974a8aa8bf462b77e32aece82f55734888473bc6060c8a76253e70e01ba4",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "screen": "01-row2",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-grid-1793607653771/screenshots/01-row2.png",
+      "sha256": "260fbe66b7e9cdf78bf4a4cc7f8eedb774714a39b3b64b1fa1b19d01cae09f63",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "screen": "02-landing",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-grid-1793607653771/screenshots/02-landing.png",
+      "sha256": "616f9042d1c2c1df0a5737ada36339310712f8c6734e8780cd30165ae2f792d0",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "screen": "00-all-loaded",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-jump-1793607718289/screenshots/00-all-loaded.png",
+      "sha256": "cc59599aff21cb84dbcff3d829819a8cd4622dd0a51f9957224ffcf671a0af5c",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "screen": "01-after-presses",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-jump-1793607718289/screenshots/01-after-presses.png",
+      "sha256": "1cb40a73734ce7911cc19234e4dedf608de787cb3ace31acf5029de12badb7ca",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "screen": "02-letters",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-jump-1793607718289/screenshots/02-letters.png",
+      "sha256": "68fc09e253916d3635b2772b458d8441c2bb41ecbcd0d9301fd5d87e8e089840",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "screen": "03-landed-on-b",
+      "size": "3840x2160",
+      "file": "bundles/tvos-catalog-full-bleed-jump-1793607718289/screenshots/03-landed-on-b.png",
+      "sha256": "42288c98c19a3273e341e6586cdcf4128d4887be0610c471335ae29e3c0c258f",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "00-bronbeheer-list",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/00-bronbeheer-list.png",
+      "sha256": "af1d4e03e497d0b33a7912103da7e075471eed1f174d3453cd707d30cd65a1a4",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "01-action-sheet-movies",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/01-action-sheet-movies.png",
+      "sha256": "995a9c409417bafcf0ad34575dc0cd9addc445385a606969bf343919e301a0ac",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "02-sheet-closed",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/02-sheet-closed.png",
+      "sha256": "af1d4e03e497d0b33a7912103da7e075471eed1f174d3453cd707d30cd65a1a4",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "02b-cinema-order-picked",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/02b-cinema-order-picked.png",
+      "sha256": "f6b232d9ebfcf8ddb6722236b404e59ae5cdad66bf9c3060f7e9a99b397be126",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "02c-cinema-order-closed",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/02c-cinema-order-closed.png",
+      "sha256": "af1d4e03e497d0b33a7912103da7e075471eed1f174d3453cd707d30cd65a1a4",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "03-opened-in-catalog",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/03-opened-in-catalog.png",
+      "sha256": "9370842d34053b20b24fe50885dd41583bcf0e09c39fe70fe9c920d3ec0cb541",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "screen": "04-back-on-row",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-cinema-1793607759863/screenshots/04-back-on-row.png",
+      "sha256": "af1d4e03e497d0b33a7912103da7e075471eed1f174d3453cd707d30cd65a1a4",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-remote-hold",
+      "screen": "00-held-select-one-sheet",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-remote-hold-1793607799485/screenshots/00-held-select-one-sheet.png",
+      "sha256": "995a9c409417bafcf0ad34575dc0cd9addc445385a606969bf343919e301a0ac",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-remote-hold",
+      "screen": "01-held-reorder-server-order",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-remote-hold-1793607799485/screenshots/01-held-reorder-server-order.png",
+      "sha256": "3f7bda3fddaba646d661d64390b15b730bc5052c17b2661b5c62e77c8611b1d1",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-remote-hold",
+      "screen": "02-followup-input-still-works",
+      "size": "3840x2160",
+      "file": "bundles/tvos-my-pleya-libraries-remote-hold-1793607799485/screenshots/02-followup-input-still-works.png",
+      "sha256": "5e7448faa6a2e2f7e522d2ac7cb578a3d6fa8271601b3f3d35be1d593c8cb658",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "screen": "00-series",
+      "size": "3840x2160",
+      "file": "bundles/tvos-nav-held-press-lands-once-1793607842567/screenshots/00-series.png",
+      "sha256": "10ed2955607e9b486bdd30d5664b97119da6a3556c4ae47ea6476e044837184d",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "screen": "01-held-left-lands-on-home",
+      "size": "3840x2160",
+      "file": "bundles/tvos-nav-held-press-lands-once-1793607842567/screenshots/01-held-left-lands-on-home.png",
+      "sha256": "1907c8e68bdd2d35de0e6a7ef7879e10fc0cefe9c9089e0c7b0b82b6c373ca3e",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "screen": "02-held-select-home",
+      "size": "3840x2160",
+      "file": "bundles/tvos-nav-held-press-lands-once-1793607842567/screenshots/02-held-select-home.png",
+      "sha256": "7588961b1656fe6038c65a10c26621f45e451ac14c597e7836da023e57a6e436",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "screen": "03-held-right-from-search-lands-on-home",
+      "size": "3840x2160",
+      "file": "bundles/tvos-nav-held-press-lands-once-1793607842567/screenshots/03-held-right-from-search-lands-on-home.png",
+      "sha256": "7588961b1656fe6038c65a10c26621f45e451ac14c597e7836da023e57a6e436",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.profile.picker",
+      "screen": "00-avatar-focused",
+      "size": "3840x2160",
+      "file": "bundles/tvos-profile-picker-1793607871125/screenshots/00-avatar-focused.png",
+      "sha256": "7cf6f7356fa28ab4ff06d1b894ec3608a963a09a6830b31c39111e6419aa3542",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.profile.picker",
+      "screen": "01-picker",
+      "size": "3840x2160",
+      "file": "bundles/tvos-profile-picker-1793607871125/screenshots/01-picker.png",
+      "sha256": "051a45c2259db0a1c2b1d3d44b9934739f5eec6d9904031fcd40c6eeae08bbfa",
+      "personally_viewed": true
+    },
+    {
+      "scenario": "tvos.profile.picker",
+      "screen": "02-back-on-avatar",
+      "size": "3840x2160",
+      "file": "bundles/tvos-profile-picker-1793607871125/screenshots/02-back-on-avatar.png",
+      "sha256": "125a7dd4f7273e6999eb37d4f82feed1aad8cf7bcd6dcc201384e7cb3d07897e",
+      "personally_viewed": true
+    }
+  ]
+}

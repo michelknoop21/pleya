@@ -9,6 +9,8 @@
  * `lib/i18n/en.i18n.json` en is dus dezelfde bron als de app, `web` bevat wat
  * alleen de webclient kent.
  */
+import { setupEn } from './webSetup';
+import { setupNl } from './webSetup.nl';
 import { shared, sharedNl } from './shared';
 import { web } from './web';
 import { webNl } from './web.nl';
@@ -21,11 +23,11 @@ export const LOCALE_STORAGE_KEY = 'pleya.locale';
 // Ontbreekt een sleutel in een catalogus, dan valt `t()` per sleutel terug op
 // Engels. `web.nl.ts` dwingt volledigheid af met `satisfies Record<WebKey, string>`.
 const catalogues: Record<Locale, Record<string, string>> = {
-  en: { ...shared, ...web },
-  nl: { ...sharedNl, ...webNl }
+  en: { ...shared, ...web, ...setupEn },
+  nl: { ...sharedNl, ...webNl, ...setupNl }
 };
 
-export type MessageKey = keyof typeof shared | keyof typeof web;
+export type MessageKey = keyof typeof shared | keyof typeof web | keyof typeof setupEn;
 
 let current: Locale = DEFAULT_LOCALE;
 

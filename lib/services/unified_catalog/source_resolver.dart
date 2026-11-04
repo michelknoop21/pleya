@@ -18,6 +18,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import '../../exceptions/identity_lookup_exceptions.dart';
 import '../../media/ids.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_identity.dart';
@@ -27,6 +28,8 @@ import '../../media/unified/source_coverage_state.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import '../api_cache.dart';
+import '../pleya_server_client.dart';
+import '../../media/unified/carried_external_ids.dart';
 
 /// The minimal per-server shape [fanOutFindAllByIdentity] needs: enough to
 /// decide whether a server can be asked at all, nothing about why it can't.
@@ -39,7 +42,11 @@ typedef FanOutServer = ({ServerId serverId, MediaServerClient? client, bool onli
 /// returned, and whether the lookup itself succeeded. `ok: false` covers
 /// "offline/no client" and "the call threw" alike — both mean this server
 /// was not actually checked.
-typedef SourceLookupOutcome = ({ServerId serverId, List<MediaItem> matches, bool ok});
+///
+/// [unsupported] marks a server that cannot answer this question at all (an
+/// older Pleya Server, an identity it cannot be asked by). It is still not
+/// checked, but retrying does not help, so it is reported apart from an outage.
+typedef SourceLookupOutcome = ({ServerId serverId, List<MediaItem> matches, bool ok, bool unsupported});
 
 /// Runs `findAllByIdentity(identity)` against [servers] in
 /// [maxConcurrent]-sized batches, in list order — deterministic, so two
@@ -55,22 +62,51 @@ Future<void> fanOutFindAllByIdentity({
   required bool Function(List<SourceLookupOutcome> batch) onBatch,
 }) async {
   for (var i = 0; i < servers.length; i += maxConcurrent) {
-    final batch = servers.skip(i).take(maxConcurrent);
+    final batch = servers.skip(i).take(maxConcurrent).toList();
+    final modes = {
+      for (final server in batch)
+        if (server.client is PleyaServerClient)
+          server.serverId: (server.client as PleyaServerClient).externalIdentitySource,
+    };
     final results = await Future.wait(
       batch.map((server) async {
         final client = server.client;
         if (!server.online || client == null) {
-          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: false);
         }
         try {
-          return (serverId: server.serverId, matches: await client.findAllByIdentity(identity), ok: true);
+          final matches = await client.findAllByIdentity(identity);
+          if (client.backend == MediaBackend.pleyaServer && client is! PleyaServerClient) {
+            final proven = [
+              for (final item in matches)
+                if (externalIdsCarriedBy(item) case final ids?)
+                  ...identity.pickAllMatches([(item: item, ids: ids)], allowTitleFallback: false),
+            ];
+            return (serverId: server.serverId, matches: proven, ok: proven.isNotEmpty, unsupported: false);
+          }
+          return (serverId: server.serverId, matches: matches, ok: true, unsupported: false);
+        } on IdentityLookupUnsupported catch (e) {
+          appLogger.d('findAllByIdentity unsupported on ${server.serverId}', error: e);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: true);
         } catch (e, st) {
           appLogger.d('findAllByIdentity failed on ${server.serverId}', error: e, stackTrace: st);
-          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false);
+          return (serverId: server.serverId, matches: const <MediaItem>[], ok: false, unsupported: false);
         }
       }),
     );
-    if (onBatch(results)) return;
+    final qualified = <SourceLookupOutcome>[
+      for (final result in results)
+        if (batch.firstWhere((s) => s.serverId == result.serverId).client case final PleyaServerClient client)
+          if (client.externalIdentitySource != modes[result.serverId] ||
+              result.matches.any((item) => !client.isStoredAppliedIdentityCurrent(item)) &&
+                  !client.usesLegacyExternalIdentity)
+            (serverId: result.serverId, matches: const <MediaItem>[], ok: false, unsupported: false)
+          else
+            result
+        else
+          result,
+    ];
+    if (onBatch(qualified)) return;
   }
 }
 
@@ -105,14 +141,17 @@ List<MediaItem> visibleMatchesFromServer(List<MediaItem> matches, ServerId serve
 /// Which backends can answer a catalogue-identity lookup at all.
 ///
 /// Same rule `WatchlistAvailabilityResolver` already established (hoofdstuk
-/// 1.2): a local folder and a Pleya Share have no guid and no external ids;
-/// neither does a Pleya Server (`external_ids` is PS-7). Counting one of
-/// them as "expected" would make coverage never complete for a group that
-/// includes one of their sources — they become eligible in the phase that
-/// gives them identity, not before.
+/// 1.2): a local folder and a Pleya Share have no guid and no external ids,
+/// so counting one of them as "expected" would make coverage never complete
+/// for a group that includes one of their sources.
+///
+/// Pleya Server answers since its items carry a TMDB number (`external_ids`).
+/// A server that cannot prove a title, say one that predates the field, throws
+/// from `findAllByIdentity` instead of answering empty, so it lands in
+/// coverage as unchecked and never as a silent "not here".
 bool isIdentityEligibleBackend(MediaBackend backend) => switch (backend) {
-  MediaBackend.plex || MediaBackend.jellyfin => true,
-  MediaBackend.local || MediaBackend.pleyaServer => false,
+  MediaBackend.plex || MediaBackend.jellyfin || MediaBackend.pleyaServer => true,
+  MediaBackend.local => false,
 };
 
 /// One server [SourceAllResolver] is allowed to ask, plus enough state to
@@ -176,6 +215,13 @@ List<EligibleSourceServer> eligibleSourceServers({
         hasAuthError: authErrorServerIds.contains(id),
       ),
   ];
+}
+
+String _identitySource(EligibleSourceServer server) {
+  final client = server.client;
+  if (client is PleyaServerClient) return 'pleya:${client.externalIdentitySource}';
+  if (client == null) return 'unknown';
+  return client.backend == MediaBackend.pleyaServer ? 'pleya:unknown' : 'backend:${client.backend.name}';
 }
 
 /// Result of [SourceAllResolver.resolveAllSourcesForGroup]: every concrete
@@ -283,9 +329,46 @@ class SourceAllResolver {
     final hiddenLibraryKeys = hiddenLibraryKeysFor?.call() ?? const <String>{};
     final visibility = _visibilityFingerprint(hiddenLibraryKeys);
 
+    final identitySources = {for (final server in eligible) server.serverId.value: _identitySource(server)};
+    bool current() {
+      final fresh = serversFor().where((s) => isIdentityEligibleBackend(s.backend)).toList();
+      if (fresh.length != eligible.length ||
+          _visibilityFingerprint(hiddenLibraryKeysFor?.call() ?? const {}) != visibility)
+        return false;
+      for (final old in eligible) {
+        final match = fresh.where((s) => s.serverId == old.serverId).firstOrNull;
+        if (match == null ||
+            ((old.client is PleyaServerClient ||
+                    match.client is PleyaServerClient ||
+                    old.backend == MediaBackend.pleyaServer) &&
+                !identical(match.client, old.client)) ||
+            match.online != old.online ||
+            match.hasAuthError != old.hasAuthError ||
+            _identitySource(match) != identitySources[old.serverId.value])
+          return false;
+      }
+      return true;
+    }
+
+    GroupSourceResolution unavailable() {
+      final ids = {for (final s in serversFor().where((s) => isIdentityEligibleBackend(s.backend))) s.serverId.value};
+      return (
+        items: const <MediaItem>[],
+        coverage: SourceCoverageState(
+          expectedServerIds: ids,
+          checkedServerIds: const {},
+          uncheckedReasons: {for (final id in ids) id: UncheckedSourceReason.lookupFailed},
+        ),
+      );
+    }
+
     final cacheKey = _identityCacheKey(identity);
-    final cached = await _readCache(cacheKey, visibility, eligible, expectedIds);
-    if (cached != null) return cached;
+    final cached = await _readCache(cacheKey, visibility, eligible, expectedIds, identity);
+    if (!current()) return unavailable();
+    if (cached != null &&
+        _appliedItemsCurrent(cached.items, eligible, identity) &&
+        _presentationsCurrent(cached.items, eligible))
+      return cached;
 
     final items = <MediaItem>[];
     final checked = <String>{};
@@ -304,13 +387,20 @@ class SourceAllResolver {
         for (final result in batch) {
           final id = result.serverId.toString();
           if (result.ok) {
+            final visible = visibleMatchesFromServer(result.matches, result.serverId, hiddenLibraryKeys);
+            if (identitySources[id] == 'pleya:applied' && visible.isEmpty) {
+              uncheckedReasons[id] = UncheckedSourceReason.lookupFailed;
+              continue;
+            }
             checked.add(id);
             // Before the result is kept, and therefore before it can be
             // cached: a filter behind the cache would be undone by the next
             // warm hit for up to [positiveTtl].
-            items.addAll(visibleMatchesFromServer(result.matches, result.serverId, hiddenLibraryKeys));
+            items.addAll(visible);
           } else {
-            uncheckedReasons[id] = UncheckedSourceReason.lookupFailed;
+            uncheckedReasons[id] = result.unsupported
+                ? UncheckedSourceReason.cannotBeAsked
+                : UncheckedSourceReason.lookupFailed;
           }
         }
         // Without a caller-supplied rule this never stops early: every
@@ -327,6 +417,8 @@ class SourceAllResolver {
       }
     }
 
+    if (!current() || (!_appliedItemsCurrent(items, eligible, identity) || !_presentationsCurrent(items, eligible)))
+      return unavailable();
     final coverage = SourceCoverageState(
       expectedServerIds: expectedIds,
       checkedServerIds: checked,
@@ -335,7 +427,21 @@ class SourceAllResolver {
 
     // A cancelled run asked fewer servers than it was going to; caching that
     // would freeze a deliberately partial answer for the full positive TTL.
-    if (!cancelled) await _writeCache(cacheKey, visibility, items: items, coverage: coverage);
+    if (!cancelled)
+      await _writeCache(
+        cacheKey,
+        visibility,
+        items: items,
+        coverage: coverage,
+        identitySources: identitySources,
+        isCurrent: () =>
+            !(isCancelled?.call() ?? false) &&
+            current() &&
+            _appliedItemsCurrent(items, eligible, identity) &&
+            _presentationsCurrent(items, eligible),
+      );
+    if (!current() || (!_appliedItemsCurrent(items, eligible, identity) || !_presentationsCurrent(items, eligible)))
+      return unavailable();
     return (items: items, coverage: coverage);
   }
 
@@ -363,6 +469,7 @@ class SourceAllResolver {
     String visibility,
     List<EligibleSourceServer> eligible,
     Set<String> expectedIds,
+    MediaIdentity identity,
   ) async {
     final Map<String, dynamic>? row;
     try {
@@ -379,6 +486,21 @@ class SourceAllResolver {
 
     final rawItems = row['items'];
     final checkedIds = (row['checkedServerIds'] as List?)?.cast<String>().toSet() ?? const <String>{};
+    final sources = row['identitySources'];
+    for (final id in checkedIds.intersection(expectedIds)) {
+      final server = eligible.where((s) => s.serverId.value == id).firstOrNull;
+      if (server == null) return null;
+      final recorded = sources is Map ? sources[id] : null;
+      final live = _identitySource(server);
+      if (live == 'unknown') {
+        // The default Plex eligibility label is not backend proof when no client exists.
+        if (recorded is! String || !recorded.startsWith('backend:')) return null;
+      } else if (live == 'pleya:unknown' ||
+          (recorded != null && recorded != live) ||
+          (recorded == null && live == 'pleya:applied')) {
+        return null;
+      }
+    }
 
     if (rawItems is List && rawItems.isNotEmpty) {
       if (age > positiveTtl) return null;
@@ -399,6 +521,7 @@ class SourceAllResolver {
         appLogger.d('Source-all-resolver cache row unreadable', error: e);
         return null;
       }
+      if ((!_appliedItemsCurrent(items, eligible, identity) || !_presentationsCurrent(items, eligible))) return null;
       final rawReasons = row['uncheckedReasons'];
       final uncheckedReasons = <String, UncheckedSourceReason>{
         for (final id in expectedIds.difference(checkedIds))
@@ -414,6 +537,10 @@ class SourceAllResolver {
       );
     }
 
+    // Applied rows have no catalog-wide coverage proof, including old
+    // unreleased negatives produced after all proven copies were hidden.
+    if (expectedIds.any((id) => sources is Map && sources[id] == 'pleya:applied')) return null;
+
     // Only a complete negative was ever written, so reaching here means the
     // miss was worth keeping.
     if (age > negativeTtl) return null;
@@ -428,19 +555,46 @@ class SourceAllResolver {
     return (items: const <MediaItem>[], coverage: SourceCoverageState.complete(expectedIds));
   }
 
+  // Presentation freshness is independent of applied identity. A changed pin
+  // or manual field does not alter which title this server has proven.
+  bool _presentationsCurrent(List<MediaItem> items, List<EligibleSourceServer> eligible) {
+    for (final item in items.where((item) => item.backend == MediaBackend.pleyaServer)) {
+      final client = eligible.where((s) => s.serverId.value == item.serverId).firstOrNull?.client;
+      if (client is PleyaServerClient && !client.isStoredPresentationCurrent(item)) return false;
+    }
+    return true;
+  }
+
+  bool _appliedItemsCurrent(List<MediaItem> items, List<EligibleSourceServer> eligible, MediaIdentity identity) {
+    for (final item in items.where((item) => item.backend == MediaBackend.pleyaServer)) {
+      final server = eligible.where((s) => s.serverId.value == item.serverId).firstOrNull;
+      if (server == null) return false;
+      final client = server.client;
+      if (client is PleyaServerClient && client.usesLegacyExternalIdentity) continue;
+      final ids = externalIdsCarriedBy(item);
+      if (ids == null || identity.pickAllMatches([(item: item, ids: ids)], allowTitleFallback: false).isEmpty)
+        return false;
+      if (client is PleyaServerClient && !client.isStoredAppliedIdentityCurrent(item)) return false;
+    }
+    return true;
+  }
+
   Future<void> _writeCache(
     String key,
     String visibility, {
     required List<MediaItem> items,
     required SourceCoverageState coverage,
+    required Map<String, String> identitySources,
+    required bool Function() isCurrent,
   }) async {
     // An incomplete negative says nothing durable: the server that did not
     // answer may be exactly the one holding the title.
     if (items.isEmpty && !coverage.isComplete) return;
 
     try {
-      await cache.put(cacheServerId, _endpointFor(key, visibility), {
+      await cache.putIfCurrent(cacheServerId, _endpointFor(key, visibility), {
         'checkedAtMs': _now.millisecondsSinceEpoch,
+        'identitySources': {for (final id in coverage.checkedServerIds) id: identitySources[id]},
         // Written for a negative too: the read side needs to know which
         // servers the miss actually covers, so a later-added server cannot
         // inherit an answer nobody asked it for.
@@ -449,7 +603,7 @@ class SourceAllResolver {
           'items': [for (final item in items) item.toJson()],
           'uncheckedReasons': {for (final e in coverage.uncheckedReasons.entries) e.key: e.value.name},
         },
-      });
+      }, isCurrent);
     } catch (e) {
       appLogger.d('Source-all-resolver cache write failed', error: e);
     }

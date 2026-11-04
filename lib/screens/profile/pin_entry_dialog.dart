@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/dpad_navigator.dart';
 import '../../focus/focus_theme.dart';
 import '../../focus/key_event_utils.dart';
@@ -388,7 +390,7 @@ class _TvPinInputState extends State<_TvPinInput> with ControllerDisposerMixin {
       }
 
       if (event.isTvSelectEvent || (PlatformDetector.isTV() && event.isPhysicalKeyboardEnter)) {
-        _activate(_rows[_row][_column]);
+        if (event is KeyDownEvent) _activate(_rows[_row][_column]);
         return KeyEventResult.handled;
       }
 
@@ -475,7 +477,13 @@ class _TvPinInputState extends State<_TvPinInput> with ControllerDisposerMixin {
       focusNode: _keypadFocusNode,
       autofocus: true,
       onKeyEvent: _handleKey,
-      child: _buildKeypadLayout(context),
+      child: AutomationNode(
+        id: AutomationIds.profilePin,
+        role: 'dialog',
+        focusNode: _keypadFocusNode,
+        state: () => {'filled': _pinLength, 'row': _row, 'column': _column},
+        child: _buildKeypadLayout(context),
+      ),
     );
   }
 

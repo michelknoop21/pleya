@@ -22,24 +22,12 @@ setup:
 steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
-  - press: right
-  - press: right
-  - press: right
-  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  # A-24c: Instellingen is a destination in the top bar, right after Mijn Pleya.
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
   - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
-  # The hub opens on Profiel wisselen; two DOWNs is Bibliotheken and then
-  # Instellingen. Deliberately not the three RIGHTs the older section scenarios
-  # walk: that choreography is stale against this hub and lands on the wrong
-  # tile, which the run of 5 September recorded.
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  # Select leaves the remote on the pill; Down enters the page.
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
-  # A-24b: Big P heads the right column with Instellingen under it.
-  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
-  - press: select
-  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
 
   # A-24b: from Thema, LEFT to the rail, down to Taal en ondertitels, SELECT
   # chooses it and RIGHT enters it on its first row.
@@ -81,4 +69,4 @@ steps:
 
   # And out, onto the hub's tile.
   - press: menu
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - wait_until: {focused: nav.settings, timeout: 8000}

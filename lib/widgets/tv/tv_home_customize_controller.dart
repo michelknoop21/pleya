@@ -41,13 +41,13 @@ import 'tv_home_row_wizard.dart';
 
 /// Opens "Home aanpassen" over the page [context] belongs to. Both entries
 /// A1a and A1b end here.
-Future<void> openTvHomeCustomizePanel(
+Future<HomeCustomRow?> openTvHomeCustomizePanel(
   BuildContext context, {
   MediaServerClient? Function(String serverId)? clientFor,
 }) async {
   final controller = TvHomeCustomizeController.maybeOf(context, clientFor: clientFor);
-  if (controller == null) return;
-  await showTvHomeCustomizePanel(
+  if (controller == null) return null;
+  return showTvHomeCustomizePanel(
     context,
     listenable: Listenable.merge([controller.layout, controller.customRows]),
     fixedRows: controller.fixedRows,
@@ -57,7 +57,7 @@ Future<void> openTvHomeCustomizePanel(
     onToggleHidden: (entry) => unawaited(controller.toggleHidden(entry)),
     onRemove: (row) => unawaited(controller.remove(row)),
     onEdit: (row) => unawaited(controller.runWizard(context, initial: row)),
-    onNewRow: () async => await controller.runWizard(context) != null,
+    onNewRow: () => controller.runWizard(context),
   );
 }
 

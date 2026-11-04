@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/services/apple_tv_remote_touch_service.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
 import 'package:pleya/widgets/video_controls/video_controls.dart';
 
@@ -13,6 +14,28 @@ import 'tv_player_harness.dart';
 void main() {
   group('PLR-REMOTE-UX1: native pauze opent de balk op Afspelen', () {
     setUpTvPlayerEnvironment();
+
+    testWidgets('system subtitle visibility and TV shortcut share state', (tester) async {
+      final visibility = ValueNotifier<bool>(false);
+      addTearDown(visibility.dispose);
+      final rig = await pumpTvPlayer(
+        tester,
+        visible: true,
+        subtitleVisibility: visibility,
+        subtitle: const SubtitleTrack(id: '1'),
+      );
+      // A system selection restores visibility; the next TV toggle must hide it.
+      visibility.value = true;
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.pump();
+      expect(visibility.value, isFalse);
+      expect(rig.player.commandLog, contains('sub-visibility=no'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.pump();
+      expect(visibility.value, isTrue);
+      expect(rig.player.commandLog.last, 'sub-visibility=yes');
+    });
 
     testWidgets('verborgen balk komt terug met focus op Afspelen', (tester) async {
       final chrome = (await pumpTvPlayer(tester)).chrome;

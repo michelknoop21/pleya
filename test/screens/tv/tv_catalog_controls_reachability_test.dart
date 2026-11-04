@@ -229,7 +229,7 @@ class _TvHarnessState extends State<_TvHarness> {
     isNavFocused: _focus.isSidebarFocused,
     profile: null,
     onSelectDestination: (d) {},
-    onFocusDestination: _tvNav.activate,
+    onFocusDestination: _tvNav.focusDestination,
     onFocusContent: _focusContent,
     onFocusNav: _focusSidebar,
     onOpenProfiles: () {},

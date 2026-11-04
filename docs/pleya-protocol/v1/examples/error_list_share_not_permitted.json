@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.list_share_not_permitted",
+    "message": "only an owner or admin can share a collection",
+    "retryable": false
+  }
+}

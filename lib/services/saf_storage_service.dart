@@ -41,7 +41,7 @@ class SafStorageService {
       }
     }
     try {
-      return await FilePicker.platform.getDirectoryPath();
+      return await FilePicker.getDirectoryPath();
     } catch (e) {
       appLogger.w('Directory picker error', error: e);
       return null;

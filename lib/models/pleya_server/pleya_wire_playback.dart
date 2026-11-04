@@ -40,6 +40,21 @@ class PleyaPlaybackReason {
   }
 }
 
+/// Optional, unknown-safe subtitle decision returned by the server.
+class PleyaPlaybackSubtitle {
+  const PleyaPlaybackSubtitle({required this.action, this.streamId, this.url, this.format});
+  final String action;
+  final String? streamId;
+  final String? url;
+  final String? format;
+  factory PleyaPlaybackSubtitle.fromJson(Map<String, dynamic> json) => PleyaPlaybackSubtitle(
+    action: str(json, 'action'),
+    streamId: strOrNull(json, 'stream_id'),
+    url: strOrNull(json, 'url'),
+    format: strOrNull(json, 'format'),
+  );
+}
+
 /// `PlaybackPlan`.
 class PleyaPlaybackPlan {
   const PleyaPlaybackPlan({
@@ -51,8 +66,16 @@ class PleyaPlaybackPlan {
     required this.reason,
     required this.reasons,
     this.sessionId,
+    this.subtitle,
+    this.selectedAudioStreamId,
+    this.maxVideoBitrateKbps,
+    this.maxHeight,
   });
 
+  final PleyaPlaybackSubtitle? subtitle;
+  final String? selectedAudioStreamId;
+  final int? maxVideoBitrateKbps;
+  final int? maxHeight;
   final String itemId;
   final String versionId;
 
@@ -76,6 +99,14 @@ class PleyaPlaybackPlan {
     final reasons = [for (final r in objectList(json['reasons'], 'reasons')) PleyaPlaybackReason.fromJson(r)];
     final reason = PleyaPlaybackReason.fromJson(obj(json['reason'], 'reason'));
     return PleyaPlaybackPlan(
+      subtitle: json['subtitle'] == null ? null : PleyaPlaybackSubtitle.fromJson(obj(json['subtitle'], 'subtitle')),
+      selectedAudioStreamId: strOrNull(json, 'selected_audio_stream_id'),
+      maxVideoBitrateKbps: json['effective_quality'] == null
+          ? null
+          : integer(obj(json['effective_quality'], 'effective_quality'), 'max_video_bitrate_kbps'),
+      maxHeight: json['effective_quality'] == null
+          ? null
+          : integer(obj(json['effective_quality'], 'effective_quality'), 'max_height'),
       itemId: str(json, 'item_id'),
       versionId: str(json, 'version_id'),
       deliveryMode: PleyaDeliveryMode.tryParse(strOrNull(json, 'delivery_mode')),

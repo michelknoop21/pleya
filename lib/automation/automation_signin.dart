@@ -15,6 +15,7 @@ import '../profiles/profile_connection.dart';
 import '../profiles/profile_registry.dart';
 import '../providers/seerr_provider.dart';
 import '../screens/settings/connection_persistence.dart';
+import '../services/jellyfin_auth_service.dart';
 import '../services/pleya_server_auth_service.dart';
 import '../services/seerr/seerr_constants.dart';
 import 'automation_ids.dart';
@@ -105,6 +106,10 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
     return {'ok': false, 'error': 'base_url, username and password are required'};
   }
 
+  if (body['backend'] == 'jellyfin') {
+    return _signInJellyfin(baseUrlInput, username: username, password: password);
+  }
+
   final String baseUrl;
   try {
     baseUrl = PleyaServerAuthService.normaliseBaseUrl(baseUrlInput);
@@ -147,7 +152,43 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
       lastAuthenticatedAt: DateTime.now(),
     );
 
-    return await _persistConnectionAndBindProfile(context, connection);
+    return await _persistPleyaConnection(context, connection);
+  } on MediaServerException catch (e) {
+    return {'ok': false, 'error': e.toString()};
+  }
+}
+
+/// `POST /v1/signin` with `"backend": "jellyfin"`: the chain of
+/// `add_jellyfin_screen.dart`, against the fixture's fake Jellyfin. Pleya
+/// Protocol has no scores, so a scenario about scores needs this backend.
+Future<Map<String, Object?>> _signInJellyfin(
+  String baseUrl, {
+  required String username,
+  required String password,
+}) async {
+  final rejectedBaseUrl = rejectNonLoopbackBaseUrl(baseUrl);
+  if (rejectedBaseUrl != null) return {'ok': false, 'error': rejectedBaseUrl};
+  final context = await _waitForRootContext();
+  if (context == null) {
+    return {'ok': false, 'error': 'no root context available yet — the app has not finished booting'};
+  }
+  final auth = JellyfinConnectionAuthService(clientName: 'Pleya', clientVersion: 'verify', deviceName: 'Pleya Verify');
+  try {
+    final connection = await auth.authenticateByName(
+      baseUrl: baseUrl,
+      username: username,
+      password: password,
+      deviceId: 'pleya-verify',
+    );
+    if (!context.mounted) return {'ok': false, 'error': 'context unmounted mid-signin'};
+    return await _persistConnectionAndBindProfile(
+      context,
+      connection,
+      userToken: connection.accessToken,
+      userIdentifier: connection.userId,
+      userName: connection.userName,
+      serverName: connection.serverName,
+    );
   } on MediaServerException catch (e) {
     return {'ok': false, 'error': e.toString()};
   }
@@ -193,7 +234,7 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
   );
 
   if (!context.mounted) return {'ok': false, 'error': 'context unmounted mid-signin'};
-  return _persistConnectionAndBindProfile(context, connection);
+  return _persistPleyaConnection(context, connection);
 }
 
 /// `POST /v1/seerr/seed`: connects the active profile's [SeerrProvider] to a
@@ -233,10 +274,26 @@ Future<Map<String, Object?>> handleAutomationSeedSeerr(Map<String, Object?> body
 /// [connection], creating the first local profile if none is active yet
 /// (mirrors `add_pleya_server_screen.dart`'s `_persist()`), then
 /// `rebindIfActive` when the newly bound profile is the active one.
+Future<Map<String, Object?>> _persistPleyaConnection(BuildContext context, PleyaServerConnection connection) =>
+    _persistConnectionAndBindProfile(
+      context,
+      connection,
+      // The refresh token is the only credential there is; the access token
+      // is minted per session and would be stale before the next launch.
+      userToken: connection.refreshToken,
+      userIdentifier: connection.serverId,
+      userName: connection.userName,
+      serverName: connection.serverName,
+    );
+
 Future<Map<String, Object?>> _persistConnectionAndBindProfile(
   BuildContext context,
-  PleyaServerConnection connection,
-) async {
+  Connection connection, {
+  required String userToken,
+  required String userIdentifier,
+  required String userName,
+  required String serverName,
+}) async {
   final activeProvider = context.read<ActiveProfileProvider>();
   await activeProvider.initialize();
   if (!context.mounted) return {'ok': false, 'error': 'context unmounted mid-signin'};
@@ -247,7 +304,7 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
     final now = DateTime.now();
     final profile = Profile.local(
       id: 'local-${const Uuid().v4()}',
-      displayName: connection.userName.isNotEmpty ? connection.userName : connection.serverName,
+      displayName: userName.isNotEmpty ? userName : serverName,
       sortOrder: now.millisecondsSinceEpoch,
       createdAt: now,
     );
@@ -266,10 +323,8 @@ Future<Map<String, Object?>> _persistConnectionAndBindProfile(
     bindToProfile: ProfileConnection(
       profileId: bindProfile.id,
       connectionId: connection.id,
-      // The refresh token is the only credential there is; the access token
-      // is minted per session and would be stale before the next launch.
-      userToken: connection.refreshToken,
-      userIdentifier: connection.serverId,
+      userToken: userToken,
+      userIdentifier: userIdentifier,
       tokenAcquiredAt: DateTime.now(),
     ),
     addToManager: null,

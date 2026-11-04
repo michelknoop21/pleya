@@ -35,6 +35,15 @@ type errorEnvelope struct {
 // De codes uit hoofdstuk 7.1 van de specificatie. Uitbreiden mag; de betekenis
 // van een bestaande code wijzigen niet.
 const (
+	CodeMemoryNotPermitted = "memory.not_permitted"
+	CodeMemoryTooLarge     = "memory.too_large"
+	CodeMemoryInvalid      = "memory.invalid"
+	CodeMemoryConflict     = "memory.conflict"
+	CodeMemoryEpoch        = "memory.epoch_changed"
+	CodeMemoryDeleted      = "memory.deleted"
+	CodeMemoryLimit        = "memory.limit_reached"
+	CodeMemoryDuplicate    = "memory.duplicate"
+
 	CodeInvalidCredentials    = "auth.invalid_credentials"
 	CodeTokenExpired          = "auth.token_expired"
 	CodeTokenInvalid          = "auth.token_invalid"
@@ -77,6 +86,12 @@ const (
 	// de aanvrager. Dat lekt niets: wie hier komt is de eigenaar zelf, of een
 	// beheerder die de rol van zijn gebruikers sowieso ziet in GET /users.
 	CodeScopeExceedsRole = "auth.scope_exceeds_role"
+
+	// CodeScopeInsufficient is het antwoord op een route die eigen gegevens
+	// onomkeerbaar wijzigt, wanneer een API-token onder bereik admin hem aanroept
+	// (17c.2). Geen 404 zoals bij de adminklasse: de route bestaat voor deze
+	// gebruiker, alleen dit credential mag er niet door.
+	CodeScopeInsufficient = "auth.scope_insufficient"
 
 	// CodeOriginRejected is het antwoord op een aanvraag in cookiemodus vanaf
 	// een origin die deze server niet toestaat, of zonder Origin-header
@@ -135,7 +150,14 @@ const (
 	// CodeInvalidMatch is het antwoord van PUT /items/{id}/metadata-match op een
 	// external_id die geen providernummer is (venster 3, S22.5). Een code in het
 	// domein library en geen nieuw domein: het gaat over de catalogus.
-	CodeInvalidMatch = "library.invalid_match"
+	CodeInvalidMatch             = "library.invalid_match"
+	CodeInvalidOverride          = "library.invalid_override"
+	CodeOverrideFallback         = "library.override_source_unavailable"
+	CodeArtworkInvalid           = "library.artwork_invalid"
+	CodeArtworkStale             = "library.artwork_stale"
+	CodeArtworkSourceUnavailable = "library.artwork_source_unavailable"
+	CodeArtworkSourceChanged     = "library.artwork_source_changed"
+	CodeArtworkImageInvalid      = "library.artwork_image_invalid"
 
 	// CodeFilterInvalid is het antwoord van GET /libraries/{id}/items op een
 	// filterparameter die de server niet kan uitvoeren (venster 3, D1.4).
@@ -144,9 +166,10 @@ const (
 	// client vroeg.
 	CodeFilterInvalid = "library.filter_invalid"
 
-	CodeVersionUnavailable  = "playback.version_unavailable"
-	CodeRangeNotSatisfiable = "playback.range_not_satisfiable"
-	CodeNotPlayable         = "playback.not_playable"
+	CodeVersionUnavailable       = "playback.version_unavailable"
+	CodeRangeNotSatisfiable      = "playback.range_not_satisfiable"
+	CodePlaybackSelectionInvalid = "playback.selection_invalid"
+	CodeNotPlayable              = "playback.not_playable"
 
 	// CodeTranscodeBusy: alle omzetsessies zijn bezet (venster 5 deel 2, S18).
 	// Retryable: een sessie die stopt maakt ruimte.
@@ -158,6 +181,22 @@ const (
 	// CodePersonalInvalid: een waardering of spoorvoorkeur die de server niet
 	// kan bewaren (S20). details.field noemt het veld.
 	CodePersonalInvalid = "library.personal_invalid"
+
+	// Verzamelingen en afspeellijsten (S19). Invalid is een lijst of aanvraag die
+	// niet te bewaren is, details.field noemt het veld. NotOwner is een 403 omdat
+	// de lijst wel zichtbaar is; buiten zicht blijft het library.not_found.
+	CodeListInvalid  = "library.list_invalid"
+	CodeListNotOwner = "library.list_not_owner"
+
+	// CodeListShareNotPermitted is het antwoord op een zichtbaarheid anders dan
+	// private, of op shared_with, van een member of restricted. Niet
+	// list_not_owner: de aanvrager kan juist wel de eigenaar van zijn lijst zijn,
+	// en die code zou dan iets onwaars zeggen.
+	CodeListShareNotPermitted = "library.list_share_not_permitted"
+
+	// CodeListConflict is het antwoord op een PUT .../items waarvan base_revision niet
+	// meer de huidige is. details.revision is de huidige.
+	CodeListConflict = "library.list_conflict"
 
 	// Downloads (S23). Niet toegestaan is een 403 omdat de bibliotheek wel
 	// zichtbaar is; niet klaar en veranderd zijn 409's: de eerste gaat vanzelf
@@ -251,14 +290,30 @@ var errorTable = map[string]struct {
 	status    int
 	retryable bool
 }{
-	CodeInvalidCredentials:    {http.StatusUnauthorized, false},
-	CodeTokenExpired:          {http.StatusUnauthorized, false},
-	CodeTokenInvalid:          {http.StatusUnauthorized, false},
-	CodeRefreshTokenReused:    {http.StatusUnauthorized, false},
-	CodeSetupRequired:         {http.StatusConflict, false},
-	CodeSetupAlreadyCompleted: {http.StatusConflict, false},
-	CodeSetupCodeInvalid:      {http.StatusUnauthorized, false},
-	CodeRateLimited:           {http.StatusTooManyRequests, true},
+	CodeMemoryNotPermitted:       {http.StatusForbidden, false},
+	CodeMemoryTooLarge:           {http.StatusRequestEntityTooLarge, false},
+	CodeMemoryInvalid:            {http.StatusBadRequest, false},
+	CodeMemoryConflict:           {http.StatusConflict, false},
+	CodeMemoryEpoch:              {http.StatusConflict, false},
+	CodeMemoryDeleted:            {http.StatusConflict, false},
+	CodeMemoryLimit:              {http.StatusConflict, false},
+	CodeMemoryDuplicate:          {http.StatusConflict, false},
+	CodeInvalidCredentials:       {http.StatusUnauthorized, false},
+	CodeTokenExpired:             {http.StatusUnauthorized, false},
+	CodeTokenInvalid:             {http.StatusUnauthorized, false},
+	CodeRefreshTokenReused:       {http.StatusUnauthorized, false},
+	CodeSetupRequired:            {http.StatusConflict, false},
+	CodeSetupAlreadyCompleted:    {http.StatusConflict, false},
+	CodeSetupCodeInvalid:         {http.StatusUnauthorized, false},
+	CodeRateLimited:              {http.StatusTooManyRequests, true},
+	CodeMetadataUnavailable:      {http.StatusServiceUnavailable, true},
+	CodeMetadataFailed:           {http.StatusBadGateway, true},
+	CodeMetadataInvalid:          {http.StatusBadRequest, false},
+	CodeArtworkInvalid:           {http.StatusBadRequest, false},
+	CodeArtworkStale:             {http.StatusConflict, false},
+	CodeArtworkSourceUnavailable: {http.StatusServiceUnavailable, true},
+	CodeArtworkSourceChanged:     {http.StatusConflict, false},
+	CodeArtworkImageInvalid:      {http.StatusBadGateway, false},
 
 	CodeUserNotFound:         {http.StatusNotFound, false},
 	CodeUsernameTaken:        {http.StatusConflict, false},
@@ -266,6 +321,7 @@ var errorTable = map[string]struct {
 	CodeSessionNotFound:      {http.StatusNotFound, false},
 	CodePermissionNotAllowed: {http.StatusConflict, false},
 	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
+	CodeScopeInsufficient:    {http.StatusForbidden, false},
 	CodeOriginRejected:       {http.StatusForbidden, false},
 
 	CodeNotFound:                {http.StatusNotFound, false},
@@ -279,18 +335,25 @@ var errorTable = map[string]struct {
 	CodeLibraryNotConfigManaged: {http.StatusConflict, false},
 	CodeLibraryConfirmMismatch:  {http.StatusConflict, false},
 	CodeInvalidMatch:            {http.StatusBadRequest, false},
+	CodeInvalidOverride:         {http.StatusBadRequest, false},
+	CodeOverrideFallback:        {http.StatusConflict, true},
 	CodeFilterInvalid:           {http.StatusBadRequest, false},
 	CodeJobNotCancellable:       {http.StatusConflict, false},
 
-	CodeVersionUnavailable:   {http.StatusConflict, true},
-	CodeRangeNotSatisfiable:  {http.StatusRequestedRangeNotSatisfiable, false},
-	CodeNotPlayable:          {http.StatusUnsupportedMediaType, false},
-	CodeTranscodeBusy:        {http.StatusServiceUnavailable, true},
-	CodeTranscodeFailed:      {http.StatusBadGateway, false},
-	CodePersonalInvalid:      {http.StatusBadRequest, false},
-	CodeDownloadNotPermitted: {http.StatusForbidden, false},
-	CodeDownloadNotReady:     {http.StatusConflict, true},
-	CodeDownloadChanged:      {http.StatusConflict, false},
+	CodeVersionUnavailable:       {http.StatusConflict, true},
+	CodeRangeNotSatisfiable:      {http.StatusRequestedRangeNotSatisfiable, false},
+	CodePlaybackSelectionInvalid: {http.StatusBadRequest, false},
+	CodeNotPlayable:              {http.StatusUnsupportedMediaType, false},
+	CodeTranscodeBusy:            {http.StatusServiceUnavailable, true},
+	CodeTranscodeFailed:          {http.StatusBadGateway, false},
+	CodePersonalInvalid:          {http.StatusBadRequest, false},
+	CodeListInvalid:              {http.StatusBadRequest, false},
+	CodeListNotOwner:             {http.StatusForbidden, false},
+	CodeListShareNotPermitted:    {http.StatusForbidden, false},
+	CodeListConflict:             {http.StatusConflict, false},
+	CodeDownloadNotPermitted:     {http.StatusForbidden, false},
+	CodeDownloadNotReady:         {http.StatusConflict, true},
+	CodeDownloadChanged:          {http.StatusConflict, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},
@@ -386,3 +449,10 @@ func registeredStatus(code string) (int, bool) {
 	entry, ok := errorTable[code]
 	return entry.status, ok
 }
+
+// Read-only provider preview errors never contain provider text or credentials.
+const (
+	CodeMetadataUnavailable = "library.metadata_unavailable"
+	CodeMetadataFailed      = "library.metadata_failed"
+	CodeMetadataInvalid     = "library.invalid_metadata_query"
+)

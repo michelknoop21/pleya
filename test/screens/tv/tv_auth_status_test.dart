@@ -1,5 +1,7 @@
 /// WP3, hoofdstuk 18.4: on TV a rejected token asks for attention with a small
-/// dot on Mijn Pleya, never with a permanent red strip over the content.
+/// dot on the destination that resolves it, never with a permanent red strip
+/// over the content. Since A-24c that is Instellingen, where Koppelingen ▸
+/// Servers lives; before it was Mijn Pleya.
 ///
 /// > Eén server offline bij meerdere gezonde servers veroorzaakt geen
 /// > blokkerende Home-banner. […] Een klein statuspunt bij Mijn Pleya mag
@@ -127,7 +129,7 @@ void main() {
                       isNavFocused: false,
                       profile: null,
                       onSelectDestination: (_) {},
-                      onFocusDestination: coordinator.activate,
+                      onFocusDestination: coordinator.focusDestination,
                       onFocusContent: ({bool restorePreviousFocus = true}) {},
                       onFocusNav: () {},
                       onOpenProfiles: () {},
@@ -161,8 +163,8 @@ void main() {
     return decoration is BoxDecoration && decoration.shape == BoxShape.circle && decoration.color == kAccentAlt;
   }, description: 'amber attention dot');
 
-  /// The Mijn Pleya nav item, whatever else is on the bar.
-  Finder myPleyaItem() => find.ancestor(of: find.text(t.navigation.myPleya), matching: find.byType(TvTopNavItem));
+  /// The Instellingen nav item, whatever else is on the bar.
+  Finder settingsItem() => find.ancestor(of: find.text(t.settings.title), matching: find.byType(TvTopNavItem));
 
   group('the banner is gone from TV', () {
     testWidgets('an auth error draws no AuthErrorBanner anywhere in the TV shell', (tester) async {
@@ -195,12 +197,12 @@ void main() {
   });
 
   group('the dot takes its place', () {
-    testWidgets('an actionable auth error shows the attention dot on Mijn Pleya', (tester) async {
+    testWidgets('an actionable auth error shows the attention dot on Instellingen', (tester) async {
       await pump(tester, _FakeServers(authErrors: ['nas']));
 
       expect(attentionDot(), findsOneWidget);
       expect(
-        find.descendant(of: myPleyaItem(), matching: attentionDot()),
+        find.descendant(of: settingsItem(), matching: attentionDot()),
         findsOneWidget,
         reason: 'it rides the destination that leads to the fix, not an arbitrary one',
       );
@@ -376,11 +378,10 @@ void main() {
   });
 
   group('the resolution route', () {
-    testWidgets('Mijn Pleya is on the bar and reachable, which is where the fix lives', (tester) async {
+    testWidgets('Instellingen is on the bar and reachable, which is where the fix lives', (tester) async {
       // The dot is only useful if the destination it marks is present and
       // selectable; the Servers screen under it is the existing management
-      // route (`TvMyPleyaSection.servers` -> `TvServersPage`), unchanged by
-      // this work package.
+      // page (`TvServersPage`), opened from Koppelingen since A-24c.
       final selected = <TvDestinationId>[];
       tester.view.physicalSize = const Size(1280, 720);
       tester.view.devicePixelRatio = 1.0;
@@ -402,7 +403,7 @@ void main() {
                   isNavFocused: true,
                   profile: null,
                   onSelectDestination: selected.add,
-                  onFocusDestination: coordinator.activate,
+                  onFocusDestination: coordinator.focusDestination,
                   onFocusContent: ({bool restorePreviousFocus = true}) {},
                   onFocusNav: () {},
                   onOpenProfiles: () {},
@@ -420,16 +421,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(coordinator.destinations, contains(TvDestinationId.myPleya));
+      expect(coordinator.destinations, contains(TvDestinationId.settings));
 
-      final node = nodes.get(TvDestinationId.myPleya.focusKey);
+      final node = nodes.get(TvDestinationId.settings.focusKey);
       node.requestFocus();
       await tester.pumpAndSettle();
       await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
       await tester.pumpAndSettle();
 
-      expect(selected, contains(TvDestinationId.myPleya));
+      expect(selected, contains(TvDestinationId.settings));
     });
   });
 }

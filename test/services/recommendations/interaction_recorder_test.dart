@@ -100,6 +100,13 @@ void main() {
     expect((await rows()).map((r) => r.eventType), ['partial', 'completed']);
   });
 
+  test('the same mark on another copy of the title is not a second viewing', () async {
+    WatchStateNotifier().notifyWatched(item: item);
+    WatchStateNotifier().notifyWatched(item: item.copyWith(serverId: 's2'), isCopy: true);
+
+    expect((await rows()).map((r) => r.globalKey), ['s1:m1']);
+  });
+
   test("another profile's row does not suppress the partial (DEC-062)", () async {
     await db.insertMediaInteraction(
       MediaInteractionsCompanion.insert(

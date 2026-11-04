@@ -146,7 +146,7 @@ class TraktSyncService {
   MediaServerClient? _clientFor(ServerId serverId) => _serverManager?.getClient(serverId);
 
   Future<void> _onWatchStateEvent(WatchStateEvent event) async {
-    if (!_canPush) return;
+    if (!_canPush || event.isCopy) return;
     if (event.changeType != WatchStateChangeType.watched && event.changeType != WatchStateChangeType.unwatched) return;
 
     if (!_isLibraryAllowed(event.librarySectionGlobalKey)) {

@@ -82,8 +82,17 @@ type Options struct {
 	IdleTimeout time.Duration
 	// StartTimeout is hoe lang Start op het eerste segment wacht.
 	StartTimeout time.Duration
-	HW           HWAccel
-	RenderNode   string
+	// SubtitleWait is hoe lang een aanvraag op een ingebed spoor wacht (standaard 30 s).
+	SubtitleWait time.Duration
+	// SubtitleTimeout begrenst de extractie zelf, los van de aanvraag (standaard 10 minuten).
+	SubtitleTimeout time.Duration
+	// SubtitleGrace is hoe lang een extractie zonder wachtende aanvraag doorloopt, zodat
+	// een herhaling na Retry-After kan aansluiten (standaard 15 s).
+	SubtitleGrace time.Duration
+	// SubtitleCacheBytes begrenst de map met uitgepakte sporen (standaard 512 MiB).
+	SubtitleCacheBytes int64
+	HW                 HWAccel
+	RenderNode         string
 	// HWReason zegt waarom er geen hardwareversnelling is, voor beheer.
 	HWReason string
 	Recorder Recorder
@@ -94,11 +103,17 @@ type Options struct {
 type Manager struct {
 	o Options
 
-	mu       sync.Mutex
-	sessions map[id.ID]*running
-	closed   bool
-	stop     chan struct{}
-	wg       sync.WaitGroup
+	mu             sync.Mutex
+	sessions       map[id.ID]*running
+	subtitleFailed map[string]time.Time
+	subtitles      subtitleWork
+	closed         bool
+	stop           chan struct{}
+	wg             sync.WaitGroup
+
+	// subtitleCache houdt een cachehit en een opruimronde uit elkaar: wat een hit
+	// net teruggaf is vers en wordt dus niet meer verwijderd.
+	subtitleCache sync.Mutex
 }
 
 type running struct {
@@ -119,6 +134,18 @@ func New(o Options) (*Manager, error) {
 	if o.StartTimeout <= 0 {
 		o.StartTimeout = 30 * time.Second
 	}
+	if o.SubtitleWait <= 0 {
+		o.SubtitleWait = 30 * time.Second
+	}
+	if o.SubtitleTimeout <= 0 {
+		o.SubtitleTimeout = 10 * time.Minute
+	}
+	if o.SubtitleGrace <= 0 {
+		o.SubtitleGrace = subtitleFailureMemory
+	}
+	if o.SubtitleCacheBytes <= 0 {
+		o.SubtitleCacheBytes = maxSubtitleCacheBytes
+	}
 	if o.FFmpegPath == "" {
 		o.FFmpegPath = "ffmpeg"
 	}
@@ -126,9 +153,14 @@ func New(o Options) (*Manager, error) {
 		return nil, fmt.Errorf("transcodemap: %w", err)
 	}
 	// Een herstart laat geen proces achter dat we nog kunnen bereiken, dus wat
-	// er in de map staat is afval.
+	// er in de map staat is afval. Behalve de uitgepakte ondertitels: die horen bij
+	// hun bron en niet bij dit proces, en opnieuw uitpakken kost een hele film lezen.
 	entries, _ := os.ReadDir(o.Dir)
 	for _, e := range entries {
+		if e.Name() == subtitleDirName {
+			removeSubtitleTemps(filepath.Join(o.Dir, e.Name()))
+			continue
+		}
 		_ = os.RemoveAll(filepath.Join(o.Dir, e.Name()))
 	}
 	if o.Recorder != nil {
@@ -136,7 +168,7 @@ func New(o Options) (*Manager, error) {
 			return nil, fmt.Errorf("sessies terugzetten: %w", err)
 		}
 	}
-	m := &Manager{o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
+	m := &Manager{subtitleFailed: map[string]time.Time{}, subtitles: subtitleWork{jobs: map[string]*subtitleJob{}}, o: o, sessions: map[id.ID]*running{}, stop: make(chan struct{})}
 	m.wg.Add(1)
 	go m.janitor()
 	return m, nil
@@ -177,7 +209,11 @@ func (m *Manager) startWith(ctx context.Context, p Params, hw HWAccel) (Session,
 		return Session{}, ErrBusy
 	}
 	sid := id.New()
-	dir := filepath.Join(m.o.Dir, sid.String())
+	dir, err := filepath.Abs(filepath.Join(m.o.Dir, sid.String()))
+	if err != nil {
+		m.mu.Unlock()
+		return Session{}, err
+	}
 	job := p.Job
 	job.OutDir = dir
 	job.HW, job.RenderNode = hw, m.o.RenderNode
@@ -191,8 +227,27 @@ func (m *Manager) startWith(ctx context.Context, p Params, hw HWAccel) (Session,
 		return Session{}, fmt.Errorf("sessiemap: %w", err)
 	}
 
+	if job.SubtitlePath != "" {
+		if err := os.Link(job.SubtitlePath, filepath.Join(dir, "subtitle")); err != nil {
+			_ = os.RemoveAll(dir)
+			m.mu.Unlock()
+			return Session{}, fmt.Errorf("ondertitel voorbereiden: %w", err)
+		}
+	}
 	runCtx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(runCtx, m.o.FFmpegPath, args...)
+	if job.SubtitlePath != "" {
+		cmd.Dir = dir
+		if !filepath.IsAbs(cmd.Path) {
+			cmd.Path, err = filepath.Abs(cmd.Path)
+		}
+		if err != nil {
+			cancel()
+			_ = os.RemoveAll(dir)
+			m.mu.Unlock()
+			return Session{}, err
+		}
+	}
 	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
 	cmd.WaitDelay = 5 * time.Second
 	var stderr tailBuffer
@@ -401,6 +456,7 @@ func (m *Manager) Close() {
 	m.closed = true
 	m.mu.Unlock()
 	close(m.stop)
+	m.dropQueuedSubtitles()
 	for _, s := range m.List() {
 		_ = m.end(s.ID, StateStopped)
 	}

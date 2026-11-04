@@ -42,6 +42,12 @@ var (
 	altEpRe     = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(\d{1,3})x(\d{1,4})(?:[^0-9]|$)`)
 	seasonDirRe = regexp.MustCompile(`(?i)^(?:season|seizoen|s)[\s._-]*(\d{1,3})$`)
 
+	// "(afl 10)", "Afl.3", "Aflevering 10", "Episode 5", "ep 2": een nummer zonder
+	// seizoen, zoals het op losse downloads staat. Het woord moet los staan, anders
+	// leest "Step 2" als aflevering 2. \pL en \pN omdat titels niet alleen ASCII zijn.
+	markerRe     = regexp.MustCompile(`(?i)(?:^|[^\pL\pN])(?:aflevering|afl|episode|ep)[\s._-]*(\d{1,4})(?:[^\pN]|$)`)
+	seasonNameRe = regexp.MustCompile(`(?i)(?:^|[^\pL\pN])(?:seizoen|season)[\s._-]*(\d{1,3})(?:[^\pN]|$)`)
+
 	// cd1, disc2, part3, pt1: het bestand is een deel van één versie.
 	partRe = regexp.MustCompile(`(?i)[\s._-]*(?:cd|dvd|disc|disk|part|pt)[\s._-]*(\d{1,2})$`)
 )
@@ -125,12 +131,27 @@ type Episode struct {
 	ShowYear   int
 	Season     int
 	Number     int
+	Numbered   bool // false: het pad draagt geen afleveringsnummer, Number is dan 0 en betekent niets
 	Title      string
 	Edition    string
 	VersionKey string
 	PartIndex  int
 	StackBase  string
 	OK         bool // false betekent: hier valt geen aflevering uit af te leiden
+}
+
+// GroupingKey is de sleutel van de aflevering binnen zijn seizoen.
+//
+// Een genummerde aflevering houdt de sleutel die hij altijd had, het nummer, zodat
+// bestaande rijen niet verschuiven. Een ongenummerde krijgt de genormaliseerde
+// titel met een voorvoegsel: normalizeKey levert alleen letters, cijfers en
+// spaties, dus "t:" botst nooit met een nummer. Zonder voorvoegsel hing
+// "Bumba/10.mkv" (titel "10") stil als versie aan aflevering 10.
+func (e Episode) GroupingKey() string {
+	if e.Numbered {
+		return strconv.Itoa(e.Number)
+	}
+	return "t:" + normalizeKey(e.Title)
 }
 
 // ParseEpisode leest een relatief pad binnen een shows-bibliotheek.
@@ -147,10 +168,28 @@ func ParseEpisode(relPath string) Episode {
 	e.VersionKey = normalizeKey(stack)
 
 	season, number, rest, ok := episodeNumbers(stack)
+	marked := false
 	if !ok {
-		return e
+		// SxxExx en NxM gaan voor: een naam die beide heeft, noemt het nummer daar.
+		season, number, rest, ok = markerNumber(stack)
+		marked = ok
 	}
-	e.Season, e.Number, e.Title = season, number, cleanTitle(rest)
+	if ok {
+		e.Numbered = true
+		e.Season, e.Number, e.Title = season, number, cleanTitle(rest)
+		if marked {
+			e.Title = stripEpisodeNoise(e.Title)
+		}
+	} else {
+		// Geen nummer: de titel is de identiteit. Een bestand in een seriemap dat
+		// geen nummer draagt (een losse download) hoort toch in de catalogus, en
+		// zonder titel valt er niets te sleutelen.
+		e.Season = seasonFromName(stack)
+		e.Title = stripEpisodeNoise(cleanTitle(stack))
+		if normalizeKey(e.Title) == "" {
+			return e
+		}
+	}
 
 	segments := splitSegments(dir)
 	// De seizoensmap is optioneel. Staat hij er, dan is de serie de map erboven.
@@ -165,7 +204,7 @@ func ParseEpisode(relPath string) Episode {
 			}
 			break
 		}
-		if strings.EqualFold(segments[i], "specials") || strings.EqualFold(segments[i], "extras") {
+		if i > 0 && (strings.EqualFold(segments[i], "specials") || strings.EqualFold(segments[i], "extras")) {
 			e.Season = 0
 			if i > 0 {
 				showSegment = segments[i-1]
@@ -190,6 +229,11 @@ func ParseEpisode(relPath string) Episode {
 	if e.Show == "" {
 		return e
 	}
+	// "Pippi Langkous (Afl 2)" heeft geen eigen titel: de scanner valt dan terug op
+	// "Episode 2" in plaats van de serienaam als titel van een aflevering te nemen.
+	if marked && normalizeKey(e.Title) == normalizeKey(e.Show) {
+		e.Title = ""
+	}
 
 	e.OK = true
 	return e
@@ -207,6 +251,51 @@ func episodeNumbers(base string) (season, number int, rest string, ok bool) {
 		return s, n, base[m[5]:], true
 	}
 	return 0, 0, "", false
+}
+
+// markerNumber leest "afl 10", "Aflevering 10" en verwanten. Het seizoen komt uit
+// "Seizoen N" in dezelfde naam en is anders 1; een seizoensmap wint later in
+// ParseEpisode. De titel is wat achter het nummer staat, of, als daar niets
+// bruikbaars staat (alleen "HD"), wat ervoor staat.
+func markerNumber(base string) (season, number int, rest string, ok bool) {
+	m := markerRe.FindStringSubmatchIndex(base)
+	if m == nil {
+		return 0, 0, "", false
+	}
+	number, err := strconv.Atoi(base[m[2]:m[3]])
+	if err != nil {
+		return 0, 0, "", false
+	}
+	season = seasonFromName(base)
+	rest = base[m[3]:]
+	if stripEpisodeNoise(cleanTitle(rest)) == "" {
+		rest = base[:m[0]]
+	}
+	return season, number, rest, true
+}
+
+// seasonFromName leest "Seizoen N" uit een bestandsnaam, anders 1.
+func seasonFromName(base string) int {
+	if sm := seasonNameRe.FindStringSubmatch(base); sm != nil {
+		if n, err := strconv.Atoi(sm[1]); err == nil {
+			return n
+		}
+	}
+	return 1
+}
+
+// episodeNoise is wat een aflevering van een videosite achter de titel zet en
+// niets over de aflevering zegt. Bewust alleen hier en niet in qualityNoise:
+// een film die "HD" heet moet zijn titel houden.
+var episodeNoise = map[string]bool{"hd": true, "sd": true}
+
+// stripEpisodeNoise haalt zulke woorden van het eind van een titel.
+func stripEpisodeNoise(title string) string {
+	fields := strings.Fields(title)
+	for len(fields) > 0 && episodeNoise[strings.ToLower(strings.Trim(fields[len(fields)-1], "-–—"))] {
+		fields = fields[:len(fields)-1]
+	}
+	return strings.Trim(strings.Join(fields, " "), " -–—")
 }
 
 // splitPart haalt een deelmarkering van de basisnaam af. Twee bestanden die na

@@ -11,7 +11,7 @@ import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
 import 'package:pleya/services/plex_watchlist_client.dart';
-import 'package:pleya/services/watchlist/jellyfin_favorites_source.dart';
+import 'package:pleya/services/watchlist/server_favorites_source.dart';
 import 'package:pleya/services/watchlist/plex_account_watchlist_source.dart';
 
 import 'fake_favorites_client.dart';
@@ -215,7 +215,7 @@ void main() {
     });
   });
 
-  group('JellyfinFavoritesSource', () {
+  group('ServerFavoritesSource', () {
     final jellyfinScope = WatchlistScopeId(
       profileId: 'profile-1',
       backend: MediaBackend.jellyfin,
@@ -223,8 +223,8 @@ void main() {
       userId: 'jf-user',
     );
 
-    JellyfinFavoritesSource sourceFor(FakeFavoritesClient client) =>
-        JellyfinFavoritesSource(client: client, serverId: ServerId('jf-machine'), scope: jellyfinScope);
+    ServerFavoritesSource sourceFor(FakeFavoritesClient client) =>
+        ServerFavoritesSource(client: client, serverId: ServerId('jf-machine'), scope: jellyfinScope);
 
     MediaItem favorite(String id, {String? imdb, MediaKind kind = MediaKind.movie}) => MediaItem(
       id: id,

@@ -9,7 +9,7 @@
  * hero staat de titel al in de displayletter. Een onbekende sleutel faalt, zodat de galerij ook de staat "laden
  * mislukt" kan tonen. De kleuren volgen specimen v3.
  */
-import type { ArtworkLoader } from '$lib/components/artworkLoader';
+import type { ArtworkLoader } from '#lib/components/artworkLoader.js';
 
 interface DemoArt {
   title: string;

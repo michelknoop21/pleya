@@ -25,6 +25,22 @@ func TestRemuxCopiesBothTracks(t *testing.T) {
 	}
 }
 
+// Zonder +genpts schrijft ffmpeg bij het kopiëren van een bron zonder
+// presentatietijden (AVI met B-frames) een afspeellijst van 0 seconden. De vlag
+// is een invoeroptie en moet dus vóór -i staan, in elke modus.
+func TestEveryModeGeneratesMissingTimestampsBeforeTheInput(t *testing.T) {
+	for _, mode := range []transcode.Mode{transcode.ModeRemux, transcode.ModeDirectStream, transcode.ModeTranscode} {
+		args, err := transcode.BuildArgs(job(mode))
+		if err != nil {
+			t.Fatal(err)
+		}
+		flag, input := slices.Index(args, "-fflags"), slices.Index(args, "-i")
+		if flag < 0 || input < 0 || flag > input || args[flag+1] != "+genpts" {
+			t.Fatalf("%s: -fflags +genpts hoort vóór -i: %v", mode, args)
+		}
+	}
+}
+
 func TestDirectStreamKeepsVideoAndConvertsAudio(t *testing.T) {
 	j := job(transcode.ModeDirectStream)
 	j.HEVCSource = true
@@ -118,5 +134,49 @@ func TestTranscodeWithoutAudioCodecCopiesTheAudio(t *testing.T) {
 	// Direct stream zonder doelcodec blijft een fout: daar is het geluid het werk.
 	if _, err := transcode.BuildArgs(func() transcode.Job { j.Mode = transcode.ModeDirectStream; return j }()); err == nil {
 		t.Fatal("direct stream zonder audiocodec werd niet geweigerd")
+	}
+}
+
+func TestExplicitQualityAndAudioReachFFmpeg(t *testing.T) {
+	j := job(transcode.ModeTranscode)
+	j.MaxVideoBitrateKbps, j.MaxHeight = 2000, 720
+	index := 3
+	j.AudioStreamIndex = &index
+	args, err := transcode.BuildArgs(j)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	for _, want := range []string{"-map 0:3", "-maxrate 2000k", "-bufsize 4000k", "min(ih,720)"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %q in %s", want, joined)
+		}
+	}
+}
+
+func TestQualityRejectsInvalidLimits(t *testing.T) {
+	for _, height := range []int{-1, 4321} {
+		j := job(transcode.ModeTranscode)
+		j.MaxHeight, j.MaxVideoBitrateKbps = height, 2000
+		if _, err := transcode.BuildArgs(j); err == nil {
+			t.Fatalf("accepted height %d", height)
+		}
+	}
+}
+
+func TestSubtitleBurnUsesAControlledFilterFilename(t *testing.T) {
+	j := job(transcode.ModeTranscode)
+	j.SubtitlePath = "/cache/a'b:c,[x];/caption.srt"
+	args, err := transcode.BuildArgs(j)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "subtitles=subtitle") || strings.Contains(joined, j.SubtitlePath) {
+		t.Fatalf("source path entered the filter: %s", joined)
+	}
+	j.Mode = transcode.ModeRemux
+	if _, err := transcode.BuildArgs(j); err == nil {
+		t.Fatal("burn silently accepted in remux")
 	}
 }

@@ -15,6 +15,27 @@ const nl: Record<string, string> = { ...sharedNl, ...webNl };
  * vrijwel zeker een vergeten kopie.
  */
 const SAME_ON_PURPOSE = [
+  // Artwork: Poster is een gangbaar Nederlands leenwoord; TMDB is een eigennaam.
+  'admin.metadata.artwork.poster',
+  'admin.metadata.artwork.source.tmdb',
+  // Bestaande bronnotice blijft bewust ongewijzigd in beide talen.
+  'admin.metadata.artwork.creditNotice',
+  // S22.5: providernaam en gangbaar leenwoord zijn identiek.
+  'admin.metadata.editor.source.tmdb',
+  'admin.metadata.editor.field.genres',
+  // Een Nederlands leenwoord en een cijfernotatie.
+  'downloads.title',
+  'history.ratingScore',
+  // Gangbare Nederlandse leenwoorden voor de catalogusbediening.
+  'catalog.filters',
+  'catalog.genre',
+  'admin.tok.list.title',
+  'admin.tok.owner',
+  'admin.tok.mcp.title',
+  'admin.tok.mcp.tools',
+  'admin.tok.mcp.toolCount.one',
+  'admin.tok.mcp.toolCount.other',
+  'admin.tok.audit.ok',
   'app.name',
   'nav.home',
   'nav.films',
@@ -35,7 +56,41 @@ const SAME_ON_PURPOSE = [
   'admin.server.title',
   'admin.server.database',
   'admin.server.databaseValue',
-  'admin.server.versionValue'
+  'admin.server.versionValue',
+  'admin.lib.status.sidecars',
+  'admin.sto.col.root',
+  'admin.tc.tile.max',
+  'admin.tc.tile.hardware',
+  'admin.tc.tile.software',
+  'admin.sto.col.inode',
+  'admin.sto.col.status',
+  'admin.sto.inodeInfo.after',
+  'admin.act.failures.open',
+  'admin.act.col.status',
+  'admin.act.history.scan',
+  'admin.act.history.scanUnknown',
+  'admin.users.lastActive.value',
+  'admin.users.account.title',
+  // S10.5: leenwoorden en technische termen die in het Nederlands gelijk zijn.
+  'admin.media.transcode.software',
+  'admin.media.mode.remux',
+  'admin.media.mode.direct_stream',
+  'admin.meta.sidecars.title',
+  'admin.meta.col.genres',
+  'admin.net.conn.direct',
+  'admin.sec.tokens.title',
+  'admin.diag.versions.build',
+  'admin.diag.versions.protocol',
+  'admin.diag.versions.protocolValue',
+  'admin.diag.versions.database',
+  'admin.diag.versions.databaseValue',
+  'admin.diag.caps.title',
+  'admin.diag.health.ready',
+  // S25.6: "ok" en "Status" zijn in het Nederlands hetzelfde woord.
+  'admin.bak.status.ok',
+  'admin.bak.col.status',
+  // DEC-164: "Browser" is in het Nederlands hetzelfde woord.
+  'device.browser'
 ];
 
 function placeholders(text: string): string[] {

@@ -78,6 +78,8 @@ betekent: aan `rules` in het script toevoegen en de bestaande treffers eerst opl
 
 ## Codegen
 
+Local heavy commands use the [shared queue](heavy-work.md). `scripts/codegen.sh` enters it automatically; direct generator or test commands use `scripts/pleya-heavy run -- ...`. Existing codegen triggers and evidence rings remain unchanged.
+
 Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any `@freezed` model or a `lib/i18n/*.i18n.json` file (the base locale is `lib/i18n/en.i18n.json`; `strings.g.dart` is the generated output), run `scripts/codegen.sh`. CI fails if a `.dart` source is newer than its generated `.g.dart`/`.freezed.dart`, and `flutter analyze` **warnings are treated as failures**.
 
 ## Commands and formatting
@@ -94,6 +96,6 @@ Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any
   `background_downloader` is the one exception: it is pinned to a mirror under `michelknoop21/*` at the
   same commit, because the upstream fork rebased the revision out of reach (DEC-147).
   `MPVKit` is the second: it is pinned to `michelknoop21/MPVKit` because the avfoundation audio output
-  needs a teardown fix upstream does not carry (DEC-XXX). Upstream releases are not picked up automatically.
+  needs a teardown fix upstream does not carry (DEC-174). Upstream releases are not picked up automatically.
 
 - **MPVKit is exact-gepind** (`XCRemoteSwiftPackageReference` in alle drie de `Runner.xcodeproj`'s + zes `Package.resolved`'s). Het is een fork met prebuilt XCFrameworks, dus een tag = een specifieke mpv/ffmpeg-binary; een floating range zou de speler tussen builds onder de app vandaan wisselen. Nieuwe tags komen er dus alleen in als je ze haalt: `scripts/check_mpvkit_update.sh` (rapporteert + toont de changelog), `--bump` schrijft de pin bij op alle negen plekken. Draait adviserend mee in `scripts/testflight_release.sh`. **Houd hem bij**: de audio-/videopaden (Dolby, spatial, inline-OSD) leven in die fork. Na een bump: packages resolven in Xcode en afspelen echt verifiëren; het risico is een A/V-regressie, geen compilefout.

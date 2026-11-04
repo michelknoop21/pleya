@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -8,6 +9,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
 // K rij 1 van het securityplan: geen beheerhandeling zonder credential.
@@ -164,5 +168,15 @@ func TestThePublicRoutesAnswerWithoutACredential(t *testing.T) {
 			t.Errorf("%s staat in publicPatterns en vraagt toch een credential: %s",
 				pattern, rec.Body.String())
 		}
+	}
+}
+
+// Een download loopt via authenticated(); zonder sid in de context kijkt
+// copyRange naar id.Nil en stopt een ingetrokken sessie de overdracht niet.
+func TestClaimsCarryTheSessionForCopyRange(t *testing.T) {
+	sid := id.New()
+	ctx := withClaimsAndSession(context.Background(), auth.Claims{Sid: sid.String()})
+	if got := sessionIDFromContext(ctx); got != sid {
+		t.Fatalf("sessionIDFromContext = %v, wil %v", got, sid)
 	}
 }

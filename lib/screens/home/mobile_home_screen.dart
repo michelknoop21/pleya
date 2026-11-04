@@ -2,7 +2,8 @@
 /// Unified 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 8.
 ///
 /// `DiscoverScreen._buildContent` picks this on `PlatformDetector.isPhone`;
-/// desktop, iPad and TV keep their existing trees untouched. The three
+/// desktop, iPad and TV keep their own trees, the iPad with this screen's hero
+/// card in portrait (`ipad_home_hero.dart`). The three
 /// headeractions (Nu aan het kijken, Samen kijken, Afstandsbediening) stay in
 /// the header until fase 6 migrates the root navigation (DEC-102) — that is
 /// why this header is fuller than the Home comp, a known, approved fase-1
@@ -16,23 +17,17 @@ import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
-import '../../media/unified/source_availability.dart';
-import '../../media/unified/source_coverage_state.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
-import '../../media/unified/unified_media_source.dart';
-import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/home_extra_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
-import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
-import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/home_row_layout.dart' show homeLayoutIdsOf;
 import 'customize/home_customize_entry.dart';
-import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
+import 'home_group_activation.dart';
 import '../../utils/home_hero_layout.dart';
 import 'mobile_continue_watching_screen.dart';
 import '../../widgets/mobile/mobile_chip_bar.dart';
@@ -62,42 +57,9 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
   static List<UnifiedMediaHub> _ofSurface(List<UnifiedMediaHub> hubs, UnifiedCatalogSurface surface) =>
       hubs.where((hub) => hub.kind.singleKindSurface == surface).toList();
 
-  /// Live, not the stamped [UnifiedMediaSource.availability]: a freshly
-  /// projected group's sources default to [SourceAvailability.unknown], and
-  /// reading that would send every activation through the picker's
-  /// no-usable-source path regardless of whether the server is actually up.
-  SourceAvailability Function(UnifiedMediaSource source) _availabilityFor(BuildContext context) {
-    final manager = context.read<MultiServerProvider>().serverManager;
-    final health = unifiedServerHealth(
-      isOnline: manager.isServerOnline,
-      authErrorServerIds: manager.authErrorServerIds,
-    );
-    return (source) => unifiedSourceAvailability(source, health);
-  }
+  Future<void> _openDetails(UnifiedMediaGroup group) => openHomeGroupDetails(context, group);
 
-  Future<void> _openDetails(UnifiedMediaGroup group) async {
-    // A Nu op tv card tunes its channel; it has no detail page to open.
-    if (await context.read<HomeExtraRowsProvider?>()?.activateLiveTv(context, group) ?? false) return;
-    if (!mounted) return;
-    await openMobileMediaGroup(
-      context,
-      group: group,
-      intent: UnifiedActivationIntent.details,
-      availabilityFor: _availabilityFor(context),
-      coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
-    );
-  }
-
-  Future<void> _play(UnifiedMediaGroup group) async {
-    await openMobileMediaGroup(
-      context,
-      group: group,
-      intent: UnifiedActivationIntent.play,
-      availabilityFor: _availabilityFor(context),
-      coverage: SourceCoverageState.complete({for (final s in group.sources) s.serverId.value}),
-      playDirectly: true,
-    );
-  }
+  Future<void> _play(UnifiedMediaGroup group) => playHomeGroup(context, group);
 
   /// The rail directly under the hero, so the hero-plus-first-rail viewport
   /// fill (`homeHeroHeight`) budgets against the right shape. Verder kijken

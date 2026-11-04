@@ -136,6 +136,8 @@ class PlaybackInitializationService {
     bool preferOffline = false,
     TranscodeQualityPreset qualityPreset = TranscodeQualityPreset.original,
     int? selectedAudioStreamId,
+    int? selectedSubtitleStreamId,
+    SourceTrackSelector? selectSourceTracks,
     String? sessionIdentifier,
     String? transcodeSessionId,
   }) async {
@@ -176,6 +178,8 @@ class PlaybackInitializationService {
           selectedMediaSourceId: selectedMediaSourceId,
           qualityPreset: qualityPreset,
           selectedAudioStreamId: selectedAudioStreamId,
+          selectedSubtitleStreamId: selectedSubtitleStreamId,
+          selectSourceTracks: selectSourceTracks,
           sessionIdentifier: sessionIdentifier,
           transcodeSessionId: transcodeSessionId,
         ),
@@ -267,9 +271,13 @@ class PlaybackInitializationService {
         final fileName = p.basenameWithoutExtension(entity.path);
         final trackId = int.tryParse(fileName);
 
-        final cachedTrack = trackId != null
-            ? mediaInfo?.subtitleTracks.where((t) => t.id == trackId).firstOrNull
-            : null;
+        final cachedTrack =
+            mediaInfo?.subtitleTracks
+                .where(
+                  (track) => track.sourceStreamId != null && Uri.encodeComponent(track.sourceStreamId!) == fileName,
+                )
+                .firstOrNull ??
+            (trackId != null ? mediaInfo?.subtitleTracks.where((track) => track.id == trackId).firstOrNull : null);
 
         subtitles.add(
           SubtitleTrack.uri(

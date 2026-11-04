@@ -128,6 +128,9 @@ class MediaAudioTrack with _TrackLabelMixin {
 class MediaSubtitleTrack with _TrackLabelMixin {
   @override
   final int id;
+
+  /// Stable backend identity, distinct from the player-facing numeric id.
+  final String? sourceStreamId;
   @override
   final int? index;
   final String? codec;
@@ -143,6 +146,7 @@ class MediaSubtitleTrack with _TrackLabelMixin {
 
   MediaSubtitleTrack({
     required this.id,
+    this.sourceStreamId,
     this.index,
     this.codec,
     this.language,

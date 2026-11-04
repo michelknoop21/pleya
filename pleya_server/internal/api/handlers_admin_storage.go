@@ -81,7 +81,13 @@ func (s *Server) handleStorageRoots(w http.ResponseWriter, r *http.Request) {
 
 	paths := map[string]bool{}
 	for _, root := range s.opts.MediaRoots {
-		paths[root] = true
+		// Een mount die al geclaimde roots bevat (of erin ligt) is niet te kiezen:
+		// elke bibliotheek erop botst. Hij blijft wel de grens voor nieuwe roots
+		// (rootProblem), alleen niet meer in de lijst, zodat niemand een keuze
+		// ziet die pas bij Opslaan wordt geweigerd.
+		if !overlapsClaimed(root, claimed) {
+			paths[root] = true
+		}
 	}
 	for _, loc := range claimed {
 		paths[loc.RootPath] = true
@@ -161,4 +167,15 @@ func (s *Server) handleRecheckStorageRoots(w http.ResponseWriter, r *http.Reques
 
 	s.auditEvent(r, auditRecheckStorageRoots, "", audit.OutcomeOK, nil)
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// overlapsClaimed zegt of root een geclaimde root bevat of erin ligt. Een root
+// die zelf geclaimd is telt niet: die hoort gewoon in de lijst.
+func overlapsClaimed(root string, claimed []catalog.StorageLocationWithLibrary) bool {
+	for _, loc := range claimed {
+		if loc.RootPath != root && catalog.RootsOverlap(root, loc.RootPath) {
+			return true
+		}
+	}
+	return false
 }

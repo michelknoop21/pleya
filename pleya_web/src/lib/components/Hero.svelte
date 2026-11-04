@@ -23,6 +23,8 @@
   als de aanroeper hem meegeeft, zonder plaatshouder ervoor.
 -->
 <script lang="ts">
+  import {fade} from 'svelte/transition';
+  import './consumerHero.css';
   import Artwork from './Artwork.svelte';
   import type { Item } from '../api/types';
   import { formatDuration } from '../util/format';
@@ -30,6 +32,10 @@
 
   interface Props {
     item: Item;
+    /** Original episode title when the heading supplies series context. */
+    subtitle?: string;
+    cinema?: boolean;
+    billboard?: boolean;
     /** Korte inhoud onder de metaregel; zonder waarde geen alinea. */
     summary?: string;
     /** Bestemming van Afspelen; zonder waarde geen afspeelknop. */
@@ -38,30 +44,36 @@
     label?: string;
   }
 
-  let { item, summary, playHref, label = t('home.recentlyAdded') }: Props = $props();
+  let { item, subtitle, cinema = false, billboard = false, summary, playHref, label = t('home.recentlyAdded') }: Props = $props();
 
   const artworkId = $derived(item.artwork?.backdrop_id ?? item.artwork?.poster_id);
+  const posterOnly = $derived(!item.artwork?.backdrop_id && Boolean(item.artwork?.poster_id));
   // Soort, jaar en duur, zoals de metaregel in beeld 01; genre draagt `Item`
   // nog niet (PS-7N), dus die ontbreekt en er staat geen lege plek voor.
   const meta = $derived(
     [
       t(`hero.kind.${item.kind}` as MessageKey),
+      subtitle,
+      item.genres?.join(', '),
       item.year ? String(item.year) : null,
-      formatDuration(item.duration_ms)
+      formatDuration(item.duration_ms),
+      item.content_rating
     ].filter((part): part is string => Boolean(part))
   );
 </script>
 
-<section class="hero" class:hero--none={!artworkId} aria-label={label}>
+<section class="hero" class:hero--cinema={cinema} class:hero--billboard={billboard} class:hero--none={!artworkId} class:hero--poster={posterOnly} aria-label={label}>
   {#if artworkId}
-    <div class="hero__art">
-      <Artwork {artworkId} alt="" shape="free" role="backdrop" eager flat>
+    {#key artworkId}
+    <div class="hero__art" transition:fade={{duration:billboard && typeof matchMedia==='function' && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 460 : 0}}>
+      <Artwork {artworkId} alt="" shape="free" role={posterOnly ? 'poster' : 'backdrop'} eager flat>
         {#snippet fallback()}
           <!-- Mislukt laden: het paneel blijft staan, zonder pictogram midden in beeld. -->
           <div class="hero__fail"></div>
         {/snippet}
       </Artwork>
     </div>
+    {/key}
     <div class="hero__scrim" aria-hidden="true"></div>
   {/if}
   <div class="hero__body">
@@ -86,7 +98,7 @@
           >
             <path d="M7 4.5v15l12.5-7.5z" />
           </svg>
-          {t('hero.play')}
+          {t(billboard && item.user_state && !item.user_state.watched && item.user_state.position_ms > 0 ? 'hero.resume' : 'hero.play')}
         </a>
       {/if}
       <a class="btn btn--secondary hero__btn hero__btn--glass" href="/items/{item.id}">
@@ -137,6 +149,15 @@
 
   .hero__art :global(.artwork img) {
     object-position: 50% 25%;
+  }
+
+  .hero--poster .hero__art {
+    inset: 0 0 0 50%;
+  }
+
+  .hero--poster .hero__art :global(.artwork img) {
+    object-fit: contain;
+    object-position: center;
   }
 
   .hero__fail {
@@ -284,6 +305,12 @@
     .hero__art :global(.artwork img) {
       object-position: 50% 20%;
     }
+    .hero--poster .hero__art {
+      inset: 0 0 30%;
+    }
+    .hero--poster .hero__art :global(.artwork img) {
+      object-position: center top;
+    }
     .hero__scrim {
       background: linear-gradient(
         180deg,
@@ -323,6 +350,7 @@
     }
     .hero__btn {
       flex: 1;
+      padding-inline: 12px;
     }
   }
 </style>

@@ -1,0 +1,201 @@
+{
+  "_toelichting": "Volledig verzonnen. Geen echte Plex-server, gebruiker, token of titel. De Plex-delen volgen de vorm van /library/sections/{id}/all, /library/metadata/{id}?includeGuids=1 en /accounts; de Pleya-delen volgen de kolommen van 0002, 0004, 0007 en 0013.",
+  "snapshot_at": 1793361600,
+  "plex": {
+    "server": "plex-fictief-01",
+    "accounts": {
+      "MediaContainer": {
+        "size": 4,
+        "Account": [
+          {"id": 1, "name": "anouk-fictief"},
+          {"id": 2, "name": "bram-fictief"},
+          {"id": 3, "name": "cas-fictief"},
+          {"id": 4, "name": "dirk-fictief"}
+        ]
+      }
+    },
+    "grandparents": {
+      "107": {
+        "MediaContainer": {
+          "Metadata": [
+            {"ratingKey": "107", "type": "show", "title": "Kanaalkust", "year": 2020,
+             "guid": "plex://show/fic0107", "Guid": [{"id": "tmdb://900701"}, {"id": "tvdb://800701"}]}
+          ]
+        }
+      }
+    },
+    "libraries_per_user": {
+      "1": {
+        "MediaContainer": {
+          "Metadata": [
+            {"ratingKey": "101", "librarySectionID": "1", "type": "movie", "title": "De Zoutpan", "year": 2019,
+             "guid": "plex://movie/fic0101", "Guid": [{"id": "tmdb://900101"}, {"id": "imdb://tt9000101"}],
+             "duration": 6000000, "viewCount": 2, "lastViewedAt": 1772396100, "userRating": 8.0},
+            {"ratingKey": "102", "librarySectionID": "1", "type": "movie", "title": "Lichtjaar Nul", "year": 2022,
+             "guid": "plex://movie/fic0102", "Guid": [],
+             "duration": 5400000, "viewOffset": 3000000, "lastViewedAt": 1792962000},
+            {"ratingKey": "103", "librarySectionID": "1", "type": "movie", "title": "Het Veerpont", "year": 1998,
+             "guid": "plex://movie/fic0103", "Guid": [{"id": "tmdb://900301"}],
+             "duration": 7200000, "viewCount": 1, "lastViewedAt": 1789241400},
+            {"ratingKey": "105", "librarySectionID": "1", "type": "movie", "title": "Polderlicht", "year": 2015,
+             "guid": "plex://movie/fic0105", "Guid": [{"id": "tmdb://900501"}],
+             "duration": 6600000, "viewCount": 1, "lastViewedAt": 1780423200},
+            {"ratingKey": "109", "librarySectionID": "2", "type": "episode", "title": "Laag water",
+             "grandparentRatingKey": "107", "grandparentTitle": "Kanaalkust", "parentIndex": 1, "index": 1,
+             "guid": "plex://episode/fic0109", "duration": 2700000, "viewOffset": 600000, "lastViewedAt": 1780423200},
+            {"ratingKey": "110", "librarySectionID": "2", "type": "episode", "title": "Springtij",
+             "grandparentRatingKey": "107", "grandparentTitle": "Kanaalkust", "parentIndex": 1, "index": 2,
+             "guid": "plex://episode/fic0110", "duration": 2700000, "viewCount": 1, "lastViewedAt": 1787079600},
+            {"ratingKey": "112", "librarySectionID": "1", "type": "movie", "title": "Stille Haven", "year": 2010,
+             "guid": "plex://movie/fic0112", "Guid": [{"id": "tmdb://999999"}],
+             "duration": 6000000, "viewCount": 1, "lastViewedAt": 1777986000},
+            {"ratingKey": "113", "librarySectionID": "1", "type": "movie", "title": "Grijze Duinen", "year": 2012,
+             "guid": "plex://movie/fic0113", "Guid": [],
+             "duration": 6000000, "viewCount": 1, "lastViewedAt": 1775293200},
+            {"ratingKey": "120", "librarySectionID": "1", "type": "movie", "title": "Onbekende Reis", "year": 2001,
+             "guid": "plex://movie/fic0120", "Guid": [{"id": "tmdb://902001"}],
+             "duration": 6000000, "viewCount": 1, "lastViewedAt": 1775293200},
+            {"ratingKey": "101", "librarySectionID": "1", "type": "movie", "title": "De Zoutpan", "year": 2019,
+             "guid": "plex://movie/fic0101", "Guid": [{"id": "tmdb://900101"}, {"id": "imdb://tt9000101"}],
+             "duration": 6000000, "viewCount": 2, "lastViewedAt": 1772396100, "userRating": 8.0},
+            {"ratingKey": "122", "librarySectionID": "5", "type": "track", "title": "Havenlied",
+             "guid": "plex://track/fic0122", "duration": 200000, "viewCount": 4, "lastViewedAt": 1783440000},
+            {"ratingKey": "124", "librarySectionID": "1", "type": "movie", "title": "Avondrood", "year": 2018,
+             "guid": "plex://movie/fic0124", "Guid": [{"id": "tmdb://901501"}],
+             "duration": 5000000, "viewOffset": 5600000, "lastViewedAt": 1783440000},
+            {"ratingKey": "125", "librarySectionID": "1", "type": "movie", "title": "Morgenland", "year": 2024,
+             "guid": "plex://movie/fic0125", "Guid": [{"id": "tmdb://901601"}],
+             "duration": 6000000, "viewOffset": 1000000, "lastViewedAt": 1794736800},
+            {"ratingKey": "126", "librarySectionID": "1", "type": "movie", "title": "Wolkenkrabber", "year": 2016,
+             "guid": "plex://movie/fic0126", "Guid": [],
+             "duration": 6000000, "viewCount": 1, "lastViewedAt": 1787079600},
+            {"ratingKey": "141", "librarySectionID": "1", "type": "movie", "title": "Morgenland", "year": 2024,
+             "guid": "plex://movie/fic0125", "Guid": [{"id": "tmdb://901601"}],
+             "duration": 6000000, "viewCount": 1, "lastViewedAt": 1787079600},
+            {"ratingKey": "142", "librarySectionID": "4", "type": "movie", "title": "Morgenland", "year": 2024,
+             "guid": "plex://movie/fic0125", "Guid": [{"id": "tmdb://901601"}],
+             "duration": 6000000, "viewOffset": 2000000, "lastViewedAt": 1789241400}
+          ]
+        }
+      },
+      "2": {
+        "MediaContainer": {
+          "Metadata": [
+            {"ratingKey": "101", "librarySectionID": "1", "type": "movie", "title": "De Zoutpan", "year": 2019,
+             "guid": "plex://movie/fic0101", "Guid": [{"id": "tmdb://900101"}],
+             "duration": 6000000, "viewCount": 1, "lastViewedAt": 1775293200},
+            {"ratingKey": "103", "librarySectionID": "1", "type": "movie", "title": "Het Veerpont", "year": 1998,
+             "guid": "plex://movie/fic0103", "Guid": [{"id": "tmdb://900301"}],
+             "duration": 7200000, "viewOffset": 1200000, "lastViewedAt": 1793220000},
+            {"ratingKey": "104", "librarySectionID": "1", "type": "movie", "title": "Het Veerpont", "year": 2021,
+             "guid": "plex://movie/fic0104", "Guid": [{"id": "tmdb://900302"}],
+             "duration": 6900000, "viewCount": 1, "lastViewedAt": 1787079600},
+            {"ratingKey": "109", "librarySectionID": "2", "type": "episode", "title": "Laag water",
+             "grandparentRatingKey": "107", "grandparentTitle": "Kanaalkust", "parentIndex": 1, "index": 1,
+             "guid": "plex://episode/fic0109", "duration": 2700000, "viewCount": 1, "lastViewedAt": 1783440000},
+            {"ratingKey": "130", "librarySectionID": "1", "type": "movie", "title": "Zomerdijk", "year": 2011,
+             "guid": "plex://movie/fic0130", "Guid": [{"id": "tmdb://903001"}],
+             "duration": 6000000}
+          ]
+        }
+      },
+      "3": {
+        "MediaContainer": {
+          "Metadata": [
+            {"ratingKey": "111", "librarySectionID": "3", "type": "movie", "title": "Bosuil en Bever", "year": 2017,
+             "guid": "plex://movie/fic0111", "Guid": [{"id": "tmdb://901101"}],
+             "duration": 4800000, "viewCount": 3, "lastViewedAt": 1792962000},
+            {"ratingKey": "103", "librarySectionID": "1", "type": "movie", "title": "Het Veerpont", "year": 1998,
+             "guid": "plex://movie/fic0103", "Guid": [{"id": "tmdb://900301"}],
+             "duration": 7200000, "viewCount": 1, "lastViewedAt": 1787079600}
+          ]
+        }
+      },
+      "4": {
+        "MediaContainer": {
+          "Metadata": [
+            {"ratingKey": "101", "librarySectionID": "1", "type": "movie", "title": "De Zoutpan", "year": 2019,
+             "guid": "plex://movie/fic0101", "Guid": [{"id": "tmdb://900101"}],
+             "duration": 6000000, "viewCount": 1, "lastViewedAt": 1783440000}
+          ]
+        }
+      }
+    }
+  },
+  "pleya": {
+    "users": [
+      {"id": "00000000-0000-4000-8000-0000000000a1", "username": "anouk", "role": "owner"},
+      {"id": "00000000-0000-4000-8000-0000000000a2", "username": "bram", "role": "member"},
+      {"id": "00000000-0000-4000-8000-0000000000a3", "username": "cas", "role": "restricted"}
+    ],
+    "libraries": [
+      {"id": "00000000-0000-4000-8000-00000000f001", "name": "Films"},
+      {"id": "00000000-0000-4000-8000-00000000f002", "name": "Series"},
+      {"id": "00000000-0000-4000-8000-00000000f003", "name": "Kinderen"},
+      {"id": "00000000-0000-4000-8000-00000000f004", "name": "Films 4K"}
+    ],
+    "library_permissions": [
+      {"user_id": "00000000-0000-4000-8000-0000000000a2", "library_id": "00000000-0000-4000-8000-00000000f001", "permission": "view"},
+      {"user_id": "00000000-0000-4000-8000-0000000000a2", "library_id": "00000000-0000-4000-8000-00000000f002", "permission": "view"},
+      {"user_id": "00000000-0000-4000-8000-0000000000a3", "library_id": "00000000-0000-4000-8000-00000000f003", "permission": "view"}
+    ],
+    "media_items": [
+      {"id": "10000000-0000-4000-8000-000000000001", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "De Zoutpan", "year": 2019, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000002", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Lichtjaar Nul (2022)", "year": 2022, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000003", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Het Veerpont", "year": 1998, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000004", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Het Veerpont", "year": 2021, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000005", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Polderlicht", "year": 2015, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000006", "library_id": "00000000-0000-4000-8000-00000000f004", "parent_id": null, "kind": "movie", "title": "Polderlicht", "year": 2015, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000007", "library_id": "00000000-0000-4000-8000-00000000f002", "parent_id": null, "kind": "show", "title": "Kanaalkust", "year": 2020, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000008", "library_id": "00000000-0000-4000-8000-00000000f002", "parent_id": "10000000-0000-4000-8000-000000000007", "kind": "season", "title": "Seizoen 1", "year": null, "item_index": 1},
+      {"id": "10000000-0000-4000-8000-000000000009", "library_id": "00000000-0000-4000-8000-00000000f002", "parent_id": "10000000-0000-4000-8000-000000000008", "kind": "episode", "title": "Laag water", "year": null, "item_index": 1},
+      {"id": "10000000-0000-4000-8000-000000000010", "library_id": "00000000-0000-4000-8000-00000000f002", "parent_id": "10000000-0000-4000-8000-000000000008", "kind": "episode", "title": "Springtij", "year": null, "item_index": 2},
+      {"id": "10000000-0000-4000-8000-000000000011", "library_id": "00000000-0000-4000-8000-00000000f003", "parent_id": null, "kind": "movie", "title": "Bosuil en Bever", "year": 2017, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000012", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Stille Haven", "year": 2010, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000013", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Grijze Duinen", "year": 2012, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000014", "library_id": "00000000-0000-4000-8000-00000000f004", "parent_id": null, "kind": "movie", "title": "Grijze Duinen", "year": 2012, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000015", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Avondrood", "year": 2018, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000016", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Morgenland", "year": 2024, "item_index": null},
+      {"id": "10000000-0000-4000-8000-000000000018", "library_id": "00000000-0000-4000-8000-00000000f001", "parent_id": null, "kind": "movie", "title": "Wolkenkrabber", "year": 2016, "item_index": null}
+    ],
+    "metadata_candidates": [
+      {"item_id": "10000000-0000-4000-8000-000000000001", "provider": "tmdb", "state": "matched", "external_id": "900101"},
+      {"item_id": "10000000-0000-4000-8000-000000000002", "provider": "tmdb", "state": "unmatched", "external_id": null},
+      {"item_id": "10000000-0000-4000-8000-000000000003", "provider": "tmdb", "state": "matched", "external_id": "900301"},
+      {"item_id": "10000000-0000-4000-8000-000000000004", "provider": "tmdb", "state": "matched", "external_id": "900302"},
+      {"item_id": "10000000-0000-4000-8000-000000000005", "provider": "tmdb", "state": "matched", "external_id": "900501"},
+      {"item_id": "10000000-0000-4000-8000-000000000006", "provider": "tmdb", "state": "matched", "external_id": "900501"},
+      {"item_id": "10000000-0000-4000-8000-000000000007", "provider": "tmdb", "state": "matched", "external_id": "900701"},
+      {"item_id": "10000000-0000-4000-8000-000000000011", "provider": "tmdb", "state": "matched", "external_id": "901101"},
+      {"item_id": "10000000-0000-4000-8000-000000000012", "provider": "tmdb", "state": "matched", "external_id": "901201"},
+      {"item_id": "10000000-0000-4000-8000-000000000013", "provider": "tmdb", "state": "ambiguous", "external_id": null},
+      {"item_id": "10000000-0000-4000-8000-000000000015", "provider": "tmdb", "state": "matched", "external_id": "901501"},
+      {"item_id": "10000000-0000-4000-8000-000000000016", "provider": "tmdb", "state": "matched", "external_id": "901601"}
+    ],
+    "watch_states": [
+      {"subject": "00000000-0000-4000-8000-0000000000a2", "item_id": "10000000-0000-4000-8000-000000000001",
+       "position_ms": 0, "duration_ms": 6000000, "watched": true, "play_count": 1, "revision": 3,
+       "owner_session_id": null, "owner_lease_until": null,
+       "last_explicit_at": 1792962000, "last_explicit_kind": "mark_watched",
+       "created_at": 1792900000, "updated_at": 1792962000},
+      {"subject": "00000000-0000-4000-8000-0000000000a1", "item_id": "10000000-0000-4000-8000-000000000009",
+       "position_ms": 1500000, "duration_ms": 2700000, "watched": false, "play_count": 0, "revision": 2,
+       "owner_session_id": null, "owner_lease_until": null,
+       "last_explicit_at": 1793220000, "last_explicit_kind": "playback_started",
+       "created_at": 1793220000, "updated_at": 1793221000},
+      {"subject": "00000000-0000-4000-8000-0000000000a1", "item_id": "10000000-0000-4000-8000-000000000010",
+       "position_ms": 300000, "duration_ms": 2700000, "watched": false, "play_count": 0, "revision": 1,
+       "owner_session_id": "web-fic-01", "owner_lease_until": 1793361900,
+       "last_explicit_at": 1793361000, "last_explicit_kind": "playback_started",
+       "created_at": 1793361000, "updated_at": 1793361000}
+    ]
+  },
+  "user_mapping": [
+    {"plex_server": "plex-fictief-01", "plex_account_id": 1, "pleya_user_id": "00000000-0000-4000-8000-0000000000a1"},
+    {"plex_server": "plex-fictief-01", "plex_account_id": 2, "pleya_user_id": "00000000-0000-4000-8000-0000000000a2"},
+    {"plex_server": "plex-fictief-01", "plex_account_id": 3, "pleya_user_id": "00000000-0000-4000-8000-0000000000a3"}
+  ],
+  "confirmed_weak_matches": [
+    {"plex_server": "plex-fictief-01", "rating_key": "102", "pleya_item_id": "10000000-0000-4000-8000-000000000002"}
+  ]
+}

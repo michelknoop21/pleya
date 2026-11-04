@@ -56,17 +56,27 @@ extension _SettingsTvPage on _SettingsScreenState {
   Widget _buildTvSettings(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final active = context.watch<ActiveProfileProvider>().active;
+    // Read here, while this State builds, for the Servers row's status line.
+    final servers = context.watch<MultiServerProvider?>();
+    // Only where the section can show: on a TV, with a key in this build, on a
+    // profile that is not a child's. The shield hides the switch with the
+    // section, so a child cannot turn on what would not show anyway.
+    final discussionsSwitch =
+        TraktCommentsClient.shared.isConfigured && !(context.watch<TraktAccountProvider?>()?.isKidsProfile ?? true);
+    final sharing = _syncActivitySharing(servers);
 
-    // PB-1: a settings subpage keeps the top bar. `SettingsScreen` is itself a
+    // A settings subpage opens inside the shell. `SettingsScreen` is itself a
     // nested route already (`tvMyPleyaNestedRoute`), so pushing its own
     // subpages on the profile navigator meant the child escaped a shell the
-    // parent had stayed inside. Falls back to the ordinary push when no TV
-    // shell is listening, which is every test that mounts this page on its own.
+    // parent had stayed inside. A-24 (DEC-166): under the same collapsible
+    // bar as this page ([kTvSettingsTopNav]). Falls back to the ordinary push
+    // when no TV shell is listening, which is every test that mounts this page
+    // on its own.
     void open(String id, WidgetBuilder builder) {
       // Every page opened from here is a settings page: it keeps the Studio
       // palette (A-24b). [context] is the State's, above the page's wrapper.
       Widget studio(BuildContext context) => SettingsStudioTheme(child: builder(context));
-      if (openTvContentRoute(id: 'tvSettings_$id', builder: studio) != null) return;
+      if (openTvContentRoute(id: 'tvSettings_$id', builder: studio, topNav: kTvSettingsTopNav) != null) return;
       Navigator.push(context, MaterialPageRoute<void>(builder: studio));
     }
 
@@ -85,6 +95,7 @@ extension _SettingsTvPage on _SettingsScreenState {
         settings.SettingsService.videoPlayerNavigationEnabled,
         settings.SettingsService.autoCheckUpdatesOnStartup,
         settings.SettingsService.icloudSyncEnabled,
+        settings.SettingsService.showTraktDiscussions,
       ],
       builder: (context) {
         final libraryPreview = TvSettingsLibraryPreview(
@@ -183,6 +194,9 @@ extension _SettingsTvPage on _SettingsScreenState {
             id: 'integrations',
             title: t.settingsStudio.integrations,
             icon: Symbols.cloud_rounded,
+            // Review 557-M2: the dot on Instellingen in the top bar leads here,
+            // where the Servers row names the session that expired.
+            needsAttention: servers?.hasAuthErrorServers ?? false,
             // Trackers, Aanvragen and Tautulli as on the iPhone's Koppelingen
             // page, then Servers en bronnen (series `tvos/10`).
             body: Column(
@@ -194,6 +208,12 @@ extension _SettingsTvPage on _SettingsScreenState {
                   padding: EdgeInsets.only(top: 28 * TvHig.of(context)),
                   child: TvStudioHeading(t.settingsStudio.serversAndSources),
                 ),
+                // A-24c: the Servers page Mijn Pleya used to open, whole.
+                // `TvServersPage` shows more than the list under it (online,
+                // offline or a new sign-in, libraries, user) and asks for the
+                // status before it offers to remove anything, so the list
+                // alone is not the same page (LEESMIJ-v4, Servers parity).
+                rows([_tvServersRow(servers)]),
                 const ConnectionsSection(),
               ],
             ),
@@ -214,7 +234,10 @@ extension _SettingsTvPage on _SettingsScreenState {
             id: 'advanced',
             title: t.settings.advanced,
             icon: Symbols.settings_rounded,
-            body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _tvAdvancedGroups(open, rows)),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _tvAdvancedGroups(open, rows, discussionsSwitch, sharing),
+            ),
           ),
         ];
         return SettingsIconStyleScope(
@@ -243,7 +266,22 @@ extension _SettingsTvPage on _SettingsScreenState {
   List<Widget> _tvAdvancedGroups(
     void Function(String id, WidgetBuilder builder) open,
     TvSettingsRowList Function(List<TvMenuItem>) rows,
+    bool discussionsSwitch,
+    List<ActivitySharingController> sharing,
   ) => [
+    if (discussionsSwitch || sharing.isNotEmpty) ...[
+      SettingsSectionHeader(t.settings.privacy),
+      rows([
+        for (final controller in sharing) _tvActivitySharingItem(controller),
+        if (discussionsSwitch)
+          _tvToggle(
+            key: _SettingsScreenState._kTraktDiscussions,
+            icon: Symbols.forum_rounded,
+            title: t.settings.showTraktDiscussions,
+            pref: settings.SettingsService.showTraktDiscussions,
+          ),
+      ]),
+    ],
     SettingsSectionHeader(t.settingsStudio.diagnostics),
     rows([
       TvMenuItem(
@@ -351,6 +389,57 @@ extension _SettingsTvPage on _SettingsScreenState {
       ),
     ]),
   ];
+
+  /// Instellingen ▸ Koppelingen ▸ Servers (A-24c). Opened inside the shell
+  /// under the collapsible bar like every other page from here (A-24), and
+  /// without the Studio wrap: it is the page Mijn Pleya opened before, and it
+  /// keeps that page's look.
+  ///
+  /// An expired server session is named in the row's value, as the amber line
+  /// on the A-24b Mijn Pleya page did (review 557-M2): that line is gone, and
+  /// the dot in the top bar has to lead to something that says which server.
+  TvMenuItem _tvServersRow(MultiServerProvider? servers) {
+    final total = servers?.totalServerCount ?? 0;
+    final authErrors = servers?.authErrorServers ?? const [];
+    return TvMenuItem(
+      key: _SettingsScreenState._kServers,
+      icon: Symbols.dns_rounded,
+      title: t.tvMyPleya.servers,
+      value: authErrors.isNotEmpty
+          ? (authErrors.length == 1
+                ? t.connections.sessionExpiredOne(name: authErrors.first.displayName)
+                : t.connections.sessionExpiredMany(count: '${authErrors.length}'))
+          : total == 0
+          ? t.tvMyPleya.noServers
+          : t.tvMyPleya.serversOnline(online: '${servers?.onlineServerCount ?? 0}', total: '$total'),
+      onSelect: _openTvServersPage,
+    );
+  }
+
+  void _openTvServersPage() {
+    Widget page(BuildContext _) => const TvServersPage();
+    if (openTvContentRoute(id: 'tvSettings_servers', builder: page, topNav: kTvSettingsTopNav) != null) return;
+    Navigator.push(context, MaterialPageRoute<void>(builder: page));
+  }
+
+  /// "Servers beheren" from the shell: Koppelingen chosen, the remote on the
+  /// Servers row, then the Servers page, as if the viewer had walked there.
+  /// The row is in the content scope's history before the page opens, so Menu
+  /// from the page lands on it; opened straight from Home the history held
+  /// only a button that is offstage now, and Menu left the remote nowhere.
+  void _openTvServersFromShell() {
+    _tvCategories.currentState?.choose('integrations');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final row = _focusTracker.get(_SettingsScreenState._kServers);
+      if (row.context != null && row.canRequestFocus) row.requestFocus();
+      // After the row's focus request is applied, so the page's own entry
+      // does not overtake it.
+      scheduleMicrotask(() {
+        if (mounted) _openTvServersPage();
+      });
+    });
+  }
 
   /// A-24b focus restore on the TV page: the categories remember whether the
   /// remote last stood on the rail or on a row, and return it there. False

@@ -31,6 +31,10 @@ type limiter struct {
 	buckets   map[string]*bucket
 	now       func() time.Time
 	lastSweep time.Time
+	burst     float64
+	refill    float64 // tokens per seconde
+	// writes staat alleen op de refresh-limiter, zie refreshWriteBurst.
+	writes *limiter
 }
 
 type bucket struct {
@@ -46,8 +50,43 @@ const (
 	limiterRefill = 1.0 / 12.0 // tokens per seconde
 )
 
+// Dertig verversingen achter elkaar en daarna één per twee seconden, per sessie
+// en voor een al ingetrokken token per token (zie refreshLimiterKey). Een browser in cookiemodus ververst bij elke
+// paginalading en bij elk nieuw tabblad, en die mogen niet tegen de grens lopen;
+// een toestel dat zijn token in een lus blijft verversen wel. De wachttijd blijft
+// zo hoogstens twee seconden, ver onder het respijtvenster van de rotatie: een
+// client die zijn antwoord kwijtraakte en eerst een 429 krijgt, valt na het
+// wachten nog binnen dat venster.
+const (
+	refreshLimiterBurst  = 30.0
+	refreshLimiterRefill = 1.0 / 2.0 // tokens per seconde
+)
+
+// De grens op wat een account aan refreshtokens schrijft. De emmers hierboven tellen
+// aanvragen per sessie of per token, en dat zijn sleutels die een client zelf maakt:
+// elke herhaling laat een vervangen token achter met een eigen emmer, en elke login een
+// sessie. Gemeten liep één sessie zo op 67 rijen per seconde en vier sessies op 145, met
+// de pool vol wachtend op sessieslots. Deze emmers tellen rijen per account, vlak voor
+// het schrijven, en ze staan niet in de kaart met die sleutels: 1024 verzonnen tokens
+// drukken ze er dus niet uit.
+//
+// Rotaties en herhalingen hebben elk een eigen emmer, en dat is de grens zelf. Een token
+// haalt op de kop hoogstens 0,5 per seconde en kan die emmer dus niet leegmaken, terwijl
+// hij wel alle herhalingen van zijn account kan opmaken. Zo houdt één gestolen token de
+// andere toestellen niet tegen. Wat overblijft: een verloren antwoord op hetzelfde account
+// krijgt 429 zolang die herhalingen op zijn.
+//
+// Een toestel ververst eens per kwartier en een browser daarnaast bij elke paginalading,
+// binnen zijn sessie-emmer. Tien toestellen die na een storing terugkomen zijn enkele
+// tientallen rotaties, en 120 is vier volle sessie-emmers.
+const (
+	refreshWriteBurst  = 120.0
+	refreshWriteRefill = 2.0 // rijen per seconde, per emmer
+)
+
 // limiterIdleTTL is de tijd waarna een emmer, ongeacht zijn stand bij het
-// stilvallen, gegarandeerd weer vol is (limiterBurst / limiterRefill = 60s).
+// stilvallen, gegarandeerd weer vol is. Voor elk tempo in dit pakket 60 seconden:
+// burst gedeeld door refill, hier en in login_guard.go.
 const limiterIdleTTL = time.Duration(limiterBurst/limiterRefill) * time.Second
 
 // limiterSweepInterval bepaalt hoe vaak allow() de opruiming probeert. Elke
@@ -62,7 +101,25 @@ const limiterSweepInterval = limiterIdleTTL
 const limiterMaxBuckets = 1024
 
 func newLimiter() *limiter {
-	return &limiter{buckets: map[string]*bucket{}, now: time.Now}
+	return &limiter{buckets: map[string]*bucket{}, now: time.Now, burst: limiterBurst, refill: limiterRefill}
+}
+
+// newRefreshLimiter is een eigen limiter en geen tweede sleutelruimte in de
+// bestaande: login kiest zijn sleutels zelf, en een vloed aan verzonnen
+// gebruikersnamen mag de emmers van refresh niet uit de kaart drukken.
+func newRefreshLimiter() *limiter {
+	return &limiter{
+		buckets: map[string]*bucket{}, now: time.Now, burst: refreshLimiterBurst, refill: refreshLimiterRefill,
+		writes: &limiter{buckets: map[string]*bucket{}, now: time.Now, burst: refreshWriteBurst, refill: refreshWriteRefill},
+	}
+}
+
+// setClock vervangt de klok, onder het slot: alleen tests doen dit, en sommige terwijl
+// er aanvragen lopen.
+func (l *limiter) setClock(now func() time.Time) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.now = now
 }
 
 // allow neemt een token en zegt hoelang er gewacht moet worden als er geen is.
@@ -88,13 +145,13 @@ func (l *limiter) allow(key string) (bool, time.Duration) {
 			}
 			delete(l.buckets, oldestKey)
 		}
-		b = &bucket{tokens: limiterBurst, lastFill: now}
+		b = &bucket{tokens: l.burst, lastFill: now}
 		l.buckets[key] = b
 	}
 
-	b.tokens += now.Sub(b.lastFill).Seconds() * limiterRefill
-	if b.tokens > limiterBurst {
-		b.tokens = limiterBurst
+	b.tokens += now.Sub(b.lastFill).Seconds() * l.refill
+	if b.tokens > l.burst {
+		b.tokens = l.burst
 	}
 	b.lastFill = now
 
@@ -102,7 +159,7 @@ func (l *limiter) allow(key string) (bool, time.Duration) {
 		b.tokens--
 		return true, 0
 	}
-	wait := time.Duration((1 - b.tokens) / limiterRefill * float64(time.Second))
+	wait := time.Duration((1 - b.tokens) / l.refill * float64(time.Second))
 	return false, wait
 }
 

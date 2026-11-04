@@ -41,6 +41,7 @@
 library;
 
 import '../../media/ids.dart';
+import '../../utils/global_key_utils.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../media/media_server_client.dart';
@@ -105,6 +106,15 @@ class CatalogHomeCustomRowLoader implements HomeCustomRowLoader {
   /// purpose does not have to spend the real two seconds per case.
   final Duration _grace;
 
+  /// Recheck exact hides after an await without treating library ids as a
+  /// whitelist: some servers return subfolder ids on otherwise visible copies.
+  bool isLibraryVisible(ServerId serverId, String? libraryId) {
+    if (!_isServerVisible(serverId)) return false;
+    if (libraryId == null) return true;
+    if (_hiddenLibraryKeys().contains(buildGlobalKey(serverId, libraryId))) return false;
+    return !_libraries().any((l) => l.serverId == serverId.value && l.id == libraryId && l.hidden);
+  }
+
   /// The libraries of [kind] this profile may see right now: visible
   /// servers, hidden libraries left out. Big P's find route reads the same
   /// set, so it never searches where Home would not look.
@@ -127,11 +137,8 @@ class CatalogHomeCustomRowLoader implements HomeCustomRowLoader {
     // Capabilities follow the *participating* set, so a row restricted to the
     // Plex and Jellyfin libraries keeps its genre filter even while a Pleya
     // Server library exists elsewhere in the catalog.
-    final query = buildUnifiedCatalogQuery(
-      kind: row.kind,
-      preferences: row.preferences,
-      capabilities: unifiedFilterCapabilitiesFor(participating.map((library) => library.backend)),
-    );
+    final capabilities = unifiedFilterCapabilitiesFor(participating.map((library) => library.backend), kind: row.kind);
+    final query = buildUnifiedCatalogQuery(kind: row.kind, preferences: row.preferences, capabilities: capabilities);
     final service = UnifiedCatalogService(
       query: query,
       libraries: participating,

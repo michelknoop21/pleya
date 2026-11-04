@@ -50,6 +50,7 @@ class MemoryScreenModel extends ChangeNotifier {
     this.ownsHost = true,
   }) : _now = now ?? DateTime.now {
     host.addListener(_onHost);
+    memory.service.addListener(_onMemoryChanged);
     kidsChanges?.addListener(_onKidsChanged);
   }
 
@@ -269,6 +270,8 @@ class MemoryScreenModel extends ChangeNotifier {
 
   void _onKidsChanged() => unawaited(load());
 
+  void _onMemoryChanged() => unawaited(load());
+
   void _notify() {
     if (!_disposed) notifyListeners();
   }
@@ -277,6 +280,7 @@ class MemoryScreenModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     host.removeListener(_onHost);
+    memory.service.removeListener(_onMemoryChanged);
     kidsChanges?.removeListener(_onKidsChanged);
     if (ownsHost) host.dispose();
     super.dispose();

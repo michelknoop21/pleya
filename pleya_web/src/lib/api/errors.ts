@@ -77,6 +77,18 @@ export function toApiError(status: number, body: unknown): ApiError {
   });
 }
 
+/** De codes waarmee de server zegt dat een refreshtoken niet meer geldt. */
+const SESSION_REJECTED_CODES = new Set(['auth.token_expired', 'auth.token_invalid', 'auth.refresh_token_reused']);
+
+/**
+ * Of een fout op `/auth/refresh` de sessie echt beëindigt. Een 429, een 5xx of een
+ * antwoord van een proxy zegt niets over het token, en uitloggen op zo'n fout gooit
+ * een sessie weg die na de storing gewoon nog werkt.
+ */
+export function isSessionRejected(error: ApiError): boolean {
+  return error.status === 401 || SESSION_REJECTED_CODES.has(error.code);
+}
+
 /**
  * Codes die de UI met een eigen woord benoemt. Elke code heeft de sleutel
  * `error.<code>` in beide catalogi; de tekst zelf staat dus in `web.ts` en
@@ -91,6 +103,7 @@ export const ERROR_CODES = [
   'auth.setup_already_completed',
   'auth.setup_code_invalid',
   'auth.rate_limited',
+  'auth.origin_rejected',
   'library.not_found',
   'library.scan_in_progress',
   'library.not_config_managed',

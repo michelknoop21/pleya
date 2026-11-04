@@ -10,6 +10,7 @@ import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
 import '../widgets/server_activities_button.dart';
 import 'home/customize/home_customize_entry.dart';
+import 'home/ipad_home_hero.dart';
 import 'home/mobile_home_screen.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -27,6 +28,7 @@ import '../media/media_hub.dart';
 import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
+import '../widgets/home_hero_play_button.dart';
 import '../providers/discover_provider.dart';
 import '../assistant/assistant_controller.dart';
 import '../assistant/assistant_entitlement.dart';
@@ -69,7 +71,6 @@ import '../utils/app_logger.dart';
 import '../utils/home_hero_layout.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
-import '../utils/video_player_navigation.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
 import '../services/fullscreen_state_manager.dart';
@@ -214,10 +215,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   );
   void _syncRefreshTicker() => _refreshTicker.update(active: _isTabVisible && _appResumed);
 
-  /// Cached in didChangeDependencies rather than read via
-  /// PlatformDetector.isPhone(context) at each _startAutoScroll call: that
-  /// call can happen from initState, before Theme.of(context) is safe.
-  bool _isPhone = false;
+  /// Phone and iPad: their hero lives in its own widget, never in this
+  /// screen's PageView. Cached in didChangeDependencies rather than read at
+  /// each _startAutoScroll call: that call can happen from initState, before
+  /// Theme.of(context) is safe.
+  bool _heroLivesElsewhere = false;
 
   // Track initial load so we can focus hero when content first appears
   bool _initialLoadComplete = false;
@@ -227,6 +229,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   final Map<String, GlobalKey<HubSectionState>> _hubKeysByIdentity = {};
   List<GlobalKey<HubSectionState>> _orderedHubKeys = const [];
   final _tvFeedKey = GlobalKey<TvContentFeedState>();
+  final _ipadHeroKey = GlobalKey<IpadHomeHeroState>();
 
   // Hero and app bar focus
   late FocusNode _heroFocusNode;
@@ -285,7 +288,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   /// Phone/desktop only — both call sites sit behind a `PlatformDetector`
   /// check — so this stays on the raw `latestMovies` PageView list.
-  bool get _isHeroSectionVisible => _latestMovies.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
+  bool get _isHeroSectionVisible =>
+      !_heroLivesElsewhere && _latestMovies.isNotEmpty && context.settingsRead(SettingsService.showHeroSection);
+
+  /// Whether the page draws a hero, whichever tree it is; the real bool for
+  /// `hero_visible`, which the iPad hero's slides answer for themselves.
+  bool get _pageShowsHero => PlatformDetector.isIPad(context)
+      ? context.settingsRead(SettingsService.showHeroSection) &&
+            ipadHomeHeroSlides(context, listen: false).groups.isNotEmpty
+      : _isHeroSectionVisible;
 
   void _scrollToTop() {
     if (!_scrollController.hasClients) return;
@@ -306,13 +317,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     });
   }
 
-  void _focusTopBoundary() {
+  /// [mayTakeHero] is false for a return to the tab under a finger, where no key
+  /// asked: the iPad hero's focus would stop its rotation.
+  void _focusTopBoundary({bool mayTakeHero = true}) {
     if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
     if (PlatformDetector.isTV()) {
       _focusTopActions();
     } else if (_isHeroSectionVisible) {
       _heroFocusNode.requestFocus();
-    } else {
+    } else if (!(mayTakeHero && (_ipadHeroKey.currentState?.focusLastCta() ?? false))) {
       _focusTopActions();
     }
     _scrollToTop();
@@ -329,10 +342,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       return;
     }
 
+    if (_ipadHeroKey.currentState?.focusPlay() ?? false) return;
+    _focusFirstRow();
+  }
+
+  void _focusFirstRow() {
     final keys = _allHubKeys;
-    if (keys.isNotEmpty) {
-      keys.first.currentState?.requestFocusFromMemory();
-    }
+    if (keys.isNotEmpty) keys.first.currentState?.requestFocusFromMemory();
   }
 
   /// Handle vertical navigation between hubs
@@ -396,10 +412,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final isPhone = PlatformDetector.isPhone(context);
-    if (isPhone != _isPhone) {
-      _isPhone = isPhone;
-      if (isPhone) {
+    final heroLivesElsewhere = PlatformDetector.isPhone(context) || PlatformDetector.isIPad(context);
+    if (heroLivesElsewhere != _heroLivesElsewhere) {
+      _heroLivesElsewhere = heroLivesElsewhere;
+      if (heroLivesElsewhere) {
         _autoScrollTimer?.cancel();
       } else if (_isTabVisible && !_isAutoScrollPaused) {
         _startAutoScroll();
@@ -631,10 +647,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (backResult != KeyEventResult.ignored) return backResult;
 
     return dpadKeyHandler(
-      onDown: () {
-        final keys = _allHubKeys;
-        if (keys.isNotEmpty) keys.first.currentState?.requestFocusFromMemory();
-      },
+      onDown: _focusFirstRow,
       onUp: _focusTopActions,
       onLeft: () {
         if (_currentHeroIndex > 0) {
@@ -708,15 +721,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _startAutoScroll() {
     _autoScrollTimer?.cancel();
     if (_isAutoScrollPaused) return;
-    // On the phone, _buildContent replaces this whole subtree with
-    // MobileHomeScreen (which has its own hero auto-advance) — the hero
-    // PageView and its controller below never get built, so this timer
-    // would just wake up every few seconds to find `!_heroController.hasClients`
-    // and bail, for the life of the session. Read from the cached field, not
-    // PlatformDetector.isPhone(context) directly: this can run from
+    // On the phone _buildContent replaces this whole subtree with
+    // MobileHomeScreen, and on the iPad the sliver is IpadHomeHero; both rotate
+    // on their own. The hero PageView and its controller below never get
+    // built, so this timer would just wake up every few seconds to find
+    // `!_heroController.hasClients` and bail, for the life of the session. Read
+    // from the cached field, not PlatformDetector directly: this can run from
     // initState, before Theme.of(context) (which isMobile depends on) may be
     // called.
-    if (_isPhone) return;
+    if (_heroLivesElsewhere) return;
 
     // TV does not rotate from here any more: `TvHeroBillboardCarousel` owns its
     // own 8-second timer and every hoofdstuk 9.6 pause condition, because the
@@ -826,7 +839,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       }
       return;
     }
-    _focusTopBoundary();
+    _focusTopBoundary(mayTakeHero: InputModeTracker.isKeyboardMode(context));
   }
 
   /// HERO7: delegates to the feed, the actual owner of Home's row/card focus.
@@ -1411,7 +1424,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // Hero Section (newest released films) - at top of screen
                 Builder(
                   builder: (context) {
-                    if (_latestMovies.isNotEmpty && showHeroSection) {
+                    final isIPad = PlatformDetector.isIPad(context);
+                    if (isIPad && showHeroSection) {
+                      return IpadHomeHero(
+                        key: _ipadHeroKey,
+                        firstRailHeight: _firstRailHeight,
+                        onNavigateDown: _focusFirstRow,
+                        onNavigateUp: _focusTopActions,
+                        onBack: _navigateToSidebar,
+                      );
+                    }
+                    if (!isIPad && _latestMovies.isNotEmpty && showHeroSection) {
                       return _buildHeroSection();
                     }
                     // Add top padding when hero is not shown
@@ -1436,7 +1459,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         // Verify scenario asserts the DEC-097 fallback ("no
                         // recent film, so no hero and Continue Watching first")
                         // on this node because the hero node is not built then.
-                        state: () => {'hero_visible': _isHeroSectionVisible},
+                        state: () => {'hero_visible': _pageShowsHero},
                         child: HubSection(
                           key: _continueWatchingHubKey,
                           hub: MediaHub(
@@ -1495,6 +1518,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
                   if (_onDeck.isEmpty && _hubs.isEmpty && !_areHubsLoading)
                     SliverFillRemaining(
+                      // Under an iPad hero what remains can be less than this.
+                      hasScrollBody: false,
                       child: StateView.empty(
                         title: t.discover.noContentAvailable,
                         message: t.discover.addMediaToLibraries,
@@ -2029,7 +2054,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           // On small screens: show button before summary
                           if (!alignLeft) ...[
                             SizedBox(height: contentMetrics.metaToButton),
-                            _buildSmartPlayButton(heroItem),
+                            HomeHeroPlayButton(item: heroItem),
                           ],
 
                           // Summary with episode info (Apple TV style)
@@ -2072,7 +2097,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           // On large screens: show button after summary
                           if (alignLeft) ...[
                             SizedBox(height: contentMetrics.metaToButton),
-                            _buildSmartPlayButton(heroItem),
+                            HomeHeroPlayButton(item: heroItem),
                           ],
                         ],
                       ),
@@ -2084,74 +2109,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildSmartPlayButton(MediaItem rawHeroItem) {
-    return Builder(
-      builder: (context) {
-        // The on-deck snapshot refetches shortly after a watch event; the store
-        // patch bridges the gap so "minutes left" never lags.
-        final heroItem = context.withFreshWatchState(rawHeroItem);
-        final hasProgress = heroItem.hasActiveProgress;
-
-        final minutesLeft = hasProgress ? ((heroItem.durationMs! - heroItem.viewOffsetMs!) / 60_000).round() : 0;
-
-        final progress = hasProgress ? heroItem.viewOffsetMs! / heroItem.durationMs! : 0.0;
-
-        // Fixed white pill: TV does not reach this builder at all (its hero is
-        // `TvHeroBillboardCarousel`, which draws its own focus), and desktop
-        // keyboard focus lands on the hero itself (_heroFocusNode), not on this
-        // button.
-        const foregroundColor = Colors.black;
-        const textStyle = TextStyle(color: foregroundColor, fontSize: 14, fontWeight: FontWeight.w600);
-        return AutomationNode(
-          id: AutomationIds.discoverHeroPlay,
-          role: 'button',
-          child: InkWell(
-            onTap: () {
-              appLogger.d('Playing: ${heroItem.title}');
-              navigateToVideoPlayer(context, metadata: heroItem);
-            },
-            borderRadius: const BorderRadius.all(Radius.circular(24)),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(Radius.circular(24))),
-              child: Row(
-                mainAxisSize: .min,
-                children: [
-                  const AppIcon(Symbols.play_arrow_rounded, fill: 1, size: 20, color: foregroundColor),
-                  const SizedBox(width: 8),
-                  if (hasProgress) ...[
-                    // Progress bar
-                    Container(
-                      width: 40,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: foregroundColor.withValues(alpha: 0.25),
-                        borderRadius: const BorderRadius.all(Radius.circular(3)),
-                      ),
-                      child: FractionallySizedBox(
-                        alignment: .centerLeft,
-                        widthFactor: progress,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: foregroundColor,
-                            borderRadius: BorderRadius.all(Radius.circular(2)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(t.discover.minutesLeft(minutes: minutesLeft), style: textStyle),
-                  ] else
-                    Text(t.common.play, style: textStyle),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

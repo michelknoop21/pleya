@@ -45,10 +45,16 @@ of ongeldige invoer geeft 400.
 
 ### `POST /v1/window`
 
-macOS-only verification endpoint. Body `{"width": 1280, "height": 800}`
-resizes the app window in logical pixels and returns the applied dimensions.
-Other targets and non-positive or missing dimensions return 400. Triggert geen
-events.
+Verification endpoint for a target's view. On macOS, body
+`{"width": 1280, "height": 800}` resizes the app window in logical pixels and
+returns the applied dimensions; other targets and non-positive or missing
+dimensions return 400. On iOS, body `{"orientation": "landscapeLeft"}` (or
+`portrait`, `landscapeRight`) locks the app to that orientation through iOS and
+returns `{"ok": true, "orientation": ...}`; other targets and unknown names return
+400. An answer is a request, not evidence: the runner measures `/v1/viewport`. On
+iPad, iOS honors the request because the driver's isolated app copy sets
+`UIRequiresFullScreen`.
+Triggert geen events.
 
 ### `GET /v1/health`
 
@@ -383,6 +389,11 @@ standaardgeval) via `PleyaFakeServer.setupCode` als `setup_code`.
 `{"ok": false, "error": "..."}` op een ontbrekend veld, een falende
 probe/login/setup, of een nog niet gebootstrapte app (geen root-context).
 
+Met `"backend": "jellyfin"` in de body loopt dezelfde stap langs de keten van
+`add_jellyfin_screen.dart` (`/System/Info/Public`, `/Users/AuthenticateByName`),
+tegen `{{fixture_jellyfin}}`. Pleya Protocol kent geen scores, dus een scenario
+over scores heeft die backend nodig. De loopback-grens blijft dezelfde.
+
 ### `POST /v1/connections/seed`
 
 Body: `{"base_url": "...", "server_id": "...", "user_id": "...", "server_name": "...", "user_name": "...", "refresh_token": "..."}`.
@@ -416,8 +427,9 @@ test/commit.
 
 ### `POST /v1/profiles/seed`
 
-Body: `{"display_name": "..."}`. Voegt een tweede lokaal profiel toe dat elke
-verbinding van het actieve profiel leent, en laat het actieve profiel actief.
+Body: `{"display_name": "...", "pin": "1234"}`. `pin` is optioneel en bestaat
+uit precies vier cijfers; alleen de hash wordt opgeslagen. Voegt een tweede
+lokaal profiel toe dat elke verbinding van het actieve profiel leent, en laat het actieve profiel actief.
 Dezelfde toestand als Profiel toevoegen plus Verbinding lenen, zonder een naam
 op het Apple TV-toetsenbord te typen. Voor scenario's die twee profielen op
 dezelfde server nodig hebben (zoekgeschiedenis per profiel).
@@ -425,7 +437,7 @@ dezelfde server nodig hebben (zoekgeschiedenis per profiel).
 Gebruikt de context van `rootNavigatorKey`; `/v1/signin` moet eerst zijn gelukt.
 
 200 `{"ok": true, "profileId": "..."}`; 400 `{"ok": false, "error": "..."}` bij
-een lege naam, geen actief profiel of een actief profiel zonder verbinding.
+een lege naam, ongeldige PIN, geen actief profiel of een actief profiel zonder verbinding.
 
 ### `POST /v1/open`
 

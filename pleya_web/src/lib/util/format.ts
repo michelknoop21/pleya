@@ -71,6 +71,37 @@ export function formatRelative(
   return null;
 }
 
+/** "14:02", in de notatie van de taal. */
+export function formatClock(iso: string | null | undefined, locale = intlLocale()): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+/**
+ * "vandaag 08:00", "gisteren 20:00", en daarvoor "12 okt 08:00". De dag is
+ * kalenderdag in de tijdzone van de browser, niet 24 uur terug: een scan van
+ * gisteren 23:50 is om 00:10 nog "gisteren".
+ */
+export function formatDayClock(
+  iso: string | null | undefined,
+  now: number = Date.now(),
+  locale = intlLocale()
+): string | null {
+  const clock = formatClock(iso, locale);
+  if (!iso || !clock) return null;
+  const date = new Date(iso);
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOf(new Date(now)) - startOf(date)) / 86_400_000);
+  if (days === 0 || days === 1) {
+    const day = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-days, 'day');
+    return `${day} ${clock}`;
+  }
+  const short = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(date);
+  return `${short} ${clock}`;
+}
+
 export function formatCount(count: number, locale = intlLocale()): string {
   return new Intl.NumberFormat(locale).format(count);
 }

@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pleya/mpv/mpv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pleya/database/app_database.dart';
@@ -54,7 +55,14 @@ class SwipeDownTouch extends AppleTvRemoteTouchService {
 }
 
 class ControlsPlayer extends FakeSyncPlayer {
-  ControlsPlayer({super.playing, super.position, super.duration});
+  ControlsPlayer({super.playing, super.position, super.duration, this.subtitle});
+  final SubtitleTrack? subtitle;
+  @override
+  PlayerState get state => super.state.copyWith(track: TrackSelection(subtitle: subtitle));
+  @override
+  Future<void> setProperty(String name, String value) async {
+    commandLog.add('$name=$value');
+  }
 
   @override
   String get playerType => 'mpv';
@@ -90,8 +98,15 @@ Future<TvPlayerRig> pumpTvPlayer(
   Duration position = const Duration(minutes: 3),
   ValueChanged<bool>? onSheetOpenChanged,
   FocusNode? playNextFocusNode,
+  ValueNotifier<bool>? subtitleVisibility,
+  SubtitleTrack? subtitle,
 }) async {
-  final player = ControlsPlayer(playing: playing, position: position, duration: const Duration(minutes: 90));
+  final player = ControlsPlayer(
+    playing: playing,
+    position: position,
+    duration: const Duration(minutes: 90),
+    subtitle: subtitle,
+  );
   addTearDown(player.dispose);
   tester.view.physicalSize = const Size(1920, 1080);
   tester.view.devicePixelRatio = 1.0;
@@ -131,6 +146,7 @@ Future<TvPlayerRig> pumpTvPlayer(
                     Focus(focusNode: playNextFocusNode, child: const SizedBox(width: 10, height: 10)),
                   PlexVideoControls(
                     player: player,
+                    subtitleVisibility: subtitleVisibility,
                     metadata: MediaItem(id: '1', backend: MediaBackend.plex, kind: kind, title: 'Titel'),
                     toastController: toast,
                     chromeController: chrome,

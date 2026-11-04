@@ -444,7 +444,7 @@ func (s *Scanner) judge(root catalog.StorageLocation, index *catalog.FileIndex, 
 	layerOneSame := c.prev.SizeBytes == e.Size && c.prev.MtimeUnix == e.Mtime &&
 		(c.prev.Inode == nil || e.Inode == 0 || *c.prev.Inode == e.Inode)
 
-	if root.InodeTrusted && layerOneSame && c.prev.IsAttached() {
+	if root.InodeTrusted && layerOneSame && (c.prev.IsAttached() || c.prev.AuxiliaryKind != "") {
 		c.action = actionUnchanged
 		return c, nil
 	}
@@ -465,7 +465,7 @@ func (s *Scanner) judge(root catalog.StorageLocation, index *catalog.FileIndex, 
 	// laag 2 dat kan zeggen, én al ergens aan gehangen. Een bestand dat nergens
 	// aan hangt hoort elke ronde opnieuw een kans te krijgen, want de media
 	// ernaast kan er inmiddels wel zijn.
-	if c.prev.Signature != "" && c.prev.Signature == c.signature && c.prev.IsAttached() {
+	if c.prev.Signature != "" && c.prev.Signature == c.signature && (c.prev.IsAttached() || c.prev.AuxiliaryKind != "") {
 		c.action = actionUnchanged
 		return c, nil
 	}
@@ -517,11 +517,42 @@ type probeResult struct {
 
 func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root catalog.StorageLocation, media []candidate, stats *Stats, tracker *progress, log *slog.Logger) error {
 	todo := make([]int, 0, len(media))
-	for i, c := range media {
-		if c.action == actionUnchanged {
-			continue
+	for i := range media {
+		c := &media[i]
+		auxiliary := nameparse.ClassifyAuxiliaryVideo(lib.Kind, c.entry.RelPath)
+		// Reconcile observed legacy/renamed files before either unchanged exit.
+		// A classification never changes presence or an existing binding.
+		if c.prev != nil && c.prev.AuxiliaryKind != auxiliary {
+			if err := s.store.ReconcileAuxiliary(ctx, c.fileID, auxiliary); err != nil {
+				return err
+			}
 		}
-		todo = append(todo, i)
+		if auxiliary != "" && (c.prev == nil || !c.prev.IsAttached()) {
+			if c.prev == nil {
+				if err := s.store.InsertFile(ctx, &catalog.File{
+					ID: c.fileID, StorageLocationID: root.ID, RelativePath: c.entry.RelPath,
+					Role: catalog.RoleMedia, AuxiliaryKind: auxiliary,
+					SizeBytes: c.entry.Size, MtimeUnix: c.entry.Mtime,
+					Inode: inodePtr(c.entry.Inode), Signature: c.signature,
+				}); err != nil {
+					return err
+				}
+			} else {
+				signature := c.signature
+				if signature == "" {
+					signature = c.prev.Signature
+				}
+				if err := s.store.ObserveAuxiliary(ctx, c.fileID, c.entry.Size, c.entry.Mtime, inodePtr(c.entry.Inode), signature); err != nil {
+					return err
+				}
+			}
+			c.action = actionUnchanged // tracked, but no ordinary item or probe
+		} else if c.prev != nil && c.prev.AuxiliaryKind != "" && !c.prev.IsAttached() {
+			c.action = actionChanged // a formerly unbound extra can now attach
+		}
+		if c.action != actionUnchanged {
+			todo = append(todo, i)
+		}
 	}
 
 	// Analyseren gebeurt parallel en wegschrijven serieel. ffprobe is op een NAS
@@ -627,7 +658,14 @@ func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root ca
 		}
 		stats.FilesProbed++
 
-		versionID, partIndex, err := s.attach(ctx, lib, c.entry, res.result, stats)
+		var versionID id.ID
+		var partIndex int
+		var err error
+		if c.prev != nil && c.prev.VersionID != nil && nameparse.ClassifyAuxiliaryVideo(lib.Kind, c.entry.RelPath) != "" {
+			versionID, partIndex = *c.prev.VersionID, c.prev.PartIndex
+		} else {
+			versionID, partIndex, err = s.attach(ctx, lib, c.entry, res.result, stats)
+		}
 		if err != nil {
 			stats.Errors++
 			stats.LastError = err.Error()
@@ -658,140 +696,6 @@ func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root ca
 		}
 	}
 	return nil
-}
-
-// attach maakt of vindt het item en de versie waar dit bestand bij hoort.
-func (s *Scanner) attach(ctx context.Context, lib catalog.Library, e Entry, res *ffprobe.Result, stats *Stats) (id.ID, int, error) {
-	probed := catalog.ProbedVersion{
-		Container:  res.Container,
-		DurationMs: res.DurationMs,
-		BitrateBps: res.BitrateBps,
-		Detection:  res.Detection,
-		Streams:    res.Streams,
-	}
-
-	switch lib.Kind {
-	case "movies":
-		m := nameparse.ParseMovie(e.RelPath)
-		if m.Title == "" {
-			return id.Nil, 0, fmt.Errorf("geen titel af te leiden uit %s", e.RelPath)
-		}
-		itemID, created, err := s.store.ResolveItem(ctx, catalog.ItemRef{
-			LibraryID:   lib.ID,
-			Kind:        "movie",
-			GroupingKey: nameparse.ItemKey(m.Title, yearKey(m.Year)),
-			Title:       m.Title,
-			SortTitle:   nameparse.SortTitle(m.Title),
-			Year:        yearPtr(m.Year),
-		})
-		if err != nil {
-			return id.Nil, 0, err
-		}
-		if created {
-			stats.ItemsCreated++
-		}
-		versionID, vCreated, err := s.store.ResolveVersion(ctx, itemID, m.VersionKey, probed, m.Edition)
-		if err != nil {
-			return id.Nil, 0, err
-		}
-		if vCreated {
-			stats.VersionsCreated++
-		}
-		return versionID, m.PartIndex, nil
-
-	case "shows":
-		ep := nameparse.ParseEpisode(e.RelPath)
-		if !ep.OK {
-			return id.Nil, 0, fmt.Errorf("geen aflevering af te leiden uit %s", e.RelPath)
-		}
-
-		showID, created, err := s.store.ResolveItem(ctx, catalog.ItemRef{
-			LibraryID:   lib.ID,
-			Kind:        "show",
-			GroupingKey: nameparse.ItemKey(ep.Show),
-			Title:       ep.Show,
-			SortTitle:   nameparse.SortTitle(ep.Show),
-			Year:        yearPtr(ep.ShowYear),
-		})
-		if err != nil {
-			return id.Nil, 0, err
-		}
-		if created {
-			stats.ItemsCreated++
-		}
-
-		seasonNumber := ep.Season
-		seasonID, created, err := s.store.ResolveItem(ctx, catalog.ItemRef{
-			LibraryID:   lib.ID,
-			ParentID:    &showID,
-			Kind:        "season",
-			GroupingKey: fmt.Sprintf("%d", seasonNumber),
-			Title:       seasonTitle(seasonNumber),
-			SortTitle:   seasonTitle(seasonNumber),
-			Index:       &seasonNumber,
-		})
-		if err != nil {
-			return id.Nil, 0, err
-		}
-		if created {
-			stats.ItemsCreated++
-		}
-
-		number := ep.Number
-		title := ep.Title
-		if title == "" {
-			title = fmt.Sprintf("Episode %d", number)
-		}
-		episodeID, created, err := s.store.ResolveItem(ctx, catalog.ItemRef{
-			LibraryID:   lib.ID,
-			ParentID:    &seasonID,
-			Kind:        "episode",
-			GroupingKey: fmt.Sprintf("%d", number),
-			Title:       title,
-			SortTitle:   nameparse.SortTitle(title),
-			Year:        yearPtr(ep.ShowYear),
-			Index:       &number,
-		})
-		if err != nil {
-			return id.Nil, 0, err
-		}
-		if created {
-			stats.ItemsCreated++
-		}
-
-		versionID, vCreated, err := s.store.ResolveVersion(ctx, episodeID, ep.VersionKey, probed, ep.Edition)
-		if err != nil {
-			return id.Nil, 0, err
-		}
-		if vCreated {
-			stats.VersionsCreated++
-		}
-		return versionID, ep.PartIndex, nil
-
-	default:
-		return id.Nil, 0, fmt.Errorf("onbekende bibliotheeksoort %q", lib.Kind)
-	}
-}
-
-func seasonTitle(n int) string {
-	if n == 0 {
-		return "Specials"
-	}
-	return fmt.Sprintf("Season %d", n)
-}
-
-func yearKey(year int) string {
-	if year == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%d", year)
-}
-
-func yearPtr(year int) *int {
-	if year == 0 {
-		return nil
-	}
-	return &year
 }
 
 func inodePtr(v int64) *int64 {

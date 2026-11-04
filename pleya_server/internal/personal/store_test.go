@@ -141,7 +141,7 @@ func TestHistoryPagesNewestFirstAndRespectsVisibility(t *testing.T) {
 	var seen []int64
 	cursor := ""
 	for range 5 {
-		page, err := s.History(f.ctx, f.user, nil, 2, cursor)
+		page, err := s.History(f.ctx, f.user, nil, "", 2, cursor)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,11 +158,11 @@ func TestHistoryPagesNewestFirstAndRespectsVisibility(t *testing.T) {
 	}
 
 	// Geen zichtbare bibliotheek: geen rijen.
-	hidden, err := s.History(f.ctx, f.user, []id.ID{}, 10, "")
+	hidden, err := s.History(f.ctx, f.user, []id.ID{}, "", 10, "")
 	if err != nil || len(hidden.Entries) != 0 {
 		t.Fatalf("verborgen bibliotheek: %+v, %v", hidden, err)
 	}
-	if _, err := s.History(f.ctx, f.user, nil, 10, "onzin"); err == nil {
+	if _, err := s.History(f.ctx, f.user, nil, "", 10, "onzin"); err == nil {
 		t.Fatal("een onleesbare cursor werd geaccepteerd")
 	}
 }

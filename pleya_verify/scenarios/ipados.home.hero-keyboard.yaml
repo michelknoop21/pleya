@@ -1,0 +1,38 @@
+name: ipados.home.hero-keyboard
+target: ios-sim
+# A-17, review I-1: a hardware keyboard reaches the hero's buttons in both
+# orientations. The first arrow lands on Afspelen, DOWN goes to the rows, UP
+# comes back, and a turn keeps the focus on the hero. Run with
+# PLEYA_VERIFY_IOS_UDID on an iPad simulator.
+setup:
+  - reset_app
+  - seed: catalog.hero-recent.v1
+  - launch
+  - sign_in: {base_url: "{{fixture_jellyfin}}", username: verify-owner, password: verify-password, backend: jellyfin}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - configure_view: {orientation: landscapeLeft}
+  - assert_viewport: {orientation: landscape}
+  - wait_until: {id: discover.hero, timeout: 15000}
+
+  - press: down
+  - wait_until: {focused: discover.hero.play, timeout: 5000}
+  - settle: 500
+  - snapshot: 00-landscape-play-focused
+  - press: down
+  - settle: 500
+  - assert: {id: discover.hero.play, focused: false}
+  - press: up
+  - wait_until: {focused: discover.hero.play, timeout: 5000}
+
+  - configure_view: {orientation: portrait}
+  - assert_viewport: {orientation: portrait}
+  - wait_until: {focused: discover.hero.play, timeout: 5000}
+  - settle: 500
+  - snapshot: 01-portrait-play-focused
+  - press: down
+  - settle: 500
+  - assert: {id: discover.hero.play, focused: false}
+  - press: up
+  - wait_until: {focused: discover.hero.play, timeout: 5000}

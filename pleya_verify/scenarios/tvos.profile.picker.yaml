@@ -3,7 +3,7 @@ target: tvos-sim
 # MOC-21: Profiel kiezen, opened the way the remote opens it, from the avatar
 # at the left end of the top bar (`nav.profile`).
 #
-# What nav.profile opens is `ProfileSwitchScreen()` without
+# What Wissel profiel opens is `ProfileSwitchScreen()` without
 # `requireSelection`, which is the switch-and-manage list. The mockup-21
 # composition (`TvProfileGate`, "Wie is er aan het kijken?") is the launch
 # gate: it only appears with `requireSelection: true`, which the app pushes at
@@ -12,7 +12,8 @@ target: tvos-sim
 # is not reachable here; `test/screens/tv/tv_profile_gate_test.dart` covers it.
 #
 # What this proves:
-#   1. the avatar in the bar opens the picker, with the ring on the first
+#   1. the avatar in the bar opens the account menu (A-24c), and its first
+#      action, Wissel profiel, opens the picker with the ring on the first
 #      profile tile, which is the active one;
 #   2. Menu leaves the picker and puts the ring back on the avatar.
 setup:
@@ -28,6 +29,10 @@ steps:
   - press: left
   - wait_until: {focused: nav.profile, timeout: 5000}
   - snapshot: 00-avatar-focused
+  # A-24c: the avatar opens the account menu; Wissel profiel, its first
+  # action, is the picker this scenario is about.
+  - press: select
+  - wait_until: {focused: "account_menu.action[switch_profile]", timeout: 8000}
   - press: select
   - wait_until: {focused: "profile.tile[0]", timeout: 10000}
   - settle: 600

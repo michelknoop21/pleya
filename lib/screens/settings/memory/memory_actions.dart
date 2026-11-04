@@ -18,6 +18,7 @@ class MemoryActionCallbacks {
     required this.toggle,
     required this.rewrite,
     required this.clear,
+    this.sync,
   });
 
   /// Opens the list "Herinneringen".
@@ -31,6 +32,7 @@ class MemoryActionCallbacks {
 
   /// Asks, and after a yes wipes every memory of the profile.
   final VoidCallback clear;
+  final VoidCallback? sync;
 }
 
 /// The four management controls of 43 C: the list with its count, the switch
@@ -97,6 +99,20 @@ class MemoryActions extends StatelessWidget {
             ),
           ),
         ],
+        if (!model.kids && actions.sync != null) ...[
+          const SizedBox(height: 12),
+          MemoryCard(
+            color: card,
+            children: [
+              MemoryRow(
+                title: t.assistant.memory.sync.title,
+                automationId: AutomationIds.settingsMemoryAction,
+                automationInstance: 'sync',
+                onPressed: actions.sync,
+              ),
+            ],
+          ),
+        ],
         if (canRewrite) ...[
           const SizedBox(height: 12),
           MemoryCard(
@@ -161,6 +177,7 @@ Future<void> showMemoryMenu(BuildContext context, MemoryScreenModel model, Memor
                     toggle: actions.toggle,
                     rewrite: closing(actions.rewrite),
                     clear: closing(actions.clear),
+                    sync: actions.sync == null ? null : closing(actions.sync!),
                   ),
                 ),
               ],

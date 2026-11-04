@@ -47,11 +47,21 @@ class _FrameRateStartupPlan {
 }
 
 class _ExternalSubtitleOpenPlan {
-  const _ExternalSubtitleOpenPlan({required this.externalSubtitles, required this.attachesAtOpen, this.readyAfterOpen});
+  const _ExternalSubtitleOpenPlan({
+    required this.externalSubtitles,
+    required this.attachesAtOpen,
+    this.readyAfterOpen,
+    this.deferredSubtitle,
+    this.deferredReady,
+  });
 
   final List<SubtitleTrack> externalSubtitles;
   final bool attachesAtOpen;
   final Future<void>? readyAfterOpen;
+  final DeferredSubtitle? deferredSubtitle;
+
+  /// Subscribed before open: the file-loaded event may fire before the track is ready.
+  final Future<void>? deferredReady;
 
   bool get hasExternalSubtitles => externalSubtitles.isNotEmpty;
   bool get requiresPostOpenAdd => !attachesAtOpen && hasExternalSubtitles;
@@ -407,6 +417,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
   _ExternalSubtitleOpenPlan _prepareExternalSubtitleOpenPlan({
     required Player player,
     required List<SubtitleTrack> externalSubtitles,
+    DeferredSubtitle? deferredSubtitle,
     bool waitForFileLoaded = true,
   }) {
     final attachesAtOpen = player.attachesExternalSubtitlesAtOpen;
@@ -423,12 +434,43 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
               },
             )
           : null,
+      deferredSubtitle: deferredSubtitle,
+      deferredReady: deferredSubtitle == null
+          ? null
+          : player.streams.fileLoaded.first
+                .timeout(
+                  const Duration(seconds: 30),
+                  onTimeout: () => appLogger.w('Timed out waiting for file-loaded before adding a deferred subtitle'),
+                )
+                .catchError((Object e) => appLogger.d('The player closed before a deferred subtitle', error: e)),
     );
   }
 
   /// Build the per-item [TrackManager] for a freshly opened source. The
   /// start and reload flows construct it identically apart from where the
   /// preferred tracks and profile settings come from.
+  Future<({int? audioStreamId, int? subtitleStreamId})> _selectSourceTracksBeforeOpen(
+    MediaSourceInfo sourceInfo, {
+    required Player forPlayer,
+    required MediaItem metadata,
+    required bool Function() isCurrent,
+  }) async {
+    final manager = _buildTrackManager(
+      forPlayer: forPlayer,
+      metadata: metadata,
+      plexClient: null,
+      getProfileSettings: () => context.read<UserProfileProvider>().profileSettings,
+      sessionIntent: _trackManager?.sessionIntent,
+      preferredAudioTrack: _preferredAudioTrack,
+      preferredSubtitleTrack: _preferredSubtitleTrack,
+    );
+    try {
+      return await manager.selectSourceTracks(sourceInfo, isCurrent: isCurrent);
+    } finally {
+      manager.dispose();
+    }
+  }
+
   TrackManager _buildTrackManager({
     required Player forPlayer,
     required MediaItem metadata,
@@ -439,14 +481,37 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     SubtitleTrack? preferredSubtitleTrack,
     SubtitleTrack? preferredSecondarySubtitleTrack,
   }) {
+    final sourceClient = _getMediaServerClient(context);
+    final mediaClient = _isOfflinePlayback ? null : _getOnlineMediaServerClient(context);
+    final personal =
+        mediaClient is PleyaServerClient &&
+            mediaClient.connection.accountUserId != null &&
+            mediaClient.capabilities.trackPreferencePersistence
+        ? mediaClient
+        : null;
+    bool currentPersonal() => mounted && identical(_getOnlineMediaServerClient(context), personal);
     return TrackManager(
       player: forPlayer,
+      serverAccountId: sourceClient is PleyaServerClient ? sourceClient.connection.accountUserId : null,
+      isServerLanguageCurrent: personal == null ? null : currentPersonal,
+      readServerLanguage: personal == null
+          ? null
+          : (id) async {
+              if (!currentPersonal()) return null;
+              final choice = await personal.getTrackLanguageChoice(id);
+              return currentPersonal() ? choice : null;
+            },
+      persistServerLanguage: personal == null
+          ? null
+          : (id, choice) async {
+              if (!currentPersonal()) return;
+              await personal.saveTrackLanguageChoice(id, choice);
+            },
       isActive: () => mounted && player == forPlayer,
       // Plex writes track changes immediately. Jellyfin persists selected
       // indexes through playback progress reports.
       persistTrackPreference: plexClient != null ? _plexTrackPersister(() => plexClient) : null,
-      // Plex is the only backend with a per-series language override; Jellyfin
-      // relies on the local store plus iCloud alone.
+      // Plex canonical metadata mirroring stays separate from per-user server preferences.
       persistSeriesLanguage: plexClient != null ? plexSeriesLanguagePersister(() => plexClient) : null,
       getProfileSettings: getProfileSettings,
       waitForProfileSettings: _waitForProfileSettingsIfNeeded,
@@ -479,6 +544,11 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     bool Function()? isCurrent,
   }) async {
     if (!(isCurrent?.call() ?? true)) return;
+    trackManager.subtitleArrivesLater = externalSubtitlePlan.deferredSubtitle != null;
+    // Not awaited: the film starts now, and the track joins it when the server has it.
+    unawaited(
+      _deferredSubtitles.start(externalSubtitlePlan.deferredSubtitle, ready: externalSubtitlePlan.deferredReady),
+    );
     if (externalSubtitlePlan.requiresPostOpenAdd) {
       trackManager.waitingForExternalSubsTrackSelection = true;
       try {

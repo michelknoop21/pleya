@@ -66,7 +66,8 @@ class WatchlistStore extends ChangeNotifier with DisposableChangeNotifierMixin {
   void clear() {
     if (_patches.isEmpty) return;
     _patches.clear();
-    safeNotifyListeners();
+    // Source rebinding can clear during a descendant ProxyProvider's build.
+    scheduleMicrotask(safeNotifyListeners);
   }
 
   @visibleForTesting

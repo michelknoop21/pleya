@@ -25,6 +25,7 @@ class TvMoviesScreen extends StatelessWidget {
     this.catalogKey,
     this.restoreFrom = TvDestinationFocusMemory.empty,
     this.onRemember,
+    this.fullBleed = false,
   });
 
   /// Hoofdstuk 14.7's "Servers beheren", which only the root shell can do.
@@ -42,6 +43,9 @@ class TvMoviesScreen extends StatelessWidget {
 
   final ValueChanged<TvDestinationFocusMemory>? onRemember;
 
+  /// See [TvUnifiedCatalogScreen.fullBleed].
+  final bool fullBleed;
+
   @override
   Widget build(BuildContext context) => TvUnifiedCatalogScreen(
     key: catalogKey,
@@ -56,5 +60,6 @@ class TvMoviesScreen extends StatelessWidget {
     onManageServers: onManageServers,
     restoreFrom: restoreFrom,
     onRemember: onRemember,
+    fullBleed: fullBleed,
   );
 }

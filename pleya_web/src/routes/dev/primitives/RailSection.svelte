@@ -14,12 +14,12 @@
   watching, en de nieuw-punten in Recently added.
 -->
 <script lang="ts">
-  import HubRail from '$lib/components/HubRail.svelte';
-  import MediaCard from '$lib/components/MediaCard.svelte';
-  import { setArtworkLoader } from '$lib/components/artworkLoader';
-  import type { Item } from '$lib/api/types';
-  import { t } from '$lib/i18n';
-  import { formatDuration } from '$lib/util/format';
+  import HubRail from '#lib/components/HubRail.svelte';
+  import MediaCard from '#lib/components/MediaCard.svelte';
+  import { setArtworkLoader } from '#lib/components/artworkLoader.js';
+  import type { Item } from '#lib/api/types.js';
+  import { t } from '#lib/i18n/index.js';
+  import { formatDuration } from '#lib/util/format.js';
   import GallerySection from './GallerySection.svelte';
   import { demoArtworkLoader } from './demoArtwork';
 

@@ -4,8 +4,8 @@
  * naast gelegd kan worden. Gewone Nederlandse tekst, want de route bestaat
  * alleen in ontwikkeling.
  */
-import type { MeterSegment } from '$lib/components/StorageMeter.svelte';
-import type { PillTone } from '$lib/components/StatusPill.svelte';
+import type { MeterSegment } from '#lib/components/StorageMeter.svelte';
+import type { PillTone } from '#lib/components/StatusPill.svelte';
 
 const decimal = new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 1 });
 

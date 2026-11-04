@@ -7,7 +7,7 @@ import '../profiles/profile.dart';
 import '../profiles/profile_connection_registry.dart';
 import '../profiles/profile_registry.dart';
 
-/// `POST /v1/profiles/seed` body: `{"display_name": "..."}`.
+/// `POST /v1/profiles/seed` body: `{"display_name": "...", "pin": "1234"}` (PIN optional).
 ///
 /// Adds a second local profile that borrows every connection of the active
 /// profile, and leaves the active profile active. It is the state a viewer
@@ -21,6 +21,11 @@ import '../profiles/profile_registry.dart';
 Future<Map<String, Object?>> handleAutomationSeedProfile(Map<String, Object?> body) async {
   final name = (body['display_name'] as String?)?.trim() ?? '';
   if (name.isEmpty) return {'ok': false, 'error': 'display_name is required'};
+
+  final pin = body['pin'];
+  if (pin != null && (pin is! String || !RegExp(r'^[0-9]{4}$').hasMatch(pin))) {
+    return {'ok': false, 'error': 'pin must be four digits'};
+  }
 
   final context = rootNavigatorKey.currentContext;
   if (context == null || !context.mounted) {
@@ -38,6 +43,7 @@ Future<Map<String, Object?>> handleAutomationSeedProfile(Map<String, Object?> bo
   final profile = Profile.local(
     id: 'local-${const Uuid().v4()}',
     displayName: name,
+    pinHash: pin == null ? null : computePinHash(pin as String),
     sortOrder: now.millisecondsSinceEpoch,
     createdAt: now,
   );

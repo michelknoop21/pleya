@@ -13,6 +13,8 @@ typedef ArtworkUrlResolver = String? Function(String path);
 /// derived from the raw URL would miss the cache on every re-auth; persisted
 /// DB rows and hashed filenames must not contain long-lived tokens either.
 String artworkStorageKey(String pathOrUrl) {
+  // The local library asks this for every row, and nearly all are bare paths.
+  if (!pathOrUrl.contains('?')) return pathOrUrl;
   final uri = Uri.tryParse(pathOrUrl);
   if (uri == null || !uri.hasQuery) return pathOrUrl;
   final params = <String, String>{};

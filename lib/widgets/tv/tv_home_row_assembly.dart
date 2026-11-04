@@ -23,6 +23,8 @@
 /// stored order decides instead and this position stops mattering.
 library;
 
+import '../../media/media_item.dart';
+import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
 import '../../providers/home_custom_rows_provider.dart';
 import '../../providers/home_extra_rows_provider.dart';
@@ -73,4 +75,45 @@ List<UnifiedMediaHub> tvHomeFeedRows({
     if (cw != null && cw.groups.isNotEmpty) cw,
     ...tvHomeOrderableRows(projection: projection, layout: layout, customRows: customRows, extraRows: extraRows),
   ];
+}
+
+/// Which slides the Home billboard shows, and whether that is the final answer.
+///
+/// Hoofdstuk 9.7: an empty `heroGroups` for the films Home is *currently*
+/// showing is an answer; an empty one because the projection has not yet
+/// consumed the films that just landed is not. [settled] tells them apart. The
+/// two get different treatment, the fallback billboard for the first and
+/// reserved space for the second, because flashing a Continue Watching title as
+/// the billboard and then replacing it a beat later with a film is the exact
+/// "hero mag niet boven een al gefocuste rij ingevoegd worden" jump 9.7 forbids.
+///
+/// Hoofdstuk 9.5's last sentence, and fase-8 brief §22's "0 hero groups": when
+/// the deduplicated recent-film pool is genuinely empty, a show-only library or
+/// every recent film ineligible, the billboard falls through to the first
+/// Continue Watching title, then to the first hub's.
+///
+/// One slide, never a rotation over the whole library: this is a stand-in for
+/// a featured title, and rotating it would claim these are new releases. And
+/// it is still a group, so its Afspelen resolves through the fase-4
+/// coordinator like every other card on the page.
+///
+/// [idleIsSettled] closes the two ways "not caught up" can last: a projection
+/// that threw, and a reload whose new empty list the projection skips because
+/// it equals the old one. Nothing is on its way then. tvOS keeps its reserved
+/// space; the iPad would hold an empty band of nearly a whole page above the
+/// rows and any error message.
+({List<UnifiedMediaGroup> groups, bool settled}) homeBillboardGroups({
+  required TvHomeProjectionProvider projection,
+  required List<MediaItem> latestMovies,
+  required List<UnifiedMediaHub> rows,
+  bool idleIsSettled = false,
+}) {
+  final caughtUp = projection.hasProjectedHero && identical(projection.projectedLatestMovies, latestMovies);
+  final settled = caughtUp || (idleIsSettled && !projection.isProjecting);
+  if (projection.heroGroups.isNotEmpty) return (groups: projection.heroGroups, settled: settled);
+  if (!settled) return (groups: const [], settled: false);
+  for (final row in rows) {
+    if (row.groups.isNotEmpty) return (groups: [row.groups.first], settled: true);
+  }
+  return (groups: const [], settled: true);
 }

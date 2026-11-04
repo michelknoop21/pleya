@@ -15,10 +15,13 @@ import '../utils/initials_palette.dart';
 /// Shared by the "Watched by" row and the now-watching surfaces so both draw
 /// the same person the same way.
 class WatcherAvatar extends StatelessWidget {
-  const WatcherAvatar({super.key, required this.displayName, this.thumbUrl, this.size = 30});
+  const WatcherAvatar({super.key, required this.displayName, this.thumbUrl, this.initials, this.size = 30});
 
   final String displayName;
   final String? thumbUrl;
+
+  /// Wins over the first letter of [displayName] when it says something.
+  final String? initials;
   final double size;
 
   @override
@@ -49,7 +52,7 @@ class WatcherAvatar extends StatelessWidget {
     color: colorForName(displayName, theme),
     alignment: .center,
     child: Text(
-      initialOf(displayName),
+      initials?.isNotEmpty == true ? initials! : initialOf(displayName),
       style: TextStyle(color: Colors.white, fontSize: size * 0.42, fontWeight: .w600, height: 1.0),
     ),
   );

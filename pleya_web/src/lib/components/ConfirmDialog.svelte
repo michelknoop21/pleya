@@ -39,6 +39,8 @@
     phraseLabel?: string;
     danger?: boolean;
     busy?: boolean;
+    /** Bevestigen kan niet, bijvoorbeeld omdat er niets te doen is; annuleren wel. */
+    disabled?: boolean;
     onconfirm: () => void;
     oncancel?: () => void;
   }
@@ -55,6 +57,7 @@
     phraseLabel,
     danger = true,
     busy = false,
+    disabled = false,
     onconfirm,
     oncancel
   }: Props = $props();
@@ -68,7 +71,7 @@
   let typed = $state('');
 
   const matches = $derived(!requirePhrase || typed === requirePhrase);
-  const canConfirm = $derived(matches && !busy);
+  const canConfirm = $derived(matches && !busy && !disabled);
 
   const FOCUSABLE =
     'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
@@ -92,6 +95,12 @@
     // Draait als `open` weer onwaar wordt of de dialoog verdwijnt.
     return () => previous?.focus?.();
   });
+
+  // Page artwork creates isolated stacking contexts; dialogs must cover the shell too.
+  function portal(node: HTMLElement): { destroy: () => void } {
+    document.body.append(node);
+    return { destroy: () => node.remove() };
+  }
 
   function cancel(): void {
     if (busy) return;
@@ -134,6 +143,7 @@
 <svelte:document onkeydown={keydown} />
 
 {#if open}
+  <div use:portal>
   <div class="cd__scrim" aria-hidden="true" onclick={cancel}></div>
   <div
     class="cd"
@@ -190,6 +200,7 @@
         </button>
       </div>
     </form>
+  </div>
   </div>
 {/if}
 

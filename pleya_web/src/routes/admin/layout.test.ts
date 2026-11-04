@@ -8,9 +8,9 @@ import { createRawSnippet, tick } from 'svelte';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SessionState } from '$lib/stores/session.svelte';
-import { fakeServer } from '$lib/admin/fakeServer';
-import { setLocale } from '$lib/i18n';
+import { SessionState } from '#lib/stores/session.svelte.js';
+import { fakeServer } from '#lib/admin/fakeServer.js';
+import { setLocale } from '#lib/i18n/index.js';
 
 const h = vi.hoisted(() => ({
   current: null as unknown as object,
@@ -21,8 +21,8 @@ vi.mock('$app/state', () => ({ page: { url: new URL('http://localhost/admin') } 
 vi.mock('$app/navigation', () => ({ invalidateAll: h.invalidateAll }));
 
 // De singleton wijst per test naar een eigen sessie met een eigen nepserver.
-vi.mock('$lib/stores/session.svelte', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('$lib/stores/session.svelte')>();
+vi.mock('#lib/stores/session.svelte.js', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('#lib/stores/session.svelte.js')>();
   const session = new Proxy(
     {},
     {

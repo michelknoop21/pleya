@@ -20,16 +20,14 @@ import 'scroll_crown_gear.dart';
 /// ScrollCrown(child: CustomScrollView(slivers: ...))
 /// ```
 ///
-/// It is the CN09 gear without the letter bubble. It appears when the view
-/// scrolls or the right edge is touched and fades [hideDelay] after the last
-/// activity. A vertical drag that starts on the gear (or where it rests while
-/// hidden) scrubs directly from the library start to its end in one stroke.
-/// It has no speed or distance acceleration. The gear
-/// rides under the finger and its teeth turn with the drag, with a ratchet
-/// tick per tooth through [CrownRatchet]. After a touch on the edge brought
-/// the crown up, the whole edge is a rail until it hides or the content
-/// scrolls; a crown that came up through scrolling leaves ordinary swipes
-/// along the edge to the scroll view.
+/// On iOS the gear stays halfway down the rail and turns in place; each
+/// gear-height stroke scrolls two viewports, with no position label.
+/// On other phones it follows the drag as a direct scrollbar.
+/// It appears when the view scrolls or its resting spot is touched and fades
+/// [hideDelay] after the last activity. Teeth turn with the drag and tick
+/// through [CrownRatchet]. On other phones the gear follows the finger,
+/// mapping the rail directly onto the full content range. After an edge touch
+/// those phones allow grabbing anywhere along the rail until the crown hides.
 ///
 /// It stays out of the way: phones only (no tablet, desktop or TV), only for
 /// the outermost vertical scrollable below it, and only when the content is
@@ -116,6 +114,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
   bool _touchActivated = false;
   bool _dragging = false;
   double _railHeight = 0;
+  double _paintedGearTop = 0;
   double? _fingerY;
   Offset? _fingerGlobalPosition;
   BuildContext? _railContext;
@@ -140,6 +139,10 @@ class _ScrollCrownState extends State<ScrollCrown> {
     _scrollDrag?.cancel();
     super.dispose();
   }
+
+  bool get _fixedCrown => Theme.of(context).platform == TargetPlatform.iOS;
+
+  String get _motionModel => _fixedCrown ? 'fixed-wheel-v1' : CrownDragMotion.model;
 
   bool get _eligible {
     final metrics = _metrics;
@@ -247,13 +250,15 @@ class _ScrollCrownState extends State<ScrollCrown> {
   }
 
   void _refreshFingerAfterLayout() {
-    if (_fingerRefreshPending || !_dragging || _outerPosition == null) return;
+    if (!_eligible || _fingerRefreshPending || (!_fixedCrown && (!_dragging || _outerPosition == null))) return;
     _fingerRefreshPending = true;
     if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.postFrameCallbacks) {
       SchedulerBinding.instance.scheduleFrame();
     }
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _fingerRefreshPending = false;
+      if (!mounted) return;
+      if (_fixedCrown && (_gearTop() - _paintedGearTop).abs() > .01) setState(() {});
       final railContext = _railContext;
       final finger = _fingerGlobalPosition;
       if (!mounted || !_dragging || finger == null || railContext == null || !railContext.mounted) return;
@@ -287,12 +292,13 @@ class _ScrollCrownState extends State<ScrollCrown> {
   /// spot (also while hidden, so the first drag after it faded still grabs
   /// it), or anywhere on the edge once a touch on the edge brought it up.
   bool _claims(double y) {
-    if (!_active || _touchActivated) return true;
+    if (!_fixedCrown && (!_active || _touchActivated)) return true;
     final top = _gearTop();
     return y >= top - ScrollCrown.gearHitMargin && y <= top + ScrollCrownGear.height + ScrollCrown.gearHitMargin;
   }
 
   void _onEdgeDown(PointerDownEvent event) {
+    if (_fixedCrown && !_claims(event.localPosition.dy)) return;
     _pointerDownTime = event.timeStamp;
     if (!_active) _touchActivated = true;
     _show();
@@ -336,7 +342,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
       'max': y >= _railHeight - ScrollCrownGear.height / 2 ? metrics.maxScrollExtent : _dragMaxExtent,
       'rail_height': _railHeight,
       'pixels': metrics.pixels,
-      'mapping': CrownDragMotion.model,
+      'mapping': _motionModel,
       'input_down_us': _pointerDownTime.inMicroseconds,
       'input_time_us': _motionTime.inMicroseconds,
       'range_extent': _dragMaxExtent - _dragMinExtent,
@@ -352,17 +358,22 @@ class _ScrollCrownState extends State<ScrollCrown> {
     final delta = details.globalPosition.dy - _dragStartGlobalY;
     final metrics = _combinedMetrics(position);
     _motionTime = details.sourceTimeStamp ?? _motionTime;
-    final target = _motion!.move(
-      y: _dragStartY + delta - ScrollCrownGear.height / 2,
-      time: _motionTime,
-      pixels: metrics.pixels,
-      travel: _dragTravel,
-      rangeExtent: _dragMaxExtent - _dragMinExtent,
-      minExtent: metrics.minScrollExtent,
-      maxExtent: metrics.maxScrollExtent,
-    );
+    final target = _fixedCrown
+        ? (metrics.pixels + details.delta.dy * metrics.viewportDimension * 2 / ScrollCrownGear.height).clamp(
+            metrics.minScrollExtent,
+            metrics.maxScrollExtent,
+          )
+        : _motion!.move(
+            y: _dragStartY + delta - ScrollCrownGear.height / 2,
+            time: _motionTime,
+            pixels: metrics.pixels,
+            travel: _dragTravel,
+            rangeExtent: _dragMaxExtent - _dragMinExtent,
+            minExtent: metrics.minScrollExtent,
+            maxExtent: metrics.maxScrollExtent,
+          );
     _jumpTo(target);
-    _followingEnd = _combinedMetrics(position).extentAfter <= 0.5;
+    _followingEnd = !_fixedCrown && _combinedMetrics(position).extentAfter <= 0.5;
     final rail = _railContext?.findRenderObject();
     setState(() {
       _fingerY = rail is RenderBox ? rail.globalToLocal(details.globalPosition).dy : details.localPosition.dy;
@@ -396,6 +407,16 @@ class _ScrollCrownState extends State<ScrollCrown> {
 
   double _gearTop() {
     final room = (_railHeight - ScrollCrownGear.height).clamp(0.0, double.infinity);
+    if (_fixedCrown) {
+      final railContext = _railContext;
+      final rail = railContext != null && railContext.mounted ? railContext.findRenderObject() : null;
+      if (rail is RenderBox && rail.hasSize) {
+        // Nested headers move the rail; the wheel keeps its screen position.
+        return (MediaQuery.sizeOf(context).height / 2 - rail.localToGlobal(Offset.zero).dy - ScrollCrownGear.height / 2)
+            .clamp(0.0, room);
+      }
+      return room / 2;
+    }
     final finger = _fingerY;
     if (finger == null) return _fraction * room;
     return (finger - ScrollCrownGear.height / 2).clamp(0.0, room);
@@ -444,6 +465,8 @@ class _ScrollCrownState extends State<ScrollCrown> {
         builder: (context, constraints) {
           _railContext = context;
           _railHeight = constraints.maxHeight;
+          _paintedGearTop = _gearTop();
+          if (_fixedCrown) _refreshFingerAfterLayout();
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -477,7 +500,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
               ),
               Positioned(
                 right: 2,
-                top: (_railHeight - 30) / 2,
+                top: _fixedCrown ? _gearTop() + (ScrollCrownGear.height - 30) / 2 : (_railHeight - 30) / 2,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     opacity: _active ? 0 : 1,
@@ -495,7 +518,7 @@ class _ScrollCrownState extends State<ScrollCrown> {
                   ),
                 ),
               ),
-              if (widget.positionLabel case final label? when label.isNotEmpty)
+              if (widget.positionLabel case final label? when label.isNotEmpty && !_fixedCrown)
                 Positioned(
                   right: 34,
                   top: _gearTop() + (ScrollCrownGear.height - 43) / 2,
@@ -571,8 +594,10 @@ class _ScrollCrownState extends State<ScrollCrown> {
                     'at_end': _metrics!.extentAfter <= 0.5,
                     'visible': _active,
                     'gear_height': ScrollCrownGear.height,
-                    'motion_model': CrownDragMotion.model,
-                    'position_label': widget.positionLabel,
+                    'motion_model': _motionModel,
+                    'fixed': _fixedCrown,
+                    'gear_top': _gearTop(),
+                    'position_label': _fixedCrown ? null : widget.positionLabel,
                     'dragging': _dragging,
                   },
                   child: Focus(

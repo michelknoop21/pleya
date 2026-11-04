@@ -1,84 +1,78 @@
 part of 'tv_my_pleya_screen.dart';
 
-/// Tiles per visual row in the left column. A group with more wraps.
-const int _kTilesPerRow = 4;
-
-List<List<TvMyPleyaTile>> _rowsOf(List<TvMyPleyaTile> tiles) => [
-  for (var start = 0; start < tiles.length; start += _kTilesPerRow)
-    tiles.sublist(start, (start + _kTilesPerRow).clamp(0, tiles.length)),
-];
-
-/// The remote's map of the two-column hub.
+/// The remote's map of the page (LEESMIJ-v4, "Focusafspraken").
 ///
 /// ```
-///            top navigation
-///                 ▲ UP
-///   profile ── Profiel wisselen          (server status: no focus stop)
-///      │ DOWN                       ▲ UP
-///   rail: poster … poster  Bekijk alles ──RIGHT──▶  Big P
-///      │ DOWN (nearest column)                       │
-///   Mijn content tiles ───────────RIGHT (nearest row)▶ Instellingen
-///   Bronnen tiles      ◀──────────LEFT (nearest row)── Logboeken …
+///                    top navigation
+///                 ▲ UP                ▲ UP
+///   Big P ──RIGHT──▶ poster … poster ──RIGHT──▶ Bekijk alles
+///         ◀──LEFT───                  (UP from a poster)
+///      │ DOWN (first tile)       │ DOWN (nearest tile)
+///   Snel naar: tile ── tile ── tile …   (UP: nearest of Big P and posters)
 /// ```
 ///
-/// Left/right walk a row and leave the left column only from its last
-/// element; up/down move one visual row and keep the column by geometry, the
-/// way the northstar lines things up rather than by an index that only agrees
-/// with it when every row is full. `Bekijk alles` is reached along the rail
-/// (Right from the last poster), not by a vertical move, so Down from the
-/// profile lands on the first poster as northstar 06 draws it.
-class _HubFocusMap {
-  _HubFocusMap({
+/// Big P is one focus object; `Vraag Big P` inside the card is only the
+/// visible call to action. Left/right in the dock walks the tiles that exist,
+/// so a hidden option leaves no focus stop behind, and nothing wraps. UP
+/// out of the top row hands the remote to the top navigation.
+class _PageFocusMap {
+  _PageFocusMap({
     required this.nodes,
-    required this.railKeys,
-    required this.tileRows,
-    required this.rightKeys,
+    required this.bigPKey,
+    required this.posterKeys,
+    required this.seeAllKey,
+    required this.dockKeys,
     required this.cameFrom,
+    required this.onExitUp,
+    required this.rail,
   });
 
   final FocusMemoryTracker nodes;
 
-  /// Where a vertical move landed, keyed by the landing, so the move straight
-  /// back returns to the same element instead of the geometrically nearest
-  /// one (a wide tile under two posters). Owned by the screen's state, because
-  /// this map is rebuilt with every frame.
+  /// Null when Big P is not offered to this profile.
+  final String? bigPKey;
+  final List<String> posterKeys;
+
+  /// Null without a kijklijst.
+  final String? seeAllKey;
+  final List<String> dockKeys;
+
+  /// Where a vertical move came from, keyed by where it landed, so the move
+  /// straight back returns to the same element instead of the geometrically
+  /// nearest one. Owned by the screen's state, because this map is rebuilt
+  /// with every frame.
   final Map<String, String> cameFrom;
+  final VoidCallback onExitUp;
 
-  /// Posters, then `Bekijk alles`. Empty without a kijklijst.
-  final List<String> railKeys;
-  final List<List<String>> tileRows;
-  final List<String> rightKeys;
+  /// The kijklijst rail, which can scroll a poster into existence before the
+  /// focus goes there. Owned by the screen's state, attached by the panel.
+  final _RailReveal rail;
 
-  List<List<String>> get _leftRows => [if (railKeys.isNotEmpty) railKeys, ...tileRows];
+  /// The first content action: Big P, else the first poster, else `Bekijk
+  /// alles`, else the first tile.
+  String? get firstKey => bigPKey ?? posterKeys.firstOrNull ?? seeAllKey ?? dockKeys.firstOrNull;
 
-  String? get firstBelowProfile => _leftRows.firstOrNull?.firstOrNull ?? rightKeys.firstOrNull;
+  /// What UP from the dock and DOWN to it choose between.
+  List<String> get _topRow => [?bigPKey, ...posterKeys];
 
+  /// Null for a node that is not on the page now. A poster that scrolled out
+  /// of the rail's cache keeps a context whose element is gone, and asking
+  /// that for its rect throws (review 557-C1), so a mounted element is the
+  /// test, not a context.
   Rect? _rect(String key) {
-    final node = nodes.nodeFor(key);
-    if (node == null || node.context == null) return null;
-    return node.rect;
+    final context = nodes.nodeFor(key)?.context;
+    if (context == null || !context.mounted) return null;
+    return nodes.nodeFor(key)!.rect;
   }
 
-  /// A row's candidates for a vertical move: everything but `Bekijk alles`,
-  /// unless it is all the row has (an empty kijklijst).
-  List<String> _verticalTargets(List<String> row) {
-    final targets = row.where((key) => key != _seeAllKey).toList();
-    return targets.isEmpty ? row : targets;
-  }
-
-  String? _nearestByX(List<String> candidates, Rect from) =>
-      _nearest(candidates, (r) => (r.center.dx - from.center.dx).abs());
-
-  String? _nearestByY(List<String> candidates, Rect from) =>
-      _nearest(candidates, (r) => (r.center.dy - from.center.dy).abs());
-
-  String? _nearest(List<String> candidates, double Function(Rect) distance) {
+  String? _nearestByX(List<String> candidates, Rect? from) {
+    if (from == null) return candidates.firstOrNull;
     String? best;
     var bestDistance = double.infinity;
     for (final key in candidates) {
       final rect = _rect(key);
       if (rect == null) continue;
-      final d = distance(rect);
+      final d = (rect.center.dx - from.center.dx).abs();
       if (d < bestDistance) {
         bestDistance = d;
         best = key;
@@ -87,77 +81,140 @@ class _HubFocusMap {
     return best ?? candidates.firstOrNull;
   }
 
-  /// Where [direction] goes from [key], or null to stay put.
-  String? next(String key, TraversalDirection direction) {
-    final rows = _leftRows;
-    final from = _rect(key);
-    final rightIndex = rightKeys.indexOf(key);
-    if (rightIndex >= 0) {
-      return switch (direction) {
-        TraversalDirection.up => rightIndex > 0 ? rightKeys[rightIndex - 1] : _switchProfileKey,
-        TraversalDirection.down => rightIndex < rightKeys.length - 1 ? rightKeys[rightIndex + 1] : null,
-        TraversalDirection.left => from == null ? rows.firstOrNull?.lastOrNull : _rightmostOfNearestRow(rows, from),
-        TraversalDirection.right => null,
-      };
-    }
-    for (var r = 0; r < rows.length; r++) {
-      final i = rows[r].indexOf(key);
-      if (i < 0) continue;
-      final row = rows[r];
-      switch (direction) {
-        case TraversalDirection.left:
-          return i > 0 ? row[i - 1] : null;
-        case TraversalDirection.right:
-          if (i < row.length - 1) return row[i + 1];
-          return from == null ? rightKeys.firstOrNull : _nearestByY(rightKeys, from);
-        case TraversalDirection.up:
-          if (r == 0) return _switchProfileKey;
-          return _vertical(key, _verticalTargets(rows[r - 1]), from);
-        case TraversalDirection.down:
-          if (r == rows.length - 1) return null;
-          return _vertical(key, _verticalTargets(rows[r + 1]), from);
-      }
-    }
-    return null;
-  }
-
-  String? _vertical(String key, List<String> candidates, Rect? from) {
+  /// A vertical move to [candidates]: back to where the remote came from when
+  /// that is one of them, otherwise the nearest by x.
+  String? _vertical(String key, List<String> candidates) {
     final back = cameFrom[key];
-    final target = back != null && candidates.contains(back)
-        ? back
-        : (from == null ? candidates.firstOrNull : _nearestByX(candidates, from));
+    final target = back != null && candidates.contains(back) ? back : _nearestByX(candidates, _rect(key));
     if (target != null) cameFrom[target] = key;
     return target;
   }
 
-  /// Left out of the right column: the left row nearest in height, and in it
-  /// the element nearest the column line.
-  String? _rightmostOfNearestRow(List<List<String>> rows, Rect from) {
-    List<String>? bestRow;
-    var bestDistance = double.infinity;
-    for (final row in rows) {
-      final rects = [for (final key in _verticalTargets(row)) ?_rect(key)];
-      if (rects.isEmpty) continue;
-      final centre = rects.map((r) => r.center.dy).reduce((a, b) => a + b) / rects.length;
-      final d = (centre - from.center.dy).abs();
-      if (d < bestDistance) {
-        bestDistance = d;
-        bestRow = row;
-      }
+  /// Moves the focus from [key] in [direction]. UP out of the top row leaves
+  /// for the top navigation; everything else that has nowhere to go stays.
+  ///
+  /// A poster the rail has not built (scrolled far away) cannot take the
+  /// focus, so the rail scrolls it in first and the focus follows a frame
+  /// later.
+  void move(String key, TraversalDirection direction) {
+    final target = _next(key, direction);
+    if (target == null) return;
+    final node = nodes.get(target);
+    void focus() {
+      if (node.canRequestFocus) node.requestFocus();
     }
-    if (bestRow == null) return rows.firstOrNull?.lastOrNull;
-    String? best;
-    var bestRight = double.negativeInfinity;
-    for (final key in bestRow) {
-      final rect = _rect(key);
-      // Only what is on screen left of the column line: a poster scrolled out
-      // of the rail is no place to land.
-      if (rect == null || rect.right > from.left) continue;
-      if (rect.right > bestRight) {
-        bestRight = rect.right;
-        best = key;
-      }
-    }
-    return best ?? bestRow.last;
+
+    final poster = posterKeys.indexOf(target);
+    if (poster >= 0 && _rect(target) == null && rail.show(poster, then: focus)) return;
+    focus();
   }
+
+  String? _next(String key, TraversalDirection direction) {
+    if (key == bigPKey) {
+      return switch (direction) {
+        TraversalDirection.right => posterKeys.firstOrNull ?? seeAllKey,
+        TraversalDirection.left => null,
+        TraversalDirection.up => _exitUp(),
+        // Big P is the page's leftmost card, so DOWN starts the dock at its
+        // first tile, or returns to the tile the remote came up from.
+        TraversalDirection.down => _down(key),
+      };
+    }
+    final poster = posterKeys.indexOf(key);
+    if (poster >= 0) {
+      return switch (direction) {
+        TraversalDirection.left => poster > 0 ? posterKeys[poster - 1] : bigPKey,
+        TraversalDirection.right => poster < posterKeys.length - 1 ? posterKeys[poster + 1] : _toSeeAll(key),
+        TraversalDirection.up => seeAllKey == null ? _exitUp() : _vertical(key, [seeAllKey!]),
+        TraversalDirection.down => _vertical(key, dockKeys),
+      };
+    }
+    if (key == seeAllKey) {
+      return switch (direction) {
+        TraversalDirection.up => _exitUp(),
+        TraversalDirection.right => null,
+        // Back to the poster it was left from, else the last one, which is
+        // the one beside and below the link ([move] scrolls it in).
+        TraversalDirection.left || TraversalDirection.down =>
+          posterKeys.isEmpty
+              ? (direction == TraversalDirection.left ? bigPKey : _vertical(key, dockKeys))
+              : _returnTo(key, posterKeys, fallback: posterKeys.last),
+      };
+    }
+    final tile = dockKeys.indexOf(key);
+    if (tile >= 0) {
+      return switch (direction) {
+        TraversalDirection.left => tile > 0 ? dockKeys[tile - 1] : null,
+        TraversalDirection.right => tile < dockKeys.length - 1 ? dockKeys[tile + 1] : null,
+        TraversalDirection.up => _topRow.isEmpty ? (seeAllKey ?? _exitUp()) : _vertical(key, _visible(_topRow)),
+        TraversalDirection.down => null,
+      };
+    }
+    return null;
+  }
+
+  /// UP from the top row: the bar takes it, so there is no target here.
+  String? _exitUp() {
+    onExitUp();
+    return null;
+  }
+
+  /// RIGHT off the last poster: `Bekijk alles`, which remembers the poster so
+  /// LEFT and DOWN return to it rather than to the start of the rail.
+  String? _toSeeAll(String poster) {
+    final target = seeAllKey;
+    if (target != null) cameFrom[target] = poster;
+    return target;
+  }
+
+  /// The candidates that are on screen; a poster scrolled out of the rail, or
+  /// built just outside it, is no place to land. Falls back to all of them
+  /// before the first layout.
+  List<String> _visible(List<String> keys) {
+    final viewport = rail.viewport;
+    final shown = keys.where((key) {
+      final rect = _rect(key);
+      if (rect == null) return false;
+      return viewport == null || !posterKeys.contains(key) || rect.overlaps(viewport);
+    }).toList();
+    return shown.isEmpty ? keys : shown;
+  }
+
+  String? _down(String key) {
+    final target = _returnTo(key, dockKeys);
+    if (target != null) cameFrom[target] = key;
+    return target;
+  }
+
+  String? _returnTo(String key, List<String> candidates, {String? fallback}) {
+    final back = cameFrom[key];
+    return back != null && candidates.contains(back) ? back : fallback ?? candidates.firstOrNull;
+  }
+}
+
+/// The kijklijst rail's half of [_PageFocusMap]: it knows where the rail is
+/// on screen and how to scroll a poster that is not built into view.
+/// Created once by the screen's state; the panel attaches while it is
+/// mounted.
+class _RailReveal {
+  bool Function(int index, VoidCallback then)? _show;
+  Rect? Function()? _viewport;
+
+  void attach({required bool Function(int index, VoidCallback then) show, required Rect? Function() viewport}) {
+    _show = show;
+    _viewport = viewport;
+  }
+
+  void detach(bool Function(int index, VoidCallback then) show) {
+    if (_show != show) return;
+    _show = null;
+    _viewport = null;
+  }
+
+  /// The rail's box on screen, or null without a laid-out rail.
+  Rect? get viewport => _viewport?.call();
+
+  /// Scrolls poster [index] into the rail and calls [then] once it is built.
+  /// False when there is no rail to scroll.
+  bool show(int index, {required VoidCallback then}) => _show?.call(index, then) ?? false;
 }

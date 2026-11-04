@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
+import 'package:drift/drift.dart';
 
 import '../database/app_database.dart';
 import '../media/ids.dart';
 import '../media/media_backend.dart';
 import '../media/media_item.dart';
+import '../media/unified/carried_external_ids.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
 import '../utils/global_key_utils.dart';
 import 'api_cache.dart';
@@ -22,7 +26,7 @@ import 'pleya_server_mappers.dart';
 /// same string the client asked for. That keeps a cached answer readable and
 /// lets a future phase invalidate by path without a translation table.
 class PleyaServerApiCache extends ApiCache {
-  PleyaServerApiCache._(super.db);
+  PleyaServerApiCache._(super.db, {super.encoder});
 
   static PleyaServerApiCache? _instance;
 
@@ -39,6 +43,12 @@ class PleyaServerApiCache extends ApiCache {
     ApiCache.registerInstance(MediaBackend.pleyaServer, _instance!);
   }
 
+  @visibleForTesting
+  static void initializeWithEncoder(AppDatabase db, ApiCacheEncoder encoder) {
+    _instance = PleyaServerApiCache._(db, encoder: encoder);
+    ApiCache.registerInstance(MediaBackend.pleyaServer, _instance!);
+  }
+
   /// The endpoint key one item is cached under.
   static String itemEndpoint(String itemId) => '/items/${Uri.encodeComponent(itemId)}';
 
@@ -48,7 +58,8 @@ class PleyaServerApiCache extends ApiCache {
   Future<MediaItem?> getMetadata(ServerId serverId, String itemId) async {
     final data = await get(serverId, itemEndpoint(itemId));
     if (data == null) return null;
-    return _mapCached(data, serverId);
+    final context = await _serverContext(serverId);
+    return _mapCached(data, context.serverId, serverName: context.serverName);
   }
 
   @override
@@ -95,11 +106,13 @@ class PleyaServerApiCache extends ApiCache {
   Future<Map<String, MediaItem>> getAllPinnedMetadata() async {
     final entries = await listPinnedRowsByPattern(_itemKeyPattern);
     final result = <String, MediaItem>{};
+    final contexts = <String, ({ServerId serverId, String? serverName})>{};
     for (final entry in entries) {
       try {
         final data = jsonDecode(entry.data) as Map<String, dynamic>;
-        final mapped = _mapCached(data, ServerId(entry.serverId));
-        if (mapped != null) result[buildGlobalKey(ServerId(entry.serverId), entry.id)] = mapped;
+        final context = contexts[entry.serverId] ??= await _serverContext(ServerId(entry.serverId));
+        final mapped = _mapCached(data, context.serverId, serverName: context.serverName);
+        if (mapped != null) result[buildGlobalKey(context.serverId, entry.id)] = mapped;
       } catch (_) {
         // A row that no longer parses is a row from an older build. Skipping
         // it is right: the live fetch will replace it.
@@ -108,13 +121,44 @@ class PleyaServerApiCache extends ApiCache {
     return result;
   }
 
+  // Account namespaces isolate cache state; media identity uses the physical server.
+  Future<({ServerId serverId, String? serverName})> _serverContext(ServerId scope) async {
+    final row = await (database.select(
+      database.connections,
+    )..where((table) => table.id.equals(scope) & table.kind.equals('pleyaServer'))).getSingleOrNull();
+    if (row != null) {
+      try {
+        final config = jsonDecode(row.configJson) as Map<String, dynamic>;
+        final serverId = config['serverId'];
+        final name = config['serverName'];
+        if (serverId is String && serverId.isNotEmpty) {
+          return (serverId: ServerId(serverId), serverName: name is String ? name : null);
+        }
+      } catch (_) {
+        // A retained download can still identify a removed or older connection.
+      }
+    }
+    final download =
+        await (database.select(database.downloadedMedia)
+              ..where((table) => table.clientScopeId.equals(scope))
+              ..limit(1))
+            .getSingleOrNull();
+    return (serverId: ServerId(download?.serverId ?? scope), serverName: null);
+  }
+
   /// Cached rows carry the wire shape, so they go back through the same mapper
   /// the live path uses. A second, cache-only mapper is how the two drift.
-  MediaItem? _mapCached(Map<String, dynamic> data, ServerId serverId) {
+  MediaItem? _mapCached(Map<String, dynamic> data, ServerId serverId, {String? serverName}) {
     try {
       final item = PleyaItem.fromJson(data);
       if (item.kind == null) return null;
-      return PleyaServerMappers.mediaItem(item, serverId: serverId);
+      return PleyaServerMappers.mediaItem(
+        item,
+        serverId: serverId,
+        serverName: serverName,
+        useAppliedExternalIds: data[pleyaExternalIdsSourceKey] == 'applied',
+        identityKnown: data[pleyaExternalIdsSourceKey] == 'applied' || data[pleyaExternalIdsSourceKey] == 'legacy',
+      );
     } catch (_) {
       return null;
     }

@@ -101,6 +101,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsUnifiedCatalogEn unifiedCatalog = TranslationsUnifiedCatalogEn.internal(_root);
 	late final TranslationsTvNavigationEn tvNavigation = TranslationsTvNavigationEn.internal(_root);
 	late final TranslationsTvMyPleyaEn tvMyPleya = TranslationsTvMyPleyaEn.internal(_root);
+	late final TranslationsTvAccountMenuEn tvAccountMenu = TranslationsTvAccountMenuEn.internal(_root);
 	late final TranslationsTvOfflineHomeEn tvOfflineHome = TranslationsTvOfflineHomeEn.internal(_root);
 	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
@@ -462,6 +463,27 @@ class TranslationsSettingsEn {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+
+	/// en: 'Privacy'
+	String get privacy => 'Privacy';
+
+	/// en: 'Show discussions from Trakt'
+	String get showTraktDiscussions => 'Show discussions from Trakt';
+
+	/// en: 'Share my activity'
+	String get shareActivity => 'Share my activity';
+
+	/// en: 'Others in the household see what you watched'
+	String get shareActivityDescription => 'Others in the household see what you watched';
+
+	/// en: 'Share my activity on ${server}'
+	String shareActivityServer({required Object server}) => 'Share my activity on ${server}';
+
+	/// en: 'Could not save this. Nothing changed.'
+	String get shareActivitySaveFailed => 'Could not save this. Nothing changed.';
+
+	/// en: 'Could not read this setting. Press to try again.'
+	String get shareActivityUnreadable => 'Could not read this setting. Press to try again.';
 
 	/// en: 'Search settings'
 	String get searchHint => 'Search settings';
@@ -1466,6 +1488,21 @@ class TranslationsMediaMenuEn {
 
 	// Translations
 
+	/// en: 'Add to Playlist / Collection'
+	String get addToPlaylistOrCollection => 'Add to Playlist / Collection';
+
+	/// en: 'Add to Playlist'
+	String get addToPlaylist => 'Add to Playlist';
+
+	/// en: 'Watch'
+	String get watch => 'Watch';
+
+	/// en: 'Manage'
+	String get manage => 'Manage';
+
+	/// en: 'More Ways to Watch'
+	String get moreWaysToWatch => 'More Ways to Watch';
+
 	/// en: 'Mark as Watched'
 	String get markAsWatched => 'Mark as Watched';
 
@@ -1651,6 +1688,15 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'Subtitles'
 	String get subtitlesLabel => 'Subtitles';
+
+	/// en: 'Preparing subtitles'
+	String get subtitlesPreparing => 'Preparing subtitles';
+
+	/// en: 'Subtitles could not be prepared'
+	String get subtitlesPrepareFailed => 'Subtitles could not be prepared';
+
+	/// en: 'Retry'
+	String get subtitlesPrepareRetry => 'Retry';
 
 	/// en: 'Reset to 0ms'
 	String get resetToZero => 'Reset to 0ms';
@@ -2454,6 +2500,30 @@ class TranslationsDiscoverEn {
 
 	// Translations
 
+	/// en: 'Discussions'
+	String get discussions => 'Discussions';
+
+	/// en: 'S${number}'
+	String seasonBadge({required Object number}) => 'S${number}';
+
+	/// en: '(one) {${n} like} (other) {${n} likes}'
+	String commentLikes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '${n} like',
+		other: '${n} likes',
+	);
+
+	/// en: 'More actions'
+	String get moreActions => 'More actions';
+
+	/// en: 'Audio stream'
+	String get audioStream => 'Audio stream';
+
+	/// en: 'Subtitles'
+	String get subtitlesRow => 'Subtitles';
+
+	/// en: 'Manage'
+	String get manageTitle => 'Manage';
+
 	/// en: 'Discover'
 	String get title => 'Discover';
 
@@ -2621,6 +2691,12 @@ class TranslationsDiscoverEn {
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
 
+	/// en: 'Activity by ${names}'
+	String activityBy({required Object names}) => 'Activity by ${names}';
+
+	/// en: 'you'
+	String get activityByYou => 'you';
+
 	/// en: 'Played ${count}×'
 	String activityPlays({required Object count}) => 'Played ${count}×';
 
@@ -2671,6 +2747,27 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Community score'
 	String get scoreCommunity => 'Community score';
+
+	/// en: 'Cast & Crew'
+	String get castAndCrew => 'Cast & Crew';
+
+	/// en: 'Ratings & Reviews'
+	String get ratingsAndReviews => 'Ratings & Reviews';
+
+	/// en: 'Series'
+	String get seriesTab => 'Series';
+
+	/// en: 'E${number}'
+	String episodeBadge({required Object number}) => 'E${number}';
+
+	/// en: 'Directed by ${names}'
+	String directedBy({required Object names}) => 'Directed by ${names}';
+
+	/// en: 'Trailer'
+	String get trailer => 'Trailer';
+
+	/// en: 'Extra'
+	String get extra => 'Extra';
 
 	/// en: 'Reviews'
 	String get reviews => 'Reviews';
@@ -2810,6 +2907,24 @@ class TranslationsLibrariesEn {
 
 	// Translations
 
+	/// en: 'Select: pick up/drop · ↑↓: move · Menu: done'
+	String get cinemaReorderHint => 'Select: pick up/drop · ↑↓: move · Menu: done';
+
+	/// en: 'Visible'
+	String get cinemaVisible => 'Visible';
+
+	/// en: 'Hidden in this profile'
+	String get cinemaHidden => 'Hidden in this profile';
+
+	/// en: 'Select for library options'
+	String get cinemaOptionsHint => 'Select for library options';
+
+	/// en: 'One library.'
+	String get cinemaSummaryTitle => 'One library.';
+
+	/// en: 'All options with Select.'
+	String get cinemaSummaryHint => 'All options with Select.';
+
 	/// en: 'Browse alphabetically'
 	String get alphabetScrubber => 'Browse alphabetically';
 
@@ -2905,6 +3020,9 @@ class TranslationsLibrariesEn {
 
 	/// en: 'Sort By'
 	String get sortBy => 'Sort By';
+
+	/// en: 'Filter By'
+	String get filterBy => 'Filter By';
 
 	/// en: 'Filters'
 	String get filters => 'Filters';
@@ -3332,15 +3450,6 @@ class TranslationsMyPleyaEn {
 		one: '1 list',
 		other: '${n} lists',
 	);
-
-	/// en: 'Your personal viewing assistant'
-	String get bigPTvSubtitle => 'Your personal viewing assistant';
-
-	/// en: 'Open Big P'
-	String get openBigP => 'Open Big P';
-
-	/// en: 'Switch profile'
-	String get switchProfile => 'Switch profile';
 }
 
 // Path: liveTv
@@ -3725,6 +3834,9 @@ class TranslationsPlaylistsEn {
 
 	/// en: 'Failed to reorder playlist item'
 	String get errorReordering => 'Failed to reorder playlist item';
+
+	/// en: 'This playlist changed elsewhere. It has been reloaded, so make your move again.'
+	String get changedElsewhere => 'This playlist changed elsewhere. It has been reloaded, so make your move again.';
 
 	/// en: 'Failed to remove from playlist'
 	String get errorRemoving => 'Failed to remove from playlist';
@@ -6059,6 +6171,9 @@ class TranslationsUnifiedCatalogEn {
 	/// en: '${count} titles loaded'
 	String titlesLoaded({required Object count}) => '${count} titles loaded';
 
+	/// en: 'Jump to'
+	String get jumpTo => 'Jump to';
+
 	/// en: 'Load more'
 	String get loadMore => 'Load more';
 
@@ -6073,6 +6188,12 @@ class TranslationsUnifiedCatalogEn {
 	late final TranslationsUnifiedCatalogDiscoveryEn discovery = TranslationsUnifiedCatalogDiscoveryEn.internal(_root);
 	late final TranslationsUnifiedCatalogHomeEn home = TranslationsUnifiedCatalogHomeEn.internal(_root);
 	late final TranslationsUnifiedCatalogHomeRowsEn homeRows = TranslationsUnifiedCatalogHomeRowsEn.internal(_root);
+
+	/// en: '1 play'
+	String get onePlay => '1 play';
+
+	/// en: '${count} plays'
+	String plays({required Object count}) => '${count} plays';
 }
 
 // Path: tvNavigation
@@ -6116,9 +6237,6 @@ class TranslationsTvMyPleyaEn {
 	/// en: 'Online'
 	String get statusOnline => 'Online';
 
-	/// en: 'Offline'
-	String get statusOffline => 'Offline';
-
 	/// en: 'Servers'
 	String get servers => 'Servers';
 
@@ -6127,9 +6245,6 @@ class TranslationsTvMyPleyaEn {
 
 	/// en: 'Logs'
 	String get logs => 'Logs';
-
-	/// en: 'Signed in as ${name} · Pleya ${version}'
-	String signedInAs({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}';
 
 	/// en: 'Saved films and series'
 	String get watchlistSubtitle => 'Saved films and series';
@@ -6177,6 +6292,60 @@ class TranslationsTvMyPleyaEn {
 
 	/// en: '${count} libraries'
 	String libraryCount({required Object count}) => '${count} libraries';
+
+	/// en: 'Your personal space'
+	String get eyebrow => 'Your personal space';
+
+	/// en: 'Your world, ${name}.'
+	String heading({required Object name}) => 'Your world, ${name}.';
+
+	/// en: 'Your world.'
+	String get headingNoName => 'Your world.';
+
+	/// en: 'Keep what you love. Find it again without effort.'
+	String get subline => 'Keep what you love. Find it again without effort.';
+
+	/// en: 'Big P · your assistant'
+	String get bigPEyebrow => 'Big P · your assistant';
+
+	/// en: 'What do you want to watch?'
+	String get bigPTitle => 'What do you want to watch?';
+
+	/// en: 'Ask, discover and find something good faster.'
+	String get bigPSubtitle => 'Ask, discover and find something good faster.';
+
+	/// en: 'Ask Big P'
+	String get bigPAction => 'Ask Big P';
+
+	/// en: 'Quick links'
+	String get quickLinks => 'Quick links';
+}
+
+// Path: tvAccountMenu
+class TranslationsTvAccountMenuEn {
+	TranslationsTvAccountMenuEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Profile'
+	String get title => 'Profile';
+
+	/// en: 'Signed in as ${name}'
+	String signedInAs({required Object name}) => 'Signed in as ${name}';
+
+	/// en: 'Switch profile'
+	String get switchProfile => 'Switch profile';
+
+	/// en: 'Choose another profile'
+	String get switchProfileSubtitle => 'Choose another profile';
+
+	/// en: 'Sign out'
+	String get logout => 'Sign out';
+
+	/// en: 'Confirm before you sign out'
+	String get logoutSubtitle => 'Confirm before you sign out';
 }
 
 // Path: tvOfflineHome
@@ -6696,9 +6865,6 @@ class TranslationsSettingsStudioEn {
 
 	/// en: 'Playback experience'
 	String get playbackExperience => 'Playback experience';
-
-	/// en: 'Manage'
-	String get manage => 'Manage';
 
 	/// en: 'Your watchlist'
 	String get yourWatchlist => 'Your watchlist';
@@ -7753,8 +7919,19 @@ class TranslationsUnifiedCatalogSortEn {
 	/// en: 'Oldest release'
 	String get oldestRelease => 'Oldest release';
 
+	/// en: 'Newest year'
+	String get yearNewest => 'Newest year';
+
+	/// en: 'Oldest year'
+	String get yearOldest => 'Oldest year';
+
 	/// en: 'Recently watched'
 	String get recentlyWatched => 'Recently watched';
+
+	late final TranslationsUnifiedCatalogSortFieldsEn fields = TranslationsUnifiedCatalogSortFieldsEn.internal(_root);
+
+	/// en: 'Sort by'
+	String get pageTitle => 'Sort by';
 }
 
 // Path: unifiedCatalog.rail
@@ -7833,6 +8010,14 @@ class TranslationsUnifiedCatalogFiltersEn {
 
 	/// en: 'Nothing to choose from'
 	String get noValues => 'Nothing to choose from';
+
+	/// en: 'Decade'
+	String get decade => 'Decade';
+
+	late final TranslationsUnifiedCatalogFiltersQuickEn quick = TranslationsUnifiedCatalogFiltersQuickEn.internal(_root);
+
+	/// en: 'Filter by'
+	String get pageTitle => 'Filter by';
 }
 
 // Path: unifiedCatalog.states
@@ -8379,6 +8564,7 @@ class TranslationsAssistantMemoryEn {
 	late final TranslationsAssistantMemoryCardEn card = TranslationsAssistantMemoryCardEn.internal(_root);
 	late final TranslationsAssistantMemoryCategoriesEn categories = TranslationsAssistantMemoryCategoriesEn.internal(_root);
 	late final TranslationsAssistantMemoryScreenEn screen = TranslationsAssistantMemoryScreenEn.internal(_root);
+	late final TranslationsAssistantMemorySyncEn sync = TranslationsAssistantMemorySyncEn.internal(_root);
 }
 
 // Path: assistant.mobile
@@ -9493,6 +9679,93 @@ class TranslationsAssistantMatchEn {
 	String score({required Object score}) => 'Score ${score}';
 }
 
+// Path: unifiedCatalog.sort.fields
+class TranslationsUnifiedCatalogSortFieldsEn {
+	TranslationsUnifiedCatalogSortFieldsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Title'
+	String get title => 'Title';
+
+	/// en: 'Year'
+	String get year => 'Year';
+
+	/// en: 'Release date'
+	String get releaseDate => 'Release date';
+
+	/// en: 'Critics'
+	String get criticRating => 'Critics';
+
+	/// en: 'Audience'
+	String get audienceRating => 'Audience';
+
+	/// en: 'Rating'
+	String get userRating => 'Rating';
+
+	/// en: 'Age rating'
+	String get contentRating => 'Age rating';
+
+	/// en: 'Duration'
+	String get duration => 'Duration';
+
+	/// en: 'Progress'
+	String get progress => 'Progress';
+
+	/// en: 'Plays'
+	String get plays => 'Plays';
+
+	/// en: 'Added'
+	String get addedAt => 'Added';
+
+	/// en: 'Watched'
+	String get recentlyWatched => 'Watched';
+
+	/// en: 'Resolution'
+	String get resolution => 'Resolution';
+}
+
+// Path: unifiedCatalog.filters.quick
+class TranslationsUnifiedCatalogFiltersQuickEn {
+	TranslationsUnifiedCatalogFiltersQuickEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'All'
+	String get all => 'All';
+
+	/// en: 'HDR'
+	String get hdr => 'HDR';
+
+	/// en: 'Dolby Vision'
+	String get dolbyVision => 'Dolby Vision';
+
+	/// en: 'HDR10+'
+	String get hdr10Plus => 'HDR10+';
+
+	/// en: 'Atmos'
+	String get atmos => 'Atmos';
+
+	/// en: 'Unwatched'
+	String get unwatched => 'Unwatched';
+
+	/// en: 'In progress'
+	String get inProgress => 'In progress';
+
+	/// en: 'Unmatched'
+	String get unmatched => 'Unmatched';
+
+	/// en: 'Duplicates'
+	String get duplicates => 'Duplicates';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+}
+
 // Path: unifiedCatalog.discovery.semantics
 class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 	TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(this._root);
@@ -9655,6 +9928,111 @@ class TranslationsAssistantMemoryScreenEn {
 	late final TranslationsAssistantMemoryScreenSourcesEn sources = TranslationsAssistantMemoryScreenSourcesEn.internal(_root);
 	late final TranslationsAssistantMemoryScreenSheetEn sheet = TranslationsAssistantMemoryScreenSheetEn.internal(_root);
 	late final TranslationsAssistantMemoryScreenCodesEn codes = TranslationsAssistantMemoryScreenCodesEn.internal(_root);
+}
+
+// Path: assistant.memory.sync
+class TranslationsAssistantMemorySyncEn {
+	TranslationsAssistantMemorySyncEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Sync via Pleya Server'
+	String get title => 'Sync via Pleya Server';
+
+	/// en: 'Stored on this device'
+	String get local => 'Stored on this device';
+
+	/// en: 'Syncing…'
+	String get syncing => 'Syncing…';
+
+	/// en: 'Changes waiting to sync'
+	String get pending => 'Changes waiting to sync';
+
+	/// en: 'Changes confirmed by the server'
+	String get synced => 'Changes confirmed by the server';
+
+	/// en: 'Server unavailable or account not permitted'
+	String get unavailable => 'Server unavailable or account not permitted';
+
+	/// en: 'Sync failed. Your local memories are retained.'
+	String get error => 'Sync failed. Your local memories are retained.';
+
+	/// en: 'Changes need your choice'
+	String get conflict => 'Changes need your choice';
+
+	/// en: 'Server memory changed after a reset or restore. Review before using it.'
+	String get quarantine => 'Server memory changed after a reset or restore. Review before using it.';
+
+	/// en: 'Choose your own Pleya Server account'
+	String get account => 'Choose your own Pleya Server account';
+
+	/// en: 'No eligible Pleya Server account is connected. Sign in to an updated server with your own account.'
+	String get noAccount => 'No eligible Pleya Server account is connected. Sign in to an updated server with your own account.';
+
+	/// en: 'Share these memories with ${account}'
+	String preview({required Object account}) => 'Share these memories with ${account}';
+
+	/// en: 'Existing server memories are retained. Household memories stay on this device. Only selected memories will be shared.'
+	String get previewNote => 'Existing server memories are retained. Household memories stay on this device. Only selected memories will be shared.';
+
+	/// en: 'Confirm and sync'
+	String get connect => 'Confirm and sync';
+
+	/// en: 'Sync now'
+	String get refresh => 'Sync now';
+
+	/// en: 'Disconnect'
+	String get disconnect => 'Disconnect';
+
+	/// en: 'Stop syncing this profile? Memories stay on this device and on the server.'
+	String get disconnectNote => 'Stop syncing this profile? Memories stay on this device and on the server.';
+
+	/// en: 'Review restored memories'
+	String get reviewReset => 'Review restored memories';
+
+	/// en: 'Use these server memories'
+	String get acceptReset => 'Use these server memories';
+
+	/// en: 'Confirm this server snapshot as the new basis. Old pending changes will not be uploaded automatically.'
+	String get resetNote => 'Confirm this server snapshot as the new basis. Old pending changes will not be uploaded automatically.';
+
+	/// en: 'This device'
+	String get localVersion => 'This device';
+
+	/// en: 'Server'
+	String get serverVersion => 'Server';
+
+	/// en: 'Keep this version'
+	String get keepLocal => 'Keep this version';
+
+	/// en: 'Use server version'
+	String get keepServer => 'Use server version';
+
+	/// en: 'Keep both'
+	String get keepBoth => 'Keep both';
+
+	/// en: 'Removed'
+	String get deleted => 'Removed';
+
+	/// en: 'Share'
+	String get select => 'Share';
+
+	/// en: 'Last confirmed: ${time}'
+	String lastConfirmed({required Object time}) => 'Last confirmed: ${time}';
+
+	/// en: 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.'
+	String importLimit({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.';
+
+	/// en: 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.'
+	String get clearChanged => 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.';
+
+	/// en: 'Erase these server memories'
+	String get clearServer => 'Erase these server memories';
+
+	/// en: 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.'
+	String get clearEverywhere => 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.';
 }
 
 // Path: assistant.jobs.scanLibrary
@@ -9863,8 +10241,8 @@ class TranslationsAssistantMemoryScreenMenuEn {
 	/// en: 'Use memory: Off'
 	String get useOff => 'Use memory: Off';
 
-	/// en: 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.'
-	String get useNote => 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.';
+	/// en: 'Big P remembers what you ask him to remember, for this profile. Memories stay on this device unless you explicitly connect them to your own Pleya Server account. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.'
+	String get useNote => 'Big P remembers what you ask him to remember, for this profile. Memories stay on this device unless you explicitly connect them to your own Pleya Server account. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.';
 
 	/// en: 'Write overview again'
 	String get rewrite => 'Write overview again';
@@ -10224,6 +10602,13 @@ extension on Translations {
 			'update.viewRelease' => 'View Release',
 			'update.latestVersion' => 'You are on the latest version',
 			'update.checkFailed' => 'Failed to check for updates',
+			'settings.privacy' => 'Privacy',
+			'settings.showTraktDiscussions' => 'Show discussions from Trakt',
+			'settings.shareActivity' => 'Share my activity',
+			'settings.shareActivityDescription' => 'Others in the household see what you watched',
+			'settings.shareActivityServer' => ({required Object server}) => 'Share my activity on ${server}',
+			'settings.shareActivitySaveFailed' => 'Could not save this. Nothing changed.',
+			'settings.shareActivityUnreadable' => 'Could not read this setting. Press to try again.',
 			'settings.searchHint' => 'Search settings',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Settings',
@@ -10578,6 +10963,11 @@ extension on Translations {
 			'detailActions.watched' => 'Watched',
 			'detailActions.download' => 'Download',
 			'detailActions.more' => 'More',
+			'mediaMenu.addToPlaylistOrCollection' => 'Add to Playlist / Collection',
+			'mediaMenu.addToPlaylist' => 'Add to Playlist',
+			'mediaMenu.watch' => 'Watch',
+			'mediaMenu.manage' => 'Manage',
+			'mediaMenu.moreWaysToWatch' => 'More Ways to Watch',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -10627,7 +11017,12 @@ extension on Translations {
 			'tooltips.markAsWatched' => 'Mark as watched',
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Subtitles',
+			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
+			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
+			'videoControls.subtitlesPrepareRetry' => 'Retry',
 			'videoControls.resetToZero' => 'Reset to 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -10639,8 +11034,6 @@ extension on Translations {
 			'videoControls.stretch' => 'Stretch',
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer Active',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
@@ -10916,6 +11309,13 @@ extension on Translations {
 			'connections.disconnectServer' => 'Disconnect',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Disconnect from "${name}"? The sign-in for this server is removed from this device. Downloaded items are kept.',
 			'connections.reauthRequired' => 'Sign-in required',
+			'discover.discussions' => 'Discussions',
+			'discover.seasonBadge' => ({required Object number}) => 'S${number}',
+			'discover.commentLikes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '${n} like', other: '${n} likes', ), 
+			'discover.moreActions' => 'More actions',
+			'discover.audioStream' => 'Audio stream',
+			'discover.subtitlesRow' => 'Subtitles',
+			'discover.manageTitle' => 'Manage',
 			'discover.title' => 'Discover',
 			'discover.forYou' => 'For you',
 			'discover.switchProfile' => 'Switch Profile',
@@ -10976,6 +11376,8 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.activityBy' => ({required Object names}) => 'Activity by ${names}',
+			'discover.activityByYou' => 'you',
 			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
 			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
@@ -10991,6 +11393,13 @@ extension on Translations {
 			'discover.scoreRtCritics' => 'Rotten Tomatoes critics',
 			'discover.scoreRtAudience' => 'Rotten Tomatoes audience',
 			'discover.scoreCommunity' => 'Community score',
+			'discover.castAndCrew' => 'Cast & Crew',
+			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.seriesTab' => 'Series',
+			'discover.episodeBadge' => ({required Object number}) => 'E${number}',
+			'discover.directedBy' => ({required Object names}) => 'Directed by ${names}',
+			'discover.trailer' => 'Trailer',
+			'discover.extra' => 'Extra',
 			'discover.reviews' => 'Reviews',
 			'discover.reviewOpenSource' => 'Read at source',
 			'mobileDetail.similarTab' => 'Similar',
@@ -11025,6 +11434,12 @@ extension on Translations {
 			'notices.playbackConnectionLostBody' => 'Lost connection to the server',
 			'notices.playbackCodecUnsupportedBody' => 'This file\'s format isn\'t supported on this device',
 			'notices.playbackServerErrorBody' => 'The server hit an error while transcoding',
+			'libraries.cinemaReorderHint' => 'Select: pick up/drop · ↑↓: move · Menu: done',
+			'libraries.cinemaVisible' => 'Visible',
+			'libraries.cinemaHidden' => 'Hidden in this profile',
+			'libraries.cinemaOptionsHint' => 'Select for library options',
+			'libraries.cinemaSummaryTitle' => 'One library.',
+			'libraries.cinemaSummaryHint' => 'All options with Select.',
 			'libraries.alphabetScrubber' => 'Browse alphabetically',
 			'libraries.title' => 'Libraries',
 			'libraries.fallbackTitle' => 'Library',
@@ -11057,6 +11472,7 @@ extension on Translations {
 			'libraries.manageLibraries' => 'Manage Libraries',
 			'libraries.sort' => 'Sort',
 			'libraries.sortBy' => 'Sort By',
+			'libraries.filterBy' => 'Filter By',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Are you sure you want to perform this action?',
 			'libraries.showLibrary' => 'Show library',
@@ -11115,6 +11531,8 @@ extension on Translations {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
 			'about.title' => 'About',
+			_ => null,
+		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -11153,8 +11571,6 @@ extension on Translations {
 			'logs.levelFilter' => 'Level',
 			'logs.levelAll' => 'All',
 			'logs.levelWarnings' => 'Warnings',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Errors',
 			'logs.noMatchingLogs' => 'No lines at this level',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} of ${total} lines',
@@ -11212,9 +11628,6 @@ extension on Translations {
 			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 library', other: '${n} libraries', ), 
 			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 collection', other: '${n} collections', ), 
 			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 list', other: '${n} lists', ), 
-			'myPleya.bigPTvSubtitle' => 'Your personal viewing assistant',
-			'myPleya.openBigP' => 'Open Big P',
-			'myPleya.switchProfile' => 'Switch profile',
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
@@ -11334,6 +11747,7 @@ extension on Translations {
 			'playlists.errorLoading' => 'Failed to load playlists',
 			'playlists.errorAdding' => 'Failed to add to playlist',
 			'playlists.errorReordering' => 'Failed to reorder playlist item',
+			'playlists.changedElsewhere' => 'This playlist changed elsewhere. It has been reloaded, so make your move again.',
 			'playlists.errorRemoving' => 'Failed to remove from playlist',
 			'watchTogether.title' => 'Watch Together',
 			'watchTogether.description' => 'Watch content in sync with friends and family',
@@ -11631,6 +12045,8 @@ extension on Translations {
 			'performanceOverlay.memory' => 'Memory',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'External Player',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -11667,8 +12083,6 @@ extension on Translations {
 			'metadataEdit.selectBackground' => 'Select Background',
 			'metadataEdit.selectLogo' => 'Select Logo',
 			'metadataEdit.selectSquareArt' => 'Select Square Art',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'From URL',
 			'metadataEdit.uploadFile' => 'Upload File',
 			'metadataEdit.enterImageUrl' => 'Enter image URL',
@@ -12145,9 +12559,12 @@ extension on Translations {
 			'unifiedCatalog.oneSource' => '1 source',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
 			'unifiedCatalog.oneSeason' => '1 season',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
+			'unifiedCatalog.jumpTo' => 'Jump to',
 			'unifiedCatalog.loadMore' => 'Load more',
 			'unifiedCatalog.loadingMore' => 'Loading more…',
 			'unifiedCatalog.sort.title' => 'Sort',
@@ -12157,7 +12574,23 @@ extension on Translations {
 			'unifiedCatalog.sort.oldestAdded' => 'Oldest added',
 			'unifiedCatalog.sort.newestRelease' => 'Newest release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oldest release',
+			'unifiedCatalog.sort.yearNewest' => 'Newest year',
+			'unifiedCatalog.sort.yearOldest' => 'Oldest year',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recently watched',
+			'unifiedCatalog.sort.fields.title' => 'Title',
+			'unifiedCatalog.sort.fields.year' => 'Year',
+			'unifiedCatalog.sort.fields.releaseDate' => 'Release date',
+			'unifiedCatalog.sort.fields.criticRating' => 'Critics',
+			'unifiedCatalog.sort.fields.audienceRating' => 'Audience',
+			'unifiedCatalog.sort.fields.userRating' => 'Rating',
+			'unifiedCatalog.sort.fields.contentRating' => 'Age rating',
+			'unifiedCatalog.sort.fields.duration' => 'Duration',
+			'unifiedCatalog.sort.fields.progress' => 'Progress',
+			'unifiedCatalog.sort.fields.plays' => 'Plays',
+			'unifiedCatalog.sort.fields.addedAt' => 'Added',
+			'unifiedCatalog.sort.fields.recentlyWatched' => 'Watched',
+			'unifiedCatalog.sort.fields.resolution' => 'Resolution',
+			'unifiedCatalog.sort.pageTitle' => 'Sort by',
 			'unifiedCatalog.rail.sources' => 'Sources',
 			'unifiedCatalog.rail.noFilters' => 'None',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} active',
@@ -12178,11 +12611,21 @@ extension on Translations {
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
+			'unifiedCatalog.filters.decade' => 'Decade',
+			'unifiedCatalog.filters.quick.all' => 'All',
+			'unifiedCatalog.filters.quick.hdr' => 'HDR',
+			'unifiedCatalog.filters.quick.dolbyVision' => 'Dolby Vision',
+			'unifiedCatalog.filters.quick.hdr10Plus' => 'HDR10+',
+			'unifiedCatalog.filters.quick.atmos' => 'Atmos',
+			'unifiedCatalog.filters.quick.unwatched' => 'Unwatched',
+			'unifiedCatalog.filters.quick.inProgress' => 'In progress',
+			'unifiedCatalog.filters.quick.unmatched' => 'Unmatched',
+			'unifiedCatalog.filters.quick.duplicates' => 'Duplicates',
+			'unifiedCatalog.filters.quick.watched' => 'Watched',
+			'unifiedCatalog.filters.pageTitle' => 'Filter by',
 			'unifiedCatalog.states.emptyTitle' => 'This catalog is empty',
 			'unifiedCatalog.states.emptyBody' => 'No visible library holds anything for this page.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Nothing matches these filters',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Clear a filter to see more titles.',
 			'unifiedCatalog.states.clearFilters' => 'Clear filters',
 			'unifiedCatalog.states.errorTitle' => 'The catalog could not be loaded',
@@ -12273,6 +12716,8 @@ extension on Translations {
 			'unifiedCatalog.homeRows.close' => 'Close',
 			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => 'Edit ${name}',
 			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tap one of your own rows to edit it, or make a new one.',
+			'unifiedCatalog.onePlay' => '1 play',
+			'unifiedCatalog.plays' => ({required Object count}) => '${count} plays',
 			'tvNavigation.activeDestination' => 'current section',
 			'tvNavigation.attentionRequired' => 'needs attention',
 			'tvMyPleya.groupContent' => 'My content',
@@ -12281,11 +12726,9 @@ extension on Translations {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} of ${total} servers online',
 			'tvMyPleya.noServers' => 'No servers connected',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activity',
 			'tvMyPleya.logs' => 'Logs',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Signed in as ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Saved films and series',
 			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
 			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
@@ -12303,6 +12746,21 @@ extension on Translations {
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} libraries',
+			'tvMyPleya.eyebrow' => 'Your personal space',
+			'tvMyPleya.heading' => ({required Object name}) => 'Your world, ${name}.',
+			'tvMyPleya.headingNoName' => 'Your world.',
+			'tvMyPleya.subline' => 'Keep what you love. Find it again without effort.',
+			'tvMyPleya.bigPEyebrow' => 'Big P · your assistant',
+			'tvMyPleya.bigPTitle' => 'What do you want to watch?',
+			'tvMyPleya.bigPSubtitle' => 'Ask, discover and find something good faster.',
+			'tvMyPleya.bigPAction' => 'Ask Big P',
+			'tvMyPleya.quickLinks' => 'Quick links',
+			'tvAccountMenu.title' => 'Profile',
+			'tvAccountMenu.signedInAs' => ({required Object name}) => 'Signed in as ${name}',
+			'tvAccountMenu.switchProfile' => 'Switch profile',
+			'tvAccountMenu.switchProfileSubtitle' => 'Choose another profile',
+			'tvAccountMenu.logout' => 'Sign out',
+			'tvAccountMenu.logoutSubtitle' => 'Confirm before you sign out',
 			'tvOfflineHome.title' => 'No server reachable',
 			'tvOfflineHome.body' => 'None of your servers are answering right now. Reconnect once one is back online — My Pleya and Settings stay reachable while you wait.',
 			'tvOfflineHome.manageServers' => 'Manage servers',
@@ -12490,7 +12948,7 @@ extension on Translations {
 			'assistant.memory.screen.menu.use' => 'Use memory',
 			'assistant.memory.screen.menu.useOn' => 'Use memory: On',
 			'assistant.memory.screen.menu.useOff' => 'Use memory: Off',
-			'assistant.memory.screen.menu.useNote' => 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.',
+			'assistant.memory.screen.menu.useNote' => 'Big P remembers what you ask him to remember, for this profile. Memories stay on this device unless you explicitly connect them to your own Pleya Server account. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.',
 			'assistant.memory.screen.menu.rewrite' => 'Write overview again',
 			'assistant.memory.screen.menu.clear' => 'Clear all memories',
 			'assistant.memory.screen.clearDialog.title' => 'Clear all memories?',
@@ -12548,6 +13006,38 @@ extension on Translations {
 			'assistant.memory.screen.codes.notFound' => 'This memory no longer exists.',
 			'assistant.memory.screen.codes.profileGone' => 'This profile was switched or removed. Nothing was changed.',
 			'assistant.memory.screen.codes.storageFailed' => 'Saving did not work. Nothing was changed.',
+			'assistant.memory.sync.title' => 'Sync via Pleya Server',
+			'assistant.memory.sync.local' => 'Stored on this device',
+			'assistant.memory.sync.syncing' => 'Syncing…',
+			'assistant.memory.sync.pending' => 'Changes waiting to sync',
+			'assistant.memory.sync.synced' => 'Changes confirmed by the server',
+			'assistant.memory.sync.unavailable' => 'Server unavailable or account not permitted',
+			'assistant.memory.sync.error' => 'Sync failed. Your local memories are retained.',
+			'assistant.memory.sync.conflict' => 'Changes need your choice',
+			'assistant.memory.sync.quarantine' => 'Server memory changed after a reset or restore. Review before using it.',
+			'assistant.memory.sync.account' => 'Choose your own Pleya Server account',
+			'assistant.memory.sync.noAccount' => 'No eligible Pleya Server account is connected. Sign in to an updated server with your own account.',
+			'assistant.memory.sync.preview' => ({required Object account}) => 'Share these memories with ${account}',
+			'assistant.memory.sync.previewNote' => 'Existing server memories are retained. Household memories stay on this device. Only selected memories will be shared.',
+			'assistant.memory.sync.connect' => 'Confirm and sync',
+			'assistant.memory.sync.refresh' => 'Sync now',
+			'assistant.memory.sync.disconnect' => 'Disconnect',
+			'assistant.memory.sync.disconnectNote' => 'Stop syncing this profile? Memories stay on this device and on the server.',
+			'assistant.memory.sync.reviewReset' => 'Review restored memories',
+			'assistant.memory.sync.acceptReset' => 'Use these server memories',
+			'assistant.memory.sync.resetNote' => 'Confirm this server snapshot as the new basis. Old pending changes will not be uploaded automatically.',
+			'assistant.memory.sync.localVersion' => 'This device',
+			'assistant.memory.sync.serverVersion' => 'Server',
+			'assistant.memory.sync.keepLocal' => 'Keep this version',
+			'assistant.memory.sync.keepServer' => 'Use server version',
+			'assistant.memory.sync.keepBoth' => 'Keep both',
+			'assistant.memory.sync.deleted' => 'Removed',
+			'assistant.memory.sync.select' => 'Share',
+			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
+			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
+			'assistant.memory.sync.clearChanged' => 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.',
+			'assistant.memory.sync.clearServer' => 'Erase these server memories',
+			'assistant.memory.sync.clearEverywhere' => 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
@@ -12583,6 +13073,8 @@ extension on Translations {
 			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
 			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
 			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
@@ -12695,8 +13187,6 @@ extension on Translations {
 			'assistant.confirm.titles.createHomeRow' => 'Create home row',
 			'assistant.confirm.titles.createCollection' => 'Create collection',
 			'assistant.confirm.titles.requestTitle' => 'Request title',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
 			'assistant.confirm.titles.changePlayback' => 'Change playback',
@@ -12970,7 +13460,6 @@ extension on Translations {
 			'settingsStudio.yourLibrary' => 'Your library',
 			'settingsStudio.viewPreview' => 'View preview',
 			'settingsStudio.playbackExperience' => 'Playback experience',
-			'settingsStudio.manage' => 'Manage',
 			'settingsStudio.yourWatchlist' => 'Your watchlist',
 			'settingsStudio.yourContent' => 'Your content',
 			'settingsStudio.lightMode' => 'Light mode',

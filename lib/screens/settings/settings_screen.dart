@@ -41,6 +41,7 @@ import '../../widgets/settings_builder.dart';
 import '../../widgets/settings_page.dart';
 import '../../widgets/settings/settings_studio_header.dart';
 import '../../widgets/settings_section.dart';
+import '../../media/media_server_client.dart' show HouseholdActivityClient;
 import '../../providers/multi_server_provider.dart';
 import '../../profiles/active_profile_provider.dart';
 import 'about_screen.dart';
@@ -64,18 +65,23 @@ import '../profile/profile_switch_screen.dart';
 import '../servers_screen.dart';
 import 'seerr_settings_screen.dart';
 import 'subtitle_styling_screen.dart';
+import 'activity_sharing_controller.dart';
 import 'tautulli_settings_screen.dart';
 import 'trackers_settings_screen.dart';
+import '../../providers/trakt_account_provider.dart';
+import '../../services/trakt/trakt_comments_client.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_settings_categories.dart';
 import '../../widgets/tv/tv_settings_library_preview.dart';
 import '../../widgets/tv/tv_settings_rows.dart';
 import '../tv/sections/tv_about_screen.dart';
+import '../tv/sections/tv_servers_page.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../widgets/scroll_crown/scroll_crown.dart';
 
 part 'parts/settings_actions.dart';
+part 'parts/settings_activity_sharing.dart';
 part 'parts/settings_phone_page.dart';
 part 'parts/settings_system_tiles.dart';
 part 'parts/settings_tiles.dart';
@@ -88,8 +94,19 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
+/// The way the TV shell opens Instellingen > Koppelingen > Servers for
+/// "Servers beheren" (A-24c): along the viewer's own route, so Menu from the
+/// Servers page returns to the Servers row (review 557-I5).
+abstract interface class TvSettingsServersEntry {
+  void openTvServers();
+}
+
 class _SettingsScreenState extends State<SettingsScreen>
-    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen> {
+    with FocusableTab, MountedSetStateMixin, _SettingsActions<SettingsScreen>, _SettingsActivitySharing<SettingsScreen>
+    implements TvSettingsServersEntry {
+  @override
+  void openTvServers() => _openTvServersFromShell();
+
   late final FocusMemoryTracker _focusTracker;
 
   /// The TV page's categories, which own which rows are mounted (A-24).
@@ -104,6 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   static const _kVideoPlayerControls = 'video_player_controls';
   static const _kVideoPlayerNavigation = 'video_player_navigation';
   static const _kCrashReporting = 'crash_reporting';
+  static const _kTraktDiscussions = 'trakt_discussions';
   static const _kDebugLogging = 'debug_logging';
   static const _kViewLogs = 'view_logs';
   static const _kClearCache = 'clear_cache';

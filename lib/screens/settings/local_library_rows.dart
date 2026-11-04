@@ -114,7 +114,7 @@ mixin LocalLibraryRowsHost<T extends StatefulWidget> on State<T> {
                       Text(provider.currentTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
-            onTap: () => unawaited(provider.synchronize()),
+            onTap: () => unawaited(provider.synchronize(force: true)),
           ),
         ),
       ),

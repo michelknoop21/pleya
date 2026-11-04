@@ -38,7 +38,7 @@
 </script>
 
 <script lang="ts" generics="T">
-  import { onMount, type Snippet } from 'svelte';
+  import type { Snippet } from 'svelte';
 
   import { t } from '../i18n';
   import Panel from './Panel.svelte';
@@ -59,6 +59,8 @@
     rowData?: (row: T) => Record<`data-${string}`, string>;
     title?: Snippet;
     actions?: Snippet;
+    /** Toelichting onder de tabel, binnen het paneel (27: de regel onder de rechtenmatrix). */
+    footer?: Snippet;
   }
 
   let {
@@ -71,7 +73,8 @@
     stack = false,
     rowData,
     title,
-    actions
+    actions,
+    footer
   }: Props = $props();
 
   // Zoveel cellen staan gestapeld links onder elkaar; de rechterkolom spant ze.
@@ -87,11 +90,13 @@
   let scroller = $state<HTMLDivElement | null>(null);
   let overflows = $state(false);
 
-  onMount(() => {
-    if (!scroller || typeof ResizeObserver === 'undefined') return;
+  // De scrollstrook kan pas na een lege/loadingstaat verschijnen. Koppel de
+  // meting daarom aan haar werkelijke DOM-node, niet alleen aan de eerste mount.
+  $effect(() => {
     const el = scroller;
+    if (!el || typeof ResizeObserver === 'undefined') return;
     const measure = () => {
-      overflows = el.scrollWidth > el.clientWidth + 1;
+      overflows = el.scrollWidth > el.clientWidth;
     };
     const observer = new ResizeObserver(measure);
     observer.observe(el);
@@ -154,9 +159,17 @@
       </table>
     </div>
   {/if}
+  {#if footer}
+    <div class="tbl__footer">{@render footer()}</div>
+  {/if}
 </Panel>
 
 <style>
+  .tbl__footer {
+    padding: 12px 20px 16px;
+    border-top: 1px solid var(--hairline);
+  }
+
   .tbl {
     width: 100%;
     border-collapse: collapse;

@@ -259,6 +259,7 @@ func TestStreamTokenNeedsAnExistingVersion(t *testing.T) {
 //
 // /users staat er sinds stap 4 van PS-9 wel (DEC-121) en is daarom uit deze
 // lijst gehaald; matrixregel 14 in authorize_test.go bewaakt hem verder.
+// /collections staat er sinds S19; matrixregel 80 en verder bewaken hem.
 func TestScopeBoundaryAfterPS4(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
@@ -266,9 +267,13 @@ func TestScopeBoundaryAfterPS4(t *testing.T) {
 	for _, path := range []string{
 		"/pleya/v1/playback/plan",     // PS-6
 		"/pleya/v1/playback/sessions", // PS-8
-		"/pleya/v1/collections",       // PS-9C
 		"/pleya/v1/play-history",      // PS-9P
 		"/pleya/v1/admin/libraries",   // PS-11A
+		// DEC-169, activiteit van het huishouden: per item en achter de opt-out.
+		// Een activiteitenfeed van het hele huishouden is een ander besluit, en de
+		// keuze van een ander is voor niemand leesbaar.
+		"/pleya/v1/activity",
+		"/pleya/v1/users/0198f2b1-2222-7000-8000-0000000000ff/activity-sharing",
 	} {
 		rec := e.do(http.MethodGet, path, nil)
 		if rec.Code != http.StatusNotFound {

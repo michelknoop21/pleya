@@ -1,3 +1,5 @@
+import '../media/deferred_subtitle.dart';
+import '../services/deferred_subtitle_loader.dart';
 import '../media/media_kind.dart';
 import 'dart:async';
 import '../media/ids.dart';
@@ -34,6 +36,7 @@ import '../media/live_tv_support.dart';
 import '../models/livetv_channel.dart';
 import '../services/live_seek_accumulator.dart';
 import '../services/plex_client.dart';
+import '../services/pleya_server_client.dart';
 import '../utils/session_identifier.dart';
 import '../database/app_database.dart';
 import '../media/media_stream.dart';
@@ -78,6 +81,7 @@ import '../services/settings_service.dart';
 import '../services/sleep_timer_service.dart';
 import '../services/track_manager.dart';
 import '../services/source_stream_language.dart';
+import '../services/source_subtitle_cycle.dart';
 import '../services/track_preference_store.dart';
 import '../services/ambient_lighting_service.dart';
 import '../services/video_filter_manager.dart';
@@ -85,6 +89,10 @@ import '../services/video_pip_manager.dart';
 import '../services/pip_service.dart';
 import '../models/shader_preset.dart';
 import '../services/shader_service.dart';
+import '../services/unified_catalog/unified_adjacent_episodes.dart';
+import '../services/unified_catalog/unified_progress_mirror.dart';
+import '../services/unified_catalog/unified_title_discovery.dart';
+import '../services/unified_catalog/unified_title_playback.dart';
 import '../providers/shader_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../utils/app_logger.dart';
@@ -124,6 +132,7 @@ import '../utils/language_codes.dart';
 part 'video_player/parts/companion_remote.dart';
 part 'video_player/parts/display_matching.dart';
 part 'video_player/parts/episode_navigation.dart';
+part 'video_player/parts/deferred_subtitles.dart';
 part 'video_player/parts/episode_queue.dart';
 part 'video_player/parts/errors.dart';
 part 'video_player/parts/language_toasts.dart';
@@ -140,6 +149,7 @@ part 'video_player/parts/seeking.dart';
 part 'video_player/parts/build.dart';
 part 'video_player/parts/watch_together.dart';
 part 'video_player/parts/assistant_playback.dart';
+part 'video_player/parts/unified_title.dart';
 
 bool? _wakelockEnabled;
 
@@ -316,6 +326,11 @@ class VideoPlayerScreen extends StatefulWidget {
   /// sending phone is told so it can stop.
   final String? handoffId;
 
+  /// The title this item belongs to when it has more than one source: what
+  /// follows it, and which copies hear about its progress. The choice of a
+  /// source stays outside the player (hoofdstuk 4.4), which only asks.
+  final UnifiedTitlePlayback? unifiedTitle;
+
   bool get isLive => live != null;
 
   const VideoPlayerScreen({
@@ -334,6 +349,7 @@ class VideoPlayerScreen extends StatefulWidget {
     this.onPlaybackInitFailed,
     this.startPosition,
     this.handoffId,
+    this.unifiedTitle,
   });
 
   @override
@@ -422,6 +438,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   SubtitleTrack? _preferredSubtitleTrack;
   SubtitleTrack? _preferredSecondarySubtitleTrack;
   bool _serverSupportsTranscoding = false;
+  bool _serverSupportsAudioSelection = false;
+  bool _serverSupportsSubtitleSelection = false;
   // Kicked off early in `_initializePlayer` for online non-live playback so
   // the metadata fetch (and transcode-decision HTTP, if non-original preset)
   // overlaps with MPV property configuration. Awaited inside `_startPlayback`
@@ -464,6 +482,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   StreamSubscription<Duration>? _mediaControlsPositionSubscription;
   StreamSubscription<double>? _mediaControlsRateSubscription;
   StreamSubscription<bool>? _mediaControlsSeekableSubscription;
+  StreamSubscription<Tracks>? _mediaControlsTracksSubscription;
+  StreamSubscription<TrackSelection>? _mediaControlsTrackSubscription;
   StreamSubscription<Map<String, bool>>? _serverStatusSubscription;
   bool _isHandlingBack = false;
 
@@ -522,6 +542,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   // VLC-style in-player toast controller (rate changes, backend switch, etc.).
   final PlayerToastController _toastController = PlayerToastController();
+  late final DeferredSubtitleLoader _deferredSubtitles = DeferredSubtitleLoader(attach: _attachDeferredSubtitle)
+    ..addListener(_onDeferredSubtitleStatus);
+  Timer? _deferredSubtitleNotice;
   bool _reclaimingFocus = false;
 
   // Cached setting: when false on Windows/Linux, ESC should not exit the player
@@ -568,6 +591,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
       (Platform.isAndroid && _androidAutoPipTransitionInFlight);
 
   MediaControlsManager? _mediaControlsManager;
+  final _systemSubtitleVisibility = ValueNotifier<bool>(true);
   PlaybackProgressTracker? _progressTracker;
 
   /// Local observation of whether this player may still write watch state.
@@ -685,6 +709,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   void initState() {
     super.initState();
 
+    _systemSubtitleVisibility.addListener(_onSystemSubtitleVisibilityChanged);
     _currentMetadata = widget.metadata;
     _activeId = widget.metadata.id;
     _activeMediaIndex = widget.selectedMediaIndex;
@@ -891,6 +916,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // saved startup quality. Backends that cannot transcode always start at
         // Original even if the user picked a lower default quality.
         _serverSupportsTranscoding = genericClient.capabilities.videoTranscoding;
+        _serverSupportsAudioSelection = genericClient.capabilities.sourceAudioSelection;
+        _serverSupportsSubtitleSelection = genericClient.capabilities.sourceSubtitleSelection;
         final forcedPreset = _forcedQualityOverride;
         if (forcedPreset != null && _serverSupportsTranscoding) {
           // Error-recovery fallback wins over the saved default for this reload.
@@ -914,6 +941,15 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
           offlineLibraryMode: false,
           qualityPreset: _selectedQualityPreset,
           selectedAudioStreamId: _selectedAudioStreamId,
+          selectSourceTracks: genericClient.backend == MediaBackend.pleyaServer
+              ? (info) => _selectSourceTracksBeforeOpen(
+                  info,
+                  forPlayer: currentPlayer,
+                  metadata: _currentMetadata,
+                  isCurrent: () =>
+                      mounted && player == currentPlayer && identical(_getMediaServerClient(context), genericClient),
+                )
+              : null,
           sessionIdentifier: _playbackSessionIdentifier,
           transcodeSessionId: _playbackTranscodeSessionId,
         );
@@ -1353,6 +1389,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   @override
   void dispose() {
+    _systemSubtitleVisibility.removeListener(_onSystemSubtitleVisibilityChanged);
+    _systemSubtitleVisibility.dispose();
     _releaseAssistantPlayback?.call();
     _releaseAssistantPlayback = null;
     _stopAssistantPlaybackRevision?.call();
@@ -1377,6 +1415,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _hasFirstFrame.dispose();
     _isExiting.dispose();
     _chromeController.dispose();
+    _deferredSubtitleNotice?.cancel();
+    _deferredSubtitles.dispose();
     _toastController.dispose();
 
     // Stop progress tracking and send final state. Normal back navigation
@@ -1423,6 +1463,8 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _mediaControlsPositionSubscription?.cancel();
     _mediaControlsRateSubscription?.cancel();
     _mediaControlsSeekableSubscription?.cancel();
+    _mediaControlsTracksSubscription?.cancel();
+    _mediaControlsTrackSubscription?.cancel();
     _serverStatusSubscription?.cancel();
 
     _autoPlayCountdown.cancel();

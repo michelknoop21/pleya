@@ -208,6 +208,50 @@ func TestRenameKeepsItemID(t *testing.T) {
 	}
 }
 
+// TestRenameKeepsThePlaceInAList: een hernoemd bestand houdt zijn item, en dus zijn
+// rij en zijn plek in een afspeellijst (S19).
+func TestRenameKeepsThePlaceInAList(t *testing.T) {
+	h := newHarness(t, "movies")
+	first := h.path("Grease (1978)", "Grease (1978).mkv")
+	second := h.path("Jaws (1975)", "Jaws (1975).mkv")
+	testsupport.MakeVideo(t, first, 1)
+	testsupport.MakeVideo(t, second, 1)
+	h.scan()
+
+	ctx := context.Background()
+	user, playlist := id.New(), id.New()
+	if _, err := h.pool.Exec(ctx, `INSERT INTO users (id, username, password_hash, role) VALUES ($1, 'kijker', 'x', 'member')`, user); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.pool.Exec(ctx, `INSERT INTO playlists (id, owner_id, title) VALUES ($1, $2, 'Avond')`, playlist, user); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.pool.Exec(ctx, `
+		INSERT INTO playlist_items (playlist_id, item_id, position)
+		SELECT $1::uuid, id, row_number() OVER (ORDER BY title DESC) FROM media_items`, playlist); err != nil {
+		t.Fatal(err)
+	}
+
+	renamed := h.path("Grease (1978)", "Grease (1978) - remaster.mkv")
+	if err := os.Rename(first, renamed); err != nil {
+		t.Fatal(err)
+	}
+	if stats := h.scan(); stats.FilesRenamed != 1 {
+		t.Fatalf("hernoeming niet herkend: files_renamed = %d", stats.FilesRenamed)
+	}
+
+	var title string
+	var rows int
+	if err := h.pool.QueryRow(ctx, `
+		SELECT (SELECT i.title FROM playlist_items p JOIN media_items i ON i.id = p.item_id ORDER BY p.position DESC LIMIT 1),
+		       (SELECT count(*) FROM playlist_items)`).Scan(&title, &rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 2 || title != "Grease" {
+		t.Fatalf("na het hernoemen %d rijen met %q achteraan, verwacht 2 en Grease", rows, title)
+	}
+}
+
 // TestMoveBetweenFoldersKeepsFileIdentity dekt verplaatsen binnen dezelfde root.
 func TestMoveBetweenFoldersKeepsFileIdentity(t *testing.T) {
 	h := newHarness(t, "movies")

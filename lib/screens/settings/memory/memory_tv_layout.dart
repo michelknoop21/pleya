@@ -277,6 +277,8 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
           state: () => {'selected': model.enabled},
           onSelect: widget.actions.toggle,
         ),
+      if (view != MemoryScreenView.kids && widget.actions.sync != null)
+        _Tile('sync', t.assistant.memory.sync.title, icon: Symbols.sync_rounded, onSelect: widget.actions.sync),
       if (model.canAsk && model.count > 0)
         _Tile('rewrite', s.menu.rewrite, icon: Symbols.edit_note_rounded, onSelect: widget.actions.rewrite),
       // Resting colour, as 43 M draws it; the colour of a destructive tile on

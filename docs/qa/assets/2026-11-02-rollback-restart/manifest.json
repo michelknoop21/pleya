@@ -1,0 +1,33 @@
+{
+  "scope": "local retained schema30/32 images",
+  "outer_shell_exit": "unavailable after transport disconnect",
+  "negative_restore_exit_event": 75,
+  "negative_restart_count": 1,
+  "negative_schema_after_restart": 32,
+  "positive_restore_wait_exit": 75,
+  "positive_schema_before_old_image": 30,
+  "old_policy": "unless-stopped",
+  "cleanup_exit": 0,
+  "files": [
+    {
+      "file": "negative-inspect.json",
+      "sha256": "61b323382c41885417845225d96052c2e8a2ccba8de91d559b4fec52c5f93b4f"
+    },
+    {
+      "file": "negative-events.jsonl",
+      "sha256": "734e889740ff2e00d77e977d3d0c7ff4e85a7e236d323f021a9e0a7d826f7e50"
+    },
+    {
+      "file": "before.json",
+      "sha256": "45efd219ba41e3bb5ccda88e8ce0d6f00ba157ea6e2df5d98ce8ebe43c8a5cc8"
+    },
+    {
+      "file": "after.json",
+      "sha256": "45efd219ba41e3bb5ccda88e8ce0d6f00ba157ea6e2df5d98ce8ebe43c8a5cc8"
+    },
+    {
+      "file": "cleanup-verified.json",
+      "sha256": "0071f83ce145aafe3c1aca8aa56f5c68f9ca7597d109dc2534643ca1487e0eed"
+    }
+  ]
+}

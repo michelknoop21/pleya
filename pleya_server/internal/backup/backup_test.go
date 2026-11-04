@@ -6,14 +6,18 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/memory"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
@@ -282,9 +286,27 @@ func TestRestoreBringsBackTheBackupAndABrokenDumpChangesNothing(t *testing.T) {
 	// aangemaakt) en daarna een leesfout. Zou psql daarop zijn invoer gesloten
 	// zien in plaats van gedood worden, dan commit hij een leeg schema.
 	marker = f.addMarkerLibrary(t)
-	broken := f.craft(t, func(m *Manifest, dump []byte) []byte { return truncatedAtStatement(t, dump) })
+	broken := f.craft(t, func(_ *Manifest, dump []byte) []byte { return dump })
 	plan, err = f.svc.PrepareRestore(ctx, broken)
 	if err != nil {
+		t.Fatal(err)
+	}
+	// Beschadig pas na een geldige voorbereiding: de load-beveiliging moet ook
+	// tegen een leesfout tijdens Restore blijven beschermen.
+	got := entries(t, plan.file)
+	dumpPath := filepath.Join(t.TempDir(), "dump.gz")
+	if err := os.WriteFile(dumpPath, truncatedAtStatement(t, got[entryDump]), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := os.Create(plan.file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeArchive(out, plan.manifest, dumpPath, nil, got[entrySecrets]); err != nil {
+		out.Close()
+		t.Fatal(err)
+	}
+	if err := out.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.svc.Restore(ctx, plan); err == nil {
@@ -317,6 +339,42 @@ func truncatedAtStatement(t *testing.T, dump []byte) []byte {
 	_ = zw.Close()
 	out.WriteString("rommel na het eerste gzip-lid")
 	return out.Bytes()
+}
+
+func TestPrepareRestoreRejectsDamagedDump(t *testing.T) {
+	testsupport.HasPostgresClient(t)
+	pool := testsupport.Pool(t)
+	if _, err := migrate.Run(context.Background(), pool, nil); err != nil {
+		t.Fatal(err)
+	}
+	configDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(configDir, "token-signing.key"), []byte(keyMarker), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := &fixture{svc: newService(pool, t.TempDir(), configDir, testKey), pool: pool, configDir: configDir}
+	marker := f.addMarkerLibrary(t)
+	for _, tc := range []struct {
+		name   string
+		damage func([]byte) []byte
+	}{
+		{"geen gzip", func([]byte) []byte { return []byte("geen gzip") }},
+		{"afgekapt", func(d []byte) []byte { return d[:len(d)-5] }},
+		{"checksum", func(d []byte) []byte { d[len(d)-8] ^= 1; return d }},
+		{"rommel na gzip", func(d []byte) []byte { return append(d, []byte("rommel na gzip")...) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			broken := f.craft(t, func(_ *Manifest, d []byte) []byte { return tc.damage(d) })
+			if _, err := f.svc.PrepareRestore(context.Background(), broken); !errors.Is(err, ErrNotRestorable) {
+				t.Fatalf("kapotte dump toegelaten in de voorbereiding: %v", err)
+			}
+			if !f.libraryExists(t, marker) {
+				t.Fatal("voorbereiding wijzigde de database")
+			}
+			if got, err := os.ReadFile(filepath.Join(f.configDir, "token-signing.key")); err != nil || string(got) != keyMarker {
+				t.Fatalf("voorbereiding wijzigde /config: %q %v", got, err)
+			}
+		})
+	}
 }
 
 func TestRestoreRefusesABackupFromANewerSchema(t *testing.T) {
@@ -506,5 +564,136 @@ func TestUpgradeBackupOfAnOlderSchemaRestoresAndMigrates(t *testing.T) {
 	lt := rec.LastTest
 	if lt == nil || lt.Status != StatusOK || *lt.SchemaFrom != target-2 || *lt.SchemaTo != target {
 		t.Fatalf("hersteltest over twee schemaversies: %+v", lt)
+	}
+}
+
+// De guard maakt zijn back-up vóór de migratie, dus op de database zoals die
+// is. Een database van vóór 0017 heeft pg_trgm nog niet; pg_dump met
+// --extension=pg_trgm faalde daar en liet de server niet starten (productie,
+// 26 oktober 2026). De back-up moet slagen en de hersteltest moet hem naar het
+// nieuwste schema brengen.
+func TestUpgradeBackupBeforeTrigramMigrationWorks(t *testing.T) {
+	testsupport.HasPostgresClient(t)
+	pool := privateDatabasePool(t)
+	ctx := context.Background()
+	if _, err := migrate.RunTo(ctx, pool, nil, 16); err != nil {
+		t.Fatal(err)
+	}
+	var has bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm')`).Scan(&has); err != nil || has {
+		t.Fatalf("uitgangspunt: pg_trgm hoort er op schema 16 niet te zijn (aanwezig=%v, %v)", has, err)
+	}
+	svc := newService(pool, t.TempDir(), t.TempDir(), testKey)
+	if _, err := svc.CreateNow(ctx, TriggerUpgrade); err != nil {
+		t.Fatalf("back-up op schema 16 zonder pg_trgm: %v", err)
+	}
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	list, err := svc.List(ctx)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("register: %+v, %v", list, err)
+	}
+	testID, err := svc.BeginVerify(ctx, list[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.RunVerify(ctx, testID); err != nil {
+		t.Fatal(err)
+	}
+	rec, _ := svc.Get(ctx, list[0].ID)
+	if rec.LastTest == nil || rec.LastTest.Status != StatusOK {
+		t.Fatalf("hersteltest van de back-up zonder pg_trgm: %+v", rec.LastTest)
+	}
+}
+
+// privateDatabasePool geeft een pool op een eigen, lege database. pg_trgm hoort
+// bij de database en niet bij het schema, en de gedeelde testdatabase heeft haar
+// zodra een andere test haar nodig had; alleen een eigen database bewijst dat
+// de extensie ontbreekt.
+func privateDatabasePool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := strings.TrimSpace(os.Getenv(testsupport.EnvDatabaseURL))
+	if dsn == "" {
+		t.Skipf("%s is niet gezet", testsupport.EnvDatabaseURL)
+	}
+	ctx := context.Background()
+	admin, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := fmt.Sprintf("pleya_trgm_test_%d", time.Now().UnixNano())
+	if _, err := admin.Exec(ctx, `CREATE DATABASE `+name+` TEMPLATE template0`); err != nil {
+		admin.Close()
+		t.Fatalf("eigen database aanmaken: %v", err)
+	}
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ConnConfig.Database = name
+	cfg.MaxConns = 4
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		_, _ = admin.Exec(context.Background(), `DROP DATABASE IF EXISTS `+name+` WITH (FORCE)`)
+		admin.Close()
+	})
+	return pool
+}
+
+// BP-08b: de echte dump/herstelketen moet de wisgrens wijzigen. Alleen een
+// losse UPDATE-test zou niets bewijzen over de ondersteunde herstelprocedure.
+func TestMemoryRestoreRotatesEpochBeforeReopening(t *testing.T) {
+	f := newFixture(t, testKey)
+	ctx := context.Background()
+	var user id.ID
+	if err := f.pool.QueryRow(ctx, `SELECT id FROM users WHERE role='owner' LIMIT 1`).Scan(&user); err != nil {
+		t.Fatal(err)
+	}
+	s := memory.NewStore(f.pool)
+	base, err := s.Read(ctx, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fact := memory.Fact{ID: id.New(), Category: "preference", Value: "Houdt van detectives", Source: "user_explicit"}
+	saved, err := s.Replace(ctx, user, base.Epoch, base.Revision, []memory.Fact{fact}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := f.backup(t)
+	deleted, err := s.Replace(ctx, user, saved.Epoch, saved.Revision, []memory.Fact{}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deleted.Facts) != 0 {
+		t.Fatal("wisactie niet bevestigd")
+	}
+	plan, err := f.svc.PrepareRestore(ctx, rec.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = f.svc.Restore(ctx, plan); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := s.Read(ctx, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Epoch == saved.Epoch || restored.Epoch == deleted.Epoch {
+		t.Fatal("herstelde oude wisgrens aangeboden")
+	}
+	if len(restored.Facts) != 1 {
+		t.Fatal("backup niet werkelijk teruggezet")
+	}
+	// De oude client kan de teruggezette inhoud niet als een gewone CAS voortzetten.
+	if _, err = s.Replace(ctx, user, deleted.Epoch, deleted.Revision, []memory.Fact{}, time.Now()); !errors.Is(err, memory.ErrEpoch) {
+		t.Fatal("client passeert herstelgrens")
 	}
 }

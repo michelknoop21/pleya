@@ -119,7 +119,10 @@ void main() {
       final coordinator = TvNavigationCoordinator();
       addTearDown(coordinator.dispose);
 
-      expect(coordinator.neighbourOf(TvDestinationId.myPleya, 1), isNull);
+      // Instellingen is the last destination since A-24c; the wordmark after
+      // it is not a focus stop.
+      expect(coordinator.neighbourOf(TvDestinationId.myPleya, 1), TvDestinationId.settings);
+      expect(coordinator.neighbourOf(TvDestinationId.settings, 1), isNull);
     });
   });
 
@@ -189,7 +192,7 @@ void main() {
 
       expect(result, isNull);
       expect(coordinator.active, TvDestinationId.home);
-      expect(coordinator.destinations, [TvDestinationId.home, TvDestinationId.myPleya]);
+      expect(coordinator.destinations, [TvDestinationId.home, TvDestinationId.myPleya, TvDestinationId.settings]);
     });
 
     test('going offline while a destination that does drop out was active still falls back', () {
@@ -437,9 +440,18 @@ void main() {
       final coordinator = TvNavigationCoordinator();
       addTearDown(coordinator.dispose);
 
-      coordinator.syncToTab(NavigationTabId.settings);
+      coordinator.syncToTab(NavigationTabId.watchlist);
 
       expect(coordinator.active, TvDestinationId.myPleya);
+    });
+
+    test('A-24c: syncing to settings lights up Instellingen, its own pill', () {
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+
+      coordinator.syncToTab(NavigationTabId.settings);
+
+      expect(coordinator.active, TvDestinationId.settings);
     });
   });
 }

@@ -15,9 +15,9 @@
   en loopt via de loader-context het echte laadpad van Artwork.
 -->
 <script lang="ts">
-  import Hero from '$lib/components/Hero.svelte';
-  import { setArtworkLoader } from '$lib/components/artworkLoader';
-  import type { Item } from '$lib/api/types';
+  import Hero from '#lib/components/Hero.svelte';
+  import { setArtworkLoader } from '#lib/components/artworkLoader.js';
+  import type { Item } from '#lib/api/types.js';
   import GallerySection from './GallerySection.svelte';
   import { demoArtworkLoader } from './demoArtwork';
 

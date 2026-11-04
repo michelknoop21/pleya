@@ -43,7 +43,7 @@ class DetailReviewsSection extends StatelessWidget {
 
 /// `rottentomatoes://image.review.fresh` or `.rotten` to the bundled icon;
 /// null for anything else.
-String? _rtIconAsset(String? imageUri) => switch (imageUri) {
+String? detailReviewIconAsset(String? imageUri) => switch (imageUri) {
   'rottentomatoes://image.review.fresh' => 'assets/rating_icons/rt_fresh.svg',
   'rottentomatoes://image.review.rotten' => 'assets/rating_icons/rt_rotten.svg',
   _ => null,
@@ -56,7 +56,7 @@ class _SourceLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = _rtIconAsset(review.imageUri);
+    final icon = detailReviewIconAsset(review.imageUri);
     final source = review.source;
     if (icon == null && (source == null || source.isEmpty)) return const SizedBox.shrink();
     return Row(

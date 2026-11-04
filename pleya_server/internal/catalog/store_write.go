@@ -47,11 +47,13 @@ func (s *Store) ResolveItem(ctx context.Context, ref ItemRef) (id.ID, bool, erro
 		INSERT INTO media_items (id, library_id, parent_id, kind, grouping_key, title, sort_title, year, item_index)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (library_id, parent_id, kind, grouping_key) DO UPDATE
-		SET title = EXCLUDED.title,
-		    sort_title = EXCLUDED.sort_title,
-		    year = coalesce(EXCLUDED.year, media_items.year),
+		SET title = CASE WHEN media_items.metadata_sources->>'title'='manual' THEN media_items.title ELSE EXCLUDED.title END,
+            sort_title = CASE WHEN media_items.metadata_sources->>'title'='manual' THEN media_items.sort_title ELSE EXCLUDED.sort_title END,
+            year = CASE WHEN media_items.metadata_sources->>'year'='manual' THEN media_items.year ELSE coalesce(EXCLUDED.year,media_items.year) END,
+            metadata_field_layers = jsonb_set(media_items.metadata_field_layers,'{scanner}',
+                jsonb_build_object('title',EXCLUDED.title,'sort_title',EXCLUDED.sort_title,'year',coalesce(EXCLUDED.year,(media_items.metadata_field_layers->'scanner'->>'year')::integer,CASE WHEN media_items.metadata_sources->>'year'='manual' THEN NULL ELSE media_items.year END)),true),
 		    item_index = coalesce(EXCLUDED.item_index, media_items.item_index),
-		    updated_at = now()
+		    updated_at = GREATEST(media_items.updated_at + interval '1 microsecond', clock_timestamp())
 		RETURNING id, (xmax = 0)`,
 		id.New(), ref.LibraryID, ref.ParentID, ref.Kind, ref.GroupingKey,
 		ref.Title, nullString(ref.SortTitle), ref.Year, ref.Index).Scan(&existing, &created)
@@ -110,10 +112,10 @@ func (s *Store) RecomputeVersionDuration(ctx context.Context, versionID id.ID) e
 // InsertFile legt een nieuw ontdekt bestand vast.
 func (s *Store) InsertFile(ctx context.Context, f *File) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO media_files (id, storage_location_id, relative_path, role, size_bytes, mtime_unix, inode, scan_signature)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		INSERT INTO media_files (id, storage_location_id, relative_path, role, size_bytes, mtime_unix, inode, scan_signature, auxiliary_kind)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		f.ID, f.StorageLocationID, f.RelativePath, string(f.Role),
-		f.SizeBytes, f.MtimeUnix, f.Inode, nullString(f.Signature))
+		f.SizeBytes, f.MtimeUnix, f.Inode, nullString(f.Signature), nullString(f.AuxiliaryKind))
 	if err != nil {
 		return fmt.Errorf("bestand %s vastleggen: %w", f.RelativePath, err)
 	}
@@ -463,6 +465,47 @@ var ErrLibraryNotEmpty = errors.New("de bibliotheek bevat nog items")
 // geclaimd".
 var ErrRootNotOffered = errors.New("deze root is niet beschikbaar")
 
+// Waarom een root niet beschikbaar is, voor details.reason in de weigering.
+const (
+	RootReasonOverlapsLibrary = "overlaps_library"
+	RootReasonOverlapsRequest = "overlaps_request"
+)
+
+// RootConflict zegt welke root met welke botst, en met welke bibliotheek.
+// Hij is ErrRootNotOffered voor errors.Is, zodat elke aanroeper die alleen die
+// sentinel kent hetzelfde blijft zien; de API leest er de oorzaak uit.
+type RootConflict struct {
+	Reason string
+	// Root is de root uit de aanvraag, With de root waar hij mee botst.
+	Root, With string
+	// Library is de titel van de bibliotheek die With in gebruik heeft. Leeg bij
+	// een botsing binnen de aanvraag zelf.
+	Library string
+}
+
+func (e *RootConflict) Error() string {
+	return fmt.Sprintf("root %s botst met %s (%s)", e.Root, e.With, e.Reason)
+}
+
+// Is laat errors.Is(err, ErrRootNotOffered) slagen.
+func (e *RootConflict) Is(target error) bool { return target == ErrRootNotOffered }
+
+// RootsOverlap zegt of twee paden gelijk zijn of elkaar bevatten. De API gebruikt
+// hem om een aangeboden mount te verbergen die al geclaimde roots bevat.
+func RootsOverlap(a, b string) bool { return rootsOverlap(a, b) }
+
+// requestOverlap geeft de eerste botsing tussen twee roots uit dezelfde aanvraag.
+func requestOverlap(roots []string) error {
+	for i, a := range roots {
+		for _, b := range roots[i+1:] {
+			if rootsOverlap(a, b) {
+				return &RootConflict{Reason: RootReasonOverlapsRequest, Root: a, With: b}
+			}
+		}
+	}
+	return nil
+}
+
 // slugify maakt van een titel een slug: kleine letters, cijfers en
 // koppeltekens, zonder leidende, dubbele of afsluitende streepjes. Een titel
 // zonder een enkel bruikbaar teken (bijvoorbeeld enkel leestekens) valt terug
@@ -560,29 +603,31 @@ func rootOwnedBy(ctx context.Context, tx pgx.Tx, root string, libraryID id.ID) (
 // Zonder deze controle vangt rootsOverlap alleen overlap binnen dezelfde
 // aanvraag: een nieuwe root /media/kids onder een al bestaande /media/kids's
 // ouder-bibliotheek kwam er tot deze fix ongehinderd doorheen.
-func existingRootConflicts(ctx context.Context, tx pgx.Tx, excludeLibraryID id.ID, roots []string) (bool, error) {
+func existingRootConflicts(ctx context.Context, tx pgx.Tx, excludeLibraryID id.ID, roots []string) (*RootConflict, error) {
 	if len(roots) == 0 {
-		return false, nil
+		return nil, nil
 	}
 	rows, err := tx.Query(ctx, `
-		SELECT root_path FROM storage_locations WHERE library_id != $1`, excludeLibraryID)
+		SELECT s.root_path, l.title
+		FROM storage_locations s JOIN libraries l ON l.id = s.library_id
+		WHERE s.library_id != $1`, excludeLibraryID)
 	if err != nil {
-		return false, fmt.Errorf("bestaande roots lezen: %w", err)
+		return nil, fmt.Errorf("bestaande roots lezen: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var existing string
-		if err := rows.Scan(&existing); err != nil {
-			return false, err
+		var existing, title string
+		if err := rows.Scan(&existing, &title); err != nil {
+			return nil, err
 		}
 		for _, root := range roots {
 			if rootsOverlap(root, existing) {
-				return true, nil
+				return &RootConflict{Reason: RootReasonOverlapsLibrary, Root: root, With: existing, Library: title}, nil
 			}
 		}
 	}
-	return false, rows.Err()
+	return nil, rows.Err()
 }
 
 // CreateLibrary voegt een door de API beheerde bibliotheek toe (S2.2, managed
@@ -594,12 +639,8 @@ func existingRootConflicts(ctx context.Context, tx pgx.Tx, excludeLibraryID id.I
 // draagt. Een tijdelijk onbereikbare root houdt de defaults; de recheck meet
 // hem zodra hij terugkomt.
 func (s *Store) CreateLibrary(ctx context.Context, title, kind string, rootPaths []string) (Library, error) {
-	for i, a := range rootPaths {
-		for _, b := range rootPaths[i+1:] {
-			if rootsOverlap(a, b) {
-				return Library{}, ErrRootNotOffered
-			}
-		}
+	if err := requestOverlap(rootPaths); err != nil {
+		return Library{}, err
 	}
 	type rootMeasurement struct {
 		fsType  string
@@ -627,8 +668,8 @@ func (s *Store) CreateLibrary(ctx context.Context, title, kind string, rootPaths
 
 	if conflict, err := existingRootConflicts(ctx, tx, id.Nil, rootPaths); err != nil {
 		return Library{}, err
-	} else if conflict {
-		return Library{}, ErrRootNotOffered
+	} else if conflict != nil {
+		return Library{}, conflict
 	}
 
 	slug := slugify(title)
@@ -652,7 +693,7 @@ func (s *Store) CreateLibrary(ctx context.Context, title, kind string, rootPaths
 			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE NULL END)`,
 			id.New(), lib.ID, root, nullString(measurement.fsType), measurement.trusted, measurement.source, measurement.seen); err != nil {
 			if isUniqueViolation(err) {
-				return Library{}, ErrRootNotOffered
+				return Library{}, &RootConflict{Reason: RootReasonOverlapsLibrary, Root: root, With: root}
 			}
 			return Library{}, fmt.Errorf("root %s vastleggen: %w", root, err)
 		}
@@ -689,12 +730,8 @@ type LibraryUpdate struct {
 // library.not_empty en niet storage.root_not_offered, dus die keuze hoort in
 // de handler en niet hier verstopt.
 func (s *Store) UpdateLibrary(ctx context.Context, libraryID id.ID, patch LibraryUpdate) (Library, error) {
-	for i, a := range patch.RootPaths {
-		for _, b := range patch.RootPaths[i+1:] {
-			if rootsOverlap(a, b) {
-				return Library{}, ErrRootNotOffered
-			}
-		}
+	if err := requestOverlap(patch.RootPaths); err != nil {
+		return Library{}, err
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -720,8 +757,8 @@ func (s *Store) UpdateLibrary(ctx context.Context, libraryID id.ID, patch Librar
 	if patch.RootPaths != nil {
 		if conflict, err := existingRootConflicts(ctx, tx, libraryID, patch.RootPaths); err != nil {
 			return Library{}, err
-		} else if conflict {
-			return Library{}, ErrRootNotOffered
+		} else if conflict != nil {
+			return Library{}, conflict
 		}
 	}
 
@@ -794,7 +831,7 @@ func (s *Store) UpdateLibrary(ctx context.Context, libraryID id.ID, patch Librar
 				INSERT INTO storage_locations (id, library_id, root_path)
 				VALUES ($1, $2, $3)`, id.New(), libraryID, root); err != nil {
 				if isUniqueViolation(err) {
-					return Library{}, ErrRootNotOffered
+					return Library{}, &RootConflict{Reason: RootReasonOverlapsLibrary, Root: root, With: root}
 				}
 				return Library{}, fmt.Errorf("root %s vastleggen: %w", root, err)
 			}

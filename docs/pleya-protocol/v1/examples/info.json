@@ -11,7 +11,8 @@
     "downloads": false,
     "live_tv": false,
     "realtime": false,
-    "users": false
+    "users": false,
+    "item_activity": false
   },
   "auth": { "methods": ["password"], "setup_required": false }
 }

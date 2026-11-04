@@ -1,6 +1,6 @@
 # P5: de locator voor leesvoortgang
 
-**Status:** beslisvoorstel, niet geaccepteerd.
+**Status:** geaccepteerd door Michel op 29 oktober 2026; vastgelegd als DEC-183 in `DECISIONS.md`. PS-15 is tegelijk vrijgegeven; contractvenster en hardwarevoorwaarden blijven afzonderlijk.
 **Datum:** 10 oktober 2026
 **Auteur:** Michel Knoop
 **Betreft:** poort P5 uit de masterlijst (tabel 2.3 en hoofdstuk 4), taak S6.1. Blokkeert S6 en via

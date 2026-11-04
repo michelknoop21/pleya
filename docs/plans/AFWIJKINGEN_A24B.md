@@ -13,7 +13,7 @@ Bladen: `03-appletv-instellingen-donker.jpg`, `04-appletv-instellingen-licht.jpg
 | Controle | Oordeel | Wat de build anders doet, en waarom | Besluit |
 | --- | --- | --- | --- |
 | Categorieën | Match met verschil | De rail heeft Weergave, Afspelen, Taal en ondertitels, Bibliotheken, Home aanpassen en Koppelingen met hun iconen, daarna Big P (alleen in een build met Big P) en Geavanceerd. Elke oude route is bereikbaar, zie de tvOS-rijen in de pariteitstabel. Trackers, Seerr, Tautulli, Pleya Share-host en Over Pleya openen een eigen pagina zonder rail, één niveau dieper dan de reeks tekent. | Volgorde en inhoud volgen de northstar. De diepere pagina's: open. |
-| Header | Match met verschil | `Instellingen` en `Jouw kijkervaring, tot in detail.` staan er in dezelfde hiërarchie. Boven de pagina staat de bestaande TV-bovenbalk in plaats van het logo met kruimelpad `Mijn Pleya > Instellingen`. | De bouwopdracht vraagt de topnavigatie te behouden; daarmee geaccepteerd. |
+| Header | Match met verschil | `Instellingen` en `Jouw kijkervaring, tot in detail.` staan er in dezelfde hiërarchie. Er staat geen logo met kruimelpad `Mijn Pleya > Instellingen`. De TV-bovenbalk is weg zolang de focus in de pagina staat en komt terug met UP vanaf de bovenste pil of rij; de titel staat dan in de bovenste overscanband. | **Besluit Michel 26 okt 2026 (DEC-166), veranderd:** eerder bleef de topnavigatie staan; nu inklapbaar op Instellingen en zijn subpagina's, zodat de rail van acht pillen past. Het kruimelpad komt er niet bij. |
 | Actieve sectie | Match | `WEERGAVE` boven `Zo ziet jouw Pleya eruit`, de gekozen categorie gemarkeerd in de rail. De build zet er groepskoppen onder (`SCHERM`), omdat Weergave op TV meer rijen heeft dan het bord. | Geen besluit nodig. |
 | Achtergrond | Match | Donker: warme wash over `#141414`. Licht: warm gebroken wit (`#F9F5F2`). OLED blijft zwart zonder wash, zodat OLED zijn reden houdt. Contrast getoetst in `tv_settings_studio_contrast_test`. | OLED zonder wash is een keuze uit fase 1; open voor Michel als hij de wash ook op OLED wil. |
 | Rijen | Match met verschil | Fijne scheiding, waarde rechts, één focusring. De rijen zelf volgen de bestaande voorkeuren: de build toont Thema, Liquid Glass, Raster- of lijstweergave, Dichtheid, de northstar Thema, Visuele effecten, Liquid Glass, Raster, Afleveringsposters. App-taal staat niet meer in Weergave maar als eerste rij van Taal en ondertitels. | Welke rijen bestaan beslist de code (BOUWOPDRACHT, "Betekenis van pariteit"). **Besluit Michel 25 okt 2026, veranderd:** App-taal als eigen rij boven de audio- en ondertitelvoorkeuren, op iPhone en in de TV-categorie Taal en ondertitels, id `setting.app_locale` gelijk gebleven. De losse tweekoloms-Taalpagina op TV (via Afspelen ▸ Gedrag) krijgt hem niet: die kolom is afgemeten op zes rijen boven de vouw. |
@@ -46,6 +46,8 @@ Bladen: `05-iphone-mijn-pleya.jpg`, `iphone-mijn-pleya-gescrold.jpg`, `iphone-mi
 
 ## Mijn Pleya op Apple TV (Editorial)
 
+**Vervangen door A-24c (26 oktober 2026).** Deze tabel beschrijft de A-24b-pagina met twee kolommen, Beheer, profielregel, kijklijstrail met twee titelregels en voetregel. Die pagina bestaat niet meer: Mijn Pleya op Apple TV volgt nu [`../assets/a24c-northstars/02-Mijn-Pleya-v4/`](../assets/a24c-northstars/02-Mijn-Pleya-v4/LEESMIJ-v4.md), met de routes in `pariteit-v4.csv` en het besluit DEC-167 (A-24c). De besluiten hieronder over de 440 pt-kolom, de twee titelregels en de voetregel vervallen daarmee. De afwijkingen van de v4-bouw staan in de volgende sectie.
+
 Bladen: `06-appletv-mijn-pleya.jpg`, `appletv-mijn-pleya-*.jpg`.
 
 | Controle | Oordeel | Wat de build anders doet, en waarom | Besluit |
@@ -57,13 +59,27 @@ Bladen: `06-appletv-mijn-pleya.jpg`, `appletv-mijn-pleya-*.jpg`.
 | Rechterkant | Match met verschil | Big P-kaart en Beheer met Instellingen, Logboeken, Over Pleya en een rode Uitloggen; terug uit Instellingen landt weer op Instellingen. De kolom is 440 pt in plaats van 480 en de Big P-ondertitel loopt over twee regels, zodat vier tegels op 23 pt passen zonder afkapping. De regel "Aangemeld als" staat onder de vouw tot de focus rechts staat. | **Besluit Michel 25 okt 2026, geaccepteerd:** 440 pt, leesbaarheid en bereikbaarheid gaan voor pixelpariteit. Voetregel: open. |
 | Thema | Afwijking | Donker en Licht met leesbare focusring en posters. Het lichte bord 05 heeft een warme gebroken-witte wash; de build houdt in Licht het monoTheme-grijs. | Geaccepteerd: productbesluit 2 in `START-HIER.md` (warm gebroken wit alleen binnen Instellingen) en Michels bevestiging in fase 5. |
 
+## Mijn Pleya op Apple TV, v4 (A-24c)
+
+Northstar: `../assets/a24c-northstars/02-Mijn-Pleya-v4/images/A10` tot en met `A15`. Routes en voorwaarden: `pariteit-v4.csv` in dezelfde map; voor tvOS Mijn Pleya vervangt die tabel de Mijn Pleya-rijen van `PARITEIT_A24B.csv`.
+
+| Controle | Oordeel | Wat de build anders doet, en waarom | Besluit |
+| --- | --- | --- | --- |
+| Tekstgrootte | Afwijking | De kleine kapitalen (`JOUW PERSOONLIJKE RUIMTE`, `BIG P · JOUW ASSISTENT`, `JE KIJKLIJST`, `SNEL NAAR`) en `Bekijk alles` tekent het bord op ongeveer 17 tot 20 pt. De build zet ze op 23 pt en schuift de layout mee. Op het canvas van 1038 x 584 past de pagina zonder scrollen (`tv_my_pleya_screen_test`, per conditie en in nl en en). | **Besluit Michel 26 okt 2026:** tekst op tvOS gaat niet onder 23 pt en wordt niet kleiner dan voorheen. |
+| Kijklijstposters | Afwijking | Het bord snijdt de posters breder bij (ongeveer 150 x 193). De build houdt de echte posterverhouding 2:3 op de hoogte van het paneel, dus een poster is iets smaller en er passen er meer naast elkaar. | Volgt de bestaande posterverhouding. |
+| Instellingen in de bovenbalk | Match | Laatste bestemming, direct na Mijn Pleya. De ring op Instellingen laat Mijn Pleya op het scherm tot Select (A13), en dat geldt voor elke bestemming, zodat het accountmenu boven Mijn Pleya opent (A14). | Volgens LEESMIJ-v4 van Michel (Focusafspraken, regel 75) geldt de regel voor alle bestemmingen; het contract van 2 september 2026 (de ring wisselt de pagina) vervalt. |
+| Accountmenu | Match | Avatar opent het menu met Wissel profiel en Uitloggen; Back sluit en de focus staat weer op de avatar. Uitloggen staat in een iets lichter rood dan het bord, zodat het op de donkere kaart WCAG AA haalt (`tv_text_contrast_audit_test`). | Contrast gaat voor de kleur van het bord. |
+| Servers | Match | Instellingen > Koppelingen > Servers opent `TvServersPage` met de status eerst en Sluiten als standaard. Het attentiepunt voor een verlopen serversessie staat nu op Instellingen in plaats van op Mijn Pleya. | Volgt LEESMIJ-v4. |
+| Zonder kijklijst | Voorwaardelijk | Zonder kijklijst vult de Big P-kaart de hele breedte; zonder Big P vult het kijklijstpaneel de breedte en krijgt de eerste poster de eerste focus. Het bord tekent die staten niet. | Volgt de code: geen leeg vlak naast een kaart. |
+| Downloads | Voorwaardelijk | Niet op Apple TV. Een Android TV houdt de tegel in de rij; bij zeven tegels krimpt een label dat niet past tot minimaal 23 pt. | Platformvoorwaarde uit `pariteit-v4.csv`. |
+
 ## Pariteit per route
 
 `PARITEIT_A24B.csv` heeft de kolommen van `PARITY_TEMPLATE.csv` en 439 rijen: alle sjabloonrijen plus 22 rijen die alleen in de code bestaan of die de code per platform anders aanbiedt. Status: 404 GEBOUWD, 27 AFWIJKING, 8 ALLEEN MOCKUP. Geen bestaande functie is verdwenen; elke rij noemt een test of het bewijs waarom er geen test is.
 
 De acht rijen ALLEEN MOCKUP zijn geen functie in de code: Bronnaam en server bij elke bron, Verborgen bibliotheken blijven bewaard, Downloadmap bekijken, Opslag en status controleren, Nooit automatisch sync inschakelen, Gezinsbeperkingen, Kindvriendelijke antwoorden en op TV Navigatiebreedte en focus. Bouwen vraagt een productbesluit en valt buiten deze ronde.
 
-De 27 rijen AFWIJKING bestaan wel, maar anders dan het bord ze tekent. De meeste zijn een functie zonder eigen rij: toestemming voor sync is een dialoog bij het inschakelen, configuratie per provider wisselt de velden in plaats van een pagina, bronnen per profiel staan op de bronpagina van hun soort en op de profielpagina, zoeken in het geheugen is een filter. Updates verschijnt alleen met een build-define en is in App Store-builds verborgen. Uitloggen blijft in Mijn Pleya en krijgt geen tweede ingang in Instellingen. Op iPhone opent Home aanpassen voor slepen en verbergen de bestaande editor in plaats van dat per rij te doen.
+De 27 rijen AFWIJKING bestaan wel, maar anders dan het bord ze tekent. De meeste zijn een functie zonder eigen rij: toestemming voor sync is een dialoog bij het inschakelen, configuratie per provider wisselt de velden in plaats van een pagina, bronnen per profiel staan op de bronpagina van hun soort en op de profielpagina, zoeken in het geheugen is een filter. Updates verschijnt alleen met een build-define en is in App Store-builds verborgen. Uitloggen bleef in A-24b in Mijn Pleya; op Apple TV staat het sinds A-24c in het accountmenu onder de avatar, niet in Instellingen. Op iPhone opent Home aanpassen voor slepen en verbergen de bestaande editor in plaats van dat per rij te doen.
 
 ## Tests per gevraagde klasse
 
@@ -90,7 +106,7 @@ Een onafhankelijke review vond één Critical en vijf Important; elk is geverifi
 - I4: in de Big P-categorie stapt Menu eerst terug uit een conceptprovider (`assistant_settings_screen_test`, scenario `tvos.settings.bigp-inline-back`).
 - I5: een schakelaarrij leest zijn verborgen uitleg als VoiceOver-hint; bij beide schakelaarrijen zat de hint buiten de samengevoegde schakelaarknoop en ging verloren (`settings_row_anatomy_test`).
 - M5: koraal als tekst is in Licht `#AD412E` (4,5:1 op kaart, pagina en `#F1E8E3`); de schakelaar houdt `#C94E3C`.
-- M1 tot en met M3: DEC-XXX en de pariteitstabel zeggen nu wat waar is over automation-ids, testnamen en bronnen per profiel.
+- M1 tot en met M3: DEC-182 en de pariteitstabel zeggen nu wat waar is over automation-ids, testnamen en bronnen per profiel.
 
 Vervolgpunten, niet in deze PR: M4 (een rij "…-bronnen beheren" verschijnt ook als alleen een ander profiel die bron heeft en opent dan een lege lijst), M6 (enkele bevestigingsdialogen in Instellingen tonen het monoTheme-palet), M7 (de verwijderkiezer voor een eigen rij opent op TV zonder focus; de Big P-categorie trekt na SELECT de focus naar zich toe), M8 (`settings_section.dart` is 540 regels).
 

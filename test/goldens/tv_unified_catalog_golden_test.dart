@@ -408,7 +408,11 @@ void main() {
               _page(groups: tvGoldenCatalog()),
               Center(
                 child: ElevatedButton(
-                  onPressed: () => showTvCatalogSortPanel(context, selected: UnifiedCatalogSort.recentlyAdded),
+                  onPressed: () => showTvCatalogSortPanel(
+                    context,
+                    selected: UnifiedCatalogSort.recentlyAdded,
+                    capabilities: unifiedFilterCapabilitiesFor(tvGoldenLibraries.map((l) => l.backend)),
+                  ),
                   child: const Text('open'),
                 ),
               ),

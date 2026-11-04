@@ -11,15 +11,12 @@ setup:
 steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
-  - walk: {direction: right, steps: 7, stopAt: nav.myPleya, timeout: 60000, settle: 600}
+  # A-24c: Instellingen is a destination in the top bar, right after Mijn Pleya.
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
   - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  # Select leaves the remote on the pill; Down enters the page.
   - press: down
-  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 8000}
-  - walk: {direction: right, steps: 4, stopAt: "my_pleya.tile[assistant]", timeout: 60000, settle: 600}
-  - press: down
-  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
-  - press: select
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
   # Big P, the seventh category.
   - press: left
@@ -34,6 +31,6 @@ steps:
   - snapshot: 01-draft
   - press: menu
   - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
-  - assert: {id: "my_pleya.section[settings]"}
+  - assert: {id: nav.settings, state: {active: true}}
   - assert: {id: "settings.category[6]", state: {selected: true}}
   - snapshot: 02-back-on-choice

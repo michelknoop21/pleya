@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../focus/focusable_wrapper.dart';
+import '../../automation/automation_ids.dart';
 import '../../focus/dpad_navigator.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
@@ -50,6 +51,7 @@ class TvHomeCustomizeFooter extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: TvDiscoveryLayout.pageInset * scale),
       child: FocusableWrapper(
         focusNode: focusNode,
+        automationId: AutomationIds.homeCustomizeOpen,
         semanticLabel: t.unifiedCatalog.homeRows.customize,
         onNavigateUp: onNavigateUp,
         // Hard stops on the three other directions. Left null they fall through

@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
-	"github.com/edde746/plezy/pleya_server/internal/artwork"
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/backup"
+	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
@@ -33,6 +33,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/logging"
+	"github.com/edde746/plezy/pleya_server/internal/memory"
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
@@ -226,15 +227,15 @@ func run() int {
 	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner"), onScanned))
 	downloadStore := downloads.NewStore(pool)
 	runner.Register(api.JobDownloadDigest, downloads.DigestHandler(downloadStore, catalogStore, logging.Component(log, "downloads")))
+	resizer, cacheAdminReady := newArtworkResizer(ctx, catalogStore, cfg, backups.Dir(), logging.Component(log, "artwork"))
+	if cacheAdminReady {
+		runner.Register(api.JobArtworkCachePurge, func(ctx context.Context, _ jobs.Job) error { return resizer.PurgeContext(ctx) })
+	}
 	runner.Register(api.JobStorageRecheckRoots, storageRecheckHandler(catalogStore, cfg, logging.Component(log, "storage")))
 	runner.Register(backup.JobCreate, backup.CreateHandler(backups, runner))
 	runner.Register(backup.JobVerify, backup.VerifyHandler(backups))
 
-	if n, err := runner.Requeue(ctx); err != nil {
-		startup.Warn("lopende jobs terugzetten mislukt", slog.String("error", err.Error()))
-	} else if n > 0 {
-		startup.Info("lopende jobs teruggezet in de wachtrij", slog.Int64("count", n))
-	}
+	recoverInterruptedWork(ctx, runner, catalogStore, startup)
 
 	// Het intrekkingsregister uit DEC-120 wordt bij het opstarten uit de
 	// database gevuld. Zonder die stap zou een herstart elke intrekking
@@ -255,14 +256,17 @@ func run() int {
 	auditStore := audit.NewStore(pool)
 
 	workers := &sync.WaitGroup{}
-	workers.Add(4)
+	workers.Add(5)
+	var metadataProvider metadata.Provider
+	metadataName := catalog.SourceNFO
 	if cfg.TMDBKey != "" {
-		workers.Add(1)
-		mdRunner := metadata.NewRunner(catalogStore, metadata.NewTMDB(cfg.TMDBKey, cfg.MetadataLanguage),
-			metadata.ProviderTMDB, cfg.CacheDir, logging.Component(log, "metadata")).WithSidecar(metadata.FSSidecar{})
-		go func() { defer workers.Done(); mdRunner.Run(workCtx, scanned, 6*time.Hour) }()
-		startup.Info("metadata-provider aan", slog.String("provider", metadata.ProviderTMDB), slog.String("language", cfg.MetadataLanguage))
+		metadataProvider = metadata.NewTMDB(cfg.TMDBKey, cfg.MetadataLanguage)
+		metadataName = metadata.ProviderTMDB
 	}
+	mdRunner := metadata.NewRunner(catalogStore, metadataProvider,
+		metadataName, cfg.CacheDir, logging.Component(log, "metadata")).WithSidecar(metadata.FSSidecar{})
+	go func() { defer workers.Done(); mdRunner.Run(workCtx, scanned, 6*time.Hour) }()
+	startup.Info("metadata-bron aan", slog.String("provider", metadataName), slog.String("language", cfg.MetadataLanguage))
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
 	go func() {
 		defer workers.Done()
@@ -301,6 +305,16 @@ func run() int {
 		startup.Warn("instellingen lezen mislukt, de omgeving blijft gelden", slog.String("error", err.Error()))
 	}
 
+	// Na de instellingen en niet bij de andere workers: de ronde leest de
+	// refreshlevensduur die nu geldt, en die staat pas na Reload vast (DEC-164).
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		scheduleSessionSweep(workCtx, authStore, revocations,
+			func() time.Duration { return settingsCache.Current().RefreshTokenTTL() },
+			logging.Component(log, "housekeeping"))
+	}()
+
 	transcoder := startTranscoder(ctx, cfg, pool, logging.Component(log, "transcode"), startup)
 	if transcoder != nil {
 		defer transcoder.Close()
@@ -320,12 +334,14 @@ func run() int {
 		Auth:               authStore,
 		Watch:              watch.NewStore(pool),
 		Personal:           personal.NewStore(pool),
+		Memory:             memory.NewStore(pool),
 		Downloads:          downloadStore,
 		Metrics:            reg,
 		MediaRoots:         cfg.MediaDirs,
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
-		Artwork:            artwork.New(cfg.FFmpegPath, cfg.CacheDir, logging.Component(log, "artwork")),
+		MetadataProvider:   metadataProvider,
+		Artwork:            resizer,
 		Jobs:               runner,
 		Signer:             signer,
 		Logger:             logging.Component(log, "http"),

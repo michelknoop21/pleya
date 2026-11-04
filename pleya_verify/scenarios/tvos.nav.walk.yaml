@@ -2,7 +2,7 @@ name: tvos.nav.walk
 target: tvos-sim
 # WALK, on the surface the jumps were reported on: the top navigation bar.
 #
-# The bar is six focus stops wide — the profile chip, Zoeken, Home, Series,
+# The bar is seven focus stops wide since A-24c — the profile chip, Zoeken, Home, Series,
 # Films and Mijn Pleya, in that order (hoofdstuk 33; no Live TV in this
 # fixture). Until now a scenario could only say where a named press landed,
 # which finds a jump one press at a time and only where someone thought to
@@ -40,12 +40,17 @@ steps:
   - assert: {id: nav.profile, focused: true}
   - snapshot: 01-left-end
 
-  # And all the way back. Five hops, one per stop, ending on Mijn Pleya. The
-  # bar does not wrap (hoofdstuk 7.2), so this is the full width of it.
+  # And all the way back. Six hops, one per stop, ending on Instellingen
+  # (A-24c), with the wordmark after it no focus stop. The bar does not wrap
+  # (hoofdstuk 7.2), so this is the full width of it.
   - walk:
       direction: right
-      expect: [nav.search, nav.discover, nav.series, nav.movies, nav.myPleya]
+      expect: [nav.search, nav.discover, nav.series, nav.movies, nav.myPleya, nav.settings]
       timeout: 40000
       settle: 800
-  - assert: {id: nav.myPleya, focused: true}
+  - assert: {id: nav.settings, focused: true}
+  # The ring moves and the page stays (A-24c, LEESMIJ-v4): Home is still on
+  # screen after the whole walk.
+  - assert: {id: nav.discover, state: {active: true}}
+  - assert: {id: nav.myPleya, state: {active: false}}
   - snapshot: 02-right-end

@@ -59,10 +59,19 @@ func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan pla
 	}
 
 	job := transcode.Job{
-		InputPath:     file.AbsPath,
-		Mode:          transcode.Mode(plan.Mode),
-		AudioCodec:    plan.AudioCodec,
-		AudioChannels: plan.AudioMaxCh,
+		InputPath:           file.AbsPath,
+		SubtitlePath:        plan.SubtitlePath,
+		SubtitleBitmap:      plan.SubtitleBitmap,
+		SubtitleStreamIndex: plan.SubtitleStream,
+		Mode:                transcode.Mode(plan.Mode),
+		AudioCodec:          plan.AudioCodec,
+		AudioChannels:       plan.AudioMaxCh,
+	}
+	if plan.Quality != nil {
+		job.MaxVideoBitrateKbps, job.MaxHeight = plan.Quality.MaxVideoBitrateKbps, plan.Quality.MaxHeight
+	}
+	if src.Audio != nil {
+		job.AudioStreamIndex = src.Audio.Index
 	}
 	if v := src.Video; v != nil {
 		job.HEVCSource = strings.EqualFold(v.Codec, "hevc") || strings.EqualFold(v.Codec, "h265")
@@ -146,9 +155,11 @@ func (s *Server) handlePlaybackStop(w http.ResponseWriter, r *http.Request) {
 
 // handlePlaybackFile levert de afspeellijst en segmenten van een sessie.
 //
-// Autorisatie is die van de stream: een bearer hoort bij de eigenaar van de
-// sessie, een streamtoken of -sessie bij de versie die de sessie omzet. Elke
-// aanvraag telt als hartslag, zodat een speler die alleen leest levend blijft.
+// Autorisatie is die van de stream: elk credential hoort bij de eigenaar van de
+// sessie, en een streamtoken of -sessie daarbovenop bij de versie die de sessie
+// omzet. Een omzetting van een ander is voor jou net zo onvindbaar als een die
+// niet bestaat, ook als hij dezelfde versie omzet. Elke aanvraag telt als
+// hartslag, zodat een speler die alleen leest levend blijft.
 func (s *Server) handlePlaybackFile(w http.ResponseWriter, r *http.Request, versionScope *id.ID) {
 	sid, ok := s.pathID(w, r, "session_id")
 	if !ok {
@@ -171,6 +182,10 @@ func (s *Server) handlePlaybackFile(w http.ResponseWriter, r *http.Request, vers
 	if versionScope != nil {
 		if *versionScope != sess.VersionID {
 			writeError(w, s.log, CodeTokenInvalid, "stream token is for another resource", nil)
+			return
+		}
+		if subject, ok := streamSubjectFromContext(r.Context()); !ok || subject != sess.UserID {
+			writeError(w, s.log, CodeNotFound, "not found", nil)
 			return
 		}
 	} else {

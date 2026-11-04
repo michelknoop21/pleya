@@ -12,9 +12,9 @@
   import { page } from '$app/state';
   import { invalidateAll } from '$app/navigation';
 
-  import AdminLayout from '$lib/components/AdminLayout.svelte';
-  import { activeSectionId } from '$lib/admin/sections';
-  import { session } from '$lib/stores/session.svelte';
+  import AdminLayout from '#lib/components/AdminLayout.svelte';
+  import { activeSectionId } from '#lib/admin/sections.js';
+  import { session } from '#lib/stores/session.svelte.js';
 
   let { children }: { children: Snippet } = $props();
 

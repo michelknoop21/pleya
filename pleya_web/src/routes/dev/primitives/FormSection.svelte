@@ -1,10 +1,10 @@
 <!-- Gallerijlabels zijn hier gewone Nederlandse tekst: de route bestaat alleen in ontwikkeling. -->
 <script lang="ts">
-  import Field from '$lib/components/Field.svelte';
-  import Select from '$lib/components/Select.svelte';
-  import Toggle from '$lib/components/Toggle.svelte';
-  import Choice from '$lib/components/Choice.svelte';
-  import Panel from '$lib/components/Panel.svelte';
+  import Field from '#lib/components/Field.svelte';
+  import Select from '#lib/components/Select.svelte';
+  import Toggle from '#lib/components/Toggle.svelte';
+  import Choice from '#lib/components/Choice.svelte';
+  import Panel from '#lib/components/Panel.svelte';
   import GallerySection from './GallerySection.svelte';
 
   const roles = [

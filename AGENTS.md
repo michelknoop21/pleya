@@ -57,10 +57,16 @@ A change that does not wait for a bundle gets the same review on its own. A docs
 - Reuse one release worktree for builds instead of a fresh checkout per build, and prune old builds first (`scripts/prune_old_builds.sh`, part of the beta lanes).
 - Large multi-task plans keep only their final whole-branch review; do not add a review after every task.
 
+## Heavy local work
+
+- On Michel's Mac, use the shared [heavy-work queue](docs/agents/heavy-work.md) for Flutter tests/builds, code generation and broad analysis. One heavy task runs at a time across sessions and worktrees. Code editing, Git inspection, formatting and small script tests remain parallel.
+- Use `scripts/pleya-heavy run --label tests -- flutter test test/path/to/foo_test.dart` for direct commands. Existing codegen, codegate, release and simulator-build scripts enter automatically; the guide lists exact coverage and older-worktree adoption. Do not clear inherited queue context or change its directory to bypass another task.
+- Inspect `scripts/pleya-heavy status`; cancel only a waiting ticket with `scripts/pleya-heavy cancel <ticket>`. No force-unlock or process cleanup. This changes concurrency, never test scope, required evidence or permissions.
+
 ## Setup and verification
 
 - Run `flutter pub get` only when dependencies are missing or changed. Run `scripts/codegen.sh` (slang + build_runner) after changes to Freezed/JSON/Drift models or translation sources, or when generated output is missing/stale. No unconditional setup or codegen on each task.
-- During development, run tests focused on changed behavior: `flutter test test/path/to/foo_test.dart`, optionally `--plain-name "desc"`. Expand coverage when shared impact or failures justify it.
+- During development, run tests focused on changed behavior: `scripts/pleya-heavy run --label tests -- flutter test test/path/to/foo_test.dart`, optionally `--plain-name "desc"`. Expand coverage when shared impact or failures justify it.
 - Before finishing code changes, run `scripts/ci_checks.sh`, then applicable tests. The gate checks SDK pin, Dart formatting, codegen freshness (a source newer than its `.g.dart`/`.freezed.dart` fails even when it compiles), native formatting and analyzer errors, with warnings counted as failures. It does **not** run tests. CI additionally always runs the hard dart_code_linter rules and unused-code checks; run them locally with `--with-unused`.
 - Do not separately repeat checks already covered by a successful gate, including `scripts/format_native.sh --check` for native changes. Repeat successful checks only after changes or findings invalidate their evidence. Hooks and CI remain enabled; do not bypass them to avoid a repeat. `SKIP_HOOKS=1` only for commits that touch documentation only, with the reason in the message.
 - Documentation-only tasks require a diff, link and instruction-consistency check, not Flutter builds/tests. Do not describe unrelated code changes in the worktree as verified.

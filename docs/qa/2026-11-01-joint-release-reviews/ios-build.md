@@ -1,0 +1,9 @@
+# iOS build unblock — C-05 release integration
+
+Roadmap: C-05. Base d8cd3c77e025887128cea625699be025a1ad19a0. Two Xcode configuration files only; existing shim is reused unchanged. No runtime/signing/compiler/provider change.
+
+The supplemental combined iOS Verify build failed in debug_unpack_ios: Xcode 27 lipo rejects `file -verify_arch arm64 x86_64` with “requires exactly one input file”, while `-archs` lists both slices. Reproduced with /usr/bin/lipo, xcrun and explicit Xcode toolchain. Single-arm verification succeeds. This is the same measured tool defect documented in scripts/lipo-shim/lipo, already wired into macOS. Wire that same PATH prepend before iOS prepare, build and embed_and_thin so Xcode's own PATH ordering cannot hide it. Preserve all backend commands.
+
+Evidence: /tmp/task5-gap-restore-1101/check-ios-lipo-wiring.py executes the three parsed scripts with a controlled Xcode-like PATH and stub Flutter backend checking actual lipo resolution. Before: exits [1,1,1], assertion failure. After: [0,0,0], exit0. Existing scripts/lipo-shim/selftest.sh builds synthetic arm64/x86_64 binaries and verifies present slices pass and missing slices fail: terminal exit0, “lipo-shim selftest OK”. PBX plutil syntax PASS; scheme ElementTree parse PASS (plutil does not validate Xcode scheme XML). ci_checks.sh terminal PASS, log /tmp/task5-gap-restore-1101/ios-lipo-gate.log. These one-off logs live outside tracked source; RED/GREEN terminal evidence is in task5's execution record.
+
+Independent review: metadata_search_fix_review read the exact two-file diff and existing shim from a separate seat: PASS, no findings; all three exports precede the preserved backend commands. Reviewer explicitly treated RED/GREEN and selftest as root-supplied evidence and did not rerun them. Normal commit hooks and actual rebuilt iOS Verify follow; no iOS native PASS is claimed here. Existing d8cd tvOS proof remains tied to its recorded SHA, not automatically relabeled.

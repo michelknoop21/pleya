@@ -100,6 +100,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsUnifiedCatalogNl unifiedCatalog = _TranslationsUnifiedCatalogNl._(_root);
 	@override late final _TranslationsTvNavigationNl tvNavigation = _TranslationsTvNavigationNl._(_root);
 	@override late final _TranslationsTvMyPleyaNl tvMyPleya = _TranslationsTvMyPleyaNl._(_root);
+	@override late final _TranslationsTvAccountMenuNl tvAccountMenu = _TranslationsTvAccountMenuNl._(_root);
 	@override late final _TranslationsTvOfflineHomeNl tvOfflineHome = _TranslationsTvOfflineHomeNl._(_root);
 	@override late final _TranslationsTvContextMenuNl tvContextMenu = _TranslationsTvContextMenuNl._(_root);
 	@override late final _TranslationsLanguageSettingsNl languageSettings = _TranslationsLanguageSettingsNl._(_root);
@@ -267,6 +268,13 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get privacy => 'Privacy';
+	@override String get showTraktDiscussions => 'Discussies van Trakt tonen';
+	@override String get shareActivity => 'Mijn activiteit delen';
+	@override String get shareActivityDescription => 'Anderen in het huishouden zien wat jij keek';
+	@override String shareActivityServer({required Object server}) => 'Mijn activiteit delen op ${server}';
+	@override String get shareActivitySaveFailed => 'Opslaan lukte niet. Er is niets gewijzigd.';
+	@override String get shareActivityUnreadable => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.';
 	@override String get searchHint => 'Zoek in instellingen';
 	@override String get urlLabel => 'URL';
 	@override String get title => 'Instellingen';
@@ -633,6 +641,11 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get addToPlaylistOrCollection => 'Toevoegen aan afspeellijst / collectie';
+	@override String get addToPlaylist => 'Toevoegen aan afspeellijst';
+	@override String get watch => 'Kijken';
+	@override String get manage => 'Beheren';
+	@override String get moreWaysToWatch => 'Meer manieren om te kijken';
 	@override String get markAsWatched => 'Markeer als gekeken';
 	@override String get markAsUnwatched => 'Markeer als ongekeken';
 	@override String get removeFromContinueWatching => 'Verwijderen uit Verder kijken';
@@ -645,7 +658,7 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get goToSeries => 'Ga naar serie';
 	@override String get shufflePlay => 'Willekeurig afspelen';
 	@override String get shuffleNotAvailableOffline => 'Shuffle is offline niet beschikbaar';
-	@override String get fileInfo => 'Bestand info';
+	@override String get fileInfo => 'Bestandsinformatie';
 	@override String get deleteFromServer => 'Verwijderen van server';
 	@override String get confirmDelete => 'Deze media en bestanden van je server verwijderen?';
 	@override String get deleteMultipleWarning => 'Dit omvat alle afleveringen en hun bestanden.';
@@ -719,6 +732,9 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	// Translations
 	@override String get audioLabel => 'Audio';
 	@override String get subtitlesLabel => 'Ondertitels';
+	@override String get subtitlesPreparing => 'Ondertitels voorbereiden';
+	@override String get subtitlesPrepareFailed => 'Ondertitels konden niet worden voorbereid';
+	@override String get subtitlesPrepareRetry => 'Opnieuw';
 	@override String get resetToZero => 'Reset naar 0ms';
 	@override String addTime({required Object amount, required Object unit}) => '+${amount}${unit}';
 	@override String minusTime({required Object amount, required Object unit}) => '-${amount}${unit}';
@@ -1035,6 +1051,16 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get discussions => 'Discussies';
+	@override String seasonBadge({required Object number}) => 'S${number}';
+	@override String commentLikes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '${n} like',
+		other: '${n} likes',
+	);
+	@override String get moreActions => 'Meer acties';
+	@override String get audioStream => 'Audiostream';
+	@override String get subtitlesRow => 'Ondertitels';
+	@override String get manageTitle => 'Beheren';
 	@override String get title => 'Ontdekken';
 	@override String get forYou => 'Voor jou';
 	@override String get switchProfile => 'Wissel van profiel';
@@ -1091,6 +1117,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
 	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+	@override String activityBy({required Object names}) => 'Activiteit van ${names}';
+	@override String get activityByYou => 'jou';
 	@override String activityPlays({required Object count}) => '${count}× afgespeeld';
 	@override String activityViewers({required Object count}) => '${count} kijkers';
 	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
@@ -1112,6 +1140,13 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get scoreRtCritics => 'Rotten Tomatoes, critici';
 	@override String get scoreRtAudience => 'Rotten Tomatoes, publiek';
 	@override String get scoreCommunity => 'Communityscore';
+	@override String get castAndCrew => 'Cast & Crew';
+	@override String get ratingsAndReviews => 'Ratings & Reviews';
+	@override String get seriesTab => 'Serie';
+	@override String episodeBadge({required Object number}) => 'A${number}';
+	@override String directedBy({required Object names}) => 'Geregisseerd door ${names}';
+	@override String get trailer => 'Trailer';
+	@override String get extra => 'Extra';
 	@override String get reviews => 'Recensies';
 	@override String get reviewOpenSource => 'Lees bij de bron';
 }
@@ -1182,6 +1217,12 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get cinemaReorderHint => 'Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar';
+	@override String get cinemaVisible => 'Zichtbaar';
+	@override String get cinemaHidden => 'Verborgen in dit profiel';
+	@override String get cinemaOptionsHint => 'Select voor bibliotheekopties';
+	@override String get cinemaSummaryTitle => 'Eén bibliotheek.';
+	@override String get cinemaSummaryHint => 'Alle mogelijkheden bij Select.';
 	@override String get alphabetScrubber => 'Alfabetisch bladeren';
 	@override String get title => 'Bibliotheken';
 	@override String get fallbackTitle => 'Bibliotheek';
@@ -1213,7 +1254,8 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String emptyTrashConfirm({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?';
 	@override String get manageLibraries => 'Beheer bibliotheken';
 	@override String get sort => 'Sorteren';
-	@override String get sortBy => 'Sorteer op';
+	@override String get sortBy => 'Sorteren op';
+	@override String get filterBy => 'Filteren op';
 	@override String get filters => 'Filters';
 	@override String get confirmActionMessage => 'Weet je zeker dat je deze actie wilt uitvoeren?';
 	@override String get showLibrary => 'Toon bibliotheek';
@@ -1415,9 +1457,6 @@ class _TranslationsMyPleyaNl extends TranslationsMyPleyaEn {
 		one: '1 lijst',
 		other: '${n} lijsten',
 	);
-	@override String get bigPTvSubtitle => 'Je persoonlijke kijkassistent';
-	@override String get openBigP => 'Open Big P';
-	@override String get switchProfile => 'Profiel wisselen';
 }
 
 // Path: liveTv
@@ -1564,6 +1603,7 @@ class _TranslationsPlaylistsNl extends TranslationsPlaylistsEn {
 	@override String get errorLoading => 'Fout bij laden afspeellijsten';
 	@override String get errorAdding => 'Fout bij toevoegen aan afspeellijst';
 	@override String get errorReordering => 'Fout bij herschikken van afspeellijstitem';
+	@override String get changedElsewhere => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.';
 	@override String get errorRemoving => 'Fout bij verwijderen uit afspeellijst';
 }
 
@@ -1657,7 +1697,7 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 	@override String get movies => 'Films';
 	@override String get noDownloads => 'Nog geen downloads';
 	@override String get noDownloadsDescription => 'Gedownloade content verschijnt hier voor offline weergave';
-	@override String get downloadNow => 'Download';
+	@override String get downloadNow => 'Downloaden';
 	@override String get deleteDownload => 'Download verwijderen';
 	@override String get retryDownload => 'Download opnieuw proberen';
 	@override String get downloadQueued => 'Download in wachtrij';
@@ -2469,6 +2509,7 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override String titleCount({required Object count}) => '${count} titels';
 	@override String get oneTitle => '1 titel';
 	@override String titlesLoaded({required Object count}) => '${count} titels geladen';
+	@override String get jumpTo => 'Spring naar';
 	@override String get loadMore => 'Meer laden';
 	@override String get loadingMore => 'Meer laden…';
 	@override late final _TranslationsUnifiedCatalogSortNl sort = _TranslationsUnifiedCatalogSortNl._(_root);
@@ -2479,6 +2520,8 @@ class _TranslationsUnifiedCatalogNl extends TranslationsUnifiedCatalogEn {
 	@override late final _TranslationsUnifiedCatalogDiscoveryNl discovery = _TranslationsUnifiedCatalogDiscoveryNl._(_root);
 	@override late final _TranslationsUnifiedCatalogHomeNl home = _TranslationsUnifiedCatalogHomeNl._(_root);
 	@override late final _TranslationsUnifiedCatalogHomeRowsNl homeRows = _TranslationsUnifiedCatalogHomeRowsNl._(_root);
+	@override String get onePlay => '1 keer';
+	@override String plays({required Object count}) => '${count} keer';
 }
 
 // Path: tvNavigation
@@ -2505,11 +2548,9 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} van ${total} servers online';
 	@override String get noServers => 'Geen servers verbonden';
 	@override String get statusOnline => 'Online';
-	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servers';
 	@override String get activity => 'Activiteit';
 	@override String get logs => 'Logboeken';
-	@override String signedInAs({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Bewaarde films en series';
 	@override String get requestsSubtitle => 'Verzoeken en ontdekken';
 	@override String get downloadsSubtitle => 'Offline en synchronisatieregels';
@@ -2526,6 +2567,30 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get logoutSubtitle => 'Afmelden op dit apparaat';
 	@override late final _TranslationsTvMyPleyaSemanticsNl semantics = _TranslationsTvMyPleyaSemanticsNl._(_root);
 	@override String libraryCount({required Object count}) => '${count} bibliotheken';
+	@override String get eyebrow => 'Jouw persoonlijke ruimte';
+	@override String heading({required Object name}) => 'Jouw wereld, ${name}.';
+	@override String get headingNoName => 'Jouw wereld.';
+	@override String get subline => 'Bewaar wat je mooi vindt. Vind het moeiteloos terug.';
+	@override String get bigPEyebrow => 'Big P · jouw assistent';
+	@override String get bigPTitle => 'Wat wil je kijken?';
+	@override String get bigPSubtitle => 'Vraag, ontdek en vind sneller iets goeds.';
+	@override String get bigPAction => 'Vraag Big P';
+	@override String get quickLinks => 'Snel naar';
+}
+
+// Path: tvAccountMenu
+class _TranslationsTvAccountMenuNl extends TranslationsTvAccountMenuEn {
+	_TranslationsTvAccountMenuNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Profiel';
+	@override String signedInAs({required Object name}) => 'Je bent ingelogd als ${name}';
+	@override String get switchProfile => 'Wissel profiel';
+	@override String get switchProfileSubtitle => 'Kies een ander profiel';
+	@override String get logout => 'Uitloggen';
+	@override String get logoutSubtitle => 'Bevestig voordat je uitlogt';
 }
 
 // Path: tvOfflineHome
@@ -2756,7 +2821,6 @@ class _TranslationsSettingsStudioNl extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Jouw bibliotheek';
 	@override String get viewPreview => 'Bekijk voorbeeld';
 	@override String get playbackExperience => 'Afspeelervaring';
-	@override String get manage => 'Beheer';
 	@override String get yourWatchlist => 'Je kijklijst';
 	@override String get yourContent => 'Jouw content';
 	@override String get lightMode => 'Lichte modus';
@@ -3264,7 +3328,11 @@ class _TranslationsUnifiedCatalogSortNl extends TranslationsUnifiedCatalogSortEn
 	@override String get oldestAdded => 'Oudst toegevoegd';
 	@override String get newestRelease => 'Nieuwste release';
 	@override String get oldestRelease => 'Oudste release';
+	@override String get yearNewest => 'Nieuwste jaar';
+	@override String get yearOldest => 'Oudste jaar';
 	@override String get recentlyWatched => 'Recent bekeken';
+	@override late final _TranslationsUnifiedCatalogSortFieldsNl fields = _TranslationsUnifiedCatalogSortFieldsNl._(_root);
+	@override String get pageTitle => 'Sorteren op';
 }
 
 // Path: unifiedCatalog.rail
@@ -3303,6 +3371,9 @@ class _TranslationsUnifiedCatalogFiltersNl extends TranslationsUnifiedCatalogFil
 	@override String get someUnavailable => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen';
 	@override String get noValues => 'Niets om uit te kiezen';
 	@override String activeCount({required Object count}) => '${count} actief';
+	@override String get decade => 'Decennium';
+	@override late final _TranslationsUnifiedCatalogFiltersQuickNl quick = _TranslationsUnifiedCatalogFiltersQuickNl._(_root);
+	@override String get pageTitle => 'Filteren op';
 }
 
 // Path: unifiedCatalog.states
@@ -3550,6 +3621,7 @@ class _TranslationsAssistantMemoryNl extends TranslationsAssistantMemoryEn {
 	@override late final _TranslationsAssistantMemoryCardNl card = _TranslationsAssistantMemoryCardNl._(_root);
 	@override late final _TranslationsAssistantMemoryCategoriesNl categories = _TranslationsAssistantMemoryCategoriesNl._(_root);
 	@override late final _TranslationsAssistantMemoryScreenNl screen = _TranslationsAssistantMemoryScreenNl._(_root);
+	@override late final _TranslationsAssistantMemorySyncNl sync = _TranslationsAssistantMemorySyncNl._(_root);
 }
 
 // Path: assistant.mobile
@@ -4122,6 +4194,47 @@ class _TranslationsAssistantMatchNl extends TranslationsAssistantMatchEn {
 	@override String score({required Object score}) => 'Score ${score}';
 }
 
+// Path: unifiedCatalog.sort.fields
+class _TranslationsUnifiedCatalogSortFieldsNl extends TranslationsUnifiedCatalogSortFieldsEn {
+	_TranslationsUnifiedCatalogSortFieldsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Titel';
+	@override String get year => 'Jaar';
+	@override String get releaseDate => 'Releasedatum';
+	@override String get criticRating => 'Critici';
+	@override String get audienceRating => 'Publiek';
+	@override String get userRating => 'Waardering';
+	@override String get contentRating => 'Leeftijd';
+	@override String get duration => 'Duur';
+	@override String get progress => 'Voortgang';
+	@override String get plays => 'Afgespeeld';
+	@override String get addedAt => 'Toegevoegd';
+	@override String get recentlyWatched => 'Bekeken';
+	@override String get resolution => 'Resolutie';
+}
+
+// Path: unifiedCatalog.filters.quick
+class _TranslationsUnifiedCatalogFiltersQuickNl extends TranslationsUnifiedCatalogFiltersQuickEn {
+	_TranslationsUnifiedCatalogFiltersQuickNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get all => 'Alles';
+	@override String get hdr => 'HDR';
+	@override String get dolbyVision => 'Dolby Vision';
+	@override String get hdr10Plus => 'HDR10+';
+	@override String get atmos => 'Atmos';
+	@override String get unwatched => 'Ongekeken';
+	@override String get inProgress => 'Bezig';
+	@override String get unmatched => 'Niet gekoppeld';
+	@override String get duplicates => 'Dubbel';
+	@override String get watched => 'Bekeken';
+}
+
 // Path: unifiedCatalog.discovery.semantics
 class _TranslationsUnifiedCatalogDiscoverySemanticsNl extends TranslationsUnifiedCatalogDiscoverySemanticsEn {
 	_TranslationsUnifiedCatalogDiscoverySemanticsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -4206,6 +4319,47 @@ class _TranslationsAssistantMemoryScreenNl extends TranslationsAssistantMemorySc
 	@override late final _TranslationsAssistantMemoryScreenSourcesNl sources = _TranslationsAssistantMemoryScreenSourcesNl._(_root);
 	@override late final _TranslationsAssistantMemoryScreenSheetNl sheet = _TranslationsAssistantMemoryScreenSheetNl._(_root);
 	@override late final _TranslationsAssistantMemoryScreenCodesNl codes = _TranslationsAssistantMemoryScreenCodesNl._(_root);
+}
+
+// Path: assistant.memory.sync
+class _TranslationsAssistantMemorySyncNl extends TranslationsAssistantMemorySyncEn {
+	_TranslationsAssistantMemorySyncNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sync via Pleya Server';
+	@override String get local => 'Opgeslagen op dit apparaat';
+	@override String get syncing => 'Synchroniseren…';
+	@override String get pending => 'Wijzigingen wachten op synchronisatie';
+	@override String get synced => 'Wijzigingen bevestigd door de server';
+	@override String get unavailable => 'Server onbereikbaar of account niet toegestaan';
+	@override String get error => 'Synchronisatie mislukt. Je lokale herinneringen blijven bewaard.';
+	@override String get conflict => 'Wijzigingen vragen om jouw keuze';
+	@override String get quarantine => 'Het servergeheugen is gewijzigd na wissen of herstel. Controleer het voor gebruik.';
+	@override String get account => 'Kies je eigen Pleya Server-account';
+	@override String get noAccount => 'Er is geen geschikt Pleya Server-account gekoppeld. Meld je met je eigen account aan op een bijgewerkte server.';
+	@override String preview({required Object account}) => 'Deze herinneringen delen met ${account}';
+	@override String get previewNote => 'Bestaande serverherinneringen blijven bewaard. Gezinsherinneringen blijven op dit apparaat. Alleen geselecteerde herinneringen worden gedeeld.';
+	@override String get connect => 'Bevestigen en synchroniseren';
+	@override String get refresh => 'Nu synchroniseren';
+	@override String get disconnect => 'Ontkoppelen';
+	@override String get disconnectNote => 'Synchronisatie van dit profiel stoppen? Herinneringen blijven op dit apparaat en op de server.';
+	@override String get reviewReset => 'Herstelde herinneringen bekijken';
+	@override String get acceptReset => 'Deze serverherinneringen gebruiken';
+	@override String get resetNote => 'Bevestig dit servergeheugen als nieuwe basis. Oude wachtende wijzigingen worden niet automatisch geüpload.';
+	@override String get localVersion => 'Dit apparaat';
+	@override String get serverVersion => 'Server';
+	@override String get keepLocal => 'Deze versie bewaren';
+	@override String get keepServer => 'Serverversie gebruiken';
+	@override String get keepBoth => 'Beide bewaren';
+	@override String get deleted => 'Verwijderd';
+	@override String get select => 'Delen';
+	@override String lastConfirmed({required Object time}) => 'Laatst bevestigd: ${time}';
+	@override String importLimit({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.';
+	@override String get clearChanged => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.';
+	@override String get clearServer => 'Deze serverherinneringen wissen';
+	@override String get clearEverywhere => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.';
 }
 
 // Path: assistant.jobs.scanLibrary
@@ -4317,7 +4471,7 @@ class _TranslationsAssistantMemoryScreenMenuNl extends TranslationsAssistantMemo
 	@override String get use => 'Geheugen gebruiken';
 	@override String get useOn => 'Geheugen gebruiken: Aan';
 	@override String get useOff => 'Geheugen gebruiken: Uit';
-	@override String get useNote => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.';
+	@override String get useNote => 'Big P onthoudt wat je hem vraagt te onthouden, voor dit profiel. Herinneringen blijven op dit apparaat tenzij je ze expliciet aan je eigen Pleya Server-account koppelt. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.';
 	@override String get rewrite => 'Overzicht opnieuw schrijven';
 	@override String get clear => 'Alle herinneringen wissen';
 }
@@ -4563,6 +4717,13 @@ extension on TranslationsNl {
 			'update.viewRelease' => 'Bekijk release',
 			'update.latestVersion' => 'Je hebt de nieuwste versie',
 			'update.checkFailed' => 'Kon niet controleren op updates',
+			'settings.privacy' => 'Privacy',
+			'settings.showTraktDiscussions' => 'Discussies van Trakt tonen',
+			'settings.shareActivity' => 'Mijn activiteit delen',
+			'settings.shareActivityDescription' => 'Anderen in het huishouden zien wat jij keek',
+			'settings.shareActivityServer' => ({required Object server}) => 'Mijn activiteit delen op ${server}',
+			'settings.shareActivitySaveFailed' => 'Opslaan lukte niet. Er is niets gewijzigd.',
+			'settings.shareActivityUnreadable' => 'Deze instelling is niet te lezen. Druk om het opnieuw te proberen.',
 			'settings.searchHint' => 'Zoek in instellingen',
 			'settings.urlLabel' => 'URL',
 			'settings.title' => 'Instellingen',
@@ -4917,6 +5078,11 @@ extension on TranslationsNl {
 			'detailActions.watched' => 'Bekeken',
 			'detailActions.download' => 'Downloaden',
 			'detailActions.more' => 'Meer',
+			'mediaMenu.addToPlaylistOrCollection' => 'Toevoegen aan afspeellijst / collectie',
+			'mediaMenu.addToPlaylist' => 'Toevoegen aan afspeellijst',
+			'mediaMenu.watch' => 'Kijken',
+			'mediaMenu.manage' => 'Beheren',
+			'mediaMenu.moreWaysToWatch' => 'Meer manieren om te kijken',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
 			'mediaMenu.removeFromContinueWatching' => 'Verwijderen uit Verder kijken',
@@ -4929,7 +5095,7 @@ extension on TranslationsNl {
 			'mediaMenu.goToSeries' => 'Ga naar serie',
 			'mediaMenu.shufflePlay' => 'Willekeurig afspelen',
 			'mediaMenu.shuffleNotAvailableOffline' => 'Shuffle is offline niet beschikbaar',
-			'mediaMenu.fileInfo' => 'Bestand info',
+			'mediaMenu.fileInfo' => 'Bestandsinformatie',
 			'mediaMenu.deleteFromServer' => 'Verwijderen van server',
 			'mediaMenu.confirmDelete' => 'Deze media en bestanden van je server verwijderen?',
 			'mediaMenu.deleteMultipleWarning' => 'Dit omvat alle afleveringen en hun bestanden.',
@@ -4966,7 +5132,12 @@ extension on TranslationsNl {
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
+			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
+			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
+			'videoControls.subtitlesPrepareRetry' => 'Opnieuw',
 			'videoControls.resetToZero' => 'Reset naar 0ms',
 			'videoControls.addTime' => ({required Object amount, required Object unit}) => '+${amount}${unit}',
 			'videoControls.minusTime' => ({required Object amount, required Object unit}) => '-${amount}${unit}',
@@ -4978,8 +5149,6 @@ extension on TranslationsNl {
 			'videoControls.stretch' => 'Uitrekken',
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.timerActive' => 'Timer actief',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
@@ -5255,6 +5424,13 @@ extension on TranslationsNl {
 			'connections.disconnectServer' => 'Verbinding verbreken',
 			'connections.disconnectServerConfirm' => ({required Object name}) => 'Verbinding met "${name}" verbreken? De aanmelding voor deze server wordt van dit apparaat verwijderd. Gedownloade items blijven staan.',
 			'connections.reauthRequired' => 'Opnieuw aanmelden vereist',
+			'discover.discussions' => 'Discussies',
+			'discover.seasonBadge' => ({required Object number}) => 'S${number}',
+			'discover.commentLikes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '${n} like', other: '${n} likes', ), 
+			'discover.moreActions' => 'Meer acties',
+			'discover.audioStream' => 'Audiostream',
+			'discover.subtitlesRow' => 'Ondertitels',
+			'discover.manageTitle' => 'Beheren',
 			'discover.title' => 'Ontdekken',
 			'discover.forYou' => 'Voor jou',
 			'discover.switchProfile' => 'Wissel van profiel',
@@ -5315,6 +5491,8 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'discover.activityBy' => ({required Object names}) => 'Activiteit van ${names}',
+			'discover.activityByYou' => 'jou',
 			'discover.activityPlays' => ({required Object count}) => '${count}× afgespeeld',
 			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
@@ -5330,6 +5508,13 @@ extension on TranslationsNl {
 			'discover.scoreRtCritics' => 'Rotten Tomatoes, critici',
 			'discover.scoreRtAudience' => 'Rotten Tomatoes, publiek',
 			'discover.scoreCommunity' => 'Communityscore',
+			'discover.castAndCrew' => 'Cast & Crew',
+			'discover.ratingsAndReviews' => 'Ratings & Reviews',
+			'discover.seriesTab' => 'Serie',
+			'discover.episodeBadge' => ({required Object number}) => 'A${number}',
+			'discover.directedBy' => ({required Object names}) => 'Geregisseerd door ${names}',
+			'discover.trailer' => 'Trailer',
+			'discover.extra' => 'Extra',
 			'discover.reviews' => 'Recensies',
 			'discover.reviewOpenSource' => 'Lees bij de bron',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
@@ -5364,6 +5549,12 @@ extension on TranslationsNl {
 			'notices.playbackConnectionLostBody' => 'Verbinding met de server verloren',
 			'notices.playbackCodecUnsupportedBody' => 'Dit bestandsformaat wordt niet ondersteund op dit toestel',
 			'notices.playbackServerErrorBody' => 'De server liep vast tijdens het transcoderen',
+			'libraries.cinemaReorderHint' => 'Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar',
+			'libraries.cinemaVisible' => 'Zichtbaar',
+			'libraries.cinemaHidden' => 'Verborgen in dit profiel',
+			'libraries.cinemaOptionsHint' => 'Select voor bibliotheekopties',
+			'libraries.cinemaSummaryTitle' => 'Eén bibliotheek.',
+			'libraries.cinemaSummaryHint' => 'Alle mogelijkheden bij Select.',
 			'libraries.alphabetScrubber' => 'Alfabetisch bladeren',
 			'libraries.title' => 'Bibliotheken',
 			'libraries.fallbackTitle' => 'Bibliotheek',
@@ -5395,7 +5586,8 @@ extension on TranslationsNl {
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?',
 			'libraries.manageLibraries' => 'Beheer bibliotheken',
 			'libraries.sort' => 'Sorteren',
-			'libraries.sortBy' => 'Sorteer op',
+			'libraries.sortBy' => 'Sorteren op',
+			'libraries.filterBy' => 'Filteren op',
 			'libraries.filters' => 'Filters',
 			'libraries.confirmActionMessage' => 'Weet je zeker dat je deze actie wilt uitvoeren?',
 			'libraries.showLibrary' => 'Toon bibliotheek',
@@ -5454,6 +5646,8 @@ extension on TranslationsNl {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
 			'about.title' => 'Over',
+			_ => null,
+		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -5492,8 +5686,6 @@ extension on TranslationsNl {
 			'logs.levelFilter' => 'Niveau',
 			'logs.levelAll' => 'Alles',
 			'logs.levelWarnings' => 'Waarschuwingen',
-			_ => null,
-		} ?? switch (path) {
 			'logs.levelErrors' => 'Fouten',
 			'logs.noMatchingLogs' => 'Geen regels op dit niveau',
 			'logs.lineCount' => ({required Object shown, required Object total}) => '${shown} van ${total} regels',
@@ -5551,9 +5743,6 @@ extension on TranslationsNl {
 			'myPleya.librariesCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 bibliotheek', other: '${n} bibliotheken', ), 
 			'myPleya.collectionsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 collectie', other: '${n} collecties', ), 
 			'myPleya.playlistsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 lijst', other: '${n} lijsten', ), 
-			'myPleya.bigPTvSubtitle' => 'Je persoonlijke kijkassistent',
-			'myPleya.openBigP' => 'Open Big P',
-			'myPleya.switchProfile' => 'Profiel wisselen',
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
@@ -5673,6 +5862,7 @@ extension on TranslationsNl {
 			'playlists.errorLoading' => 'Fout bij laden afspeellijsten',
 			'playlists.errorAdding' => 'Fout bij toevoegen aan afspeellijst',
 			'playlists.errorReordering' => 'Fout bij herschikken van afspeellijstitem',
+			'playlists.changedElsewhere' => 'Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.',
 			'playlists.errorRemoving' => 'Fout bij verwijderen uit afspeellijst',
 			'watchTogether.title' => 'Samen Kijken',
 			'watchTogether.description' => 'Kijk synchroon met vrienden en familie',
@@ -5748,7 +5938,7 @@ extension on TranslationsNl {
 			'downloads.movies' => 'Films',
 			'downloads.noDownloads' => 'Nog geen downloads',
 			'downloads.noDownloadsDescription' => 'Gedownloade content verschijnt hier voor offline weergave',
-			'downloads.downloadNow' => 'Download',
+			'downloads.downloadNow' => 'Downloaden',
 			'downloads.deleteDownload' => 'Download verwijderen',
 			'downloads.retryDownload' => 'Download opnieuw proberen',
 			'downloads.downloadQueued' => 'Download in wachtrij',
@@ -5970,6 +6160,8 @@ extension on TranslationsNl {
 			'performanceOverlay.memory' => 'Geheugen',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'Externe speler',
+			_ => null,
+		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6006,8 +6198,6 @@ extension on TranslationsNl {
 			'metadataEdit.selectBackground' => 'Achtergrond selecteren',
 			'metadataEdit.selectLogo' => 'Logo selecteren',
 			'metadataEdit.selectSquareArt' => 'Vierkante afbeelding selecteren',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.fromUrl' => 'Vanaf URL',
 			'metadataEdit.uploadFile' => 'Bestand uploaden',
 			'metadataEdit.enterImageUrl' => 'Voer afbeeldings-URL in',
@@ -6484,9 +6674,12 @@ extension on TranslationsNl {
 			'unifiedCatalog.oneSource' => '1 bron',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
 			'unifiedCatalog.oneSeason' => '1 seizoen',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
+			'unifiedCatalog.jumpTo' => 'Spring naar',
 			'unifiedCatalog.loadMore' => 'Meer laden',
 			'unifiedCatalog.loadingMore' => 'Meer laden…',
 			'unifiedCatalog.sort.title' => 'Sorteren',
@@ -6496,7 +6689,23 @@ extension on TranslationsNl {
 			'unifiedCatalog.sort.oldestAdded' => 'Oudst toegevoegd',
 			'unifiedCatalog.sort.newestRelease' => 'Nieuwste release',
 			'unifiedCatalog.sort.oldestRelease' => 'Oudste release',
+			'unifiedCatalog.sort.yearNewest' => 'Nieuwste jaar',
+			'unifiedCatalog.sort.yearOldest' => 'Oudste jaar',
 			'unifiedCatalog.sort.recentlyWatched' => 'Recent bekeken',
+			'unifiedCatalog.sort.fields.title' => 'Titel',
+			'unifiedCatalog.sort.fields.year' => 'Jaar',
+			'unifiedCatalog.sort.fields.releaseDate' => 'Releasedatum',
+			'unifiedCatalog.sort.fields.criticRating' => 'Critici',
+			'unifiedCatalog.sort.fields.audienceRating' => 'Publiek',
+			'unifiedCatalog.sort.fields.userRating' => 'Waardering',
+			'unifiedCatalog.sort.fields.contentRating' => 'Leeftijd',
+			'unifiedCatalog.sort.fields.duration' => 'Duur',
+			'unifiedCatalog.sort.fields.progress' => 'Voortgang',
+			'unifiedCatalog.sort.fields.plays' => 'Afgespeeld',
+			'unifiedCatalog.sort.fields.addedAt' => 'Toegevoegd',
+			'unifiedCatalog.sort.fields.recentlyWatched' => 'Bekeken',
+			'unifiedCatalog.sort.fields.resolution' => 'Resolutie',
+			'unifiedCatalog.sort.pageTitle' => 'Sorteren op',
 			'unifiedCatalog.rail.sources' => 'Bronnen',
 			'unifiedCatalog.rail.noFilters' => 'Geen',
 			'unifiedCatalog.rail.filtersActive' => ({required Object count}) => '${count} actief',
@@ -6517,11 +6726,21 @@ extension on TranslationsNl {
 			'unifiedCatalog.filters.someUnavailable' => 'Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen',
 			'unifiedCatalog.filters.noValues' => 'Niets om uit te kiezen',
 			'unifiedCatalog.filters.activeCount' => ({required Object count}) => '${count} actief',
+			'unifiedCatalog.filters.decade' => 'Decennium',
+			'unifiedCatalog.filters.quick.all' => 'Alles',
+			'unifiedCatalog.filters.quick.hdr' => 'HDR',
+			'unifiedCatalog.filters.quick.dolbyVision' => 'Dolby Vision',
+			'unifiedCatalog.filters.quick.hdr10Plus' => 'HDR10+',
+			'unifiedCatalog.filters.quick.atmos' => 'Atmos',
+			'unifiedCatalog.filters.quick.unwatched' => 'Ongekeken',
+			'unifiedCatalog.filters.quick.inProgress' => 'Bezig',
+			'unifiedCatalog.filters.quick.unmatched' => 'Niet gekoppeld',
+			'unifiedCatalog.filters.quick.duplicates' => 'Dubbel',
+			'unifiedCatalog.filters.quick.watched' => 'Bekeken',
+			'unifiedCatalog.filters.pageTitle' => 'Filteren op',
 			'unifiedCatalog.states.emptyTitle' => 'Deze catalogus is leeg',
 			'unifiedCatalog.states.emptyBody' => 'Geen zichtbare bibliotheek bevat iets voor deze pagina.',
 			'unifiedCatalog.states.filterEmptyTitle' => 'Niets voldoet aan deze filters',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.states.filterEmptyBody' => 'Wis een filter om meer titels te zien.',
 			'unifiedCatalog.states.clearFilters' => 'Filters wissen',
 			'unifiedCatalog.states.errorTitle' => 'De catalogus kon niet worden geladen',
@@ -6612,6 +6831,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.close' => 'Sluiten',
 			'unifiedCatalog.homeRows.editRowTitle' => ({required Object name}) => '${name} bewerken',
 			'unifiedCatalog.homeRows.pickRowToEdit' => 'Tik op een eigen rij om hem te bewerken, of maak een nieuwe.',
+			'unifiedCatalog.onePlay' => '1 keer',
+			'unifiedCatalog.plays' => ({required Object count}) => '${count} keer',
 			'tvNavigation.activeDestination' => 'huidige sectie',
 			'tvNavigation.attentionRequired' => 'vereist aandacht',
 			'tvMyPleya.groupContent' => 'Mijn content',
@@ -6620,11 +6841,9 @@ extension on TranslationsNl {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} van ${total} servers online',
 			'tvMyPleya.noServers' => 'Geen servers verbonden',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servers',
 			'tvMyPleya.activity' => 'Activiteit',
 			'tvMyPleya.logs' => 'Logboeken',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Aangemeld als ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Bewaarde films en series',
 			'tvMyPleya.requestsSubtitle' => 'Verzoeken en ontdekken',
 			'tvMyPleya.downloadsSubtitle' => 'Offline en synchronisatieregels',
@@ -6642,6 +6861,21 @@ extension on TranslationsNl {
 			'tvMyPleya.semantics.tile' => ({required Object title, required Object subtitle}) => '${title}. ${subtitle}',
 			'tvMyPleya.semantics.tileWithCount' => ({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}',
 			'tvMyPleya.libraryCount' => ({required Object count}) => '${count} bibliotheken',
+			'tvMyPleya.eyebrow' => 'Jouw persoonlijke ruimte',
+			'tvMyPleya.heading' => ({required Object name}) => 'Jouw wereld, ${name}.',
+			'tvMyPleya.headingNoName' => 'Jouw wereld.',
+			'tvMyPleya.subline' => 'Bewaar wat je mooi vindt. Vind het moeiteloos terug.',
+			'tvMyPleya.bigPEyebrow' => 'Big P · jouw assistent',
+			'tvMyPleya.bigPTitle' => 'Wat wil je kijken?',
+			'tvMyPleya.bigPSubtitle' => 'Vraag, ontdek en vind sneller iets goeds.',
+			'tvMyPleya.bigPAction' => 'Vraag Big P',
+			'tvMyPleya.quickLinks' => 'Snel naar',
+			'tvAccountMenu.title' => 'Profiel',
+			'tvAccountMenu.signedInAs' => ({required Object name}) => 'Je bent ingelogd als ${name}',
+			'tvAccountMenu.switchProfile' => 'Wissel profiel',
+			'tvAccountMenu.switchProfileSubtitle' => 'Kies een ander profiel',
+			'tvAccountMenu.logout' => 'Uitloggen',
+			'tvAccountMenu.logoutSubtitle' => 'Bevestig voordat je uitlogt',
 			'tvOfflineHome.title' => 'Geen server bereikbaar',
 			'tvOfflineHome.body' => 'Geen van je servers reageert nu. Verbind opnieuw zodra een van hen weer online is. Mijn Pleya en Instellingen blijven ondertussen bereikbaar.',
 			'tvOfflineHome.manageServers' => 'Servers beheren',
@@ -6829,7 +7063,7 @@ extension on TranslationsNl {
 			'assistant.memory.screen.menu.use' => 'Geheugen gebruiken',
 			'assistant.memory.screen.menu.useOn' => 'Geheugen gebruiken: Aan',
 			'assistant.memory.screen.menu.useOff' => 'Geheugen gebruiken: Uit',
-			'assistant.memory.screen.menu.useNote' => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.',
+			'assistant.memory.screen.menu.useNote' => 'Big P onthoudt wat je hem vraagt te onthouden, voor dit profiel. Herinneringen blijven op dit apparaat tenzij je ze expliciet aan je eigen Pleya Server-account koppelt. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.',
 			'assistant.memory.screen.menu.rewrite' => 'Overzicht opnieuw schrijven',
 			'assistant.memory.screen.menu.clear' => 'Alle herinneringen wissen',
 			'assistant.memory.screen.clearDialog.title' => 'Alle herinneringen wissen?',
@@ -6887,6 +7121,38 @@ extension on TranslationsNl {
 			'assistant.memory.screen.codes.notFound' => 'Deze herinnering bestaat niet meer.',
 			'assistant.memory.screen.codes.profileGone' => 'Dit profiel is gewisseld of verwijderd. Er is niets gewijzigd.',
 			'assistant.memory.screen.codes.storageFailed' => 'Opslaan is niet gelukt. Er is niets gewijzigd.',
+			'assistant.memory.sync.title' => 'Sync via Pleya Server',
+			'assistant.memory.sync.local' => 'Opgeslagen op dit apparaat',
+			'assistant.memory.sync.syncing' => 'Synchroniseren…',
+			'assistant.memory.sync.pending' => 'Wijzigingen wachten op synchronisatie',
+			'assistant.memory.sync.synced' => 'Wijzigingen bevestigd door de server',
+			'assistant.memory.sync.unavailable' => 'Server onbereikbaar of account niet toegestaan',
+			'assistant.memory.sync.error' => 'Synchronisatie mislukt. Je lokale herinneringen blijven bewaard.',
+			'assistant.memory.sync.conflict' => 'Wijzigingen vragen om jouw keuze',
+			'assistant.memory.sync.quarantine' => 'Het servergeheugen is gewijzigd na wissen of herstel. Controleer het voor gebruik.',
+			'assistant.memory.sync.account' => 'Kies je eigen Pleya Server-account',
+			'assistant.memory.sync.noAccount' => 'Er is geen geschikt Pleya Server-account gekoppeld. Meld je met je eigen account aan op een bijgewerkte server.',
+			'assistant.memory.sync.preview' => ({required Object account}) => 'Deze herinneringen delen met ${account}',
+			'assistant.memory.sync.previewNote' => 'Bestaande serverherinneringen blijven bewaard. Gezinsherinneringen blijven op dit apparaat. Alleen geselecteerde herinneringen worden gedeeld.',
+			'assistant.memory.sync.connect' => 'Bevestigen en synchroniseren',
+			'assistant.memory.sync.refresh' => 'Nu synchroniseren',
+			'assistant.memory.sync.disconnect' => 'Ontkoppelen',
+			'assistant.memory.sync.disconnectNote' => 'Synchronisatie van dit profiel stoppen? Herinneringen blijven op dit apparaat en op de server.',
+			'assistant.memory.sync.reviewReset' => 'Herstelde herinneringen bekijken',
+			'assistant.memory.sync.acceptReset' => 'Deze serverherinneringen gebruiken',
+			'assistant.memory.sync.resetNote' => 'Bevestig dit servergeheugen als nieuwe basis. Oude wachtende wijzigingen worden niet automatisch geüpload.',
+			'assistant.memory.sync.localVersion' => 'Dit apparaat',
+			'assistant.memory.sync.serverVersion' => 'Server',
+			'assistant.memory.sync.keepLocal' => 'Deze versie bewaren',
+			'assistant.memory.sync.keepServer' => 'Serverversie gebruiken',
+			'assistant.memory.sync.keepBoth' => 'Beide bewaren',
+			'assistant.memory.sync.deleted' => 'Verwijderd',
+			'assistant.memory.sync.select' => 'Delen',
+			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
+			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
+			'assistant.memory.sync.clearChanged' => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.',
+			'assistant.memory.sync.clearServer' => 'Deze serverherinneringen wissen',
+			'assistant.memory.sync.clearEverywhere' => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -6922,6 +7188,8 @@ extension on TranslationsNl {
 			'assistant.examples.tonight.1' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
 			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
@@ -7034,8 +7302,6 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.createHomeRow' => 'Rij op het beginscherm maken',
 			'assistant.confirm.titles.createCollection' => 'Collectie maken',
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',
@@ -7309,7 +7575,6 @@ extension on TranslationsNl {
 			'settingsStudio.yourLibrary' => 'Jouw bibliotheek',
 			'settingsStudio.viewPreview' => 'Bekijk voorbeeld',
 			'settingsStudio.playbackExperience' => 'Afspeelervaring',
-			'settingsStudio.manage' => 'Beheer',
 			'settingsStudio.yourWatchlist' => 'Je kijklijst',
 			'settingsStudio.yourContent' => 'Jouw content',
 			'settingsStudio.lightMode' => 'Lichte modus',

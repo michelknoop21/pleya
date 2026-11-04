@@ -30,6 +30,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../focus/focusable_text_field.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -69,6 +71,7 @@ Future<HomeCustomRow?> showTvHomeRowWizard(
     constraints: tvWidePanelConstraints(MediaQuery.sizeOf(context)),
     initialFocusNode: initialFocusNode,
     restoreLauncherFocus: true,
+    asSubpage: true,
     builder: (sheetContext) => TvHomeRowWizard(
       key: tvHomeRowWizardKey,
       initial: initial,
@@ -76,8 +79,8 @@ Future<HomeCustomRow?> showTvHomeRowWizard(
       preview: preview,
       clientFor: clientFor,
       initialFocusNode: initialFocusNode,
-      onSave: (row) => OverlaySheetController.closeAdaptive(sheetContext, row),
-      onCancel: () => OverlaySheetController.closeAdaptive(sheetContext, null),
+      onSave: (row) => OverlaySheetController.popAdaptive(sheetContext, row),
+      onCancel: () => OverlaySheetController.popAdaptive(sheetContext, null),
     ),
   );
 }
@@ -175,10 +178,24 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   /// way back to it.
   List<CatalogLibrary> get _libraries => widget.librariesFor(_kind);
 
-  UnifiedFilterCapabilities get _capabilities =>
-      unifiedFilterCapabilitiesFor(_libraries.where(_preferences.filters.selects).map((library) => library.backend));
+  UnifiedFilterCapabilities get _capabilities => unifiedFilterCapabilitiesFor(
+    _libraries.where(_preferences.filters.selects).map((library) => library.backend),
+    kind: _kind,
+  );
+
+  /// The sort the row runs on, which the saved one need not be: see
+  /// [UnifiedCatalogPreferences.effectiveSort].
+  UnifiedCatalogSort get _effectiveSort => _preferences.effectiveSort(_capabilities);
 
   void _goTo(_Step step) => _d.goTo(step);
+
+  bool get _previewFailed => _d.previewFailed;
+  bool get _canSave => _d.canSave;
+
+  void _save() {
+    final draft = _d.takeForSave();
+    if (draft != null) widget.onSave(draft);
+  }
 
   Future<void> _openFilters(TvCatalogFilterSection section) async {
     final next = await showTvCatalogFilterPanel(
@@ -187,6 +204,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
       capabilities: _capabilities,
       libraries: _libraries,
       initialSection: section,
+      asSubpage: true,
       clientFor: (serverId) => widget.clientFor?.call(serverId),
     );
     if (next == null || !mounted) return;
@@ -194,7 +212,12 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   }
 
   Future<void> _openSort() async {
-    final next = await showTvCatalogSortPanel(context, selected: _preferences.sort);
+    final next = await showTvCatalogSortPanel(
+      context,
+      selected: _effectiveSort,
+      capabilities: _capabilities,
+      asSubpage: true,
+    );
     if (next == null || !mounted) return;
     _d.setSort(next);
   }
@@ -205,40 +228,52 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
     final scale = TvLayoutConstants.scaleOf(context);
     final radius = tvPanelBorderRadius(MediaQuery.sizeOf(context));
 
-    return DecoratedBox(
-      decoration: tvPanelDecoration(mono, radius),
-      child: Padding(
-        padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Flexible(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final railWidth = (constraints.maxWidth * TvHomeRowsLayout.stepRailFraction)
-                      .clamp(TvHomeRowsLayout.stepRailMinWidth, TvHomeRowsLayout.stepRailMaxWidth)
-                      .toDouble();
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(width: railWidth, child: _stepRail(mono, scale)),
-                      SizedBox(width: TvHomeRowsLayout.stepZoneGap * scale),
-                      // Scrollable, and not because the design overflows: the
-                      // panel's height follows the viewport (hoofdstuk 14.1),
-                      // the filter step is five rows plus tags, and the smallest
-                      // canvas CAT1 has to survive is 1280x918. A step that
-                      // cannot be scrolled there is a step with a control the
-                      // remote cannot reach.
-                      Expanded(child: SingleChildScrollView(child: _body(mono, scale))),
-                    ],
-                  );
-                },
+    return AutomationNode(
+      id: AutomationIds.homeRowWizard,
+      role: 'region',
+      state: () => {
+        'step': _step.name,
+        'kind': _kind.id,
+        'loading': _isPreviewing,
+        'failed': _previewFailed,
+        'canSave': _canSave,
+        'count': _content?.loadedCount ?? 0,
+      },
+      child: DecoratedBox(
+        decoration: tvPanelDecoration(mono, radius),
+        child: Padding(
+          padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final railWidth = (constraints.maxWidth * TvHomeRowsLayout.stepRailFraction)
+                        .clamp(TvHomeRowsLayout.stepRailMinWidth, TvHomeRowsLayout.stepRailMaxWidth)
+                        .toDouble();
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: railWidth, child: _stepRail(mono, scale)),
+                        SizedBox(width: TvHomeRowsLayout.stepZoneGap * scale),
+                        // Scrollable, and not because the design overflows: the
+                        // panel's height follows the viewport (hoofdstuk 14.1),
+                        // the filter step is five rows plus tags, and the smallest
+                        // canvas CAT1 has to survive is 1280x918. A step that
+                        // cannot be scrolled there is a step with a control the
+                        // remote cannot reach.
+                        Expanded(child: SingleChildScrollView(child: _body(mono, scale))),
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
-            SizedBox(height: TvSourcePickerLayout.footerGap * scale),
-            _footer(scale),
-          ],
+              SizedBox(height: TvSourcePickerLayout.footerGap * scale),
+              _footer(scale),
+            ],
+          ),
         ),
       ),
     );
@@ -327,6 +362,8 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
               icon: kind == MediaKind.movie ? Symbols.movie_rounded : Symbols.live_tv_rounded,
               primary: _kind == kind,
               focusNode: _nodeFor('kind.${kind.id}'),
+              automationId: AutomationIds.homeRowWizardAction,
+              automationInstance: 'kind.${kind.id}',
               // Changing the kind changes which libraries take part, so a
               // source restriction picked under the other kind names libraries
               // that no longer exist here. Dropping it is the same rule
@@ -353,7 +390,6 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
           hintStyle: TextStyle(fontSize: TvHomeRowsLayout.titleFontSize * scale, color: mono.textMuted),
           border: const OutlineInputBorder(),
         ),
-        onChanged: (_) => setState(() {}),
       ),
       SizedBox(height: TvHomeRowsLayout.titleGap * scale * 2),
       Text(
@@ -367,7 +403,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
     // The words come from the draft, the same five lines the phone wizard
     // shows; what is TV's own is the icon and the panel each line opens.
     final rows = [
-      for (final line in _d.filterLines(sortLabel))
+      for (final line in _d.filterLines(sortLabel, capabilities: _capabilities))
         (
           icon: switch (line.key) {
             'status' => Symbols.visibility_rounded,
@@ -401,6 +437,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
             value: row.value,
             scale: scale,
             focusNode: _nodeFor('filter.${row.key}'),
+            automationInstance: 'filter.${row.key}',
             onPressed: row.onPressed,
           ),
           SizedBox(height: TvHomeRowsLayout.rowGap * scale),
@@ -414,7 +451,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   List<TvCatalogSelectionTag> _tags() => [
     TvCatalogSelectionTag(_kind == MediaKind.movie ? t.unifiedCatalog.moviesTitle : t.unifiedCatalog.seriesTitle),
     for (final part in homeCustomRowFilterParts(_draft)) TvCatalogSelectionTag(part),
-    TvCatalogSelectionTag(sortLabel(_preferences.sort), muted: true),
+    TvCatalogSelectionTag(sortLabel(_effectiveSort), muted: true),
   ];
 
   Widget _previewStep(MonoTokens mono, double scale) {
@@ -448,7 +485,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
                   ?homeCustomRowCountLabel(content),
                   _kind == MediaKind.movie ? t.unifiedCatalog.moviesTitle : t.unifiedCatalog.seriesTitle,
                   ...homeCustomRowFilterParts(_draft),
-                  sortLabel(_preferences.sort),
+                  sortLabel(_effectiveSort),
                 ].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -463,7 +500,9 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
           ],
         ),
         SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-        if (_isPreviewing || content == null)
+        if (_previewFailed)
+          Text(t.common.error, style: TextStyle(color: mono.textMuted))
+        else if (_isPreviewing || content == null)
           SizedBox(
             height: TvHomeRowsLayout.previewPosterHeight * scale,
             child: const Center(child: CircularProgressIndicator()),
@@ -482,8 +521,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
   }
 
   Widget _footer(double scale) {
-    final content = _content;
-    final canSave = _step == _Step.preview && content != null && !content.isEmpty;
+    final canSave = _canSave;
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -491,6 +529,8 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
           scale: scale,
           primary: false,
           focusNode: _nodeFor('footer.back'),
+          automationId: AutomationIds.homeRowWizardAction,
+          automationInstance: 'footer.back',
           icon: _step == _Step.nameAndKind ? null : Symbols.arrow_back_rounded,
           label: _step == _Step.nameAndKind ? t.common.cancel : t.unifiedCatalog.homeRows.back,
           onPressed: () => _step == _Step.nameAndKind ? widget.onCancel() : _goTo(_Step.values[_step.index - 1]),
@@ -501,6 +541,8 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
             scale: scale,
             primary: true,
             focusNode: _nodeFor('footer.next'),
+            automationId: AutomationIds.homeRowWizardAction,
+            automationInstance: 'footer.next',
             icon: Symbols.arrow_forward_rounded,
             label: t.unifiedCatalog.homeRows.next,
             onPressed: () => _goTo(_Step.values[_step.index + 1]),
@@ -513,6 +555,8 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
             primary: true,
             autofocus: true,
             focusNode: _nodeFor('footer.adjust'),
+            automationId: AutomationIds.homeRowWizardAction,
+            automationInstance: 'footer.adjust',
             icon: Symbols.tune_rounded,
             label: t.unifiedCatalog.homeRows.adjustFilters,
             onPressed: () => _goTo(_Step.filters),
@@ -522,9 +566,11 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
             scale: scale,
             primary: true,
             focusNode: _nodeFor('footer.save'),
+            automationId: AutomationIds.homeRowWizardAction,
+            automationInstance: 'footer.save',
             icon: Symbols.add_rounded,
             label: widget.initial == null ? t.unifiedCatalog.homeRows.addRow : t.unifiedCatalog.homeRows.saveRow,
-            onPressed: () => widget.onSave(_draft),
+            onPressed: _save,
           ),
       ],
     );

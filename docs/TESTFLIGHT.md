@@ -3,12 +3,35 @@
 Automatische TestFlight-uploads voor iOS, tvOS en macOS naar interne testers
 (geen Beta App Review nodig). Draait lokaal op de Mac van Michel.
 
+## Toegang vooraf controleren
+
+Controleer bij releasevoorbereiding eerst de GitHub-aanmelding, vóór de push en vóór lange builds:
+
+```bash
+gh auth status --hostname github.com
+```
+
+Bij de GitHub CLI-OAuth-aanmelding moet de scope `workflow` aanwezig zijn wanneer de push
+`.github/workflows/` wijzigt. Alleen `repo` is daarvoor onvoldoende. Gebruik hiervoor geen
+`--show-token`; de account- en scope-informatie volstaat. Ontbreekt de scope, voeg die na
+expliciet akkoord voor de extra accounttoegang toe via de normale herautorisatie:
+
+```bash
+gh auth refresh --hostname github.com --scopes workflow
+```
+
+Rond de eventuele GitHub-apparaatbevestiging af en controleer daarna de scope opnieuw. De CLI
+bewaart de vernieuwde aanmelding in de bestaande credential store; dit maakt geen nieuwe
+API-sleutel. De controle blijft nodig omdat GitHub of de gebruiker toegang later kan intrekken.
+De gewone review-, CI-, mainmerge- en uitrolgates blijven gelden.
+
 ## Hoe het werkt
 
 - `fastlane/Fastfile`: lanes `ios_beta`, `tvos_beta`, `macos_beta`, `beta` (alle drie),
   plus `attach_builds`, `external` en `add_testers` (zie hieronder).
-- `scripts/testflight_release.sh [--clean] [lane]` bumpt het build number in `pubspec.yaml`,
-  commit+pusht dat, en draait daarna de fastlane lane (default `beta`).
+- `scripts/testflight_release.sh [--clean] [lane]` draait de fastlane lane (default `beta`).
+  Fastlane bepaalt het buildnummer via App Store Connect; pas na een geslaagde lane legt het
+  script een gewijzigde `pubspec.yaml` vast en probeert die commit te pushen.
 - Het script zet `scripts/xattr-fast/` vooraan in `PATH`. Zonder die shim besteedt
   `flutter build ios` ruim een uur aan twee recursieve `xattr`-passes over de hele repo
   voordat `xcodebuild` begint; zie [DEC-029](DECISIONS.md#dec-029). Na afloop rapporteert
@@ -73,7 +96,7 @@ Connect API `.p8`, rol App Manager).
 ```bash
 scripts/testflight_release.sh            # alles: bump + iOS + tvOS + macOS
 scripts/testflight_release.sh ios_beta   # alleen iOS
-fastlane ios_beta                        # zonder build-number bump
+fastlane ios_beta                        # rechtstreeks; zonder wrappercommit/push
 ```
 
 ## Verplicht vóór een iOS-upload: QR-scannen op echte hardware

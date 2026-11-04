@@ -508,6 +508,9 @@ class _TranslationsMediaMenuSv extends TranslationsMediaMenuEn {
 	final TranslationsSv _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Titta';
+	@override String get manage => 'Hantera';
+	@override String get moreWaysToWatch => 'Fler sätt att titta';
 	@override String get markAsWatched => 'Markera som sedd';
 	@override String get markAsUnwatched => 'Markera som osedd';
 	@override String get removeFromContinueWatching => 'Ta bort från Fortsätt titta';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesSv extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Hantera bibliotek';
 	@override String get sort => 'Sortera';
 	@override String get sortBy => 'Sortera efter';
+	@override String get filterBy => 'Filtrera efter';
 	@override String get filters => 'Filter';
 	@override String get confirmActionMessage => 'Är du säker på att du vill utföra denna åtgärd?';
 	@override String get showLibrary => 'Visa bibliotek';
@@ -1826,11 +1830,9 @@ class _TranslationsTvMyPleyaSv extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} av ${total} servrar online';
 	@override String get noServers => 'Inga servrar anslutna';
 	@override String get statusOnline => 'Online';
-	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Servrar';
 	@override String get activity => 'Aktivitet';
 	@override String get logs => 'Loggar och diagnostik';
-	@override String signedInAs({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Sparade filmer och serier';
 	@override String get requestsSubtitle => 'Förfrågningar och upptäck';
 	@override String get downloadsSubtitle => 'Offline och synkroniseringsregler';
@@ -1881,7 +1883,6 @@ class _TranslationsSettingsStudioSv extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Ditt bibliotek';
 	@override String get viewPreview => 'Visa förhandsvisning';
 	@override String get playbackExperience => 'Uppspelningsupplevelse';
-	@override String get manage => 'Hantera';
 	@override String get yourWatchlist => 'Din lista';
 	@override String get yourContent => 'Ditt innehåll';
 	@override String get lightMode => 'Ljust läge';
@@ -2696,6 +2697,9 @@ extension on TranslationsSv {
 			'fileInfo.duration' => 'Varaktighet',
 			'fileInfo.optimizedForStreaming' => 'Optimerad för streaming',
 			'fileInfo.has64bitOffsets' => '64-bit offset',
+			'mediaMenu.watch' => 'Titta',
+			'mediaMenu.manage' => 'Hantera',
+			'mediaMenu.moreWaysToWatch' => 'Fler sätt att titta',
 			'mediaMenu.markAsWatched' => 'Markera som sedd',
 			'mediaMenu.markAsUnwatched' => 'Markera som osedd',
 			'mediaMenu.removeFromContinueWatching' => 'Ta bort från Fortsätt titta',
@@ -2853,11 +2857,11 @@ extension on TranslationsSv {
 			'messages.noEpisodesFoundGeneral' => 'Inga avsnitt hittades',
 			'messages.episodesLoadFailed' => 'Det gick inte att läsa in avsnitt',
 			'messages.noResultsFound' => 'Inga resultat hittades',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sovtimer inställd för ${label}',
 			'messages.noItemsAvailable' => 'Inga objekt tillgängliga',
 			'messages.failedToCreatePlayQueueNoItems' => 'Det gick inte att skapa uppspelningskö – inga objekt',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Kunde inte ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Byter till kompatibel spelare...',
 			'messages.serverLimitTitle' => 'Uppspelningen misslyckades',
@@ -3031,6 +3035,7 @@ extension on TranslationsSv {
 			'libraries.manageLibraries' => 'Hantera bibliotek',
 			'libraries.sort' => 'Sortera',
 			'libraries.sortBy' => 'Sortera efter',
+			'libraries.filterBy' => 'Filtrera efter',
 			'libraries.filters' => 'Filter',
 			'libraries.confirmActionMessage' => 'Är du säker på att du vill utföra denna åtgärd?',
 			'libraries.showLibrary' => 'Visa bibliotek',
@@ -3366,12 +3371,12 @@ extension on TranslationsSv {
 			'companionRemote.session.serverRunningDescription' => 'Mobila enheter i ditt nätverk kan ansluta till den här appen',
 			'companionRemote.session.serverStoppedDescription' => 'Starta servern för att tillåta mobila enheter att ansluta',
 			'companionRemote.session.usePhoneToControl' => 'Använd din mobila enhet för att styra denna app',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Starta server',
 			'companionRemote.session.stopServer' => 'Stoppa server',
 			'companionRemote.session.minimize' => 'Minimera',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samma Plex-konto visas här',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Ansluter...',
 			'companionRemote.pairing.searchingForDevices' => 'Söker efter enheter...',
@@ -3775,11 +3780,9 @@ extension on TranslationsSv {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} av ${total} servrar online',
 			'tvMyPleya.noServers' => 'Inga servrar anslutna',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Servrar',
 			'tvMyPleya.activity' => 'Aktivitet',
 			'tvMyPleya.logs' => 'Loggar och diagnostik',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Inloggad som ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Sparade filmer och serier',
 			'tvMyPleya.requestsSubtitle' => 'Förfrågningar och upptäck',
 			'tvMyPleya.downloadsSubtitle' => 'Offline och synkroniseringsregler',
@@ -3813,7 +3816,6 @@ extension on TranslationsSv {
 			'settingsStudio.yourLibrary' => 'Ditt bibliotek',
 			'settingsStudio.viewPreview' => 'Visa förhandsvisning',
 			'settingsStudio.playbackExperience' => 'Uppspelningsupplevelse',
-			'settingsStudio.manage' => 'Hantera',
 			'settingsStudio.yourWatchlist' => 'Din lista',
 			'settingsStudio.yourContent' => 'Ditt innehåll',
 			'settingsStudio.lightMode' => 'Ljust läge',

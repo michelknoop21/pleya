@@ -1,11 +1,21 @@
+import 'dart:io';
+
+import 'package:cached_network_image_ce/cached_network_image.dart' show FileInfo;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:os_media_controls/os_media_controls.dart';
 import 'package:rate_limiter/rate_limiter.dart';
 
 import '../media/media_server_client.dart';
+import '../media/ids.dart';
+import 'download_artwork_service.dart';
+import 'download_storage_service.dart';
+import 'image_cache_service.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../utils/app_logger.dart';
+import '../utils/player_utils.dart';
+import '../mpv/mpv.dart';
 
 /// Manages OS media controls integration for video playback.
 ///
@@ -26,6 +36,7 @@ class MediaControlsManager {
   bool? _lastCanGoPrevious;
   bool? _lastCanSeek;
   bool _updatesSuspended = false;
+  int _metadataGeneration = 0;
   _PlaybackStateParams? _lastPublishedState;
   final Stopwatch _publishedClock = Stopwatch();
 
@@ -46,22 +57,45 @@ class MediaControlsManager {
   /// self-authenticated image URL).
   Future<void> updateMetadata({required MediaItem metadata, MediaServerClient? client, Duration? duration}) async {
     if (_updatesSuspended) return;
+    final generation = ++_metadataGeneration;
 
     try {
       String? artworkUrl;
-      if (client != null && metadata.thumbPath != null) {
+      Uint8List? artwork;
+      final thumb = metadata.thumbPath;
+      if (thumb != null) {
         try {
-          artworkUrl = client.thumbnailUrl(metadata.thumbPath!);
-          appLogger.d('Artwork URL for media controls: $artworkUrl');
+          final serverId = metadata.serverId;
+          final localPath = serverId == null
+              ? null
+              : DownloadArtworkService.localPathSync(DownloadStorageService.instance, ServerId(serverId), thumb);
+          if (localPath != null && await DownloadArtworkService.isUsableArtworkFile(File(localPath))) {
+            artwork = await File(localPath).readAsBytes();
+          } else if (client != null) {
+            final url = client.thumbnailUrl(thumb);
+            final spec = client.resolveDownloadArtwork(metadata).where((spec) => spec.url == url).firstOrNull;
+            if (spec?.headersSupplier != null) {
+              // Native URL loaders cannot attach the account's bearer header.
+              final headers = await spec!.headersSupplier!();
+              final response = await PlexImageCacheManager.instance
+                  .getFileStream(url, headers: headers)
+                  .firstWhere((response) => response is FileInfo);
+              artwork = await (response as FileInfo).file.readAsBytes();
+            } else if (url.isNotEmpty) {
+              artworkUrl = url;
+            }
+          }
         } catch (e) {
-          appLogger.w('Failed to build artwork URL', error: e);
+          appLogger.w('Failed to load artwork for media controls', error: e);
         }
       }
+      if (_updatesSuspended || generation != _metadataGeneration) return;
 
       await OsMediaControls.setMetadata(
         MediaMetadata(
           title: metadata.title ?? '',
           artist: _buildArtist(metadata),
+          artwork: artwork,
           artworkUrl: artworkUrl,
           duration: duration,
         ),
@@ -148,7 +182,11 @@ class MediaControlsManager {
         (canGoNext ? controlsToEnable : controlsToDisable).add(MediaControl.next);
       }
       if (canSeek != _lastCanSeek) {
-        (canSeek ? controlsToEnable : controlsToDisable).add(MediaControl.seek);
+        (canSeek ? controlsToEnable : controlsToDisable).addAll([
+          MediaControl.seek,
+          MediaControl.skipForward,
+          MediaControl.skipBackward,
+        ]);
       }
 
       if (controlsToEnable.isEmpty && controlsToDisable.isEmpty) return;
@@ -169,10 +207,18 @@ class MediaControlsManager {
     }
   }
 
+  Future<void> updateSubtitleOptions(List<Map<String, String>> options, String? selectedId) async {
+    if (_updatesSuspended) return;
+    await const MethodChannel(
+      'com.edde746.os_media_controls/methods',
+    ).invokeMethod<void>('setSubtitleOptions', {'options': options, 'selectedId': selectedId});
+  }
+
   /// Clear all media controls
   ///
   /// Should be called when playback stops or screen is disposed.
   Future<void> clear() async {
+    _metadataGeneration++;
     _throttledUpdate.cancel();
     _lastPublishedState = null;
     try {
@@ -190,6 +236,7 @@ class MediaControlsManager {
   void suspendUpdates() {
     if (_updatesSuspended) return;
     _updatesSuspended = true;
+    _metadataGeneration++;
     _lastPublishedState = null;
     _throttledUpdate.cancel();
     appLogger.d('Media controls updates suspended');
@@ -203,6 +250,7 @@ class MediaControlsManager {
 
   /// Dispose resources
   void dispose() {
+    _metadataGeneration++;
     _throttledUpdate.cancel();
   }
 
@@ -243,4 +291,17 @@ class _PlaybackStateParams {
   final double speed;
 
   const _PlaybackStateParams({required this.isPlaying, required this.position, required this.speed});
+}
+
+/// Resolve system seeks through the player's presentation timeline and bounds.
+Duration? mediaControlSeekTarget(MediaControlEvent event, Player player, {required bool canSeek}) {
+  if (!canSeek) return null;
+  if (event is SeekEvent) return clampSeekPosition(player, event.position);
+  final interval = switch (event) {
+    SkipForwardEvent() => event.interval,
+    SkipBackwardEvent() => event.interval,
+    _ => null,
+  };
+  if (interval == null || interval <= Duration.zero) return null;
+  return clampSeekPosition(player, player.state.position + (event is SkipBackwardEvent ? -interval : interval));
 }

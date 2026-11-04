@@ -50,9 +50,11 @@ class _FakeHttpClient extends http.BaseClient {
 
   final int statusCode;
   final List<int> body;
+  http.BaseRequest? lastRequest;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    lastRequest = request;
     return http.StreamedResponse(Stream<List<int>>.value(body), statusCode, request: request);
   }
 }
@@ -134,6 +136,31 @@ void main() {
 
     expect(file.existsSync(), isFalse);
     expect(File('${file.path}.download').existsSync(), isFalse);
+  });
+
+  test('artwork requests resolve originating account headers at transfer time', () async {
+    final settings = await SettingsService.getInstance();
+    final storage = DownloadStorageService.instance;
+    await storage.initialize(settings);
+    final transport = _FakeHttpClient(200, utf8.encode('image bytes'));
+    final service = DownloadArtworkService(
+      storageService: storage,
+      http: MediaServerHttpClient(client: transport),
+    );
+    var token = 'old';
+    var calls = 0;
+    final spec = DownloadArtworkSpec(
+      localKey: 'poster',
+      url: 'https://fixture.test/poster',
+      headersSupplier: () async {
+        calls++;
+        return {'Authorization': 'Bearer $token'};
+      },
+    );
+    token = 'fresh';
+    await service.downloadSingleArtwork(ServerId('srv'), spec);
+    expect(calls, 1);
+    expect(transport.lastRequest?.headers['Authorization'], 'Bearer fresh');
   });
 
   test('downloadSingleArtwork replaces unusable existing files', () async {

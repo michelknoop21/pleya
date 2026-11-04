@@ -118,6 +118,10 @@ func New(opts Options) *Runner {
 // Register koppelt een soort werk aan zijn uitvoerder.
 func (r *Runner) Register(kind string, h Handler) { r.handlers[kind] = h }
 
+// Registered leest de bij opstarten vastgelegde handlerregistratie. Registreren
+// gebeurt vóór Run en vóór HTTP-aanvragen, net als de bestaande dispatchmap.
+func (r *Runner) Registered(kind string) bool { return r != nil && r.handlers[kind] != nil }
+
 // Enqueue zet werk in de wachtrij.
 //
 // Een dedupeKey houdt een tweede verzoek voor hetzelfde werk eruit zolang het

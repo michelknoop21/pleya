@@ -1,9 +1,9 @@
 <!-- Gallerijlabels zijn hier gewone Nederlandse tekst: de route bestaat alleen in ontwikkeling. -->
 <script lang="ts">
-  import Skeleton from '$lib/components/Skeleton.svelte';
-  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
-  import Artwork from '$lib/components/Artwork.svelte';
-  import Panel from '$lib/components/Panel.svelte';
+  import Skeleton from '#lib/components/Skeleton.svelte';
+  import SkeletonPage from '#lib/components/SkeletonPage.svelte';
+  import Artwork from '#lib/components/Artwork.svelte';
+  import Panel from '#lib/components/Panel.svelte';
   import GallerySection from './GallerySection.svelte';
 
   const variants = ['home', 'grid', 'detail', 'compact'] as const;

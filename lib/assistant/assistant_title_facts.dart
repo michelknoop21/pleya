@@ -9,6 +9,9 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 
 import '../media/ids.dart';
+import '../media/media_backend.dart';
+import '../services/pleya_server_client.dart';
+import '../utils/stored_identity_trust.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../services/seerr/seerr_client.dart';
@@ -30,6 +33,8 @@ class TitleRef {
     this.tvdb,
     this.item,
     this.serverId,
+    this.idsAreExternal = false,
+    this.identityItem,
   });
 
   final TmdbKind kind;
@@ -42,6 +47,12 @@ class TitleRef {
   /// The library item when the title is on a server; its fields come first.
   final MediaItem? item;
   final String? serverId;
+
+  /// Explicit Seerr/Web title identity, independent of a possible library copy.
+  final bool idsAreExternal;
+
+  /// Existing parent/show snapshot that owns an episode target’s provider id.
+  final MediaItem? identityItem;
 
   String get dedupeKey => tmdbId != null
       ? '${kind.path}:tmdb:$tmdbId'
@@ -273,19 +284,97 @@ class TitleFactsService {
         : null;
   }
 
-  /// Facts per ref, in order. Identical refs share one lookup.
+  /// Qualify library identity before any provider-id dedupe or warm future.
   Future<List<TitleFacts>> factsFor(List<TitleRef> refs) async {
-    final unique = <String, TitleRef>{for (final r in refs) r.dedupeKey: r};
-    final queue = unique.values.toList();
+    final results = List<TitleFacts?>.filled(refs.length, null);
+    final queue = [for (var i = 0; i < refs.length; i++) i];
+    final contexts = List<bool Function()?>.filled(refs.length, null);
     Future<void> worker() async {
       while (queue.isNotEmpty) {
-        final ref = queue.removeAt(0);
-        await (_inFlight[ref.dedupeKey] ??= _factsFor(ref));
+        final index = queue.removeAt(0);
+        final original = refs[index];
+        final client = _clientFor(original);
+        final source = _sourceOf(client);
+        var independent = false;
+        bool current() => independent || (identical(_clientFor(original), client) && _sourceOf(client) == source);
+        contexts[index] = current;
+        final ref = await _qualifiedRef(original, client);
+        independent = ref.item == null;
+        if (!current()) {
+          results[index] = serverFacts(original.item);
+          continue;
+        }
+        // Server fields belong to this snapshot, not every copy of a TMDB id.
+        final binding = ref.item == null
+            ? ''
+            : ':${ref.serverId}:${ref.item!.id}:${identityHashCode(ref.item)}:$source';
+        final key = '${ref.dedupeKey}$binding';
+        final future = _inFlight[key] ??= _factsFor(
+          ref,
+          resolveServerIds: !_isPleya(original, client),
+          libraryCurrent: ref.item == null ? null : current,
+        );
+        final got = await future;
+        if (!current()) {
+          if (identical(_inFlight[key], future)) _inFlight.remove(key);
+          results[index] = ref.idsAreExternal ? const TitleFacts() : serverFacts(original.item);
+        } else {
+          results[index] = got;
+        }
       }
     }
 
     await Future.wait([for (var i = 0; i < concurrency; i++) worker()]);
-    return [for (final r in refs) await _inFlight[r.dedupeKey]!];
+    return [
+      for (var i = 0; i < results.length; i++)
+        if (contexts[i]?.call() == false)
+          (refs[i].idsAreExternal ? const TitleFacts() : serverFacts(refs[i].item))
+        else
+          results[i]!,
+    ];
+  }
+
+  MediaServerClient? _clientFor(TitleRef ref) =>
+      ref.serverId == null || ref.item == null ? null : clientFor?.call(ServerId(ref.serverId!));
+  String _sourceOf(MediaServerClient? client) =>
+      client is PleyaServerClient ? client.externalIdentitySource : (client?.backend.name ?? 'unavailable');
+  bool _isPleya(TitleRef ref, MediaServerClient? client) =>
+      ref.item?.backend == MediaBackend.pleyaServer || client is PleyaServerClient;
+
+  TitleRef _withoutLibrary(TitleRef ref) => TitleRef(
+    kind: ref.kind,
+    title: ref.title,
+    year: ref.year,
+    tmdbId: ref.tmdbId,
+    imdb: ref.imdb,
+    tvdb: ref.tvdb,
+    idsAreExternal: true,
+  );
+
+  Future<TitleRef> _qualifiedRef(TitleRef ref, MediaServerClient? client) async {
+    if (!_isPleya(ref, client) || (client is PleyaServerClient && client.usesLegacyExternalIdentity)) return ref;
+    final item = ref.item!;
+    final ids = await pleyaAppliedTitleIds(
+      item,
+      client is PleyaServerClient ? client : null,
+      identityItem: ref.identityItem,
+    );
+    if (ref.idsAreExternal) {
+      // A known external title does not prove that this library item is its copy.
+      if (ref.tmdbId == null || ids.tmdb != ref.tmdbId) return _withoutLibrary(ref);
+      return ref;
+    }
+    return TitleRef(
+      kind: ref.kind,
+      title: ref.title,
+      year: ref.year,
+      tmdbId: ids.tmdb,
+      imdb: ids.imdb,
+      tvdb: ids.tvdb,
+      item: item,
+      serverId: ref.serverId,
+      identityItem: ref.identityItem,
+    );
   }
 
   bool _take() => budget-- > 0;
@@ -303,13 +392,13 @@ class TitleFactsService {
     return null;
   }
 
-  Future<TitleFacts> _factsFor(TitleRef ref) async {
+  Future<TitleFacts> _factsFor(TitleRef ref, {bool resolveServerIds = true, bool Function()? libraryCurrent}) async {
     final facts = serverFacts(ref.item);
     var tmdbId = ref.tmdbId;
     var imdb = ref.imdb;
     var tvdb = ref.tvdb;
     final client = ref.serverId == null || ref.item == null ? null : clientFor?.call(ServerId(ref.serverId!));
-    if (client != null && (tmdbId == null || imdb == null)) {
+    if (resolveServerIds && client != null && (tmdbId == null || imdb == null)) {
       final ids = await _guard('server ids', () => client.fetchExternalIds(ref.item!.id));
       tmdbId ??= ids?.tmdb;
       imdb ??= ids?.imdb;
@@ -329,7 +418,8 @@ class TitleFactsService {
             : 'notmdb'}';
     if (tmdbId != null) {
       final cached = await cache.get(ref.kind, tmdbId, cacheLang);
-      if (cached != null) return facts.merge(cached);
+      if (cached != null)
+        return libraryCurrent?.call() == false ? (ref.idsAreExternal ? cached : facts) : facts.merge(cached);
     }
 
     var external = const TitleFacts();
@@ -382,6 +472,7 @@ class TitleFactsService {
         await cache.put(ref.kind, tmdbId, cacheLang, external, complete: tmdbDone);
       }
     }
+    if (libraryCurrent?.call() == false) return ref.idsAreExternal ? external : facts;
     return facts.merge(external);
   }
 }

@@ -1,0 +1,23 @@
+# Pin-cache503 — herstelpatch voor onafhankelijke review
+
+Roadmap C-05/S22.5, bestaand servergapwerk. Basis/HEAD `e8aba921f595712b33711e68cda57f95dd06a1f8`; branch `fix/server-cache-recovery-1102`. Checkpoint e8 en oude librarybranch behouden; geen commit, authoritywrite, push, NAS, protocol- of schemawijziging. Unified impact: bestaande brongebonden pin-ID/SHA, rechten en gebruikersintentie blijven; andere adapters/ongewijzigde clientroutes niet geraakt.
+
+**Oorzaakbewijs:** retained normale schema34-image `16c1f89d9909463677f009450ca02934f4bf2643b09de0b22009fdb0bcf2156a` reproduceert oorspronkelijke host503 in ronde1 van maximaal12; daarna gestopt. Host `shutil.rmtree` afgerond, hostexists=false, direct dezelfde pinGET503; log `open /cache/artwork-pins/.incoming-2316607259: no such file or directory`. Guestmap daarna ook afwezig; pin-ID/intentie/SHA exact behouden. `host-probe.py` exit0 betekent geslaagde diagnose met `REPRODUCED`, **geen herstel-PASS**. Ruwe volgorde, fout en intentie: `host-rounds.json`, `host-probe-server.log`, `pin-before.json`, `host-outcome.json`; bron-/callchainanalyse `CAUSE.md`. MkdirAll→CreateTempENOENT is vastgesteld; exacte virtiofs-interne oorzaak blijft onbewezen. Oud bewijs `/tmp/task5-image-schema34-1102` ongewijzigd.
+
+**Minimale fix:** beide bestaande callers geven context aan private `writeCache`; artwork-private `retryPinCacheWrite(ctx,attempt)` herhaalt alleen `errors.Is(os.ErrNotExist)`, maximaal3pogingen met10ms cancellable timer ertussen en contextcheck vóór iedere poging. Elke poging voert bestaande MkdirAll/temp/write/fsync/close/rename/cleanup uit; de body is bytegelijk (`attempt-body-parity.txt`). Geen bronrefetch/andere digest of pinwrite tijdens retry; ENOSPC/EACCES/andere fouten direct door. Geen globale hook, Pinsinjectie of genericfilesystemlaag.
+
+**Uitvoering, bestaande testimage `pleya-server-test:go-ffmpeg-amd64` eb9df1d88129, alle heavyacties via pleya-heavy en eigen runner:**
+
+| Bewijs | Exacte gerichte opdracht | Exit/resultaat |
+| --- | --- | --- |
+| Deterministische RED | `go test ./internal/artwork -run '^TestPinCache' -count=1 -timeout 60s -v` | exit1;4 hoofd/6 incl.sub FAIL,1/3 PASS,0SKIP |
+| Eerste unitGREEN | `go test ./internal/artwork -run '^TestPinCache' -count=1 -v` | exit0;5/9 PASS,0FAIL/SKIP |
+| Bron/SHA/pinstatus/rechten/gate/API | `go test ./internal/artwork ./internal/api -run '^(TestPin|TestArtworkPins|TestArtworkReviewBI1)' -count=1 -v` | exit0;17/32 PASS,0FAIL/SKIP |
+| Vet | `go vet ./internal/artwork ./internal/api` | exit0,lege vet.log |
+| Finale unit incl.cleanup | dezelfde RED-opdracht op finale bron | exit0;6/10 PASS,0FAIL/SKIP |
+
+Scripts/rawlogs `unit-red.sh`/`unit-red.log`, `tests.sh`/`unit.log`/`regressions.log`/`vet.log`, `unit-final.sh`/`unit-final.log`. RED baseline `pins.no-retry.go` heeft uitsluitend seamrefactor, geen herstel; CreateTemp én Rename krijgen echte filesystemENOENT nadat de map gecontroleerd verwijderd is. Dit is een equivalente native foutgrens, **geen reproductie van de virtiofs-internals**. Negatieven: geen retry, blijvendENOENTbegrensd, ENOSPC/EACCES direct, annulering/geen write, permanente Renamefout/temprestanten; exacte outputbytes na herstel. Bestaande APItests bewijzen onder meer bronverlies503, bronvervanging409, onveranderlijke ID/ETag, keylesslocal, generation/rematch/GC, rechten en concurrente decodegate. Testseam akkoord door root na oorzaakanalyse. Eerste unitstarter exit125 vóórcompile door arm64tag+amd64request; gecorrigeerd naar bestaande amd64tag, geen nieuwe image/build. `gofmt` en `git diff --check` exit0.
+
+**Frozen reviewpakket:** `source-freeze.json`, kopieën `source/`, `fix.diff` SHA256 `4834abc8d930bc820d6d2bad0f18ebff461a515013e90541e6a41cb460517417`. Slechts2 gewijzigde paden. Productie `pins.go` SHA256 `adf1cb96afe792fa0b14b974087f2ba101017db3a73948322e880f37d8f6b55a`; test `pin_cache_test.go` SHA256 `b28518e1c880f560a4c0d9f211ceb342258d57867b2d8be9338bcfe317981970`. Alle artifacthashes `evidence-sha256.json`.
+
+**Limieten/vervolg:** herstelmechanisme en gerichte regressies groen; onafhankelijke fixreview en normale frozenimage-hostGREEN blijven pending bij root. Geen nieuwe image gebouwd of hostGREEN geclaimd; geen brede suite of nieuwe native/Fluttergate. Eigen `task5_pin_cache_1102_pg/net/server/runner` vooraf op afwezigheid gecontroleerd, uitsluitend eigen test-db.sh gebruikt, alles opgeruimd; nacontrole geen eigen resources, beschermde restore-ID283651dc… nog exited. Geen volumes/images verwijderd, prune/restart of andere containers gewijzigd. Geen uitvoeringsblocker; release-/authorityclosure blijft open.

@@ -19,6 +19,8 @@ import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/jellyfin_media_info_mapper.dart';
 import 'package:pleya/services/playback_initialization_service.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/pleya_server_api_cache.dart';
+import '../pleya_server/pleya_fake_server.dart';
 import 'package:pleya/services/plex_mappers.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -211,6 +213,56 @@ void main() {
     expect(result.videoUrl, 'content://offline/jf-item-1');
     expect(result.mediaInfo?.audioTracks.single.languageCode, 'eng');
     expect(result.mediaInfo?.chapters.single.title, 'Chapter 1');
+  });
+
+  test('offline Pleya sidecar metadata follows stable UUID when stream order changes', () async {
+    PleyaServerApiCache.initialize(db);
+    final fake = PleyaFakeServer();
+    fake.addItem(id: 'movie-1', kind: 'movie', title: 'Offline', durationMs: 60000);
+    final version = (fake.items['movie-1']!['versions'] as List).single as Map;
+    version['subtitle_streams'] = [
+      {
+        'id': 'other',
+        'format': 'srt',
+        'is_external': true,
+        'is_forced': false,
+        'is_hearing_impaired': false,
+        'language': 'fre',
+      },
+      {
+        'id': 'stable-uuid',
+        'is_hearing_impaired': false,
+        'format': 'srt',
+        'is_external': true,
+        'language': 'eng',
+        'title': 'Remembered caption',
+        'is_forced': true,
+      },
+    ];
+    await PleyaServerApiCache.instance.put(ServerId('scope-a'), '/items/movie-1', fake.items['movie-1']!);
+    await _insertDownloaded(
+      db,
+      serverId: ServerId('srv-1'),
+      clientScopeId: 'scope-a',
+      ratingKey: 'movie-1',
+      videoFilePath: 'content://offline/movie-1',
+    );
+    final path = await DownloadStorageService.instance.getSubtitlePath(
+      ServerId('srv-1'),
+      'movie-1',
+      -1,
+      'srt',
+      sourceStreamId: 'stable-uuid',
+    );
+    await File(path).writeAsString('1\n00:00:00,000 --> 00:00:01,000\nHello');
+    final result = await PlaybackInitializationService(database: db).getPlaybackData(
+      metadata: MediaItem(id: 'movie-1', backend: MediaBackend.pleyaServer, kind: MediaKind.movie, serverId: 'srv-1'),
+      selectedMediaIndex: 0,
+      preferOffline: true,
+    );
+    expect(result.externalSubtitles.single.title, contains('Remembered caption'));
+    expect(result.externalSubtitles.single.language, 'eng');
+    expect(result.externalSubtitles.single.isForced, isTrue);
   });
 
   test('SAF offline playback discovers app-managed sidecar subtitles', () async {

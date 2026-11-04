@@ -1,0 +1,41 @@
+name: ios.pleya.playback
+target: ios-sim
+# Native HLS + sidecar transport against fixture. Output quality is measured separately by Go/ffprobe.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: playback.app.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 20000}
+  - wait_until: {id: "home.rail.item[0.0]", timeout: 15000}
+  - settle: 2000
+  - tap: {id: "home.rail.item[0.0]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 1000
+  - tap: {id: media-detail.play}
+  - wait_until: {id: player.play_pause, timeout: 25000}
+  - wait_until: {id: player.surface, state: {first_frame: true, external_subtitle_count: 2}, timeout: 15000}
+  - tap: {id: player.play_pause}
+  - settle: 500
+  - assert: {id: player.play_pause, state: {playing: false}}
+  - assert: {id: player.surface, state: {first_frame: true, external_subtitle_count: 2}}
+  - snapshot: hls-sidecar-paused
+  - tap: {id: player.settings_button}
+  - wait_until: {id: player.settings.quality, timeout: 10000}
+  - settle: 700
+  - assert: {id: player.settings.quality, insideViewport: true}
+  - snapshot: quality-settings
+  - tap: {id: player.settings.quality}
+  - wait_until: {id: "player.source_choice[quality.original]", timeout: 10000}
+  - snapshot: quality-before
+  - tap: {id: "player.source_choice[quality.p1080_20mbps]"}
+  - wait_until: {id: player.surface, state: {first_frame: true}, timeout: 15000}
+  - settle: 1500
+  - tap: {id: player.settings_button}
+  - wait_until: {id: player.settings.quality, timeout: 10000}
+  - tap: {id: player.settings.quality}
+  - wait_until: {id: "player.source_choice[quality.p1080_20mbps]", timeout: 10000}
+  - assert: {id: "player.source_choice[quality.p1080_20mbps]", state: {selected: true}}
+  - snapshot: quality-selected

@@ -1,33 +1,12 @@
-/**
- * Waar de twee tokens staan.
- *
- * Het refreshtoken staat in `localStorage`, en dat is een vastgelegde afweging
- * en geen eindmodel. Een strikte CSP maakt XSS moeilijker, niet onmogelijk;
- * zolang het token vanuit JavaScript bereikbaar is, is het bij een geslaagde
- * injectie te stelen. Rotatie met hergebruikdetectie aan de serverkant begrenst
- * de schade zonder hem op te heffen. Het model dat dit werkelijk oplost is een
- * door de server gezette HttpOnly-cookie, en dat is een wijziging van het
- * authcontract met een CSRF-afweging eraan vast. Zie onderdeel 4.2 van
- * docs/pleya-server-ps3w-proposal.md.
- *
- * Het accesstoken staat in `sessionStorage`, met zijn vervalmoment ernaast.
- * Dat is geen extra risico bovenop het bovenstaande — het is dezelfde
- * JS-bereikbare opslag, tabgebonden en korter houdbaar — en het lost een
- * probleem op dat "alleen in het geheugen" veroorzaakt: dan heeft elke
- * herlaadbeurt een refresh nodig, het refreshtoken roteert bij elk gebruik, en
- * een herlaadbeurt die middenin die aanvraag valt verbruikt het oude token
- * zonder het nieuwe te ontvangen. De volgende poging is dan hergebruik, de
- * server trekt de hele keten in, en de gebruiker vliegt eruit terwijl hij
- * alleen F5 indrukte. Met een bewaard accesstoken is een refresh de
- * uitzondering in plaats van de regel.
- *
- * Er is bewust geen uitlogendpoint aangeroepen: het protocol heeft er geen
- * (5.2 van hetzelfde voorstel). Afmelden is hier lokaal, en het refreshtoken
- * vervalt vanzelf of bij de volgende rotatie.
- */
+/** Cookie-capable logins keep access in memory; a legacy session in storage moves to the cookie at its next refresh, where the server can. */
 
 const REFRESH_KEY = 'pleya.refresh_token';
 const ACCESS_KEY = 'pleya.access_token';
+// Gedeeld tussen tabbladen: de HttpOnly-cookie is dat ook, en die is voor JavaScript niet te wissen.
+const EPOCH_KEY = 'pleya.session_epoch';
+const SIGNED_OUT_KEY = 'pleya.signed_out';
+// Zegt dat er een cookie is, geen credential. De cookie zelf is HttpOnly en dus onzichtbaar voor deze code.
+const COOKIE_SESSION_KEY = 'pleya.cookie_session';
 
 /** Marge op het vervalmoment, zodat een token niet onderweg verloopt. */
 const EXPIRY_SKEW_MS = 30_000;
@@ -55,6 +34,7 @@ interface StoredAccess {
 
 export class TokenStore {
   #memoryAccess: StoredAccess | null = null;
+  #memoryOnly = false;
   #persistent: TokenStorage | null;
   #session: TokenStorage | null;
   #now: () => number;
@@ -69,7 +49,14 @@ export class TokenStore {
     this.#now = now;
   }
 
+  setMemoryOnly(value: boolean): void {
+    if (value === this.#memoryOnly) return;
+    this.#clearTokens();
+    this.#memoryOnly = value;
+  }
+
   #readAccess(): StoredAccess | null {
+    if (this.#memoryOnly) return this.#memoryAccess;
     if (this.#memoryAccess) return this.#memoryAccess;
     try {
       const raw = this.#session?.getItem(ACCESS_KEY);
@@ -92,6 +79,7 @@ export class TokenStore {
   }
 
   get refreshToken(): string | null {
+    if (this.#memoryOnly) return null;
     try {
       return this.#persistent?.getItem(REFRESH_KEY) ?? null;
     } catch {
@@ -102,8 +90,7 @@ export class TokenStore {
   /**
    * `refresh_token` is optioneel omdat het contract het sinds S1.8 weglaat
    * wanneer de aanvraag `credential_mode: cookie` droeg: het credential zit dan
-   * in een HttpOnly-cookie en de pagina hoort het niet te zien. Deze client
-   * vraagt daar nog niet om, dus in de praktijk staat het er altijd; wat hier
+   * in een HttpOnly-cookie en de pagina hoort het niet te zien. Wat hier
    * telt is dat een antwoord zonder dat veld geen `undefined` in `localStorage`
    * schrijft en daarna als bewaard token terugleest.
    */
@@ -113,6 +100,8 @@ export class TokenStore {
       token: pair.access_token,
       expiresAt: this.#now() + lifetime
     };
+    this.#write(COOKIE_SESSION_KEY, this.#memoryOnly ? '1' : null);
+    if (this.#memoryOnly) return;
     try {
       this.#session?.setItem(ACCESS_KEY, JSON.stringify(this.#memoryAccess));
       if (pair.refresh_token) {
@@ -125,11 +114,74 @@ export class TokenStore {
     }
   }
 
+  /** De sessie is voorbij: de tokens weg, en ook de aantekening dat er een cookie is. */
   clear(): void {
+    this.#clearTokens();
+    this.#write(COOKIE_SESSION_KEY, null);
+  }
+
+  /**
+   * Alleen wat van dit tabblad is. Voor een tabblad dat vervangen is: het refreshtoken en de aantekening
+   * in localStorage horen dan bij de login in een ander tabblad.
+   */
+  clearLocal(): void {
     this.#memoryAccess = null;
     try {
       this.#session?.removeItem(ACCESS_KEY);
+    } catch {
+      // niets te doen
+    }
+  }
+
+  #clearTokens(): void {
+    this.clearLocal();
+    try {
       this.#persistent?.removeItem(REFRESH_KEY);
+    } catch {
+      // niets te doen
+    }
+  }
+
+  #read(key: string): string | null {
+    try {
+      return this.#persistent?.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  #write(key: string, value: string | null): void {
+    try {
+      if (value === null) this.#persistent?.removeItem(key);
+      else this.#persistent?.setItem(key, value);
+    } catch {
+      // Opslag geweigerd: de aantekening gaat verloren, de sessie niet.
+    }
+  }
+
+  /** Verandert bij elke in- en uitlog in dit browserprofiel, ook in een ander tabblad. */
+  get epoch(): string | null {
+    return this.#read(EPOCH_KEY);
+  }
+
+  rotateEpoch(): string | null {
+    try {
+      this.#persistent?.setItem(EPOCH_KEY, `${Date.now()}-${Math.random()}`);
+    } catch {
+      // Opslag geweigerd: dan is er ook geen ander tabblad om mee te vergelijken.
+    }
+    return this.epoch;
+  }
+
+  /** Waar als een uitlog de cookiesessie niet op de server kon sluiten. */
+  get signedOut(): boolean {
+    return this.#read(SIGNED_OUT_KEY) !== null;
+  }
+
+  setSignedOut(value: boolean): void {
+    try {
+      if (value) this.#persistent?.setItem(SIGNED_OUT_KEY, '1');
+      else this.#persistent?.removeItem(SIGNED_OUT_KEY);
     } catch {
       // niets te doen
     }
@@ -138,5 +190,18 @@ export class TokenStore {
   /** Er is iets om mee te beginnen: een lopende sessie of een te verzilveren refreshtoken. */
   get hasSomething(): boolean {
     return this.accessToken !== null || this.refreshToken !== null;
+  }
+
+  /**
+   * Of deze browser bij het laatste contact ingelogd was. Dat is meer dan `hasSomething`: een cookiesessie
+   * heeft na een herlaadbeurt geen enkel token in beeld, en als `GET /info` dan mislukt weet deze client ook nog
+   * niet dat de server cookies kent. Dit is een aantekening en geen oordeel: alleen de server weet of de sessie leeft.
+   *
+   * Alleen wat gedeeld is telt: een accesstoken staat per tabblad en overleeft een uitlog in een ander tabblad. Zonder
+   * opslag is er geen ander tabblad en is dat token alles wat er is.
+   */
+  get signedIn(): boolean {
+    if (!this.#persistent) return this.hasSomething;
+    return this.refreshToken !== null || this.#read(COOKIE_SESSION_KEY) !== null;
   }
 }

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
@@ -127,11 +128,29 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 // de handler vertaalt die naar de code die het contract voor dat endpoint kent.
 func (s *Server) bodyLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit := int64(maxRequestBodyBytes)
+		if r.URL.Path == "/pleya/v1/users/me/memory" || r.URL.Path == "/pleya/v1/users/me/memory/clear" {
+			limit = 256 << 10
+			w.Header().Set("Cache-Control", "no-store")
+		}
+		if isListItemsPath(r.URL.Path) {
+			// PUT .../items draagt de volledige lijst: 5000 ids in JSON.
+			limit = 256 << 10
+		}
 		if r.Body != nil {
-			r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isListItemsPath herkent /pleya/v1/{collections,playlists}/{id}/items.
+func isListItemsPath(path string) bool {
+	rest, ok := strings.CutPrefix(path, "/pleya/v1/collections/")
+	if !ok {
+		rest, ok = strings.CutPrefix(path, "/pleya/v1/playlists/")
+	}
+	return ok && strings.HasSuffix(rest, "/items") && strings.Count(rest, "/") == 1
 }
 
 func (s *Server) logging(next http.Handler) http.Handler {

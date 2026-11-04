@@ -44,6 +44,8 @@
     hideLabel?: boolean;
     /** Monoletter, voor paden, slugs en sleutels die iemand letterlijk overtypt. */
     mono?: boolean;
+    /** Hoogstens zoveel tekens; de browser stopt het typen. */
+    maxlength?: number;
     oninput?: (value: string) => void;
     children?: Snippet<[FieldControl]>;
   }
@@ -57,6 +59,7 @@
     type = 'text',
     placeholder,
     autocomplete,
+    maxlength,
     disabled = false,
     required = false,
     hideLabel = false,
@@ -99,6 +102,7 @@
         type={inputType}
         {placeholder}
         {autocomplete}
+        {maxlength}
         {disabled}
         {required}
         aria-invalid={invalid ? 'true' : undefined}

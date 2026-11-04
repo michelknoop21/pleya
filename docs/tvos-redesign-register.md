@@ -57,6 +57,8 @@ begint, meldt dat; wie klaar is, committeert en geeft de worktree vrij.
 
 ## DISCOVERY EN PERSOONLIJK
 
+Sinds A-24c (26 oktober 2026, DEC-167) heeft Mijn Pleya op Apple TV geen Instellingen-, Servers-, Logboeken- of Over-tegel meer: Instellingen is een bestemming in het topmenu, en de bewijsregels hieronder die "via Mijn Pleya, Instellingen" noemen beschrijven de route van toen. Huidige status van die pagina: `tvos-fysieke-correctieronde.md`, rij A24C-MYPLEYA-V4.
+
 | ID | Werkitem | Besluit | Status | SHA / bewijs |
 |----|----------|---------|--------|--------------|
 | MOC-13 | Zoeken, permanente resultaattitel, SEARCH1 sluiten | PB-6, DEC-108 | CODE/SIM CLOSED · HARDWARE OPEN | CODE `30aae55b`; SEARCH2 (resultatenviewport clipt niet meer over de topnav/zoekbalk) gesloten met `dfde8799`, zie de SEARCH2-rij in `tvos-fysieke-correctieronde.md`; geen groene Verify- of simulatorrun met bundel vastgelegd, journey doorverwezen naar TV8. **TV8, 23 september:** journey `tvos.search.results` groen. De query "as" gaat via het systeemtoetsenbord (`type`), Menu sluit het toetsenbord en houdt de tekst, de band Films toont Basalt en Cascade met de vaste resultaattitel ("Films 2", "2 resultaten"), en de ring loopt over beide kaarten. Zoeken start pas bij twee tekens, dus een query van één letter levert terecht niets op. De run vond SEARCH3 (DOWN vanaf de zoekpil landde op de tweede kaart), zie `tvos-fysieke-correctieronde.md`. |

@@ -4,6 +4,7 @@ import '../focus/focus_theme.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
 import 'media_card_grid_layout.dart';
+import 'mobile/library_phone_look.dart';
 
 /// Shared grid delegate configuration for media item grids
 /// Maintains consistent aspect ratio and spacing across all media grids.
@@ -109,6 +110,10 @@ class MediaGridGeometry {
   final double itemHeight;
   final double spacing;
 
+  /// Gap between rows. Equal to [spacing] everywhere except the iPhone library
+  /// look, which keeps its columns closer together than its rows.
+  final double mainAxisSpacing;
+
   /// Padding a grid must put around every cell's card. See
   /// [MediaCardGridLayout.focusInsetFor]: it is the room a focused card grows into,
   /// and reserving it here is what keeps [spacing] intact under focus.
@@ -121,9 +126,46 @@ class MediaGridGeometry {
     required this.itemWidth,
     required this.itemHeight,
     required this.spacing,
+    required this.mainAxisSpacing,
     required this.cellInset,
     required this.delegate,
   });
+
+  /// The grid of the iPhone library look: three 2:3 posters across, the card
+  /// flush with its cell because a phone has no focus ring to make room for.
+  ///
+  /// Not [resolve]: the poster width and the gaps are the phone look's own, but
+  /// the column count follows the library density setting.
+  factory MediaGridGeometry.phoneLibrary({
+    required BuildContext context,
+    required double crossAxisExtent,
+    required int density,
+    bool useWideAspectRatio = false,
+  }) {
+    const spacing = LibraryPhoneMetrics.gridColumnGap;
+    final columnCount = LibraryPhoneMetrics.columnsFor(crossAxisExtent, wide: useWideAspectRatio, density: density);
+    final itemWidth = GridSizeCalculator.getCellWidthForColumnCount(
+      crossAxisExtent,
+      columnCount,
+      crossAxisSpacing: spacing,
+    );
+    final artwork = itemWidth / MediaGridDelegate.imageAspectRatioFor(useWideAspectRatio: useWideAspectRatio);
+    final itemHeight = artwork + LibraryPhoneMetrics.captionGap + LibraryPhoneMetrics.captionExtentFor(context);
+    return MediaGridGeometry._(
+      columnCount: columnCount,
+      itemWidth: itemWidth,
+      itemHeight: itemHeight,
+      spacing: spacing,
+      mainAxisSpacing: LibraryPhoneMetrics.gridRowGap,
+      cellInset: 0,
+      delegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: itemWidth,
+        mainAxisExtent: itemHeight,
+        crossAxisSpacing: spacing,
+        mainAxisSpacing: LibraryPhoneMetrics.gridRowGap,
+      ),
+    );
+  }
 
   /// Wraps one cell's card in the focus room this geometry reserved for it.
   /// Grids should build every cell through this, otherwise a focused card
@@ -201,6 +243,7 @@ class MediaGridGeometry {
       itemWidth: itemWidth,
       itemHeight: itemHeight,
       spacing: spacing,
+      mainAxisSpacing: spacing,
       cellInset: cellInset,
       delegate: SliverGridDelegateWithMaxCrossAxisExtent(
         // When the column count is pinned to a different basis width, the

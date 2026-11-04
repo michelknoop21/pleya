@@ -16,6 +16,11 @@ part of '../../pleya_server_client.dart';
 /// every download through. Backend-specific knowledge stops at this file; the
 /// registry knows about origins and headers only.
 mixin _PleyaServerArtworkMethods on _PleyaServerRequests {
+  List<DownloadArtworkSpec> resolveDownloadArtwork(MediaItem item) =>
+      buildArtworkSpecs(item, (path) => thumbnailUrl(path))
+          .map((spec) => DownloadArtworkSpec(localKey: spec.localKey, url: spec.url, headersSupplier: _downloadHeaders))
+          .toList();
+
   /// An absolute URL for an artwork path produced by [PleyaServerMappers].
   ///
   /// Returns an empty string for anything else, including a path from another

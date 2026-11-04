@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
@@ -775,5 +776,26 @@ func TestServerDetail(t *testing.T) {
 	}
 	if detail.StartedAt != "2026-08-18T19:25:33Z" {
 		t.Fatalf("started_at is %q; RFC 3339 in UTC met Z", detail.StartedAt)
+	}
+}
+
+// TestChildrenRefuseACursorFromBeforeTheTitleKey: een lopende client kan na een
+// serverupdate een cursor zonder titel meesturen. Die hervatten zou het laatste
+// item van de vorige pagina nog eens tonen, dus het antwoord is een 400 met
+// library.cursor_invalid en de client begint opnieuw.
+func TestChildrenRefuseACursorFromBeforeTheTitleKey(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	series := e.libraryID("shows")
+
+	var shows api.ItemPage
+	e.getJSON("/pleya/v1/libraries/"+series+"/items", "", http.StatusOK, &shows)
+	var seasons api.ItemPage
+	e.getJSON("/pleya/v1/items/"+shows.Items[0].ID+"/children", "", http.StatusOK, &seasons)
+
+	old := catalog.Cursor{Sort: catalog.SortIndex, Key: "1", ID: seasons.Items[0].ID}.Encode()
+	rec := e.do(http.MethodGet, "/pleya/v1/items/"+shows.Items[0].ID+"/children?cursor="+old, nil)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "library.cursor_invalid") {
+		t.Fatalf("een cursor zonder titel gaf %d: %s", rec.Code, rec.Body.String())
 	}
 }

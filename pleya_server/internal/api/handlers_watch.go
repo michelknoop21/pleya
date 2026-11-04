@@ -51,6 +51,10 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		writeError(w, s.log, CodeSessionInvalid, "cause is not valid for this explicit_action", nil)
 		return
 	}
+	if req.Copy && (action != watch.ActionNone || req.Backlog) {
+		writeError(w, s.log, CodeSessionInvalid, "copy goes with explicit_action none and without backlog", nil)
+		return
+	}
 
 	userID, err := s.subjectID(r)
 	if err != nil {
@@ -85,6 +89,7 @@ func (s *Server) handleWatchStateReport(w http.ResponseWriter, r *http.Request) 
 		Cause:        cause,
 		BaseRevision: req.BaseRevision,
 		Backlog:      req.Backlog,
+		Copy:         req.Copy,
 	}
 	// De inlogsessie geeft de geschiedenis de naam van het toestel.
 	if claims, ok := claimsFromContext(r.Context()); ok {
@@ -190,15 +195,23 @@ func (s *Server) handleWatchStateList(w http.ResponseWriter, r *http.Request) {
 
 // mapUserState vertaalt de domeintoestand naar het wire-type. Nil betekent dat
 // het item nooit is aangeraakt.
+//
+// Op de lijn is play_count minstens 1 zolang watched waar is, zoals altijd zo was:
+// een oudere client leest gezien uit play_count (MediaItem.viewCount), en een
+// afgeronde kopie telt zelf geen kijkbeurt.
 func mapUserState(st watch.State) *UserState {
 	if !st.Exists {
 		return nil
 	}
 	revision := st.Revision
+	playCount := st.PlayCount
+	if st.Watched && playCount == 0 {
+		playCount = 1
+	}
 	return &UserState{
 		PositionMs: st.PositionMs,
 		Watched:    st.Watched,
-		PlayCount:  st.PlayCount,
+		PlayCount:  playCount,
 		UpdatedAt:  formatTime(st.UpdatedAt),
 		Revision:   &revision,
 	}

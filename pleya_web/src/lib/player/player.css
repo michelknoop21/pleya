@@ -1,0 +1,291 @@
+/*
+ * De spelerschil uit mockup 50 (docs/assets/pleya-web-northstar/50-speler@1600.jpg
+ * en @393.jpg). Globaal geladen door Player.svelte; elke regel begint met
+ * `.player` zodat niets daarbuiten geraakt wordt.
+ *
+ * web: de speler is in elk thema donker, zoals de TV-speler. Wit op beeld is
+ * daarom hier een vaste kleur en geen --ink, dat op het lichte thema #111 is.
+ */
+.player {
+  --player-inset: 26px;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+}
+
+.player--idle {
+  cursor: none;
+}
+
+.player :focus-visible {
+  outline-color: #fff;
+}
+
+.player__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.player .scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+.player .scrim--top {
+  top: 0;
+  height: 160px;
+  background: linear-gradient(rgba(0, 0, 0, 0.62), transparent);
+}
+
+.player .scrim--bottom {
+  bottom: 0;
+  height: 220px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
+}
+
+.player .top,
+.player .bottom,
+.player .center--controls {
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+.player--idle .top,
+.player--idle .bottom,
+.player--idle .center--controls,
+.player--idle .scrim {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- Ondertitel: zelf getekend boven de onderbalk, lager als die weg is. */
+.player .caption {
+  position: absolute;
+  left: var(--player-inset);
+  right: var(--player-inset);
+  bottom: 120px;
+  margin: 0 auto;
+  max-width: 900px;
+  text-align: center;
+  white-space: pre-line;
+  font-size: clamp(16px, 2.4vw, 30px);
+  font-weight: 600;
+  line-height: 1.3;
+  text-shadow:
+    0 0 4px #000,
+    0 2px 6px #000;
+  pointer-events: none;
+  transition: bottom var(--dur-slow) var(--ease);
+}
+
+.player .caption--low {
+  bottom: 40px;
+}
+
+/* --- Kop: terug, titel en regel, rechts wat er speelt. ------------------ */
+.player .top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px var(--player-inset) 0;
+}
+
+.player .top__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.player .top__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player .top__meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player .chips {
+  display: flex;
+  gap: var(--space);
+  flex: none;
+}
+
+.player .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-half);
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.player .round {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* --- Midden: tien terug, afspelen, tien vooruit. ------------------------ */
+.player .center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space);
+  padding: 0 var(--player-inset);
+  pointer-events: none;
+}
+
+.player .center > * {
+  pointer-events: auto;
+}
+
+.player .center--controls {
+  flex-direction: row;
+  gap: 40px;
+}
+
+.player .round--side {
+  width: 52px;
+  height: 52px;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.player .round--main {
+  width: 74px;
+  height: 74px;
+  background: #fff;
+  color: #000;
+}
+
+.player .center__text {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+
+.player .spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: player-spin 0.9s linear infinite;
+}
+
+@keyframes player-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player .spinner {
+    animation: none;
+  }
+}
+
+/* --- Foutstaat: één zin met een uitweg. ---------------------------------- */
+.player .problem {
+  max-width: 520px;
+  padding: var(--space-2);
+  border-radius: var(--radius-card);
+  background: rgba(20, 20, 20, 0.94);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.player .problem__text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.player .problem__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space);
+  margin-top: var(--space-1-5);
+}
+
+.player .problem .btn {
+  background: #fff;
+  color: #000;
+}
+
+.player .problem .btn--ghost {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* --- Onderbalk. --------------------------------------------------------- */
+.player .bottom {
+  position: absolute;
+  left: var(--player-inset);
+  right: var(--player-inset);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Smal: inset 16, kop zonder chips, een kleinere middenrij (mockup 50 op 393). */
+@media (max-width: 899px) {
+  .player {
+    --player-inset: 16px;
+  }
+  .player .chips {
+    display: none;
+  }
+  .player .top {
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    gap: var(--space);
+  }
+  .player .center--controls {
+    gap: 28px;
+  }
+}
+
+@media (max-width: 379px) {
+  .player .center--controls {
+    gap: 18px;
+  }
+  .player .round--main {
+    width: 64px;
+    height: 64px;
+  }
+}

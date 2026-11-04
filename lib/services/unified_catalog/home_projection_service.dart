@@ -22,6 +22,7 @@ library;
 
 import '../../media/media_hub.dart';
 import '../../media/media_item.dart';
+import '../../media/unified/carried_external_ids.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/canonical_media_identity.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -35,7 +36,12 @@ import 'grouping_service.dart';
 import 'identity_resolver.dart';
 
 class HomeProjectionService {
-  HomeProjectionService({required this.fetchExternalIds, this.maxConcurrentFetches = 4});
+  HomeProjectionService({
+    required this.fetchExternalIds,
+    this.maxConcurrentFetches = 4,
+    this.trustStoredIdentity = storedIdentityIsSafe,
+  });
+  final bool Function(MediaItem) trustStoredIdentity;
 
   /// Same shape `data_aggregation_service.dart` hands
   /// [UnifiedIdentityResolver]. A server that is offline or failing does not
@@ -218,6 +224,7 @@ class HomeProjectionService {
     final resolver = UnifiedIdentityResolver(
       fetchExternalIds: fetchExternalIds,
       maxConcurrentFetches: maxConcurrentFetches,
+      trustStoredIdentity: trustStoredIdentity,
     );
     final evidence = await resolver.resolveEvidence([for (final item in items) _resolvableFor(item)]);
 
@@ -282,6 +289,7 @@ class HomeProjectionService {
     final resolver = UnifiedIdentityResolver(
       fetchExternalIds: fetchExternalIds,
       maxConcurrentFetches: maxConcurrentFetches,
+      trustStoredIdentity: trustStoredIdentity,
     );
     final evidence = await resolver.resolveEvidence([
       for (final item in onDeck)

@@ -1,0 +1,223 @@
+{
+  "code_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+  "following_ios_only_fix_sha": "2ce7feddf69ee2b9fba547fcc6f3003075d07a62",
+  "no_tv_runtime_delta_in_ios_fix": true,
+  "images": [
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "file": "tvos.catalog.full-bleed.grid/00-rest.png",
+      "sha256": "d936974a8aa8bf462b77e32aece82f55734888473bc6060c8a76253e70e01ba4",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-catalog-full-bleed-grid-1793572532154",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "file": "tvos.catalog.full-bleed.grid/01-row2.png",
+      "sha256": "260fbe66b7e9cdf78bf4a4cc7f8eedb774714a39b3b64b1fa1b19d01cae09f63",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-catalog-full-bleed-grid-1793572532154",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.grid",
+      "file": "tvos.catalog.full-bleed.grid/02-landing.png",
+      "sha256": "616f9042d1c2c1df0a5737ada36339310712f8c6734e8780cd30165ae2f792d0",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-catalog-full-bleed-grid-1793572532154",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "file": "tvos.catalog.full-bleed.jump/00-all-loaded.png",
+      "sha256": "cc59599aff21cb84dbcff3d829819a8cd4622dd0a51f9957224ffcf671a0af5c",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-catalog-full-bleed-jump-1793572588847",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "file": "tvos.catalog.full-bleed.jump/01-after-presses.png",
+      "sha256": "1cb40a73734ce7911cc19234e4dedf608de787cb3ace31acf5029de12badb7ca",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-catalog-full-bleed-jump-1793572588847",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "file": "tvos.catalog.full-bleed.jump/02-letters.png",
+      "sha256": "68fc09e253916d3635b2772b458d8441c2bb41ecbcd0d9301fd5d87e8e089840",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-catalog-full-bleed-jump-1793572588847",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.catalog.full-bleed.jump",
+      "file": "tvos.catalog.full-bleed.jump/03-landed-on-b.png",
+      "sha256": "42288c98c19a3273e341e6586cdcf4128d4887be0610c471335ae29e3c0c258f",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-catalog-full-bleed-jump-1793572588847",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "file": "tvos.my-pleya.libraries-cinema/00-bronbeheer-list.png",
+      "sha256": "38df46bf6b5a6883b9f3dcc3b12bffc60093803c74b3bd40f071bad261e908e3",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-cinema-1793572630860",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "file": "tvos.my-pleya.libraries-cinema/01-action-sheet-movies.png",
+      "sha256": "fca3150ebd6984b1196a7059cb0a5911b287e0f60e5cd5179e472af474f22139",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-cinema-1793572630860",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "file": "tvos.my-pleya.libraries-cinema/02-sheet-closed.png",
+      "sha256": "38df46bf6b5a6883b9f3dcc3b12bffc60093803c74b3bd40f071bad261e908e3",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-cinema-1793572630860",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "file": "tvos.my-pleya.libraries-cinema/02b-cinema-order-picked.png",
+      "sha256": "d855fe3e212c5d8bcb04754fc7c425dd62011cb7db44dadeb1c0f37127462036",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-cinema-1793572630860",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "file": "tvos.my-pleya.libraries-cinema/02c-cinema-order-closed.png",
+      "sha256": "38df46bf6b5a6883b9f3dcc3b12bffc60093803c74b3bd40f071bad261e908e3",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-cinema-1793572630860",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "file": "tvos.my-pleya.libraries-cinema/03-opened-in-catalog.png",
+      "sha256": "9370842d34053b20b24fe50885dd41583bcf0e09c39fe70fe9c920d3ec0cb541",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-cinema-1793572630860",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-cinema",
+      "file": "tvos.my-pleya.libraries-cinema/04-back-on-row.png",
+      "sha256": "38df46bf6b5a6883b9f3dcc3b12bffc60093803c74b3bd40f071bad261e908e3",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-cinema-1793572630860",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-remote-hold",
+      "file": "tvos.my-pleya.libraries-remote-hold/00-held-select-one-sheet.png",
+      "sha256": "fca3150ebd6984b1196a7059cb0a5911b287e0f60e5cd5179e472af474f22139",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-remote-hold-1793572668868",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-remote-hold",
+      "file": "tvos.my-pleya.libraries-remote-hold/01-held-reorder-server-order.png",
+      "sha256": "6bcaef9231d7fe5c83b2dce741263167d474c1487c9696360017e393d4070996",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-remote-hold-1793572668868",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.my-pleya.libraries-remote-hold",
+      "file": "tvos.my-pleya.libraries-remote-hold/02-followup-input-still-works.png",
+      "sha256": "dc73008612613714148f7b16319705d1565f5cc33328d5426227a7608b18ebab",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-my-pleya-libraries-remote-hold-1793572668868",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "file": "tvos.nav.held-press-lands-once/00-series.png",
+      "sha256": "10ed2955607e9b486bdd30d5664b97119da6a3556c4ae47ea6476e044837184d",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-nav-held-press-lands-once-1793572710365",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "file": "tvos.nav.held-press-lands-once/01-held-left-lands-on-home.png",
+      "sha256": "1907c8e68bdd2d35de0e6a7ef7879e10fc0cefe9c9089e0c7b0b82b6c373ca3e",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-nav-held-press-lands-once-1793572710365",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "file": "tvos.nav.held-press-lands-once/02-held-select-home.png",
+      "sha256": "7588961b1656fe6038c65a10c26621f45e451ac14c597e7836da023e57a6e436",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-nav-held-press-lands-once-1793572710365",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.nav.held-press-lands-once",
+      "file": "tvos.nav.held-press-lands-once/03-held-right-from-search-lands-on-home.png",
+      "sha256": "7588961b1656fe6038c65a10c26621f45e451ac14c597e7836da023e57a6e436",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-nav-held-press-lands-once-1793572710365",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.profile.picker",
+      "file": "tvos.profile.picker/00-avatar-focused.png",
+      "sha256": "7cf6f7356fa28ab4ff06d1b894ec3608a963a09a6830b31c39111e6419aa3542",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-profile-picker-1793572735844",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.profile.picker",
+      "file": "tvos.profile.picker/01-picker.png",
+      "sha256": "051a45c2259db0a1c2b1d3d44b9934739f5eec6d9904031fcd40c6eeae08bbfa",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-profile-picker-1793572735844",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    },
+    {
+      "scenario": "tvos.profile.picker",
+      "file": "tvos.profile.picker/02-back-on-avatar.png",
+      "sha256": "1bb717eef93b85e7f431eb120368723b2f9dad0f06822f1e0cd2fad7d8be1aab",
+      "source_bundle": "/Users/michelknoop/Documents/Codex/2026-11-01/task-5/native-build-cache/Documents_Codex_2026-11-01_task-5_pleya-server-gap-integration/.build/pleya-verify/tvos-profile-picker-1793572735844",
+      "source_sha": "d8cd3c77e025887128cea625699be025a1ad19a0",
+      "screen": "3840x2160 native compositor",
+      "viewed_by": "task5 root; all24frames in6contact sheets"
+    }
+  ]
+}

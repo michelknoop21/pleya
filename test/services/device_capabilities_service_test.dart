@@ -174,9 +174,24 @@ void main() {
 
       final caps = await detect(serviceFor(hasAppleAudioRoute: true, route: airPods));
 
-      expect(caps.audio.maxChannels.value, 2);
+      // Spatial on: the two is not a limit (log 33hdc), and publishing it would
+      // make a transcoding server send stereo with nothing left to spatialize.
+      expect(caps.audio.maxChannels.confidence, CapabilityConfidence.unknown);
       expect(caps.audio.passthroughCodecs.value, isEmpty);
       expect(caps.audio.carriesBitstream('eac3'), isFalse);
+    });
+
+    test('a two-channel route without spatial audio still publishes two', () async {
+      const headphones = AppleAudioRoute(
+        portType: 'BluetoothA2DP',
+        portName: 'Headphones',
+        maximumOutputNumberOfChannels: 2,
+      );
+
+      final caps = await detect(serviceFor(hasAppleAudioRoute: true, route: headphones));
+
+      expect(caps.audio.maxChannels.value, 2);
+      expect(caps.audio.maxChannels.confidence, CapabilityConfidence.detected);
     });
 
     test('a route that has not reported yet stays unknown', () async {

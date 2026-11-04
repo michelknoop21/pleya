@@ -444,7 +444,7 @@ class AssistantMemories extends Table {
   IntColumn get updatedAt => integer()();
 
   @override
-  Set<Column> get primaryKey => {id};
+  Set<Column> get primaryKey => {profileId, id};
 }
 
 /// The written overview of a profile's [AssistantMemories]: derived, one row
@@ -465,6 +465,16 @@ class AssistantMemoryOverviews extends Table {
 
   /// Epoch milliseconds (UTC).
   IntColumn get generatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {profileId};
+}
+
+/// Durable account binding and pending generations, committed with memory edits.
+@DataClassName('AssistantMemorySyncRow')
+class AssistantMemorySyncStates extends Table {
+  TextColumn get profileId => text()();
+  TextColumn get payload => text()();
 
   @override
   Set<Column> get primaryKey => {profileId};

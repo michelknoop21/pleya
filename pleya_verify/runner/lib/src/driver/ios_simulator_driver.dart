@@ -9,6 +9,7 @@ import 'screenshot_probe.dart';
 import 'verification_driver.dart';
 import 'bounded_process.dart';
 import 'simulator_boot.dart';
+import 'ios_bundle_runpaths.dart';
 
 /// Drives a local iOS-simulator build of Pleya via `xcrun simctl`.
 ///
@@ -198,11 +199,20 @@ class IosSimulatorDriver implements VerificationDriver {
     }
     await _assertBundleId(infoPlist, expected: verifyBundleId);
 
-    _log('codesign --force --deep --sign - ${isolatedAppDir.path}');
-    final sign = await _run('codesign', ['--force', '--deep', '--sign', '-', isolatedAppDir.path]);
-    if (sign.exitCode != 0) {
-      throw StateError('codesign failed on the isolated app copy (exit ${sign.exitCode}): ${sign.stderr}');
+    // An iPad app that takes part in multitasking gets its orientation from the
+    // device, so iOS ignores what the app asks for. configure_view needs that
+    // request, and only this isolated copy gives the multitasking up.
+    final fullScreen = await _run('plutil', ['-replace', 'UIRequiresFullScreen', '-bool', 'YES', infoPlist.path]);
+    if (fullScreen.exitCode != 0) {
+      throw StateError('marking the app full screen failed (exit ${fullScreen.exitCode}): ${fullScreen.stderr}');
     }
+
+    await signIsolatedIosBundle(
+      app: isolatedAppDir,
+      packageFrameworks: Directory('${repoRoot.path}/build/ios/Debug-iphonesimulator/PackageFrameworks'),
+      run: _run,
+      log: _log,
+    );
   }
 
   /// Reads the identifier back — a zero exit from `plutil -replace` says the
@@ -219,11 +229,15 @@ class IosSimulatorDriver implements VerificationDriver {
     }
   }
 
+  // Reinstalling an ad-hoc Verify copy is not a cold restart (same boundary as tvOS).
+  bool _installed = false;
+
   @override
   Future<void> installFresh() async {
     final udid = await _resolveDevice();
     await _boot(udid);
     await uninstallApp(udid: udid, bundleId: verifyBundleId, run: _run, log: _log);
+    _installed = false;
   }
 
   @override
@@ -234,10 +248,15 @@ class IosSimulatorDriver implements VerificationDriver {
     final udid = await _resolveDevice();
     await _boot(udid);
 
-    _log('installing ${isolatedAppDir.path} on $udid');
-    final install = await _run('xcrun', ['simctl', 'install', udid, isolatedAppDir.path]);
-    if (install.exitCode != 0) {
-      throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
+    if (!_installed) {
+      _log('installing ${isolatedAppDir.path} on $udid');
+      final install = await _run('xcrun', ['simctl', 'install', udid, isolatedAppDir.path]);
+      if (install.exitCode != 0) {
+        throw StateError('simctl install failed (exit ${install.exitCode}): ${install.stderr}');
+      }
+      _installed = true;
+    } else {
+      _log('relaunching $verifyBundleId on $udid (already installed this run)');
     }
 
     // Simulator networking shares the host's loopback stack — which is
@@ -433,44 +452,18 @@ class IosSimulatorDriver implements VerificationDriver {
     }
     if (viewportHasOrientation(await viewport(), orientation)) return;
 
-    // simctl has no orientation command. An already-rotated iPad needs no
-    // host input (and works while the Mac is locked). Otherwise the Simulator
-    // shortcut is the supported control surface, gated by macOS Accessibility.
-    for (var attempt = 0; attempt < 3 && !viewportHasOrientation(await viewport(), 'portrait'); attempt++) {
-      await _rotateSimulator(123);
-    }
-    if (!viewportHasOrientation(await viewport(), 'portrait')) {
-      throw StateError('Simulator did not return to portrait before rotating to $orientation');
-    }
-    if (orientation == 'landscapeLeft') await _rotateSimulator(123);
-    if (orientation == 'landscapeRight') await _rotateSimulator(124);
+    // simctl has no orientation command, and the Simulator shortcut takes the
+    // keyboard and a window on the host. The app asks iOS itself instead; the
+    // measured viewport below stays the only evidence that it happened.
+    final result = await _requireClient().configureOrientation(orientation);
+    if (result['ok'] != true) throw StateError('orientation request failed: $result');
 
     final deadline = DateTime.now().add(const Duration(seconds: 5));
     while (DateTime.now().isBefore(deadline)) {
       if (viewportHasOrientation(await viewport(), orientation)) return;
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
-    throw StateError(
-      'Simulator did not render $orientation after rotation; viewport: ${await viewport()}. '
-      'Rotate the named simulator manually and rerun, or grant Accessibility to the runner.',
-    );
-  }
-
-  Future<void> _rotateSimulator(int arrowKeyCode) async {
-    final result = await _run('osascript', [
-      '-e',
-      'tell application "Simulator" to activate',
-      '-e',
-      'tell application "System Events" to key code $arrowKeyCode using command down',
-    ]);
-    if (result.exitCode != 0) {
-      throw StateError(
-        'Simulator rotation needs an unlocked Mac and Accessibility permission for keyboard control '
-        '(osascript exit ${result.exitCode}: ${result.stderr}). '
-        'You can also rotate the named simulator manually before rerunning Pleya Verify.',
-      );
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    throw StateError('Simulator did not render $orientation after rotation; viewport: ${await viewport()}.');
   }
 
   VerifyClient _requireClient() {

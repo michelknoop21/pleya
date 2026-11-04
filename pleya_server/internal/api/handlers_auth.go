@@ -60,27 +60,47 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			SetupAcceptsName: s.opts.Settings != nil && s.opts.Settings.HasStore(),
 		},
 		Capabilities: Capabilities{
-			Browse:  true,
-			Search:  true,
-			Artwork: true,
+			AssistantMemory: s.opts.Memory != nil,
+			Browse:          true,
+			Search:          true,
+			Artwork:         true,
 			// ArtworkSizes: de ladder bestaat zodra ffmpeg en een cachemap er zijn.
-			ArtworkSizes: s.opts.Artwork.Available(),
+			ArtworkSizes:      s.opts.Artwork.Available(),
+			ArtworkCacheAdmin: s.artworkCacheAdminAvailable(),
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
+			// ExternalIDLookup: de filterparameter external_id en het itemveld bestaan.
+			ExternalIDLookup:        true,
+			AppliedExternalIdentity: true,
+			MetadataMatchStatus:     true,
+			MetadataSearch:          s.opts.MetadataProvider != nil,
+			MetadataOverrides:       s.opts.Catalog != nil,
+			ArtworkChoices:          s.pins.Available(),
 			// S20: de persoonlijke laag bestaat zodra de opslag er is.
 			History:          s.opts.Personal != nil,
 			Favorites:        s.opts.Personal != nil,
 			Ratings:          s.opts.Personal != nil,
 			TrackPreferences: s.opts.Personal != nil,
+			PersonalData:     s.opts.Personal != nil,
+			// S19: de routes bestaan altijd, de catalogus levert ze.
+			Collections: true,
+			Playlists:   true,
+			// Activiteit van het huishouden, op dezelfde opslag.
+			ItemActivity: s.opts.Personal != nil,
 			// Vanaf PS-4 staat kijkstatus aan, en met het eigendomsmodel eronder.
 			// De vlaggen hangen aan de aanwezigheid van de opslag: een server die
 			// zonder watch-store draait zegt dat eerlijk in plaats van een
 			// endpoint aan te bieden dat op een nil-pointer klapt.
 			WatchState:          s.opts.Watch != nil,
 			WatchStateOwnership: s.opts.Watch != nil,
+			WatchStateCopy:      s.opts.Watch != nil,
 			StreamSessions:      true,
 			// PlaybackPlan: S17 is gebouwd, POST /playback/plan bestaat.
-			PlaybackPlan: true,
+			PlaybackPlan:           true,
+			PlaybackQuality:        s.transcodeEnabled(),
+			EmbeddedSubtitles:      s.transcodeEnabled(),
+			PlaybackSubtitles:      s.transcodeEnabled(),
+			PlaybackAudioSelection: s.transcodeEnabled(),
 			// Transcode: aan zodra er een manager met sessies is (S18).
 			Transcode: s.transcodeEnabled(),
 			Downloads: s.opts.Downloads != nil && s.opts.Jobs != nil,
@@ -102,6 +122,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			// credential_mode en zetten het refreshcredential desgevraagd in een
 			// HttpOnly-cookie (RB-29).
 			CookieAuth: true,
+			// CookieUpgrade: refresh ruilt een token uit localStorage in voor de
+			// cookie, zonder nieuwe login (17d.1).
+			CookieUpgrade: true,
 			// Administration: aan sinds S1.6, voor het oppervlak dat S1.2 tot
 			// en met S1.5 hebben gebouwd (J.2 rij 1).
 			Administration: true,
@@ -279,13 +302,16 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// zijn eigen wachtwoord vijf keer verkeerd typt de login van een
 	// huisgenoot blokkeert. De gebruikersnaam hoeft hier niet te bestaan; de
 	// sleutel is een emmer, geen claim.
-	limiterKey := "login:" + req.Username
+	limiterKey := "login:" + cutLoginText(req.Username)
 	if !s.rateLimit(w, limiterKey) {
-		// Een geweigerde poging staat in het auditlog en niet alleen in de
-		// emmer van de limiter: de limiter vergeet, het log niet, en het
-		// patroon over een nacht is precies wat een beheerder wil zien.
-		s.auditAnonymous(r, auditLogin, audit.OutcomeDenied,
-			map[string]any{"username": req.Username, "reason": "rate_limited"})
+		// Een geweigerde poging staat tot de grens in loginDenialBurst in het
+		// auditlog en niet alleen in de emmer van de limiter: de limiter vergeet,
+		// het log niet, en het patroon over een nacht is precies wat een beheerder
+		// wil zien. Daarboven staat hij in het log.
+		s.auditLoginDenied(r, map[string]any{"username": cutLoginText(req.Username), "reason": "rate_limited"})
+		return
+	}
+	if !s.allowLoginAttempt(w, r, req.Username) {
 		return
 	}
 
@@ -317,7 +343,13 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok, needsRehash, verifyErr := auth.VerifyPassword(req.Password, storedHash, s.opts.Argon2)
+	ok, needsRehash, verifyErr := s.verifyPassword(r.Context(), req.Password, storedHash)
+	if errors.Is(verifyErr, errLoginBusy) {
+		// Geen fout van de server en geen oordeel over het wachtwoord: geen plek, of de
+		// client liep weg. Eén seconde is ongeveer één controle.
+		s.writeRefreshLimited(w, "login", time.Second)
+		return
+	}
 	if verifyErr != nil {
 		writeInternal(w, s.log, verifyErr)
 		return
@@ -329,9 +361,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// bijna goed typen, inclusief hun echte wachtwoord met één tikfout.
 		//
 		// user_id blijft leeg, ook wanneer de naam bestaat: zie auditAnonymous.
-		s.auditAnonymous(r, auditLogin, audit.OutcomeDenied,
-			map[string]any{"username": req.Username, "reason": "invalid_credentials"})
-		writeError(w, s.log, CodeInvalidCredentials, "invalid credentials", nil)
+		s.writeInvalidCredentials(w)
+		s.auditWrongPassword(r, req.Username, known)
 		return
 	}
 
@@ -345,107 +376,6 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	s.limiter.reset(limiterKey)
 	s.issueTokens(w, r, user.ID, deviceID(req.DeviceID), deviceName(req.DeviceName), auditLogin, mode)
-}
-
-type refreshRequest struct {
-	RefreshToken   string `json:"refresh_token"`
-	CredentialMode string `json:"credential_mode"`
-}
-
-func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
-	var req refreshRequest
-	if !s.decodeBody(w, r, &req, CodeTokenInvalid) {
-		return
-	}
-
-	mode, ok := s.credentialMode(w, r, req.CredentialMode, CodeTokenInvalid, "")
-	if !ok {
-		return
-	}
-
-	presented := strings.TrimSpace(req.RefreshToken)
-	if mode == credentialModeCookie {
-		// Twee bronnen is geen bron. Wie een token in het lichaam zet én om de
-		// cookie vraagt heeft twee credentials en geen manier om te zeggen welk
-		// van de twee hij bedoelt, en stilzwijgend kiezen is precies hoe een
-		// client per ongeluk het verkeerde blijft roteren.
-		if presented != "" {
-			writeError(w, s.log, CodeTokenInvalid, "refresh token in both body and cookie", nil)
-			return
-		}
-		cookie, err := r.Cookie(auth.RefreshCookieName)
-		if err != nil || strings.TrimSpace(cookie.Value) == "" {
-			writeError(w, s.log, CodeTokenInvalid, "refresh cookie missing", nil)
-			return
-		}
-		presented = strings.TrimSpace(cookie.Value)
-	} else if presented == "" {
-		writeError(w, s.log, CodeTokenInvalid, "refresh token missing", nil)
-		return
-	}
-
-	newToken, newHash, err := auth.NewRefreshToken()
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-
-	now := s.now().UTC()
-	outcome, sid, subjectID, err := s.opts.Auth.RotateRefreshToken(r.Context(),
-		auth.HashOpaque(presented), newHash, now.Add(s.settings().RefreshTokenTTL()), now,
-		s.opts.RefreshGraceWindow)
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-
-	// Een afgewezen refresh in cookiemodus laat geen dode cookie achter. Zonder
-	// deze regel blijft de browser bij elke volgende poging een credential
-	// meesturen dat nooit meer werkt, en dan lijkt "opnieuw inloggen" niet te
-	// helpen.
-	if mode == credentialModeCookie && outcome != auth.RefreshOK && outcome != auth.RefreshReplayed {
-		s.clearRefreshCookie(w)
-	}
-
-	switch outcome {
-	case auth.RefreshReplayed:
-		// Meetbaar apart van een gewone rotatie: elke regel hier is een
-		// antwoord dat de lijn eerder kwijtraakte, en dat hoort zeldzaam te
-		// zijn.
-		s.log.Info("rotatie-antwoord verloren; herhaling binnen het respijt bediend")
-	case auth.RefreshReused:
-		// De hele keten van DEZE sessie is nu ongeldig (DEC-123, sessie-scoped
-		// sinds PS-9). Een van de twee partijen die dit token droeg is de
-		// aanvaller, en welke dat is valt niet vast te stellen.
-		if sid != id.Nil {
-			s.opts.Revocations.Revoke(sid, now)
-		}
-		s.log.Warn("refreshtoken hergebruikt; de tokens van deze sessie zijn ingetrokken")
-		writeError(w, s.log, CodeRefreshTokenReused, "refresh token reused", nil)
-		return
-	case auth.RefreshSessionRevoked:
-		writeError(w, s.log, CodeTokenInvalid, "session revoked", nil)
-		return
-	case auth.RefreshExpired, auth.RefreshUnknown:
-		writeError(w, s.log, CodeTokenInvalid, "refresh token invalid", nil)
-		return
-	}
-
-	// last_seen_at bijwerken hoort hier en niet bij elke aanvraag: een refresh
-	// is per toestel de natuurlijke hartslag, en een schrijfronde per GET zou
-	// een leesserver in een schrijfserver veranderen voor een veld dat alleen in
-	// GET /sessions staat.
-	if err := s.opts.Auth.TouchSession(r.Context(), sid, now); err != nil {
-		s.log.Warn("last_seen_at bijwerken mislukt", "error", err.Error())
-	}
-
-	access, claims, err := s.opts.Signer.Mint(subjectID.String(), sid.String(), auth.TokenAccess, s.settings().AccessTokenTTL(), "")
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-
-	s.writeTokenPair(w, r, mode, access, newToken, (claims.ExpiresAt-claims.IssuedAt)*1000)
 }
 
 type streamTokenRequest struct {
@@ -595,10 +525,13 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID id.I
 	s.writeTokenPair(w, r, mode, access, refresh, (claims.ExpiresAt-claims.IssuedAt)*1000)
 }
 
-// De twee waarden van credential_mode (J.2 rij 16, hoofdstuk 17d).
+// De waarden van credential_mode (J.2 rij 16, hoofdstuk 17d). cookie_upgrade bestaat
+// alleen op POST /auth/refresh: een browser met een oud token in localStorage ruilt
+// dat in en krijgt de cookie terug (17d.1).
 const (
-	credentialModeToken  = "token"
-	credentialModeCookie = "cookie"
+	credentialModeToken         = "token"
+	credentialModeCookie        = "cookie"
+	credentialModeCookieUpgrade = "cookie_upgrade"
 )
 
 // credentialMode leest het veld, toetst de origin wanneer het om de cookie
@@ -639,13 +572,12 @@ func (s *Server) credentialMode(w http.ResponseWriter, r *http.Request, raw, bad
 	// voor browsers, en een browser zet Origin op elke POST, ook op een
 	// same-origin POST. Een aanvraag zonder die header komt dus niet van een
 	// browser, en toelaten zou de controle in één regel curl te omzeilen maken.
-	detail := map[string]any{"origin": origin}
+	detail := map[string]any{"origin": cutLoginText(origin)}
 	if origin == "" {
 		detail["origin"] = "(afwezig)"
 	}
 	if operation != "" {
-		s.auditAnonymous(r, operation, audit.OutcomeDenied,
-			map[string]any{"reason": "origin_rejected", "origin": detail["origin"]})
+		s.auditLoginDenied(r, map[string]any{"reason": "origin_rejected", "origin": detail["origin"]})
 	}
 	s.log.Warn("cookiemodus geweigerd op een niet-toegestane origin",
 		"path", r.URL.Path, "origin", detail["origin"])

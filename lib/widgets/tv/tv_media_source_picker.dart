@@ -57,6 +57,9 @@
 library;
 
 import 'package:flutter/material.dart';
+
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
@@ -188,44 +191,48 @@ class TvMediaSourcePicker extends StatelessWidget {
 
     return DecoratedBox(
       decoration: tvPanelDecoration(mono, radius),
-      child: Padding(
-        padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _Header(scale: scale, title: title, year: year, intent: intent, coverage: coverage, artwork: artwork),
-            SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-            // Hoofdstuk 14.7: with nothing reachable the list of dead rows is
-            // not the message — the two things the user can do about it are.
-            if (!_hasUsableSource) ...[
-              _UnreachableNotice(scale: scale, authRequired: _authRequired),
-              SizedBox(height: TvSourcePickerLayout.rowGap * scale),
-            ],
-            Flexible(
-              child: TvSourceRowList(
-                scale: scale,
-                descriptors: descriptors,
-                focusedSourceKey: focusedSourceKey,
-                initialFocusNode: entryRowKey == null ? null : initialFocusNode,
-                initialFocusSourceKey: entryRowKey,
-                // The shared list speaks in `sourceKey`; this picker is the
-                // half that knows what a key stands for.
-                onSelectSource: (key) => onSelectSource(sources.firstWhere((s) => s.sourceKey == key)),
-                onFocusSource: onFocusSource,
+      child: AutomationNode(
+        id: AutomationIds.sheetSourcePicker,
+        role: 'sheet',
+        child: Padding(
+          padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Header(scale: scale, title: title, year: year, intent: intent, coverage: coverage, artwork: artwork),
+              SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
+              // Hoofdstuk 14.7: with nothing reachable the list of dead rows is
+              // not the message — the two things the user can do about it are.
+              if (!_hasUsableSource) ...[
+                _UnreachableNotice(scale: scale, authRequired: _authRequired),
+                SizedBox(height: TvSourcePickerLayout.rowGap * scale),
+              ],
+              Flexible(
+                child: TvSourceRowList(
+                  scale: scale,
+                  descriptors: descriptors,
+                  focusedSourceKey: focusedSourceKey,
+                  initialFocusNode: entryRowKey == null ? null : initialFocusNode,
+                  initialFocusSourceKey: entryRowKey,
+                  // The shared list speaks in `sourceKey`; this picker is the
+                  // half that knows what a key stands for.
+                  onSelectSource: (key) => onSelectSource(sources.firstWhere((s) => s.sourceKey == key)),
+                  onFocusSource: onFocusSource,
+                ),
               ),
-            ),
-            if (isResolving) ...[SizedBox(height: TvSourcePickerLayout.rowGap * scale), _ResolvingRow(scale: scale)],
-            SizedBox(height: TvSourcePickerLayout.footerGap * scale),
-            _Footer(
-              scale: scale,
-              onClose: onClose,
-              onManageServers: _hasUsableSource ? null : onManageServers,
-              settableServer: settable,
-              onSetPreferredServer: onSetPreferredServer,
-              focusNode: footerFocusNode,
-            ),
-          ],
+              if (isResolving) ...[SizedBox(height: TvSourcePickerLayout.rowGap * scale), _ResolvingRow(scale: scale)],
+              SizedBox(height: TvSourcePickerLayout.footerGap * scale),
+              _Footer(
+                scale: scale,
+                onClose: onClose,
+                onManageServers: _hasUsableSource ? null : onManageServers,
+                settableServer: settable,
+                onSetPreferredServer: onSetPreferredServer,
+                focusNode: footerFocusNode,
+              ),
+            ],
+          ),
         ),
       ),
     );

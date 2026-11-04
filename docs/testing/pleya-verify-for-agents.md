@@ -21,9 +21,10 @@ Before running anything against a real target, check whether the target can actu
   <scenario.yaml>` builds and boots as part of the run; a missing toolchain or simulator surfaces
   as a `run`-time `ERROR`, not a silent skip.
   For iPad landscape, `configure_view` first accepts an already-landscape live viewport; otherwise
-  it uses the Simulator rotation shortcut. macOS Accessibility permission and an unlocked screen
-  are required for that shortcut. A platform acknowledgement without a landscape viewport never
-  counts as PASS.
+  the app asks iOS for the orientation over `POST /v1/window`, so nothing on the host takes the
+  keyboard or a window. A platform acknowledgement without a landscape viewport never counts as
+  PASS. iPadOS honors that request because the driver's isolated app copy sets
+  `UIRequiresFullScreen`, so Verify does not measure Split View or Stage Manager windows.
 - **iOS with more than one booted iPhone simulator**: set `PLEYA_VERIFY_IOS_UDID`. Without it the
   run stops before the build, reported as `FAILED` with a `failure_message` that lists the booted
   devices, instead of picking one.
@@ -107,9 +108,13 @@ For a `state:` assertion, use the field the widget itself renders from (a `state
 mirroring a real `bool`/`enum`), never a proxy that merely correlates with it. `assert:
 {state: {collapsed: !isCollapsed}}` (asserting the boolean *without inverting the bug*) is exactly
 the kind of false-PASS Fase 12 exists to catch; see
-`pleya_verify/scenarios/tvos.nav.focus-switches-destination.yaml` for a commented example that
-asserts `state.active` after every press instead of where the ring is. Since DEC-120 that scenario
-is the reference gate DEC-081 named; `tvos.sidebar.collapse` went with the sidebar.
+`pleya_verify/scenarios/tvos.nav.glass-selector.yaml` for an example that separately
+asserts `state.active` (the open page) and `state.selector` (the capsule target). DEC-120 originally named `tvos.nav.focus-switches-destination` as the reference gate for
+DEC-081; A-24c already restored explicit Select activation. NAV-GLASS1 (28 October
+2026) adds the single Apple TV glass selector while preserving that navigation.
+The historical scenario id is retained with the updated Select contract; the new
+`tvos.nav.glass-selector` scenario additionally covers the glass treatment.
+`tvos.sidebar.collapse` went with the sidebar.
 
 `present: false` is one snapshot of the tree: the runner looks once and does not wait
 (`_idReady` in `pleya_verify/runner/lib/src/engine/run_scenario.dart`). Before the screen has

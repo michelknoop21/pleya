@@ -508,6 +508,9 @@ class _TranslationsMediaMenuDe extends TranslationsMediaMenuEn {
 	final TranslationsDe _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Ansehen';
+	@override String get manage => 'Verwalten';
+	@override String get moreWaysToWatch => 'Weitere Wiedergabeoptionen';
 	@override String get markAsWatched => 'Als gesehen markieren';
 	@override String get markAsUnwatched => 'Als ungesehen markieren';
 	@override String get removeFromContinueWatching => 'Aus ‚Weiterschauen‘ entfernen';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesDe extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Mediatheken verwalten';
 	@override String get sort => 'Sortieren';
 	@override String get sortBy => 'Sortieren nach';
+	@override String get filterBy => 'Filtern nach';
 	@override String get filters => 'Filter';
 	@override String get confirmActionMessage => 'Aktion wirklich durchführen?';
 	@override String get showLibrary => 'Mediathek anzeigen';
@@ -1826,11 +1830,9 @@ class _TranslationsTvMyPleyaDe extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} von ${total} Servern online';
 	@override String get noServers => 'Keine Server verbunden';
 	@override String get statusOnline => 'Online';
-	@override String get statusOffline => 'Offline';
 	@override String get servers => 'Server';
 	@override String get activity => 'Aktivität';
 	@override String get logs => 'Protokolle und Diagnose';
-	@override String signedInAs({required Object name, required Object version}) => 'Angemeldet als ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Gespeicherte Filme und Serien';
 	@override String get requestsSubtitle => 'Anfragen und Entdecken';
 	@override String get downloadsSubtitle => 'Offline und Synchronisierungsregeln';
@@ -1881,7 +1883,6 @@ class _TranslationsSettingsStudioDe extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Deine Bibliothek';
 	@override String get viewPreview => 'Vorschau ansehen';
 	@override String get playbackExperience => 'Wiedergabe-Erlebnis';
-	@override String get manage => 'Verwalten';
 	@override String get yourWatchlist => 'Deine Merkliste';
 	@override String get yourContent => 'Deine Inhalte';
 	@override String get lightMode => 'Heller Modus';
@@ -2696,6 +2697,9 @@ extension on TranslationsDe {
 			'fileInfo.duration' => 'Dauer',
 			'fileInfo.optimizedForStreaming' => 'Für Streaming optimiert',
 			'fileInfo.has64bitOffsets' => '64-Bit-Offsets',
+			'mediaMenu.watch' => 'Ansehen',
+			'mediaMenu.manage' => 'Verwalten',
+			'mediaMenu.moreWaysToWatch' => 'Weitere Wiedergabeoptionen',
 			'mediaMenu.markAsWatched' => 'Als gesehen markieren',
 			'mediaMenu.markAsUnwatched' => 'Als ungesehen markieren',
 			'mediaMenu.removeFromContinueWatching' => 'Aus ‚Weiterschauen‘ entfernen',
@@ -2853,11 +2857,11 @@ extension on TranslationsDe {
 			'messages.noEpisodesFoundGeneral' => 'Keine Episoden gefunden',
 			'messages.episodesLoadFailed' => 'Episoden konnten nicht geladen werden',
 			'messages.noResultsFound' => 'Keine Ergebnisse gefunden',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Sleep-Timer gesetzt auf ${label}',
 			'messages.noItemsAvailable' => 'Keine Elemente verfügbar',
 			'messages.failedToCreatePlayQueueNoItems' => 'Wiedergabewarteschlange konnte nicht erstellt werden – keine Elemente',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Wiedergabe für ${action} fehlgeschlagen',
 			'messages.switchingToCompatiblePlayer' => 'Wechsle zu kompatiblem Player...',
 			'messages.serverLimitTitle' => 'Wiedergabe fehlgeschlagen',
@@ -3031,6 +3035,7 @@ extension on TranslationsDe {
 			'libraries.manageLibraries' => 'Mediatheken verwalten',
 			'libraries.sort' => 'Sortieren',
 			'libraries.sortBy' => 'Sortieren nach',
+			'libraries.filterBy' => 'Filtern nach',
 			'libraries.filters' => 'Filter',
 			'libraries.confirmActionMessage' => 'Aktion wirklich durchführen?',
 			'libraries.showLibrary' => 'Mediathek anzeigen',
@@ -3366,12 +3371,12 @@ extension on TranslationsDe {
 			'companionRemote.session.serverRunningDescription' => 'Mobilgeräte in deinem Netzwerk können sich mit dieser App verbinden',
 			'companionRemote.session.serverStoppedDescription' => 'Starte den Server, um Mobilgeräten die Verbindung zu ermöglichen',
 			'companionRemote.session.usePhoneToControl' => 'Verwende dein Mobilgerät, um diese App zu steuern',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Server starten',
 			'companionRemote.session.stopServer' => 'Server stoppen',
 			'companionRemote.session.minimize' => 'Minimieren',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-Geräte mit demselben Plex-Konto erscheinen hier',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Verbinden...',
 			'companionRemote.pairing.searchingForDevices' => 'Suche nach Geräten...',
@@ -3775,11 +3780,9 @@ extension on TranslationsDe {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} von ${total} Servern online',
 			'tvMyPleya.noServers' => 'Keine Server verbunden',
 			'tvMyPleya.statusOnline' => 'Online',
-			'tvMyPleya.statusOffline' => 'Offline',
 			'tvMyPleya.servers' => 'Server',
 			'tvMyPleya.activity' => 'Aktivität',
 			'tvMyPleya.logs' => 'Protokolle und Diagnose',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Angemeldet als ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Gespeicherte Filme und Serien',
 			'tvMyPleya.requestsSubtitle' => 'Anfragen und Entdecken',
 			'tvMyPleya.downloadsSubtitle' => 'Offline und Synchronisierungsregeln',
@@ -3813,7 +3816,6 @@ extension on TranslationsDe {
 			'settingsStudio.yourLibrary' => 'Deine Bibliothek',
 			'settingsStudio.viewPreview' => 'Vorschau ansehen',
 			'settingsStudio.playbackExperience' => 'Wiedergabe-Erlebnis',
-			'settingsStudio.manage' => 'Verwalten',
 			'settingsStudio.yourWatchlist' => 'Deine Merkliste',
 			'settingsStudio.yourContent' => 'Deine Inhalte',
 			'settingsStudio.lightMode' => 'Heller Modus',

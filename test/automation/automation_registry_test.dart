@@ -5,6 +5,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_registry.dart';
 
 void main() {
+  testWidgets('a temporarily inactive Focus context cannot break the whole snapshot', (tester) async {
+    late BuildContext previous;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            previous = context;
+            return const SizedBox(width: 10, height: 10);
+          },
+        ),
+      ),
+    );
+    final token = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(id: 'transitional-focus', role: 'focusable', contextGetter: () => previous),
+    );
+    addTearDown(() => AutomationRegistry.instance.unregister(token));
+    Map<String, Object?>? snapshot;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Container(
+          child: Builder(
+            builder: (_) {
+              snapshot = AutomationRegistry.instance.snapshot();
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final node = (snapshot!['declared'] as List).cast<Map<String, Object?>>().singleWhere(
+      (n) => n['id'] == 'transitional-focus',
+    );
+    expect(node['bounds'], isNull);
+    expect(() => jsonEncode(snapshot), returnsNormally);
+  });
+
   test('declared nodes with a duplicate id get a #2 suffix and land in duplicates', () {
     final tokenOne = AutomationRegistry.instance.register(
       const AutomationDeclaredNode(id: 'dup-a', role: 'button', label: 'one'),

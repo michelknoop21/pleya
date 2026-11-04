@@ -1,0 +1,134 @@
+[
+  {
+    "file": "pleya-backup-20261102T011050Z-41983ce7ab48.tar",
+    "sha256": "53075cdb8975d7a678010f1b82e5a820adc51db6ac3858d437aa7124b7f8007b",
+    "manifest": {
+      "format": 1,
+      "id": "01a199cf-1a11-7000-8e32-41983ce7ab48",
+      "created_at": "2026-11-02T01:10:50.914661166Z",
+      "trigger": "manual",
+      "server_version": "699026e1b031137fa79fd3639d49df58acc1d553",
+      "schema_version": 30,
+      "schema": "public",
+      "counts": {
+        "titles": 1,
+        "users": 4,
+        "libraries": 1,
+        "watch_states": 2
+      },
+      "secrets": {
+        "kdf": "argon2id",
+        "salt": "013Fn8h4RRumvLlk9munJQ==",
+        "time": 3,
+        "memory_kib": 65536,
+        "threads": 1,
+        "cipher": "aes-256-gcm"
+      },
+      "secrets_omitted": 0
+    },
+    "entries": [
+      "manifest.json",
+      "database.sql.gz",
+      "secrets.tar.enc"
+    ]
+  },
+  {
+    "file": "pleya-backup-20261102T011054Z-e7dae285c6b9.tar",
+    "sha256": "05b866f0d7230e108e24fae422e816d0f5760625157ad1dc2c61020bace27c1c",
+    "manifest": {
+      "format": 1,
+      "id": "01a199cf-2d30-7000-a194-e7dae285c6b9",
+      "created_at": "2026-11-02T01:10:54.000226585Z",
+      "trigger": "upgrade",
+      "server_version": "44abf69f015bd0e639021f69fdac475522bcce12",
+      "schema_version": 30,
+      "schema": "public",
+      "counts": {
+        "titles": 1,
+        "users": 4,
+        "libraries": 1,
+        "watch_states": 2
+      },
+      "secrets": {
+        "kdf": "argon2id",
+        "salt": "AZgBxTY+voz7zN6G9c3q6w==",
+        "time": 3,
+        "memory_kib": 65536,
+        "threads": 1,
+        "cipher": "aes-256-gcm"
+      },
+      "secrets_omitted": 0
+    },
+    "entries": [
+      "manifest.json",
+      "database.sql.gz",
+      "secrets.tar.enc"
+    ]
+  },
+  {
+    "file": "pleya-backup-20261102T011246Z-0b941d53174d.tar",
+    "sha256": "1b78b42ef40a17762f9672c967c48aec49bf98eb618529c076d15201bd584436",
+    "manifest": {
+      "format": 1,
+      "id": "01a199d0-e1e7-7000-aeab-0b941d53174d",
+      "created_at": "2026-11-02T01:12:46.50786747Z",
+      "trigger": "manual",
+      "server_version": "699026e1b031137fa79fd3639d49df58acc1d553",
+      "schema_version": 30,
+      "schema": "public",
+      "counts": {
+        "titles": 1,
+        "users": 4,
+        "libraries": 1,
+        "watch_states": 2
+      },
+      "secrets": {
+        "kdf": "argon2id",
+        "salt": "BLSt8J/vKPovExF4wXlgmQ==",
+        "time": 3,
+        "memory_kib": 65536,
+        "threads": 1,
+        "cipher": "aes-256-gcm"
+      },
+      "secrets_omitted": 0
+    },
+    "entries": [
+      "manifest.json",
+      "database.sql.gz",
+      "secrets.tar.enc"
+    ]
+  },
+  {
+    "file": "pleya-backup-20261102T011249Z-f93c50cf9222.tar",
+    "sha256": "cdd46de6b66c53530c6506938d2e8f281ec1a93e44fcacbf8703707d65c4c263",
+    "manifest": {
+      "format": 1,
+      "id": "01a199d0-f076-7000-9aa3-f93c50cf9222",
+      "created_at": "2026-11-02T01:12:49.526342597Z",
+      "trigger": "upgrade",
+      "server_version": "44abf69f015bd0e639021f69fdac475522bcce12",
+      "schema_version": 30,
+      "schema": "public",
+      "counts": {
+        "titles": 1,
+        "users": 4,
+        "libraries": 1,
+        "watch_states": 2
+      },
+      "secrets": {
+        "kdf": "argon2id",
+        "salt": "EVavtbDRTNFMO+iPui0V1w==",
+        "time": 3,
+        "memory_kib": 65536,
+        "threads": 1,
+        "cipher": "aes-256-gcm"
+      },
+      "secrets_omitted": 0
+    },
+    "entries": [
+      "manifest.json",
+      "database.sql.gz",
+      "secrets.tar.enc"
+    ]
+  }
+]

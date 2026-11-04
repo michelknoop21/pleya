@@ -216,6 +216,7 @@ class PlexClient
     implements
         MediaServerClient,
         FreshMediaItemClient,
+        CopyStateClient,
         SeasonEpisodePagingClient,
         PersonSearchClient,
         GracefullyCloseable,
@@ -683,7 +684,8 @@ class PlexClient
   }
 
   @override
-  PlexMetadataDto _createTaggedMetadata(Map<String, dynamic> json) => _tagMetadata(PlexMetadataDto.fromJson(json));
+  PlexMetadataDto _createTaggedMetadata(Map<String, dynamic> json) =>
+      _tagMetadata(PlexMetadataDto.fromJsonWithGuids(json));
 
   PlexMetadataDto _createTaggedMetadataWithLibrary(
     Map<String, dynamic> json, {
@@ -691,7 +693,7 @@ class PlexClient
     String? librarySectionTitle,
   }) {
     return _tagMetadataWithLibrary(
-      PlexMetadataDto.fromJson(json),
+      PlexMetadataDto.fromJsonWithGuids(json),
       librarySectionID: _librarySectionIdFromJson(json) ?? librarySectionID,
       librarySectionTitle: _librarySectionTitleFromJson(json) ?? librarySectionTitle,
     );
@@ -919,6 +921,9 @@ class PlexClient
     bool requireTotalCount = false,
   }) async {
     final queryParams = _buildPaginationParams(start, size);
+    // The provider numbers ride along in the same answer (a few bytes per
+    // title), so unified grouping needs no detail request per title.
+    queryParams['includeGuids'] = 1;
     if (filters != null) queryParams.addAll(filters);
     final endpoint = sectionId == 'shared' ? '/library/shared/all' : '/library/sections/$sectionId/all';
     final response = await _getWithFailover(endpoint, queryParameters: queryParams, abort: abort);
@@ -1216,7 +1221,12 @@ class PlexClient
       final response = await apiCall();
       return parseResponse(response);
     } catch (e) {
-      appLogger.e(errorMessage, error: e);
+      // A cancelled request (client closing, abort trigger) is not a failure.
+      if (e is MediaServerHttpException && e.type == MediaServerHttpErrorType.cancelled) {
+        appLogger.d(errorMessage, error: e);
+      } else {
+        appLogger.e(errorMessage, error: e);
+      }
       return [];
     }
   }
@@ -1400,6 +1410,7 @@ class PlexClient
         'searchTypes': 'movies,tv',
         'includeCollections': 1,
         'includeExternalMedia': 1,
+        'includeGuids': 1,
         'X-Plex-Container-Size': limit,
       },
       // Search is interactive and cross-server: a failover attempt doubles the
@@ -1739,6 +1750,46 @@ class PlexClient
       '/:/unscrobble',
       queryParameters: {'key': ratingKey, 'identifier': 'com.plexapp.plugins.library'},
     );
+  }
+
+  @override
+  bool get movesCopyWithoutViewing => true;
+
+  @override
+  Future<MediaItem?> readCopyState(String id) async {
+    if (isOfflineMode) throw StateError('Offline: no answer about $id');
+    final response = await _http.get('/library/metadata/$id');
+    if (response.statusCode == 404) return null;
+    throwIfHttpError(response);
+    final json = _getFirstMetadataJson(response);
+    if (json == null) throw StateError('No metadata in the answer about $id');
+    return PlexMappers.mediaItem(_tagMetadata(PlexMetadataDto.fromJsonWithImages(json)));
+  }
+
+  /// `/:/progress` sets the resume position and no session shows up on the
+  /// server; `/:/timeline` is the report of a viewing. It cannot set zero, which
+  /// a copy never needs: it only moves forward.
+  @override
+  Future<bool> writeCopyState(
+    MediaItem item, {
+    required Duration position,
+    Duration? duration,
+    required bool watched,
+  }) async {
+    if (watched) {
+      await markWatched(item);
+      return true;
+    }
+    await _getWithFailover(
+      '/:/progress',
+      queryParameters: {
+        'key': item.id,
+        'identifier': 'com.plexapp.plugins.library',
+        'time': position.inMilliseconds,
+        'state': 'stopped',
+      },
+    );
+    return true;
   }
 
   /// Update playback progress.

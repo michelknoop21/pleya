@@ -239,6 +239,7 @@ class UnifiedArtworkPrefetcher {
 
   int _inFlight = 0;
   bool _disposed = false;
+  int? _lastArtworkRevision;
 
   /// The window the current queue was built from, so an unchanged call costs
   /// nothing. Identity on the list: the catalogue rebuilds its group list
@@ -281,13 +282,16 @@ class UnifiedArtworkPrefetcher {
     if (!posterSize.width.isFinite || !posterSize.height.isFinite) return;
     if (posterSize.width <= 0 || posterSize.height <= 0) return;
 
-    if (identical(groups, _lastGroups) &&
+    final artworkRevision = context.read<LocalLibraryProvider?>()?.artworkRevision;
+    if (artworkRevision == _lastArtworkRevision &&
+        identical(groups, _lastGroups) &&
         firstVisibleIndex == _lastFirst &&
         lastVisibleIndex == _lastLast &&
         posterSize == _lastPosterSize &&
         secondarySize == _lastSecondarySize) {
       return;
     }
+    _lastArtworkRevision = artworkRevision;
     _lastGroups = groups;
     _lastFirst = firstVisibleIndex;
     _lastLast = lastVisibleIndex;
@@ -365,7 +369,7 @@ class UnifiedArtworkPrefetcher {
     if (_pending.length >= maxWindowItems) return;
     final request = _buildRequest(group, size, devicePixelRatio, context, pathOf: pathOf, typeOf: typeOf);
     if (request == null) return;
-    if (_requested.contains(request.url) || !_pendingUrls.add(request.url)) return;
+    if (_requested.contains(request.cacheKey) || !_pendingUrls.add(request.cacheKey)) return;
     _pending.add(_PendingPrefetch(request, context));
   }
 
@@ -425,13 +429,16 @@ class UnifiedArtworkPrefetcher {
 
     // The image widget's own key, not a copy of it: a warmed entry stored
     // under a different key is a second copy the card never finds.
-    final cacheKey = OptimizedMediaImage.artworkCacheKey(url);
+    final baseKey = OptimizedMediaImage.artworkCacheKey(url);
+    final cacheKey = localPath != null
+        ? baseKey
+        : context.read<LocalLibraryProvider?>()?.artworkCacheKey(source.serverId, url, baseKey) ?? baseKey;
     final ImageProvider<Object> provider = localPath != null
         ? FileImage(File(localPath))
         : CachedNetworkImageProvider(
             url,
             cacheKey: cacheKey,
-            cacheManager: PlexImageCacheManager.instance,
+            cacheManager: context.read<LocalLibraryProvider?>()?.artworkCache ?? PlexImageCacheManager.instance,
             headers: const {'User-Agent': 'Pleya'},
           );
 
@@ -448,12 +455,12 @@ class UnifiedArtworkPrefetcher {
   void _pump() {
     while (!_disposed && _inFlight < maxConcurrent && _pending.isNotEmpty) {
       final next = _pending.removeAt(0);
-      _pendingUrls.remove(next.request.url);
+      _pendingUrls.remove(next.request.cacheKey);
       // A context torn down between queueing and dispatch (the grid left the
       // tree while a burst was draining) can no longer produce an image
       // configuration; skip rather than assert.
       if (!next.context.mounted) continue;
-      _remember(next.request.url);
+      _remember(next.request.cacheKey);
       _dispatch(next);
     }
   }

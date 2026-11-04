@@ -3,6 +3,7 @@ import '../providers/offline_mode_provider.dart';
 import '../providers/download_provider.dart';
 import '../services/watchlist/watchlist_snapshot_store.dart';
 import '../services/api_cache.dart';
+import '../services/unified_catalog/unified_progress_mirror.dart';
 import '../providers/watchlist_store.dart';
 import '../providers/watchlist_provider.dart';
 import '../media/media_backend.dart';
@@ -64,6 +65,7 @@ import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import 'profile_navigation_scope.dart';
+import 'profile_memory_sync.dart';
 
 /// Root route for an active profile session.
 ///
@@ -481,8 +483,17 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ),
               // What this profile asked Big P to remember. One instance per
               // profile session, shared by chat and settings.
-              Provider<MemoryService>(
+              ChangeNotifierProvider<MemoryService>(
                 create: (context) => MemoryService(database: context.read<AppDatabase>(), profileId: activeId ?? ''),
+              ),
+              ChangeNotifierProvider<ProfileMemorySync>(
+                lazy: false,
+                create: (context) => ProfileMemorySync(
+                  memory: context.read<MemoryService>(),
+                  activeProfile: context.read<ActiveProfileProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                  connections: context.read<ProfileConnectionRegistry>(),
+                ),
               ),
               Provider<InteractionRecorder>(
                 lazy: false,
@@ -545,13 +556,16 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // provider carried across a switch would serve the previous
               // user's list.
               ChangeNotifierProxyProvider3<MultiServerProvider, DownloadProvider, SeerrProvider, WatchlistProvider>(
-                create: (context) =>
-                    WatchlistProvider(snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex))),
+                create: (context) => WatchlistProvider(
+                  snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex)),
+                  onScopeChanged: context.read<WatchlistStore>().clear,
+                ),
                 update: (context, multiServer, downloads, seerr, previous) {
                   final provider =
                       previous ??
                       WatchlistProvider(
                         snapshots: WatchlistSnapshotStore(cache: ApiCache.forBackend(MediaBackend.plex)),
+                        onScopeChanged: context.read<WatchlistStore>().clear,
                       );
                   provider.isServerOnline = multiServer.isServerOnline;
                   provider.hasDownload = downloads.isDownloaded;
@@ -658,16 +672,20 @@ class _ProfileSessionNavigatorState extends State<_ProfileSessionNavigator> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _mainScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   final _routeObserver = AutomationRouteObserver();
+  VoidCallback? _unbindOwnPlayMirror;
 
   @override
   void initState() {
     super.initState();
     profileNavigationRegistry.attachNavigator(_navigatorKey);
     profileNavigationRegistry.attachMainScaffoldMessenger(_mainScaffoldMessengerKey);
+    final queue = context.read<OfflineWatchSyncService?>();
+    if (queue != null) _unbindOwnPlayMirror = bindOwnPlayMirror(context, queue);
   }
 
   @override
   void dispose() {
+    _unbindOwnPlayMirror?.call();
     profileNavigationRegistry.detachNavigator(_navigatorKey);
     profileNavigationRegistry.detachMainScaffoldMessenger(_mainScaffoldMessengerKey);
     super.dispose();

@@ -109,6 +109,13 @@
     "checkFailed": "Kon niet controleren op updates"
   },
   "settings": {
+    "privacy": "Privacy",
+    "showTraktDiscussions": "Discussies van Trakt tonen",
+    "shareActivity": "Mijn activiteit delen",
+    "shareActivityDescription": "Anderen in het huishouden zien wat jij keek",
+    "shareActivityServer": "Mijn activiteit delen op ${server}",
+    "shareActivitySaveFailed": "Opslaan lukte niet. Er is niets gewijzigd.",
+    "shareActivityUnreadable": "Deze instelling is niet te lezen. Druk om het opnieuw te proberen.",
     "searchHint": "Zoek in instellingen",
     "urlLabel": "URL",
     "title": "Instellingen",
@@ -481,6 +488,11 @@
     "more": "Meer"
   },
   "mediaMenu": {
+    "addToPlaylistOrCollection": "Toevoegen aan afspeellijst / collectie",
+    "addToPlaylist": "Toevoegen aan afspeellijst",
+    "watch": "Kijken",
+    "manage": "Beheren",
+    "moreWaysToWatch": "Meer manieren om te kijken",
     "markAsWatched": "Markeer als gekeken",
     "markAsUnwatched": "Markeer als ongekeken",
     "removeFromContinueWatching": "Verwijderen uit Verder kijken",
@@ -493,7 +505,7 @@
     "goToSeries": "Ga naar serie",
     "shufflePlay": "Willekeurig afspelen",
     "shuffleNotAvailableOffline": "Shuffle is offline niet beschikbaar",
-    "fileInfo": "Bestand info",
+    "fileInfo": "Bestandsinformatie",
     "deleteFromServer": "Verwijderen van server",
     "confirmDelete": "Deze media en bestanden van je server verwijderen?",
     "deleteMultipleWarning": "Dit omvat alle afleveringen en hun bestanden.",
@@ -539,6 +551,9 @@
   "videoControls": {
     "audioLabel": "Audio",
     "subtitlesLabel": "Ondertitels",
+    "subtitlesPreparing": "Ondertitels voorbereiden",
+    "subtitlesPrepareFailed": "Ondertitels konden niet worden voorbereid",
+    "subtitlesPrepareRetry": "Opnieuw",
     "resetToZero": "Reset naar 0ms",
     "addTime": "+${amount}${unit}",
     "minusTime": "-${amount}${unit}",
@@ -845,6 +860,16 @@
     "reauthRequired": "Opnieuw aanmelden vereist"
   },
   "discover": {
+    "discussions": "Discussies",
+    "seasonBadge": "S${number}",
+    "commentLikes": {
+      "one": "${n} like",
+      "other": "${n} likes"
+    },
+    "moreActions": "Meer acties",
+    "audioStream": "Audiostream",
+    "subtitlesRow": "Ondertitels",
+    "manageTitle": "Beheren",
     "title": "Ontdekken",
     "forYou": "Voor jou",
     "switchProfile": "Wissel van profiel",
@@ -907,6 +932,8 @@
     "statsWatchTime": "${duration} bekeken",
     "statsRecent": "${count} in de laatste 30 dagen",
     "watchingSeriesBy": "Kijken deze serie: ${names}",
+    "activityBy": "Activiteit van ${names}",
+    "activityByYou": "jou",
     "activityPlays": "${count}× afgespeeld",
     "activityViewers": "${count} kijkers",
     "activityOwnProgress": "Jij bent bij S${season} A${episode}",
@@ -928,6 +955,13 @@
     "scoreRtCritics": "Rotten Tomatoes, critici",
     "scoreRtAudience": "Rotten Tomatoes, publiek",
     "scoreCommunity": "Communityscore",
+    "castAndCrew": "Cast & Crew",
+    "ratingsAndReviews": "Ratings & Reviews",
+    "seriesTab": "Serie",
+    "episodeBadge": "A${number}",
+    "directedBy": "Geregisseerd door ${names}",
+    "trailer": "Trailer",
+    "extra": "Extra",
     "reviews": "Recensies",
     "reviewOpenSource": "Lees bij de bron"
   },
@@ -970,6 +1004,12 @@
     "playbackServerErrorBody": "De server liep vast tijdens het transcoderen"
   },
   "libraries": {
+    "cinemaReorderHint": "Select: oppakken/neerzetten · ↑↓: verplaatsen · Menu: klaar",
+    "cinemaVisible": "Zichtbaar",
+    "cinemaHidden": "Verborgen in dit profiel",
+    "cinemaOptionsHint": "Select voor bibliotheekopties",
+    "cinemaSummaryTitle": "Eén bibliotheek.",
+    "cinemaSummaryHint": "Alle mogelijkheden bij Select.",
     "alphabetScrubber": "Alfabetisch bladeren",
     "title": "Bibliotheken",
     "fallbackTitle": "Bibliotheek",
@@ -1001,7 +1041,8 @@
     "emptyTrashConfirm": "Weet je zeker dat je de prullenbak wilt legen voor \"${title}\"?",
     "manageLibraries": "Beheer bibliotheken",
     "sort": "Sorteren",
-    "sortBy": "Sorteer op",
+    "sortBy": "Sorteren op",
+    "filterBy": "Filteren op",
     "filters": "Filters",
     "confirmActionMessage": "Weet je zeker dat je deze actie wilt uitvoeren?",
     "showLibrary": "Toon bibliotheek",
@@ -1192,10 +1233,7 @@
     "playlistsCount": {
       "one": "1 lijst",
       "other": "${n} lijsten"
-    },
-    "bigPTvSubtitle": "Je persoonlijke kijkassistent",
-    "openBigP": "Open Big P",
-    "switchProfile": "Profiel wisselen"
+    }
   },
   "liveTv": {
     "serverNotAvailable": "Live TV-server is niet beschikbaar.",
@@ -1321,6 +1359,7 @@
     "errorLoading": "Fout bij laden afspeellijsten",
     "errorAdding": "Fout bij toevoegen aan afspeellijst",
     "errorReordering": "Fout bij herschikken van afspeellijstitem",
+    "changedElsewhere": "Deze afspeellijst is ergens anders gewijzigd. Hij is opnieuw geladen, dus verplaats het item nog een keer.",
     "errorRemoving": "Fout bij verwijderen uit afspeellijst"
   },
   "watchTogether": {
@@ -1400,7 +1439,7 @@
     "movies": "Films",
     "noDownloads": "Nog geen downloads",
     "noDownloadsDescription": "Gedownloade content verschijnt hier voor offline weergave",
-    "downloadNow": "Download",
+    "downloadNow": "Downloaden",
     "deleteDownload": "Download verwijderen",
     "retryDownload": "Download opnieuw proberen",
     "downloadQueued": "Download in wachtrij",
@@ -2199,6 +2238,7 @@
     "titleCount": "${count} titels",
     "oneTitle": "1 titel",
     "titlesLoaded": "${count} titels geladen",
+    "jumpTo": "Spring naar",
     "loadMore": "Meer laden",
     "loadingMore": "Meer laden…",
     "sort": {
@@ -2209,7 +2249,25 @@
       "oldestAdded": "Oudst toegevoegd",
       "newestRelease": "Nieuwste release",
       "oldestRelease": "Oudste release",
-      "recentlyWatched": "Recent bekeken"
+      "yearNewest": "Nieuwste jaar",
+      "yearOldest": "Oudste jaar",
+      "recentlyWatched": "Recent bekeken",
+      "fields": {
+        "title": "Titel",
+        "year": "Jaar",
+        "releaseDate": "Releasedatum",
+        "criticRating": "Critici",
+        "audienceRating": "Publiek",
+        "userRating": "Waardering",
+        "contentRating": "Leeftijd",
+        "duration": "Duur",
+        "progress": "Voortgang",
+        "plays": "Afgespeeld",
+        "addedAt": "Toegevoegd",
+        "recentlyWatched": "Bekeken",
+        "resolution": "Resolutie"
+      },
+      "pageTitle": "Sorteren op"
     },
     "rail": {
       "sources": "Bronnen",
@@ -2233,7 +2291,21 @@
       "unsupported": "Niet beschikbaar voor de huidige bronnen",
       "someUnavailable": "Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen",
       "noValues": "Niets om uit te kiezen",
-      "activeCount": "${count} actief"
+      "activeCount": "${count} actief",
+      "decade": "Decennium",
+      "quick": {
+        "all": "Alles",
+        "hdr": "HDR",
+        "dolbyVision": "Dolby Vision",
+        "hdr10Plus": "HDR10+",
+        "atmos": "Atmos",
+        "unwatched": "Ongekeken",
+        "inProgress": "Bezig",
+        "unmatched": "Niet gekoppeld",
+        "duplicates": "Dubbel",
+        "watched": "Bekeken"
+      },
+      "pageTitle": "Filteren op"
     },
     "states": {
       "emptyTitle": "Deze catalogus is leeg",
@@ -2339,7 +2411,9 @@
       "close": "Sluiten",
       "editRowTitle": "${name} bewerken",
       "pickRowToEdit": "Tik op een eigen rij om hem te bewerken, of maak een nieuwe."
-    }
+    },
+    "onePlay": "1 keer",
+    "plays": "${count} keer"
   },
   "tvNavigation": {
     "activeDestination": "huidige sectie",
@@ -2352,11 +2426,9 @@
     "serversOnline": "${online} van ${total} servers online",
     "noServers": "Geen servers verbonden",
     "statusOnline": "Online",
-    "statusOffline": "Offline",
     "servers": "Servers",
     "activity": "Activiteit",
     "logs": "Logboeken",
-    "signedInAs": "Aangemeld als ${name} · Pleya ${version}",
     "watchlistSubtitle": "Bewaarde films en series",
     "requestsSubtitle": "Verzoeken en ontdekken",
     "downloadsSubtitle": "Offline en synchronisatieregels",
@@ -2375,7 +2447,24 @@
       "tile": "${title}. ${subtitle}",
       "tileWithCount": "${title}. ${subtitle}. ${count}"
     },
-    "libraryCount": "${count} bibliotheken"
+    "libraryCount": "${count} bibliotheken",
+    "eyebrow": "Jouw persoonlijke ruimte",
+    "heading": "Jouw wereld, ${name}.",
+    "headingNoName": "Jouw wereld.",
+    "subline": "Bewaar wat je mooi vindt. Vind het moeiteloos terug.",
+    "bigPEyebrow": "Big P · jouw assistent",
+    "bigPTitle": "Wat wil je kijken?",
+    "bigPSubtitle": "Vraag, ontdek en vind sneller iets goeds.",
+    "bigPAction": "Vraag Big P",
+    "quickLinks": "Snel naar"
+  },
+  "tvAccountMenu": {
+    "title": "Profiel",
+    "signedInAs": "Je bent ingelogd als ${name}",
+    "switchProfile": "Wissel profiel",
+    "switchProfileSubtitle": "Kies een ander profiel",
+    "logout": "Uitloggen",
+    "logoutSubtitle": "Bevestig voordat je uitlogt"
   },
   "tvOfflineHome": {
     "title": "Geen server bereikbaar",
@@ -2588,7 +2677,7 @@
           "use": "Geheugen gebruiken",
           "useOn": "Geheugen gebruiken: Aan",
           "useOff": "Geheugen gebruiken: Uit",
-          "useNote": "Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.",
+          "useNote": "Big P onthoudt wat je hem vraagt te onthouden, voor dit profiel. Herinneringen blijven op dit apparaat tenzij je ze expliciet aan je eigen Pleya Server-account koppelt. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.",
           "rewrite": "Overzicht opnieuw schrijven",
           "clear": "Alle herinneringen wissen"
         },
@@ -2665,6 +2754,40 @@
           "profileGone": "Dit profiel is gewisseld of verwijderd. Er is niets gewijzigd.",
           "storageFailed": "Opslaan is niet gelukt. Er is niets gewijzigd."
         }
+      },
+      "sync": {
+        "title": "Sync via Pleya Server",
+        "local": "Opgeslagen op dit apparaat",
+        "syncing": "Synchroniseren…",
+        "pending": "Wijzigingen wachten op synchronisatie",
+        "synced": "Wijzigingen bevestigd door de server",
+        "unavailable": "Server onbereikbaar of account niet toegestaan",
+        "error": "Synchronisatie mislukt. Je lokale herinneringen blijven bewaard.",
+        "conflict": "Wijzigingen vragen om jouw keuze",
+        "quarantine": "Het servergeheugen is gewijzigd na wissen of herstel. Controleer het voor gebruik.",
+        "account": "Kies je eigen Pleya Server-account",
+        "noAccount": "Er is geen geschikt Pleya Server-account gekoppeld. Meld je met je eigen account aan op een bijgewerkte server.",
+        "preview": "Deze herinneringen delen met ${account}",
+        "previewNote": "Bestaande serverherinneringen blijven bewaard. Gezinsherinneringen blijven op dit apparaat. Alleen geselecteerde herinneringen worden gedeeld.",
+        "connect": "Bevestigen en synchroniseren",
+        "refresh": "Nu synchroniseren",
+        "disconnect": "Ontkoppelen",
+        "disconnectNote": "Synchronisatie van dit profiel stoppen? Herinneringen blijven op dit apparaat en op de server.",
+        "reviewReset": "Herstelde herinneringen bekijken",
+        "acceptReset": "Deze serverherinneringen gebruiken",
+        "resetNote": "Bevestig dit servergeheugen als nieuwe basis. Oude wachtende wijzigingen worden niet automatisch geüpload.",
+        "localVersion": "Dit apparaat",
+        "serverVersion": "Server",
+        "keepLocal": "Deze versie bewaren",
+        "keepServer": "Serverversie gebruiken",
+        "keepBoth": "Beide bewaren",
+        "deleted": "Verwijderd",
+        "select": "Delen",
+        "lastConfirmed": "Laatst bevestigd: ${time}",
+        "importLimit": "Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.",
+        "clearChanged": "De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.",
+        "clearServer": "Deze serverherinneringen wissen",
+        "clearEverywhere": "Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden."
       }
     },
     "tileTitle": "Big P",
@@ -3207,7 +3330,6 @@
     "yourLibrary": "Jouw bibliotheek",
     "viewPreview": "Bekijk voorbeeld",
     "playbackExperience": "Afspeelervaring",
-    "manage": "Beheer",
     "yourWatchlist": "Je kijklijst",
     "yourContent": "Jouw content",
     "lightMode": "Lichte modus",

@@ -103,7 +103,7 @@ void main() {
               child: MediaDetailScreen(
                 metadata: movie(),
                 unifiedRouteContext: withAlternatives ? routeContext() : null,
-                onChangeSource: withAlternatives ? (_) async {} : null,
+                onChangeSource: withAlternatives ? (_, _, {pageFailed = false}) async => null : null,
               ),
             ),
           ),

@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 
-import { sectionById } from '$lib/admin/sections';
+import { sectionById } from '#lib/admin/sections.js';
 
 /**
  * Elke sectie uit de zijbalk heeft een adres, ook als hij nog niet gebouwd is;

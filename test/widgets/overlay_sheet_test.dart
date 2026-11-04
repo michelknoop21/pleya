@@ -443,4 +443,67 @@ void main() {
       expect(sheet.width * (1920 / tvCanvas.width), inInclusiveRange(900, 1040));
     });
   });
+
+  testWidgets('subpage retention is opt-in for each push, including after a retained page returns', (tester) async {
+    final parentKey = GlobalKey<State<StatefulBuilder>>();
+    late OverlaySheetController controller;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OverlaySheetHost(
+          child: Builder(
+            builder: (context) {
+              controller = OverlaySheetController.of(context);
+              return Scaffold(
+                body: ElevatedButton(
+                  onPressed: () {
+                    controller.show<void>(
+                      builder: (_) => StatefulBuilder(
+                        key: parentKey,
+                        builder: (context, _) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => OverlaySheetController.showAdaptive<void>(
+                                context,
+                                asSubpage: true,
+                                builder: (_) => const Text('Child'),
+                              ),
+                              child: const Text('Keep parent'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => OverlaySheetController.pushAdaptive<void>(
+                                context,
+                                builder: (_) => const Text('Child'),
+                              ),
+                              child: const Text('Normal push'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('Open'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    final parent = parentKey.currentState;
+    expect(parent, isNotNull);
+    await tester.tap(find.text('Keep parent'));
+    await tester.pumpAndSettle();
+    expect(parentKey.currentState, same(parent));
+    controller.pop();
+    await tester.pumpAndSettle();
+    expect(parentKey.currentState, same(parent));
+    await tester.tap(find.text('Normal push'));
+    await tester.pumpAndSettle();
+    expect(parentKey.currentState, isNull, reason: 'a later default push must retain its original disposal semantics');
+    controller.close();
+    await tester.pumpAndSettle();
+  });
 }

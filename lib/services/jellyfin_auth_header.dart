@@ -41,6 +41,9 @@ extension JellyfinUserRoutes on JellyfinConnection {
   String playedItemPath(String itemId) =>
       isEmby ? '$_user/PlayedItems/${_segment(itemId)}' : '/UserPlayedItems/${_segment(itemId)}';
 
+  String userDataPath(String itemId) =>
+      isEmby ? '$_user/Items/${_segment(itemId)}/UserData' : '/UserItems/${_segment(itemId)}/UserData';
+
   String ratingPath(String itemId) =>
       isEmby ? '$_user/Items/${_segment(itemId)}/Rating' : '/UserItems/${_segment(itemId)}/Rating';
 

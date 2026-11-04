@@ -12,8 +12,8 @@ import (
 //
 // Klasse admin, net als GET /stream-sessions: het zegt wat huisgenoten kijken,
 // en GET /watch-state blijft de eigen lijst van iedere gebruiker. Er is geen
-// afspeellog; elke regel is de laatste aanraking van één gebruiker op één
-// item, dezelfde lezing als bij Jellyfin.
+// afspeellog; elke regel is het laatste echte moment van één gebruiker op één
+// item, dezelfde lezing als bij Jellyfin. Een kopie is dat moment niet.
 
 // WatchHistoryEntryWire is één regel (schema WatchHistoryEntry).
 type WatchHistoryEntryWire struct {

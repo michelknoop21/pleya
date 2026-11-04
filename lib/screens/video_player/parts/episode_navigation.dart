@@ -93,6 +93,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         metadata: metadata,
         usePushReplacement: true,
         isOffline: _offlineLibraryMode,
+        unifiedTitle: widget.unifiedTitle,
       );
     } finally {
       // Still mounted ⇒ no push happened (external-player branch or a
@@ -113,7 +114,8 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
 
     await _reloadMediaInPlace(
       metadata: episodeMetadata,
-      selectedMediaIndex: _effectiveSelectedMediaIndex,
+      // A version number means nothing on another server's copy.
+      selectedMediaIndex: episodeMetadata.serverId == _currentMetadata.serverId ? _effectiveSelectedMediaIndex : 0,
       selectedMediaSourceId: null,
       qualityPreset: _selectedQualityPreset,
       // Stream ids are per-part: the previous episode's audio id is
@@ -185,6 +187,34 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     PlexClient? plexClient,
     bool Function()? isCurrent,
   }) async {
+    if (item.backend == MediaBackend.pleyaServer) {
+      final manager = _trackManager;
+      if (manager == null) return;
+      final audio = audioTracks.where((t) => t.id == audioStreamId).firstOrNull;
+      if (audio != null) {
+        await manager.onAudioTrackChanged(
+          AudioTrack(id: '${audio.id}', language: audio.languageCode, title: audio.title, codec: audio.codec),
+          isCurrent: isCurrent,
+        );
+      }
+      if (!(isCurrent?.call() ?? true)) return;
+      final subtitle = subtitleTracks.where((t) => t.id == subtitleStreamId).firstOrNull;
+      if (subtitleStreamId == 0 || subtitle != null) {
+        await manager.onSubtitleTrackChanged(
+          subtitleStreamId == 0
+              ? SubtitleTrack.off
+              : SubtitleTrack(
+                  id: '${subtitle!.id}',
+                  language: subtitle.languageCode,
+                  title: subtitle.title,
+                  codec: subtitle.codec,
+                  isForced: subtitle.forced,
+                ),
+          isCurrent: isCurrent,
+        );
+      }
+      return;
+    }
     // Never let remembering break the switch it is attached to: the user asked
     // for a different subtitle, not for a bookkeeping guarantee.
     try {
@@ -317,6 +347,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     final isAudioChange = effectiveAudioStreamId != _selectedAudioStreamId;
     final isSubtitleChange = newSubtitleStreamId != null && effectiveSubtitleStreamId != currentSubtitleStreamId;
     if (!isVersionChange && !isPresetChange && !isAudioChange && !isSubtitleChange) return;
+    // After the check: tapping the track that is being prepared changes nothing,
+    // and stopping the wait then would leave it selected with no subtitle coming.
+    if (newSubtitleStreamId != null) _deferredSubtitles.abortPending();
 
     // Read the client before any await — context across an async gap. A
     // missing client leaves this null and the guard below reports it.
@@ -329,7 +362,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     final switchedSubtitleTracks = _sourceSubtitleTracksForControls();
     final switchedAudioTracks = _currentMediaInfo?.audioTracks ?? const <MediaAudioTrack>[];
     PlexClient? streamSelectClient;
-    if ((isSubtitleChange || (isAudioChange && isPlexBacked)) && serverId != null) {
+    if (isPlexBacked && (isSubtitleChange || isAudioChange) && serverId != null) {
       try {
         streamSelectClient = context.getPlexClientForServer(ServerId(serverId));
       } catch (_) {}
@@ -341,7 +374,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         if (!(isCurrent?.call() ?? true)) return;
       }
 
-      if (isSubtitleChange || (isAudioChange && isPlexBacked)) {
+      if (isPlexBacked && (isSubtitleChange || isAudioChange)) {
         if (!(isCurrent?.call() ?? true)) return;
         final partId = _currentMediaInfo?.partId;
         if (streamSelectClient == null || partId == null) {
@@ -369,6 +402,16 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         if (!(isCurrent?.call() ?? true)) return;
       }
 
+      if (_currentMetadata.backend == MediaBackend.pleyaServer && (isAudioChange || isSubtitleChange)) {
+        await _rememberSwitchedSourceLanguages(
+          item: switchedItem,
+          subtitleTracks: switchedSubtitleTracks,
+          audioTracks: switchedAudioTracks,
+          subtitleStreamId: isSubtitleChange ? effectiveSubtitleStreamId : null,
+          audioStreamId: isAudioChange ? effectiveAudioStreamId : null,
+          isCurrent: isCurrent,
+        );
+      }
       if (!(isCurrent?.call() ?? true)) return;
       await _reloadMediaInPlace(
         metadata: _currentMetadata.copyWith(viewOffsetMs: currentPlayer.state.position.inMilliseconds),
@@ -378,6 +421,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         // A version change selects a different part, and stream ids are
         // per-part — only same-part switches may carry the current id.
         selectedAudioStreamId: isVersionChange ? newAudioStreamId : effectiveAudioStreamId,
+        selectedSubtitleStreamId: _serverSupportsSubtitleSelection
+            ? (isVersionChange ? newSubtitleStreamId : effectiveSubtitleStreamId)
+            : null,
         useCurrentAudioStreamSelection: !isVersionChange,
         resumePosition: currentPlayer.state.position,
         preserveCurrentTrackSelection: false,
@@ -400,11 +446,13 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     String? selectedMediaSourceId,
     TranscodeQualityPreset? qualityPreset,
     int? selectedAudioStreamId,
+    int? selectedSubtitleStreamId,
     Duration? resumePosition,
     bool preserveCurrentTrackSelection = false,
     bool useCurrentAudioStreamSelection = true,
     String reason = 'media reload',
     bool Function()? shouldContinue,
+    bool reopeningFailedReload = false,
   }) async {
     if (!(shouldContinue?.call() ?? true)) return false;
     if (widget.isLive) {
@@ -430,6 +478,11 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     final previousPartId = _currentMediaInfo?.partId;
     final previousHasFirstFrame = _hasFirstFrame.value;
     final isItemChange = previousMetadata.globalKey != metadata.globalKey;
+    // Here and not at the callers: a refused reload leaves the title playing and
+    // its track on the way, and every path to another title passes this line. The
+    // old track's wait would otherwise run on until after open(), and landing in
+    // that gap puts the previous title's text on this one.
+    if (isItemChange) _deferredSubtitles.abortPending();
 
     final currentAudioTrack = preserveCurrentTrackSelection ? currentPlayer.state.track.audio : null;
     final currentSubtitleTrack = preserveCurrentTrackSelection ? currentPlayer.state.track.subtitle : null;
@@ -438,6 +491,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         : null;
     final wasPlayingBeforeReload = _playbackIntentShouldPlay;
     var didOpenReplacement = false;
+    Duration? reopenAt;
 
     // Capture context-dependent values before async gaps. The neutral
     // [PlaybackInitializationService] consumes [mediaClient] regardless of
@@ -493,6 +547,11 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       // Overlap the old item's stop report with the resolve round-trip; it
       // is awaited again right before the open below.
       final stoppedProgressFuture = _sendStoppedProgressOnce();
+      // Pleya stop owns the item's held conversion; finish before binding its replacement.
+      if (metadata.backend == MediaBackend.pleyaServer) {
+        await stoppedProgressFuture;
+        if (!isCurrentReload()) return true;
+      }
 
       final playbackResolver = PlaybackSourceResolver(serverManager: serverManager, database: database);
       final playbackContext = await playbackResolver.resolve(
@@ -502,6 +561,15 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         offlineLibraryMode: _offlineLibraryMode,
         qualityPreset: targetQualityPreset,
         selectedAudioStreamId: targetAudioStreamId,
+        selectedSubtitleStreamId: selectedSubtitleStreamId,
+        selectSourceTracks: metadata.backend == MediaBackend.pleyaServer
+            ? (info) => _selectSourceTracksBeforeOpen(
+                info,
+                forPlayer: currentPlayer,
+                metadata: metadata,
+                isCurrent: isCurrentReload,
+              )
+            : null,
         sessionIdentifier: _playbackSessionIdentifier,
         transcodeSessionId: _playbackTranscodeSessionId,
       );
@@ -585,6 +653,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       final externalSubtitlePlan = _prepareExternalSubtitleOpenPlan(
         player: currentPlayer,
         externalSubtitles: result.externalSubtitles,
+        deferredSubtitle: result.deferredSubtitle,
       );
       final didOpen = await _openMediaOnPlayer(
         player: currentPlayer,
@@ -719,11 +788,18 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         VideoPlayerScreenState._activeId = previousMetadata.id;
         VideoPlayerScreenState._activeMediaIndex = previousMediaIndex;
         _hasFirstFrame.value = previousHasFirstFrame;
-        // If the stop report already went out, un-latch the tracker so the
-        // resumed session keeps reporting (and its eventual real stop sends).
-        _progressTracker?.resumeAfterStoppedReport();
-        if (wasPlayingBeforeReload && mounted && player == currentPlayer) {
-          unawaited(_playWithPlaybackIntent(currentPlayer));
+        if ((_playbackSession?.holdsServerConversion ?? false) && !reopeningFailedReload) {
+          // The stop that preceded the failed plan ended this conversion, so
+          // resuming would play out the buffer and stop. It has to come first:
+          // with every slot taken a new plan is refused while the old one runs.
+          reopenAt = currentPlayer.state.position;
+        } else {
+          // If the stop report already went out, un-latch the tracker so the
+          // resumed session keeps reporting (and its eventual real stop sends).
+          _progressTracker?.resumeAfterStoppedReport();
+          if (wasPlayingBeforeReload && mounted && player == currentPlayer) {
+            unawaited(_playWithPlaybackIntent(currentPlayer));
+          }
         }
       } else if (_progressTracker == null && player == currentPlayer) {
         // The new file is playing and its session is committed — keep the
@@ -751,7 +827,6 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       if (mounted) {
         showErrorSnackBar(context, friendlyError(e));
       }
-      return true;
     } finally {
       // Release the reload transition unless a newer flow already took
       // ownership (a non-reload attempt force-idles it; a newer reload can
@@ -790,5 +865,24 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         );
       }
     }
+
+    // Past the finally, so this reload can claim the transition for itself.
+    if (reopenAt != null) {
+      await _reloadMediaInPlace(
+        metadata: previousMetadata.copyWith(viewOffsetMs: reopenAt.inMilliseconds),
+        selectedMediaIndex: previousMediaIndex,
+        selectedMediaSourceId: _requestedMediaSourceId,
+        qualityPreset: _selectedQualityPreset,
+        selectedAudioStreamId: _selectedAudioStreamId,
+        selectedSubtitleStreamId: _serverSupportsSubtitleSelection
+            ? _selectedSourceSubtitleStreamIdForControls(_sourceSubtitleTracksForControls())
+            : null,
+        resumePosition: reopenAt,
+        reason: 'reopen after a failed reload',
+        shouldContinue: shouldContinue,
+        reopeningFailedReload: true,
+      );
+    }
+    return true;
   }
 }

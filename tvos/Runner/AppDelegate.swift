@@ -9,6 +9,8 @@ import wakelock_plus
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  private var navAccessibilityChannel: FlutterMethodChannel?
+
   /// One line at startup so an engine bump cannot break the press hook in
   /// silence.
   ///
@@ -64,6 +66,23 @@ import wakelock_plus
       }
     }
 
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "TvNavAccessibility") {
+      let channel = FlutterMethodChannel(name: "pleya/tvos_nav_accessibility", binaryMessenger: r.messenger())
+      navAccessibilityChannel = channel
+      channel.setMethodCallHandler { call, result in
+        if call.method == "reduceTransparency" {
+          result(UIAccessibility.isReduceTransparencyEnabled)
+        } else {
+          result(FlutterMethodNotImplemented)
+        }
+      }
+      NotificationCenter.default.addObserver(
+        self,
+        selector: #selector(navTransparencyChanged),
+        name: UIAccessibility.reduceTransparencyStatusDidChangeNotification,
+        object: nil
+      )
+    }
     if let r = engineBridge.pluginRegistry.registrar(forPlugin: "SharedPreferencesPlugin") {
       SharedPreferencesPlugin.register(with: r)
     }
@@ -107,4 +126,10 @@ import wakelock_plus
       NativeTextEntryPlugin.register(with: r)
     }
   }
+
+  @objc private func navTransparencyChanged() {
+    navAccessibilityChannel?.invokeMethod(
+      "reduceTransparencyChanged", arguments: UIAccessibility.isReduceTransparencyEnabled)
+  }
+
 }

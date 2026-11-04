@@ -159,7 +159,7 @@ extension _AssistantPrompt on AssistantRun {
       return '- You talk with $person. I, me and my mean them.$others';
     }
     return '- You talk with $person. I, me and my mean them. For their own watching, history or a tip for them '
-        'use my_watching; watch_stats is everyone on the servers, under server account names that need not '
+        'use my_watching, including its account-filtered server_history; watch_stats is everyone on the servers, under server account names that need not '
         'match theirs.$others\n'
         // A tip answer read as a question ("How does The Bear sound?") and promised "a few" tips beside one
         // card: the tool's picks are the titles, and the user's count the limit.

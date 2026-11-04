@@ -231,8 +231,9 @@ extension _AssistantExecute on AssistantRun {
       }
     } on AssistantToolError catch (e) {
       return {'error': e.code};
-    } on MediaServerAuthException {
-      return {'error': 'not_allowed'};
+    } on MediaServerAuthException catch (e) {
+      // A throttled token refresh is no verdict on what this person may do.
+      return {'error': e.statusCode == 429 ? 'failed' : 'not_allowed'};
     } on ArgumentError {
       return {'error': 'invalid_arguments'};
     } catch (e, st) {

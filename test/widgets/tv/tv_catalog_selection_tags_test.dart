@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/library_menu_definition.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/utils/home_custom_row_labels.dart';
 import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
@@ -25,6 +26,41 @@ void main() {
 
     expect(labels(tags), [sortLabel(UnifiedCatalogSort.titleAsc)]);
     expect(tags.single.muted, isTrue, reason: 'the sort is always set, so a solid tag would claim a narrowing');
+  });
+
+  group('omitDefaultSort (full-bleed panel)', () {
+    final defaultSort = UnifiedCatalogPreferences.defaults.sort;
+
+    test('drops the sort tag while the sort is the default and nothing is filtered', () {
+      expect(
+        tvCatalogSelectionTags(filters: UnifiedCatalogFilterSelection.empty, sort: defaultSort, omitDefaultSort: true),
+        isEmpty,
+      );
+    });
+
+    test('keeps a sort that is not the default', () {
+      final tags = tvCatalogSelectionTags(
+        filters: UnifiedCatalogFilterSelection.empty,
+        sort: UnifiedCatalogSort.titleDesc,
+        omitDefaultSort: true,
+      );
+      expect(labels(tags), [sortLabel(UnifiedCatalogSort.titleDesc)]);
+    });
+
+    test('keeps the filter tags, and the sort beside them', () {
+      final tags = tvCatalogSelectionTags(
+        filters: const UnifiedCatalogFilterSelection(genres: {'Drama'}),
+        sort: defaultSort,
+        omitDefaultSort: true,
+      );
+      expect(labels(tags), ['Drama', sortLabel(defaultSort)]);
+    });
+
+    test('the rail and heading keep it by default', () {
+      expect(labels(tvCatalogSelectionTags(filters: UnifiedCatalogFilterSelection.empty, sort: defaultSort)), [
+        sortLabel(defaultSort),
+      ]);
+    });
   });
 
   test('filters come first, in a stable order, with the sort last', () {
@@ -123,5 +159,75 @@ void main() {
       overflowAfter: null,
     );
     expect(labels(tags), ['6', '12', '16', 'PG-13', sortLabel(UnifiedCatalogSort.titleAsc)]);
+  });
+
+  group('every narrowing the count names has a tag', () {
+    const capabilities = UnifiedFilterCapabilities(
+      supportsMetadataFilters: true,
+      supportsWatchFilter: true,
+      extraFilters: [LibraryServerFilter(key: 'hasSubtitles', label: 'Subtitles')],
+      serverCategories: [LibraryServerFilter(key: 'studio', label: 'Studio')],
+    );
+
+    List<String> filterTags(UnifiedCatalogFilterSelection filters) => [
+      for (final tag in tvCatalogSelectionTags(
+        filters: filters,
+        sort: UnifiedCatalogSort.titleAsc,
+        capabilities: capabilities,
+        overflowAfter: null,
+      ))
+        if (!tag.muted) tag.label,
+    ];
+
+    test('a decade reads as one, not as a year', () {
+      expect(filterTags(const UnifiedCatalogFilterSelection(decades: {1990})), ['1990s']);
+    });
+
+    test('HDR', () {
+      expect(filterTags(const UnifiedCatalogFilterSelection(mediaFilter: LibraryQuickFilter.hdr)), [
+        libraryQuickFilterLabel(LibraryQuickFilter.hdr),
+      ]);
+    });
+
+    test('a boolean the server lists, by the name it lists it under', () {
+      expect(filterTags(const UnifiedCatalogFilterSelection(extraFilter: 'hasSubtitles')), ['Subtitles']);
+    });
+
+    test('a server category, by its name: its values can be ids', () {
+      expect(
+        filterTags(
+          const UnifiedCatalogFilterSelection(
+            serverFilters: {
+              'studio': {'7', '9'},
+            },
+          ),
+        ),
+        ['Studio'],
+      );
+    });
+
+    test('with no label to read it falls back on the key rather than on nothing', () {
+      final tags = tvCatalogSelectionTags(
+        filters: const UnifiedCatalogFilterSelection(extraFilter: 'hasSubtitles'),
+        sort: UnifiedCatalogSort.titleAsc,
+      );
+      expect(tags.first.label, 'hasSubtitles');
+    });
+
+    test('one of each: as many tags as the rail counts', () {
+      const everything = UnifiedCatalogFilterSelection(
+        genres: {'Drama'},
+        audioLanguages: {'eng'},
+        officialRatings: {'12'},
+        years: {2001},
+        decades: {1990},
+        watchState: UnifiedWatchFilter.unwatched,
+        mediaFilter: LibraryQuickFilter.hdr,
+        serverFilters: {
+          'studio': {'7'},
+        },
+      );
+      expect(filterTags(everything), hasLength(everything.itemFilterCount));
+    });
   });
 }

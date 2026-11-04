@@ -1,0 +1,101 @@
+name: tvos.nav.glass-selector
+target: tvos-sim
+# Roadmap A-10 / NAV-GLASS1: one selector, explicit activation, current main layout.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - snapshot: 00-home-glass-off
+
+  # Glass on through Uiterlijk.
+  # A-24c: Instellingen is a destination in the top bar, right after Mijn Pleya.
+  - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
+  - press: select
+  - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
+  # Select leaves the remote on the pill; Down enters the page.
+  - press: down
+  # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
+  - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
+  - settle: 400
+  - walk: {direction: down, steps: 6, stopAt: "my_pleya.section.tile[setting.liquid_glass]", timeout: 90000, settle: 300}
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: false}}
+  - press: select
+  - settle: 500
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: true}}
+  - snapshot: 01-glass-switched-on
+
+  # Out to the bar, over to Home.
+  - press: menu
+  # A-24c: Menu from the settings page is the bar, on Instellingen.
+  - wait_until: {focused: nav.settings, timeout: 8000}
+  # A-24c (LEESMIJ-v4): walking the bar moves the ring and leaves the page;
+  # Select on Home puts Home on screen and keeps the remote on the pill.
+  - walk: {direction: left, expect: [nav.myPleya, nav.movies, nav.series, nav.discover], timeout: 45000, settle: 800}
+  - press: select
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 1500
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - assert: {id: nav.discover, insideViewport: true}
+  - assert: {id: nav.search, leftOf: nav.discover}
+  - snapshot: 02-home
+
+  # Preview Series without activating it.
+  - press: right
+  - wait_until: {id: nav.series, focused: true, state: {active: false, selector: true}, timeout: 8000}
+  - assert: {id: nav.discover, state: {active: true, selector: false}}
+  - settle: 400
+  - snapshot: 03-series-preview-home-open
+  - press: down
+  - settle: 1200
+  - assert: {id: nav.series, focused: false, state: {active: false, selector: false}}
+  - assert: {id: nav.discover, focused: false, state: {active: true, selector: true}}
+  - snapshot: 04-content-selector-home
+  - press: menu
+  - wait_until: {id: nav.discover, focused: true, state: {active: true, selector: true}, timeout: 8000}
+  - settle: 400
+  - snapshot: 05-return-home
+  # No waits between rapid reversals.
+  - press: right
+  - press: left
+  - press: right
+  - press: left
+  - press: right
+  - press: left
+  - press: right
+  - wait_until: {id: nav.series, focused: true, state: {active: false, selector: true}, timeout: 8000}
+  - assert: {id: nav.discover, state: {active: true, selector: false}}
+  - settle: 400
+  - snapshot: 06-fast-reversals
+  - press: select
+  - wait_until: {id: nav.series, focused: true, state: {active: true, selector: true}, timeout: 8000}
+  - settle: 1500
+  - snapshot: 07-series-activated
+  - press: select
+  - settle: 800
+  - assert: {id: nav.series, focused: false, state: {active: true, selector: true}}
+  - press: menu
+  - wait_until: {id: nav.series, focused: true, state: {active: true, selector: true}, timeout: 8000}
+  - snapshot: 08-return-series
+  # Search still activates and receives focus through the existing content path.
+  - press: left
+  - press: left
+  - wait_until: {id: nav.search, focused: true, state: {active: false, selector: true}, timeout: 8000}
+  - assert: {id: nav.series, state: {active: true, selector: false}}
+  - press: select
+  - wait_until: {id: nav.search, focused: true, state: {active: true, selector: true}, timeout: 8000}
+  - press: down
+  - wait_until: {focused: tv.search.pill, timeout: 8000}
+  - press: menu
+  - wait_until: {id: nav.search, focused: true, state: {active: true, selector: true}, timeout: 8000}
+  - snapshot: 09-search-return
+  # A separate profile control must not leave a second tab selector behind.
+  - press: left
+  - wait_until: {focused: nav.profile, timeout: 8000}
+  - assert: {id: nav.search, state: {active: true, selector: false}}
+  - snapshot: 10-profile-one-indicator
+  - press: right
+  - wait_until: {id: nav.search, focused: true, state: {active: true, selector: true}, timeout: 8000}

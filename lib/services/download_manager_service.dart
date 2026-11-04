@@ -1956,10 +1956,19 @@ class DownloadManagerService {
           }
           if (downloadSubtitles) {
             var subtitles = ctx?.subtitles;
-            if (subtitles == null && client.backend != MediaBackend.pleyaServer) {
+            if (subtitles == null) {
               try {
-                final resolution = await client.resolveDownload(metadata);
-                subtitles = resolution.externalSubtitles;
+                if (client is PleyaServerClient) {
+                  final source = await _database.getDownloadedMedia(globalKey);
+                  subtitles = client.resolveDownloadSubtitles(
+                    metadata,
+                    mediaSourceId: source?.mediaSourceId,
+                    mediaIndex: source?.mediaIndex ?? 0,
+                  );
+                } else {
+                  final resolution = await client.resolveDownload(metadata);
+                  subtitles = resolution.externalSubtitles;
+                }
               } catch (e) {
                 appLogger.w('Could not re-resolve subtitles', error: e);
               }
@@ -2127,16 +2136,23 @@ class DownloadManagerService {
             metadata.id,
             subtitle.id,
             extension,
+            sourceStreamId: subtitle.sourceStreamId,
           );
         } else if (metadata.isEpisode) {
           subtitlePath = await _storageService.getEpisodeSubtitlePath(
             metadata,
             subtitle.id,
             extension,
+            sourceStreamId: subtitle.sourceStreamId,
             showYear: showYear,
           );
         } else if (metadata.isMovie) {
-          subtitlePath = await _storageService.getMovieSubtitlePath(metadata, subtitle.id, extension);
+          subtitlePath = await _storageService.getMovieSubtitlePath(
+            metadata,
+            subtitle.id,
+            extension,
+            sourceStreamId: subtitle.sourceStreamId,
+          );
         } else {
           // Fallback to old structure
           subtitlePath = await _storageService.getSubtitlePath(
@@ -2144,13 +2160,14 @@ class DownloadManagerService {
             metadata.id,
             subtitle.id,
             extension,
+            sourceStreamId: subtitle.sourceStreamId,
           );
         }
 
         // Download subtitle file
         final file = File(subtitlePath);
         await file.parent.create(recursive: true);
-        await _http.downloadFile(subtitle.url, subtitlePath);
+        await _http.downloadFile(subtitle.url, subtitlePath, headers: await subtitle.headersSupplier?.call());
 
         appLogger.d('Downloaded subtitle ${subtitle.id} for $globalKey');
       }
@@ -3126,6 +3143,7 @@ Future<void> verifyDownloadAfterRestart(
     return;
   }
   await verifyDownloadDigest(filePath, expected);
+  appLogger.i('Verified download digest after restart for $label');
 }
 
 String? downloadExtensionFromUrl(String url) {

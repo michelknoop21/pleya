@@ -100,3 +100,6 @@ pleya_verify/fixture_server/.responses/
 
 # Lokale Serena-tooling: index, cache en projectstate per worktree.
 /.serena/
+
+# Python bytecode from scripts/tests
+__pycache__/

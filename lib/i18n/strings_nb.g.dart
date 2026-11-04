@@ -508,6 +508,9 @@ class _TranslationsMediaMenuNb extends TranslationsMediaMenuEn {
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
+	@override String get watch => 'Se';
+	@override String get manage => 'Administrer';
+	@override String get moreWaysToWatch => 'Flere måter å se på';
 	@override String get markAsWatched => 'Merk som sett';
 	@override String get markAsUnwatched => 'Merk som usett';
 	@override String get removeFromContinueWatching => 'Fjern fra Fortsett å se';
@@ -979,6 +982,7 @@ class _TranslationsLibrariesNb extends TranslationsLibrariesEn {
 	@override String get manageLibraries => 'Administrer biblioteker';
 	@override String get sort => 'Sorter';
 	@override String get sortBy => 'Sorter etter';
+	@override String get filterBy => 'Filtrer etter';
 	@override String get filters => 'Filtre';
 	@override String get confirmActionMessage => 'Er du sikker på at du vil utføre denne handlingen?';
 	@override String get showLibrary => 'Vis bibliotek';
@@ -1826,11 +1830,9 @@ class _TranslationsTvMyPleyaNb extends TranslationsTvMyPleyaEn {
 	@override String serversOnline({required Object online, required Object total}) => '${online} av ${total} servere tilkoblet';
 	@override String get noServers => 'Ingen servere tilkoblet';
 	@override String get statusOnline => 'Tilkoblet';
-	@override String get statusOffline => 'Frakoblet';
 	@override String get servers => 'Servere';
 	@override String get activity => 'Aktivitet';
 	@override String get logs => 'Logger og diagnostikk';
-	@override String signedInAs({required Object name, required Object version}) => 'Logget inn som ${name} · Pleya ${version}';
 	@override String get watchlistSubtitle => 'Lagrede filmer og serier';
 	@override String get requestsSubtitle => 'Forespørsler og oppdagelse';
 	@override String get downloadsSubtitle => 'Frakoblet og synkroniseringsregler';
@@ -1881,7 +1883,6 @@ class _TranslationsSettingsStudioNb extends TranslationsSettingsStudioEn {
 	@override String get yourLibrary => 'Biblioteket ditt';
 	@override String get viewPreview => 'Se forhåndsvisning';
 	@override String get playbackExperience => 'Avspillingsopplevelse';
-	@override String get manage => 'Administrer';
 	@override String get yourWatchlist => 'Listen din';
 	@override String get yourContent => 'Innholdet ditt';
 	@override String get lightMode => 'Lys modus';
@@ -2696,6 +2697,9 @@ extension on TranslationsNb {
 			'fileInfo.duration' => 'Varighet',
 			'fileInfo.optimizedForStreaming' => 'Optimalisert for strømming',
 			'fileInfo.has64bitOffsets' => '64-biters forskyvninger',
+			'mediaMenu.watch' => 'Se',
+			'mediaMenu.manage' => 'Administrer',
+			'mediaMenu.moreWaysToWatch' => 'Flere måter å se på',
 			'mediaMenu.markAsWatched' => 'Merk som sett',
 			'mediaMenu.markAsUnwatched' => 'Merk som usett',
 			'mediaMenu.removeFromContinueWatching' => 'Fjern fra Fortsett å se',
@@ -2853,11 +2857,11 @@ extension on TranslationsNb {
 			'messages.noEpisodesFoundGeneral' => 'Ingen episoder funnet',
 			'messages.episodesLoadFailed' => 'Kunne ikke laste episoder',
 			'messages.noResultsFound' => 'Ingen resultater funnet',
+			_ => null,
+		} ?? switch (path) {
 			'messages.sleepTimerSet' => ({required Object label}) => 'Søvntimer satt til ${label}',
 			'messages.noItemsAvailable' => 'Ingen elementer tilgjengelig',
 			'messages.failedToCreatePlayQueueNoItems' => 'Kunne ikke opprette avspillingskø – ingen elementer',
-			_ => null,
-		} ?? switch (path) {
 			'messages.failedPlayback' => ({required Object action}) => 'Kunne ikke ${action}',
 			'messages.switchingToCompatiblePlayer' => 'Bytter til kompatibel spiller...',
 			'messages.serverLimitTitle' => 'Avspilling mislyktes',
@@ -3031,6 +3035,7 @@ extension on TranslationsNb {
 			'libraries.manageLibraries' => 'Administrer biblioteker',
 			'libraries.sort' => 'Sorter',
 			'libraries.sortBy' => 'Sorter etter',
+			'libraries.filterBy' => 'Filtrer etter',
 			'libraries.filters' => 'Filtre',
 			'libraries.confirmActionMessage' => 'Er du sikker på at du vil utføre denne handlingen?',
 			'libraries.showLibrary' => 'Vis bibliotek',
@@ -3366,12 +3371,12 @@ extension on TranslationsNb {
 			'companionRemote.session.serverRunningDescription' => 'Mobile enheter på nettverket ditt kan koble til denne appen',
 			'companionRemote.session.serverStoppedDescription' => 'Start serveren for å la mobilenheter koble til',
 			'companionRemote.session.usePhoneToControl' => 'Bruk mobilenheten din til å styre denne appen',
+			_ => null,
+		} ?? switch (path) {
 			'companionRemote.session.startServer' => 'Start server',
 			'companionRemote.session.stopServer' => 'Stopp server',
 			'companionRemote.session.minimize' => 'Minimer',
 			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samme Plex-konto vises her',
-			_ => null,
-		} ?? switch (path) {
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Kobler til...',
 			'companionRemote.pairing.searchingForDevices' => 'Søker etter enheter...',
@@ -3775,11 +3780,9 @@ extension on TranslationsNb {
 			'tvMyPleya.serversOnline' => ({required Object online, required Object total}) => '${online} av ${total} servere tilkoblet',
 			'tvMyPleya.noServers' => 'Ingen servere tilkoblet',
 			'tvMyPleya.statusOnline' => 'Tilkoblet',
-			'tvMyPleya.statusOffline' => 'Frakoblet',
 			'tvMyPleya.servers' => 'Servere',
 			'tvMyPleya.activity' => 'Aktivitet',
 			'tvMyPleya.logs' => 'Logger og diagnostikk',
-			'tvMyPleya.signedInAs' => ({required Object name, required Object version}) => 'Logget inn som ${name} · Pleya ${version}',
 			'tvMyPleya.watchlistSubtitle' => 'Lagrede filmer og serier',
 			'tvMyPleya.requestsSubtitle' => 'Forespørsler og oppdagelse',
 			'tvMyPleya.downloadsSubtitle' => 'Frakoblet og synkroniseringsregler',
@@ -3813,7 +3816,6 @@ extension on TranslationsNb {
 			'settingsStudio.yourLibrary' => 'Biblioteket ditt',
 			'settingsStudio.viewPreview' => 'Se forhåndsvisning',
 			'settingsStudio.playbackExperience' => 'Avspillingsopplevelse',
-			'settingsStudio.manage' => 'Administrer',
 			'settingsStudio.yourWatchlist' => 'Listen din',
 			'settingsStudio.yourContent' => 'Innholdet ditt',
 			'settingsStudio.lightMode' => 'Lys modus',

@@ -8,6 +8,7 @@ import 'package:pleya/mpv/player/player.dart';
 import 'package:pleya/mpv/player/player_state.dart';
 import 'package:pleya/mpv/player/player_streams.dart';
 import 'package:pleya/services/audio_output_coordinator.dart';
+import 'package:pleya/services/apple_audio_session_service.dart';
 import 'package:pleya/services/audio_output_decision.dart';
 import 'package:pleya/services/settings_service.dart';
 
@@ -85,6 +86,14 @@ class _FakePlayer implements Player {
     properties.add(MapEntry(name, value));
   }
 
+  /// Mirrors the audio-path arbiter: off 1.0x the bitstream request is kept
+  /// but `audio-spdif` is not written, so nothing reloads.
+  double rate = 1.0;
+  bool _bitstreaming = false;
+
+  @override
+  bool get audioPassthroughActive => _bitstreaming;
+
   @override
   Future<void> setAudioPassthrough(bool enabled) async {
     passthroughCalls.add(enabled);
@@ -92,6 +101,20 @@ class _FakePlayer implements Player {
       failNextPassthrough = false;
       throw StateError('native passthrough write failed');
     }
+    _bitstreaming = enabled && rate == 1.0;
+  }
+
+  final List<List<String>> commands = [];
+
+  bool failNextCommand = false;
+
+  @override
+  Future<void> command(List<String> args) async {
+    if (failNextCommand) {
+      failNextCommand = false;
+      throw StateError('native command failed');
+    }
+    commands.add(args);
   }
 
   final List<LoudnessEvidence?> evidenceCalls = [];
@@ -643,6 +666,131 @@ void main() {
       ]) {
         expect(AudioOutputCoordinator.isPassthroughFailureLog(line), isFalse, reason: line);
       }
+    });
+  });
+
+  group('switching the output device mid-playback', () {
+    const hdmi = AppleAudioRoute(portType: 'HDMI', portName: 'TV', maximumOutputNumberOfChannels: 8);
+    const airpods = AppleAudioRoute(
+      portType: 'BluetoothA2DP',
+      portName: 'AirPods Pro',
+      maximumOutputNumberOfChannels: 8,
+    );
+
+    List<List<String>> commandsAfter(
+      void Function(FakeAsync, AudioOutputCoordinator, _FakePlayer) act, {
+      double rate = 1.0,
+    }) {
+      late List<List<String>> commands;
+      fakeAsync((async) {
+        final player = _FakePlayer()..rate = rate;
+        final coordinator = AudioOutputCoordinator(player: player, settings: settings);
+        coordinator.prepare(audioCodec: 'eac3');
+        async.flushMicrotasks();
+        coordinator.debugRouteChanged(hdmi); // baseline device
+        async.elapse(const Duration(seconds: 1));
+        player.commands.clear();
+        act(async, coordinator, player);
+        async.elapse(const Duration(seconds: 1));
+        commands = List.of(player.commands);
+        coordinator.dispose();
+      });
+      return commands;
+    }
+
+    List<List<String>> reloadsAfter(
+      void Function(FakeAsync, AudioOutputCoordinator, _FakePlayer) act, {
+      double rate = 1.0,
+    }) => commandsAfter(act, rate: rate).where((c) => c.first == 'ao-reload').toList();
+
+    const exactSeek = ['seek', '0', 'relative+exact'];
+
+    test('reloads the AO once when nothing else would', () {
+      // HDMI to AirPods with the same channel budget writes no property, so
+      // without the reload ao_avfoundation restarts on an empty queue and
+      // playback stays silent until pause and play.
+      expect(reloadsAfter((_, c, _) => c.debugRouteChanged(airpods)), hasLength(1));
+    });
+
+    test('a rendering-mode event on the same port does not reload', () {
+      const spatialOn = AppleAudioRoute(
+        portType: 'HDMI',
+        portName: 'TV',
+        maximumOutputNumberOfChannels: 8,
+        renderingMode: AppleRenderingMode.spatialAudio,
+      );
+      expect(reloadsAfter((_, c, _) => c.debugRouteChanged(spatialOn)), isEmpty);
+    });
+
+    test('no extra reload when the apply already reloaded the AO', () {
+      // Switching passthrough reloads the AO by itself; a second reload on top
+      // would only add an audible gap.
+      expect(
+        reloadsAfter((async, c, _) {
+          c.debugRouteChanged(airpods);
+          settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+          async.flushMicrotasks();
+          c.onModeChanged();
+        }),
+        isEmpty,
+      );
+    });
+
+    test('a passthrough request the arbiter holds back off 1.0x still reloads', () {
+      // At 1.25x the arbiter keeps the bitstream down and writes nothing, so
+      // the decision change did not reload the AO and the silence would stay.
+      expect(
+        reloadsAfter((async, c, _) {
+          c.debugRouteChanged(airpods);
+          settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+          async.flushMicrotasks();
+          c.onModeChanged();
+        }, rate: 1.25),
+        hasLength(1),
+      );
+    });
+
+    test('a reload that failed is retried on the next apply', () {
+      expect(
+        reloadsAfter((async, c, player) {
+          player.failNextCommand = true;
+          c.debugRouteChanged(airpods);
+          async.elapse(const Duration(seconds: 1));
+          c.onModeChanged();
+        }),
+        hasLength(1),
+      );
+    });
+
+    test('resyncs with an exact seek after reloading for a new device', () {
+      // Without it mpv waits for the picture to catch up with audio that was
+      // decoded ahead and then discarded: 6.3 s of silence in log 33hdc.
+      expect(commandsAfter((_, c, _) => c.debugRouteChanged(airpods)), [
+        ['ao-reload'],
+        exactSeek,
+      ]);
+    });
+
+    test('resyncs too when the apply already reloaded the AO itself', () {
+      // The log 33hdc switch reloaded through a passthrough or channel change,
+      // not through ao-reload, and was the one that stayed silent.
+      final commands = commandsAfter((async, c, _) {
+        c.debugRouteChanged(airpods);
+        settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+        async.flushMicrotasks();
+        c.onModeChanged();
+      });
+      expect(commands, [exactSeek]);
+    });
+
+    test('no seek for a rendering-mode event on the same port', () {
+      const spatialOn = AppleAudioRoute(
+        portType: 'HDMI',
+        portName: 'TV',
+        maximumOutputNumberOfChannels: 8,
+        renderingMode: AppleRenderingMode.spatialAudio,
+      );
+      expect(commandsAfter((_, c, _) => c.debugRouteChanged(spatialOn)), isEmpty);
     });
   });
 }

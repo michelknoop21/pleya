@@ -6,8 +6,8 @@
   ontwikkeling.
 -->
 <script lang="ts">
-  import DataTable, { type Column } from '$lib/components/DataTable.svelte';
-  import StatusPill from '$lib/components/StatusPill.svelte';
+  import DataTable, { type Column } from '#lib/components/DataTable.svelte';
+  import StatusPill from '#lib/components/StatusPill.svelte';
   import { LIBRARY_ROWS, type LibraryRow } from './overviewData';
 
   const columns: Column[] = [

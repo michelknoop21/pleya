@@ -540,6 +540,8 @@ Map<String, Object?> _doctorDifferences(UnifiedMediaGroup group) {
 
 Future<List<UnifiedMediaGroup>> _doctorGroups(_DoctorScan scan, List<MediaItem> items) async {
   final resolver = UnifiedIdentityResolver(
+    trustStoredIdentity: (item) =>
+        canTrustStoredIdentity(item, item.serverId == null ? null : scan.clients[ServerId(item.serverId!)]),
     fetchExternalIds: (server, id) => scan.read(() {
       final client = scan.clients[ServerId(server)] ?? (throw const AssistantToolError('catalog_changed'));
       return client.fetchExternalIds(id);

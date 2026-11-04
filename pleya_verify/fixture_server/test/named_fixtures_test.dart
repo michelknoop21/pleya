@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:pleya_verify_fixture_server/jellyfin_fake_server.dart';
 import 'package:pleya_verify_fixture_server/named_fixtures.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
 import 'package:pleya_verify_fixture_server/seerr_fake_server.dart';
@@ -13,6 +14,126 @@ Future<http.Response> _post(PleyaFakeServer server, String path, Object body) {
 }
 
 void main() {
+  test('playback fixture serves decodable HLS companions and authenticated sidecars', () async {
+    final server = PleyaFakeServer();
+    Future<http.Response> request(String path, {Map<String, dynamic>? body}) {
+      final req = http.Request(body == null ? 'GET' : 'POST', Uri.parse('http://fixture$path'))
+        ..headers['Authorization'] = 'Bearer at-0';
+      if (body != null) req.body = jsonEncode(body);
+      return server.handle(req);
+    }
+
+    applyNamedFixture(server, 'catalog.mixed.v1');
+    expect(applyNamedFixture(server, 'playback.app.v1'), isTrue);
+    final info =
+        jsonDecode((await server.handle(http.Request('GET', Uri.parse('http://fixture/pleya/v1/info')))).body) as Map;
+    expect((info['capabilities'] as Map)['playback_quality'], isTrue);
+    final movie = server.items.values.firstWhere((item) => item['kind'] == 'movie');
+    final plan = jsonDecode((await request('/pleya/v1/playback/plan', body: {'item_id': movie['id']})).body) as Map;
+    final playlist = await request(plan['stream_url'] as String);
+    expect(playlist.statusCode, 200);
+    expect(playlist.body, contains('#EXTM3U'));
+    expect(
+      RegExp('#EXTINF:').allMatches(playlist.body),
+      hasLength(8),
+      reason: 'native quality/back walks need a two-minute clip',
+    );
+    final fragments = playlist.body.split('\n').where((line) => line.isNotEmpty && !line.startsWith('#')).toSet();
+    expect(fragments, hasLength(8), reason: 'each fragment must carry its own continuous timestamps');
+    final init = await request('/pleya/v1/playback/sessions/sess-1/init.mp4');
+    expect(init.bodyBytes.length, greaterThan(100));
+    final range = http.Request('GET', Uri.parse('http://fixture/pleya/v1/playback/sessions/sess-1/init.mp4'))
+      ..headers.addAll({'Authorization': 'Bearer at-0', 'Range': 'bytes=0-31'});
+    final partial = await server.handle(range);
+    expect(partial.statusCode, 206);
+    expect(partial.bodyBytes, init.bodyBytes.take(32));
+    final streams = ((movie['versions'] as List).single as Map)['subtitle_streams'] as List;
+    expect(streams, hasLength(2));
+    final sidecarId = streams.first['id'];
+    final embedded = await request('/pleya/v1/subtitles/${streams.last['id']}');
+    expect(embedded.statusCode, 200);
+    expect(embedded.body, contains('Pleya embedded'));
+    for (final mode in ['off', 'external', 'burn']) {
+      final selected =
+          jsonDecode(
+                (await request(
+                  '/pleya/v1/playback/plan',
+                  body: {
+                    'item_id': movie['id'],
+                    'version_id': (movie['versions'] as List).first['id'],
+                    'subtitle': {'mode': mode, if (mode != 'off') 'stream_id': streams.last['id']},
+                  },
+                )).body,
+              )
+              as Map;
+      expect((selected['subtitle'] as Map)['action'], mode);
+      if (mode == 'burn') expect((selected['video'] as Map)['action'], 'transcode');
+    }
+    final subtitles = await request('/pleya/v1/subtitles/$sidecarId');
+    expect(subtitles.statusCode, 200);
+    expect(subtitles.body, contains('Pleya sidecar'));
+  });
+
+  group('catalog.hero-recent.v1', () {
+    test('Latest answers with a bare array of films inside the DEC-097 window', () async {
+      final jellyfin = JellyfinFakeServer();
+      expect(applyNamedFixture(PleyaFakeServer(), 'catalog.hero-recent.v1', jellyfin: jellyfin), isTrue);
+      final url = Uri.parse('http://fixture/jellyfin/Users/${JellyfinFakeServer.userId}/Items/Latest?Limit=100');
+      final response = await jellyfin.handle(http.Request('GET', url));
+      final films = jsonDecode(response.body) as List;
+      expect(films, hasLength(3));
+      final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 90));
+      for (final film in films.cast<Map<String, dynamic>>()) {
+        expect(DateTime.parse(film['PremiereDate'] as String).isAfter(cutoff), isTrue, reason: '${film['Name']}');
+        expect(film['BackdropImageTags'], isNotEmpty, reason: '${film['Name']}');
+      }
+    });
+
+    test('needs the fake Jellyfin, because the Pleya fixture carries no date', () {
+      expect(applyNamedFixture(PleyaFakeServer(), 'catalog.hero-recent.v1'), isFalse);
+    });
+  });
+
+  group('catalog.scores.v1', () {
+    Future<Map<String, dynamic>> items(JellyfinFakeServer jellyfin, String sortOrder) async {
+      final url = Uri.parse(
+        'http://fixture/jellyfin/Items?ParentId=${JellyfinFakeServer.libraryId}&SortBy=CriticRating,SortName&SortOrder=$sortOrder&StartIndex=0&Limit=50',
+      );
+      final response = await jellyfin.handle(http.Request('GET', url));
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    test('seeds a Jellyfin library with scores, two titles without', () async {
+      final jellyfin = JellyfinFakeServer();
+      expect(applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin), isTrue);
+      expect(jellyfin.movies, hasLength(12));
+      expect(jellyfin.movies.where((movie) => movie.criticRating == null), hasLength(2));
+    });
+
+    test('sends titles without a value last descending and first ascending', () async {
+      final jellyfin = JellyfinFakeServer();
+      applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin);
+      final down = (await items(jellyfin, 'Descending'))['Items'] as List;
+      final up = (await items(jellyfin, 'Ascending'))['Items'] as List;
+      expect((down.first as Map)['CriticRating'], 100);
+      expect((down.last as Map).containsKey('CriticRating'), isFalse);
+      expect((up.first as Map).containsKey('CriticRating'), isFalse);
+    });
+
+    test('one SortOrder runs every key that way, a list runs per key', () async {
+      final jellyfin = JellyfinFakeServer();
+      applyNamedFixture(PleyaFakeServer(), 'catalog.scores.v1', jellyfin: jellyfin);
+      List<Object?> tied(List<dynamic> rows) => [
+        for (final row in rows.cast<Map>())
+          if (!row.containsKey('CriticRating')) row['Name'],
+      ];
+      final one = tied((await items(jellyfin, 'Descending'))['Items'] as List);
+      final perKey = tied((await items(jellyfin, 'Descending,Ascending'))['Items'] as List);
+      expect(one, hasLength(2));
+      expect(one, perKey.reversed.toList());
+    });
+  });
+
   group('seeding preserves the session', () {
     // `seed` used to call the full reset(), which also wiped credentials,
     // refreshCount and the clock. Nothing in the scenario grammar forbids
@@ -86,6 +207,33 @@ void main() {
     final applied = applyNamedFixture(server, 'catalog.does-not-exist');
     expect(applied, isFalse);
     expect(server.libraries, isEmpty);
+  });
+
+  group('unified.pair.b.v1', () {
+    // Side B is attached with `connections_seed`, which never calls
+    // /auth/setup. A server that still offers setup reads as signed out to
+    // the app (`checkHealth` returns authError), so B must look set up.
+    test('reads as a server that is already set up, and refreshes the seeded token', () async {
+      final server = PleyaFakeServer(setupRequired: true, serverId: 'srv-2');
+      expect(applyNamedFixture(server, 'unified.pair.b.v1'), isTrue);
+      final info = await server.handle(http.Request('GET', Uri.parse('http://fixture/pleya/v1/info')));
+      expect(
+        ((jsonDecode(info.body) as Map<String, dynamic>)['auth'] as Map<String, dynamic>)['setup_required'],
+        isFalse,
+      );
+      final refreshed = await _post(server, '/pleya/v1/auth/refresh', {'refresh_token': 'rt-seeded'});
+      expect(refreshed.statusCode, 200);
+    });
+
+    test('side A still offers setup, for the normal sign-in flow', () async {
+      final server = PleyaFakeServer(setupRequired: true);
+      expect(applyNamedFixture(server, 'unified.pair.a.v1'), isTrue);
+      final info = await server.handle(http.Request('GET', Uri.parse('http://fixture/pleya/v1/info')));
+      expect(
+        ((jsonDecode(info.body) as Map<String, dynamic>)['auth'] as Map<String, dynamic>)['setup_required'],
+        isTrue,
+      );
+    });
   });
 
   group('fixtureItemId', () {
@@ -335,6 +483,20 @@ void main() {
       expect(applied, isTrue);
       expect(server.libraries, hasLength(1));
       expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(19));
+    });
+  });
+
+  group('catalog.alphabet-500.v1', () {
+    test('five hundred movies, twenty per letter from A to Y and none under Z', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.alphabet-500.v1');
+
+      expect(applied, isTrue);
+      expect(server.libraries, hasLength(1));
+      final titles = server.items.values.where((i) => i['kind'] == 'movie').map((i) => i['title'] as String);
+      expect(titles, hasLength(500));
+      expect(titles.where((title) => title.startsWith('M ')), hasLength(20));
+      expect(titles.where((title) => title.startsWith('Z ')), isEmpty);
     });
   });
 

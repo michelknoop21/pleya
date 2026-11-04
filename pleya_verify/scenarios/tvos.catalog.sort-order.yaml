@@ -23,6 +23,10 @@ steps:
   - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
   - press: select
   - settle: 1500
+  # A-24c (LEESMIJ-v4): Select changed the page and left the remote on
+  # the pill; Down takes it to the landing.
+  - press: down
+  - settle: 1500
   # Films is a landing; its header action opens Alle films, the same route
   # `tvos.catalog.rail-sort-focus` takes on Series.
   - press: select

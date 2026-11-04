@@ -52,6 +52,8 @@ class OnlinePlexClientDouble implements PlexClient {
   /// Set by `MultiServerManager` when it registers the client.
   @override
   bool Function()? canManageServerMetadata;
+  @override
+  bool Function()? canManageCollections;
 
   /// Set alongside it since DEC-142 (`canAdministerServer`).
   @override

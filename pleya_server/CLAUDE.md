@@ -48,7 +48,7 @@ namaken bewijst niets over de analyse.
 `.github/workflows/ci.yml` heeft een job `pleya-server` (build, vet, `go test ./...` tegen een Postgres-service, en de antwoordvalidatie tegen `openapi.yaml`) een job `pleya-web` en een job `protocol` (`scripts/check_protocol.sh`). `scripts/ci_checks.sh` (de pre-commit-gate) is Flutter en Dart en raakt Go niet. De volledige lokale keten draai je zelf:
 
 ```sh
-scripts/verify-local.sh        # vijftien secties, 79 controles, van go vet tot een gebruikersronde
+scripts/verify-local.sh        # vijftien secties, 82 controles, van go vet tot een gebruikersronde
 scripts/verify-protocol.sh     # antwoorden van een draaiende server tegen openapi.yaml
 ../scripts/check_protocol.sh   # het contract zelf, in een gepinde Python-container
 ```
@@ -120,10 +120,10 @@ bestanden niet, en RFC 9110 §8.8.1 vraagt strict revision control of een hash o
 `If-Range` levert daarom altijd `200`. Schrijf nergens code die op een gelijke validator vertrouwt om
 bytes aan elkaar te plakken.
 
-**Tabellen uit latere fasen bestaan niet.** Geen `play_history`, `play_sessions`, `user_item_data`,
-`external_ids`, `metadata_candidates` of `transcode_sessions`. `watch_states` en `stream_sessions`
-staan er sinds PS-4; `users`, `sessions` en `library_permissions` sinds migratie 0007 (PS-9, DEC-119
-en DEC-123). De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
+**Tabellen uit latere fasen bestaan niet.** Geen `play_sessions`, `user_item_data` of `external_ids`.
+`watch_states` en `stream_sessions` staan er sinds PS-4; `users`, `sessions` en `library_permissions`
+sinds migratie 0007 (PS-9, DEC-119 en DEC-123); `metadata_candidates` sinds 0013, `transcode_sessions`
+sinds 0019 en `play_history` sinds 0020. De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
 17 van [de specificatie](../docs/pleya-protocol-v1.md)) beschrijft het hele v1-product en niet deze
 fase; `verify-local.sh` en `internal/migrate/migrate_test.go` controleren allebei welke tabellen er
 staan.

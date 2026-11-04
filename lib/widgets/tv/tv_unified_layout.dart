@@ -34,6 +34,8 @@ import 'package:flutter/painting.dart';
 import '../../focus/focus_theme.dart';
 import '../../utils/layout_constants.dart';
 
+export 'tv_catalog_full_bleed_layout.dart';
+
 /// Density tokens for the first-start authentication composition.
 ///
 /// Box composition belongs to `TvAuthGeometry`, which has the live viewport.
@@ -732,12 +734,24 @@ class TvCatalogGrid {
     required this.inset,
     required this.bottomSafeMargin,
     this.leading = 0,
-  });
+    double? rowGutter,
+    this.topInset,
+  }) : rowGutter = rowGutter ?? gutter;
 
   final int columns;
   final double cardWidth;
   final double gutter;
+
+  /// Space between two rows. Equal to [gutter] unless the grid says otherwise:
+  /// [TvCatalogFullBleedLayout] sends its spare width to the columns and keeps
+  /// the rows tight.
+  final double rowGutter;
+
   final double inset;
+
+  /// A fixed top margin for the first row, for a card whose focus stays inside
+  /// its own band. Null reserves the focus headroom of [scrollPadding] instead.
+  final double? topInset;
 
   /// Width reserved between [inset] and the first column, for something that is
   /// not part of the grid: CAT5's open controls rail, and nothing else so far.
@@ -785,6 +799,8 @@ class TvCatalogGrid {
   /// `WatchlistCard`, at two different focus scales, so a number computed here
   /// could only ever be right for one of them.
   EdgeInsets scrollPadding({required double cardHeight, required double focusScale}) {
+    final top = topInset;
+    if (top != null) return EdgeInsets.fromLTRB(inset + leading, top, inset, bottomSafeMargin);
     final growth = cardHeight * (focusScale - 1) / 2;
     return EdgeInsets.fromLTRB(inset + leading, growth, inset, bottomSafeMargin + growth);
   }
@@ -794,9 +810,14 @@ class TvCatalogGrid {
   ///
   /// Public so anything standing beside the grid (CAT5's rail) can line up with
   /// the first poster row instead of with the viewport, without re-deriving the
-  /// expression the padding already owns.
+  /// expression the padding already owns. A grid with a [topInset] uses that
+  /// instead, see [firstRowOffset].
   static double focusHeadroom({required double cardHeight, required double focusScale}) =>
       cardHeight * (focusScale - 1) / 2;
+
+  /// Where the first row's box starts in this grid's scroll content.
+  double firstRowOffset({required double cardHeight, required double focusScale}) =>
+      topInset ?? focusHeadroom(cardHeight: cardHeight, focusScale: focusScale);
 
   /// Ideal card width on the 1920-wide reference surface, expressed as a
   /// fraction so it converts like every other box measurement in this file
@@ -1281,7 +1302,10 @@ class TvTopNavLayout {
   static const Duration focusDuration = Duration(milliseconds: 160);
 }
 
-/// Mijn Pleya on TV (hoofdstuk 18.1 and north star 08).
+/// Mijn Pleya on TV (hoofdstuk 18.1), and the tiles and ink tiers other TV
+/// surfaces borrow from it. The A-24c page itself measures in HIG points
+/// (`_Pt` in `tv_my_pleya_screen.dart`); the profile header, server list and
+/// footer tokens left with the A-24b page.
 class TvMyPleyaLayout {
   const TvMyPleyaLayout._();
 
@@ -1292,17 +1316,6 @@ class TvMyPleyaLayout {
   /// Gap under the page heading, and between the groups below it.
   static const double titleGap = 16;
   static const double groupGap = 18;
-
-  /// The profile header row (no card since VIS-0925-C).
-  static const double headerPadding = 18;
-  static const double headerNameFontSize = 22;
-  static const double headerMetaFontSize = 13;
-  static const double headerGap = 16;
-
-  /// The server list on the header's right-hand side.
-  static const double serverRowFontSize = 13;
-  static const double serverRowGap = 6;
-  static const double serverDotSize = 6;
 
   /// A group heading ("Mijn content", "Bibliotheken en bronnen", "Pleya").
   static const double groupLabelFontSize = 14;
@@ -1330,9 +1343,6 @@ class TvMyPleyaLayout {
 
   /// Gap between a tile and its focus ring.
   static const double tileFocusRingGap = 3;
-
-  /// The footer line ("Aangemeld als … · Pleya x.y.z").
-  static const double footerFontSize = 12;
 
   /// Ink tiers on `MonoTokens.text`.
   static const double inkPrimary = 1;

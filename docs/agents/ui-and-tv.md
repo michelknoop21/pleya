@@ -42,13 +42,36 @@ aan. Een effen balk in paginakleur boven de inhoud is daar niet de bedoeling: le
 statusbalkglyphs komt van een fade of scrim over het artwork en van een
 `AnnotatedRegion<SystemUiOverlayStyle>`. Een vaste balk is doorschijnend via `GlassSurface`, die op
 effen terugvalt zolang Liquid Glass uit staat (de voorkeur staat standaard uit) en op de iPad, waar
-glas nooit geldt. Besluit Michel, 26 oktober 2026 (DEC-XXX-edge).
+glas nooit geldt. Besluit Michel, 26 oktober 2026 (DEC-163).
 
 Gebouwd voor de Studio-kop en -balk van Instellingen (A-24). Nieuwe iPhone-schermen volgen de regel.
 Bekende uitzonderingen die nog effen zijn: de ingeklapte balk van `MobileDetailHeroBar` en de
 gewone instellingenbalken (`CustomAppBar`). Pas ze aan binnen hun eigen roadmappakket, niet
 meeliftend op ander werk. Een widgettest zet de safe-area-top op 59 en toetst dat de
 achtergrondlaag op y=0 begint en het logo eronder blijft.
+
+## Instellingen op Apple TV zonder bovenbalk
+
+Instellingen en elke pagina die vanuit Instellingen in de TV-shell opent, gebruiken
+`TvTopNavPresentation.collapsible` via `kTvSettingsTopNav` of `tvSettingsTopNavFor(context)`
+(`lib/widgets/settings/settings_studio_theme.dart`). Een nieuwe opener van een instellingenpagina
+geeft die mee aan `openTvContentRoute`. De pagina neemt zelf de bovenmarge (`TvPageSurface`), UP
+vanaf de bovenste focusstop haalt de balk terug. Een pagina zonder eigen weg omhoog krijgt die via
+`tvExitUpToBar(context)` (`lib/navigation/tv/tv_nested_surface.dart`): `TvMenuGrid` valt erop terug
+als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. Andere TV-routes houden hun eigen presentatie
+(DEC-166, besluit Michel 26 oktober 2026).
+
+## Topmenu op tvOS
+
+Volgorde: profielavatar, zoeken, Home, Series, Films, Live TV (alleen met de capability), Mijn
+Pleya, Instellingen. Het woordmerk rechts is geen focusstop. Instellingen is een eigen bestemming,
+geen sectie van Mijn Pleya; Servers, Logboeken en Over Pleya hangen eronder (Koppelingen >
+Servers opent `TvServersPage`). De ring verplaatst alleen de focus: bij elke bestemming wisselt de
+pagina pas op Select, DOWN gaat de pagina in die op het scherm staat en Menu zet de ring eerst terug
+op de pil van die pagina (afgeleid in review 557-M6) (LEESMIJ-v4; vervangt het remotecontract van 2 september 2026). De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
+Back sluit het en zet de focus terug op de avatar. De bestemming Instellingen gebruikt dezelfde
+inklapbare balk als hierboven. Besluit Michel, 26 oktober 2026 (A-24c,
+DEC-167).
 
 ## Pleya Verify
 

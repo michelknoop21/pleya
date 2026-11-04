@@ -21,7 +21,10 @@ class WatchlistEvent {
   /// the write turns out to have failed.
   final bool optimistic;
 
-  const WatchlistEvent({required this.key, required this.changeType, this.optimistic = false});
+  /// Rechecked on asynchronous delivery, after a possible account rebind.
+  final bool Function()? isCurrent;
+
+  const WatchlistEvent({required this.key, required this.changeType, this.optimistic = false, this.isCurrent});
 
   bool get isOnList => changeType == WatchlistChangeType.added;
 
@@ -41,6 +44,9 @@ class WatchlistNotifier extends BaseNotifier<WatchlistEvent> {
   /// then clean up after itself.
   @visibleForTesting
   WatchlistNotifier.forTesting();
+
+  @override
+  Stream<WatchlistEvent> get stream => super.stream.where((event) => event.isCurrent?.call() ?? true);
 
   Stream<WatchlistEvent> forKey(String key) => stream.where((e) => e.key == key);
 

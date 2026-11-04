@@ -19,7 +19,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/screens/tv/tv_my_pleya_screen.dart' show tvMyPleyaEyebrowInk;
 import 'package:pleya/utils/tv_hig.dart';
+import 'package:pleya/widgets/tv/tv_account_menu.dart' show tvAccountMenuDestructiveInk;
 import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
 import 'package:pleya/widgets/tv/tv_top_nav_item.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
@@ -95,6 +97,26 @@ List<_Row> _audit(MonoTokens tk, GlassTokens glass) {
 
   return [
     _Row('page title, text on bg', text, tk.bg, _pt(TvMyPleyaLayout.pageTitleFontSize)),
+    // A-24c, Mijn Pleya v4: the eyebrow, the line under the heading, the
+    // small capitals and the account menu, at the sizes the page draws them.
+    _Row('Mijn Pleya eyebrow on bg', tvMyPleyaEyebrowInk(tk), tk.bg, TvHig.caption2),
+    _Row('Mijn Pleya line (secondary) on bg', ink(TvMyPleyaLayout.inkSecondary), tk.bg, 26),
+    _Row('Mijn Pleya small capitals (secondary) on bg', ink(TvMyPleyaLayout.inkSecondary), tk.bg, TvHig.caption2),
+    _Row(
+      'Mijn Pleya small capitals (secondary) on panel',
+      ink(TvMyPleyaLayout.inkSecondary),
+      tk.isLight ? Colors.white : fill55,
+      TvHig.caption2,
+    ),
+    _Row('Mijn Pleya dock label on tile', text, tk.isLight ? Colors.white : fill55, 26),
+    _Row('Bekijk alles on panel', tk.isLight ? tk.accent : text, tk.isLight ? Colors.white : fill55, TvHig.caption2),
+    _Row(
+      'account menu line (secondary) on elevated',
+      ink(TvMyPleyaLayout.inkSecondary),
+      tk.surfaceElevated,
+      TvHig.caption2,
+    ),
+    _Row('account menu Uitloggen on elevated', tvAccountMenuDestructiveInk(tk), tk.surfaceElevated, TvHig.body),
     _Row('settings row title on surface', text, tk.surface, pt),
     _Row('settings row title on focused fill', text, fill13Surface, pt),
     _Row('settings row subtitle (textMuted) on surface', tk.textMuted, tk.surface, TvHig.caption1),
@@ -115,13 +137,6 @@ List<_Row> _audit(MonoTokens tk, GlassTokens glass) {
       tk.bg,
       _pt(TvMyPleyaLayout.groupLabelFontSize),
     ),
-    _Row(
-      'hub header meta (tertiary) on bg',
-      ink(TvMyPleyaLayout.inkTertiary),
-      tk.bg,
-      _pt(TvMyPleyaLayout.headerMetaFontSize),
-    ),
-    _Row('page body (tertiary) on bg', ink(TvMyPleyaLayout.inkTertiary), tk.bg, _pt(TvMyPleyaLayout.footerFontSize)),
     _Row('topnav inactive (no glass) on bg', ink(TvTopNavLayout.inactiveInk), tk.bg, _pt(TvTopNavLayout.itemFontSize)),
     _Row('topnav active label (bg on text)', tk.bg, text, _pt(TvTopNavLayout.itemFontSize)),
     _Row(

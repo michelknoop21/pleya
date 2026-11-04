@@ -53,8 +53,11 @@ class WatchlistActions {
     required MediaItem item,
     required bool isOffline,
     WatchlistNotifier? notifier,
+    bool Function()? isCurrent,
     void Function(WatchlistMembership membership)? onAdded,
   }) async {
+    bool current() => isCurrent?.call() ?? true;
+    if (!current()) return WatchlistOutcome.unsupported;
     final key = watchlistKeyForItem(item);
     if (key == null) return WatchlistOutcome.unsupported;
     if (isOffline) return WatchlistOutcome.offlineRejected;
@@ -63,16 +66,20 @@ class WatchlistActions {
     if (source == null) return WatchlistOutcome.unsupported;
 
     final events = notifier ?? WatchlistNotifier();
-    events.notify(WatchlistEvent(key: key, changeType: WatchlistChangeType.added, optimistic: true));
+    events.notify(
+      WatchlistEvent(isCurrent: isCurrent, key: key, changeType: WatchlistChangeType.added, optimistic: true),
+    );
 
     try {
       final membership = await source.add(item);
+      if (!current()) return WatchlistOutcome.added;
       onAdded?.call(membership);
-      events.notify(WatchlistEvent(key: key, changeType: WatchlistChangeType.added));
+      events.notify(WatchlistEvent(isCurrent: isCurrent, key: key, changeType: WatchlistChangeType.added));
       return WatchlistOutcome.added;
     } catch (e, st) {
       appLogger.w('Watchlist add failed for $key', error: e, stackTrace: st);
-      events.notify(WatchlistEvent(key: key, changeType: WatchlistChangeType.removed));
+      if (current())
+        events.notify(WatchlistEvent(isCurrent: isCurrent, key: key, changeType: WatchlistChangeType.removed));
       return WatchlistOutcome.failed;
     }
   }
@@ -102,7 +109,10 @@ class WatchlistActions {
     required WatchlistEntry entry,
     required bool isOffline,
     WatchlistNotifier? notifier,
+    bool Function()? isCurrent,
   }) async {
+    bool current() => isCurrent?.call() ?? true;
+    if (!current()) return WatchlistOutcome.unsupported;
     if (isOffline) return WatchlistOutcome.offlineRejected;
 
     final byScope = {for (final source in sources) source.scope: source};
@@ -110,7 +120,9 @@ class WatchlistActions {
     if (targets.isEmpty) return WatchlistOutcome.unsupported;
 
     final events = notifier ?? WatchlistNotifier();
-    events.notify(WatchlistEvent(key: entry.key, changeType: WatchlistChangeType.removed, optimistic: true));
+    events.notify(
+      WatchlistEvent(isCurrent: isCurrent, key: entry.key, changeType: WatchlistChangeType.removed, optimistic: true),
+    );
 
     final removed = <WatchlistMembership>[];
     for (final membership in targets) {
@@ -120,17 +132,20 @@ class WatchlistActions {
       } catch (e, st) {
         appLogger.w('Watchlist remove failed on ${membership.scope.storageKey}', error: e, stackTrace: st);
         final compensated = await _compensate(byScope, removed, entry);
-        events.notify(
-          WatchlistEvent(
-            key: entry.key,
-            changeType: compensated ? WatchlistChangeType.added : WatchlistChangeType.removed,
-          ),
-        );
+        if (current())
+          events.notify(
+            WatchlistEvent(
+              isCurrent: isCurrent,
+              key: entry.key,
+              changeType: compensated ? WatchlistChangeType.added : WatchlistChangeType.removed,
+            ),
+          );
         return compensated ? WatchlistOutcome.failed : WatchlistOutcome.partiallyFailed;
       }
     }
 
-    events.notify(WatchlistEvent(key: entry.key, changeType: WatchlistChangeType.removed));
+    if (current())
+      events.notify(WatchlistEvent(isCurrent: isCurrent, key: entry.key, changeType: WatchlistChangeType.removed));
     return WatchlistOutcome.removed;
   }
 

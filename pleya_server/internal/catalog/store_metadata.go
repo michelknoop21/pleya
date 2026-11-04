@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -46,6 +47,15 @@ type MetadataTarget struct {
 	// ManualExternalID is de id die een beheerder koos (0016). Leeg als er geen
 	// handmatige keuze is; dan gaat de ronde op de .nfo en daarna op zoeken.
 	ManualExternalID string
+
+	// CandidateUpdatedAt is de verwachte duurzame generatie van deze poging.
+	// nil betekent dat er bij het lezen nog geen kandidaat bestond.
+	CandidateUpdatedAt *time.Time
+
+	// SidecarReadError is uitsluitend voorbereidingscontext van deze poging,
+	// nooit opgeslagen of via de API verstuurd. Alleen het intrekken van een
+	// bestaande eigen providerwaarde heeft dan geen bewezen actuele fallback.
+	SidecarReadError error `json:"-"`
 }
 
 // Alternative is een mogelijke treffer die een beheerder kan kiezen.
@@ -94,6 +104,10 @@ type MetadataCandidate struct {
 //
 // Eén kandidaatrij per item, ongeacht de provider: M2a kent er één. Een tweede
 // provider vraagt een sleutel op (item_id, provider) in een eigen migratie.
+//
+// Zonder provider (SourceNFO) telt alleen sidecar_checked_at: die ronde heeft geen
+// kandidaten. Eens per sidecarRecheck komt een item terug, zodat een bijgewerkte .nfo
+// binnen een week doorkomt.
 func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]MetadataTarget, error) {
 	if exclude == nil {
 		// Een NULL-array maakt van NOT (id = ANY(NULL)) een NULL en daarmee een lege pagina.
@@ -103,9 +117,10 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		SELECT i.id, i.kind, i.title, i.year,
 		       coalesce(mp.root_path, sp.root_path, ''),
 		       coalesce(mp.relative_path, sp.relative_path, ''),
-		       CASE WHEN c.manual THEN coalesce(c.external_id, '') ELSE '' END
+		       CASE WHEN c.manual THEN coalesce(c.external_id, '') ELSE '' END,
+		       c.updated_at
 		FROM media_items i
-		LEFT JOIN metadata_candidates c ON c.item_id = i.id AND c.provider = $1
+		LEFT JOIN metadata_candidates c ON c.item_id = i.id
 		LEFT JOIN LATERAL (
 		    SELECT sl.root_path, f.relative_path
 		    FROM media_versions v
@@ -123,14 +138,21 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		    WHERE s.parent_id = i.id AND i.kind = 'show'
 		    ORDER BY f.relative_path LIMIT 1) sp ON true
 		WHERE i.kind IN ('movie', 'show')
-		  AND (c.item_id IS NULL
-		       OR (c.state <> 'rejected'
-		           AND (c.pass < $4
-		                OR (c.state IN ('unmatched', 'failed', 'matched')
-		                    AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now()))))
+		  AND CASE WHEN $1 = 'nfo'
+		      THEN i.sidecar_checked_at IS NULL OR i.sidecar_checked_at <= now() - $5::interval
+		      ELSE c.item_id IS NULL
+		           OR (c.state <> 'rejected'
+		               AND c.state <> 'ambiguous'
+		               AND (c.next_attempt_at IS NULL OR c.next_attempt_at <= now())
+		               AND (c.pass < $4
+		                    OR (c.state = 'matched' AND c.application_state = 'unknown'
+		                        AND c.applied_provider IS NULL)
+		                    OR (c.state IN ('unmatched', 'failed', 'matched')
+		                        AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now())))
+		      END
 		  AND NOT (i.id = ANY($3))
 		ORDER BY i.added_at, i.id
-		LIMIT $2`, provider, limit, exclude, pass)
+		LIMIT $2`, provider, limit, exclude, pass, sidecarRecheck)
 	if err != nil {
 		return nil, fmt.Errorf("metadata-werk lezen: %w", err)
 	}
@@ -139,7 +161,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 	var out []MetadataTarget
 	for rows.Next() {
 		var t MetadataTarget
-		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID); err != nil {
+		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.CandidateUpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -147,9 +169,35 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 	return out, rows.Err()
 }
 
+// sidecarRecheck is hoe lang een item zonder provider met rust gelaten wordt.
+const sidecarRecheck = 7 * 24 * time.Hour
+
+// MarkSidecarChecked legt vast dat een ronde zonder provider dit item naliep.
+func (s *Store) MarkSidecarChecked(ctx context.Context, itemID id.ID) error {
+	if _, err := s.pool.Exec(ctx, `UPDATE media_items SET sidecar_checked_at = now() WHERE id = $1`, itemID); err != nil {
+		return fmt.Errorf("sidecarronde vastleggen: %w", err)
+	}
+	return nil
+}
+
 // SaveCandidate legt de uitkomst van een poging vast. Het canonieke record blijft
 // hier onaangeroerd: dat gaat via ApplyMetadata.
 func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, c.ItemID); err != nil {
+		return err
+	}
+	if err := saveCandidate(ctx, tx, c); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func saveCandidate(ctx context.Context, tx pgx.Tx, c MetadataCandidate) error {
 	var details any
 	if c.Details != nil {
 		raw, err := json.Marshal(c.Details)
@@ -162,7 +210,7 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 	if c.ExternalID != "" {
 		ext = c.ExternalID
 	}
-	_, err := s.pool.Exec(ctx, `
+	_, err := tx.Exec(ctx, `
 		INSERT INTO metadata_candidates
 		    (item_id, provider, state, external_id, details, attempts, next_attempt_at, pass)
 		VALUES ($1, $2, $3, $4, $5, 1, $6, $7)
@@ -175,7 +223,7 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 		    last_attempt_at = now(),
 		    next_attempt_at = EXCLUDED.next_attempt_at,
 		    pass = EXCLUDED.pass,
-		    updated_at = now()`,
+		    updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`,
 		c.ItemID, c.Provider, c.State, ext, details, c.NextAttempt, max(c.Pass, 1))
 	if err != nil {
 		return fmt.Errorf("kandidaat opslaan: %w", err)
@@ -185,7 +233,8 @@ func (s *Store) SaveCandidate(ctx context.Context, c MetadataCandidate) error {
 
 // ApplyMetadata zet providerwaarden op het item, per veld en alleen waar niemand
 // met voorrang het veld al heeft gezet. Een veld dat een eerdere providerronde
-// zette wordt wel ververst; een veld met een andere bron blijft staan.
+// zette wordt wel ververst; een veld met een andere bron blijft staan. Een waarde die
+// er al staat raakt de rij niet: updated_at is wat clients op verversen zetten.
 func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string, d MetadataDetails) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -193,6 +242,13 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := applyMetadata(ctx, tx, itemID, provider, d); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func applyMetadata(ctx context.Context, tx pgx.Tx, itemID id.ID, provider string, d MetadataDetails) error {
 	var sources map[string]string
 	var raw []byte
 	if err := tx.QueryRow(ctx, `SELECT metadata_sources FROM media_items WHERE id = $1 FOR UPDATE`, itemID).Scan(&raw); err != nil {
@@ -205,6 +261,10 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 		sources = map[string]string{}
 	}
 
+	if err := rememberMetadataLayer(ctx, tx, itemID, provider, d); err != nil {
+		return err
+	}
+
 	// Een veld is schrijfbaar als niemand het zette, of als de nieuwe bron minstens
 	// even zwaar weegt als de huidige. Rang: handmatig, dan een provider in de
 	// servertaal, dan een sidecar (DEC-153).
@@ -214,19 +274,19 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 	}
 
 	if d.Summary != "" && free("summary") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET summary = $2, updated_at = now() WHERE id = $1`, itemID, d.Summary); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET summary = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND summary IS DISTINCT FROM $2`, itemID, d.Summary); err != nil {
 			return err
 		}
 		sources["summary"] = provider
 	}
 	if len(d.Genres) > 0 && free("genres") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET genres = $2, updated_at = now() WHERE id = $1`, itemID, d.Genres); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET genres = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND genres IS DISTINCT FROM $2`, itemID, d.Genres); err != nil {
 			return err
 		}
 		sources["genres"] = provider
 	}
 	if d.ContentRating != "" && free("content_rating") {
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET content_rating = $2, updated_at = now() WHERE id = $1`, itemID, d.ContentRating); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET content_rating = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND content_rating IS DISTINCT FROM $2`, itemID, d.ContentRating); err != nil {
 			return err
 		}
 		sources["content_rating"] = provider
@@ -237,7 +297,7 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET people = $2, updated_at = now() WHERE id = $1`, itemID, raw); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET people = $2, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1 AND people IS DISTINCT FROM $2`, itemID, raw); err != nil {
 			return err
 		}
 		sources["people"] = provider
@@ -247,22 +307,25 @@ func (s *Store) ApplyMetadata(ctx context.Context, itemID id.ID, provider string
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1`, itemID, out); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1 AND metadata_sources IS DISTINCT FROM $2`, itemID, out); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // SourceNFO en SourceManual zijn de bronnen naast een provider.
 const (
 	SourceNFO    = "nfo"
 	SourceManual = "manual"
+	SourceNone   = "none"
 )
 
 // sourceRank is de voorrang van een bron: hoger wint. Een onbekende bron (een
 // tweede provider) staat tussen de .nfo en de eerste provider.
 func sourceRank(src string) int {
 	switch src {
+	case SourceNone:
+		return 0
 	case SourceManual:
 		return 100
 	case SourceNFO:
@@ -302,7 +365,22 @@ func (s *Store) GetProviderArtwork(ctx context.Context, itemID id.ID, kind, prov
 // het bestand al; het id blijft gelijk bij een vervanging en generation loopt op
 // zodra de bytes anders zijn.
 func (s *Store) UpsertProviderArtwork(ctx context.Context, a ProviderArtwork) error {
-	_, err := s.pool.Exec(ctx, `
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, a.ItemID); err != nil {
+		return err
+	}
+	if err := upsertProviderArtwork(ctx, tx, a); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func upsertProviderArtwork(ctx context.Context, tx pgx.Tx, a ProviderArtwork) error {
+	_, err := tx.Exec(ctx, `
 		INSERT INTO provider_artwork (id, item_id, kind, provider, source_ref, file_name, sha256)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (item_id, kind, provider) DO UPDATE SET
@@ -334,6 +412,7 @@ func (s *Store) LocalArtwork(ctx context.Context, itemID id.ID) (poster, backdro
 // genreGate bewaart de uitkomst van de dekkingspoort per bibliotheek, kort.
 type genreGate struct {
 	mu      sync.Mutex
+	epoch   uint64
 	entries map[id.ID]genreGateEntry
 }
 
@@ -351,14 +430,25 @@ const genreGateTTL = 5 * time.Minute
 // pagina: dan tonen we de genres, want een ontbrekende meting is geen bewijs van
 // een slechte dekking.
 func (s *Store) genresVisible(ctx context.Context, libraryID id.ID) bool {
+	return s.genresVisibleRead(ctx, s.pool, libraryID)
+}
+
+func (s *Store) genresVisibleRead(ctx context.Context, reader itemReader, libraryID id.ID) bool {
+	// A transaction owns its earlier read snapshot. It must neither consume
+	// the current pool gate nor publish its snapshot into that shared cache.
+	if _, snapshot := reader.(pgx.Tx); snapshot {
+		cov, err := s.metadataCoverageRead(ctx, reader, libraryID)
+		return err != nil || cov.GateMet
+	}
 	s.genres.mu.Lock()
 	if e, ok := s.genres.entries[libraryID]; ok && time.Since(e.at) < genreGateTTL {
 		s.genres.mu.Unlock()
 		return e.open
 	}
+	epoch := s.genres.epoch
 	s.genres.mu.Unlock()
 
-	cov, err := s.MetadataCoverage(ctx, libraryID)
+	cov, err := s.metadataCoverageRead(ctx, reader, libraryID)
 	if err != nil {
 		return true
 	}
@@ -366,35 +456,76 @@ func (s *Store) genresVisible(ctx context.Context, libraryID id.ID) bool {
 	if s.genres.entries == nil {
 		s.genres.entries = map[id.ID]genreGateEntry{}
 	}
-	s.genres.entries[libraryID] = genreGateEntry{open: cov.GateMet, at: time.Now()}
+	// A classification change may have invalidated this library while the
+	// measurement was in flight. Its older snapshot must not repopulate cache.
+	if s.genres.epoch == epoch {
+		s.genres.entries[libraryID] = genreGateEntry{open: cov.GateMet, at: time.Now()}
+	}
 	s.genres.mu.Unlock()
 	return cov.GateMet
 }
 
-// attachMetadata vult samenvatting, genres en kijkwijzer per pagina in één query.
-func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]*Item) error {
-	rows, err := s.pool.Query(ctx, `
-		SELECT id, summary, content_rating, genres, people
-		FROM media_items
-		WHERE id = ANY($1) AND (summary IS NOT NULL OR content_rating IS NOT NULL OR genres IS NOT NULL
-		                        OR people IS NOT NULL)`, ids)
+func (s *Store) invalidateGenreGate(libraryID id.ID) {
+	s.genres.mu.Lock()
+	defer s.genres.mu.Unlock()
+	s.genres.epoch++
+	delete(s.genres.entries, libraryID)
+}
+
+// attachMetadata leest beschrijving, artwork en identiteitsbewijs in één
+// SQL-snapshot. Een publicatie tussen losse reads mag nooit A-velden met B-id
+// vormen. De lokale afbeelding wint per rol, met dezelfde stabiele padvolgorde.
+func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item) error {
+	rows, err := reader.Query(ctx, `
+        SELECT i.id, i.summary, i.content_rating, i.genres, i.people,
+               art.poster, art.backdrop, c.state, c.provider, c.external_id,
+               c.applied_provider, c.applied_external_id
+        FROM media_items i
+        LEFT JOIN metadata_candidates c ON c.item_id=i.id AND i.kind IN ('movie','show')
+        LEFT JOIN LATERAL (
+            SELECT (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
+                        FILTER (WHERE a.kind='poster'))[1] AS poster,
+                   (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
+                        FILTER (WHERE a.kind='backdrop'))[1] AS backdrop
+            FROM (
+                SELECT pin.id,pin.kind,-1 AS priority,''::text AS path,''::text AS provider
+                FROM artwork_pins pin WHERE pin.item_id=i.id
+                UNION ALL
+                SELECT f.id,f.artwork_kind AS kind,0 AS priority,f.relative_path AS path,''::text AS provider
+                FROM media_files f WHERE f.item_id=i.id AND f.role='artwork' AND f.missing_since IS NULL
+                UNION ALL
+                SELECT p.id,p.kind,1,''::text,p.provider FROM provider_artwork p WHERE p.item_id=i.id
+            ) a
+        ) art ON true
+        WHERE i.id=ANY($1)`, ids)
 	if err != nil {
 		return fmt.Errorf("metadata lezen: %w", err)
 	}
 	defer rows.Close()
-
 	for rows.Next() {
 		var itemID id.ID
-		var summary, rating *string
+		var summary, rating, state, provider, external, appliedProvider, applied *string
+		var poster, backdrop *id.ID
 		var genres []string
 		var rawPeople []byte
-		if err := rows.Scan(&itemID, &summary, &rating, &genres, &rawPeople); err != nil {
+		if err := rows.Scan(&itemID, &summary, &rating, &genres, &rawPeople, &poster, &backdrop,
+			&state, &provider, &external, &appliedProvider, &applied); err != nil {
 			return err
 		}
 		if it := byID[itemID]; it != nil {
 			it.Summary, it.ContentRating, it.Genres = summary, rating, genres
+			it.PosterID, it.BackdropID = poster, backdrop
+			it.People = nil
 			if len(rawPeople) > 0 {
-				_ = json.Unmarshal(rawPeople, &it.People) // een onleesbare lijst is geen reden de pagina te weigeren
+				_ = json.Unmarshal(rawPeople, &it.People)
+			}
+			it.ExternalIDs = ExternalIDs{}
+			it.AppliedExternalIDs = ExternalIDs{}
+			if state != nil && *state == CandidateMatched {
+				it.ExternalIDs = metadataExternalIDs(provider, external)
+			}
+			if applied != nil && canonicalMetadataID(*applied) {
+				it.AppliedExternalIDs = metadataExternalIDs(appliedProvider, applied)
 			}
 		}
 	}
@@ -402,15 +533,28 @@ func (s *Store) attachMetadata(ctx context.Context, ids []id.ID, byID map[id.ID]
 		return err
 	}
 	rows.Close()
-
-	// De poort van B2: genres alleen in een bibliotheek die er genoeg van heeft.
-	// Pas na het sluiten van de rijen, want het meten gebruikt een eigen query.
+	// De bestaande genrepoort blijft buiten de gesloten snapshotrijen: hij
+	// bepaalt alleen zichtbaarheid, nooit een andere metadata-identiteit.
 	for _, it := range byID {
-		if len(it.Genres) > 0 && !s.genresVisible(ctx, it.LibraryID) {
+		if len(it.Genres) > 0 && !s.genresVisibleRead(ctx, reader, it.LibraryID) {
 			it.Genres = nil
 		}
 	}
 	return nil
+}
+
+// ProviderTMDB is de naam waaronder metadata_candidates een TMDB-match bewaart.
+const ProviderTMDB = "tmdb"
+
+func metadataExternalIDs(provider, raw *string) ExternalIDs {
+	if provider == nil || *provider != ProviderTMDB || raw == nil {
+		return ExternalIDs{}
+	}
+	n, err := strconv.Atoi(*raw)
+	if err != nil || n <= 0 {
+		return ExternalIDs{}
+	}
+	return ExternalIDs{TMDB: &n}
 }
 
 // ProviderArtworkFile zoekt een gecachede afbeelding op id. cacheDir komt van de
@@ -463,14 +607,20 @@ func (s *Store) DropProviderArtwork(ctx context.Context, artworkID id.ID) error 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	var itemID id.ID
-	if err := tx.QueryRow(ctx, `DELETE FROM provider_artwork WHERE id = $1 RETURNING item_id`, artworkID).Scan(&itemID); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT item_id FROM provider_artwork WHERE id = $1`, artworkID).Scan(&itemID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return err
 	}
+	if err := lockMetadataItem(ctx, tx, itemID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM provider_artwork WHERE id = $1`, artworkID); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE metadata_candidates SET next_attempt_at = now(), updated_at = now()
+		UPDATE metadata_candidates SET next_attempt_at = now(), updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 		WHERE item_id = $1 AND state = 'matched'`, itemID); err != nil {
 		return err
 	}
@@ -490,13 +640,22 @@ func (s *Store) CandidateAttempts(ctx context.Context, itemID id.ID) (int, error
 // SetManualMatch legt de keuze van een beheerder vast en zet het item meteen aan
 // de beurt. Alleen films en series kennen een providermatch.
 func (s *Store) SetManualMatch(ctx context.Context, itemID id.ID, provider, externalID string) error {
-	tag, err := s.pool.Exec(ctx, `
-		INSERT INTO metadata_candidates (item_id, provider, state, external_id, manual, attempts, next_attempt_at, pass)
-		SELECT i.id, $2, 'matched', $3, true, 0, now(), 1
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, itemID); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `
+		INSERT INTO metadata_candidates (item_id, provider, state, external_id, manual, attempts, next_attempt_at, pass, application_state)
+		SELECT i.id, $2, 'matched', $3, true, 0, now(), 1, 'pending'
 		FROM media_items i WHERE i.id = $1 AND i.kind IN ('movie', 'show')
 		ON CONFLICT (item_id) DO UPDATE SET
 		    provider = EXCLUDED.provider, state = 'matched', external_id = EXCLUDED.external_id,
-		    manual = true, details = NULL, next_attempt_at = now(), updated_at = now()`,
+		    manual = true, details = NULL, next_attempt_at = now(),
+		    application_state = 'pending', application_error_code = NULL, updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`,
 		itemID, provider, externalID)
 	if err != nil {
 		return fmt.Errorf("handmatige match opslaan: %w", err)
@@ -504,7 +663,7 @@ func (s *Store) SetManualMatch(ctx context.Context, itemID id.ID, provider, exte
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // RejectMatch zegt dat er bij dit item geen providerdata hoort: de velden die de
@@ -540,7 +699,7 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 		default:
 			continue
 		}
-		if _, err := tx.Exec(ctx, `UPDATE media_items SET `+column+` = NULL, updated_at = now() WHERE id = $1`, itemID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET `+column+` = NULL, updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id = $1`, itemID); err != nil {
 			return nil, err
 		}
 		delete(sources, field)
@@ -549,7 +708,7 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1`, itemID, out); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_sources = $2 WHERE id = $1 AND metadata_sources IS DISTINCT FROM $2`, itemID, out); err != nil {
 		return nil, err
 	}
 
@@ -571,12 +730,21 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 		return nil, err
 	}
 
+	if err := rememberMetadataLayer(ctx, tx, itemID, provider, MetadataDetails{}); err != nil {
+		return nil, err
+	}
+	if err := touchAppliedIdentity(ctx, tx, itemID, "", ""); err != nil {
+		return nil, err
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO metadata_candidates (item_id, provider, state, manual, attempts, pass)
 		VALUES ($1, $2, 'rejected', false, 0, 1)
 		ON CONFLICT (item_id) DO UPDATE SET
 		    provider = EXCLUDED.provider, state = 'rejected', external_id = NULL, manual = false,
-		    details = NULL, next_attempt_at = NULL, updated_at = now()`, itemID, provider); err != nil {
+		    details = NULL, next_attempt_at = NULL,
+		    applied_provider = NULL, applied_external_id = NULL,
+		    application_state = 'unknown', application_error_code = NULL,
+		    updated_at = GREATEST(metadata_candidates.updated_at + interval '1 microsecond', clock_timestamp())`, itemID, provider); err != nil {
 		return nil, err
 	}
 	return files, tx.Commit(ctx)
@@ -646,8 +814,12 @@ type Coverage struct {
 // MetadataCoverage meet de dekking van één bibliotheek. De poort gaat over
 // genres: Ratio is het aandeel titels met genres.
 func (s *Store) MetadataCoverage(ctx context.Context, libraryID id.ID) (Coverage, error) {
+	return s.metadataCoverageRead(ctx, s.pool, libraryID)
+}
+
+func (s *Store) metadataCoverageRead(ctx context.Context, reader itemReader, libraryID id.ID) (Coverage, error) {
 	var exists bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM libraries WHERE id = $1)`, libraryID).Scan(&exists); err != nil {
+	if err := reader.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM libraries WHERE id = $1)`, libraryID).Scan(&exists); err != nil {
 		return Coverage{}, err
 	}
 	if !exists {
@@ -657,12 +829,12 @@ func (s *Store) MetadataCoverage(ctx context.Context, libraryID id.ID) (Coverage
 	// with_sidecar telt titels waar een sidecar iets aan bijdroeg. Cast komt
 	// alleen uit een .nfo, dus een titel met cast of met een veld waarvan de bron
 	// de .nfo is, heeft een sidecar gehad.
-	err := s.pool.QueryRow(ctx, `
+	err := reader.QueryRow(ctx, `
 		SELECT count(*),
 		       count(*) FILTER (WHERE people IS NOT NULL OR metadata_sources @> '{"summary":"nfo"}'
 		                        OR metadata_sources @> '{"genres":"nfo"}' OR metadata_sources @> '{"content_rating":"nfo"}'),
 		       count(summary), count(genres)
-		FROM media_items WHERE library_id = $1 AND kind IN ('movie', 'show')`, libraryID).
+		FROM media_items i WHERE library_id = $1 AND kind IN ('movie', 'show') AND `+ordinaryItemSQL("i"), libraryID).
 		Scan(&c.Items, &c.WithSidecar, &c.WithSummary, &c.WithGenres)
 	if err != nil {
 		return Coverage{}, err
@@ -673,4 +845,96 @@ func (s *Store) MetadataCoverage(ctx context.Context, libraryID id.ID) (Coverage
 	}
 	c.GateMet = c.Items > 0 && c.Ratio >= GenreCoverageThreshold
 	return c, nil
+}
+
+// ErrMetadataSuperseded betekent dat de gelezen poging door een nieuwere keuze
+// of ronde is ingehaald. De aanroeper gooit uitsluitend zijn eigen staged bytes weg.
+var ErrMetadataSuperseded = errors.New("metadata-poging ingehaald")
+
+func lockMetadataItem(ctx context.Context, tx pgx.Tx, itemID id.ID) error {
+	var found id.ID
+	err := tx.QueryRow(ctx, `SELECT id FROM media_items WHERE id = $1 FOR UPDATE`, itemID).Scan(&found)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
+}
+
+// CommitMetadata publiceert één voorbereide poging onder dezelfde generatie voor
+// velden, kandidaat en artwork. Alleen DB-werk onder de itemlock; alle provider-I/O
+// en nieuwe bestanden zijn vooraf voorbereid. updated_at loopt bij iedere
+// kandidaatwrite minstens één microseconde op, ook bij dezelfde keuze of klokterugloop.
+func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c MetadataCandidate, details, sidecar *MetadataDetails, artwork []ProviderArtwork) error {
+	if c.ItemID != target.ID {
+		return errors.New("metadata-publicatie hoort niet bij het gelockte item")
+	}
+	for _, a := range artwork {
+		if a.ItemID != target.ID {
+			return errors.New("metadata-artwork hoort niet bij het gelockte item")
+		}
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockMetadataItem(ctx, tx, target.ID); err != nil {
+		return err
+	}
+	var actual time.Time
+	err = tx.QueryRow(ctx, `SELECT updated_at FROM metadata_candidates WHERE item_id = $1`, target.ID).Scan(&actual)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if target.CandidateUpdatedAt != nil {
+			return ErrMetadataSuperseded
+		}
+	} else if err != nil {
+		return err
+	} else if target.CandidateUpdatedAt == nil || !actual.Equal(*target.CandidateUpdatedAt) {
+		return ErrMetadataSuperseded
+	}
+	if target.SidecarReadError != nil || c.State == CandidateFailed {
+		if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_nfo_safe=false WHERE id=$1`, target.ID); err != nil {
+			return err
+		}
+	} else if sidecar == nil {
+		if err := rememberMetadataLayer(ctx, tx, target.ID, SourceNFO, MetadataDetails{}); err != nil {
+			return err
+		}
+	}
+	if details != nil {
+		if err := clearMissingProviderFields(ctx, tx, target, c.Provider, *details); err != nil {
+			return err
+		}
+		if err := applyMetadata(ctx, tx, target.ID, c.Provider, *details); err != nil {
+			return err
+		}
+	}
+	if sidecar != nil {
+		if err := applyMetadata(ctx, tx, target.ID, SourceNFO, *sidecar); err != nil {
+			return err
+		}
+	}
+	for _, a := range artwork {
+		if err := upsertProviderArtwork(ctx, tx, a); err != nil {
+			return err
+		}
+	}
+	if details != nil {
+		if err := reconcileProviderArtwork(ctx, tx, target.ID, c.Provider, *details); err != nil {
+			return err
+		}
+	}
+	if err := saveCandidate(ctx, tx, c); err != nil {
+		return err
+	}
+	if err := publishMetadataApplication(ctx, tx, c, details); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// canonicalMetadataID voorkomt dat beschadigde toegepaste IDs bewijs worden.
+func canonicalMetadataID(raw string) bool {
+	n, err := strconv.Atoi(raw)
+	return err == nil && n > 0 && strconv.Itoa(n) == raw
 }

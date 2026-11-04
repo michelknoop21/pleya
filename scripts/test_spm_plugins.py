@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard native package adoption without changing the pinned plugin implementation."""
+"""Guard pinned plugin provenance, reviewed local changes and native packaging."""
 import hashlib
 import json
 from pathlib import Path
@@ -15,7 +15,7 @@ class SpmPluginsTest(unittest.TestCase):
             if 'declaration' in origin:
                 self.assertIn(origin['declaration'], (ROOT / 'pubspec.yaml').read_text())
             base = ROOT / 'third_party' / name
-            for relative, digest in origin['files'].items():
+            for relative, digest in {**origin['files'], **origin.get('local_files', {})}.items():
                 with self.subTest(package=name, file=relative):
                     path = base / relative
                     if '/Classes/' in relative:

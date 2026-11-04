@@ -1,0 +1,12 @@
+{
+  "epoch": "00000000-0000-4000-8000-000000000001",
+  "base_revision": 0,
+  "facts": [
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "category": "preference",
+      "value": "Houdt van detectives",
+      "source": "user_explicit"
+    }
+  ]
+}

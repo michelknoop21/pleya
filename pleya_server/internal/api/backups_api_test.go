@@ -1,8 +1,10 @@
 package api_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -171,6 +173,88 @@ func TestRestoreNeedsTheExactConfirmationAndRunsInMaintenance(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(key); !bytes.Equal(got, []byte("sleutel-van-voor-de-backup")) {
 		t.Fatalf("de ondertekensleutel is niet die van de back-up: %q", got)
+	}
+}
+
+func TestRestoreRejectsCorruptInputBeforeMaintenance(t *testing.T) {
+	for _, damage := range []string{"dump", "tar"} {
+		t.Run(damage, func(t *testing.T) {
+			e := newEnv(t)
+			e.setup(e.putSetupCode())
+			b := e.makeBackup()
+			later := e.createUser("member", "na-de-backup")
+			rec, err := e.backups.Get(context.Background(), id.MustParse(b.ID))
+			if err != nil {
+				t.Fatal(err)
+			}
+			file := filepath.Join(e.backupDir, rec.FileName)
+			raw, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out bytes.Buffer
+			tr := tar.NewReader(bytes.NewReader(raw))
+			tw := tar.NewWriter(&out)
+			for {
+				h, err := tr.Next()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				data, err := io.ReadAll(tr)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if h.Name == "database.sql.gz" {
+					data = data[:len(data)-5]
+					h.Size = int64(len(data))
+				}
+				if err := tw.WriteHeader(h); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tw.Write(data); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := tw.Close(); err != nil {
+				t.Fatal(err)
+			}
+			damaged := out.Bytes()
+			if damage == "tar" {
+				damaged = raw[:len(raw)/2]
+			}
+			if err := os.WriteFile(file, damaged, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			path := "/pleya/v1/backups/" + b.ID + "/restore"
+			rejected := e.do(http.MethodPost, path, map[string]string{"confirm": *b.RestoreConfirmation})
+			if rejected.Code != http.StatusConflict {
+				t.Errorf("kapotte %s gaf %d, verwacht 409: %s", damage, rejected.Code, rejected.Body.String())
+			} else {
+				e.expectCode(rejected, api.CodeBackupNotRestorable)
+			}
+			if got := e.do(http.MethodGet, "/pleya/v1/libraries", nil); got.Code != http.StatusOK {
+				t.Errorf("geweigerde restore zette onderhoud aan: %d", got.Code)
+			}
+			if rejected.Code == http.StatusAccepted {
+				select {
+				case <-e.restored:
+				case <-time.After(30 * time.Second):
+					t.Fatal("restore bleef lopen")
+				}
+			} else {
+				select {
+				case err := <-e.restored:
+					t.Fatalf("geweigerde restore startte toch: %v", err)
+				default:
+				}
+			}
+			if !userExists(e, later) {
+				t.Fatal("geweigerde restore wijzigde gebruikers")
+			}
+		})
 	}
 }
 

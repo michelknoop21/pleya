@@ -2,11 +2,14 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import '../jellyfin_fake_server.dart';
 import '../pleya_fake_server.dart';
 import '../seerr_fake_server.dart';
 import '../tautulli_fake_server.dart';
 import 'deterministic_png.dart';
 import 'studio_art.dart';
+
+part 'detail_fixtures.dart';
 
 /// The named fixtures Pleya Verify scenarios seed by name (`seed {fixture}`
 /// in the control plane — see `FixtureHttpServer`). Unknown names are the
@@ -20,7 +23,13 @@ import 'studio_art.dart';
 /// [tautulli] instead, and never touches [server] — a scenario that needs
 /// more than one issues one `seed:` step per fixture name, and [seerr]/
 /// [tautulli] are `null` for a run that never needs them.
-bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? seerr, TautulliFakeServer? tautulli}) {
+bool applyNamedFixture(
+  PleyaFakeServer server,
+  String name, {
+  SeerrFakeServer? seerr,
+  TautulliFakeServer? tautulli,
+  JellyfinFakeServer? jellyfin,
+}) {
   switch (name) {
     case 'catalog.shows.v1':
       _applyCatalogShowsV1(server);
@@ -47,14 +56,37 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.long-grid.v2':
       _applyCatalogLongGrid(server, fixture: 'catalog.long-grid.v2', count: 19);
       return true;
+    case 'catalog.alphabet-500.v1':
+      _applyCatalogAlphabet500V1(server);
+      return true;
+    case 'catalog.hero-recent.v1':
+      server.resetCatalog();
+      if (jellyfin != null) _applyCatalogHeroRecentV1(jellyfin);
+      return jellyfin != null;
+    case 'catalog.scores.v1':
+      server.resetCatalog();
+      if (jellyfin != null) _applyCatalogScoresV1(jellyfin);
+      return true;
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
+      return true;
+    case 'unified.pair.a.v1':
+      _applyUnifiedPair(server, side: 'a');
+      return true;
+    case 'unified.pair.b.v1':
+      _applyUnifiedPair(server, side: 'b');
       return true;
     case 'catalog.empty.v1':
       server.resetCatalog();
       return true;
     case 'catalog.studio-art.v1':
       _applyCatalogStudioArtV1(server);
+      return true;
+    case 'catalog.detail-movie.v1':
+      _applyCatalogDetailMovieV1(server);
+      return true;
+    case 'catalog.detail-series.v1':
+      _applyCatalogDetailSeriesV1(server);
       return true;
     case 'watchlist.studio.v1':
       return _applyWatchlistStudioV1(server);
@@ -89,6 +121,62 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'seerr.search.v1':
       if (seerr == null) return false;
       _applySeerrSearchV1(seerr);
+      return true;
+    case 'memory.sync.v1':
+      server.usersCapability = true;
+      server.assistantMemoryCapability = true;
+      return true;
+    case 'playback.app.v1':
+      server.playbackPlanCapability = true;
+      server.playbackQualityCapability = true;
+      server.playbackAudioSelectionCapability = true;
+      server.embeddedSubtitlesCapability = true;
+      server.playbackSubtitlesCapability = true;
+      server.planDeliveryMode = 'transcode';
+      for (final item in server.items.values) {
+        for (final version in item['versions'] as List) {
+          final id = '${version['id']}-sidecar';
+          version['subtitle_streams'] = [
+            {
+              'id': id,
+              'format': 'srt',
+              'is_external': true,
+              'is_forced': false,
+              'is_hearing_impaired': false,
+              'language': 'eng',
+              'title': 'Pleya sidecar',
+              'url': '/pleya/v1/subtitles/$id',
+            },
+          ];
+          final embeddedId = '${version['id']}-embedded';
+          (version['subtitle_streams'] as List).add({
+            'id': embeddedId,
+            'index': 2,
+            'format': 'srt',
+            'is_external': false,
+            'is_forced': false,
+            'is_hearing_impaired': false,
+            'is_default': false,
+            'language': 'eng',
+            'title': 'Pleya embedded',
+          });
+          server.subtitleFiles[id] = '1\n00:00:00,000 --> 00:01:59,000\nPleya sidecar\n';
+          server.subtitleFiles[embeddedId] = '1\n00:00:00,000 --> 00:01:59,000\nPleya embedded\n';
+        }
+      }
+      server.planVersionId =
+          ((server.items.values.firstWhere((item) => item['kind'] == 'movie')['versions'] as List).first as Map)['id']
+              as String;
+      return true;
+    case 'personal.app.v1':
+    case 'personal.favorites.v1':
+      server.personalCapability = true;
+      server.usersCapability = true;
+      if (name == 'personal.favorites.v1') {
+        server.favoriteIds.addAll(
+          server.items.values.where((item) => item['kind'] == 'movie').take(2).map((item) => item['id'] as String),
+        );
+      }
       return true;
     case 'server.owner.v1':
       server.usersCapability = true;
@@ -485,6 +573,91 @@ void _applyCatalogLongGrid(PleyaFakeServer server, {required String fixture, req
   server.hubs['recently_added']!.addAll(ids);
 }
 
+/// Five hundred films for the full-bleed catalog (A-06c): enough pages that
+/// Spring naar has to load on, and enough cards to measure a press on. Twenty
+/// titles per letter from A to Y, so the letters are evenly spread and Z has no
+/// title at all: that is the letter that lands on what comes past it.
+void _applyCatalogAlphabet500V1(PleyaFakeServer server) {
+  const fixture = 'catalog.alphabet-500.v1';
+  const count = 500;
+  const perLetter = 20;
+  server.resetCatalog();
+
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Movies', kind: 'movies', itemCount: count);
+
+  final ids = <String>[];
+  for (var i = 0; i < count; i++) {
+    final letter = String.fromCharCode(0x41 + i ~/ perLetter);
+    final slug = '$letter ${(i % perLetter + 1).toString().padLeft(2, '0')}';
+    final movieId = _mintId(server, fixture, 'movie', slug);
+    ids.add(movieId);
+    server.addItem(
+      id: movieId,
+      kind: 'movie',
+      title: slug,
+      libraryId: libraryId,
+      year: 1950 + i % 75,
+      durationMs: 5400000,
+      posterId: _registerArtwork(server, movieId),
+    );
+  }
+
+  server.hubs['recently_added']!.addAll(ids.take(20));
+}
+
+/// A Jellyfin library for the score sorts (A-06c): the top of `03.png`, then
+/// titles without a score, so a scenario sees them sink in both directions.
+/// Three films released inside the 90-day window of DEC-097, on the one fake
+/// backend whose protocol carries a release date, so Home's hero pool fills
+/// through the real mapper and aggregation and rotates over more than one slide.
+void _applyCatalogHeroRecentV1(JellyfinFakeServer jellyfin) {
+  jellyfin.movies
+    ..clear()
+    ..addAll(const [
+      JellyfinFakeMovie(id: 'hr-01', title: 'Northern Crossing', year: 2026, releasedDaysAgo: 10),
+      JellyfinFakeMovie(id: 'hr-02', title: 'Salt Harbour', year: 2026, releasedDaysAgo: 30),
+      JellyfinFakeMovie(id: 'hr-03', title: 'The Long Thaw', year: 2026, releasedDaysAgo: 60),
+    ]);
+}
+
+void _applyCatalogScoresV1(JellyfinFakeServer jellyfin) {
+  jellyfin.movies
+    ..clear()
+    ..addAll(const [
+      JellyfinFakeMovie(
+        id: 'sc-01',
+        title: 'The Alabama Solution',
+        year: 2025,
+        criticRating: 100,
+        communityRating: 8.1,
+      ),
+      JellyfinFakeMovie(id: 'sc-02', title: 'Wasteman', year: 2025, criticRating: 100, communityRating: 7.4),
+      JellyfinFakeMovie(
+        id: 'sc-03',
+        title: 'How to Train Your Dragon',
+        year: 2010,
+        criticRating: 99,
+        communityRating: 8.1,
+      ),
+      JellyfinFakeMovie(id: 'sc-04', title: 'Inside Out', year: 2015, criticRating: 98, communityRating: 8.1),
+      JellyfinFakeMovie(
+        id: 'sc-05',
+        title: 'Mission: Impossible - Fallout',
+        year: 2018,
+        criticRating: 98,
+        communityRating: 7.7,
+      ),
+      JellyfinFakeMovie(id: 'sc-06', title: 'Catch Me If You Can', year: 2002, criticRating: 96, communityRating: 8.1),
+      JellyfinFakeMovie(id: 'sc-07', title: 'Ratatouille', year: 2007, criticRating: 96, communityRating: 7.8),
+      JellyfinFakeMovie(id: 'sc-08', title: 'Top Gun: Maverick', year: 2022, criticRating: 96, communityRating: 8.2),
+      JellyfinFakeMovie(id: 'sc-09', title: 'Project Hail Mary', year: 2026, criticRating: 95, communityRating: 8.4),
+      JellyfinFakeMovie(id: 'sc-10', title: 'The Invite', year: 2026, criticRating: 58, communityRating: 6.2),
+      JellyfinFakeMovie(id: 'sc-11', title: 'A Film Without Critics', year: 2024, communityRating: 5.5),
+      JellyfinFakeMovie(id: 'sc-12', title: 'B Film Without Scores', year: 2024),
+    ]);
+}
+
 /// One show with four seasons of three episodes each, for the TV series
 /// detail's season chips (MOC-10, DET4). Every other fixture's show has one
 /// season, and the chip row only appears from two up; four gives the ring
@@ -697,5 +870,64 @@ void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
     user: 'verify-viewer',
     title: 'Aurora Drift',
     mediaType: 'movie',
+  );
+}
+
+/// One half of a two-server unified scenario (DEC-192). Side `a` and side `b`
+/// both hold Severance under the same TMDB number, but with another title and
+/// year, so only identity can fold them into one card; each side also holds a
+/// Battlestar Galactica with its own number (the 1978 series and the 2004
+/// remake), which must stay two cards. Every episode has a playable version.
+void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
+  final fixture = 'unified.pair.$side.v1';
+  server.resetCatalog();
+  // Side B is attached with `connections_seed`, never through /auth/setup. A
+  // server that still offers setup reads as signed out to the app, so B is a
+  // server whose owner already exists.
+  if (side == 'b') server.setupRequired = false;
+
+  final libraryId = _mintId(server, fixture, 'library', 'shows');
+  server.addLibrary(id: libraryId, title: side == 'a' ? 'Series' : 'Series NAS', kind: 'shows', itemCount: 2);
+
+  final severance = (title: side == 'a' ? 'Severance' : 'Severance (Ontslagen)', year: side == 'a' ? 2022 : 2021);
+  final bsg = (year: side == 'a' ? 1978 : 2004, tmdb: side == 'a' ? 1 : 71);
+
+  final showId = _mintId(server, fixture, 'show', 'severance');
+  server.addItem(
+    id: showId,
+    kind: 'show',
+    title: severance.title,
+    libraryId: libraryId,
+    year: severance.year,
+    childCount: 1,
+    episodeCount: 2,
+    posterId: _registerArtwork(server, showId),
+    externalIds: {'tmdb': 95396},
+  );
+  final seasonId = _mintId(server, fixture, 'season', 'severance-s01');
+  server.addItem(id: seasonId, kind: 'season', title: 'Season 1', parentId: showId, index: 1, childCount: 2);
+  for (var episode = 1; episode <= 2; episode++) {
+    final episodeId = _mintId(server, fixture, 'episode', 'severance-s01e0$episode');
+    server.addItem(
+      id: episodeId,
+      kind: 'episode',
+      title: 'Episode $episode',
+      parentId: seasonId,
+      index: episode,
+      durationMs: 3000000,
+    );
+  }
+
+  final bsgId = _mintId(server, fixture, 'show', 'bsg');
+  server.addItem(
+    id: bsgId,
+    kind: 'show',
+    title: 'Battlestar Galactica',
+    libraryId: libraryId,
+    year: bsg.year,
+    childCount: 0,
+    episodeCount: 0,
+    posterId: _registerArtwork(server, bsgId),
+    externalIds: {'tmdb': bsg.tmdb},
   );
 }

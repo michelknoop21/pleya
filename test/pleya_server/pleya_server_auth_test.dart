@@ -32,8 +32,8 @@ void main() {
     'expires_in_ms': 900000,
   };
 
-  http.Response json(Object body, {int status = 200}) =>
-      http.Response(jsonEncode(body), status, headers: const {'content-type': 'application/json'});
+  http.Response json(Object body, {int status = 200, Map<String, String> headers = const {}}) =>
+      http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json', ...headers});
 
   group('normaliseBaseUrl', () {
     test('adds a scheme, drops a trailing slash', () {
@@ -273,6 +273,173 @@ void main() {
       await session.adoptRole('member');
       await session.adoptRole('admin');
       expect(told, 3);
+    });
+
+    group('a 429 on refresh', () {
+      http.Response limited({String? retryAfter = '2'}) => json(
+        const {
+          'error': {
+            'code': 'auth.rate_limited',
+            'message': 'Too many attempts',
+            'retryable': true,
+            'details': {'retry_after_ms': 1500},
+          },
+        },
+        status: 429,
+        headers: retryAfter == null ? const {} : {'retry-after': retryAfter},
+      );
+
+      test('waits what Retry-After says, keeps the session and presents the same token', () async {
+        final presented = <String>[];
+        final answers = [limited(), json(tokenPair('at-1', 'rt-1'))];
+        final service = PleyaServerAuthService(
+          httpClientFactory: () => MockClient((request) async {
+            presented.add((jsonDecode(request.body) as Map)['refresh_token'] as String);
+            return answers.removeAt(0);
+          }),
+        );
+        final waits = <Duration>[];
+        final session = PleyaServerSession(
+          connection: connectionWith('rt-0'),
+          auth: service,
+          delay: (wait) async => waits.add(wait),
+        );
+        expect(await session.accessToken(), 'at-1');
+        expect(waits, [const Duration(seconds: 2)]);
+        expect(presented, ['rt-0', 'rt-0']);
+        expect(session.isRevoked, isFalse);
+        expect(session.connection.refreshToken, 'rt-1');
+      });
+
+      test('falls back on retry_after_ms without the header', () async {
+        final answers = [limited(retryAfter: null), json(tokenPair('at-1', 'rt-1'))];
+        final service = PleyaServerAuthService(httpClientFactory: () => MockClient((_) async => answers.removeAt(0)));
+        final waits = <Duration>[];
+        final session = PleyaServerSession(
+          connection: connectionWith('rt-0'),
+          auth: service,
+          delay: (wait) async => waits.add(wait),
+        );
+        await session.accessToken();
+        expect(waits, [const Duration(milliseconds: 1500)]);
+      });
+
+      test('a proxy that throttles without the envelope is read the same way', () async {
+        final answers = [
+          http.Response('slow down', 429, headers: {'retry-after': '1'}),
+          json(tokenPair('at-1', 'rt-1')),
+        ];
+        final service = PleyaServerAuthService(httpClientFactory: () => MockClient((_) async => answers.removeAt(0)));
+        final waits = <Duration>[];
+        final session = PleyaServerSession(
+          connection: connectionWith('rt-0'),
+          auth: service,
+          delay: (wait) async => waits.add(wait),
+        );
+        expect(await session.accessToken(), 'at-1');
+        expect(waits, [const Duration(seconds: 1)]);
+      });
+
+      test('gives up without revoking, and the next request tries again', () async {
+        var calls = 0;
+        var throttled = true;
+        final service = PleyaServerAuthService(
+          httpClientFactory: () => MockClient((_) async {
+            calls++;
+            return throttled ? limited(retryAfter: '1') : json(tokenPair('at-1', 'rt-1'));
+          }),
+        );
+        final session = PleyaServerSession(connection: connectionWith('rt-0'), auth: service, delay: (_) async {});
+        await expectLater(session.accessToken(), throwsA(isA<PleyaRateLimitedException>()));
+        expect(calls, PleyaServerSession.refreshLimitAttempts);
+        expect(session.isRevoked, isFalse);
+        expect(session.connection.refreshToken, 'rt-0');
+
+        throttled = false;
+        expect(await session.accessToken(), 'at-1');
+      });
+
+      test('does not hold every caller for a wait no server of ours asks for', () async {
+        final service = PleyaServerAuthService(
+          httpClientFactory: () => MockClient((_) async => limited(retryAfter: '3600')),
+        );
+        final waits = <Duration>[];
+        final session = PleyaServerSession(
+          connection: connectionWith('rt-0'),
+          auth: service,
+          delay: (wait) async => waits.add(wait),
+        );
+        await expectLater(session.accessToken(), throwsA(isA<PleyaRateLimitedException>()));
+        expect(waits, isEmpty);
+        expect(session.isRevoked, isFalse);
+      });
+
+      test('callers that arrive during the wait share it', () async {
+        var calls = 0;
+        final gate = Completer<void>();
+        final service = PleyaServerAuthService(
+          httpClientFactory: () => MockClient((_) async {
+            calls++;
+            return calls == 1 ? limited(retryAfter: '1') : json(tokenPair('at-1', 'rt-1'));
+          }),
+        );
+        final session = PleyaServerSession(
+          connection: connectionWith('rt-0'),
+          auth: service,
+          delay: (_) => gate.future,
+        );
+        final first = session.accessToken();
+        await pumpEventQueue();
+        final others = Future.wait([session.accessToken(), session.accessToken()]);
+        gate.complete();
+        expect(await first, 'at-1');
+        expect((await others).toSet(), {'at-1'});
+        expect(calls, 2);
+      });
+
+      test('a sign-in during the wait wins, and nothing rotates afterwards', () async {
+        var calls = 0;
+        final gate = Completer<void>();
+        final service = PleyaServerAuthService(
+          httpClientFactory: () => MockClient((_) async {
+            calls++;
+            return limited(retryAfter: '1');
+          }),
+        );
+        final session = PleyaServerSession(
+          connection: connectionWith('rt-0'),
+          auth: service,
+          delay: (_) => gate.future,
+        );
+        final token = session.accessToken();
+        await pumpEventQueue();
+        session.adoptTokens(PleyaTokenPair.fromJson(tokenPair('at-signed-in', 'rt-signed-in')));
+        gate.complete();
+        expect(await token, 'at-signed-in');
+        expect(calls, 1);
+      });
+
+      test('a removed connection does not rotate after the wait', () async {
+        var calls = 0;
+        final gate = Completer<void>();
+        final service = PleyaServerAuthService(
+          httpClientFactory: () => MockClient((_) async {
+            calls++;
+            return limited(retryAfter: '1');
+          }),
+        );
+        final session = PleyaServerSession(
+          connection: connectionWith('rt-0'),
+          auth: service,
+          delay: (_) => gate.future,
+        );
+        final token = session.accessToken();
+        await pumpEventQueue();
+        session.close();
+        gate.complete();
+        await expectLater(token, throwsA(isA<PleyaRateLimitedException>()));
+        expect(calls, 1);
+      });
     });
 
     test('a valid access token is reused instead of spending a rotation', () async {

@@ -33,6 +33,7 @@ class TvDetectionService {
   static TvDetectionService? _instance;
   static bool? _debugAppleTVOverride;
   static bool? _debugTVOverride;
+  static bool? _debugIOSAppOnMacOverride;
   bool _detected = false;
   bool _forceTv = false;
   bool _isTV = false;
@@ -150,7 +151,7 @@ class TvDetectionService {
 
   /// The iOS app running on a Mac ("Designed for iPad", the shipped macOS
   /// build). False until detection ran.
-  static bool isIOSAppOnMacSync() => _instance?._isIOSAppOnMac == true;
+  static bool isIOSAppOnMacSync() => _debugIOSAppOnMacOverride ?? _instance?._isIOSAppOnMac == true;
 
   @visibleForTesting
   static void debugSetAppleTVOverride(bool? value) {
@@ -162,6 +163,12 @@ class TvDetectionService {
   @visibleForTesting
   static void debugSetTVOverride(bool? value) {
     _debugTVOverride = value;
+  }
+
+  /// The iOS build on a Mac in widget tests, which report iOS through the theme.
+  @visibleForTesting
+  static void debugSetIOSAppOnMacOverride(bool? value) {
+    _debugIOSAppOnMacOverride = value;
   }
 
   static List<String> tvDetectionReasonsSync() => _instance?._effectiveDetectionReasons ?? const [];
@@ -254,5 +261,11 @@ class PlatformDetector {
 
   static bool isPhone(BuildContext context) {
     return isHandheld(context) && !isTablet(context);
+  }
+
+  /// A real iPad. The shipped macOS build is this same iOS app ("Designed for
+  /// iPad"): it reports iOS and a tablet-sized window, and it is not one.
+  static bool isIPad(BuildContext context) {
+    return isHandheldIOS(context) && !isPhone(context) && !TvDetectionService.isIOSAppOnMacSync();
   }
 }
