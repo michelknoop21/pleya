@@ -20,6 +20,7 @@ import 'package:pleya/screens/tv/sections/tv_servers_page.dart';
 import 'package:pleya/screens/tv/tv_offline_home_screen.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
+import 'package:pleya/services/companion_remote/companion_remote_receiver.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/tvos_system_navigation_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -244,6 +245,28 @@ void main() {
     expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue, reason: 'the ring follows the page');
     expect(h.shell.navNodes.isFocused(tvNavProfileFocusKey), isFalse);
     expect(TvosSystemNavigationService.automationState()['enabled'], isTrue, reason: 'on Home Menu is the system');
+
+    await h.dispose(tester);
+  });
+
+  // Review 593-M3: the same for a page changed by the companion remote while
+  // the ring stands on the avatar. Negative control: with the pill-only check
+  // the page becomes Instellingen and the ring stays on the avatar.
+  testWidgets('DEC-XXX: a companion-remote page change takes the ring off the avatar', (tester) async {
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onFocusNav();
+    await h.settle();
+    h.shell.navNodes.get(tvNavProfileFocusKey).requestFocus();
+    await h.settle();
+    expect(h.shell.navNodes.isFocused(tvNavProfileFocusKey), isTrue);
+
+    final onTabSettings = CompanionRemoteReceiver.instance.onTabSettings;
+    expect(onTabSettings, isNotNull, reason: 'MainScreen wires the companion remote on a TV host');
+    onTabSettings!();
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.settings);
+    expect(h.shell.navNodes.isFocused(TvDestinationId.settings.focusKey), isTrue, reason: 'the ring follows the page');
+    expect(h.shell.navNodes.isFocused(tvNavProfileFocusKey), isFalse);
 
     await h.dispose(tester);
   });
