@@ -252,13 +252,18 @@ class DeviceCapabilitiesService {
   /// 4K on an AV receiver reported `maximumOutputNumberOfChannels: 2` while the
   /// same session told mpv it had eight. `AppleAudioRoute.isMultichannelCapable`
   /// documents that. Publishing the two would tell a backend to downmix.
+  ///
+  /// A route with spatial audio on is unknown for the same reason: AirPods with
+  /// the multichannel opt-in report two channels (log 33hdc) yet take 5.1 for
+  /// the system to spatialize. A published two makes a transcoding server send
+  /// stereo, and then there is nothing left to spatialize.
   static DeviceAudioCapabilities _audioFromAppleRoute(AppleAudioRoute route) {
     if (route.portType.isEmpty) return DeviceAudioCapabilities.unknown;
 
     final Capability<int> channels;
     if (route.maximumOutputNumberOfChannels > 2) {
       channels = Capability.detected(route.maximumOutputNumberOfChannels);
-    } else if (route.isDigitalPassthroughPort) {
+    } else if (route.isDigitalPassthroughPort || route.spatialAudioEnabled) {
       channels = const Capability<int>.unknown();
     } else {
       channels = Capability.detected(route.maximumOutputNumberOfChannels);
