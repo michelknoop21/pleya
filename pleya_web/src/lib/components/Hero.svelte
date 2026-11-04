@@ -32,6 +32,8 @@
 
   interface Props {
     item: Item;
+    /** Optional source title mark, negotiated by the caller. */
+    logoId?: string | null;
     /** Original episode title when the heading supplies series context. */
     subtitle?: string;
     cinema?: boolean;
@@ -44,7 +46,7 @@
     label?: string;
   }
 
-  let { item, subtitle, cinema = false, billboard = false, summary, playHref, label = t('home.recentlyAdded') }: Props = $props();
+  let { item, logoId, subtitle, cinema = false, billboard = false, summary, playHref, label = t('home.recentlyAdded') }: Props = $props();
 
   const artworkId = $derived(item.artwork?.backdrop_id ?? item.artwork?.poster_id);
   const posterOnly = $derived(!item.artwork?.backdrop_id && Boolean(item.artwork?.poster_id));
@@ -77,7 +79,7 @@
     <div class="hero__scrim" aria-hidden="true"></div>
   {/if}
   <div class="hero__body">
-    <h1 class="hero__title t-display-face">{item.title}</h1>
+    <h1 class="hero__title t-display-face" class:hero__title--logo={Boolean(logoId)}>{#if logoId}<Artwork artworkId={logoId} alt={item.title} shape="free" role="backdrop" eager flat fallbackWhileLoading>{#snippet fallback()}<span>{item.title}</span>{/snippet}</Artwork>{:else}{item.title}{/if}</h1>
     {#if meta.length}
       <p class="hero__meta">
         {#each meta as part, index (index)}
@@ -353,4 +355,9 @@
       padding-inline: 12px;
     }
   }
+
+.hero__title--logo { width: min(100%, 440px); }
+.hero__title--logo :global(.artwork) { min-height: 76px; background: transparent; display: flex; align-items: flex-end; }
+.hero__title--logo :global(.artwork:has(img)) { height: 76px; }
+.hero__title--logo :global(img) { object-fit: contain; object-position: left bottom; }
 </style>

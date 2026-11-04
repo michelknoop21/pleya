@@ -3,6 +3,7 @@ import type { Item } from '../api/types';
 export interface ContinueArtwork {
   posterId: string | null;
   title: string;
+  showId?: string;
 }
 
 /** Resolve only the server's parent IDs; titles are never matching keys. */
@@ -32,7 +33,7 @@ export async function continueArtwork(
       try {
         const show = await read(season.parent_id);
         if (signal.aborted || show.id !== season.parent_id || show.kind !== 'show') return [item.id, fallback];
-        return [item.id, { posterId: show.artwork?.poster_id ?? fallback.posterId, title: show.title }];
+        return [item.id, { posterId: show.artwork?.poster_id ?? fallback.posterId, title: show.title, showId: show.id }];
       } catch {
         return [item.id, fallback];
       }

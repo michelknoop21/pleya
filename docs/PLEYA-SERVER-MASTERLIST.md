@@ -35,6 +35,14 @@ Bron voor de scope:
 
 ---
 
+## Gemelde Web-regressies, 4 november 2026
+
+C-05/S8.1, lokaal in herstel: Home kan met een oude sessiebibliotheeklijst blijven falen nadat Kids verwijderd is; echte productie toont herhaalde hub404, server healthy. Na geslaagde DELETE werkt Beheer de sessielijst direct bij. Bij hub404 na verwijdering in een andere tab wordt de actuele toegankelijke bibliotheeklijst gecontroleerd; alleen een werkelijk verdwenen bibliotheek verdwijnt uit de sessie. Verder kijken toont meerdere halfbekeken afleveringen van dezelfde serie; collapse op bewezen serie-ID met behoud van eerst/meest recent hervatte aflevering, eigen positie en link. Geen herstel van verwijderde bibliotheken of kijkstatuswijziging. Rode regressies en gerichte lokale tests; review/uitrol nog open.
+
+## Scoped detailpresentatie-venster, besluit 4 november2026
+
+Michel opende expliciet het [begrensde detailpresentatie-venster](plans/2026-11-04-web-detail-presentation.md) met “metadata uitbreiding ook doen”, na “rol uit”. C-05/S8/S4/S22: uitsluitend optionele titellogo-/creditportret-/bronratingvelden en detail_presentation-capability, bestaande bron- en toegangsgrenzen. Normale review/CI/merge/NAS-test/productie en noodzakelijke veilige upgradebackup zijn geautoriseerd; geen nieuwe sleutel/dienst/rechten. Lokale uitvoering gestart; geen acceptatie gesloten. Alle overige protocolbevriezing blijft gelden.
+
 ## Scoped metadata-venster, besluit 1 november 2026
 
 Michel opende expliciet het [additieve metadata-venster](plans/2026-11-01-server-gap/METADATA-VENSTERVOORSTEL.md), [DEC-172: additief metadata-venster](DECISIONS.md#metadata-venster-2026-11-01), C-05/S4/S22/S14.5. Applied-identiteit/lookup/status, zoeken/kandidaten/vaste-host-beeldpreview, veld-overrides/locks en artworkkeuze/pins met behoud van legacy wirebetekenis. Alleen deze scope; overige vensters blijven bevroren. Lokale migratiebestanden binnen deze functionaliteit zijn toegestaan met de vereiste tests/review; geen productie-/NAS-uitrol. De uitvoeringskaart en detailregels behouden afzonderlijke status, geen acceptatie gesloten door dit besluit.
@@ -69,7 +77,7 @@ Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13 en PS-16. De 
 diagnostiek, tokens, audit, bibliotheken, opslag, scans, jobs en de overname van `.env`-bibliotheken.
 Protocolvensters 1 en 2 zijn gesloten ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md); [DEC-138](DECISIONS.md), [DEC-146](DECISIONS.md)) en `openapi.yaml` is weer
-bevroren buiten het afzonderlijk vrijgegeven BP-08b-venster hieronder, de op 29 oktober vrijgegeven playbackselectie- en ondertitelvensters (DEC-184 en DEC-185, voorstellen onderaan), het activiteitsvenster van rij X5 ([DEC-169](DECISIONS.md)) en het scoped venster voor X5 (uitsluitend `Item.external_ids`, `external_id` en `external_id_lookup`; DEC-192 (Pleya Server in unified), bekrachtigd op 30 oktober 2026). De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
+bevroren buiten het afzonderlijk vrijgegeven BP-08b-venster hieronder, de op 29 oktober vrijgegeven playbackselectie- en ondertitelvensters (DEC-184 en DEC-185, voorstellen onderaan), het activiteitsvenster van rij X5 ([DEC-169](DECISIONS.md)) en het scoped venster voor X5 (uitsluitend `Item.external_ids`, `external_id` en `external_id_lookup`; DEC-192 (Pleya Server in unified), bekrachtigd op 30 oktober 2026). Het [detailpresentatievenster van4november2026](plans/2026-11-04-web-detail-presentation.md) is eveneens expliciet geopend. De volgorde sinds [DEC-150](DECISIONS.md) en [DEC-151](DECISIONS.md) is: eerst één bewezen
 keten op de testinstance (scan, metadata en artwork, zoeken, direct play, hervatten, kijkstatus op een
 tweede toestel, transcode, download met digest), daarna de gaten die die ronde aanwijst, dan de
 beheer-GUI (S10), dan de Plex Replacement Readiness Gate (S15) en pas daarna S3. S3 is dus niet de
@@ -635,3 +643,7 @@ platform-/hardwareacceptatie blijft afzonderlijk.
 4 november 2026 — C-05/S8: de Web-Home-update is via PR588 gemerged (11913eb31), alle drie mainCI-workflows groen en na expliciet productieakkoord uitgerold naar NAS-test en productie. Beide containers gezond; hero-JS/CSS gelijk. Kleine Web-P-logo’s bleken een zwarte achtergrond ingebakken te hebben; de generator en twee PNG’s zijn transparant hersteld. [Correctie en bewijs](qa/2026-11-04-web-transparent-marks.md). Deze logocorrectie wacht nog op normale merge/uitrol; macOS/TestFlight blijft afzonderlijk open wegens reproduceerbare Flutter-toegankelijkheidsfouten bij vensterresizes.
 
 4 november 2026 — C-05/S8: Michels melding dat film- en seriedetails nog niet de goedgekeurde indeling hebben is terecht; de vorige release bevatte daar alleen cosmetische wijzigingen. De brede detailheader, ronde acties, cast/crew onder films en seizoenen direct onder series zijn nu lokaal gereconstrueerd met behoud van bestaande acties en data. [Implementatie en bewijs](qa/2026-11-04-web-film-series-details.md). Normale review/release en NAS-acceptatie blijven open; deze lokale correctie is nog niet uitgerold.
+
+4 november2026 — C-05/S8 correctie: Michel heeft de lokaal getoonde detailuitvoering424db275c afgewezen als onjuiste vertaling van zijn tvOS/Plex-opdracht. De eerdere Web-proposal is niet het geldende eindbeeld. Lokaal wordt nu de bestaande tvOS-compositie van30oktober06/03 gereconstrueerd, inclusief technische badges en Serie/seizoentabs. [Huidige stand en datagrens](qa/2026-11-04-web-film-series-details.md). Ontbrekende titellogo-/portret-/scorevelden vereisen nog een afzonderlijk begrensd contractbesluit; geen protocol gewijzigd, geen volledige pariteit of publicatie geclaimd.
+
+4november2026 — C-05/S8/S4/S22: na “rol uit” gaf Michel ook “metadata uitbreiding ook doen”. De begrensde contracttoevoeging en generatiegebonden providerlogo’s/creditportretten/echte TMDB-score zijn lokaal geïmplementeerd met oude-serverfallback. Gerichte Go-/DB-/API-autorisatie-/PNG-tests en Webtests groen; aanvullende upgrade/backup/restore, negatieve controles, eindreview en normale CI/uitrol lopen nog. Geen NAS-acceptatie geclaimd. [Huidige QA](qa/2026-11-04-web-film-series-details.md).

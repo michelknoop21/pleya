@@ -1,19 +1,22 @@
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item, Library } from '../lib/api/types';
+import { ApiError } from '../lib/api/errors';
 
 const h = vi.hoisted(() => ({
   hub: vi.fn(),
   libraryItems: vi.fn(async()=>({items:[]})),
+  getLibraries: vi.fn(),
   item: vi.fn(),
   capabilities: { watch_state: true, playback_plan: true },
   libraries: [] as Library[]
 }));
 vi.mock('../lib/stores/session.svelte.js', () => ({
   session: {
-    client: { hub: h.hub, item: h.item, libraryItems:h.libraryItems },
+    client: { hub: h.hub, item: h.item, libraryItems:h.libraryItems, libraries: h.getLibraries },
     get capabilities() { return h.capabilities; },
-    get libraries() { return h.libraries; }
+    get libraries() { return h.libraries; },
+    set libraries(value: Library[]) { h.libraries = value; }
   }
 }));
 import Home from './+page.svelte';
@@ -29,6 +32,7 @@ beforeEach(() => {
     { id: 'shows', title: 'Series', kind: 'shows', item_count: 1 }
   ];
   h.hub.mockReset();
+  h.getLibraries.mockReset();
   h.item.mockReset();
   h.hub.mockImplementation(async (id: string, query: { library_id?: string }) => ({
     items: id === 'continue_watching' ? [item('Resume me')]
@@ -38,6 +42,31 @@ beforeEach(() => {
 });
 
 describe('Home uses the current server capabilities and libraries', () => {
+  it('recovers a stale deleted library without blocking the remaining Home', async () => {
+    const kids: Library = { id: 'kids', title: 'Kids', kind: 'movies', item_count: 2 };
+    const current = [...h.libraries];
+    h.libraries = [...current, kids];
+    h.getLibraries.mockResolvedValue(current);
+    h.hub.mockImplementation(async (_id: string, query: { library_id?: string }) => {
+      if (query.library_id === 'kids') throw new ApiError({ code: 'library.not_found', status: 404, message: 'gone', retryable: false });
+      return { items: [item(query.library_id ?? 'Hero')] };
+    });
+    render(Home);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Hero' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Recently added · Films' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Recently added · Kids' })).toBeNull();
+    expect(h.libraries.map(library => library.id)).toEqual(['movies', 'shows']);
+    expect(h.getLibraries).toHaveBeenCalledTimes(1);
+  });
+  it('keeps a real hub error visible when the library still exists', async () => {
+    h.getLibraries.mockResolvedValue(h.libraries);
+    h.hub.mockImplementation(async (_id: string, query: { library_id?: string }) => {
+      if (query.library_id === 'movies') throw new ApiError({ code: 'library.not_found', status: 404, message: 'unexpected', retryable: false });
+      return { items: [] };
+    });
+    render(Home);
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeVisible();
+  });
   it('gives an episode-only Home its series context while preserving episode playback', async () => {
     h.libraries = [];
     h.hub.mockImplementation(async (id: string) => ({ items: id === 'recently_added'

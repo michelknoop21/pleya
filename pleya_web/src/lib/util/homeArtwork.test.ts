@@ -14,7 +14,7 @@ describe('Home artwork identity', () => {
   it('uses the series cover without replacing episode identity or watch state', async () => {
     const read = vi.fn(async (id: string) => id === 'season' ? season : show);
     const result = await continueArtwork([episode], read, signal());
-    expect(result.get('episode')).toEqual({ posterId: 'series-cover', title: 'Two and a Half Men' });
+    expect(result.get('episode')).toEqual({ posterId: 'series-cover', title: 'Two and a Half Men', showId: 'show' });
     expect(episode.id).toBe('episode');
     expect(read.mock.calls.map(args => args[0])).toEqual(['season', 'show']);
   });

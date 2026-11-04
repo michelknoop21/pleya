@@ -37,6 +37,8 @@
     /** Het beeld meteen laden, voor kaarten die altijd in beeld staan. */
     eager?: boolean;
     onHighlight?: (item: Item) => void;
+    /** Optional same-page navigation; the real link remains available for new tabs. */
+    onActivate?: (item: Item) => void;
     /**
      * De vorm van het beeld. Blijft hij leeg, dan volgt hij de soort: een
      * aflevering 16:9, de rest een poster. Een raster geeft hem expliciet mee,
@@ -62,6 +64,7 @@
     eager = false,
     shape: shapeOverride,
     onHighlight,
+    onActivate,
     isNew = false,
     artworkId: artworkOverride,
     subtitle: subtitleOverride,
@@ -87,6 +90,7 @@
     href="/items/{item.id}"
     aria-labelledby="{uid}-title {uid}-meta"
     aria-describedby="{uid}-badges"
+    onclick={event => { if (onActivate && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); onActivate(item); } }}
     onpointerenter={() => onHighlight?.(item)}
     onfocus={() => onHighlight?.(item)}
   >

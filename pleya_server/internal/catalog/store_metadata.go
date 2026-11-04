@@ -46,7 +46,8 @@ type MetadataTarget struct {
 
 	// ManualExternalID is de id die een beheerder koos (0016). Leeg als er geen
 	// handmatige keuze is; dan gaat de ronde op de .nfo en daarna op zoeken.
-	ManualExternalID string
+	ManualExternalID  string
+	RefreshExternalID string
 
 	// CandidateUpdatedAt is de verwachte duurzame generatie van deze poging.
 	// nil betekent dat er bij het lezen nog geen kandidaat bestond.
@@ -67,17 +68,19 @@ type Alternative struct {
 
 // Person is een acteur, regisseur of schrijver bij een item.
 type Person struct {
-	Name      string `json:"name"`
-	Role      string `json:"role"`
-	Character string `json:"character,omitempty"`
+	PortraitID *id.ID `json:"portrait_id,omitempty"`
+	Name       string `json:"name"`
+	Role       string `json:"role"`
+	Character  string `json:"character,omitempty"`
 }
 
 // MetadataDetails is wat een provider over één titel weet, in onze eigen vorm.
 type MetadataDetails struct {
-	Summary       string   `json:"summary,omitempty"`
-	Genres        []string `json:"genres,omitempty"`
-	ContentRating string   `json:"content_rating,omitempty"`
-	People        []Person `json:"people,omitempty"`
+	Presentation  *DetailPresentation `json:"presentation,omitempty"`
+	Summary       string              `json:"summary,omitempty"`
+	Genres        []string            `json:"genres,omitempty"`
+	ContentRating string              `json:"content_rating,omitempty"`
+	People        []Person            `json:"people,omitempty"`
 	// Alternatives zijn de beste zoektreffers bij een titel die niet vanzelf
 	// matcht, zodat een beheerder kan kiezen in plaats van te raden.
 	Alternatives []Alternative `json:"alternatives,omitempty"`
@@ -118,7 +121,8 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		       coalesce(mp.root_path, sp.root_path, ''),
 		       coalesce(mp.relative_path, sp.relative_path, ''),
 		       CASE WHEN c.manual THEN coalesce(c.external_id, '') ELSE '' END,
-		       c.updated_at
+		       c.updated_at,
+               CASE WHEN c.applied_provider = $1 THEN coalesce(c.applied_external_id, '') ELSE '' END
 		FROM media_items i
 		LEFT JOIN metadata_candidates c ON c.item_id = i.id
 		LEFT JOIN LATERAL (
@@ -161,7 +165,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 	var out []MetadataTarget
 	for rows.Next() {
 		var t MetadataTarget
-		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.CandidateUpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.CandidateUpdatedAt, &t.RefreshExternalID); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -479,22 +483,23 @@ func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.
 	rows, err := reader.Query(ctx, `
         SELECT i.id, i.summary, i.content_rating, i.genres, i.people,
                art.poster, art.backdrop, c.state, c.provider, c.external_id,
-               c.applied_provider, c.applied_external_id
+               c.applied_provider, c.applied_external_id, i.detail_presentation, i.metadata_sources->>'people', art.presentation_assets
         FROM media_items i
         LEFT JOIN metadata_candidates c ON c.item_id=i.id AND i.kind IN ('movie','show')
         LEFT JOIN LATERAL (
             SELECT (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
                         FILTER (WHERE a.kind='poster'))[1] AS poster,
                    (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
-                        FILTER (WHERE a.kind='backdrop'))[1] AS backdrop
+                        FILTER (WHERE a.kind='backdrop'))[1] AS backdrop,
+                   jsonb_object_agg(a.id::text,jsonb_build_object('kind',a.kind,'provider',a.provider,'ref',a.ref)) FILTER (WHERE a.provider <> '') AS presentation_assets
             FROM (
-                SELECT pin.id,pin.kind,-1 AS priority,''::text AS path,''::text AS provider
+                SELECT pin.id,pin.kind,-1 AS priority,''::text AS path,''::text AS provider,''::text AS ref
                 FROM artwork_pins pin WHERE pin.item_id=i.id
                 UNION ALL
-                SELECT f.id,f.artwork_kind AS kind,0 AS priority,f.relative_path AS path,''::text AS provider
+                SELECT f.id,f.artwork_kind AS kind,0 AS priority,f.relative_path AS path,''::text AS provider,''::text AS ref
                 FROM media_files f WHERE f.item_id=i.id AND f.role='artwork' AND f.missing_since IS NULL
                 UNION ALL
-                SELECT p.id,p.kind,1,''::text,p.provider FROM provider_artwork p WHERE p.item_id=i.id
+                SELECT p.id,p.kind,1,''::text,p.provider,p.source_ref FROM provider_artwork p WHERE p.item_id=i.id
             ) a
         ) art ON true
         WHERE i.id=ANY($1)`, ids)
@@ -507,9 +512,10 @@ func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.
 		var summary, rating, state, provider, external, appliedProvider, applied *string
 		var poster, backdrop *id.ID
 		var genres []string
-		var rawPeople []byte
+		var rawPeople, rawPresentation, rawAssets []byte
+		var peopleSource *string
 		if err := rows.Scan(&itemID, &summary, &rating, &genres, &rawPeople, &poster, &backdrop,
-			&state, &provider, &external, &appliedProvider, &applied); err != nil {
+			&state, &provider, &external, &appliedProvider, &applied, &rawPresentation, &peopleSource, &rawAssets); err != nil {
 			return err
 		}
 		if it := byID[itemID]; it != nil {
@@ -527,6 +533,7 @@ func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.
 			if applied != nil && canonicalMetadataID(*applied) {
 				it.AppliedExternalIDs = metadataExternalIDs(appliedProvider, applied)
 			}
+			attachDetailPresentation(it, rawPresentation, rawAssets, appliedProvider, applied, peopleSource)
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -712,6 +719,9 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 		return nil, err
 	}
 
+	if _, err := tx.Exec(ctx, `UPDATE media_items SET detail_presentation=NULL, updated_at=GREATEST(updated_at + interval '1 microsecond', clock_timestamp()) WHERE id=$1 AND detail_presentation->>'provider'=$2`, itemID, provider); err != nil {
+		return nil, err
+	}
 	rows, err := tx.Query(ctx, `DELETE FROM provider_artwork WHERE item_id = $1 AND provider = $2 RETURNING file_name`, itemID, provider)
 	if err != nil {
 		return nil, err
@@ -921,6 +931,11 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 	}
 	if details != nil {
 		if err := reconcileProviderArtwork(ctx, tx, target.ID, c.Provider, *details); err != nil {
+			return err
+		}
+	}
+	if details != nil {
+		if err := publishDetailPresentation(ctx, tx, target.ID, c, details.Presentation); err != nil {
 			return err
 		}
 	}

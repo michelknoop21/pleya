@@ -9,6 +9,7 @@ import { navItems } from './navItems';
 import type { Capabilities } from '../api/types';
 
 const caps: Capabilities = {
+  detail_presentation: false,
   external_id_lookup: false,
   applied_external_identity: false,
   metadata_match_status: false,

@@ -70,10 +70,20 @@ func clearMissingProviderFields(ctx context.Context, tx pgx.Tx, target MetadataT
 // Alleen een binding naar exact de gewenste ref mag een downloadfout overleven.
 // Lokale media_files en cachebytes blijven ongemoeid; orphans volgen bestaande GC.
 func reconcileProviderArtwork(ctx context.Context, tx pgx.Tx, itemID id.ID, provider string, d MetadataDetails) error {
+	logoRef := ""
+	portraitRefs := []string{}
+	if d.Presentation != nil {
+		logoRef = d.Presentation.LogoRef
+		for _, p := range d.Presentation.Portraits {
+			portraitRefs = append(portraitRefs, p.Ref)
+		}
+	}
 	_, err := tx.Exec(ctx, `DELETE FROM provider_artwork
 	    WHERE item_id=$1 AND provider=$2
 	      AND ((kind='poster' AND ($3='' OR source_ref IS DISTINCT FROM $3))
-	        OR (kind='backdrop' AND ($4='' OR source_ref IS DISTINCT FROM $4)))`,
-		itemID, provider, d.PosterRef, d.BackdropRef)
+	        OR (kind='backdrop' AND ($4='' OR source_ref IS DISTINCT FROM $4))
+          OR (kind LIKE 'logo:%' AND source_ref IS DISTINCT FROM $5)
+          OR (kind LIKE 'portrait:%' AND NOT (source_ref=ANY($6))))`,
+		itemID, provider, d.PosterRef, d.BackdropRef, logoRef, portraitRefs)
 	return err
 }

@@ -1,8 +1,9 @@
 <script lang="ts">
-  let { name }: { name: 'play' | 'back' | 'more' | 'favorite' | 'rating' | 'watched' | 'add' } = $props();
+  let { name }: { name: 'play' | 'restart' | 'back' | 'more' | 'favorite' | 'rating' | 'watched' | 'add' } = $props();
 </script>
 <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
   {#if name === 'play'}<path d="m8 4 12 8-12 8z" />
+  {:else if name === 'restart'}<path d="M4 10a8 8 0 1 1 1 8M4 4v6h6" /><path d="m11 9 6 4-6 4z" />
   {:else if name === 'back'}<path d="m15 5-7 7 7 7" />
   {:else if name === 'more'}<circle cx="5" cy="12" r=".8" fill="currentColor" /><circle cx="12" cy="12" r=".8" fill="currentColor" /><circle cx="19" cy="12" r=".8" fill="currentColor" />
   {:else if name === 'favorite'}<path d="M6 3h12v18l-6-4-6 4z" />
