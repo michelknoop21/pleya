@@ -30,8 +30,6 @@ steps:
   - walk: {direction: right, expect: [nav.series], timeout: 40000, settle: 800}
   - press: select
   - settle: 1500
-  - press: down
-  - settle: 1500
   - press: select
   - wait_until: {id: "tv.catalog.grid[series]", timeout: 20000}
   - wait_until: {id: "tv.catalog.grid.item[series.2]", timeout: 20000}

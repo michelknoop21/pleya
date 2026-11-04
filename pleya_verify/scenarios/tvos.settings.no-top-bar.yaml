@@ -21,7 +21,6 @@ steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
   - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
-  - press: select
   - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
   # On the pill the bar is on screen, over the page.
   - assert: {id: nav.bar, state: {hidden: false, overlay: true}}
