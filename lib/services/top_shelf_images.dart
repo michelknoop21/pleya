@@ -32,10 +32,12 @@ class TopShelfImages {
   /// without a pause it restarted all ~25 full-screen downloads each time.
   final Duration retryAfter;
 
-  /// Downloads still running, across syncs. [timeout] stops the wait, not the
-  /// download, so the next sync joins the running one instead of starting a
-  /// second copy of it.
-  final Map<String, Future<File>> _inFlight = {};
+  /// Downloads still running, across syncs, with their start. [timeout] stops
+  /// the wait, not the download, so the next sync joins the running one
+  /// instead of starting a second copy of it. One older than three times
+  /// [timeout] is taken for hung and replaced, or it would hold that image off
+  /// the shelf until the app restarts.
+  final Map<String, ({Future<File> download, DateTime started})> _inFlight = {};
   final Map<String, DateTime> _retryAt = {};
 
   /// Through the app's artwork cache, so an image the Home already showed is
@@ -101,7 +103,7 @@ class TopShelfImages {
       if (!await target.exists()) {
         final retryAt = _retryAt[url];
         if (retryAt != null && DateTime.now().isBefore(retryAt)) return false;
-        final source = await (_inFlight[url] ??= _track(url, title)).timeout(timeout);
+        final source = await _join(url, title).timeout(timeout);
         // Copy then rename, so the extension never reads a half-written file.
         final partial = await source.copy('${target.path}.part');
         await partial.rename(target.path);
@@ -115,16 +117,28 @@ class TopShelfImages {
     }
   }
 
-  /// [_fetch] registered in [_inFlight] until it ends. An outcome that comes
-  /// after [timeout] is logged here, because [_save] has stopped listening and
-  /// that late error is the actual reason the image is missing.
+  /// The running download for [url], or a new one registered in [_inFlight]
+  /// until it ends. A hung download that was replaced does not unregister its
+  /// successor when it ends after all.
+  Future<File> _join(String url, Object? title) {
+    final now = DateTime.now();
+    final running = _inFlight[url];
+    if (running != null && now.difference(running.started) < timeout * 3) return running.download;
+    late final Future<File> download;
+    download = _track(url, title).whenComplete(() {
+      if (identical(_inFlight[url]?.download, download)) _inFlight.remove(url);
+    });
+    _inFlight[url] = (download: download, started: now);
+    return download;
+  }
+
+  /// [_fetch] with its failure recorded. An outcome that comes after [timeout]
+  /// is logged here, because [_save] has stopped listening and that late error
+  /// is the actual reason the image is missing.
   Future<File> _track(String url, Object? title) async {
     final watch = Stopwatch()..start();
     try {
-      // Future.sync: a fetch that throws synchronously must still end after
-      // [_save] registered this future, or the finally below runs first and
-      // the failed future stays in [_inFlight] for good.
-      return await Future.sync(() => _fetch(url));
+      return await _fetch(url);
     } catch (e) {
       // Only a download that ended in an error. A timed-out one is still
       // running, and the next sync joins it.
@@ -133,8 +147,6 @@ class TopShelfImages {
         appLogger.w('Top Shelf: download for $title failed after ${watch.elapsed.inSeconds} s', error: _describe(e));
       }
       rethrow;
-    } finally {
-      _inFlight.remove(url);
     }
   }
 

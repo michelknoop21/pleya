@@ -128,6 +128,26 @@ void main() {
     expect(calls, 1);
   });
 
+  test('a download running longer than three timeouts counts as hung: a later sync starts a new one', () async {
+    final hungDownload = Completer<File>();
+    var calls = 0;
+    final hung = TopShelfImages(
+      fetch: (_) async {
+        calls++;
+        if (calls == 1) return hungDownload.future;
+        return File('${tmp.path}/fresh')..writeAsBytesSync([1, 2, 3]);
+      },
+      timeout: const Duration(milliseconds: 10),
+    );
+    final item = [entry('hung', 'https://x/hung')];
+    expect(await hung.localize(item, shelf), isEmpty);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(await hung.localize(item, shelf), hasLength(1), reason: 'the hung download is no longer joined');
+    expect(calls, 2);
+    // The hung one ending late must not unregister or replace anything.
+    hungDownload.complete(File('${tmp.path}/late')..writeAsBytesSync([1, 2, 3]));
+  });
+
   test('a failed image is left alone until retryAfter, then tried again', () async {
     const bad = 'https://x/bad';
     final backingOff = images(failing: {bad});
