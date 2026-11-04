@@ -42,6 +42,8 @@ for rel in build tvos/build .build; do
   dest=$(readlink "$ROOT/$rel" 2>/dev/null) || continue
   [[ "$dest" == "$BUILD_HOME"/?* ]] || continue
   dest="${dest#"$BUILD_HOME"/}"
+  # Een sleutel `.` of `..` zou .owner buiten BUILD_HOME schrijven.
+  [[ "${dest%%/*}" == "." || "${dest%%/*}" == ".." ]] && continue
   owner="$BUILD_HOME/${dest%%/*}/.owner"
   [[ -d "${owner%/.owner}" ]] || continue
   grep -qxF -- "$ROOT" "$owner" 2>/dev/null && continue

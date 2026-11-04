@@ -92,6 +92,10 @@ done
 [[ "$(readlink wt/.build)" == "$bh/heel" && -e "$bh/heel/f" ]] || { echo "FOUT: heel symlink .build is aangeraakt"; exit 1; }
 HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh   # tweede run verandert niets
 [[ "$(readlink wt/build)" == "$bh/$key/build" ]] || { echo "FOUT: tweede run wijzigde build"; exit 1; }
+# Een met de hand gelegde symlink via `..` schrijft geen .owner buiten BUILD_HOME.
+mkdir -p "$bh/../buiten"; rm wt/.build && ln -s "$bh/../buiten" wt/.build
+HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh
+[[ ! -e "$sandbox/ssd/.owner" ]] || { echo "FOUT: .owner buiten BUILD_HOME geschreven"; exit 1; }
 
 # PLEYA_BUILD_HOME op een nep-SSD met echte worktrees van een nep-repo. Paden
 # zijn fysiek (/private/var), zodat de sleutels van link_build_dirs.sh en git
