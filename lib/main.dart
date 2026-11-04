@@ -138,6 +138,7 @@ Future<void> main() async {
   if (kDebugMode || kPleyaVerify) binding.ensureSemantics();
   _installZeroOffsetPointerGuard(); // Workaround for iPadOS 26.1+ modal dismissal bug
   startFrameTimingLog();
+  startFocusFrameLog();
 
   // On tvOS, Flutter's generated plugin registrant doesn't run (no tvOS
   // target in Flutter's tool), so register platform stores manually for

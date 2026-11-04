@@ -1,4 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/services/frame_timing_log.dart';
 
 void main() {
@@ -36,5 +39,37 @@ void main() {
 
     expect(summary.pacingP50, 16667);
     expect(summary.pacingMax, 33333);
+  });
+
+  testWidgets('a focus change on TV logs once, after the frame that shows it', (tester) async {
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    startFocusFrameLog();
+    final a = FocusNode();
+    final b = FocusNode();
+    addTearDown(a.dispose);
+    addTearDown(b.dispose);
+    await tester.pumpWidget(
+      Column(
+        children: [
+          Focus(focusNode: a, child: const SizedBox()),
+          Focus(focusNode: b, child: const SizedBox()),
+        ],
+      ),
+    );
+    int count() => MemoryLogOutput.getLogs().where((e) => e.message.startsWith('FocusFrame: +')).length;
+    final before = count();
+
+    // Focus applies in a microtask, so the change can land after the pumped
+    // frame; the second pump is the frame that shows it.
+    a.requestFocus();
+    await tester.pump();
+    await tester.pump();
+    expect(count() - before, 1);
+
+    b.requestFocus();
+    await tester.pump();
+    await tester.pump();
+    expect(count() - before, 2);
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:ui' show FramePhase;
 
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart' show FocusManager;
 
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
@@ -95,5 +96,25 @@ void startFrameTimingLog() {
       starts: [for (final t in timings) t.timestampInMicroseconds(FramePhase.vsyncStart)],
     );
     appLogger.d('FrameTiming: $summary');
+  });
+}
+
+/// Writes, per focus change on TV, how long until the frame that shows it was
+/// built. Paired with `AppleTvRemoteTouchService: native keydown` this is the
+/// input latency of a remote press on the device itself, where neither
+/// DevTools nor Instruments reach a Release build. Several focus changes before
+/// one frame log once: they share that frame.
+void startFocusFrameLog() {
+  var pending = false;
+  FocusManager.instance.addListener(() {
+    if (pending || !PlatformDetector.isTV()) return;
+    pending = true;
+    final since = Stopwatch()..start();
+    SchedulerBinding.instance
+      ..addPostFrameCallback((_) {
+        pending = false;
+        appLogger.d('FocusFrame: +${(since.elapsedMicroseconds / 1000).toStringAsFixed(1)}ms');
+      })
+      ..ensureVisualUpdate();
   });
 }
