@@ -12,7 +12,21 @@
 #                                          van een worktree (daar staat .git),
 #                                          weg als er 24 uur niets in is
 #                                          geschreven en geen proces in die
-#                                          worktree staat; een symlink blijft
+#                                          worktree staat
+#   build/ en tvos/build/ van andere       zijn ze een symlink naar
+#   worktrees op de externe SSD            PLEYA_BUILD_HOME (link_build_dirs.sh),
+#                                          dan geldt dezelfde regel voor de
+#                                          inhoud van het doel; symlink en lege
+#                                          doelmap blijven staan
+#   wezen in PLEYA_BUILD_HOME              een map <sleutel> waar geen
+#                                          geregistreerde worktree (ook locked
+#                                          of prunable) meer bij hoort, met
+#                                          bovenin alleen build, tvos, .build,
+#                                          .owner of .DS_Store, en 24 uur
+#                                          zonder schrijfactie; een map met
+#                                          iets anders erin, of met een
+#                                          .owner naar een bestaand pad (een
+#                                          losse kloon), blijft altijd
 #   Xcode DerivedData                      mappen waarin 3 dagen niets schreef
 #   flutter_tools.* en tmp.* in de         na 24 uur zonder schrijfactie en
 #   gebruikers-tempmap                     als geen proces ze open heeft
@@ -20,9 +34,15 @@
 # DerivedData en de tempmappen zijn niet van Pleya alleen: ook de index van
 # andere Xcode-projecten en mktemp-mappen van andere tools gaan weg na die
 # stilte. Dat is een bewuste keuze, want ze worden allemaal opnieuw opgebouwd.
-# Incrementele build-mappen (tvos/build/dd, build/ios/SourcePackages) van de
-# eigen worktree blijven: die worden bij elke build hergebruikt. Geneste
-# build-mappen (<wt>/tvos/build, <wt>/pleya_web/build) raakt het script nooit.
+# De sleutel van een worktree in PLEYA_BUILD_HOME rekent het script vooruit uit
+# `git worktree list` met dezelfde functie als link_build_dirs.sh, plus de
+# sleutels waar de symlinks van bestaande worktrees naar wijzen; een sleutel
+# wordt nooit terugvertaald naar een pad. Is PLEYA_BUILD_HOME niet gekoppeld,
+# dan slaat het script dat deel over, en het verwijdert nooit iets buiten die
+# map. Incrementele build-mappen (tvos/build/dd, build/ios/SourcePackages) van
+# de eigen worktree blijven: die worden bij elke build hergebruikt. .build/
+# van andere worktrees blijft staan. Geneste build-mappen die geen symlink
+# zijn (<wt>/tvos/build, <wt>/pleya_web/build) raakt het script nooit.
 # Kan lsof niet zeggen wat er open is, dan blijft alles staan.
 set -euo pipefail
 
@@ -55,7 +75,7 @@ remove() {
     echo "prune_old_builds: zou verwijderen ($((kb / 1024)) MB) $1"
     freed=$((freed + kb))
   else
-    rm -rf "$1" && freed=$((freed + kb))
+    rm -rf "${1:?}" && freed=$((freed + kb))
   fi
 }
 
@@ -104,12 +124,16 @@ if [[ -d "$archives" ]]; then
   [[ "$DRY_RUN" == 1 ]] || find "$archives" -mindepth 1 -maxdepth 1 -type d -empty -delete
 fi
 
+# Werkmappen van alle processen; leeg als lsof dat niet kan zeggen.
+cwds=$(lsof -a -d cwd -Fn 2>/dev/null | sed -n 's/^n//p') || cwds=""
+
 # build/ van andere worktrees. De glob vindt ook <wt>/tvos/build in een
 # worktree op één niveau, dus alleen een map met .git naast build/ telt als
 # worktree. De eigen worktree slaan we over, en ook elke worktree waar nog een
-# proces zijn werkmap heeft (sessie, idb, xcodebuild).
+# proces zijn werkmap heeft (sessie, idb, xcodebuild). Een symlink volgt
+# hieronder bij PLEYA_BUILD_HOME.
 if [[ -d "$WORKTREES" ]]; then
-  if cwds=$(lsof -a -d cwd -Fn 2>/dev/null | sed -n 's/^n//p') && [[ -n "$cwds" ]]; then
+  if [[ -n "$cwds" ]]; then
     for build in "$WORKTREES"/*/build "$WORKTREES"/*/*/build; do
       [[ -d "$build" && ! -L "$build" ]] || continue
       tree="${build%/build}"
@@ -121,6 +145,85 @@ if [[ -d "$WORKTREES" ]]; then
   else
     echo "prune_old_builds: lsof geeft geen werkmappen, build/ in andere worktrees blijft staan" >&2
   fi
+fi
+
+# Zelfde sleutel als link_build_dirs.sh: $HOME/ eraf, / wordt _, voorloop-punt eraf.
+build_key() {
+  local key="${1#"$HOME"/}"
+  key="${key//\//_}"
+  printf '%s\n' "${key#.}"
+}
+
+# Alleen een pad onder PLEYA_BUILD_HOME mag weg; al het andere weigeren we.
+in_build_home() {
+  [[ "${1:?}" == "${bh_real:?}"/?* && "$1" != *..* ]] && return 0
+  echo "prune_old_builds: weigert $1, ligt niet onder $bh_real" >&2
+  return 1
+}
+
+# Leegt het doel van een symlink; de map zelf blijft voor link_build_dirs.sh.
+empty_target() {
+  local dir="${1:?}" kb
+  in_build_home "$dir" || return 0
+  kb=$(du -sk "$dir" 2>/dev/null | cut -f1 || echo 0)
+  if [[ "$DRY_RUN" == 1 ]]; then
+    echo "prune_old_builds: zou leegmaken ($((kb / 1024)) MB) $dir"
+    freed=$((freed + kb))
+  else
+    rm -rf "${dir:?}" && mkdir "$dir" && freed=$((freed + kb))
+  fi
+}
+
+BUILD_HOME="${PLEYA_BUILD_HOME:-/Volumes/SSD/pleya-builds}"
+if [[ -d "$BUILD_HOME" && -z "$cwds" ]]; then
+  echo "prune_old_builds: lsof geeft geen werkmappen, $BUILD_HOME blijft staan" >&2
+elif [[ -d "$BUILD_HOME" ]]; then
+  bh_real=$(cd "$BUILD_HOME" && pwd -P)
+  root_real=$(cd "$ROOT" && pwd -P)
+  live=$'\n'
+  while IFS= read -r wt; do
+    live+="$(build_key "$wt")"$'\n'
+    [[ -d "$wt" ]] || continue
+    wt_real=$(cd "$wt" && pwd -P)
+    live+="$(build_key "$wt_real")"$'\n'
+    for rel in build tvos/build .build; do
+      dest=$(readlink "$wt/$rel" 2>/dev/null) || continue
+      for base in "$BUILD_HOME" "$bh_real"; do
+        [[ "$dest" == "$base"/?* ]] || continue
+        dest="${dest#"$base"/}"
+        live+="${dest%%/*}"$'\n'
+        break
+      done
+    done
+    [[ "$wt_real" == "$root_real" ]] && continue
+    grep -qF -e "$wt" -e "$wt_real" <<<"$cwds" && continue
+    for rel in build tvos/build; do
+      [[ -L "$wt/$rel" ]] || continue
+      target=$(cd "$wt/$rel" 2>/dev/null && pwd -P) || continue
+      [[ "$target" == "$bh_real"/?* ]] || continue
+      key_dir="${target#"$bh_real"/}"
+      key_dir="$bh_real/${key_dir%%/*}"
+      grep -qF -- "$key_dir" <<<"$cwds" && continue
+      [[ -n "$(ls -A "$target")" ]] || continue
+      idle_for "$target" 1440 && empty_target "$target"
+    done
+  done < <(git -C "$ROOT" worktree list --porcelain | sed -n 's/^worktree //p')
+
+  for dir in "$bh_real"/*; do
+    [[ -d "$dir" && ! -L "$dir" ]] || continue
+    grep -qxF -- "${dir##*/}" <<<"$live" && continue
+    # Alleen buildinhoud; .owner en .DS_Store zijn metadata. Staat er iets
+    # anders bovenin (een SDK, een probe), dan blijft de hele map.
+    [[ -z "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name build ! -name tvos \
+      ! -name .build ! -name .owner ! -name .DS_Store -print -quit)" ]] || continue
+    # Een losse kloon van de repo (geen worktree hiervan) schrijft hier ook; een
+    # .owner die naar een bestaand pad wijst, houdt de map dus vast.
+    owner=$(head -n 1 "$dir/.owner" 2>/dev/null) || owner=""
+    [[ -n "$owner" && -e "$owner" ]] && continue
+    grep -qF -- "$dir" <<<"$cwds" && continue
+    idle_for "$dir" 1440 || continue
+    in_build_home "$dir" && remove "$dir"
+  done
 fi
 
 if [[ -d "$DERIVED" ]]; then
