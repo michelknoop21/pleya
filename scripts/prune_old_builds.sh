@@ -2,7 +2,8 @@
 # Ruimt oude builds op vóór een nieuwe build. Standaard in elke buildroute
 # (scripts/tvos_sim.sh build en de TestFlight-lanes); overslaan met
 # PLEYA_KEEP_BUILDS=1. Met --dry-run (of PLEYA_PRUNE_DRY_RUN=1) alleen tonen
-# wat weg zou gaan.
+# wat weg zou gaan. Beide slaan ook link_build_dirs.sh over, zodat er geen
+# symlink of map verandert.
 #
 # Wat weg mag en wat blijft:
 #   .build/pleya-verify/<scenario>-<ms>   per scenario de nieuwste 2 bundels
@@ -20,13 +21,16 @@
 #                                          doelmap blijven staan
 #   wezen in PLEYA_BUILD_HOME              een map <sleutel> waar geen
 #                                          geregistreerde worktree (ook locked
-#                                          of prunable) meer bij hoort, met
-#                                          bovenin alleen build, tvos, .build,
-#                                          .owner of .DS_Store, en 24 uur
-#                                          zonder schrijfactie; een map met
-#                                          iets anders erin, of met een
-#                                          .owner naar een bestaand pad (een
-#                                          losse kloon), blijft altijd
+#                                          of prunable) meer bij hoort, met een
+#                                          .owner (link_build_dirs.sh) naar
+#                                          een pad dat niet meer bestaat, met
+#                                          alleen build, tvos/build, .build,
+#                                          .owner of .DS_Store erin, en 24 uur
+#                                          zonder schrijfactie. Zonder .owner,
+#                                          met een .owner naar een bestaand
+#                                          pad (een losse kloon) of op een
+#                                          niet gekoppeld volume, of met iets
+#                                          anders erin blijft de map
 #   Xcode DerivedData                      mappen waarin 3 dagen niets schreef
 #   flutter_tools.* en tmp.* in de         na 24 uur zonder schrijfactie en
 #   gebruikers-tempmap                     als geen proces ze open heeft
@@ -38,8 +42,12 @@
 # `git worktree list` met dezelfde functie als link_build_dirs.sh, plus de
 # sleutels waar de symlinks van bestaande worktrees naar wijzen; een sleutel
 # wordt nooit terugvertaald naar een pad. Is PLEYA_BUILD_HOME niet gekoppeld,
-# dan slaat het script dat deel over, en het verwijdert nooit iets buiten die
-# map. Incrementele build-mappen (tvos/build/dd, build/ios/SourcePackages) van
+# is het /, $HOME of heet de map niet pleya-builds, dan slaat het script dat
+# deel over, en het verwijdert nooit iets buiten die map. "Geen proces" kijkt
+# alleen naar werkmappen (lsof -d cwd): een app die al dagen draait vanuit
+# een build-map van een andere worktree, zonder te bouwen, ziet het niet.
+# Lukt het wissen van één map niet (alleen-lezen), dan meldt het script dat
+# en gaat het door. Incrementele build-mappen (tvos/build/dd, build/ios/SourcePackages) van
 # de eigen worktree blijven: die worden bij elke build hergebruikt. .build/
 # van andere worktrees blijft staan. Geneste build-mappen die geen symlink
 # zijn (<wt>/tvos/build, <wt>/pleya_web/build) raakt het script nooit.
@@ -48,10 +56,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-"$ROOT/scripts/link_build_dirs.sh"
-
-[[ "${PLEYA_KEEP_BUILDS:-}" == 1 ]] && exit 0
-
 DRY_RUN="${PLEYA_PRUNE_DRY_RUN:-0}"
 for arg in "$@"; do
   case "$arg" in
@@ -59,6 +63,13 @@ for arg in "$@"; do
     *) echo "prune_old_builds: onbekend argument '$arg' (alleen --dry-run)" >&2; exit 2 ;;
   esac
 done
+
+[[ "${PLEYA_KEEP_BUILDS:-}" == 1 ]] && exit 0
+if [[ "$DRY_RUN" == 1 ]]; then
+  echo "prune_old_builds: zou link_build_dirs.sh draaien"
+else
+  "$ROOT/scripts/link_build_dirs.sh"
+fi
 KEEP_BUNDLES="${PLEYA_KEEP_VERIFY_BUNDLES:-2}"
 KEEP_ARCHIVES="${PLEYA_KEEP_ARCHIVES:-3}"
 WORKTREES="${PLEYA_WORKTREES_DIR:-$HOME/.supacode/repos/plezy-main}"
@@ -75,7 +86,11 @@ remove() {
     echo "prune_old_builds: zou verwijderen ($((kb / 1024)) MB) $1"
     freed=$((freed + kb))
   else
-    rm -rf "${1:?}" && freed=$((freed + kb))
+    if rm -rf "${1:?}"; then
+      freed=$((freed + kb))
+    else
+      echo "prune_old_builds: kon $1 niet (helemaal) verwijderen" >&2
+    fi
   fi
 }
 
@@ -156,29 +171,49 @@ build_key() {
 
 # Alleen een pad onder PLEYA_BUILD_HOME mag weg; al het andere weigeren we.
 in_build_home() {
-  [[ "${1:?}" == "${bh_real:?}"/?* && "$1" != *..* ]] && return 0
+  [[ "${1:?}" == "${bh_real:?}"/?* && "$1" != */../* && "$1" != */.. ]] && return 0
   echo "prune_old_builds: weigert $1, ligt niet onder $bh_real" >&2
   return 1
 }
 
 # Leegt het doel van een symlink; de map zelf blijft voor link_build_dirs.sh.
+# De aanroeper heeft het pad met in_build_home gecontroleerd.
 empty_target() {
   local dir="${1:?}" kb
-  in_build_home "$dir" || return 0
   kb=$(du -sk "$dir" 2>/dev/null | cut -f1 || echo 0)
   if [[ "$DRY_RUN" == 1 ]]; then
     echo "prune_old_builds: zou leegmaken ($((kb / 1024)) MB) $dir"
     freed=$((freed + kb))
   else
-    rm -rf "${dir:?}" && mkdir "$dir" && freed=$((freed + kb))
+    if rm -rf "${dir:?}"; then
+      freed=$((freed + kb))
+    else
+      echo "prune_old_builds: kon $dir niet (helemaal) leegmaken" >&2
+    fi
+    mkdir -p "$dir"
+  fi
+}
+
+# Een .owner op een volume dat nu niet gekoppeld is, telt niet als weg.
+owner_gone() {
+  local vol
+  [[ -n "$1" && ! -e "$1" ]] || return 1
+  if [[ "$1" == /Volumes/?*/* ]]; then
+    vol="${1#/Volumes/}"
+    [[ -d "/Volumes/${vol%%/*}" ]] || return 1
   fi
 }
 
 BUILD_HOME="${PLEYA_BUILD_HOME:-/Volumes/SSD/pleya-builds}"
-if [[ -d "$BUILD_HOME" && -z "$cwds" ]]; then
+bh_real=$(cd "$BUILD_HOME" 2>/dev/null && pwd -P) || bh_real=""
+home_real=$(cd "$HOME" 2>/dev/null && pwd -P) || home_real="$HOME"
+if [[ -z "$bh_real" ]]; then
+  : # niet gekoppeld (of CI): niets te doen
+elif [[ "$bh_real" == / || "$bh_real" == "$home_real" || "${bh_real##*/}" != pleya-builds ]]; then
+  echo "prune_old_builds: PLEYA_BUILD_HOME=$BUILD_HOME is /, \$HOME of heet niet pleya-builds; blijft staan" >&2
+elif [[ -z "$cwds" ]]; then
   echo "prune_old_builds: lsof geeft geen werkmappen, $BUILD_HOME blijft staan" >&2
-elif [[ -d "$BUILD_HOME" ]]; then
-  bh_real=$(cd "$BUILD_HOME" && pwd -P)
+else
   root_real=$(cd "$ROOT" && pwd -P)
   live=$'\n'
   while IFS= read -r wt; do
@@ -200,12 +235,13 @@ elif [[ -d "$BUILD_HOME" ]]; then
     for rel in build tvos/build; do
       [[ -L "$wt/$rel" ]] || continue
       target=$(cd "$wt/$rel" 2>/dev/null && pwd -P) || continue
-      [[ "$target" == "$bh_real"/?* ]] || continue
+      in_build_home "$target" || continue
       key_dir="${target#"$bh_real"/}"
       key_dir="$bh_real/${key_dir%%/*}"
       grep -qF -- "$key_dir" <<<"$cwds" && continue
       [[ -n "$(ls -A "$target")" ]] || continue
-      idle_for "$target" 1440 && empty_target "$target"
+      idle_for "$target" 1440 || continue
+      empty_target "$target"
     done
   done < <(git -C "$ROOT" worktree list --porcelain | sed -n 's/^worktree //p')
 
@@ -213,15 +249,20 @@ elif [[ -d "$BUILD_HOME" ]]; then
     [[ -d "$dir" && ! -L "$dir" ]] || continue
     grep -qxF -- "${dir##*/}" <<<"$live" && continue
     # Alleen buildinhoud; .owner en .DS_Store zijn metadata. Staat er iets
-    # anders bovenin (een SDK, een probe), dan blijft de hele map.
+    # anders in (een SDK, een probe), dan blijft de hele map.
     [[ -z "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name build ! -name tvos \
       ! -name .build ! -name .owner ! -name .DS_Store -print -quit)" ]] || continue
-    # Een losse kloon van de repo (geen worktree hiervan) schrijft hier ook; een
-    # .owner die naar een bestaand pad wijst, houdt de map dus vast.
+    [[ -z "$(find "$dir/tvos" -mindepth 1 -maxdepth 1 ! -name build -print -quit 2>/dev/null)" ]] || continue
+    # Alleen een .owner naar een pad dat weg is bewijst een wees; zonder .owner
+    # (of met een eigenaar die nog bestaat, zoals een losse kloon) blijft hij.
     owner=$(head -n 1 "$dir/.owner" 2>/dev/null) || owner=""
-    [[ -n "$owner" && -e "$owner" ]] && continue
+    if ! owner_gone "$owner"; then
+      [[ "$DRY_RUN" == 1 ]] && echo "prune_old_builds: houdt $dir (eigenaar ${owner:-onbekend, geen .owner})"
+      continue
+    fi
     grep -qF -- "$dir" <<<"$cwds" && continue
     idle_for "$dir" 1440 || continue
+    # $dir komt uit "$bh_real"/*, dus dit faalt alleen bij een fout hierboven.
     in_build_home "$dir" && remove "$dir"
   done
 fi

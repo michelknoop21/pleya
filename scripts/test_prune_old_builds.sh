@@ -8,7 +8,8 @@ set -euo pipefail
 
 script="$(cd "$(dirname "$0")" && pwd)/prune_old_builds.sh"
 sandbox="$(mktemp -d)"
-trap 'rm -rf "$sandbox"' EXIT
+pids=""
+trap 'kill $pids 2>/dev/null; chmod -R u+w "$sandbox" 2>/dev/null; rm -rf "$sandbox"' EXIT
 cd "$sandbox"
 
 old=$(date -v-4d '+%Y%m%d%H%M')
@@ -80,7 +81,9 @@ mkdir -p wt/tvos "$bh/heel"; touch "$bh/heel/f"
 ln -s "$bh/$key/build" wt/build                  # doel bestaat niet
 ln -s "$bh/andere-sleutel/tvos/build" wt/tvos/build   # doel bestaat niet, andere sleutel
 ln -s "$bh/heel" wt/.build                       # heel
+mkdir -p "$bh/$key" && echo /ander >"$bh/$key/.owner"   # bestaande eigenaar blijft
 HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh
+[[ "$(cat "$bh/$key/.owner")" == /ander ]] || { echo "FOUT: bestaande .owner overschreven"; exit 1; }
 for rel in build tvos/build; do
   [[ -L "wt/$rel" && -d "wt/$rel" ]] || { echo "FOUT: kapotte symlink $rel niet hersteld"; exit 1; }
   [[ "$(readlink "wt/$rel")" == "$bh/$key/$rel" ]] || { echo "FOUT: $rel wijst naar $(readlink "wt/$rel")"; exit 1; }
@@ -89,61 +92,105 @@ done
 HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh   # tweede run verandert niets
 [[ "$(readlink wt/build)" == "$bh/$key/build" ]] || { echo "FOUT: tweede run wijzigde build"; exit 1; }
 
-# PLEYA_BUILD_HOME op een nep-SSD met echte worktrees van een nep-repo. Een
-# symlink-doel van een andere worktree wordt na 24 uur leeggemaakt (build/ en
-# tvos/build/, symlink en doelmap blijven), een vers doel blijft. Een wees
-# (sleutel zonder worktree, alleen buildinhoud, 24 uur stil) gaat weg; een wees
-# met iets anders erin, een verse wees of een wees met een .owner naar een
-# bestaand pad (losse kloon) blijft, net als de map van een
-# bestaande of prunable worktree. Paden zijn fysiek (/private/var), zodat de
-# sleutels van link_build_dirs.sh en git worktree list overeenkomen.
+# PLEYA_BUILD_HOME op een nep-SSD met echte worktrees van een nep-repo. Paden
+# zijn fysiek (/private/var), zodat de sleutels van link_build_dirs.sh en git
+# worktree list overeenkomen. Leeg na 24 uur: het symlink-doel van build/ en
+# tvos/build/ van een andere worktree; symlink en doelmap blijven. Blijft: een
+# vers doel, de eigen worktree, een worktree of sleutelmap met een proces erin,
+# een symlink naar buiten PLEYA_BUILD_HOME. Een alleen-lezen map breekt de run
+# niet af. Een wees (geen worktree, .owner naar een pad dat weg is, alleen
+# buildinhoud, 24 uur stil) gaat weg, ook met .DS_Store. Blijft: een wees met
+# iets anders erin (ook onder tvos/), een verse wees, een wees zonder .owner,
+# een met een .owner naar een bestaand pad (losse kloon), een met een proces
+# erin, en de map van een bestaande of prunable worktree. --dry-run en
+# PLEYA_KEEP_BUILDS=1 veranderen geen symlink. Een PLEYA_BUILD_HOME die niet
+# pleya-builds heet of gelijk is aan $HOME blijft ongemoeid.
 psb=$(cd "$sandbox" && pwd -P)
-bh2="$psb/ssd2/builds"
+bh2="$psb/ssd2/pleya-builds"
 mkdir -p "$bh2" "$psb/bin2" "$psb/tmp2" "$psb/repo2/scripts" "$psb/repo2/tvos"
 printf '#!/bin/sh\nexit 0\n' >"$psb/bin2/xcrun" && chmod +x "$psb/bin2/xcrun"
 cp "$(dirname "$script")/prune_old_builds.sh" "$(dirname "$script")/link_build_dirs.sh" "$psb/repo2/scripts/"
 g() { git -C "$psb/repo2" -c user.name=t -c user.email=t@t "$@"; }
 g init -q && g add scripts && g commit -q -m init
-for w in oud vers tv bestaand prunable; do g worktree add -q --detach "$psb/w-$w"; done
+trees=(oud vers tv bestaand prunable cwd keycwd buiten ro)
+for w in "${trees[@]}"; do g worktree add -q --detach "$psb/w-$w" && mkdir -p "$psb/w-$w/tvos"; done
 key() { local k="${1#"$psb/home"/}"; k="${k//\//_}"; echo "${k#.}"; }
+kd() { echo "$bh2/$(key "$psb/w-$1")"; }
 age() { find "$@" -exec touch -h -t "$old" {} +; }
-link() { HOME="$psb/home" PLEYA_BUILD_HOME="$bh2" "$psb/w-$1/scripts/link_build_dirs.sh"; }
-for w in oud vers tv prunable; do mkdir -p "$psb/w-$w/tvos" && link "$w"; done
-mk "$psb/w-oud/build/ios" old; age "$bh2/$(key "$psb/w-oud")"
+link() { HOME="$psb/home" PLEYA_BUILD_HOME="$bh2" "$1/scripts/link_build_dirs.sh"; }
+for w in oud vers tv prunable cwd keycwd ro; do link "$psb/w-$w"; done
+link "$psb/repo2"
+[[ "$(cat "$(kd oud)/.owner")" == "$psb/w-oud" ]] || { echo "FOUT: .owner van w-oud klopt niet"; exit 1; }
+mk "$psb/w-oud/build/ios" old; age "$(kd oud)"
 mk "$psb/w-vers/build/ios"
-mk "$psb/w-tv/tvos/build/Release" old; age "$bh2/$(key "$psb/w-tv")"
-mk "$bh2/$(key "$psb/w-bestaand")/.build/pleya-verify" old; age "$bh2/$(key "$psb/w-bestaand")"
-mk "$bh2/$(key "$psb/w-prunable")/build/ios" old; age "$bh2/$(key "$psb/w-prunable")"
-rm -rf "$psb/w-prunable"
-mk "$bh2/wees-oud/build/macos" old; mk "$bh2/wees-oud/tvos/build" old
-echo /weg >"$bh2/wees-oud/.owner"; age "$bh2/wees-oud"
-mk "$bh2/wees-sdk/build" old; mk "$bh2/wees-sdk/flutter/bin" old; age "$bh2/wees-sdk"
-mk "$bh2/wees-vers/build/ios"
-mkdir -p "$psb/kloon"; mk "$bh2/wees-kloon/build" old; echo "$psb/kloon" >"$bh2/wees-kloon/.owner"; age "$bh2/wees-kloon"
+mk "$psb/w-tv/tvos/build/Release" old; age "$(kd tv)"
+mk "$psb/w-cwd/build/ios" old; age "$(kd cwd)"
+mk "$psb/w-keycwd/build/ios" old; age "$(kd keycwd)"
+mk "$psb/w-ro/build/ro" old; age "$(kd ro)"; chmod 555 "$(kd ro)/build/ro"
+mk "$psb/elders" old; ln -s "$psb/elders" "$psb/w-buiten/build"; age "$psb/elders"
+mk "$bh2/$(key "$psb/repo2")/build/ios" old; age "$bh2/$(key "$psb/repo2")"
+rm "$psb/repo2/.build" && ln -s "$psb/nergens" "$psb/repo2/.build"   # kapot: alleen een echte run herstelt
+mk "$(kd bestaand)/.build/pleya-verify" old; age "$(kd bestaand)"
+mk "$(kd prunable)/build/ios" old; age "$(kd prunable)"; rm -rf "$psb/w-prunable"
+wees() { mk "$bh2/$1/build/x" "${2:-old}"; echo /weg >"$bh2/$1/.owner"; }
+wees wees-oud; mk "$bh2/wees-oud/tvos/build" old
+wees wees-ds; touch "$bh2/wees-ds/.DS_Store"
+wees wees-sdk; mk "$bh2/wees-sdk/flutter/bin" old
+wees wees-tvos; mk "$bh2/wees-tvos/tvos/anders" old
+wees wees-cwd
+mk "$bh2/wees-zonder/build" old
+mkdir -p "$psb/kloon"; wees wees-kloon; echo "$psb/kloon" >"$bh2/wees-kloon/.owner"
+age "$bh2"/wees-*
+wees wees-vers new
+# Processen met hun werkmap in een worktree, een sleutelmap en een wees.
+for d in "$psb/w-cwd" "$(kd keycwd)/tvos" "$bh2/wees-cwd/build"; do
+  (cd "$d" && exec sleep 300) & pids+=" $!"
+done
 run2() {
-  PATH="$psb/bin2:$PATH" HOME="$psb/home" PLEYA_WORKTREES_DIR="$psb/geen-trees" \
-    PLEYA_PRUNE_TMPDIR="$psb/tmp2" PLEYA_BUILD_HOME="$bh2" "$psb/repo2/scripts/prune_old_builds.sh" "$@"
+  PATH="$psb/bin2:$PATH" HOME="${H2:-$psb/home}" PLEYA_WORKTREES_DIR="$psb/geen-trees" \
+    PLEYA_PRUNE_TMPDIR="$psb/tmp2" PLEYA_BUILD_HOME="${BH2:-$bh2}" "$psb/repo2/scripts/prune_old_builds.sh" "$@"
 }
-gone2=("$bh2/$(key "$psb/w-oud")/build/ios" "$bh2/$(key "$psb/w-tv")/tvos/build/Release" "$bh2/wees-oud")
-kept2=("$bh2/$(key "$psb/w-vers")/build/ios/f" "$bh2/$(key "$psb/w-bestaand")/.build/pleya-verify/f"
-  "$bh2/$(key "$psb/w-prunable")/build/ios/f" "$bh2/wees-sdk/flutter/bin/f" "$bh2/wees-vers/build/ios/f"
-  "$bh2/wees-kloon/build/f")
+gone2=("$(kd oud)/build/ios" "$(kd tv)/tvos/build/Release" "$bh2/wees-oud" "$bh2/wees-ds")
+kept2=("$(kd vers)/build/ios/f" "$(kd bestaand)/.build/pleya-verify/f" "$(kd prunable)/build/ios/f"
+  "$(kd cwd)/build/ios/f" "$(kd keycwd)/build/ios/f" "$psb/elders/f"
+  "$bh2/$(key "$psb/repo2")/build/ios/f"
+  "$bh2/wees-sdk/flutter/bin/f" "$bh2/wees-tvos/tvos/anders/f" "$bh2/wees-vers/build/x/f"
+  "$bh2/wees-kloon/build/x/f" "$bh2/wees-zonder/build/f" "$bh2/wees-cwd/build/x/f")
+links_ok() { [[ "$(readlink "$psb/repo2/.build")" == "$psb/nergens" ]]; }
 out=$(run2 --dry-run)
 for p in "${gone2[@]}" "${kept2[@]}"; do [[ -e "$p" ]] || { echo "FOUT: dry-run wiste $p"; exit 1; }; done
-for p in "$bh2/$(key "$psb/w-oud")/build" "$bh2/$(key "$psb/w-tv")/tvos/build" "$bh2/wees-oud"; do
+for p in "$(kd oud)/build" "$(kd tv)/tvos/build" "$bh2/wees-oud" "$bh2/wees-ds"; do
   grep -qE "zou (leegmaken|verwijderen) \([0-9]+ MB\) $p\$" <<<"$out" || { echo "FOUT: dry-run noemt $p niet"; exit 1; }
 done
+grep -qF "houdt $bh2/wees-zonder (eigenaar onbekend" <<<"$out" || { echo "FOUT: dry-run meldt wees-zonder niet"; exit 1; }
+links_ok || { echo "FOUT: dry-run veranderde een symlink"; exit 1; }
 PLEYA_KEEP_BUILDS=1 run2
 for p in "${gone2[@]}"; do [[ -e "$p" ]] || { echo "FOUT: PLEYA_KEEP_BUILDS=1 wiste $p"; exit 1; }; done
+links_ok || { echo "FOUT: PLEYA_KEEP_BUILDS=1 veranderde een symlink"; exit 1; }
 PATH="$sandbox/bin:$PATH" run2 >/dev/null 2>&1   # falende lsof uit het blok hierboven
 for p in "${gone2[@]}"; do [[ -e "$p" ]] || { echo "FOUT: met falende lsof is $p gewist"; exit 1; }; done
-run2 >/dev/null
+err=$(run2 2>&1 >/dev/null) || { echo "FOUT: prune brak af: $err"; exit 1; }
 for p in "${gone2[@]}"; do [[ ! -e "$p" ]] || { echo "FOUT: $p staat er nog"; exit 1; }; done
 for p in "${kept2[@]}"; do [[ -e "$p" ]] || { echo "FOUT: $p is gewist"; exit 1; }; done
 for rel in build tvos/build; do
   w=oud; [[ "$rel" == tvos/build ]] && w=tv
-  [[ -L "$psb/w-$w/$rel" && -d "$bh2/$(key "$psb/w-$w")/$rel" ]] \
+  [[ -L "$psb/w-$w/$rel" && -d "$(kd $w)/$rel" ]] \
     || { echo "FOUT: symlink of lege doelmap $rel van w-$w is weg"; exit 1; }
 done
+grep -qF "weigert $psb/elders" <<<"$err" || { echo "FOUT: symlink naar buiten niet geweigerd"; exit 1; }
+grep -qF "kon $(kd ro)/build niet" <<<"$err" || { echo "FOUT: alleen-lezen map niet gemeld"; exit 1; }
+[[ "$(readlink "$psb/repo2/.build")" == "$bh2/$(key "$psb/repo2")/.build" ]] \
+  || { echo "FOUT: echte run herstelde de kapotte .build-symlink niet"; exit 1; }
+chmod 755 "$(kd ro)/build/ro"
+# Verkeerde PLEYA_BUILD_HOME: andere naam, of gelijk aan $HOME.
+for bh3 in "$psb/ssd3/builds" "$psb/ssd4/pleya-builds"; do
+  mkdir -p "$bh3/wees/build" && touch "$bh3/wees/build/f" && echo /weg >"$bh3/wees/.owner"; age "$bh3/wees"
+  h3="$psb/home"; [[ "$bh3" == */pleya-builds ]] && h3="$bh3"
+  err=$(H2="$h3" BH2="$bh3" run2 2>&1 >/dev/null)
+  [[ -e "$bh3/wees/build/f" ]] || { echo "FOUT: wees in $bh3 is gewist"; exit 1; }
+  grep -qF "PLEYA_BUILD_HOME=$bh3" <<<"$err" || { echo "FOUT: $bh3 niet geweigerd"; exit 1; }
+done
+# shellcheck disable=SC2086 # pids is een lijst
+kill $pids 2>/dev/null || true
 
 echo "test_prune_old_builds: OK"
