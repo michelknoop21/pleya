@@ -48,17 +48,20 @@ Future<ProcessResult> runBounded(
   if (queuedBuild && workingDirectory == null) {
     throw ArgumentError('A queued Flutter build needs its repository workingDirectory');
   }
+  // The child starts inside workingDirectory, so a relative root (CI passes
+  // `../..`) would resolve twice. Anchor the script paths to this process.
+  final root = queuedBuild ? Directory(workingDirectory!).absolute.path : '';
   final process = await Process.start(
     queuedBuild ? 'python3' : executable,
     queuedBuild
         ? [
-            '$workingDirectory/scripts/heavy_queue.py',
+            '$root/scripts/heavy_queue.py',
             'run',
             '--label',
             'verify-flutter-build',
             '--',
             'python3',
-            '$workingDirectory/scripts/verify_queued_build.py',
+            '$root/scripts/verify_queued_build.py',
             executable,
             ...arguments,
           ]
