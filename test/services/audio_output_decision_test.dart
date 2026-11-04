@@ -316,7 +316,7 @@ void main() {
     });
 
     test('a stereo count on a non-digital route still means stereo', () {
-      // The phone speaker and AirPods keep the old behaviour: nothing to
+      // The phone speaker and plain headphones keep the old behaviour: nothing to
       // widen to, so asking mpv for 5.1 would only cost an AO reload.
       final route = AppleAudioRoute.fromMap(const {
         'maximumOutputNumberOfChannels': 2,

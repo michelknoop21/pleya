@@ -506,7 +506,15 @@ class AudioOutputCoordinator {
         // start ... diff=5.605` and 6.3 s of silence after HDMI to AirPods. An
         // exact seek to where playback stands flushes the decoders and filters,
         // so audio restarts at the picture's position after a short hitch.
-        if (!_disposed) await player.command(['seek', '0', 'relative+exact']);
+        // Live and not-yet-loaded streams refuse the seek. That is expected and
+        // changes nothing else, so it must not read as a failed apply.
+        if (!_disposed) {
+          try {
+            await player.command(['seek', '0', 'relative+exact']);
+          } catch (e) {
+            appLogger.d('Resync seek after a device change was refused: $e');
+          }
+        }
       }
     } catch (e, st) {
       // Nothing reloaded the AO yet, so keep the device change for the next
