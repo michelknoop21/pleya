@@ -73,12 +73,14 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     CacheManager? artworkCache,
     Future<LocalPosterResult> Function(String, Map<String, dynamic>)? artworkRevalidator,
     DateTime Function()? artworkClock,
+    DateTime Function()? clock,
   }) : _changes = changes,
        _directory = directory,
        _availableBytes = availableBytes ?? _readAvailableBytes,
        _artworkCache = artworkCache ?? PlexImageCacheManager.instance,
        _artworkRevalidator = artworkRevalidator ?? revalidateLocalPoster,
        _artworkClock = artworkClock ?? DateTime.now,
+       _clock = clock ?? DateTime.now,
        _posterRevalidator =
            posterRevalidator ??
            (posterLoader == null
@@ -109,6 +111,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   final CacheManager _artworkCache;
   final Future<LocalPosterResult> Function(String, Map<String, dynamic>) _artworkRevalidator;
   final DateTime Function() _artworkClock;
+  final DateTime Function() _clock;
   // Mounted leases only, bounded like the existing prefetch window. A rebuild
   // reuses its lease; disposal unregisters it; duplicate variants share IO.
   final Map<Object, VisibleArtworkRequest> _visibleArtwork = {};
@@ -183,6 +186,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       _running = false;
       if (valid()) safeNotifyListeners();
       if (_visibleDirty && valid()) scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));
+      // A tap on "sync now" while this ran.
+      if (_forcePending && !isDisposed) scheduleMicrotask(() => unawaited(synchronize()));
     }
   }
 
@@ -598,16 +603,35 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     if (!_running) unawaited(synchronize());
   }
 
-  /// A library whose last full scan is younger than this is skipped by the
-  /// periodic and resume triggers. A full scan walks every show and season, so
-  /// running it every ten minutes kept the UI isolate busy while the user
-  /// navigated. [synchronize] with `force` (the manual button) ignores it.
-  static const rescanAfter = Duration(hours: 6);
+  /// A library whose last full scan is younger than this, and whose server
+  /// `updatedAt` has not moved since that scan, is skipped by the periodic,
+  /// resume and dependency triggers. A full scan walks every show and season,
+  /// so running it every ten minutes kept the UI isolate busy while the user
+  /// navigated. The scan is also what refreshes watch state in the snapshot,
+  /// so this bounds how stale a watched or in-progress mark from another
+  /// device can be. [synchronize] with `force` (the manual button) ignores it.
+  static const unchangedRescanAfter = Duration(hours: 1);
+
+  /// A forced sync that could not run in full: requested while another sync
+  /// ran, or cut off by a dependency change. The next sync takes it over.
+  bool _forcePending = false;
+
+  bool _recentlyScanned(LocalLibraryStore store, MediaLibrary library) {
+    final completedAt = store.completedAt(library.globalKey);
+    if (completedAt == null || store.completedUpdatedAt(library.globalKey) != library.updatedAt) return false;
+    final age = _clock().difference(completedAt);
+    // A clock set back must not stretch the window.
+    return !age.isNegative && age < unchangedRescanAfter;
+  }
 
   Future<void> synchronize({bool force = false}) async {
     final store = _store;
+    if (force) _forcePending = true;
     if (_running || store == null || isDisposed) return;
     if (!enabled) {
+      // Nothing to force while off; a kept flag would rerun this from
+      // revalidateVisibleArtwork without end.
+      _forcePending = false;
       await revalidateVisibleArtwork();
       state = LocalLibraryState.disabled;
       safeNotifyListeners();
@@ -623,6 +647,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       return;
     }
     _running = true;
+    final forced = _forcePending;
+    _forcePending = false;
     final generation = _generation;
     bool valid() => !isDisposed && generation == _generation && enabled && _foreground && _allowedNetwork;
     state = LocalLibraryState.syncing;
@@ -647,8 +673,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     try {
       for (final library in librariesForSync().where(_allowedLibrary)) {
         if (!valid()) throw LocalLibraryPaused();
-        final completedAt = store.completedAt(library.globalKey);
-        if (!force && completedAt != null && DateTime.now().difference(completedAt) < rescanAfter) continue;
+        if (!forced && _recentlyScanned(store, library)) continue;
         final client = clientFor(ServerId(library.serverId!));
         if (client == null || client.isOfflineMode) {
           failed = true;
@@ -710,12 +735,15 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       }
       _running = false;
       if (_visibleDirty && !isDisposed) scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));
+      if (forced && (paused || generation != _generation)) _forcePending = true;
       if (!isDisposed) {
         if (generation != _generation) {
           state = enabled ? LocalLibraryState.paused : LocalLibraryState.disabled;
           if (enabled && _foreground && _allowedNetwork) scheduleMicrotask(() => unawaited(synchronize()));
         } else if (!paused) {
           state = failed ? LocalLibraryState.error : LocalLibraryState.ready;
+          // A tap on "sync now" while this sync ran.
+          if (_forcePending) scheduleMicrotask(() => unawaited(synchronize()));
         }
         safeNotifyListeners();
       }

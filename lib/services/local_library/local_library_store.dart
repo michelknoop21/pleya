@@ -25,6 +25,8 @@ class LocalLibraryStore {
   final Map<String, MediaLibrary> _libraries = {};
   final Map<String, Map<String, MediaItem>> _items = {};
   final Map<String, DateTime> _completed = {};
+  // The server's `updatedAt` for the library at its last complete scan.
+  final Map<String, int> _completedUpdatedAt = {};
   final Map<String, String> _posters = {};
   final Map<String, Map<String, dynamic>> _posterFreshness = {};
   final List<({DateTime at, bool priority})> _posterAttempts = [];
@@ -90,6 +92,7 @@ class LocalLibraryStore {
   List<MediaLibrary> get libraries => _libraries.values.toList(growable: false);
   bool isComplete(String key) => _completed.containsKey(key);
   DateTime? completedAt(String key) => _completed[key];
+  int? completedUpdatedAt(String key) => _completedUpdatedAt[key];
   DateTime? get lastSync =>
       _completed.values.isEmpty ? null : _completed.values.reduce((a, b) => a.isBefore(b) ? a : b);
   MediaItem? item(String serverId, String id) {
@@ -172,11 +175,18 @@ class LocalLibraryStore {
           final item = MediaItem.fromJson(value as Map<String, dynamic>);
           rows[item.globalKey] = item;
         }
-        return (library: library, rows: rows, completed: DateTime.tryParse(data['completed'] as String? ?? ''));
+        return (
+          library: library,
+          rows: rows,
+          completed: DateTime.tryParse(data['completed'] as String? ?? ''),
+          completedUpdatedAt: data['completedUpdatedAt'] as int?,
+        );
       });
       _libraries[snapshot.library.globalKey] = snapshot.library;
       _items[snapshot.library.globalKey] = snapshot.rows;
       if (snapshot.completed != null) _completed[snapshot.library.globalKey] = snapshot.completed!;
+      if (snapshot.completedUpdatedAt case final updatedAt?)
+        _completedUpdatedAt[snapshot.library.globalKey] = updatedAt;
     }
     final posters = Directory('${directory.path}/posters');
     if (await posters.exists()) {
@@ -265,7 +275,8 @@ class LocalLibraryStore {
     final key = library.globalKey;
     final next = <String, MediaItem>{if (!complete) ...?_items[key], for (final item in items) item.globalKey: item};
     final completed = complete ? DateTime.now() : _completed[key];
-    await _persistLibrary(library, next, completed, valid);
+    final completedUpdatedAt = complete ? library.updatedAt : _completedUpdatedAt[key];
+    await _persistLibrary(library, next, completed, completedUpdatedAt, valid);
     if (valid() && complete) await _pruneUnreferencedPosters();
   });
 
@@ -273,6 +284,7 @@ class LocalLibraryStore {
     MediaLibrary library,
     Map<String, MediaItem> next,
     DateTime? completed,
+    int? completedUpdatedAt,
     bool Function() valid,
   ) async {
     final key = library.globalKey;
@@ -286,7 +298,7 @@ class LocalLibraryStore {
         'serverName': library.serverName,
       },
     });
-    final tail = jsonEncode({'completed': completed?.toIso8601String()});
+    final tail = jsonEncode({'completed': completed?.toIso8601String(), 'completedUpdatedAt': completedUpdatedAt});
     await _atomicRows(
       _libraryFile(key),
       '${head.substring(0, head.length - 1)},"items":[',
@@ -298,6 +310,11 @@ class LocalLibraryStore {
     _libraries[key] = library;
     _items[key] = next;
     if (completed != null) _completed[key] = completed;
+    if (completedUpdatedAt != null) {
+      _completedUpdatedAt[key] = completedUpdatedAt;
+    } else {
+      _completedUpdatedAt.remove(key);
+    }
   }
 
   /// A confirmed source deletion changes membership without certifying an
@@ -323,6 +340,7 @@ class LocalLibraryStore {
             if (!removed.contains(i.id)) i.globalKey: i,
         },
         _completed[library.globalKey],
+        _completedUpdatedAt[library.globalKey],
         valid,
       );
     }
@@ -430,6 +448,7 @@ class LocalLibraryStore {
     _libraries.clear();
     _items.clear();
     _completed.clear();
+    _completedUpdatedAt.clear();
     _posters.clear();
     _posterFreshness.clear();
     _artworkVariants.clear();

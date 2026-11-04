@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/providers/local_library_provider.dart';
 import 'package:pleya/utils/external_ids.dart';
@@ -471,5 +472,127 @@ void main() {
     changes.notifyListeners();
     expect(provider.readBoundaryRevision, greaterThan(boundary));
     expect(provider.items, isEmpty);
+  });
+
+  group('rescan window', () {
+    late DateTime now;
+    late List<MediaLibrary> libraries;
+    const second = MediaLibrary(
+      id: 'films-2',
+      backend: MediaBackend.plex,
+      title: 'Films 2',
+      kind: MediaKind.movie,
+      serverId: 'one',
+    );
+
+    Future<void> open() async {
+      provider.dispose();
+      now = DateTime.now();
+      libraries = [library];
+      wifi = true;
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => libraries,
+        clientFor: (_) => client,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => true,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+        posterLoader: (_, _) async => Uint8List.fromList([1, 2, 3]),
+        clock: () => now,
+      );
+      await provider.ready;
+      await provider.setEnabled(true);
+      await until(provider, () => provider.state == LocalLibraryState.ready);
+      // The store stamps the completion with the real clock.
+      now = DateTime.now();
+      expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 2);
+      client.rows = [film('a'), film('b'), film('c')];
+    }
+
+    int? total(MediaLibrary l) => provider.page(l.globalKey, const LibraryQuery())?.totalCount;
+
+    test('an unchanged library is scanned again once the window has passed', () async {
+      await open();
+      now = now.add(LocalLibraryProvider.unchangedRescanAfter - const Duration(minutes: 1));
+      await provider.synchronize();
+      expect(total(library), 2);
+
+      now = now.add(const Duration(minutes: 2));
+      await provider.synchronize();
+      expect(total(library), 3);
+    });
+
+    test('a library whose server updatedAt moved is scanned again inside the window', () async {
+      await open();
+      libraries = [library.copyWith(updatedAt: 1000)];
+      changes.notifyListeners();
+      await until(provider, () => total(library) == 3);
+    });
+
+    test('the updatedAt of the last complete scan survives a restart', () async {
+      libraries = [library.copyWith(updatedAt: 1000)];
+      final seeded = LocalLibraryStore(root);
+      await seeded.load();
+      await seeded.saveLibrary(libraries.single, client.rows, complete: true);
+      final reopened = LocalLibraryStore(root);
+      await reopened.load();
+      expect(reopened.completedUpdatedAt(library.globalKey), 1000);
+    });
+
+    test('a newly eligible library is scanned while a recently scanned one is skipped', () async {
+      await open();
+      libraries = [library, second];
+      await provider.synchronize();
+      expect(total(second), 3);
+      expect(total(library), 2);
+    });
+
+    test('a forced sync cut off by a dependency change stays forced in the follow-up', () async {
+      await open();
+      final blocked = Client()
+        ..rows = [film('a'), film('b'), film('c')]
+        ..gate = Completer<void>();
+      client = blocked;
+      final run = provider.synchronize(force: true);
+      await blocked.entered.future;
+      client = Client()..rows = [film('a'), film('b'), film('c')];
+      changes.notifyListeners(); // a new client identity: a new generation
+      blocked.gate!.complete();
+      await run;
+      await until(provider, () => total(library) == 3);
+    });
+
+    test('a tap on sync now while the library is off does not spin', () async {
+      await open();
+      await provider.setEnabled(false);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      var notifications = 0;
+      void count() => notifications++;
+      provider.addListener(count);
+      addTearDown(() => provider.removeListener(count));
+      await provider.synchronize(force: true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(provider.state, LocalLibraryState.disabled);
+      expect(notifications, lessThan(5), reason: 'no sync that reschedules itself');
+    });
+
+    test('a tap on sync now while another sync runs is not dropped', () async {
+      await open();
+      client = Client()
+        ..rows = [film('a'), film('b'), film('c')]
+        ..gate = Completer<void>();
+      libraries = [library, second];
+      // Skips the recent library, then waits on the new one.
+      final run = provider.synchronize();
+      await client.entered.future;
+      await provider.synchronize(force: true);
+      client.gate!.complete();
+      await run;
+      await until(provider, () => total(library) == 3);
+    });
   });
 }
