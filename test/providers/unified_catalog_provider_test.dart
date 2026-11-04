@@ -188,6 +188,9 @@ void main() {
     provider.dispose();
     local.dispose();
     changes.dispose();
+    // Wait for queued store writes; deleting the folder under one made the
+    // teardown fail now and then.
+    await local.pendingStoreWrites;
     await dir.delete(recursive: true);
     provider = UnifiedCatalogProvider(
       multiServer: multiServer,
@@ -245,6 +248,9 @@ void main() {
     provider.dispose();
     local.dispose();
     changes.dispose();
+    // Wait for queued store writes; deleting the folder under one made the
+    // teardown fail now and then.
+    await local.pendingStoreWrites;
     await dir.delete(recursive: true);
     // tearDown owns the normal provider reference.
     provider = UnifiedCatalogProvider(
