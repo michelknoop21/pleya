@@ -1904,7 +1904,15 @@ class _MainScreenState extends State<MainScreen>
         _focus.focusSidebar(
           focusActiveItem: () {
             _tvBarEntry = null;
-            if (mounted) _focusTvPill(target);
+            if (!mounted) return;
+            if (_tvNavNodes.get(target.focusKey).canRequestFocus) {
+              _focusTvPill(target);
+              return;
+            }
+            // The page's pill cannot take the remote: make the page the pill
+            // the scope restored, so ring and page still agree (593-R2-M3).
+            final held = _tvNav.destinations.where((d) => _tvNavNodes.isFocused(d.focusKey)).firstOrNull;
+            if (held != null) _focusTvDestination(held);
           },
         );
         _tvBarEntry = (target: target, intent: _focus.intent);
@@ -2381,8 +2389,10 @@ class _MainScreenState extends State<MainScreen>
       _tvNav.syncToTab(tab);
       // The ring is the page (DEC-XXX): a page changed from outside the bar
       // (Menu to Home, a deferred startup section, the companion remote) takes
-      // a ring standing on another pill with it.
-      if (_tvNav.destinations.any((d) => d != _tvNav.active && _tvNavNodes.isFocused(d.focusKey))) {
+      // the ring with it, also off the avatar or the reconnect item (review
+      // 593-R2-M1), or a second Menu would leave the app with the ring never
+      // having shown Home.
+      if (_tvNavNodes.hasFocus && !_tvNavNodes.isFocused(_tvNav.active.focusKey)) {
         _focusTvPill(_tvNav.active);
       }
     }

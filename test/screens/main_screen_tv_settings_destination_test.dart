@@ -223,6 +223,31 @@ void main() {
     await h.dispose(tester);
   });
 
+  // Review 593-R2-M1 / M3: a page changed from outside the bar takes the ring
+  // with it, also when the ring stands on the avatar. Negative control: with
+  // the ring-follow check counting destination pills only, the avatar keeps
+  // the focus and a second Menu would leave the app.
+  testWidgets('DEC-XXX: Menu with the ring on the avatar goes Home and takes the ring along', (tester) async {
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onFocusNav();
+    await h.settle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.search);
+    h.shell.navNodes.get(tvNavProfileFocusKey).requestFocus();
+    await h.settle();
+    expect(h.shell.navNodes.isFocused(tvNavProfileFocusKey), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.home);
+    expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue, reason: 'the ring follows the page');
+    expect(h.shell.navNodes.isFocused(tvNavProfileFocusKey), isFalse);
+    expect(TvosSystemNavigationService.automationState()['enabled'], isTrue, reason: 'on Home Menu is the system');
+
+    await h.dispose(tester);
+  });
+
   // Review 593-M2: inside a settle window ring and page can differ, so Menu
   // is not handed to tvOS until the window closes.
   testWidgets('DEC-XXX: no Menu passthrough while a sweep is settling', (tester) async {

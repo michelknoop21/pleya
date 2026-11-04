@@ -173,6 +173,33 @@ void main() {
     });
   }
 
+  // Review 593-R2-M3: on Android TV the page's pill is focused a frame after
+  // the bar scope. If it cannot take the remote then, the pill the scope
+  // restored becomes the page, so ring and page agree. Negative control:
+  // without the fallback, Mijn Pleya stays on screen with the ring on Home.
+  testWidgets('Android TV: UP when the page pill cannot take focus makes the ring pill the page', (tester) async {
+    await androidTv();
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onFocusNav();
+    await h.settle();
+    h.shell.onFocusContent(restorePreviousFocus: false);
+    await h.settle();
+    h.shell.openLibraries!();
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.myPleya);
+
+    final pill = h.shell.navNodes.get(TvDestinationId.myPleya.focusKey);
+    pill.canRequestFocus = false;
+    h.shell.onFocusNav();
+    await h.settle();
+    await h.settle();
+    final ring = h.shell.coordinator.destinations.where((d) => h.shell.navNodes.isFocused(d.focusKey)).toList();
+    expect(ring, hasLength(1), reason: 'the remote is on one pill');
+    expect(h.shell.coordinator.active, ring.single, reason: 'ring and page agree');
+    pill.canRequestFocus = true;
+    await h.dispose(tester);
+  });
+
   // OFF6. A rebind of the profile that was already active (a reconnect, a
   // borrowed or removed connection) used to run the profile-switch cleanup and
   // drop the viewer on the bare hub. Same profile, same place.
