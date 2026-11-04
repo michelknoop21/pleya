@@ -1,0 +1,11 @@
+# Web: film- en seriedetails volgens de goedgekeurde compositie
+
+Roadmap: C-05 / S8. Unified impact: presentatie van bestaande Web-itemgegevens en acties; API, bibliotheekscope, playbackcontracten en rechten blijven gelijk.
+
+De vorige Web-release veranderde vooral Home en sidebar; de film- en seriedetails kregen alleen cosmetische aanpassingen. Deze correctie bouwt de eerder goedgekeurde brede beeldheader met titel, metadata, afspeel-/hervatactie en ronde persoonlijke acties. Cast en crew staan onder de filmheader; bij series staan de bestaande seizoenskaarten direct onder de header. Versiekeuze en video/audio/ondertitelinformatie blijven beschikbaar onder de header. Starten vanaf het begin en bestaande beheerkoppelingen staan onder Meer opties. De echte mobiele poster, aflevering/serie-ancestry, cursorpaginering, fout/retry, kijkstatus en bestaande dialogen blijven behouden. Ook met uitsluitend de collections- of playlists-capability blijft Toevoegen aan zichtbaar.
+
+Bewijs: 25 gerichte detail/persoonlijke-actietests slagen; drie nieuwe regressies falen alle drie met de oorspronkelijke detailroute. Svelte check: nul fouten/waarschuwingen; statische productiebuild geslaagd. Lokale echte browserroutes met synthetische API-data gecontroleerd op 1280/1440/1920 en 393 pixels: gedecodeerde artwork, geen horizontale overflow, hervatpositie en stabiele versiekeuze, Meer/Escape, beoordeling en lijstendialogen met focusherstel, en bereikbare seizoenen. Licht zonder artwork apart vastgelegd. Geen echte gebruikersdata of live mutaties gebruikt.
+
+Visueel doel: eerder goedgekeurde `review/plex-proposal/film-1440.png` en `series-1440.png`. Bewijs en screenshotmanifest staan buiten de bron in `review/web-details-report.md`. Werkelijke beschikbare metadata blijft leidend; geen fictieve personenfoto’s, routes of streamingacties toegevoegd. Meer opties opent in de documentstroom zodat de inhoud ook in smalle vensters bereikbaar blijft.
+
+Release: lokaal geïmplementeerd, nog niet live. Onafhankelijke review, normale repositorychecks en publicatie/CI/merge/NAS-acceptatie volgen de bestaande releaseprocedure. De eerdere publicatieblokkade voor de aparte logocorrectie wordt hiermee niet omzeild. Native macOS/TestFlight blijft afzonderlijk open.

@@ -8,27 +8,31 @@
   lege lijst onder "Audio" zou beloven dat er audio is.
 -->
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import Panel from './Panel.svelte';
   import type { Version } from '../api/types';
   import { formatDuration, formatLanguage } from '../util/format';
   import { t } from '../i18n';
 
-  let { version }: { version: Version } = $props();
+  let { version, plain = false, picker }: { version: Version; plain?: boolean; picker?: Snippet } = $props();
 
   const summary = $derived(
     [version.container, formatDuration(version.duration_ms)].filter(Boolean).join(' · ')
   );
 </script>
 
-<Panel level={2}>
-  {#snippet title()}{t('item.versions')}{/snippet}
-
-  <div class="version">
+{#snippet content()}
+  <div class="version" class:version--plain={plain}>
+    <div class="version__selection">
+    {@render picker?.()}
     {#if summary}
       <p class="t-small version__summary">{summary}</p>
     {/if}
 
+    </div>
+    <div class="version__av">
     {#if version.video_streams && version.video_streams.length > 0}
+      <div class="version__group">
       <h3 class="version__kind">{t('item.video')}</h3>
       <ul class="streams">
         {#each version.video_streams as stream (stream.id)}
@@ -44,9 +48,11 @@
           </li>
         {/each}
       </ul>
+      </div>
     {/if}
 
     {#if version.audio_streams && version.audio_streams.length > 0}
+      <div class="version__group">
       <h3 class="version__kind">{t('item.audio')}</h3>
       <ul class="streams">
         {#each version.audio_streams as stream (stream.id)}
@@ -63,9 +69,12 @@
           </li>
         {/each}
       </ul>
+      </div>
     {/if}
 
+    </div>
     {#if version.subtitle_streams && version.subtitle_streams.length > 0}
+      <div class="version__group">
       <h3 class="version__kind">{t('item.subtitles')}</h3>
       <ul class="streams">
         {#each version.subtitle_streams as stream (stream.id)}
@@ -82,9 +91,18 @@
           </li>
         {/each}
       </ul>
+      </div>
     {/if}
   </div>
-</Panel>
+{/snippet}
+{#if plain}
+  {@render content()}
+{:else}
+  <Panel level={2}>
+    {#snippet title()}{t('item.versions')}{/snippet}
+    {@render content()}
+  </Panel>
+{/if}
 
 <style>
   .version {
@@ -94,6 +112,11 @@
     min-width: 0;
   }
 
+  .version__group { display: flex; flex-direction: column; gap: var(--space-half); min-width: 0; }
+  .version--plain { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; border-top: 1px solid var(--hairline); padding-top: 24px; }
+  .version__selection, .version__av { display: flex; flex-direction: column; gap: var(--space-half); min-width: 0; }
+  .version__av:empty, .version__selection:empty { display: none; }
+  @media (max-width: 899px) { .version--plain { grid-template-columns: 1fr; gap: 18px; } }
   .version__summary {
     color: var(--ink-3);
   }

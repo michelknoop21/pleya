@@ -176,6 +176,10 @@ export const web = {
   'search.seasonsNote': 'Seasons are listed on the show, not in search results.',
   'search.filters.label': 'Type',
 
+  'item.mediaInfo': 'Versions and media information',
+  'item.moreActions': 'More options',
+  'item.credits': 'Cast and crew',
+  'item.viewSeasons': 'View seasons',
   'item.title': 'Details',
   'item.seasons': 'Seasons',
   'item.episodes': 'Episodes',

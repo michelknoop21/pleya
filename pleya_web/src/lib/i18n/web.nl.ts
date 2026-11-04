@@ -178,6 +178,10 @@ export const webNl = {
   'search.seasonsNote': 'Seizoenen staan bij de serie, niet in de zoekresultaten.',
   'search.filters.label': 'Soort',
 
+  'item.mediaInfo': 'Versies en media-informatie',
+  'item.moreActions': 'Meer opties',
+  'item.credits': 'Cast en crew',
+  'item.viewSeasons': 'Seizoenen bekijken',
   'item.title': 'Titel',
   'item.seasons': 'Seizoenen',
   'item.episodes': 'Afleveringen',
