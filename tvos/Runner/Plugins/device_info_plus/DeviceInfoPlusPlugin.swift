@@ -76,6 +76,9 @@ import UIKit
         "totalDiskSize": totalDisk,
         "isPhysicalDevice": isPhysicalDevice,
         "isiOSAppOnMac": isiOSAppOnMac,
+        // device_info_plus 12.x casts this to a non-null bool; leaving it out
+        // made every iosInfo call on tvOS throw.
+        "isiOSAppOnVision": false,
         "physicalRamSize": physicalRam,
         "availableRamSize": Self.availableMemoryMB(),
         "utsname": [

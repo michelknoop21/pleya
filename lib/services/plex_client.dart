@@ -1221,7 +1221,12 @@ class PlexClient
       final response = await apiCall();
       return parseResponse(response);
     } catch (e) {
-      appLogger.e(errorMessage, error: e);
+      // A cancelled request (client closing, abort trigger) is not a failure.
+      if (e is MediaServerHttpException && e.type == MediaServerHttpErrorType.cancelled) {
+        appLogger.d(errorMessage, error: e);
+      } else {
+        appLogger.e(errorMessage, error: e);
+      }
       return [];
     }
   }
