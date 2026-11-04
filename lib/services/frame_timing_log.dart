@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show FramePhase;
 
 import 'package:flutter/scheduler.dart';
@@ -117,4 +118,13 @@ void startFocusFrameLog() {
       })
       ..ensureVisualUpdate();
   });
+}
+
+/// Writes resident memory and the image cache to the diagnostic log every
+/// [interval] on TV. A long session that grows shows up as a rising series
+/// in an uploaded log, which a single snapshot at the end cannot tell apart
+/// from a large but steady working set.
+Timer? startMemoryCheckpointLog({Duration interval = const Duration(minutes: 5)}) {
+  if (!PlatformDetector.isTV()) return null;
+  return Timer.periodic(interval, (_) => logCheckpoint('MemoryCheckpoint'));
 }

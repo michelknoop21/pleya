@@ -139,6 +139,7 @@ Future<void> main() async {
   _installZeroOffsetPointerGuard(); // Workaround for iPadOS 26.1+ modal dismissal bug
   startFrameTimingLog();
   startFocusFrameLog();
+  startMemoryCheckpointLog();
 
   // On tvOS, Flutter's generated plugin registrant doesn't run (no tvOS
   // target in Flutter's tool), so register platform stores manually for

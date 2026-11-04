@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -71,5 +72,25 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(count() - before, 2);
+  });
+
+  test('on TV a memory checkpoint lands every five minutes', () {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    int count() => MemoryLogOutput.getLogs().where((e) => e.message.startsWith('MemoryCheckpoint rss=')).length;
+    fakeAsync((async) {
+      final before = count();
+      final timer = startMemoryCheckpointLog();
+      async.elapse(const Duration(minutes: 11));
+      timer?.cancel();
+      expect(count() - before, 2);
+    });
+  });
+
+  test('off TV there is no memory checkpoint timer', () {
+    TvDetectionService.debugSetTVOverride(false);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    expect(startMemoryCheckpointLog(), isNull);
   });
 }
