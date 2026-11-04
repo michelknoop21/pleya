@@ -89,6 +89,7 @@ class LocalLibraryStore {
   List<MediaItem> get items => _items.values.expand((v) => v.values).toList(growable: false);
   List<MediaLibrary> get libraries => _libraries.values.toList(growable: false);
   bool isComplete(String key) => _completed.containsKey(key);
+  DateTime? completedAt(String key) => _completed[key];
   DateTime? get lastSync =>
       _completed.values.isEmpty ? null : _completed.values.reduce((a, b) => a.isBefore(b) ? a : b);
   MediaItem? item(String serverId, String id) {

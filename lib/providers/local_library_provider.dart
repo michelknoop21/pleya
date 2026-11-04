@@ -598,7 +598,13 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     if (!_running) unawaited(synchronize());
   }
 
-  Future<void> synchronize() async {
+  /// A library whose last full scan is younger than this is skipped by the
+  /// periodic and resume triggers. A full scan walks every show and season, so
+  /// running it every ten minutes kept the UI isolate busy while the user
+  /// navigated. [synchronize] with `force` (the manual button) ignores it.
+  static const rescanAfter = Duration(hours: 6);
+
+  Future<void> synchronize({bool force = false}) async {
     final store = _store;
     if (_running || store == null || isDisposed) return;
     if (!enabled) {
@@ -641,6 +647,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     try {
       for (final library in librariesForSync().where(_allowedLibrary)) {
         if (!valid()) throw LocalLibraryPaused();
+        final completedAt = store.completedAt(library.globalKey);
+        if (!force && completedAt != null && DateTime.now().difference(completedAt) < rescanAfter) continue;
         final client = clientFor(ServerId(library.serverId!));
         if (client == null || client.isOfflineMode) {
           failed = true;

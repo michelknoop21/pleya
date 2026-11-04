@@ -50,8 +50,14 @@ class Client implements MediaServerClient {
     return const ExternalIds();
   }
 
+  final Map<String, Object> itemErrors = {};
   @override
-  Future<MediaItem?> fetchItem(String id) async => rows.where((i) => i.id == id).firstOrNull;
+  Future<MediaItem?> fetchItem(String id) async {
+    final error = itemErrors[id];
+    if (error != null) throw error;
+    return rows.where((i) => i.id == id).firstOrNull;
+  }
+
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
     String libraryId, {
@@ -305,6 +311,26 @@ void main() {
       isTrue,
       reason: 'nothing stored as final',
     );
+  });
+
+  test('a title whose detail times out keeps its stored row and the scan completes', () async {
+    final stored = film('b').copyWith(summary: 'stored detail');
+    await store.saveLibrary(library, [film('a'), stored], complete: true);
+    client.itemErrors['b'] = TimeoutException('slow');
+
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+
+    expect(store.items.map((i) => i.id), ['a', 'b']);
+    expect(store.items.firstWhere((i) => i.id == 'b').summary, 'stored detail');
+  });
+
+  test('on a first scan a failing title is left for the next scan instead of failing the scan', () async {
+    client.itemErrors['b'] = MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 500);
+
+    await LocalLibrarySync(store: store).syncLibrary(library, client);
+
+    expect(store.items.map((i) => i.id), ['a']);
+    expect(store.isComplete(library.globalKey), isTrue);
   });
 
   test('an unexpected StateError still fails the scan: only lookup failures are tolerated', () async {

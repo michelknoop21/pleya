@@ -455,7 +455,10 @@ void main() {
     final revision = provider.revision;
     expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 2);
     client.rows = [film('a'), film('b'), film('c')];
+    // A library scanned moments ago is not walked again by a periodic trigger.
     await provider.synchronize();
+    expect(provider.items.map((item) => item.id), ['a', 'b']);
+    await provider.synchronize(force: true);
     expect(provider.cachedQueryKeys, isEmpty);
     expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 3);
     expect(provider.items.map((item) => item.id), ['a', 'b', 'c']);

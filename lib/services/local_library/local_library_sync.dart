@@ -119,7 +119,25 @@ class LocalLibrarySync {
           lastViewedAt: candidate.lastViewedAt,
         );
       } else {
-        detail = await client.fetchItem(candidate.id).timeout(const Duration(seconds: 20));
+        var failed = false;
+        try {
+          detail = await client.fetchItem(candidate.id).timeout(const Duration(seconds: 20));
+        } on TimeoutException {
+          failed = true;
+        } on MediaServerHttpException {
+          failed = true;
+        }
+        if (failed) {
+          // One slow or failing title must not abort the whole scan, which then
+          // restarted from zero and never completed. Keep the stored row (its
+          // stale updatedAt makes the next scan ask again) or, on a first scan,
+          // leave the title for the next one.
+          await check();
+          if (old != null) next[old.globalKey] = old;
+          done++;
+          onProgress?.call(done, candidate.displayTitle);
+          return;
+        }
       }
       await check();
       if (detail == null) throw StateError('Item disappeared during library scan');
