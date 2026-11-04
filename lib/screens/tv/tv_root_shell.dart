@@ -111,9 +111,9 @@ class TvRootShell extends StatelessWidget {
 
   final ValueChanged<TvDestinationId> onSelectDestination;
 
-  /// The ring landing on a bar item. Since A-24c (LEESMIJ-v4) that moves the
-  /// ring and leaves the page; [onSelectDestination] changes it. Wired through
-  /// the host so it can also cancel a pending content-focus intent.
+  /// The ring landing on a destination pill, which switches the page
+  /// (DEC-XXX). Wired through the host because the switch also selects the tab
+  /// behind it and cancels a pending content-focus intent.
   final ValueChanged<TvDestinationId> onFocusDestination;
 
   /// Down out of the bar.

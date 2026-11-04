@@ -66,8 +66,8 @@ class TvTopNavigation extends StatefulWidget {
 
   final ValueChanged<TvDestinationId> onSelect;
 
-  /// Reports a focus preview separately from Select. The existing host owns
-  /// explicit activation on every TV platform (A-24c).
+  /// The ring landed on a destination pill. The host switches the page to it
+  /// (DEC-XXX); the avatar and the reconnect item never report here.
   final ValueChanged<TvDestinationId> onFocusDestination;
 
   /// Whether something under Instellingen is waiting on the user — today, a

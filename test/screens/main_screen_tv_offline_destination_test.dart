@@ -103,7 +103,9 @@ void main() {
     });
   }
 
-  testWidgets('NAV-GLASS1 Apple TV: focus previews, Select activates, content returns to active tab', (tester) async {
+  // NAV-GLASS1 under DEC-XXX: the ring on a pill is the page, rapid reversals
+  // end on the pill the ring rests on, and Select on it enters the content.
+  testWidgets('NAV-GLASS1 Apple TV: focus switches, reversals settle, Select enters the content', (tester) async {
     appleTv();
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
@@ -113,13 +115,13 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await h.settle();
     expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
-    expect(h.shell.coordinator.active, TvDestinationId.home, reason: 'focus alone must not switch pages');
+    expect(h.shell.coordinator.active, TvDestinationId.series, reason: 'the ring on the pill is the page');
 
     h.shell.onFocusContent();
     await h.settle();
     h.shell.onFocusNav();
     await h.settle();
-    expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue, reason: 'return starts on active tab');
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue, reason: 'return starts on active tab');
 
     for (var i = 0; i < 6; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
@@ -128,13 +130,13 @@ void main() {
       await tester.pump();
     }
     await h.settle();
-    expect(h.shell.coordinator.active, TvDestinationId.home);
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    await h.settle();
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
+    expect(h.shell.coordinator.active, TvDestinationId.series, reason: 'the page ends where the ring rests');
+
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await h.settle();
     expect(h.shell.coordinator.active, TvDestinationId.series);
-    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isFalse, reason: 'Select went into the page');
     await h.dispose(tester);
   });
 

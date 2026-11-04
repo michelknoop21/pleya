@@ -248,7 +248,7 @@ Future<TvMyPleyaPage> pumpTvMyPleyaPage(
                 profile: profile,
                 onSelectDestination: coordinator.activate,
                 // What `MainScreen._focusTvDestination` does with the ring.
-                onFocusDestination: coordinator.focusDestination,
+                onFocusDestination: coordinator.activate,
                 onFocusContent: ({bool restorePreviousFocus = true}) {},
                 onFocusNav: () {},
                 onOpenProfiles: () => unawaited(openAccountMenu()),
