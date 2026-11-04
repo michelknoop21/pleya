@@ -499,6 +499,9 @@ class AudioOutputCoordinator {
         if (!_disposed) _scheduleOutputVerification(decision);
       }
     } catch (e, st) {
+      // Nothing reloaded the AO yet, so keep the device change for the next
+      // apply instead of leaving playback silent.
+      if (deviceChanged && !reloaded) _deviceChanged = true;
       appLogger.w('Applying audio output failed', error: e, stackTrace: st);
     } finally {
       _applying = false;

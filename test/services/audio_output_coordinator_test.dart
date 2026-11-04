@@ -106,8 +106,16 @@ class _FakePlayer implements Player {
 
   final List<List<String>> commands = [];
 
+  bool failNextCommand = false;
+
   @override
-  Future<void> command(List<String> args) async => commands.add(args);
+  Future<void> command(List<String> args) async {
+    if (failNextCommand) {
+      failNextCommand = false;
+      throw StateError('native command failed');
+    }
+    commands.add(args);
+  }
 
   final List<LoudnessEvidence?> evidenceCalls = [];
 
@@ -669,7 +677,10 @@ void main() {
       maximumOutputNumberOfChannels: 8,
     );
 
-    List<List<String>> reloadsAfter(void Function(FakeAsync, AudioOutputCoordinator) act, {double rate = 1.0}) {
+    List<List<String>> reloadsAfter(
+      void Function(FakeAsync, AudioOutputCoordinator, _FakePlayer) act, {
+      double rate = 1.0,
+    }) {
       late List<List<String>> reloads;
       fakeAsync((async) {
         final player = _FakePlayer()..rate = rate;
@@ -679,7 +690,7 @@ void main() {
         coordinator.debugRouteChanged(hdmi); // baseline device
         async.elapse(const Duration(seconds: 1));
         player.commands.clear();
-        act(async, coordinator);
+        act(async, coordinator, player);
         async.elapse(const Duration(seconds: 1));
         reloads = player.commands.where((c) => c.first == 'ao-reload').toList();
         coordinator.dispose();
@@ -691,7 +702,7 @@ void main() {
       // HDMI to AirPods with the same channel budget writes no property, so
       // without the reload ao_avfoundation restarts on an empty queue and
       // playback stays silent until pause and play.
-      expect(reloadsAfter((_, c) => c.debugRouteChanged(airpods)), hasLength(1));
+      expect(reloadsAfter((_, c, _) => c.debugRouteChanged(airpods)), hasLength(1));
     });
 
     test('a rendering-mode event on the same port does not reload', () {
@@ -701,14 +712,14 @@ void main() {
         maximumOutputNumberOfChannels: 8,
         renderingMode: AppleRenderingMode.spatialAudio,
       );
-      expect(reloadsAfter((_, c) => c.debugRouteChanged(spatialOn)), isEmpty);
+      expect(reloadsAfter((_, c, _) => c.debugRouteChanged(spatialOn)), isEmpty);
     });
 
     test('no extra reload when the apply already reloaded the AO', () {
       // Switching passthrough reloads the AO by itself; a second reload on top
       // would only add an audible gap.
       expect(
-        reloadsAfter((async, c) {
+        reloadsAfter((async, c, _) {
           c.debugRouteChanged(airpods);
           settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
           async.flushMicrotasks();
@@ -722,12 +733,24 @@ void main() {
       // At 1.25x the arbiter keeps the bitstream down and writes nothing, so
       // the decision change did not reload the AO and the silence would stay.
       expect(
-        reloadsAfter((async, c) {
+        reloadsAfter((async, c, _) {
           c.debugRouteChanged(airpods);
           settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
           async.flushMicrotasks();
           c.onModeChanged();
         }, rate: 1.25),
+        hasLength(1),
+      );
+    });
+
+    test('a reload that failed is retried on the next apply', () {
+      expect(
+        reloadsAfter((async, c, player) {
+          player.failNextCommand = true;
+          c.debugRouteChanged(airpods);
+          async.elapse(const Duration(seconds: 1));
+          c.onModeChanged();
+        }),
         hasLength(1),
       );
     });
