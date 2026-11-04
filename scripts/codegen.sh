@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+. "$(dirname "$0")/heavy_queue.sh"
+pleya_queue_script "$0" bash "$@"
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # Gegenereerde code hangt aan de SDK-versie; drift hier geeft diffs die pas in

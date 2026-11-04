@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+. "$(dirname "$0")/heavy_queue.sh"
+pleya_queue_script "$0" bash "$@"
 # Harde regels van dart_code_linter, los van `flutter analyze`.
 #
 # `flutter analyze` wacht niet op de plugin, dus welke bestanden die dekt is

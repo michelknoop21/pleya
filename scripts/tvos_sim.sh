@@ -29,6 +29,11 @@
 # Met idb kan invoer ook op een vergrendelde Mac. Alleen de interactieve
 # AppleScript-fallback vereist een ontgrendeld, wakker scherm; Pleya Verify
 # verbiedt die fallback en stopt met een expliciete fout bij idb-problemen.
+. "$(dirname "$0")/heavy_queue.sh"
+if [[ "${1:-}" == "build" ]]; then
+  pleya_queue_script "$0" bash "$@"
+fi
+
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

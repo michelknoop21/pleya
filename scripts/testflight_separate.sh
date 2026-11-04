@@ -22,9 +22,14 @@ TIMEOUT="${TESTFLIGHT_LANE_TIMEOUT:-30m}"
 # Elke lane gaat door de gedeelde wachtrij voor zwaar werk. Die wacht op andere
 # builds in plaats van ze te stoppen: dit script ruimde vroeger met `pkill`
 # elke `flutter build` op de machine op, ook die van een andere sessie.
-# Andere plek voor de wachtrij: PLEYA_HEAVY=/pad/naar/pleya-heavy.
-HEAVY="${PLEYA_HEAVY:-$HOME/bin/pleya-heavy}"
-[ -x "$HEAVY" ] || { echo "FOUT: wachtrij $HEAVY ontbreekt; zet PLEYA_HEAVY." >&2; exit 1; }
+# Standaard de wachtrij uit deze repo (docs/agents/heavy-work.md), zoals
+# testflight_release.sh; een andere kies je met PLEYA_HEAVY=/pad/naar/pleya-heavy.
+if [ -n "${PLEYA_HEAVY:-}" ]; then
+  [ -x "$PLEYA_HEAVY" ] || { echo "FOUT: wachtrij $PLEYA_HEAVY ontbreekt." >&2; exit 1; }
+  heavy() { "$PLEYA_HEAVY" "$@"; }
+else
+  heavy() { python3 scripts/heavy_queue.py "$@"; }
+fi
 
 status=""
 for pf in $LANES; do
@@ -32,7 +37,7 @@ for pf in $LANES; do
   echo "=== $lane (timeout $TIMEOUT) — $(date '+%H:%M:%S') ==="
   # De wachtrij begrenst de lane met zijn eigen procesgroep: na de timeout
   # SIGTERM, 15 s later SIGKILL, en exit 124 zoals coreutils timeout.
-  "$HEAVY" run --label "$lane" --run-timeout "$TIMEOUT" --kill-after 15s -- fastlane "$lane"
+  heavy run --label "$lane" --run-timeout "$TIMEOUT" --kill-after 15s -- fastlane "$lane"
   rc=$?
   case "$rc" in
     0)   status="$status ${pf}:ok" ;;

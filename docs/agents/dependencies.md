@@ -78,6 +78,8 @@ betekent: aan `rules` in het script toevoegen en de bestaande treffers eerst opl
 
 ## Codegen
 
+Local heavy commands use the [shared queue](heavy-work.md). `scripts/codegen.sh` enters it automatically; direct generator or test commands use `scripts/pleya-heavy run -- ...`. Existing codegen triggers and evidence rings remain unchanged.
+
 Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any `@freezed` model or a `lib/i18n/*.i18n.json` file (the base locale is `lib/i18n/en.i18n.json`; `strings.g.dart` is the generated output), run `scripts/codegen.sh`. CI fails if a `.dart` source is newer than its generated `.g.dart`/`.freezed.dart`, and `flutter analyze` **warnings are treated as failures**.
 
 ## Commands and formatting

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+. "$(dirname "$0")/heavy_queue.sh"
+case "${1:-}" in -h|--help) ;; *) pleya_queue_script "$0" bash "$@" ;; esac
 set -uo pipefail
 
 # Git sets GIT_DIR (and friends) for hook invocations. Inside `flutter pub

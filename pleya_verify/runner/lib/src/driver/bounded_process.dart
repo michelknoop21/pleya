@@ -44,9 +44,25 @@ Future<ProcessResult> runBounded(
   bool includeParentEnvironment = true,
   Duration timeout = defaultProcessTimeout,
 }) async {
+  final queuedBuild = Platform.isMacOS && executable == 'flutter' && arguments.isNotEmpty && arguments.first == 'build';
+  if (queuedBuild && workingDirectory == null) {
+    throw ArgumentError('A queued Flutter build needs its repository workingDirectory');
+  }
   final process = await Process.start(
-    executable,
-    arguments,
+    queuedBuild ? 'python3' : executable,
+    queuedBuild
+        ? [
+            '$workingDirectory/scripts/heavy_queue.py',
+            'run',
+            '--label',
+            'verify-flutter-build',
+            '--',
+            'python3',
+            '$workingDirectory/scripts/verify_queued_build.py',
+            executable,
+            ...arguments,
+          ]
+        : arguments,
     workingDirectory: workingDirectory,
     environment: environment,
     includeParentEnvironment: includeParentEnvironment,
