@@ -3,8 +3,9 @@ import 'package:pleya/services/apple_audio_session_service.dart';
 import 'package:pleya/services/audio_output_decision.dart';
 
 /// AirPods once the app has opted into multichannel content: spatial-capable,
-/// but the route itself still reports stereo.
-const _airPodsStereo = AppleAudioRoute(
+/// but the route itself still reports stereo. Spatial makes it multichannel:
+/// downmixing there left the system nothing to spatialize (log 33hdc).
+const _airPodsSpatial = AppleAudioRoute(
   portType: 'BluetoothA2DP',
   spatialAudioEnabled: true,
   supportsMultichannelContent: true,
@@ -104,7 +105,7 @@ void main() {
       // bitstreaming is opt-in again.
       expect(decide(AudioOutputMode.auto, _hdmi, 'eac3'), AudioOutputDecision.pcmMultichannel);
       expect(decide(AudioOutputMode.auto, _hdmi, 'ac3'), AudioOutputDecision.pcmMultichannel);
-      expect(decide(AudioOutputMode.auto, _airPodsStereo, 'eac3'), AudioOutputDecision.pcmStereo);
+      expect(decide(AudioOutputMode.auto, _airPodsSpatial, 'eac3'), AudioOutputDecision.pcmMultichannel);
       expect(decide(AudioOutputMode.auto, _airPodsWide, 'eac3'), AudioOutputDecision.pcmMultichannel);
     });
 
@@ -121,7 +122,7 @@ void main() {
 
     test('an unknown codec changes nothing', () {
       expect(decide(AudioOutputMode.auto, _hdmi, null), AudioOutputDecision.pcmMultichannel);
-      expect(decide(AudioOutputMode.auto, _airPodsStereo, null), AudioOutputDecision.pcmStereo);
+      expect(decide(AudioOutputMode.auto, _airPodsSpatial, null), AudioOutputDecision.pcmMultichannel);
     });
   });
 
@@ -171,7 +172,7 @@ void main() {
   group('passthrough', () {
     test('bitstreams Dolby regardless of what the route reports', () {
       expect(decide(AudioOutputMode.passthrough, _builtIn, 'eac3'), AudioOutputDecision.passthrough);
-      expect(decide(AudioOutputMode.passthrough, _airPodsStereo, 'ac3'), AudioOutputDecision.passthrough);
+      expect(decide(AudioOutputMode.passthrough, _airPodsSpatial, 'ac3'), AudioOutputDecision.passthrough);
     });
 
     test('honours an explicit request when the codec is unreported', () {
@@ -200,7 +201,7 @@ void main() {
   group('pcm', () {
     test('never bitstreams, whatever the route and codec', () {
       expect(decide(AudioOutputMode.pcm, _hdmi, 'eac3'), AudioOutputDecision.pcmMultichannel);
-      expect(decide(AudioOutputMode.pcm, _airPodsStereo, 'eac3'), AudioOutputDecision.pcmStereo);
+      expect(decide(AudioOutputMode.pcm, _airPodsSpatial, 'eac3'), AudioOutputDecision.pcmMultichannel);
       expect(decide(AudioOutputMode.pcm, _builtIn, 'ac3'), AudioOutputDecision.pcmStereo);
     });
   });
@@ -291,6 +292,27 @@ void main() {
       });
 
       expect(route.isMultichannelCapable, isTrue);
+    });
+
+    test('spatial audio on a two-channel route counts as multichannel', () {
+      // Measured on AirPods Pro with the opt-in accepted (log 33hdc): the
+      // count stays at two while spatial is on. Downmixing to stereo there
+      // left the system nothing to spatialize.
+      final route = AppleAudioRoute.fromMap(const {
+        'maximumOutputNumberOfChannels': 2,
+        'outputNumberOfChannels': 2,
+        'supportsMultichannelContent': true,
+        'spatialAudioEnabled': true,
+        'portType': 'BluetoothA2DPOutput',
+        'portName': 'AirPods Pro',
+        'isDigitalOutput': false,
+      });
+
+      expect(route.isMultichannelCapable, isTrue);
+      expect(
+        decideAudioOutput(mode: AudioOutputMode.auto, route: route, audioCodec: 'eac3'),
+        AudioOutputDecision.pcmMultichannel,
+      );
     });
 
     test('a stereo count on a non-digital route still means stereo', () {

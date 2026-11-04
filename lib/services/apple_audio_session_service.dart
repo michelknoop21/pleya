@@ -123,7 +123,14 @@ class AppleAudioRoute {
   /// Widening here is safe because nothing is forced: the coordinator offers
   /// mpv `7.1,5.1,stereo` and mpv picks the first the output actually accepts,
   /// so a genuinely stereo-only HDMI sink still lands on stereo.
-  bool get isMultichannelCapable => maximumOutputNumberOfChannels > 2 || isDigitalPassthroughPort;
+  ///
+  /// A route with spatial audio on counts too. AirPods with the multichannel
+  /// opt-in accepted still report two channels (log 33hdc:
+  /// `max: 2, multichannel: true, spatial: true`), and trusting that count made
+  /// mpv downmix 5.1 to stereo before the system ever saw it, leaving nothing
+  /// to spatialize. The system renders multichannel to the headphones itself.
+  bool get isMultichannelCapable =>
+      maximumOutputNumberOfChannels > 2 || isDigitalPassthroughPort || spatialAudioEnabled;
 
   @override
   String toString() =>

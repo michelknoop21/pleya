@@ -677,11 +677,11 @@ void main() {
       maximumOutputNumberOfChannels: 8,
     );
 
-    List<List<String>> reloadsAfter(
+    List<List<String>> commandsAfter(
       void Function(FakeAsync, AudioOutputCoordinator, _FakePlayer) act, {
       double rate = 1.0,
     }) {
-      late List<List<String>> reloads;
+      late List<List<String>> commands;
       fakeAsync((async) {
         final player = _FakePlayer()..rate = rate;
         final coordinator = AudioOutputCoordinator(player: player, settings: settings);
@@ -692,11 +692,18 @@ void main() {
         player.commands.clear();
         act(async, coordinator, player);
         async.elapse(const Duration(seconds: 1));
-        reloads = player.commands.where((c) => c.first == 'ao-reload').toList();
+        commands = List.of(player.commands);
         coordinator.dispose();
       });
-      return reloads;
+      return commands;
     }
+
+    List<List<String>> reloadsAfter(
+      void Function(FakeAsync, AudioOutputCoordinator, _FakePlayer) act, {
+      double rate = 1.0,
+    }) => commandsAfter(act, rate: rate).where((c) => c.first == 'ao-reload').toList();
+
+    const exactSeek = ['seek', '0', 'relative+exact'];
 
     test('reloads the AO once when nothing else would', () {
       // HDMI to AirPods with the same channel budget writes no property, so
@@ -753,6 +760,37 @@ void main() {
         }),
         hasLength(1),
       );
+    });
+
+    test('resyncs with an exact seek after reloading for a new device', () {
+      // Without it mpv waits for the picture to catch up with audio that was
+      // decoded ahead and then discarded: 6.3 s of silence in log 33hdc.
+      expect(commandsAfter((_, c, _) => c.debugRouteChanged(airpods)), [
+        ['ao-reload'],
+        exactSeek,
+      ]);
+    });
+
+    test('resyncs too when the apply already reloaded the AO itself', () {
+      // The log 33hdc switch reloaded through a passthrough or channel change,
+      // not through ao-reload, and was the one that stayed silent.
+      final commands = commandsAfter((async, c, _) {
+        c.debugRouteChanged(airpods);
+        settings.write(SettingsService.audioOutputMode, AudioOutputMode.passthrough);
+        async.flushMicrotasks();
+        c.onModeChanged();
+      });
+      expect(commands, [exactSeek]);
+    });
+
+    test('no seek for a rendering-mode event on the same port', () {
+      const spatialOn = AppleAudioRoute(
+        portType: 'HDMI',
+        portName: 'TV',
+        maximumOutputNumberOfChannels: 8,
+        renderingMode: AppleRenderingMode.spatialAudio,
+      );
+      expect(commandsAfter((_, c, _) => c.debugRouteChanged(spatialOn)), isEmpty);
     });
   });
 }

@@ -493,10 +493,20 @@ class AudioOutputCoordinator {
         _scheduleOutputVerification(decision);
       }
 
-      if (deviceChanged && !reloaded && !_disposed) {
-        appLogger.i('Audio device changed without an AO reload, reloading the audio output');
-        await player.command(['ao-reload']);
-        if (!_disposed) _scheduleOutputVerification(decision);
+      if (deviceChanged && !_disposed) {
+        if (!reloaded) {
+          appLogger.i('Audio device changed without an AO reload, reloading the audio output');
+          await player.command(['ao-reload']);
+          reloaded = true;
+          if (!_disposed) _scheduleOutputVerification(decision);
+        }
+        // The restarted AO throws away the audio that was already decoded
+        // ahead of the picture, and mpv then waits for the video to catch up
+        // rather than resyncing: log 33hdc (build 434) shows `delaying audio
+        // start ... diff=5.605` and 6.3 s of silence after HDMI to AirPods. An
+        // exact seek to where playback stands flushes the decoders and filters,
+        // so audio restarts at the picture's position after a short hitch.
+        if (!_disposed) await player.command(['seek', '0', 'relative+exact']);
       }
     } catch (e, st) {
       // Nothing reloaded the AO yet, so keep the device change for the next
