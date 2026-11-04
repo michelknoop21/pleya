@@ -629,3 +629,5 @@ Michel heeft ook `pleya-server-subtitle-delivery-proposal.md` expliciet vrijgege
 (29 oktober, DEC-185): embedded levering en selectie/off/burn. Dit is resterend
 S14/S18-werk; de bestaande serverclaims worden hierdoor niet heropend en native
 platform-/hardwareacceptatie blijft afzonderlijk.
+
+4 november 2026 — C-05/S8 Web-Home/tvOS-richting lokaal gebouwd na Michels visueel akkoord en opdracht tot TestFlight/NAS. Carrousel/echte filmselectie/hervatpositie/sidebarstyling behouden capabilities en itemidentiteit;28 gerichte Webtests, echte browserroutes en negatieve hervatcontrole, onafhankelijke fixreview. [Bewijs en grenzen](qa/2026-11-04-web-tvos-billboard.md). S8 blijft gedeeltelijk: normale mainCI/merge/NASacceptatie nog open; native macOS-resizeonderzoek en TestFlight zijn afzonderlijk niet afgerond.

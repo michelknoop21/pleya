@@ -4,13 +4,14 @@ import type { Item, Library } from '../lib/api/types';
 
 const h = vi.hoisted(() => ({
   hub: vi.fn(),
+  libraryItems: vi.fn(async()=>({items:[]})),
   item: vi.fn(),
   capabilities: { watch_state: true, playback_plan: true },
   libraries: [] as Library[]
 }));
 vi.mock('../lib/stores/session.svelte.js', () => ({
   session: {
-    client: { hub: h.hub, item: h.item },
+    client: { hub: h.hub, item: h.item, libraryItems:h.libraryItems },
     get capabilities() { return h.capabilities; },
     get libraries() { return h.libraries; }
   }

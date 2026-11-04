@@ -62,7 +62,7 @@
   const searchActive = $derived(page.url.pathname.startsWith('/search'));
   // De Beheer-pil alleen voor eigenaar of beheerder (S10.1); in beheer zelf
   // wordt de mobiele kop een terugkop naar de index of naar Pleya.
-  let sidebarCompact = $state(false);
+  let sidebarCompact = $state(true);
   const inAdmin = $derived(isAdminPath(page.url.pathname));
   const adminBack = $derived.by(() => {
     const href = adminBackHref(page.url.pathname);
@@ -206,8 +206,8 @@
     flex-direction: column;
   }
 
-  .shell--consumer { margin-left: 232px; --inset: 40px; }
-  .shell--consumer.shell--compact { margin-left: 80px; }
+  .shell--consumer { margin-left: 96px; --inset: 40px; }
+  .shell--consumer.shell--compact { margin-left: 96px; }
 
   .shell__main {
     flex: 1 1 auto;

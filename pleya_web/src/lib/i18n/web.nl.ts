@@ -130,6 +130,10 @@ export const webNl = {
   'home.emptyBody': 'Zodra de server je media heeft gescand, verschijnen nieuwe titels hier.',
   'home.emptyAction': 'Naar Mijn Pleya',
 
+  'hero.featured': 'Uitgelichte films',
+  'hero.previous': 'Vorige uitgelichte film',
+  'hero.next': 'Volgende uitgelichte film',
+  'hero.resume': 'Hervatten',
   'hero.play': 'Afspelen',
   'hero.moreInfo': 'Meer info',
   'hero.kind.movie': 'Film',

@@ -277,11 +277,13 @@
     .detail__head--artwork { grid-template-columns: minmax(0, 1fr); min-height: 460px; padding: clamp(24px, 4vw, 48px); }
     .detail__head--artwork .detail__poster { display: none; }
     .detail__meta { max-width: 720px; }
-    .detail__head h1 { font-family: var(--font-display); font-size: 48px; font-weight: 900; text-transform: uppercase; line-height: 1.08; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+    .detail__head h1 { font-family: var(--font-sans); font-size: clamp(38px,4vw,58px); font-weight: 700; text-transform: none; line-height: 1.08; letter-spacing: -0.045em; overflow-wrap: anywhere; }
     .detail__backdrop { display: block; position: absolute; inset: 0; z-index: -1; }
     .detail__backdrop :global(.artwork) { height: 100%; }
-    .detail__backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--scrim), color-mix(in srgb, var(--scrim) 88%, transparent) 55%, color-mix(in srgb, var(--scrim) 30%, transparent)); }
+    .detail__backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--scrim), color-mix(in srgb, var(--scrim) 80%, transparent) 38%, transparent 86%); }
   }
+
+  .detail__play :global(.btn) { border-radius: 999px; }
 
   .detail__meta {
     display: flex;
