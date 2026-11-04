@@ -21,6 +21,15 @@ import '../download_artwork_helpers.dart';
 
 class LocalLibraryPaused implements Exception {}
 
+/// The scan enumerated the whole library and saved it, but [skipped] titles
+/// without a stored row got no detail answer and are not in the snapshot.
+class LocalLibraryPartialScan implements Exception {
+  const LocalLibraryPartialScan(this.skipped);
+  final int skipped;
+  @override
+  String toString() => 'LocalLibraryPartialScan: $skipped titles left for the next scan';
+}
+
 class LocalPosterResult {
   const LocalPosterResult({this.bytes, this.etag, this.lastModified, required this.variant});
   final Uint8List? bytes; // null means a successful conditional 304.
@@ -326,13 +335,24 @@ class LocalLibrarySync {
       }
       await check();
       if (client is LocalFolderClient && client.hasIncompleteScan) throw StateError('Folder scan is incomplete');
-      // A skipped title is missing from `next`; a complete save would let the
-      // catalog serve the library without it. A checkpoint merge keeps the
-      // library on the server and the next trigger scans it again.
-      await store.saveLibrary(library, next.values.toList(), complete: skipped == 0, isCurrent: valid);
+      // The enumeration proved membership either way, so the rows are replaced
+      // and titles deleted on the server go. A skipped title had no stored row,
+      // so nothing stored is lost; but a complete save would let the catalog
+      // serve the library without it. A partial save leaves a first scan
+      // incomplete, so the catalog keeps reading the server. A library that
+      // was complete stays complete without the new title until a later scan
+      // gets its detail.
+      await store.saveLibrary(
+        library,
+        next.values.toList(),
+        complete: skipped == 0,
+        partial: skipped > 0,
+        isCurrent: valid,
+      );
       if (posterLoader != null || posterRevalidator != null) {
         await syncPosters(next.values, (_) => client, isCurrent: valid);
       }
+      if (skipped > 0) throw LocalLibraryPartialScan(skipped);
     }
   }
 

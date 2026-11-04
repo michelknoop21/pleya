@@ -487,10 +487,12 @@ void main() {
 
     Future<void> open() async {
       provider.dispose();
-      now = DateTime.now();
+      // A fixed date far from the wall clock: the skip check and the store's
+      // completion stamp must read the same clock.
+      now = DateTime.utc(2026, 2, 1);
       libraries = [library];
       wifi = true;
-      provider = LocalLibraryProvider(
+      provider = _SpinGuard(
         profileId: 'a',
         directory: root,
         librariesForSync: () => libraries,
@@ -507,8 +509,6 @@ void main() {
       await provider.ready;
       await provider.setEnabled(true);
       await until(provider, () => provider.state == LocalLibraryState.ready);
-      // The store stamps the completion with the real clock.
-      now = DateTime.now();
       expect(provider.page(library.globalKey, const LibraryQuery())?.totalCount, 2);
       client.rows = [film('a'), film('b'), film('c')];
     }
@@ -540,7 +540,7 @@ void main() {
       await seeded.saveLibrary(libraries.single, client.rows, complete: true);
       final reopened = LocalLibraryStore(root);
       await reopened.load();
-      expect(reopened.completedUpdatedAt(library.globalKey), 1000);
+      expect(reopened.lastScan(library.globalKey)?.updatedAt, 1000);
     });
 
     test('a newly eligible library is scanned while a recently scanned one is skipped', () async {
@@ -569,15 +569,35 @@ void main() {
     test('a tap on sync now while the library is off does not spin', () async {
       await open();
       await provider.setEnabled(false);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      var notifications = 0;
-      void count() => notifications++;
-      provider.addListener(count);
-      addTearDown(() => provider.removeListener(count));
+      final guard = provider as _SpinGuard;
+      final before = guard.calls;
       await provider.synchronize(force: true);
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(provider.state, LocalLibraryState.disabled);
-      expect(notifications, lessThan(5), reason: 'no sync that reschedules itself');
+      // A loop never reaches this line: it starves the timers, and _SpinGuard
+      // breaks it with an uncaught error that fails the test.
+      expect(guard.calls - before, lessThan(5), reason: 'no sync that reschedules itself');
+    });
+
+    test('a library saved without some titles shows an error and is retried hourly, not on every trigger', () async {
+      await open();
+      client.itemErrors['c'] = TimeoutException('slow');
+      now = now.add(LocalLibraryProvider.unchangedRescanAfter);
+      await provider.synchronize();
+      expect(provider.state, LocalLibraryState.error);
+      expect(total(library), 2, reason: 'still complete, without the title that got no answer');
+      expect(client.itemsAsked, contains('c'));
+
+      client.itemsAsked.clear();
+      now = now.add(const Duration(minutes: 10));
+      await provider.synchronize();
+      expect(client.itemsAsked, isEmpty, reason: 'the partial scan counts for the window');
+
+      client.itemErrors.clear();
+      now = now.add(LocalLibraryProvider.unchangedRescanAfter);
+      await provider.synchronize();
+      expect(total(library), 3);
+      expect(provider.state, LocalLibraryState.ready);
     });
 
     test('a tap on sync now while another sync runs is not dropped', () async {
@@ -595,4 +615,32 @@ void main() {
       await until(provider, () => total(library) == 3);
     });
   });
+}
+
+/// Counts [synchronize] entries and breaks a sync that keeps rescheduling
+/// itself: such a microtask loop starves the timers, so a test would hang
+/// instead of failing.
+class _SpinGuard extends LocalLibraryProvider {
+  _SpinGuard({
+    required super.profileId,
+    required super.librariesForSync,
+    required super.clientFor,
+    required super.mayReadServer,
+    required super.mayReadLibrary,
+    required super.networkConnected,
+    required super.wifiConnected,
+    required super.changes,
+    super.directory,
+    super.availableBytes,
+    super.posterLoader,
+    super.clock,
+  });
+
+  int calls = 0;
+
+  @override
+  Future<void> synchronize({bool force = false}) {
+    if (++calls > 200) throw StateError('synchronize keeps rescheduling itself');
+    return super.synchronize(force: force);
+  }
 }

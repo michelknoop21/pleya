@@ -436,7 +436,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
           Directory(
             '${(await getApplicationSupportDirectory()).path}/local_library/${LocalLibraryStore.digest(profileId!)}',
           );
-      final store = LocalLibraryStore(base);
+      final store = LocalLibraryStore(base, clock: _clock);
       await store.load();
       if (isDisposed) return;
       _store = store;
@@ -616,10 +616,12 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   /// ran, or cut off by a dependency change. The next sync takes it over.
   bool _forcePending = false;
 
+  /// Also after a scan that left titles out: a detail call that fails every
+  /// time would otherwise have the whole library walked on every trigger.
   bool _recentlyScanned(LocalLibraryStore store, MediaLibrary library) {
-    final completedAt = store.completedAt(library.globalKey);
-    if (completedAt == null || store.completedUpdatedAt(library.globalKey) != library.updatedAt) return false;
-    final age = _clock().difference(completedAt);
+    final scan = store.lastScan(library.globalKey);
+    if (scan == null || scan.updatedAt != library.updatedAt) return false;
+    final age = _clock().difference(scan.at);
     // A clock set back must not stretch the window.
     return !age.isNegative && age < unchangedRescanAfter;
   }
@@ -682,21 +684,27 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
         try {
           final priorDone = done;
           final priorKeys = store.libraryItems(library.globalKey).map((item) => item.globalKey).toSet();
-          await LocalLibrarySync(
-            store: store,
-            mayContinue: space,
-            onCheckpoint: () {
-              if (!valid()) return;
-              _refreshReadIndex();
-              safeNotifyListeners();
-            },
-            onProgress: (count, title) {
-              done = priorDone + count;
-              currentTitle = title;
-              // Update progress at most every ten items, not every IO/gesture.
-              if (count % 10 == 0) safeNotifyListeners();
-            },
-          ).syncLibrary(library, client, isCurrent: () => valid() && _allowedLibrary(library));
+          LocalLibraryPartialScan? partial;
+          try {
+            await LocalLibrarySync(
+              store: store,
+              mayContinue: space,
+              onCheckpoint: () {
+                if (!valid()) return;
+                _refreshReadIndex();
+                safeNotifyListeners();
+              },
+              onProgress: (count, title) {
+                done = priorDone + count;
+                currentTitle = title;
+                // Update progress at most every ten items, not every IO/gesture.
+                if (count % 10 == 0) safeNotifyListeners();
+              },
+            ).syncLibrary(library, client, isCurrent: () => valid() && _allowedLibrary(library));
+          } on LocalLibraryPartialScan catch (error) {
+            // Saved, so published below like a full scan, but not healthy.
+            partial = error;
+          }
           if (!valid()) throw LocalLibraryPaused();
           revision++;
           _refreshReadIndex();
@@ -708,6 +716,10 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
           _lastReadSignature = _readSignature;
           _queryCache.clear();
           safeNotifyListeners();
+          if (partial != null) {
+            failed = true;
+            appLogger.w('Local library scan saved without some titles', error: partial);
+          }
         } on LocalLibraryPaused {
           rethrow;
         } catch (error, stack) {
