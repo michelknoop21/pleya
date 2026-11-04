@@ -67,6 +67,7 @@ void main() {
     bool hasMore = false,
     bool isLoadingMore = false,
     VoidCallback? onLoadMore,
+    bool fullBleed = false,
   }) async {
     warmed.clear();
     if (surfaceSize != null) setGoldenSurfaceSize(tester, size: surfaceSize);
@@ -83,6 +84,8 @@ void main() {
                 isLoadingMore: isLoadingMore,
                 onLoadMore: onLoadMore ?? () {},
                 precache: (request, context) async => warmed.add(request.groupId),
+                fullBleed: fullBleed,
+                rowAligned: fullBleed,
               ),
             ),
           ),
@@ -560,6 +563,26 @@ void main() {
       expect(Focus.of(tester.element(find.text('Title 0'))).hasPrimaryFocus, isTrue);
       expect(find.descendant(of: firstCard, matching: find.byType(OptimizedMediaImage)), findsOneWidget);
     });
+
+    for (final fullBleed in [false, true]) {
+      testWidgets('DOWN walks past the window edge (fullBleed: $fullBleed)', (tester) async {
+        await pumpGrid(tester, count: 400, fullBleed: fullBleed);
+        await focusCard(tester, 'Title 0');
+        final grid = tester.state(find.byType(TvUnifiedMediaGrid));
+        final rows = tvCatalogArtworkWindowRows * 3;
+        for (var i = 0; i < rows; i++) {
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+          await tester.pump(const Duration(milliseconds: 170));
+        }
+        await tester.pumpAndSettle();
+        final focused = FocusManager.instance.primaryFocus!.context!;
+        final card =
+            focused.findAncestorWidgetOfExactType<TvUnifiedMediaCard>() ??
+            (focused.widget is TvUnifiedMediaCard ? focused.widget as TvUnifiedMediaCard : null);
+        expect(grid.mounted, isTrue);
+        expect(card?.group.representativeSource.item.displayTitle, 'Title ${rows * columnsOf(tester)}');
+      });
+    }
 
     testWidgets('a row far from the focus is laid out but not painted', (tester) async {
       await pumpGrid(tester, count: 400);
