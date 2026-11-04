@@ -725,6 +725,32 @@ void main() {
     expect(binderProvider.errorMessage, isNotNull);
   });
 
+  test('updateItem preserves Continue Watching membership when metadata has no row context', () async {
+    aggregation.onDeckResult = () => [
+      _item('resume').copyWith(continueWatchingKind: ContinueWatchingKind.resume),
+      _item('next').copyWith(continueWatchingKind: ContinueWatchingKind.nextUp),
+    ];
+    await provider.load();
+    for (final id in ['resume', 'next']) {
+      client.itemResult = _item(id).copyWith(title: 'refreshed $id', viewOffsetMs: 1200);
+      await provider.updateItem(id, serverId: 'server_1');
+    }
+    expect(provider.onDeck.map((item) => item.continueWatchingKind), [
+      ContinueWatchingKind.resume,
+      ContinueWatchingKind.nextUp,
+    ]);
+    expect(provider.onDeck.map((item) => item.title), ['refreshed resume', 'refreshed next']);
+    expect(provider.onDeck.map((item) => item.viewOffsetMs), [1200, 1200]);
+  });
+
+  test('updateItem accepts explicit refreshed Continue Watching membership', () async {
+    aggregation.onDeckResult = () => [_item('episode').copyWith(continueWatchingKind: ContinueWatchingKind.nextUp)];
+    await provider.load();
+    client.itemResult = _item('episode').copyWith(continueWatchingKind: ContinueWatchingKind.resume);
+    await provider.updateItem('episode', serverId: 'server_1');
+    expect(provider.onDeck.single.continueWatchingKind, ContinueWatchingKind.resume);
+  });
+
   test('updateItem refetches one item and swaps it in place', () async {
     aggregation.onDeckResult = () => [_item('ep-1')];
     aggregation.hubsResult = () => [
