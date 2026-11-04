@@ -59,8 +59,10 @@ steps:
   - settle: 1500
   - snapshot: 02-detail-main-page
 
-  # The ring opens on the episode rail: up to Play, down onto the source line.
-  - press: up
+  # A series opens on its Serie tab (DEC-171, as `tvos.detail.series`): UP
+  # there goes to the top bar, so down to Play, then down onto the source line.
+  - wait_until: {focused: "media-detail.tab[series]", timeout: 8000}
+  - press: down
   - settle: 800
   - assert: {id: media-detail.play, focused: true}
   - press: down
