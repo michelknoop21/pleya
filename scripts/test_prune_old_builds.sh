@@ -9,7 +9,7 @@ set -euo pipefail
 script="$(cd "$(dirname "$0")" && pwd)/prune_old_builds.sh"
 sandbox="$(mktemp -d)"
 pids=""
-trap 'kill $pids 2>/dev/null; chmod -R u+w "$sandbox" 2>/dev/null; rm -rf "$sandbox"' EXIT
+trap '[[ -z "$pids" ]] || kill $pids 2>/dev/null; chmod -R u+w "$sandbox" 2>/dev/null; rm -rf "$sandbox"' EXIT
 cd "$sandbox"
 
 old=$(date -v-4d '+%Y%m%d%H%M')
@@ -83,7 +83,8 @@ ln -s "$bh/andere-sleutel/tvos/build" wt/tvos/build   # doel bestaat niet, ander
 ln -s "$bh/heel" wt/.build                       # heel
 mkdir -p "$bh/$key" && echo /ander >"$bh/$key/.owner"   # bestaande eigenaar blijft
 HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh
-[[ "$(cat "$bh/$key/.owner")" == /ander ]] || { echo "FOUT: bestaande .owner overschreven"; exit 1; }
+[[ "$(head -n 1 "$bh/$key/.owner")" == /ander ]] || { echo "FOUT: bestaande .owner overschreven"; exit 1; }
+grep -qxF "$root" "$bh/$key/.owner" || { echo "FOUT: worktree niet aan .owner toegevoegd"; exit 1; }
 for rel in build tvos/build; do
   [[ -L "wt/$rel" && -d "wt/$rel" ]] || { echo "FOUT: kapotte symlink $rel niet hersteld"; exit 1; }
   [[ "$(readlink "wt/$rel")" == "$bh/$key/$rel" ]] || { echo "FOUT: $rel wijst naar $(readlink "wt/$rel")"; exit 1; }
@@ -104,7 +105,12 @@ HOME="$sandbox/home" PLEYA_BUILD_HOME="$bh" wt/scripts/link_build_dirs.sh   # tw
 # een met een .owner naar een bestaand pad (losse kloon), een met een proces
 # erin, en de map van een bestaande of prunable worktree. --dry-run en
 # PLEYA_KEEP_BUILDS=1 veranderen geen symlink. Een PLEYA_BUILD_HOME die niet
-# pleya-builds heet of gelijk is aan $HOME blijft ongemoeid.
+# pleya-builds heet of gelijk is aan $HOME blijft ongemoeid. Een .owner met
+# meer regels houdt de map zolang één eigenaar bestaat; een relatief pad, een
+# pad met CR of spaties erachter, of een eigenaar op een niet gekoppeld volume
+# telt niet als weg. Een verhuisde worktree van een losse kloon zet zichzelf
+# in de .owner van zijn oude sleutelmap. Een symlink recht naar een sleutelmap
+# leegt die niet.
 psb=$(cd "$sandbox" && pwd -P)
 bh2="$psb/ssd2/pleya-builds"
 mkdir -p "$bh2" "$psb/bin2" "$psb/tmp2" "$psb/repo2/scripts" "$psb/repo2/tvos"
@@ -112,7 +118,7 @@ printf '#!/bin/sh\nexit 0\n' >"$psb/bin2/xcrun" && chmod +x "$psb/bin2/xcrun"
 cp "$(dirname "$script")/prune_old_builds.sh" "$(dirname "$script")/link_build_dirs.sh" "$psb/repo2/scripts/"
 g() { git -C "$psb/repo2" -c user.name=t -c user.email=t@t "$@"; }
 g init -q && g add scripts && g commit -q -m init
-trees=(oud vers tv bestaand prunable cwd keycwd buiten ro)
+trees=(oud vers tv bestaand prunable cwd keycwd buiten ro kdlink)
 for w in "${trees[@]}"; do g worktree add -q --detach "$psb/w-$w" && mkdir -p "$psb/w-$w/tvos"; done
 key() { local k="${1#"$psb/home"/}"; k="${k//\//_}"; echo "${k#.}"; }
 kd() { echo "$bh2/$(key "$psb/w-$1")"; }
@@ -129,6 +135,14 @@ mk "$psb/w-keycwd/build/ios" old; age "$(kd keycwd)"
 mk "$psb/w-ro/build/ro" old; age "$(kd ro)"; chmod 555 "$(kd ro)/build/ro"
 mk "$psb/elders" old; ln -s "$psb/elders" "$psb/w-buiten/build"; age "$psb/elders"
 mk "$bh2/$(key "$psb/repo2")/build/ios" old; age "$bh2/$(key "$psb/repo2")"
+mk "$bh2/kd-direct/.build" old; ln -s "$bh2/kd-direct" "$psb/w-kdlink/build"; age "$bh2/kd-direct"
+# Losse kloon B (geen worktree van repo2) met een worktree die verhuist.
+mkdir -p "$psb/repoB/scripts" "$psb/repoB/tvos" && cp "$psb/repo2/scripts/"*.sh "$psb/repoB/scripts/"
+gb() { git -C "$psb/repoB" -c user.name=t -c user.email=t@t "$@"; }
+gb init -q && gb add scripts && gb commit -q -m init && gb worktree add -q --detach "$psb/b-w1"
+mkdir -p "$psb/b-w1/tvos" && link "$psb/b-w1" && mk "$psb/b-w1/build/ios" old
+gb worktree move "$psb/b-w1" "$psb/b-w2" && link "$psb/b-w2"
+age "$bh2/$(key "$psb/b-w1")"
 rm "$psb/repo2/.build" && ln -s "$psb/nergens" "$psb/repo2/.build"   # kapot: alleen een echte run herstelt
 mk "$(kd bestaand)/.build/pleya-verify" old; age "$(kd bestaand)"
 mk "$(kd prunable)/build/ios" old; age "$(kd prunable)"; rm -rf "$psb/w-prunable"
@@ -140,6 +154,12 @@ wees wees-tvos; mk "$bh2/wees-tvos/tvos/anders" old
 wees wees-cwd
 mk "$bh2/wees-zonder/build" old
 mkdir -p "$psb/kloon"; wees wees-kloon; echo "$psb/kloon" >"$bh2/wees-kloon/.owner"
+wees wees-dubbel; printf '/weg\n%s\n' "$psb/kloon" >"$bh2/wees-dubbel/.owner"
+wees wees-rel; echo relatief/pad >"$bh2/wees-rel/.owner"
+wees wees-cr; printf '%s\r  \n' "$psb/kloon" >"$bh2/wees-cr/.owner"
+mkdir -p "$psb/vols/aan"
+wees wees-vol-aan; echo "$psb/vols/aan/weg" >"$bh2/wees-vol-aan/.owner"
+wees wees-vol-uit; echo "$psb/vols/uit/wt" >"$bh2/wees-vol-uit/.owner"
 age "$bh2"/wees-*
 wees wees-vers new
 # Processen met hun werkmap in een worktree, een sleutelmap en een wees.
@@ -148,14 +168,17 @@ for d in "$psb/w-cwd" "$(kd keycwd)/tvos" "$bh2/wees-cwd/build"; do
 done
 run2() {
   PATH="$psb/bin2:$PATH" HOME="${H2:-$psb/home}" PLEYA_WORKTREES_DIR="$psb/geen-trees" \
-    PLEYA_PRUNE_TMPDIR="$psb/tmp2" PLEYA_BUILD_HOME="${BH2:-$bh2}" "$psb/repo2/scripts/prune_old_builds.sh" "$@"
+    PLEYA_PRUNE_TMPDIR="$psb/tmp2" PLEYA_BUILD_HOME="${BH2:-$bh2}" PLEYA_VOLUMES_ROOT="$psb/vols" \
+    "$psb/repo2/scripts/prune_old_builds.sh" "$@"
 }
-gone2=("$(kd oud)/build/ios" "$(kd tv)/tvos/build/Release" "$bh2/wees-oud" "$bh2/wees-ds")
+gone2=("$(kd oud)/build/ios" "$(kd tv)/tvos/build/Release" "$bh2/wees-oud" "$bh2/wees-ds" "$bh2/wees-vol-aan")
 kept2=("$(kd vers)/build/ios/f" "$(kd bestaand)/.build/pleya-verify/f" "$(kd prunable)/build/ios/f"
   "$(kd cwd)/build/ios/f" "$(kd keycwd)/build/ios/f" "$psb/elders/f"
   "$bh2/$(key "$psb/repo2")/build/ios/f"
   "$bh2/wees-sdk/flutter/bin/f" "$bh2/wees-tvos/tvos/anders/f" "$bh2/wees-vers/build/x/f"
-  "$bh2/wees-kloon/build/x/f" "$bh2/wees-zonder/build/f" "$bh2/wees-cwd/build/x/f")
+  "$bh2/wees-kloon/build/x/f" "$bh2/wees-zonder/build/f" "$bh2/wees-cwd/build/x/f"
+  "$bh2/wees-dubbel/build/x/f" "$bh2/wees-rel/build/x/f" "$bh2/wees-cr/build/x/f"
+  "$bh2/wees-vol-uit/build/x/f" "$bh2/kd-direct/.build/f" "$bh2/$(key "$psb/b-w1")/build/ios/f")
 links_ok() { [[ "$(readlink "$psb/repo2/.build")" == "$psb/nergens" ]]; }
 out=$(run2 --dry-run)
 for p in "${gone2[@]}" "${kept2[@]}"; do [[ -e "$p" ]] || { echo "FOUT: dry-run wiste $p"; exit 1; }; done

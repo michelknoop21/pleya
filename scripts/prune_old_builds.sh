@@ -3,7 +3,9 @@
 # (scripts/tvos_sim.sh build en de TestFlight-lanes); overslaan met
 # PLEYA_KEEP_BUILDS=1. Met --dry-run (of PLEYA_PRUNE_DRY_RUN=1) alleen tonen
 # wat weg zou gaan. Beide slaan ook link_build_dirs.sh over, zodat er geen
-# symlink of map verandert.
+# symlink of map verandert: een build met PLEYA_KEEP_BUILDS=1 in een verse
+# worktree (of na flutter clean) schrijft build/ dus op de interne schijf.
+# Dat is bewust, want link_build_dirs.sh kan bij het verhuizen een doel wissen.
 #
 # Wat weg mag en wat blijft:
 #   .build/pleya-verify/<scenario>-<ms>   per scenario de nieuwste 2 bundels
@@ -14,23 +16,27 @@
 #                                          weg als er 24 uur niets in is
 #                                          geschreven en geen proces in die
 #                                          worktree staat
-#   build/ en tvos/build/ van andere       zijn ze een symlink naar
-#   worktrees op de externe SSD            PLEYA_BUILD_HOME (link_build_dirs.sh),
+#   build/ en tvos/build/ van andere       wijzen ze naar precies
+#   worktrees op de externe SSD            <sleutel>/build of <sleutel>/tvos/build
+#                                          in PLEYA_BUILD_HOME (link_build_dirs.sh),
 #                                          dan geldt dezelfde regel voor de
 #                                          inhoud van het doel; symlink en lege
-#                                          doelmap blijven staan
+#                                          doelmap blijven staan. Een symlink
+#                                          naar iets anders slaat het over
 #   wezen in PLEYA_BUILD_HOME              een map <sleutel> waar geen
 #                                          geregistreerde worktree (ook locked
 #                                          of prunable) meer bij hoort, met een
-#                                          .owner (link_build_dirs.sh) naar
-#                                          een pad dat niet meer bestaat, met
-#                                          alleen build, tvos/build, .build,
-#                                          .owner of .DS_Store erin, en 24 uur
-#                                          zonder schrijfactie. Zonder .owner,
-#                                          met een .owner naar een bestaand
-#                                          pad (een losse kloon) of op een
-#                                          niet gekoppeld volume, of met iets
-#                                          anders erin blijft de map
+#                                          .owner (link_build_dirs.sh) waarin
+#                                          elke regel een absoluut pad is dat
+#                                          niet meer bestaat, met alleen build,
+#                                          tvos/build, .build, .owner of
+#                                          .DS_Store erin, en 24 uur zonder
+#                                          schrijfactie. Zonder .owner, met
+#                                          één eigenaar die nog bestaat (een
+#                                          losse kloon), een relatief pad, een
+#                                          eigenaar op een niet gekoppeld
+#                                          volume, of met iets anders erin
+#                                          blijft de map
 #   Xcode DerivedData                      mappen waarin 3 dagen niets schreef
 #   flutter_tools.* en tmp.* in de         na 24 uur zonder schrijfactie en
 #   gebruikers-tempmap                     als geen proces ze open heeft
@@ -47,8 +53,9 @@
 # alleen naar werkmappen (lsof -d cwd): een app die al dagen draait vanuit
 # een build-map van een andere worktree, zonder te bouwen, ziet het niet.
 # Lukt het wissen van één map niet (alleen-lezen), dan meldt het script dat
-# en gaat het door. Incrementele build-mappen (tvos/build/dd, build/ios/SourcePackages) van
-# de eigen worktree blijven: die worden bij elke build hergebruikt. .build/
+# en gaat het door. Incrementele build-mappen (tvos/build/dd,
+# build/ios/SourcePackages) van de eigen worktree blijven: die worden bij elke
+# build hergebruikt. .build/
 # van andere worktrees blijft staan. Geneste build-mappen die geen symlink
 # zijn (<wt>/tvos/build, <wt>/pleya_web/build) raakt het script nooit.
 # Kan lsof niet zeggen wat er open is, dan blijft alles staan.
@@ -81,7 +88,8 @@ freed=0
 
 remove() {
   local kb
-  kb=$(du -sk "$1" 2>/dev/null | cut -f1 || echo 0)
+  kb=$(du -sk "$1" 2>/dev/null | awk 'NR == 1 {print $1 + 0}') || true
+  kb=${kb:-0}
   if [[ "$DRY_RUN" == 1 ]]; then
     echo "prune_old_builds: zou verwijderen ($((kb / 1024)) MB) $1"
     freed=$((freed + kb))
@@ -180,7 +188,8 @@ in_build_home() {
 # De aanroeper heeft het pad met in_build_home gecontroleerd.
 empty_target() {
   local dir="${1:?}" kb
-  kb=$(du -sk "$dir" 2>/dev/null | cut -f1 || echo 0)
+  kb=$(du -sk "$dir" 2>/dev/null | awk 'NR == 1 {print $1 + 0}') || true
+  kb=${kb:-0}
   if [[ "$DRY_RUN" == 1 ]]; then
     echo "prune_old_builds: zou leegmaken ($((kb / 1024)) MB) $dir"
     freed=$((freed + kb))
@@ -194,14 +203,27 @@ empty_target() {
   fi
 }
 
-# Een .owner op een volume dat nu niet gekoppeld is, telt niet als weg.
+# Waar als het .owner-bestand $1 bewijst dat elke eigenaar weg is: minstens
+# één regel, en elke regel een absoluut pad dat niet bestaat. Geen bestand, een
+# relatief pad, of een pad op een volume dat nu niet gekoppeld is: niet weg.
+# CR en spaties aan het eind tellen niet mee. PLEYA_VOLUMES_ROOT is er voor de
+# zelftest.
+VOLUMES="${PLEYA_VOLUMES_ROOT:-/Volumes}"
 owner_gone() {
-  local vol
-  [[ -n "$1" && ! -e "$1" ]] || return 1
-  if [[ "$1" == /Volumes/?*/* ]]; then
-    vol="${1#/Volumes/}"
-    [[ -d "/Volumes/${vol%%/*}" ]] || return 1
-  fi
+  local raw line vol n=0
+  [[ -f "${1:?}" ]] || return 1
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    line="${raw%"${raw##*[![:space:]]}"}"
+    [[ -n "$line" ]] || continue
+    [[ "$line" == /* ]] || return 1
+    [[ -e "$line" || -e "$raw" ]] && return 1
+    if [[ "$line" == "$VOLUMES"/?*/* ]]; then
+      vol="${line#"$VOLUMES"/}"
+      [[ -d "$VOLUMES/${vol%%/*}" ]] || return 1
+    fi
+    n=$((n + 1))
+  done <"$1"
+  ((n > 0))
 }
 
 BUILD_HOME="${PLEYA_BUILD_HOME:-/Volumes/SSD/pleya-builds}"
@@ -238,6 +260,10 @@ else
       in_build_home "$target" || continue
       key_dir="${target#"$bh_real"/}"
       key_dir="$bh_real/${key_dir%%/*}"
+      if [[ "$target" != "$key_dir/$rel" ]]; then
+        echo "prune_old_builds: slaat $wt/$rel over, wijst niet naar <sleutel>/$rel" >&2
+        continue
+      fi
       grep -qF -- "$key_dir" <<<"$cwds" && continue
       [[ -n "$(ls -A "$target")" ]] || continue
       idle_for "$target" 1440 || continue
@@ -253,10 +279,9 @@ else
     [[ -z "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name build ! -name tvos \
       ! -name .build ! -name .owner ! -name .DS_Store -print -quit)" ]] || continue
     [[ -z "$(find "$dir/tvos" -mindepth 1 -maxdepth 1 ! -name build -print -quit 2>/dev/null)" ]] || continue
-    # Alleen een .owner naar een pad dat weg is bewijst een wees; zonder .owner
-    # (of met een eigenaar die nog bestaat, zoals een losse kloon) blijft hij.
-    owner=$(head -n 1 "$dir/.owner" 2>/dev/null) || owner=""
-    if ! owner_gone "$owner"; then
+    # Alleen een .owner waarvan elke eigenaar weg is bewijst een wees.
+    if ! owner_gone "$dir/.owner"; then
+      owner=$(head -n 1 "$dir/.owner" 2>/dev/null | tr -d '\r') || owner=""
       [[ "$DRY_RUN" == 1 ]] && echo "prune_old_builds: houdt $dir (eigenaar ${owner:-onbekend, geen .owner})"
       continue
     fi

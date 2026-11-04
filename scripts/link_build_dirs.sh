@@ -4,11 +4,13 @@
 # één keer. Is de SSD niet gekoppeld (of draait dit op CI), dan gebeurt er
 # niets. `flutter clean` wist alleen de symlink; de volgende run legt hem
 # opnieuw naar dezelfde map. Een kapotte symlink (doelmap opgeruimd) wordt
-# hersteld: de doelmap komt terug en de symlink wijst er weer naar. In de
-# sleutelmap staat .owner met het pad van deze worktree; prune_old_builds.sh
-# ruimt een sleutelmap alleen op als die eigenaar weg is. Een bestaande .owner
-# blijft staan. Aangeroepen door prune_old_builds.sh en door de iOS- en
-# macOS-driver van Pleya Verify.
+# hersteld: de doelmap komt terug en de symlink wijst er weer naar. In elke
+# sleutelmap waar een symlink van deze worktree naar wijst, staat deze worktree
+# in .owner (één pad per regel); bestaande regels blijven staan. Zo blijft een
+# verhuisde worktree, of een tweede worktree met dezelfde sleutel, eigenaar.
+# prune_old_builds.sh ruimt een sleutelmap alleen op als elke eigenaar weg is.
+# Aangeroepen door prune_old_builds.sh en door de iOS- en macOS-driver van
+# Pleya Verify.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -36,7 +38,14 @@ for rel in build tvos/build .build; do
   fi
   ln -s "$target" "$link"
 done
-owner="$BUILD_HOME/$key/.owner"
-if [[ -d "$BUILD_HOME/$key" && ! -e "$owner" ]]; then
-  printf '%s\n' "$ROOT" >"$owner"
-fi
+for rel in build tvos/build .build; do
+  dest=$(readlink "$ROOT/$rel" 2>/dev/null) || continue
+  [[ "$dest" == "$BUILD_HOME"/?* ]] || continue
+  dest="${dest#"$BUILD_HOME"/}"
+  owner="$BUILD_HOME/${dest%%/*}/.owner"
+  [[ -d "${owner%/.owner}" ]] || continue
+  grep -qxF -- "$ROOT" "$owner" 2>/dev/null && continue
+  # Een bestand zonder slotregeleinde eerst afsluiten, anders plakt het pad vast.
+  if [[ -s "$owner" && -n "$(tail -c 1 "$owner")" ]]; then echo >>"$owner"; fi
+  printf '%s\n' "$ROOT" >>"$owner"
+done
