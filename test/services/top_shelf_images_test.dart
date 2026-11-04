@@ -103,4 +103,62 @@ void main() {
     expect(result.map((i) => i['imageUri']).toSet(), hasLength(1));
     expect(fetched, [shared]);
   });
+
+  // Build 431 log: the shelf resyncs on every Continue Watching refresh (every
+  // 20-40 s during playback) and each sync started all ~25 downloads again,
+  // 570 timeouts in one evening, none of them ever stored.
+  test('a sync joins the download a timed-out sync left running instead of starting another', () async {
+    final pending = Completer<File>();
+    var calls = 0;
+    final slow = TopShelfImages(
+      fetch: (_) {
+        calls++;
+        return pending.future;
+      },
+      timeout: const Duration(milliseconds: 200),
+    );
+    final item = [entry('slow', 'https://x/slow')];
+    expect(await slow.localize(item, shelf), isEmpty);
+    final next = slow.localize(item, shelf);
+    // Let the second sync reach the download before it finishes.
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(calls, 1);
+    pending.complete(File('${tmp.path}/late')..writeAsBytesSync([1, 2, 3]));
+    expect(await next, hasLength(1), reason: 'a timeout is no failure: no backoff, the next sync waits for it');
+    expect(calls, 1);
+  });
+
+  test('a failed image is left alone until retryAfter, then tried again', () async {
+    const bad = 'https://x/bad';
+    final backingOff = images(failing: {bad});
+    await backingOff.localize([entry('bad', bad)], shelf);
+    await backingOff.localize([entry('bad', bad)], shelf);
+    expect(fetched, [bad], reason: 'the second sync skips it');
+
+    fetched.clear();
+    final noPause = TopShelfImages(
+      fetch: (url) async {
+        fetched.add(url);
+        throw const SocketException('unreachable');
+      },
+      retryAfter: Duration.zero,
+    );
+    await noPause.localize([entry('bad', bad)], shelf);
+    await noPause.localize([entry('bad', bad)], shelf);
+    expect(fetched, [bad, bad]);
+  });
+
+  test('a fetch that throws synchronously does not stay registered as running', () async {
+    var calls = 0;
+    final sync = TopShelfImages(
+      fetch: (_) {
+        calls++;
+        throw const SocketException('unreachable');
+      },
+      retryAfter: Duration.zero,
+    );
+    await sync.localize([entry('a', 'https://x/a')], shelf);
+    await sync.localize([entry('a', 'https://x/a')], shelf);
+    expect(calls, 2);
+  });
 }
