@@ -581,6 +581,10 @@ class _MainScreenState extends State<MainScreen>
   /// Coalesces the page switches of a sweep over the bar (DEC-XXX).
   late final TvRingSettle _tvRingSettle = TvRingSettle(activate: _activateTvRingDestination);
 
+  /// Android TV's way up into the bar while it is in flight: the pill it is
+  /// heading for and the focus request that owns it (see [_focusSidebar]).
+  ({TvDestinationId target, int intent})? _tvBarEntry;
+
   /// The bar's focus nodes. Owned here rather than by [TvTopNavigation] so a
   /// rebuild of the bar cannot dispose the node the remote is standing on —
   /// the same ownership rule the rail follows.
@@ -1884,27 +1888,26 @@ class _MainScreenState extends State<MainScreen>
       // bar. Under a collapsible bar (DEC-115) that reads as the bar opening and
       // snapping shut again.
       _tvNav.activeNestedRoute?.surfaceKey.currentState?.cancelPendingEntry();
+      final target = _tvNav.active;
       if (PlatformDetector.isAppleTV()) {
         // NAV-GLASS1: fence pending content work, then focus the active item
         // now so a deferred restore cannot overwrite the next remote step.
         _focus.focusSidebar(focusActiveItem: () {});
-        final node = _tvNavNodes.get(_tvNav.active.focusKey);
-        if (node.canRequestFocus) node.requestFocus();
+        _focusTvPill(target);
       } else {
-        // Read before the scope takes the focus: the scope restores the pill it
-        // last held, that pill reports itself focused and the ring memory
-        // follows it, so reading it after the frame would return the pill the
-        // scope restored rather than the one the remote left from.
-        final target = _tvNav.focusedDestination;
+        // The scope's own request restores the pill it last held, and the
+        // page's pill follows a frame later (a pill that just came back into
+        // the bar has no element before that). Since the ring on a pill is
+        // the page (DEC-XXX), that restored pill would switch the page on the
+        // way up; `_focusTvDestination` ignores it while this request is the
+        // live one (review 593-I1).
         _focus.focusSidebar(
           focusActiveItem: () {
-            if (!mounted) return;
-            // The item the ring was last on before the remote went into the
-            // page, which is the page's own pill (DEC-XXX).
-            final node = _tvNavNodes.get(target.focusKey);
-            if (node.canRequestFocus) node.requestFocus();
+            _tvBarEntry = null;
+            if (mounted) _focusTvPill(target);
           },
         );
+        _tvBarEntry = (target: target, intent: _focus.intent);
       }
       return;
     }
@@ -1983,7 +1986,9 @@ class _MainScreenState extends State<MainScreen>
       isShowingProfileSelection: _isShowingProfileSelection,
       isOverlaySheetOpen: _isOverlaySheetOpen,
       isRouteCurrent: ModalRoute.of(context)?.isCurrent == true,
-      isSidebarFocused: _isSidebarFocused,
+      // Inside a sweep's settle window ring and page can differ, so Menu stays
+      // the app's until the page has caught up (review 593-M2).
+      isSidebarFocused: _isSidebarFocused && !_tvRingSettle.isPending,
       hasVisibleTabs: tabs.isNotEmpty,
       // Fase 7: a nested Mijn Pleya section is a route the app can still pop,
       // so Menu belongs to the app, not to the system, until it is closed.
@@ -2088,8 +2093,6 @@ class _MainScreenState extends State<MainScreen>
         return KeyEventResult.handled;
       case MainBackDecision.goHome:
         _selectTab(homeTab!);
-        // On the TV bar the ring is the page (DEC-XXX), so it goes home too.
-        if (_isTvShell && _isSidebarFocused) _focusTvPill(_tvNav.active);
         _lastBackPressAt = null;
         return KeyEventResult.handled;
       case MainBackDecision.tvMenuPassthroughStale:
@@ -2376,6 +2379,12 @@ class _MainScreenState extends State<MainScreen>
         return true;
       }
       _tvNav.syncToTab(tab);
+      // The ring is the page (DEC-XXX): a page changed from outside the bar
+      // (Menu to Home, a deferred startup section, the companion remote) takes
+      // a ring standing on another pill with it.
+      if (_tvNav.destinations.any((d) => d != _tvNav.active && _tvNavNodes.isFocused(d.focusKey))) {
+        _focusTvPill(_tvNav.active);
+      }
     }
 
     final previousTab = _currentTab;
@@ -2886,11 +2895,22 @@ class _MainScreenState extends State<MainScreen>
   /// stays in the bar while the page behind it changes. The avatar and the
   /// reconnect item are not destinations and never get here.
   void _focusTvDestination(TvDestinationId destination) {
+    if (_tvBarEntry case (:final target, :final intent) when destination != target && _focus.ownsIntent(intent)) {
+      return;
+    }
     _tvNav.focusDestination(destination);
     // Cancels anything armed against the page the ring just left: content
     // landing late must not pull the remote out of the bar.
     _tvContentFocus.onDestinationFocused();
-    _tvRingSettle.ringMoved();
+    // The ring arriving on the page's own pill (UP from the page, Menu to
+    // Home, start-up focus) switches nothing and must not open a window, or
+    // the next arrow would wait for it (review 593-I3). Only a move between
+    // pills starts or extends a sweep.
+    if (destination == _tvNav.active && !_tvRingSettle.isPending) return;
+    // With VoiceOver on, every pill switches at once, so the "current
+    // section" in its label is true when it is read (review 593-M6).
+    final coalesce = !WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.accessibleNavigation;
+    _tvRingSettle.ringMoved(coalesce: coalesce);
   }
 
   /// Puts the page under the ring. Idempotent: `activate` is false when the
@@ -2902,6 +2922,9 @@ class _MainScreenState extends State<MainScreen>
     if (!mounted || !_isTvShell) return;
     final destination = _tvNav.focusedDestination;
     if (_tvNav.activate(destination)) _selectTab(destination.tab);
+    // The passthrough is held off while a window is open; recompute it once
+    // the window has closed, also when the page did not change.
+    _updateTvosMenuPassthrough();
   }
 
   void _focusTvPill(TvDestinationId destination) {

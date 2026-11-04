@@ -140,6 +140,39 @@ void main() {
     await h.dispose(tester);
   });
 
+  // Review 593-I1, for both TVs (DEC-XXX point 5). A page changed from inside
+  // the content leaves the bar scope remembering the old pill. UP must land
+  // on the page's pill without switching to the remembered one on the way:
+  // on Android TV that detour flashed Home and refreshed it. Negative control:
+  // without the `_tvBarEntry` guard in `_focusTvDestination` the Android TV
+  // run goes red (`seen` passes through Home).
+  for (final platform in ['Android TV', 'Apple TV']) {
+    testWidgets('$platform: UP after a page change from the content goes straight to that page', (tester) async {
+      platform == 'Apple TV' ? appleTv() : await androidTv();
+      final h = await pumpTvMainScreen(tester);
+      h.shell.onFocusNav();
+      await h.settle();
+      expect(h.shell.coordinator.active, TvDestinationId.home);
+      h.shell.onFocusContent(restorePreviousFocus: false);
+      await h.settle();
+      h.shell.openLibraries!();
+      await h.settle();
+      expect(h.shell.coordinator.active, TvDestinationId.myPleya);
+
+      final seen = <TvDestinationId>[];
+      void record() => seen.add(h.shell.coordinator.active);
+      h.shell.coordinator.addListener(record);
+      h.shell.onFocusNav();
+      await h.settle();
+      await h.settle();
+      h.shell.coordinator.removeListener(record);
+      expect(seen, isNot(contains(TvDestinationId.home)), reason: 'no detour over the remembered pill: $seen');
+      expect(h.shell.coordinator.active, TvDestinationId.myPleya);
+      expect(h.shell.navNodes.isFocused(TvDestinationId.myPleya.focusKey), isTrue);
+      await h.dispose(tester);
+    });
+  }
+
   // OFF6. A rebind of the profile that was already active (a reconnect, a
   // borrowed or removed connection) used to run the profile-switch cleanup and
   // drop the viewer on the bare hub. Same profile, same place.

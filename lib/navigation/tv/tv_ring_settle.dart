@@ -15,8 +15,10 @@ const Duration kTvRingSettle = Duration(milliseconds: 150);
 /// once (leading edge), so there is no visible delay. A move that lands within
 /// [settle] of the previous one only restarts the window, and the page follows
 /// the pill the ring rests on when the window closes (trailing edge). A held
-/// sweep from Zoeken to Instellingen therefore costs two switches instead of
-/// six; Home's network refresh is one of the switches it skips.
+/// sweep from Home to Instellingen therefore costs two switches instead of
+/// four. The first pill of a sweep always switches, so a sweep that starts on
+/// Home (RIGHT from Zoeken, LEFT from Series) still runs Home's refresh once;
+/// a sweep that only passes Home skips it.
 class TvRingSettle {
   TvRingSettle({required this.activate, this.settle = kTvRingSettle});
 
@@ -31,10 +33,16 @@ class TvRingSettle {
   /// Whether a sweep is waiting for the ring to rest.
   bool get isPending => _window?.isActive ?? false;
 
-  /// The ring landed on a destination pill.
-  void ringMoved() {
+  /// The ring landed on a destination pill. With [coalesce] false every move
+  /// switches at once and no window stays open.
+  void ringMoved({bool coalesce = true}) {
     final sweeping = isPending;
     _window?.cancel();
+    if (!coalesce) {
+      _window = null;
+      activate();
+      return;
+    }
     _window = Timer(settle, activate);
     if (!sweeping) activate();
   }

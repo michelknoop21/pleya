@@ -193,6 +193,66 @@ void main() {
     await h.dispose(tester);
   });
 
+  // Review 593-I3: only a move between pills opens a settle window. The ring
+  // arriving on the page's own pill (UP, Menu to Home, start-up focus) does
+  // not, so the first arrow after it still switches at once. Negative control:
+  // without the guard in `_focusTvDestination`, `active` is still Home here.
+  testWidgets('DEC-XXX: the first arrow after UP or Menu switches at once', (tester) async {
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onFocusNav();
+    await h.settle();
+    h.shell.onFocusContent(restorePreviousFocus: false);
+    await h.settle();
+
+    h.shell.onFocusNav();
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(h.shell.coordinator.active, TvDestinationId.series, reason: 'UP opened no window');
+    await h.settle();
+
+    // Menu from Series goes Home and the ring with it; a quick RIGHT after it
+    // is again a first press.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(h.shell.coordinator.active, TvDestinationId.series, reason: 'Menu opened no window');
+
+    await h.dispose(tester);
+  });
+
+  // Review 593-M2: inside a settle window ring and page can differ, so Menu
+  // is not handed to tvOS until the window closes.
+  testWidgets('DEC-XXX: no Menu passthrough while a sweep is settling', (tester) async {
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onFocusNav();
+    await h.settle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.series);
+
+    // LEFT lands on Home (leading edge), LEFT again to Zoeken inside the window.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(h.shell.coordinator.active, TvDestinationId.home);
+    expect(TvosSystemNavigationService.automationState()['enabled'], isFalse, reason: 'window open');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(TvosSystemNavigationService.automationState()['enabled'], isFalse, reason: 'ring on Zoeken, page Home');
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.search);
+    expect(TvosSystemNavigationService.automationState()['enabled'], isFalse, reason: 'Zoeken is not the root');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.home);
+    expect(TvosSystemNavigationService.automationState()['enabled'], isTrue, reason: 'window closed on Home');
+
+    await h.dispose(tester);
+  });
+
   testWidgets('A14: Wissel profiel goes through the same gate picker the avatar always opened', (tester) async {
     final h = await pumpTvMainScreen(tester);
 

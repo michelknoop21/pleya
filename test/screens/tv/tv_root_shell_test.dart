@@ -412,9 +412,10 @@ void main() {
       await tester.pump();
 
       expect(ringMoves, contains(TvDestinationId.series));
-      // The contract, and the negative control: with the A-24c wiring the
-      // host called `TvNavigationCoordinator.focusDestination`, which moves the
-      // ring and leaves `active` alone, so this line goes red.
+      // This harness activates on its own, so this line pins the shell's
+      // wiring to the host, not the host's rule. The negative control for the
+      // rule is on the real `MainScreen`
+      // (`main_screen_tv_settings_destination_test.dart`).
       expect(coordinator.active, TvDestinationId.series);
       expect(selected, isEmpty, reason: 'a ring move is not a Select');
     });

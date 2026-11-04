@@ -43,4 +43,18 @@ void main() {
       expect(calls, 2, reason: 'nothing pending, nothing to flush');
     });
   });
+
+  test('without coalescing every move activates and no window stays open', () {
+    fakeAsync((async) {
+      var calls = 0;
+      final settle = TvRingSettle(activate: () => calls++);
+      settle.ringMoved();
+      settle.ringMoved(coalesce: false);
+      settle.ringMoved(coalesce: false);
+      expect(calls, 3);
+      expect(settle.isPending, isFalse);
+      async.elapse(kTvRingSettle);
+      expect(calls, 3);
+    });
+  });
 }

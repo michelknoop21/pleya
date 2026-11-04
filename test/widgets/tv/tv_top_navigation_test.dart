@@ -732,8 +732,9 @@ void main() {
 
   // DEC-XXX: focus on a destination pill *is* the navigation. These pin the
   // bar's half of it: a ring move reports a destination and Select is not what
-  // switches. What the host does with the report, including the negative
-  // control and the settle window, is pinned on the real `MainScreen` in
+  // switches. These tests have no negative control of their own: what the
+  // host does with the report, including the settle window, is pinned with
+  // negative controls on the real `MainScreen` in
   // `main_screen_tv_settings_destination_test.dart`.
   group('focus is the destination', () {
     testWidgets('walking RIGHT reports every item the ring lands on, and selects nothing', (tester) async {
