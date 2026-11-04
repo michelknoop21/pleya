@@ -125,24 +125,28 @@ class TopShelfImages {
     final running = _inFlight[url];
     if (running != null && now.difference(running.started) < timeout * 3) return running.download;
     late final Future<File> download;
-    download = _track(url, title).whenComplete(() {
-      if (identical(_inFlight[url]?.download, download)) _inFlight.remove(url);
+    bool current() => identical(_inFlight[url]?.download, download);
+    download = _track(url, title, current).whenComplete(() {
+      if (current()) _inFlight.remove(url);
     });
     _inFlight[url] = (download: download, started: now);
     return download;
   }
 
-  /// [_fetch] with its failure recorded. An outcome that comes after [timeout]
-  /// is logged here, because [_save] has stopped listening and that late error
-  /// is the actual reason the image is missing.
-  Future<File> _track(String url, Object? title) async {
+  /// [_fetch] with its failure recorded, unless a newer download replaced it
+  /// ([current] false): its failure says nothing about that one. An outcome
+  /// that comes after [timeout] is logged here, because [_save] has stopped
+  /// listening and that late error is the actual reason the image is missing.
+  Future<File> _track(String url, Object? title, bool Function() current) async {
     final watch = Stopwatch()..start();
     try {
-      return await _fetch(url);
+      // Future.sync: a fetch that throws synchronously still ends after [_join]
+      // registered the download, so [current] can read it.
+      return await Future.sync(() => _fetch(url));
     } catch (e) {
       // Only a download that ended in an error. A timed-out one is still
       // running, and the next sync joins it.
-      _retryAt[url] = DateTime.now().add(retryAfter);
+      if (current()) _retryAt[url] = DateTime.now().add(retryAfter);
       if (watch.elapsed >= timeout) {
         appLogger.w('Top Shelf: download for $title failed after ${watch.elapsed.inSeconds} s', error: _describe(e));
       }

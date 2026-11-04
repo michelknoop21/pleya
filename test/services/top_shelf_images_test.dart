@@ -148,6 +148,34 @@ void main() {
     hungDownload.complete(File('${tmp.path}/late')..writeAsBytesSync([1, 2, 3]));
   });
 
+  test('a replaced download that ends late neither unregisters nor backs off its successor', () async {
+    final hung = Completer<File>();
+    final successor = Completer<File>();
+    var calls = 0;
+    final images = TopShelfImages(
+      fetch: (_) {
+        calls++;
+        if (calls == 1) return hung.future;
+        if (calls == 2) return successor.future;
+        return Future.value(File('${tmp.path}/third')..writeAsBytesSync([1, 2, 3]));
+      },
+      timeout: const Duration(milliseconds: 50),
+    );
+    final item = [entry('hung', 'https://x/hung')];
+    expect(await images.localize(item, shelf), isEmpty);
+    await Future<void>.delayed(const Duration(milliseconds: 160));
+    expect(await images.localize(item, shelf), isEmpty, reason: 'the successor is still running');
+    expect(calls, 2);
+
+    hung.completeError(const SocketException('late'));
+    await Future<void>.delayed(Duration.zero);
+    final third = images.localize(item, shelf);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    successor.complete(File('${tmp.path}/successor')..writeAsBytesSync([1, 2, 3]));
+    expect(await third, hasLength(1), reason: 'no backoff from the replaced download');
+    expect(calls, 2, reason: 'the third sync joins the successor');
+  });
+
   test('a failed image is left alone until retryAfter, then tried again', () async {
     const bad = 'https://x/bad';
     final backingOff = images(failing: {bad});
