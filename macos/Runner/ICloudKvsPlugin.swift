@@ -16,6 +16,21 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
   private let store = NSUbiquitousKeyValueStore.default
   private var eventSink: FlutterEventSink?
 
+  /// Whether the key-value store can be used at all.
+  ///
+  /// Not `ubiquityIdentityToken` on tvOS: that token is the iCloud Drive
+  /// Documents identity, which tvOS does not have, so it is nil on a signed-in
+  /// Apple TV and the toggle went dead there ("sign in to iCloud"). The store is
+  /// gated by the `com.apple.developer.ubiquity-kvstore-identifier` entitlement
+  /// the tvOS target carries. On iOS and macOS the token stays the account check.
+  private static var isKvsAvailable: Bool {
+    #if os(tvOS)
+      return true
+    #else
+      return FileManager.default.ubiquityIdentityToken != nil
+    #endif
+  }
+
   static func register(with registrar: FlutterPluginRegistrar) {
     let instance = ICloudKvsPlugin()
     let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger)
@@ -54,7 +69,7 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "isAvailable":
-      result(FileManager.default.ubiquityIdentityToken != nil)
+      result(Self.isKvsAvailable)
     case "getAll":
       var out: [String: String] = [:]
       for (key, value) in store.dictionaryRepresentation {
