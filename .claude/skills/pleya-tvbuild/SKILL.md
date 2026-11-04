@@ -140,7 +140,9 @@ echte pad weggooien (`SourcePackages` mag blijven) en opnieuw bouwen met het ech
 
 Faalt de Flutter-stap op `.../flutter-tvos-engine/.../dartaotruntime: No such file or directory`,
 dan is de engine-cache tijdens of na `fetch_engine.sh` gewist. Draai `fetch_engine.sh` opnieuw en
-bouw daarna. De opruimapp "Schijf opruimen" sloeg die cache tot 4 november niet over; kijk bij
+bouw daarna. Het script slaat de download over zolang `.installed-<versie>` in
+`~/.cache/flutter-tvos-engine/v<versie>` staat; is maar een deel van de cache weg, gooi dan eerst die
+hele `v<versie>`-map weg. De opruimapp "Schijf opruimen" sloeg die cache tot 4 november niet over; kijk bij
 twijfel in `~/Library/Logs/cleanup-menu.log`.
 
 Lees de uitkomst van xcodebuild af aan zijn exitcode en aan `** BUILD SUCCEEDED **`, niet aan een
