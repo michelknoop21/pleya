@@ -422,12 +422,12 @@ if os.path.exists(old_mark):
 # waren daardoor blijven staan op de oude, handgemaakte P: `app.html`,
 # `NavRail.svelte`, `+layout.svelte`, `login/` en `setup/` tekenden hem nog.
 # Ze horen bij dezelfde autoriteitsketen als de rest en worden hier dus
-# meegegenereerd. De ondoorzichtige merkgrond blijft zoals hij was; alleen de P
-# is die van nu.
+# meegegenereerd. In navigatie en browsericonen zweeft de P op de achtergrond
+# van de gebruiker; een ingebakken merkgrond zou daar een zwart vierkant tonen.
 PW = f"{ROOT}/pleya_web/static/brand"
 if os.path.isdir(os.path.dirname(PW)):
     for s_ in (64, 256):
-        save(mark_canvas(s_, s_, 0.96, BG), f"{PW}/pleya-mark-{s_}.png")
+        save(mark_canvas(s_, s_, 0.96), f"{PW}/pleya-mark-{s_}.png")
     # Het lockup van de kop (northstar `.topnav .brand img`, 30 hoog; mobiel 26)
     # als dezelfde twee lagen als in de app: de P houdt zijn kleuren, de
     # belettering is een masker dat de webkop in de inkt van het thema vult.
