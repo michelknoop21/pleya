@@ -207,6 +207,17 @@ class AudioOutputCoordinator {
   int _deferrals = 0;
   bool _disposed = false;
 
+  /// `portType/portName` of the last route seen, and whether a route change
+  /// moved playback to another device since the last apply.
+  ///
+  /// tvOS renders PCM through `ao_avfoundation`. When the output device changes
+  /// (HDMI to AirPods) the AO flushes itself and restarts its synchronizer on an
+  /// empty queue, so every new sample is already late on a Bluetooth route and
+  /// playback stays silent until pause and play refill it. A full `ao-reload`
+  /// goes through the normal init path, which fills before it starts.
+  String? _device;
+  bool _deviceChanged = false;
+
   /// The decision currently in effect, for the player's rendering badge.
   AudioOutputDecision? get decision => _lastDecision;
 
@@ -230,6 +241,7 @@ class AudioOutputCoordinator {
       }
       final route = await AppleAudioSessionService.instance.configure(multichannel: true);
       appLogger.i('Audio route at playback start: $route');
+      _device = '${route.portType}/${route.portName}';
       // onError matters: on a host build without the plugin the EventChannel
       // itself errors, and an unhandled stream error would surface as a crash
       // rather than the stereo fallback the method path already degrades to.
@@ -370,9 +382,17 @@ class AudioOutputCoordinator {
     await _apply();
   }
 
+  @visibleForTesting
+  void debugRouteChanged(AppleAudioRoute route) => _onRouteChanged(route);
+
   void _onRouteChanged(AppleAudioRoute route) {
     if (_disposed) return;
     appLogger.i('Audio route changed: $route');
+    // Rendering-mode and spatial-capability events arrive with the same port
+    // and need no reload of their own.
+    final device = '${route.portType}/${route.portName}';
+    if (_device != null && device != _device) _deviceChanged = true;
+    _device = device;
     _settleTimer?.cancel();
     _deferrals = 0;
     _scheduleApply();
@@ -407,6 +427,11 @@ class AudioOutputCoordinator {
       return;
     }
     _applying = true;
+    final deviceChanged = _deviceChanged;
+    _deviceChanged = false;
+    // Whether this apply already reloaded the AO, by writing `audio-channels`
+    // or switching passthrough. Either one makes a separate reload redundant.
+    var reloaded = false;
     try {
       final mode = settings.read(SettingsService.audioOutputMode);
       final route = AppleAudioSessionService.instance.lastKnown;
@@ -438,6 +463,7 @@ class AudioOutputCoordinator {
         if (channels != _lastChannels) {
           await player.setProperty('audio-channels', channels);
           _lastChannels = channels;
+          reloaded = true;
         }
       }
 
@@ -450,7 +476,11 @@ class AudioOutputCoordinator {
 
       if (decision != _lastDecision) {
         if (PlatformDetector.supportsAudioPassthrough()) {
+          // Off 1.0x the arbiter keeps the request but writes no `audio-spdif`,
+          // so only a bitstream state that actually moved counts as a reload.
+          final wasBitstreaming = player.audioPassthroughActive;
           await player.setAudioPassthrough(decision == AudioOutputDecision.passthrough);
+          if (player.audioPassthroughActive != wasBitstreaming) reloaded = true;
         }
         _lastDecision = decision;
         if (decision == AudioOutputDecision.passthrough) {
@@ -462,7 +492,16 @@ class AudioOutputCoordinator {
         appLogger.i('Audio output: ${decision.name} (mode: ${mode.name}, codec: $_audioCodec)');
         _scheduleOutputVerification(decision);
       }
+
+      if (deviceChanged && !reloaded && !_disposed) {
+        appLogger.i('Audio device changed without an AO reload, reloading the audio output');
+        await player.command(['ao-reload']);
+        if (!_disposed) _scheduleOutputVerification(decision);
+      }
     } catch (e, st) {
+      // Nothing reloaded the AO yet, so keep the device change for the next
+      // apply instead of leaving playback silent.
+      if (deviceChanged && !reloaded) _deviceChanged = true;
       appLogger.w('Applying audio output failed', error: e, stackTrace: st);
     } finally {
       _applying = false;
