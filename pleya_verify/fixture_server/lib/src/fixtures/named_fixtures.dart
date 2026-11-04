@@ -25,6 +25,13 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
     case 'catalog.shows.v1':
       _applyCatalogShowsV1(server);
       return true;
+    case 'catalog.continue-watching.v1':
+      _applyCatalogMixedV1(server);
+      final episode = server.items.values.firstWhere((item) => item['kind'] == 'episode');
+      server.hubs['continue_watching']!
+        ..clear()
+        ..add(episode['id'] as String);
+      return true;
     case 'catalog.mixed.v1':
       _applyCatalogMixedV1(server);
       return true;

@@ -447,6 +447,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     UnifiedMediaGroup group, {
     UnifiedActivationIntent intent = UnifiedActivationIntent.details,
     bool playDirectly = false,
+    bool forceDetails = false,
     bool restartFromBeginning = false,
   }) async {
     await activateUnifiedMediaGroup(
@@ -454,6 +455,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       group: group,
       intent: intent,
       playDirectly: playDirectly,
+      forceDetails: forceDetails,
       restartFromBeginning: restartFromBeginning,
       restoreTarget: TvFocusRestoreTarget(itemId: group.groupId),
       environment: _buildEnvironment(group),
@@ -537,7 +539,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
           playDirectly: true,
           restartFromBeginning: true,
         ),
-        UnifiedNavigationAction.moreInfo => _activate(group),
+        UnifiedNavigationAction.moreInfo => _activate(group, forceDetails: true),
         UnifiedNavigationAction.changeSource => _changeSourceFromCatalogMenu(group),
       },
     );
