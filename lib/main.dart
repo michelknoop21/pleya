@@ -137,6 +137,7 @@ Future<void> main() async {
   // accessibilityIdentifier/resource-id, addressable via idb/XCUITest.
   if (kDebugMode || kPleyaVerify) binding.ensureSemantics();
   _installZeroOffsetPointerGuard(); // Workaround for iPadOS 26.1+ modal dismissal bug
+  routeFrameworkErrorsToLog();
   startFrameTimingLog();
   startFocusFrameLog();
   startMemoryCheckpointLog();

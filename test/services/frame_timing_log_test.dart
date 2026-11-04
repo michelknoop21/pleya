@@ -1,7 +1,8 @@
 import 'package:fake_async/fake_async.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/services/frame_timing_log.dart';
 
@@ -92,5 +93,50 @@ void main() {
     TvDetectionService.debugSetTVOverride(false);
     addTearDown(() => TvDetectionService.debugSetTVOverride(null));
     expect(startMemoryCheckpointLog(), isNull);
+  });
+
+  testWidgets('the focus line names what holds the focus and where it is', (tester) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 40, top: 30),
+            child: FocusableWrapper(
+              focusNode: node,
+              automationId: 'grid.item',
+              automationInstance: '7',
+              semanticLabel: 'The "Film"',
+              child: const SizedBox(width: 100, height: 150),
+            ),
+          ),
+        ),
+      ),
+    );
+    node.requestFocus();
+    await tester.pump();
+
+    final line = describeFocus(FocusManager.instance.primaryFocus);
+    expect(line, contains('id=grid.item#7'));
+    expect(line, contains('label="The \'Film\'"'));
+    expect(line, matches(RegExp(r'rect=\d+,\d+,\d+,\d+')));
+    expect(line, contains('view=800x600'));
+  });
+
+  test('no focus is said as such', () => expect(describeFocus(null), 'focus=none'));
+
+  test('a framework error reaches the log and the handler that was there before', () {
+    final previous = FlutterError.onError;
+    var forwarded = 0;
+    FlutterError.onError = (_) => forwarded++;
+    addTearDown(() => FlutterError.onError = previous);
+    routeFrameworkErrorsToLog();
+
+    FlutterError.onError!(FlutterErrorDetails(exception: StateError('overflowed by 12 pixels')));
+
+    expect(MemoryLogOutput.getLogs().first.message, contains('FlutterError: Bad state: overflowed by 12 pixels'));
+    expect(forwarded, 1);
   });
 }
