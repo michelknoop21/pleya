@@ -53,6 +53,7 @@ type InfoAuth struct {
 
 // Capabilities is wat deze server werkelijk aanbiedt, en is altijd leidend.
 type Capabilities struct {
+	DetailPresentation     bool `json:"detail_presentation"`
 	PlaybackSubtitles      bool `json:"playback_subtitles"`
 	EmbeddedSubtitles      bool `json:"embedded_subtitles"`
 	AssistantMemory        bool `json:"assistant_memory"`
@@ -315,6 +316,7 @@ type DeleteLibraryRequest struct {
 
 // Artwork draagt de ids van de beschikbare afbeeldingen.
 type Artwork struct {
+	LogoID     *string `json:"logo_id,omitempty"`
 	PosterID   *string `json:"poster_id"`
 	BackdropID *string `json:"backdrop_id"`
 }
@@ -434,23 +436,31 @@ type StreamSession struct {
 }
 
 // Item is één item op de lijn.
+type ExternalRating struct {
+	Source    string  `json:"source"`
+	Value     float64 `json:"value"`
+	MaxValue  float64 `json:"max_value"`
+	VoteCount int     `json:"vote_count,omitempty"`
+}
+
 type Item struct {
-	ID                  string   `json:"id"`
-	Kind                string   `json:"kind"`
-	Title               string   `json:"title"`
-	SortTitle           *string  `json:"sort_title"`
-	Year                *int     `json:"year"`
-	AddedAt             string   `json:"added_at"`
-	Summary             *string  `json:"summary"`
-	Genres              []string `json:"genres"`
-	ContentRating       *string  `json:"content_rating"`
-	People              []Person `json:"people"`
-	DurationMs          *int64   `json:"duration_ms"`
-	ParentID            *string  `json:"parent_id"`
-	Index               *int     `json:"index"`
-	ChildCount          *int     `json:"child_count"`
-	EpisodeCount        *int     `json:"episode_count"`
-	WatchedEpisodeCount *int     `json:"watched_episode_count"`
+	ExternalRatings     []ExternalRating `json:"external_ratings,omitempty"`
+	ID                  string           `json:"id"`
+	Kind                string           `json:"kind"`
+	Title               string           `json:"title"`
+	SortTitle           *string          `json:"sort_title"`
+	Year                *int             `json:"year"`
+	AddedAt             string           `json:"added_at"`
+	Summary             *string          `json:"summary"`
+	Genres              []string         `json:"genres"`
+	ContentRating       *string          `json:"content_rating"`
+	People              []Person         `json:"people"`
+	DurationMs          *int64           `json:"duration_ms"`
+	ParentID            *string          `json:"parent_id"`
+	Index               *int             `json:"index"`
+	ChildCount          *int             `json:"child_count"`
+	EpisodeCount        *int             `json:"episode_count"`
+	WatchedEpisodeCount *int             `json:"watched_episode_count"`
 
 	// ExternalIDs staat er alleen als de server een bewezen providermatch heeft;
 	// anders null. Een client die het veld niet kent negeert het (regel 1, §3).
@@ -482,9 +492,10 @@ func mapExternalIDs(in catalog.ExternalIDs) *ExternalIDs {
 
 // Person is één persoon bij een item (B4).
 type Person struct {
-	Name      string  `json:"name"`
-	Role      string  `json:"role"`
-	Character *string `json:"character"`
+	PortraitID *string `json:"portrait_id,omitempty"`
+	Name       string  `json:"name"`
+	Role       string  `json:"role"`
+	Character  *string `json:"character"`
 }
 
 func mapPeople(in []catalog.Person) []Person {
@@ -493,7 +504,7 @@ func mapPeople(in []catalog.Person) []Person {
 	}
 	out := make([]Person, 0, len(in))
 	for _, p := range in {
-		out = append(out, Person{Name: p.Name, Role: p.Role, Character: optString(p.Character)})
+		out = append(out, Person{Name: p.Name, Role: p.Role, Character: optString(p.Character), PortraitID: optID(p.PortraitID)})
 	}
 	return out
 }
@@ -533,11 +544,16 @@ func mapItem(it catalog.Item) Item {
 		Artwork: Artwork{
 			PosterID:   optID(it.PosterID),
 			BackdropID: optID(it.BackdropID),
+			LogoID:     optID(it.LogoID),
 		},
 		Versions: make([]Version, 0, len(it.Versions)),
 		// Er is in PS-2 geen kijkstatus. Een item dat de identiteit nooit heeft
 		// aangeraakt draagt user_state: null, en dat is elk item.
 		UserState: nil,
+	}
+
+	for _, r := range it.ExternalRatings {
+		out.ExternalRatings = append(out.ExternalRatings, ExternalRating{Source: r.Source, Value: r.Value, MaxValue: r.MaxValue, VoteCount: r.VoteCount})
 	}
 
 	for _, v := range it.Versions {

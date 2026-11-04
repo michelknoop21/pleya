@@ -270,3 +270,16 @@ describe('MediaCard, staten van scherm 16', () => {
     expect(source).toMatch(/\.card__over--wide \{\s*aspect-ratio: var\(--aspect-episode\);/);
   });
 });
+
+
+it('opens a season in place while retaining the real link and modified-click behavior', async () => {
+ const onActivate = vi.fn();
+ const season = item({kind:'season'});
+ render(MediaCard,{props:{item:season,onActivate}});
+ const link=screen.getByRole('link',{name:/Grease/});
+ await fireEvent.click(link,{button:0});
+ expect(onActivate).toHaveBeenCalledExactlyOnceWith(season);
+ await fireEvent.click(link,{button:0,metaKey:true});
+ expect(onActivate).toHaveBeenCalledTimes(1);
+ expect(link).toHaveAttribute('href','/items/i1');
+});

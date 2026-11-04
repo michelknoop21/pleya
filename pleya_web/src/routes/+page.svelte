@@ -6,7 +6,7 @@
   import StateView from '#lib/components/StateView.svelte';
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import { session } from '#lib/stores/session.svelte.js';
-  import { describeError } from '#lib/api/errors.js';
+  import { ApiError, describeError } from '#lib/api/errors.js';
   import type { Item } from '#lib/api/types.js';
   import { t } from '#lib/i18n/index.js';
   import { videoContext } from '#lib/util/videoContext.js';
@@ -25,6 +25,7 @@
     error = null;
     try {
       const libraries = session.libraries.filter((library) => library.kind === 'movies' || library.kind === 'shows');
+      let refreshedLibraries: ReturnType<typeof session.client.libraries> | undefined;
       const watchState = session.capabilities?.watch_state === true;
       const [page, continuePage, nextPage, libraryPages] = await Promise.all([
         session.client.hub('recently_added', { limit: 24 }, signal),
@@ -33,7 +34,17 @@
         Promise.all(libraries.map(async (library) => ({
           id: library.id,
           title: library.title,
-          items: (await session.client.hub('recently_added', { library_id: library.id, limit: 24 }, signal)).items
+          items: (await session.client.hub('recently_added', { library_id: library.id, limit: 24 }, signal).catch(async err => {
+            if (!(err instanceof ApiError) || err.status !== 404) throw err;
+            // A library may have been deleted in another tab since session
+            // startup. Confirm its absence; never hide a genuine hub failure.
+            refreshedLibraries ??= session.client.libraries(signal);
+            const current = await refreshedLibraries;
+            if (signal.aborted) return { items: [] };
+            if (current.some(candidate => candidate.id === library.id)) throw err;
+            session.libraries = current;
+            return { items: [] };
+          })).items
         })))
       ]);
       if (signal.aborted) return;
@@ -61,6 +72,7 @@
             ...candidate, title: show.title,
             summary: candidate.summary ?? show.summary,
             artwork: {
+              logo_id: show.artwork?.logo_id ?? candidate.artwork?.logo_id,
               poster_id: show.artwork?.poster_id ?? context.season?.artwork?.poster_id ?? candidate.artwork?.poster_id,
               backdrop_id: candidate.artwork?.backdrop_id ?? show.artwork?.backdrop_id ?? context.season?.artwork?.backdrop_id
             }

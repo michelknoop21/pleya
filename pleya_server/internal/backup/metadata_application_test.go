@@ -99,8 +99,13 @@ func TestApplicationSchema30UpgradeAndEncryptedRestore(t *testing.T) {
 	if !reflect.DeepEqual(before, upgraded) {
 		t.Fatal("30 -> 31 wijzigde bestaande data")
 	}
-	// De oude 30→31-invariant blijft hierboven apart bewezen; nieuwe binary gebruikt 32.
+	// Bewijs de historische stappen apart; de huidige cataloguscode gebruikt
+	// vervolgens het volledige schema van deze binary.
 	if _, err := migrate.RunTo(ctx, pool, nil, 32); err != nil {
+		t.Fatal(err)
+	}
+	current, err := migrate.Run(ctx, pool, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
 	store := catalog.NewStore(pool)
@@ -135,7 +140,7 @@ func TestApplicationSchema30UpgradeAndEncryptedRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	durable := applicationBackupSnapshot(t, pool, false)
-	newPlan := archivePlan(32)
+	newPlan := archivePlan(current.To)
 	if _, err := store.RejectMatch(ctx, item, "tmdb"); err != nil {
 		t.Fatal(err)
 	}
@@ -146,12 +151,12 @@ func TestApplicationSchema30UpgradeAndEncryptedRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := applicationBackupSnapshot(t, pool, false); !reflect.DeepEqual(durable, got) {
-		t.Fatal("32 restore verloor duurzame status of overige data")
+		t.Fatal("huidig schema restore verloor duurzame status of overige data")
 	}
 	fresh := catalog.NewStore(pool)
 	restoredFields, err := fresh.MetadataFields(ctx, item)
 	if err != nil || !reflect.DeepEqual(durableFields, restoredFields) {
-		t.Fatalf("lock/provenance restore32: %+v %v", restoredFields, err)
+		t.Fatalf("lock/provenance restore: %+v %v", restoredFields, err)
 	}
 	status, err = fresh.MetadataMatchStatus(ctx, item)
 	if err != nil || status.State != "failed" || status.RequestedExternalID == nil || *status.RequestedExternalID != "8" || status.AppliedExternalID == nil || *status.AppliedExternalID != "7" {
@@ -174,6 +179,9 @@ func TestApplicationSchema30UpgradeAndEncryptedRestore(t *testing.T) {
 	if _, err := migrate.RunTo(ctx, pool, nil, 32); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatal(err)
+	}
 	status, err = catalog.NewStore(pool).MetadataMatchStatus(ctx, item)
 	if err != nil || status.State != "unknown" || status.AppliedExternalID != nil {
 		t.Fatalf("herupgrade verzon bewijs: %+v %v", status, err)
@@ -182,5 +190,5 @@ func TestApplicationSchema30UpgradeAndEncryptedRestore(t *testing.T) {
 	if err != nil || string(raw) != keyMarker {
 		t.Fatal("versleutelde config niet hersteld")
 	}
-	t.Log("30 -> 31 -> 32 -> encrypted backup/restore 32 (requested 8/applied 7/failed, manual lock/provenance) -> encrypted restore 30 -> 32; item/file/version/watch/history/lists/download en fictieve sleutel behouden; geen fysieke proces-/NAS-herstart")
+	t.Logf("30 -> 31 -> 32 -> %d -> encrypted backup/restore (requested 8/applied 7/failed, manual lock/provenance) -> encrypted restore 30 -> huidig schema; item/file/version/watch/history/lists/download en fictieve sleutel behouden; geen fysieke proces-/NAS-herstart", current.To)
 }

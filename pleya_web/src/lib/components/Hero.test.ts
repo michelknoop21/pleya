@@ -162,3 +162,21 @@ describe('Hero', () => {
     expect(html.indexOf('%sveltekit.head%')).toBeLessThan(html.indexOf(link![0]));
   });
 });
+
+
+it('uses an explicitly negotiated source logo and keeps the real title accessible', async () => {
+ const loader=vi.fn(async(_id:string)=>new Blob(['image']));
+ render(Hero,{props:{item:movie(),logoId:'actual-title-mark'},context:new Map([[ARTWORK_LOADER_KEY,loader]])});
+ await screen.findByRole('heading',{level:1,name:'Blade Runner'});
+ await vi.waitFor(()=>expect(loader.mock.calls.map(call=>call[0])).toContain('actual-title-mark'));
+});
+
+
+it('keeps the real title accessible while a source logo is still loading', () => {
+ let release!: (blob: Blob) => void;
+ const delayed=new Promise<Blob>(resolve=>{release=resolve;});
+ const loader=vi.fn(async(_id:string)=>delayed);
+ render(Hero,{props:{item:movie(),logoId:'slow-title-mark'},context:new Map([[ARTWORK_LOADER_KEY,loader]])});
+ try {expect(screen.getByRole('heading',{level:1,name:'Blade Runner'})).toBeInTheDocument();}
+ finally {release(new Blob(['image']));}
+});

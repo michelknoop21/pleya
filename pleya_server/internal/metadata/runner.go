@@ -42,7 +42,7 @@ type Provider interface {
 // geschikte items één keer opnieuw aan de beurt: geen rejected/ambiguous en
 // nooit vóór een geplande retry. 2: .nfo als bron. 3: alternatieven bij
 // titels die niet matchen, en handmatige keuzes (M2b).
-const currentPass = 3
+const currentPass = 4
 
 // maxAlternatives is het aantal zoektreffers dat een beheerder te zien krijgt.
 const maxAlternatives = 5
@@ -277,6 +277,9 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 		}
 	}
 
+	if details.Presentation != nil {
+		r.preparePresentation(ctx, t, &details, &prepared, &retry)
+	}
 	var artwork []catalog.ProviderArtwork
 	for _, a := range prepared {
 		artwork = append(artwork, a.row)
@@ -315,6 +318,7 @@ const (
 	bySearch how = iota
 	bySidecar
 	byManual
+	byApplied
 )
 
 // decide bepaalt de uitkomst voor één titel. Volgorde: een keuze van een
@@ -336,6 +340,10 @@ func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget, side *nfo
 		}
 	}
 
+	// Enrichment refreshes the actually applied identity, never a new title search.
+	if n, err := strconv.Atoi(t.RefreshExternalID); err == nil && n > 0 {
+		return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, byApplied, nil, nil
+	}
 	results, err := withBackoff(ctx, r, func() ([]SearchResult, error) {
 		return r.provider.Search(ctx, t.Kind, t.Title, t.Year)
 	})

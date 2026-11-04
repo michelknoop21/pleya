@@ -143,12 +143,14 @@
 
   async function remove(): Promise<void> {
     if (!library) return;
+    const removed = library;
     problem = null;
     deleting = true;
     try {
-      await api.deleteLibrary(library.id, library.title);
+      await api.deleteLibrary(removed.id, removed.title);
+      session.libraries = session.libraries.filter(candidate => candidate.id !== removed.id);
       deleteOpen = false;
-      await goto(`${LIST}?removed=${encodeURIComponent(library.title)}`);
+      await goto(`${LIST}?removed=${encodeURIComponent(removed.title)}`);
     } catch (err) {
       deleteOpen = false;
       fail(err, () => (deleteOpen = true));

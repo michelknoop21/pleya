@@ -106,10 +106,12 @@ type Item struct {
 	AddedAt   time.Time
 
 	// Beschrijvende velden (0013); leeg zolang niemand ze gezet heeft.
-	Summary       *string
-	ContentRating *string
-	Genres        []string
-	People        []Person
+	Summary         *string
+	ContentRating   *string
+	Genres          []string
+	People          []Person
+	LogoID          *id.ID
+	ExternalRatings []ExternalRating
 
 	// ExternalIDs zijn de providernummers die een gematchte provider (S22) bij
 	// dit item heeft vastgelegd. Alleen een match met state 'matched' levert er

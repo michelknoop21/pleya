@@ -7,16 +7,19 @@ import { render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Library } from '../api/types';
 import { setLocale } from '../i18n';
 import { apiError, library, libraryFake, root, scan } from './libraryFake';
 
-const h = vi.hoisted(() => ({ client: null as unknown, goto: vi.fn(async () => {}) }));
+const h = vi.hoisted(() => ({ client: null as unknown, libraries: [] as Library[], goto: vi.fn(async () => {}) }));
 vi.mock('$app/navigation', () => ({ goto: h.goto }));
 vi.mock('../stores/session.svelte', () => ({
   session: {
     get client() {
       return h.client;
-    }
+    },
+    get libraries() { return h.libraries; },
+    set libraries(value: Library[]) { h.libraries = value; }
   }
 }));
 
@@ -40,6 +43,7 @@ function setup(fail: Parameters<typeof libraryFake>[0]['fail'] = {}) {
     fail
   });
   h.client = server.client;
+  h.libraries = [films, leeg, kids];
   return server;
 }
 
@@ -236,6 +240,7 @@ describe('scherm 23, verwijderen', () => {
       ])
     );
     expect(h.goto).toHaveBeenCalledWith('/admin/libraries?removed=Films');
+    expect(h.libraries.map(library => library.id)).toEqual(['l2', 'l3']);
   });
 
   it('legt library.confirm_mismatch uit en laat opnieuw laden', async () => {

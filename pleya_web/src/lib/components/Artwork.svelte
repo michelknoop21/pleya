@@ -47,6 +47,8 @@
      * grijs vlak zonder tekst zegt in een raster niets.
      */
     fallback?: Snippet;
+    /** Keep an accessible title/initials visible until the image arrives. */
+    fallbackWhileLoading?: boolean;
   }
 
   let {
@@ -57,7 +59,8 @@
     eager = false,
     flat = false,
     role,
-    fallback
+    fallback,
+    fallbackWhileLoading = false
   }: Props = $props();
 
   let host = $state<HTMLDivElement | null>(null);
@@ -178,7 +181,7 @@
       release();
       status = 'error';
     }} />
-  {:else if (status === 'error' || (!artworkId && visible)) && fallback}
+  {:else if (status === 'error' || (!artworkId && visible) || (fallbackWhileLoading && visible)) && fallback}
     {@render fallback()}
   {:else if status === 'error' || (!artworkId && visible)}
     <div class="artwork__fallback" role="img" aria-label={alt || t('artwork.none')}>

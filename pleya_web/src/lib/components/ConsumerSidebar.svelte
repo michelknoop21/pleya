@@ -11,7 +11,7 @@
 
 <aside class="consumer-sidebar" class:consumer-sidebar--compact={compact}>
   <div class="consumer-sidebar__brand">
-    <a href="/" aria-label={t('app.name')}><span class="consumer-sidebar__wordmark"><Wordmark /></span><img class="consumer-sidebar__mark" src="/brand/pleya-mark-64.png" alt="" /></a>
+    <a href="/" aria-label={t('app.name')}><span class="consumer-sidebar__wordmark"><Wordmark /></span><img class="consumer-sidebar__mark" src="/brand/pleya-mark-64.png?v=3bf6bb94b0c7" alt="" /></a>
     <button type="button" aria-label={t('nav.primary')} aria-expanded={!compact} onclick={() => compact = !compact}>
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v14H4zM9 5v14" /></svg>
     </button>

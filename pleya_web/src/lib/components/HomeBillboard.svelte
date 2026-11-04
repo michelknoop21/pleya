@@ -30,7 +30,7 @@
 {#if active}
  <section class="billboard" bind:this={root} aria-label={t('hero.featured')}
  ontouchstart={e=>start=e.touches[0]?.clientX??0} ontouchend={e=>{const dx=(e.changedTouches[0]?.clientX??start)-start;if(Math.abs(dx)>50)move(index+(dx<0?1:-1))}}>
- <div class="slide"><Hero cinema billboard item={active} subtitle={subtitles.get(active.id)} summary={active.summary??undefined} playHref={session.capabilities?.playback_plan===true&&(active.kind==='movie'||active.kind==='episode')&&(active.versions?.length??0)>0?playerHref(active.id,active.user_state?.watched?0:active.user_state?.position_ms):undefined}/></div>
+ <div class="slide"><Hero cinema billboard item={active} logoId={session.capabilities?.detail_presentation===true?active.artwork?.logo_id:undefined} subtitle={subtitles.get(active.id)} summary={active.summary??undefined} playHref={session.capabilities?.playback_plan===true&&(active.kind==='movie'||active.kind==='episode')&&(active.versions?.length??0)>0?playerHref(active.id,active.user_state?.watched?0:active.user_state?.position_ms):undefined}/></div>
  {#if items.length>1}<div class="controls"><div class="segments" class:visible={indicators} aria-hidden="true">{#each items as item}<b class:active={item.id===active.id}></b>{/each}</div><button aria-label={t('hero.previous')} disabled={index===0} onclick={()=>move(index-1)}>‹</button><button aria-label={t('hero.next')} disabled={index===items.length-1} onclick={()=>move(index+1)}>›</button></div>{/if}
  </section>
 {/if}

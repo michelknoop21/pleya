@@ -178,7 +178,7 @@ func sourceWidth(path string) int {
 // trede, of het formaat is onbekend). Goedkoop genoeg om vóór een
 // If-None-Match-controle te draaien, want de trede is deel van de validator.
 func (r *Resizer) Plan(src, kind string, requested int) int {
-	if !r.Available() || requested <= 0 {
+	if strings.HasPrefix(kind, "logo:") || !r.Available() || requested <= 0 {
 		return 0
 	}
 	step := Step(kind, requested)

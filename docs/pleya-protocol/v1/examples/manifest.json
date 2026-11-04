@@ -743,6 +743,11 @@
     {
       "file": "info_artwork_cache_admin.json",
       "schema": "Info"
+    },
+    {
+      "file": "item_movie_detail_presentation.json",
+      "schema": "Item",
+      "note": "Additief detailvenster4nov: bronlogo/creditportret/externe score, onbekende scorebron veilig"
     }
   ]
 }

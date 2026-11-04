@@ -236,9 +236,14 @@ func (c *TMDB) Search(ctx context.Context, kind, title string, year *int) ([]Sea
 }
 
 type tmdbDetails struct {
-	Overview     string `json:"overview"`
-	PosterPath   string `json:"poster_path"`
-	BackdropPath string `json:"backdrop_path"`
+	ID           int                    `json:"id"`
+	VoteAverage  *float64               `json:"vote_average"`
+	VoteCount    int                    `json:"vote_count"`
+	Credits      tmdbCredits            `json:"credits"`
+	Images       tmdbPresentationImages `json:"images"`
+	Overview     string                 `json:"overview"`
+	PosterPath   string                 `json:"poster_path"`
+	BackdropPath string                 `json:"backdrop_path"`
 	Genres       []struct {
 		Name string `json:"name"`
 	} `json:"genres"`
@@ -278,10 +283,13 @@ func (c *TMDB) Details(ctx context.Context, kind string, tmdbID int) (catalog.Me
 	}
 	var d tmdbDetails
 	path := fmt.Sprintf("/%s/%d", tmdbKind(kind), tmdbID)
-	if err := c.getJSON(ctx, path, url.Values{"language": {c.language}, "append_to_response": {extra}}, &d); err != nil {
+	if err := c.getJSON(ctx, path, url.Values{"language": {c.language}, "append_to_response": {extra + ",credits,images"}, "include_image_language": {strings.Split(c.language, "-")[0] + ",en,null"}}, &d); err != nil {
 		return catalog.MetadataDetails{}, err
 	}
 
+	if d.ID > 0 && d.ID != tmdbID {
+		return catalog.MetadataDetails{}, errors.New("provider returned a different title identity")
+	}
 	out := catalog.MetadataDetails{
 		Summary:     strings.TrimSpace(d.Overview),
 		PosterRef:   d.PosterPath,
@@ -303,6 +311,9 @@ func (c *TMDB) Details(ctx context.Context, kind string, tmdbID int) (catalog.Me
 		if err := c.getJSON(ctx, path, url.Values{"language": {"en-US"}}, &en); err == nil {
 			out.Summary = strings.TrimSpace(en.Overview)
 		}
+	}
+	if d.ID == tmdbID {
+		c.addPresentation(&out, &d)
 	}
 	return out, nil
 }
@@ -331,6 +342,8 @@ func (c *TMDB) Image(ctx context.Context, kind, ref string) ([]byte, string, err
 	size := posterSize
 	if kind == "backdrop" {
 		size = backdropSize
+	} else if strings.HasPrefix(kind, "portrait:") {
+		size = "w342"
 	}
 	// ref komt van de provider; alleen een eenvoudig pad is toegestaan.
 	if !strings.HasPrefix(ref, "/") || strings.Contains(ref, "..") || strings.ContainsAny(ref, "?#\\") {
@@ -339,6 +352,14 @@ func (c *TMDB) Image(ctx context.Context, kind, ref string) ([]byte, string, err
 	body, ctype, err := c.get(ctx, c.image, "/"+size+ref, nil, "image/*", maxImageBytes)
 	if err != nil {
 		return nil, "", err
+	}
+	if strings.HasPrefix(kind, "logo:") {
+		if strings.ToLower(strings.TrimSpace(strings.Split(ctype, ";")[0])) != "image/png" {
+			return nil, "", errors.New("logo is not a PNG")
+		}
+		if err := validateLogo(body); err != nil {
+			return nil, "", err
+		}
 	}
 	switch strings.ToLower(strings.TrimSpace(strings.Split(ctype, ";")[0])) {
 	case "image/jpeg":

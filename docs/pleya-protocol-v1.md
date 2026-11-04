@@ -2768,3 +2768,12 @@ geen stille andere afbeelding. Nieuw bewust kiezen geeft een nieuwe UUID/ETag.
 Ontpinnen herstelt de gewone bronladder. `pins.*.state=ready` betekent aanwezige
 gevalideerde cachebytes, `unavailable` houdt intentie en herstelbare fout zichtbaar.
 GET mag cache herstellen; PUT lokt na publicatie geen nieuwe netwerkcall uit.
+
+
+### Detailpresentatie — begrensd venster4november2026
+
+Michel heeft dit additieve venster geopend voor Web-film- en seriedetails volgens de bestaande tvOS-compositie. `capabilities.detail_presentation` is optioneel en standaardfalse; het onderhandelt uitsluitend de leesbare presentatievelden, geen nieuwe rechten of garanties dat elk item beelden/scores bezit. `Artwork.logo_id` en `Person.portrait_id` zijn optionele authenticated artwork-IDs. Een portrait is geen nieuwe persoonsidentiteit; hij hoort bij het effectieve credit en blijft onder dezelfde item-/bibliotheekautorisatie.
+
+`Item.external_ratings` bevat maximaal acht werkelijke broncijfers: unknown-safe `source`, `value`, `max_value` en optionele niet-negatieve `vote_count`. De waarden zijn eindig;0≤value≤max_value≤100 en max_value>0. Ontbrekend is onbekend, nietnul. Een werkelijke nul met bronstemmen blijftnul. De eigen gebruikersrating verandert niet. De huidige provider levert uitsluitend het TMDB-cijfer wanneer stemcount>0; IMDb/Rotten Tomatoes of percentages worden niet afgeleid.
+
+Publicatie koppelt beelden/cijfers aan dezelfde werkelijk toegepaste provider-ID als de beschrijvende metadata. Pending/failure verandert die identiteit niet; een nieuwe succesvolle bron zonder een beeld mag geen oud beeld onder een nieuw ID bewaren. Manual/NFO-creditnamen krijgen geen providerportret door naamzoeking. Een onbekende/ontbrekende capability of veld levert de bestaande titel-/naamweergave op. Nieuwe PNG-logo’s behouden hun transparantie, ook bij een width-parameter. Bestaande velden, enumwaarden en gesloten aanvragen blijven ongewijzigd. Zie [uitvoeringsgrens](plans/2026-11-04-web-detail-presentation.md).

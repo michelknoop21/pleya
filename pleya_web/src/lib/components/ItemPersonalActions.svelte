@@ -8,8 +8,9 @@
   import { t } from '../i18n';
   import ConfirmDialog from './ConfirmDialog.svelte';
   import Select from './Select.svelte';
+  import DetailIcon from './DetailIcon.svelte';
 
-  let { item, onchange }: { item: Item; onchange: (next: Item) => void } = $props();
+  let { item, onchange, compact = false }: { item: Item; onchange: (next: Item) => void; compact?: boolean } = $props();
   let active = true;
   onDestroy(() => { active = false; });
   let busy = $state(false);
@@ -67,15 +68,15 @@
   }
 </script>
 
-<div class="personal-actions">
+<div class="personal-actions" class:personal-actions--compact={compact}>
   {#if session.capabilities?.favorites}
-    <button class="btn btn--secondary" aria-disabled={busy} aria-pressed={!!item.favorite} onclick={favorite}>
-      {t(item.favorite ? 'personal.removeFavorite' : 'personal.addFavorite')}
+    <button class="btn btn--secondary" aria-disabled={busy} aria-pressed={!!item.favorite} title={compact ? t(item.favorite ? 'personal.removeFavorite' : 'personal.addFavorite') : undefined} onclick={favorite}>
+      {#if compact}<DetailIcon name="favorite" />{/if}<span class:visually-hidden={compact}>{t(item.favorite ? 'personal.removeFavorite' : 'personal.addFavorite')}</span>
     </button>
   {/if}
   {#if session.capabilities?.ratings}
-    <button class="btn btn--secondary" aria-disabled={busy} onclick={() => { if (busy) return; draftRating = item.rating == null ? '' : String(item.rating); error = null; ratingOpen = true; }}>
-      {item.rating == null ? t('personal.rate') : t('personal.rated', { rating: item.rating })}
+    <button class="btn btn--secondary" aria-disabled={busy} title={compact ? (item.rating == null ? t('personal.rate') : t('personal.rated', { rating: item.rating })) : undefined} onclick={() => { if (busy) return; draftRating = item.rating == null ? '' : String(item.rating); error = null; ratingOpen = true; }}>
+      {#if compact}<DetailIcon name="rating" />{/if}<span class:visually-hidden={compact}>{item.rating == null ? t('personal.rate') : t('personal.rated', { rating: item.rating })}</span>
     </button>
     <ConfirmDialog bind:open={ratingOpen} title={t('personal.yourRating')} confirmLabel={t('personal.save')} danger={false} {busy} onconfirm={rate}>
       <Select label={t('personal.rating')} options={ratingOptions} bind:value={draftRating} disabled={busy} />
@@ -83,18 +84,20 @@
     </ConfirmDialog>
   {/if}
   {#if canWatch}
-    <button class="btn btn--secondary" aria-disabled={busy} onclick={watched}>
-      {t(item.user_state?.watched ? 'personal.markUnwatched' : 'personal.markWatched')}
+    <button class="btn btn--secondary" aria-disabled={busy} aria-pressed={!!item.user_state?.watched} title={compact ? t(item.user_state?.watched ? 'personal.markUnwatched' : 'personal.markWatched') : undefined} onclick={watched}>
+      {#if compact}<DetailIcon name="watched" />{/if}<span class:visually-hidden={compact}>{t(item.user_state?.watched ? 'personal.markUnwatched' : 'personal.markWatched')}</span>
     </button>
   {/if}
   {#if canAdd}
-    <button class="btn btn--secondary" aria-haspopup="dialog" onclick={() => addToList.open(item)}>{t('lists.add.title')}</button>
+    <button class="btn btn--secondary" aria-haspopup="dialog" title={compact ? t('lists.add.title') : undefined} onclick={() => addToList.open(item)}>{#if compact}<DetailIcon name="add" />{/if}<span class:visually-hidden={compact}>{t('lists.add.title')}</span></button>
   {/if}
 </div>
 {#if error && !ratingOpen}<p role="alert">{error}</p>{/if}
 
 <style>
   .personal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .personal-actions--compact .btn { width: 48px; height: 48px; min-width: 48px; padding: 0; border: none; border-radius: 50%; display: inline-grid; place-items: center; background: var(--panel); }
+  .personal-actions--compact .btn[aria-pressed="true"] { color: var(--accent-alt); }
   .personal-actions:empty { display: none; }
   /* aria-disabled, not disabled: a disabled button drops keyboard focus while the request runs. */
   .personal-actions .btn[aria-disabled='true'] { opacity: 0.5; cursor: progress; }

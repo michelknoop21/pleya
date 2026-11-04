@@ -16,9 +16,11 @@
     eagerCount?: number;
     label?: string;
     onHighlight?: (item: Item) => void;
+    /** Optional same-page navigation; the real link remains available for new tabs. */
+    onActivate?: (item: Item) => void;
   }
 
-  let { items, eagerCount = 12, label, onHighlight }: Props = $props();
+  let { items, eagerCount = 12, label, onHighlight, onActivate }: Props = $props();
 
   /**
    * Eén vorm voor het hele raster.
@@ -38,7 +40,7 @@
 <ul class="grid" aria-label={label}>
   {#each items as item, index (item.id)}
     <li data-item-id={item.id}>
-      <MediaCard {item} {shape} {onHighlight} eager={index < eagerCount} />
+      <MediaCard {item} {shape} {onHighlight} {onActivate} eager={index < eagerCount} />
     </li>
   {/each}
 </ul>
