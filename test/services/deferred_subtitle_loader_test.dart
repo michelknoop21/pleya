@@ -22,7 +22,13 @@ void main() {
   });
 
   tearDown(() {
-    if (root.existsSync()) root.deleteSync(recursive: true);
+    // The loader deletes its own files fire-and-forget on the IO pool. When one
+    // vanishes during the recursive delete, deleteSync throws; gone is the goal.
+    try {
+      root.deleteSync(recursive: true);
+    } on PathNotFoundException {
+      // Already removed.
+    }
   });
 
   /// Gives the fire-and-forget delete of the loader a turn.
