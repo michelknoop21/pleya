@@ -21,7 +21,9 @@ import Foundation
   /// AirPlay routes keep reporting two channels, mpv's `ao_audiounit` sees
   /// `outputNumberOfChannels <= 2` and hard-downmixes to stereo. A stereo
   /// stream has nothing left to spatialize, which is why the app sounded flat
-  /// next to players that do set the flag.
+  /// next to players that do set the flag. AirPods keep reporting two even with
+  /// the opt-in and Spatial Audio on (log 33hdc), so the player puts
+  /// `ao_avfoundation` first: it hands the full layout to the system renderer.
   ///
   /// Head-tracked vs fixed spatial audio is deliberately absent:
   /// `setIntendedSpatialExperience` is visionOS-only, and on iOS/tvOS the
