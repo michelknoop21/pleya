@@ -2960,7 +2960,7 @@ naam en toetst na elke druk `active: false` op de pil met focus en `active: true
 blijft staan, en pas na Select `active: true` op de gekozen pil. De invariant voor de gate blijft de
 `active`-state.
 
-**Bijgewerkt door DEC-XXX (topmenu wisselt bij focus, 4 november 2026):** de ring wisselt de pagina
+**Bijgewerkt door DEC-194 (topmenu wisselt bij focus, 4 november 2026):** de ring wisselt de pagina
 weer. Het scenario toetst na elke druk `active: true` op de pil met focus en `active: false` op de
 vorige, ook op Instellingen, en Menu op een andere pagina brengt ring en pagina naar Home.
 
@@ -5137,7 +5137,7 @@ of externe/publicatie naar App Review.
 6. Tekst op tvOS gaat niet onder 23 pt en wordt niet kleiner dan voorheen (besluit Michel, 26 oktober 2026). De kleine kapitalen die het bord op ongeveer 17 pt tekent, worden op 23 pt gebouwd en de layout schuift mee. Op het canvas van 1038 x 584 past de pagina zonder scrollen, met de laatste rij bereikbaar en heel.
 **Consequences:** Dit vervangt het TV-deel van het A-24b-besluit voor Mijn Pleya (het besluit "A-24b bouwt Instellingen en Mijn Pleya na volgens de northstars": de Editorial-indeling op Apple TV, de rechterkolom van 440 pt en de twee titelregels op een kijklijstkaart). Het iPhone-deel blijft van kracht. Instellingen is op TV geen geneste route van Mijn Pleya meer maar een eigen bestemming; de Instellingen-subpagina's blijven geneste routes binnen de shell zoals [PB-1](tvos-redesign-implementatiecontract.md#pb-1-topnav-blijft-staan-op-tv-contentroutes) ze opent, nu onder Instellingen in plaats van onder Mijn Pleya. De bestemming Instellingen en haar subpagina's houden de inklapbare balk van [DEC-166](#dec-166-instellingen-op-apple-tv-zonder-vaste-bovenbalk-en-de-rail-past-in-het-venster): de ingang staat in het topmenu, op de pagina's zelf schuift de balk weg en UP haalt hem terug. De oude Beheer-tegels, de profielregel en de voetregel verdwijnen; elke route uit die tegels heeft een ingang in `pariteit-v4.csv`. Afwijkingen van de borden staan in [`docs/plans/AFWIJKINGEN_A24B.md`](plans/AFWIJKINGEN_A24B.md) onder "Mijn Pleya op Apple TV, v4". Simulatorbewijs is geen hardware-acceptatie; de Siri Remote-controle op een toestel staat open in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen tvOS-presentatie en navigatie, geen backend, protocol of datamodel.
 
-**Bijgewerkt door DEC-XXX (topmenu wisselt bij focus, 4 november 2026):** punt 3 is vervallen. De ring op een bestemmingspil wisselt de pagina meteen, Menu in de balk volgt weer de regel van vóór A-24c, en de avatar blijft een bediening zonder paginawissel. De punten 1, 2, 4, 5 en 6 blijven van kracht.
+**Bijgewerkt door DEC-194 (topmenu wisselt bij focus, 4 november 2026):** punt 3 is vervallen. De ring op een bestemmingspil wisselt de pagina meteen, Menu in de balk volgt weer de regel van vóór A-24c, en de avatar blijft een bediening zonder paginawissel. De punten 1, 2, 4, 5 en 6 blijven van kracht.
 
 
 ## DEC-183: P5 en PS-15 vrijgegeven voor afronding van Pleya Server en apps
@@ -5639,10 +5639,10 @@ Alleen reproduceerbare ladderbestanden; media, originelen/providerbestanden, gep
 
 Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaaldeaanroeprechten of NAS/publicatie. Het aparte publieke GitHub-bestemmingsbesluit was bij deze vensteropening nog pending. De latere afzonderlijke toestemming voor de publieke GitHub-repository, NAS en TestFlight verandert de scope van dit venster niet; PR579 is inmiddels normaal gemerged, maar NAS- en TestFlightacceptatie blijven afzonderlijke gates. Goedkeuring is geen implementatie-/runtime-/releasebewijs; getest checkpoint e8aba921f blijft bewaard en pin-cache503herstel heeft zijn eigen bewijsgrens.
 
-## DEC-XXX: Besluit Michel 4 nov 2026: topmenu wisselt pagina bij focus
+## DEC-194: Besluit Michel 4 nov 2026: topmenu wisselt pagina bij focus
 
 **Date:** 2026-11-04
-**Status:** accepted (Michel, 4 november 2026). Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit besluit in verwijzingen DEC-XXX (topmenu wisselt bij focus).
+**Status:** accepted (Michel, 4 november 2026). Gemerged met PR #593; het nummer DEC-194 is toegekend in de bundel-PR van build 444.
 **Roadmap:** A-24 (vervolg op A-24c).
 
 **Context:** Sinds DEC-167 punt 3 verplaatste de ring in het topmenu op Apple TV alleen de focus en wisselde de pagina pas na Select. Michel vond de app daardoor traag aanvoelen: wie Films wil zien, moet na de pijl nog een keer klikken, en tussen ring en pagina zit steeds een verschil dat de kijker zelf moet onthouden.

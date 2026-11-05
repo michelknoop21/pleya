@@ -38,7 +38,7 @@ steps:
   # would land on a node the scenario cannot name.
   - walk: {direction: left, expect: [nav.search, nav.profile], timeout: 20000, settle: 800}
   - assert: {id: nav.profile, focused: true}
-  # DEC-XXX: the ring on Zoeken made it the page; the avatar is not a
+  # DEC-194: the ring on Zoeken made it the page; the avatar is not a
   # destination, so the ring on it leaves Zoeken on screen.
   - assert: {id: nav.search, state: {active: true}}
   - assert: {id: nav.discover, state: {active: false}}
@@ -53,7 +53,7 @@ steps:
       timeout: 40000
       settle: 800
   - assert: {id: nav.settings, focused: true}
-  # The ring is the page (DEC-XXX, which replaced the A-24c rule that kept
+  # The ring is the page (DEC-194, which replaced the A-24c rule that kept
   # Home on screen after the whole walk): Instellingen is on screen now.
   - assert: {id: nav.settings, state: {active: true}}
   - assert: {id: nav.myPleya, state: {active: false}}

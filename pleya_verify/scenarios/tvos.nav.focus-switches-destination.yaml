@@ -1,6 +1,6 @@
 name: tvos.nav.focus-switches-destination
 target: tvos-sim
-# DEC-XXX (besluit Michel 4 november 2026; replaces point 3 of DEC-167): the
+# DEC-194 (besluit Michel 4 november 2026; replaces point 3 of DEC-167): the
 # ring on a destination pill IS the page. LEFT/RIGHT changes the page, the
 # ring stays in the bar, DOWN goes into the page on screen, Select on the pill
 # you are on goes into it as well, and Select is never required to switch.
@@ -58,7 +58,7 @@ steps:
   - assert: {id: nav.myPleya, focused: true}
   - snapshot: 03-my-pleya
 
-  # --- Instellingen is a pill like the others (DEC-XXX) ---------------------
+  # --- Instellingen is a pill like the others (DEC-194) ---------------------
   - press: right
   - wait_until: {focused: nav.settings, timeout: 5000}
   - settle: 400

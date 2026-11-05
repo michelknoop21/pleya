@@ -730,7 +730,7 @@ void main() {
     });
   });
 
-  // DEC-XXX: focus on a destination pill *is* the navigation. These pin the
+  // DEC-194: focus on a destination pill *is* the navigation. These pin the
   // bar's half of it: a ring move reports a destination and Select is not what
   // switches. These tests have no negative control of their own: what the
   // host does with the report, including the settle window, is pinned with

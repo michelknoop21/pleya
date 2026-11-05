@@ -10,7 +10,7 @@ target: tvos-sim
 # The immediate-send negative control is detected by enablesSentWhileKeysHeld,
 # independently of whether this synthetic input route produces a second step.
 # 250ms holds exercise separate down/up phases without claiming engine repeats.
-# DEC-XXX: the ring on a pill is the page again, so every held landing on
+# DEC-194: the ring on a pill is the page again, so every held landing on
 # Home raises the passthrough on its own; no Select is needed.
 setup:
   - reset_app

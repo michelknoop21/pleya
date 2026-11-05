@@ -578,7 +578,7 @@ class _MainScreenState extends State<MainScreen>
   /// replaces and the contract it keeps.
   final TvContentFocusAuthority _tvContentFocus = TvContentFocusAuthority();
 
-  /// Coalesces the page switches of a sweep over the bar (DEC-XXX).
+  /// Coalesces the page switches of a sweep over the bar (DEC-194).
   late final TvRingSettle _tvRingSettle = TvRingSettle(activate: _activateTvRingDestination);
 
   /// Android TV's way up into the bar while it is in flight: the pill it is
@@ -1898,7 +1898,7 @@ class _MainScreenState extends State<MainScreen>
         // The scope's own request restores the pill it last held, and the
         // page's pill follows a frame later (a pill that just came back into
         // the bar has no element before that). Since the ring on a pill is
-        // the page (DEC-XXX), that restored pill would switch the page on the
+        // the page (DEC-194), that restored pill would switch the page on the
         // way up; `_focusTvDestination` ignores it while this request is the
         // live one (review 593-I1).
         _focus.focusSidebar(
@@ -1938,7 +1938,7 @@ class _MainScreenState extends State<MainScreen>
     // consumes it when its content finally lands (P2).
     if (_isTvShell) {
       // DOWN inside a sweep's settle window: the page under the ring first,
-      // so the remote goes into the page the ring is on (DEC-XXX).
+      // so the remote goes into the page the ring is on (DEC-194).
       _tvRingSettle.flush();
       _tvContentFocus.arm(restorePreviousFocus ? TvContentFocusIntent.restore : TvContentFocusIntent.primary);
     }
@@ -2387,7 +2387,7 @@ class _MainScreenState extends State<MainScreen>
         return true;
       }
       _tvNav.syncToTab(tab);
-      // The ring is the page (DEC-XXX): a page changed from outside the bar
+      // The ring is the page (DEC-194): a page changed from outside the bar
       // (Menu to Home, a deferred startup section, the companion remote) takes
       // the ring with it, also off the avatar or the reconnect item (review
       // 593-R2-M1), or a second Menu would leave the app with the ring never
@@ -2461,7 +2461,7 @@ class _MainScreenState extends State<MainScreen>
     // Focus search input after rebuild so IndexedStack has made it visible.
     //
     // Not on the TV shell unless the viewer actually asked to go in. The ring
-    // landing on Zoeken switches to Search without that request (DEC-XXX),
+    // landing on Zoeken switches to Search without that request (DEC-194),
     // and the caret dropping into the field would strand the remote outside
     // the navigation. Same rule as the `!_isTvShell` guard
     // above, expressed against the one authority instead of a second flag:
@@ -2899,7 +2899,7 @@ class _MainScreenState extends State<MainScreen>
   }
 
   /// The ring landed on a destination pill, which switches the page
-  /// (DEC-XXX, besluit Michel 4 november 2026; reverses point 3 of DEC-167).
+  /// (DEC-194, besluit Michel 4 november 2026; reverses point 3 of DEC-167).
   ///
   /// The ring memory moves at once; the page follows through [_tvRingSettle]:
   /// a single press switches immediately, a sweep switches on the pill the

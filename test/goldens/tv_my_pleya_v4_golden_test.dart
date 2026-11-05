@@ -52,7 +52,7 @@ void main() {
     });
   }
 
-  // No A13 golden: since DEC-XXX (topmenu wisselt pagina bij focus) the ring on
+  // No A13 golden: since DEC-194 (topmenu wisselt pagina bij focus) the ring on
   // Instellingen puts Instellingen on screen, so "ring on Instellingen, capsule
   // on Mijn Pleya" no longer exists. main_screen_tv_settings_destination_test
   // covers the new behaviour.

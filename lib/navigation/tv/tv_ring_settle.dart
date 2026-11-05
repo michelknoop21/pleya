@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 /// than a deliberate second click, which keeps its own switch.
 const Duration kTvRingSettle = Duration(milliseconds: 150);
 
-/// Coalesces page switches while the ring sweeps the top bar (DEC-XXX).
+/// Coalesces page switches while the ring sweeps the top bar (DEC-194).
 ///
 /// The ring landing on a pill switches the page. A single press switches at
 /// once (leading edge), so there is no visible delay. A move that lands within

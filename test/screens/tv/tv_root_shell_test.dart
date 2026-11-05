@@ -397,7 +397,7 @@ void main() {
     });
   });
 
-  // DEC-XXX (besluit Michel 4 november 2026, reverses point 3 of DEC-167):
+  // DEC-194 (besluit Michel 4 november 2026, reverses point 3 of DEC-167):
   // focus on a destination pill is the navigation, Select is not required.
   //
   // The shell's job in that contract is one line: hand the ring's landing to

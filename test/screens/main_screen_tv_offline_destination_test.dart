@@ -103,7 +103,7 @@ void main() {
     });
   }
 
-  // NAV-GLASS1 under DEC-XXX: the ring on a pill is the page, rapid reversals
+  // NAV-GLASS1 under DEC-194: the ring on a pill is the page, rapid reversals
   // end on the pill the ring rests on, and Select on it enters the content.
   testWidgets('NAV-GLASS1 Apple TV: focus switches, reversals settle, Select enters the content', (tester) async {
     appleTv();
@@ -140,7 +140,7 @@ void main() {
     await h.dispose(tester);
   });
 
-  // Review 593-I1, for both TVs (DEC-XXX point 5). A page changed from inside
+  // Review 593-I1, for both TVs (DEC-194 point 5). A page changed from inside
   // the content leaves the bar scope remembering the old pill. UP must land
   // on the page's pill without switching to the remembered one on the way:
   // on Android TV that detour flashed Home and refreshed it. Negative control:

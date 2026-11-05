@@ -112,7 +112,7 @@ class TvRootShell extends StatelessWidget {
   final ValueChanged<TvDestinationId> onSelectDestination;
 
   /// The ring landing on a destination pill, which switches the page
-  /// (DEC-XXX). Wired through the host because the switch also selects the tab
+  /// (DEC-194). Wired through the host because the switch also selects the tab
   /// behind it and cancels a pending content-focus intent.
   final ValueChanged<TvDestinationId> onFocusDestination;
 

@@ -50,6 +50,53 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 444 · 5 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 2c5f4b765d7cd14f7baf5e9a2d9430da7d4fecc4 -->
+
+### Improved
+
+- **The top bar on Apple TV switches page as soon as you land on a tab.** Moving right to Films
+  shows the films straight away; Select is no longer needed. Sweeping across several tabs only
+  loads the page you stop on. Android TV behaves the same way.
+- **Apple TV feels lighter while you browse.** The offline library walked every series and
+  season again every ten minutes and each time you came back to the app, which kept the app busy
+  while you were clicking. It now checks a library at most once an hour, or sooner when the
+  server reports a change. A watched state from another device can take up to an hour to show
+  in the offline library.
+
+### Fixed
+
+- **Library sync now finishes when a server is slow.** One title that timed out used to stop the
+  whole sync, and the next attempt started from the beginning again. Such a title is now skipped
+  and tried again later, and the settings show that the sync was incomplete.
+- **Top Shelf pictures no longer download over and over.** During playback the Top Shelf tried to
+  fetch all its pictures again every half minute. A failed picture now waits five minutes before
+  the next try.
+- **iCloud sync can be switched on on Apple TV.** The switch asked you to sign in to iCloud even
+  when the Apple TV was signed in, so settings never synced there.
+- **The companion remote shows the Apple TV's own name.** It used to say "Unknown device".
+- **Sound comes back within about a second after switching to AirPods on Apple TV.** Moving
+  playback from the television to AirPods, or back, used to leave several seconds of silence
+  (6.3 seconds in one measured switch) while the picture kept running. Pleya now restarts the
+  sound at the picture's position, at the cost of a brief stutter in the image. On an Apple TV 4K
+  the sound returned within 0.65 to 2.4 seconds in both directions, with and without Dolby
+  passthrough. iPhone and iPad run the same change but have not been tested.
+- **AirPods with Spatial Audio get the full surround track.** AirPods report two channels even
+  with Spatial Audio on, and Pleya used to mix 5.1 down to stereo for them, leaving the system
+  nothing to place around you. Pleya now hands over all six channels, and a server that has to
+  convert the audio no longer limits it to stereo for those AirPods. Measured on Apple TV; on
+  iPhone and iPad Pleya now uses the same audio path, so AirPods there should get all six
+  channels too, but that has not been tested on an iPhone or iPad yet.
+- **On iPhone and iPad, a video in Pleya now pauses music from other apps.** Pleya used to play
+  alongside other audio; it now takes over the sound the way it already did on Apple TV.
+
+### Notes
+
+- Internal iOS/tvOS TestFlight build. Not yet checked on a device: holding an arrow across the
+  top bar, iCloud sync between Apple TV and iPhone, the companion remote's device name, and the
+  audio changes on iPhone and iPad.
+
 ## 2.8.1 · build 431 · 2 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: b74c630da4f0d1e6d6dc2b0cedb65b7d4b48dfab -->
