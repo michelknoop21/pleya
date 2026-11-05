@@ -120,9 +120,22 @@ set -e
 # onderscheiden van "Flutter roept iets anders aan sinds de laatste SDK-bump en
 # het trage pad liep gewoon door". Adviserend: een geslaagde upload afkeuren op
 # een meetpunt zou erger zijn dan de traagheid zelf.
+# Alleen een run die iOS bouwt roept de shim aan. `beta platforms:tvos` (of
+# PLEYA_BETA_PLATFORMS zonder ios) doet dat niet; zelfde volgorde als de lane:
+# de lane-optie wint van de omgevingsvariabele.
+BUILDS_IOS=0
+if [[ "$LANE" == "ios_beta" ]]; then
+  BUILDS_IOS=1
+elif [[ "$LANE" == "beta" ]]; then
+  platforms="${PLEYA_BETA_PLATFORMS:-ios,tvos,macos}"
+  for opt in ${LANE_OPTS[@]+"${LANE_OPTS[@]}"}; do
+    if [[ "$opt" == platforms:* ]]; then platforms="${opt#platforms:}"; fi
+  done
+  if [[ ",${platforms// /}," == *",ios,"* ]]; then BUILDS_IOS=1; fi
+fi
 if [[ -n "$XATTR_MARKER" ]]; then
   hits=$(wc -l < "$XATTR_MARKER" | tr -d ' ')
-  if [[ "$LANE" == "beta" || "$LANE" == "ios_beta" ]] && [[ "$hits" -eq 0 ]]; then
+  if [[ "$BUILDS_IOS" -eq 1 ]] && [[ "$hits" -eq 0 ]]; then
     echo "$LOG_PREFIX WAARSCHUWING: de shim is geen enkele keer aangeroepen." >&2
     echo "$LOG_PREFIX Controleer of flutter_tools nog 'xattr -r -d <attr> <map>' gebruikt (DEC-029)." >&2
   else
