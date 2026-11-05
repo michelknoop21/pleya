@@ -67,7 +67,7 @@ class TvTopNavigation extends StatefulWidget {
   final ValueChanged<TvDestinationId> onSelect;
 
   /// The ring landed on a destination pill. The host switches the page to it
-  /// (DEC-XXX); the avatar and the reconnect item never report here.
+  /// (DEC-194); the avatar and the reconnect item never report here.
   final ValueChanged<TvDestinationId> onFocusDestination;
 
   /// Whether something under Instellingen is waiting on the user — today, a

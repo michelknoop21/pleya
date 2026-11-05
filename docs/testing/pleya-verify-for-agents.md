@@ -110,7 +110,7 @@ mirroring a real `bool`/`enum`), never a proxy that merely correlates with it. `
 the kind of false-PASS Fase 12 exists to catch; see
 `pleya_verify/scenarios/tvos.nav.glass-selector.yaml` for an example that separately
 asserts `state.active` (the open page) and `state.selector` (the capsule target). DEC-120 originally named `tvos.nav.focus-switches-destination` as the reference gate for
-DEC-081; A-24c briefly made Select the switch, and DEC-XXX (4 November 2026) made the
+DEC-081; A-24c briefly made Select the switch, and DEC-194 (4 November 2026) made the
 ring on a destination pill the page again. NAV-GLASS1 (28 October 2026) adds the
 single Apple TV glass selector; `tvos.nav.glass-selector` covers it under the same
 switch-on-focus contract.

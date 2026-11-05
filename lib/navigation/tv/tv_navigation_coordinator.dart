@@ -129,7 +129,7 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// Move the focus ring without changing the page.
   ///
   /// `MainScreen._focusTvDestination` calls this first and lets the page
-  /// follow through `TvRingSettle` (DEC-XXX): the ring memory moves on every
+  /// follow through `TvRingSettle` (DEC-194): the ring memory moves on every
   /// press, the page on the pill the ring rests on.
   void focusDestination(TvDestinationId id) {
     if (!_destinations.contains(id) || _focused == id) return;

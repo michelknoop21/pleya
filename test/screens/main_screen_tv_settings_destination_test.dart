@@ -1,6 +1,6 @@
 /// A-24c on the shipped shell: Instellingen is a destination of its own, and
 /// the profile avatar opens the account menu (LEESMIJ-v4, A14). The ring on a
-/// destination pill switches the page (DEC-XXX, which replaced A13's rule).
+/// destination pill switches the page (DEC-194, which replaced A13's rule).
 ///
 /// Pumps the real [ProfileSessionScreen] through [pumpTvMainScreen], so the
 /// chain under test is `MainScreen` itself: `_focusTvDestination`,
@@ -90,11 +90,11 @@ void main() {
     await h.dispose(tester);
   });
 
-  // DEC-XXX (besluit Michel 4 november 2026) reverses point 3 of DEC-167:
+  // DEC-194 (besluit Michel 4 november 2026) reverses point 3 of DEC-167:
   // the ring on a destination pill is the page. Negative control: with the
   // A-24c host (`_tvNav.focusDestination` only) every `active` below stays
   // on Mijn Pleya and this test is red.
-  testWidgets('DEC-XXX: the ring on a pill switches the page at once, for every destination', (tester) async {
+  testWidgets('DEC-194: the ring on a pill switches the page at once, for every destination', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onSelectDestination(TvDestinationId.myPleya);
     await h.settle();
@@ -135,7 +135,7 @@ void main() {
   // repeats every 80 ms in the engine. Negative control: with
   // `TvRingSettle.ringMoved` activating on every move, `switches` is
   // [series, movies, myPleya, settings] and this test is red.
-  testWidgets('DEC-XXX: a sweep switches the page on the pill the ring rests on', (tester) async {
+  testWidgets('DEC-194: a sweep switches the page on the pill the ring rests on', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
     await h.settle();
@@ -166,7 +166,7 @@ void main() {
     await h.dispose(tester);
   });
 
-  testWidgets('DEC-XXX: DOWN inside the settle window goes into the page under the ring', (tester) async {
+  testWidgets('DEC-194: DOWN inside the settle window goes into the page under the ring', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
     await h.settle();
@@ -198,7 +198,7 @@ void main() {
   // arriving on the page's own pill (UP, Menu to Home, start-up focus) does
   // not, so the first arrow after it still switches at once. Negative control:
   // without the guard in `_focusTvDestination`, `active` is still Home here.
-  testWidgets('DEC-XXX: the first arrow after UP or Menu switches at once', (tester) async {
+  testWidgets('DEC-194: the first arrow after UP or Menu switches at once', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
     await h.settle();
@@ -228,7 +228,7 @@ void main() {
   // with it, also when the ring stands on the avatar. Negative control: with
   // the ring-follow check counting destination pills only, the avatar keeps
   // the focus and a second Menu would leave the app.
-  testWidgets('DEC-XXX: Menu with the ring on the avatar goes Home and takes the ring along', (tester) async {
+  testWidgets('DEC-194: Menu with the ring on the avatar goes Home and takes the ring along', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
     await h.settle();
@@ -252,7 +252,7 @@ void main() {
   // Review 593-M3: the same for a page changed by the companion remote while
   // the ring stands on the avatar. Negative control: with the pill-only check
   // the page becomes Instellingen and the ring stays on the avatar.
-  testWidgets('DEC-XXX: a companion-remote page change takes the ring off the avatar', (tester) async {
+  testWidgets('DEC-194: a companion-remote page change takes the ring off the avatar', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
     await h.settle();
@@ -273,7 +273,7 @@ void main() {
 
   // Review 593-M2: inside a settle window ring and page can differ, so Menu
   // is not handed to tvOS until the window closes.
-  testWidgets('DEC-XXX: no Menu passthrough while a sweep is settling', (tester) async {
+  testWidgets('DEC-194: no Menu passthrough while a sweep is settling', (tester) async {
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
     await h.settle();
@@ -409,7 +409,7 @@ void main() {
     await h.dispose(tester);
   });
 
-  // DEC-XXX: ring and page coincide, so Menu on the bar is the rule from
+  // DEC-194: ring and page coincide, so Menu on the bar is the rule from
   // before A-24c again: on Home it is the system's (passthrough), on another
   // page it goes Home, and the ring goes with it.
   testWidgets('Menu on the bar: Home hands it to tvOS, another page goes Home with the ring', (tester) async {

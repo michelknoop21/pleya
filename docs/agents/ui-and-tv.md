@@ -70,7 +70,7 @@ Servers opent `TvServersPage`). De ring op een bestemmingspil is de pagina: die 
 de focus blijft in de balk, DOWN gaat de pagina in en Select op de pil waar je staat ook, zonder
 refresh. Een sweep met minder dan 150 ms per druk wisselt alleen op de pil waar de ring tot rust
 komt (`TvRingSettle`). Menu in de balk geeft de app op Home aan tvOS en gaat elders naar Home, met de
-ring mee. De avatar en het herverbindingsitem wisselen niets bij focus (DEC-XXX, besluit Michel
+ring mee. De avatar en het herverbindingsitem wisselen niets bij focus (DEC-194, besluit Michel
 4 november 2026; vervangt punt 3 van DEC-167). De avatar opent het accountmenu met alleen Wissel profiel en Uitloggen;
 Back sluit het en zet de focus terug op de avatar. De bestemming Instellingen gebruikt dezelfde
 inklapbare balk als hierboven. Besluit Michel, 26 oktober 2026 (A-24c,

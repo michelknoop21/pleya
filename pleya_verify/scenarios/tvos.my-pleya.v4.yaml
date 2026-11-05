@@ -10,7 +10,7 @@
 #   2. The Snel naar dock is one row on screen, Bibliotheken included, and
 #      the old Beheer tiles are gone.
 #   3. The ring on Instellingen opens the settings page as a destination of
-#      its own (DEC-XXX replaced A13's rule that kept Mijn Pleya active).
+#      its own (DEC-194 replaced A13's rule that kept Mijn Pleya active).
 #   4. Instellingen > Koppelingen > Servers opens TvServersPage: status first,
 #      Sluiten the default, and Back returns to the Servers row.
 #   5. The avatar opens the account menu with its two actions; Menu closes it
@@ -59,7 +59,7 @@ steps:
   - settle: 1200
   - snapshot: oled-dockfocus
 
-  # --- 3. Instellingen in the bar: the ring on it is the page (DEC-XXX) ---
+  # --- 3. Instellingen in the bar: the ring on it is the page (DEC-194) ---
   - press: menu
   - wait_until: {focused: nav.myPleya, timeout: 8000}
   - press: right

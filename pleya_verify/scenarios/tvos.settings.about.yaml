@@ -17,7 +17,7 @@ steps:
   # Instellingen is a destination in the top bar, right after Mijn Pleya.
   - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
   - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
-  # The ring on Instellingen already shows it (DEC-XXX); Down enters the page on Thema.
+  # The ring on Instellingen already shows it (DEC-194); Down enters the page on Thema.
   - press: down
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 10000}
   # Geavanceerd is the last category of the rail.
