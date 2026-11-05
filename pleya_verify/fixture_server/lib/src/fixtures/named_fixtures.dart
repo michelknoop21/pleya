@@ -81,6 +81,9 @@ bool applyNamedFixture(
     case 'catalog.detail-series.v1':
       _applyCatalogDetailSeriesV1(server);
       return true;
+    case 'catalog.detail-series.no-stills.v1':
+      _applyCatalogDetailSeriesV1(server, withoutLateStills: true);
+      return true;
     case 'watchlist.studio.v1':
       return _applyWatchlistStudioV1(server);
     case 'seerr.requests.v1':

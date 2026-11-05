@@ -187,7 +187,7 @@ class _Row extends StatelessWidget {
     final resume = resumeFractionFor(group);
     final still = OptimizedMediaImage.thumb(
       client: client,
-      imagePath: item.thumbPath ?? item.artPath,
+      imagePath: item.rowThumbPath ?? item.artPath,
       width: 96,
       height: 54,
       fallbackIcon: item.isEpisode ? Symbols.tv_rounded : Symbols.movie_rounded,

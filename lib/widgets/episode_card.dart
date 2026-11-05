@@ -358,10 +358,11 @@ class _EpisodeCardState extends State<EpisodeCard> with ContextMenuTapMixin<Epis
             const PlaceholderContainer(child: AppIcon(Symbols.movie_rounded, fill: 1, size: 32)),
       );
     }
-    if (episode.thumbPath != null) {
+    final imagePath = episode.rowThumbPath;
+    if (imagePath != null) {
       return OptimizedMediaImage.thumb(
         client: widget.client,
-        imagePath: episode.thumbPath,
+        imagePath: imagePath,
         filterQuality: FilterQuality.medium,
         fit: BoxFit.cover,
         placeholder: (context, url) => const PlaceholderContainer(),

@@ -749,12 +749,19 @@ sealed class MediaItem with _$MediaItem {
   /// Plex-only edition label. Jellyfin returns null.
   String? get editionTitle => null;
 
+  /// The 16:9 picture for an episode in a row or card: its own still, else the
+  /// episode backdrop, else the series backdrop, else the series poster. A
+  /// Pleya Server episode without a still would otherwise draw an empty tile.
+  /// Anything that is not an episode keeps its own [thumbPath].
+  String? get rowThumbPath =>
+      kind == MediaKind.episode ? thumbPath ?? artPath ?? grandparentArtPath ?? grandparentThumbPath : thumbPath;
+
   /// Returns the appropriate poster path based on episode poster mode.
   String? posterThumb({EpisodePosterMode mode = EpisodePosterMode.seriesPoster, bool mixedHubContext = false}) {
     if (kind == MediaKind.episode) {
       switch (mode) {
         case EpisodePosterMode.episodeThumbnail:
-          return thumbPath;
+          return rowThumbPath;
         case EpisodePosterMode.seasonPoster:
           return parentThumbPath ?? grandparentThumbPath ?? thumbPath;
         case EpisodePosterMode.seriesPoster:

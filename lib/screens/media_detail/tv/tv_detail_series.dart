@@ -190,13 +190,22 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
           instance: '$_tvDetailEpisodesSectionId.${cell.index}',
           role: 'list.item',
           focusNode: cell.focusNode,
+          // Which picture the card draws: its own still, the show's art as a
+          // fallback, or none. Read from the same path the card renders.
+          state: () => {
+            'artwork': episode.thumbPath != null
+                ? 'own'
+                : episode.rowThumbPath != null
+                ? 'fallback'
+                : 'none',
+          },
           child: MediaContextMenu(
             key: menuKey,
             item: episode,
             onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
             child: TvDetailEpisodeCard(
               cell: cell,
-              imagePath: episode.thumbPath,
+              imagePath: episode.rowThumbPath,
               client: client,
               badge: t.discover.episodeBadge(number: episode.index ?? position + 1),
               watched: episode.isWatched,

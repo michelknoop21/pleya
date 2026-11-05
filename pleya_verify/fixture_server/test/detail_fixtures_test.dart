@@ -111,6 +111,17 @@ void main() {
       final episodes = jsonDecode((await _get(server, '/items/$second/children')).body)['items'] as List;
       expect([for (final episode in episodes) episode['user_state']['watched']], [true, true, false, false]);
       expect(episodes[2]['user_state']['position_ms'], greaterThan(0));
+      expect([for (final episode in episodes) episode['artwork']['poster_id'] != null], [true, true, true, true]);
+    });
+
+    test('the no-stills variant leaves episodes 3 and 4 without artwork, the show keeps its backdrop', () async {
+      final server = PleyaFakeServer();
+      expect(applyNamedFixture(server, 'catalog.detail-series.no-stills.v1'), isTrue);
+      final second = server.seededIds['season/charge-s02']!;
+      final episodes = jsonDecode((await _get(server, '/items/$second/children')).body)['items'] as List;
+      expect([for (final episode in episodes) episode['artwork']['poster_id'] != null], [true, true, false, false]);
+      final show = jsonDecode((await _get(server, '/items/${server.seededIds['show/charge']}')).body);
+      expect(show['artwork']['backdrop_id'], isNotNull);
     });
   });
 }

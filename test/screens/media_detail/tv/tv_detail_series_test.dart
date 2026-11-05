@@ -119,6 +119,9 @@ class _Client implements MediaServerClient {
   final List<MediaItem> playable;
   final pageCalls = <String>[];
 
+  // No image is ever fetched in these tests; an empty URL draws the placeholder.
+  @override
+  String thumbnailUrl(String? path, {int? width, int? height}) => '';
   @override
   ServerId get serverId => ServerId(id);
   @override
@@ -285,6 +288,25 @@ void main() {
     expect(pills(tester).map((pill) => pill.active), [true, false, false]);
     expect(_focus, 'detail_tab_series');
     expect(pillDecoration(tester, 'Series').color, Colors.white);
+  });
+
+  testWidgets('an episode without a still shows the show backdrop in the season row', (tester) async {
+    MediaItem bare(int n) =>
+        _episode(1, n).copyWith(grandparentArtPath: '/show-art', grandparentThumbPath: '/show-poster');
+    MediaItem own(int n) => _episode(1, n).copyWith(thumbPath: '/own-still', grandparentArtPath: '/show-art');
+    await pumpDetail(
+      tester,
+      _Client(
+        episodes: {
+          'season_1': [bare(1), own(2)],
+          'season_2': [_episode(2, 1)],
+        },
+      ),
+    );
+    await _press(tester, LogicalKeyboardKey.arrowRight);
+    final cards = tester.widgetList<TvDetailEpisodeCard>(find.byType(TvDetailEpisodeCard)).toList();
+    // The first card is the season's own; the episodes follow.
+    expect(cards.map((card) => card.imagePath).skip(1), ['/show-art', '/own-still']);
   });
 
   testWidgets('RIGHT opens the next season in this same screen', (tester) async {
