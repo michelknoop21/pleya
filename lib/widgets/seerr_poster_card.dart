@@ -82,7 +82,7 @@ class SeerrRowMetrics {
 /// hardcoded gap/height wherever seerr cards live in a horizontal row.
 SeerrRowMetrics seerrRowMetricsOf(BuildContext context, double availableWidth) {
   final cardWidth = seerrRowCardWidthOf(context, availableWidth);
-  final cardHeight = cardWidth * 3 / 2 + seerrCardTextExtent;
+  final cardHeight = cardWidth * 3 / 2 + seerrCardTextExtentOf(context);
   final isTv = PlatformDetector.isTV();
   final focusReserve = isTv ? cardHeight * (FocusTheme.focusScale - 1) / 2 + FocusTheme.focusBorderWidth : 0.0;
   final itemGap = isTv ? cardWidth * (FocusTheme.focusScale - 1) / 2 + FocusTheme.focusBorderWidth : 12.0;
@@ -95,11 +95,18 @@ SeerrRowMetrics seerrRowMetricsOf(BuildContext context, double availableWidth) {
   );
 }
 
-/// Fixed height of the text block under every poster (gap + two title lines +
-/// year). One shared constant so rows and grids budget identical space and all
-/// cards line up — nothing overflows, nothing clips. Add this to
-/// [seerrPosterHeight] for the total card height / row height.
+/// Minimum space below a poster at the default text size.
+/// Use [seerrCardTextExtentOf] for matching card, grid and row layout.
 const double seerrCardTextExtent = 54;
+
+/// Keeps two title lines and a year visible at the system text size.
+double seerrCardTextExtentOf(BuildContext context) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final titleLine = (scaler.scale(13) * 1.1).ceilToDouble();
+  final yearLine = (scaler.scale(11) * 1.1).ceilToDouble();
+  final extent = 6 + 2 * titleLine + yearLine;
+  return extent > seerrCardTextExtent ? extent : seerrCardTextExtent;
+}
 
 /// A focusable seerr poster: artwork + availability badge + title/year.
 ///
@@ -198,7 +205,7 @@ class SeerrPosterCard extends StatelessWidget {
               // Fixed-height text block so every card lines up regardless of a
               // one- or two-line title / present-or-absent year.
               SizedBox(
-                height: seerrCardTextExtent - 6,
+                height: seerrCardTextExtentOf(context) - 6,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,

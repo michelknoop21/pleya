@@ -53,7 +53,7 @@ Widget buildSeerrGridSliver({
             );
             final cols = PlatformDetector.isPhone(context) ? 3 : geometry.columnCount;
             final w = (crossAxisExtent - geometry.spacing * (cols - 1)) / cols;
-            final cellHeight = w * 3 / 2 + seerrCardTextExtent;
+            final cellHeight = w * 3 / 2 + seerrCardTextExtentOf(context);
             return SliverGrid(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: cols,

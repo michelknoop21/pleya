@@ -12,6 +12,7 @@ import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../models/seerr/seerr_media.dart';
+import '../../models/seerr/seerr_discovery_filters.dart';
 import 'mobile_seerr_discover_view.dart';
 import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/mobile/mobile_discovery_shell.dart';
@@ -22,6 +23,7 @@ import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/debouncer.dart';
+import '../../utils/dialogs.dart';
 import '../../utils/seerr_error_message.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
@@ -125,6 +127,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   final _searchFocusNode = FocusNode(debugLabel: 'SeerrSearchInput');
   final _firstResultFocusNode = FocusNode(debugLabel: 'SeerrSearchFirstResult');
   final _inboxFocusNode = FocusNode(debugLabel: 'SeerrSearchInbox');
+  final _discoveryPanelFocus = FocusNode(debugLabel: 'SeerrDiscoveryPanel');
 
   /// The two rungs between the search field and the content. Without them the
   /// remote had to fall back on default directional traversal to reach the type
@@ -174,10 +177,12 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   SeerrWatchProvider? _provider;
   _SeerrRow? _providerRow;
 
-  // The phone presents requests as one catalog, like Alle films. Desktop and
-  // TV keep their existing shelves and expanded-row behavior.
+  // The phone starts as a catalog. The other layouts keep their shelves
+  // until a discovery source, year or sort is selected, then share this row.
   _SeerrRow? _phoneCatalogRow;
   MobileSeerrCatalogSort _phoneSort = MobileSeerrCatalogSort.popularity;
+  SeerrDiscoverySource _discoverySource = SeerrDiscoverySource.popular;
+  int? _releaseYear;
   MobileSeerrAvailability _phoneAvailability = MobileSeerrAvailability.all;
   bool _platformLoadsStarted = false;
 
@@ -258,6 +263,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _searchFocusNode.dispose();
     _firstResultFocusNode.dispose();
     _inboxFocusNode.dispose();
+    _discoveryPanelFocus.dispose();
     _filterFirstTabFocusNode.dispose();
     _firstDiscoverItemFocusNode.dispose();
     super.dispose();
@@ -285,6 +291,10 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _movieGenres = const [];
     _tvGenres = const [];
     _phoneCatalogRow = null;
+    _discoverySource = SeerrDiscoverySource.popular;
+    _releaseYear = null;
+    _phoneSort = MobileSeerrCatalogSort.popularity;
+    _phoneAvailability = MobileSeerrAvailability.all;
   }
 
   /// An answer that arrives after the client was swapped is for another
@@ -306,22 +316,29 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     if (client == null) return;
     final movies = _type != SeerrDiscoverType.tv;
     final providers = await client.getWatchProviders(movies: movies, region: _watchRegion);
-    if (!mounted || movies != (_type != SeerrDiscoverType.tv) || providers.isEmpty) return;
+    if (!mounted || !_isCurrent(client) || movies != (_type != SeerrDiscoverType.tv)) return;
     setState(() => _providers = providers.take(10).toList(growable: false));
   }
 
   Future<void> _selectProvider(SeerrWatchProvider? provider) async {
     final client = _client;
     if (client == null) return;
+    if (provider != null && _discoverySource == SeerrDiscoverySource.trending) {
+      setState(() {
+        _discoverySource = SeerrDiscoverySource.popular;
+        _type = SeerrDiscoverType.movies;
+      });
+      unawaited(_ensureGenres(_type));
+    }
     if (provider == null || provider.id == _provider?.id) {
       setState(() {
         _provider = null;
         _providerRow = null;
       });
-      if (PlatformDetector.isPhone(context)) await _reloadPhoneCatalog();
+      if (PlatformDetector.isPhone(context) || _phoneCatalogRow != null) await _reloadPhoneCatalog();
       return;
     }
-    if (PlatformDetector.isPhone(context)) {
+    if (PlatformDetector.isPhone(context) || _phoneCatalogRow != null) {
       setState(() => _provider = provider);
       await _reloadPhoneCatalog();
       return;
@@ -560,21 +577,48 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   /// Picking a segment selects it outright. It used to toggle back to "All"
   /// when you tapped the active chip, which was the only way to get there while
   /// "All" had no chip of its own; the segment now says so on screen.
-  void _onTypeSelected(SeerrDiscoverType type) {
+  Future<void> _requestTypeSelected(SeerrDiscoverType type) async {
     if (type == _type) return;
+    final client = _client;
+    final dropped = <String>[
+      if (_genreId != null) t.libraries.filterCategories.genre,
+      if (_provider != null) t.seerr.byStreamingService,
+      if (_discoverySource == SeerrDiscoverySource.trending) t.seerr.trending,
+      if (type == SeerrDiscoverType.all && _phoneCatalogRow != null) _discoverySummary,
+    ];
+    if (dropped.isNotEmpty && !await _confirmDiscoveryReset(t.seerr.title, dropped)) return;
+    if (client != null && _isCurrent(client)) await _onTypeSelected(type);
+  }
+
+  Future<bool> _confirmDiscoveryReset(String title, List<String> dropped) => showConfirmDialog(
+    context,
+    title: title,
+    message: '${t.unifiedCatalog.states.clearFilters}: ${dropped.join(' · ')}',
+    confirmText: t.unifiedCatalog.states.clearFilters,
+    confirmAutomationId: AutomationIds.seerrDiscoverFilter,
+  );
+
+  Future<void> _onTypeSelected(SeerrDiscoverType type) async {
+    if (type == _type) return;
+    if (type == SeerrDiscoverType.all && _discoverySource != SeerrDiscoverySource.trending) {
+      _clearPhoneFilters();
+    }
     setState(() {
       _type = type;
+      if (_discoverySource == SeerrDiscoverySource.trending) {
+        _discoverySource = SeerrDiscoverySource.popular;
+      }
       _genreId = null;
       _genreRow = null;
       _provider = null;
       _providerRow = null;
-      if (PlatformDetector.isPhone(context)) _providers = const [];
+      _providers = const [];
     });
-    if (_type != SeerrDiscoverType.all) unawaited(_ensureGenres(_type));
-    if (PlatformDetector.isPhone(context)) {
-      unawaited(_loadProviders());
-      unawaited(_reloadPhoneCatalog());
-    }
+    await Future.wait([
+      _loadProviders(),
+      if (_type != SeerrDiscoverType.all) _ensureGenres(_type),
+      if (PlatformDetector.isPhone(context) || _phoneCatalogRow != null) _reloadPhoneCatalog(),
+    ]);
   }
 
   Future<void> _ensureGenres(SeerrDiscoverType type) async {
@@ -584,7 +628,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     if (type == SeerrDiscoverType.tv && _tvGenres.isNotEmpty) return;
     try {
       final genres = type == SeerrDiscoverType.movies ? await client.getMovieGenres() : await client.getTvGenres();
-      if (!mounted) return;
+      if (!mounted || !_isCurrent(client)) return;
       setState(() {
         if (type == SeerrDiscoverType.movies) {
           _movieGenres = genres;
@@ -605,10 +649,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       _genreId = id;
       _genreRow = null;
     });
-    if (PlatformDetector.isPhone(context)) {
+    if (PlatformDetector.isPhone(context) || _phoneCatalogRow != null || id != null) {
       unawaited(_reloadPhoneCatalog());
-    } else if (id != null) {
-      unawaited(_loadGenreRow(id));
     }
   }
 
@@ -635,50 +677,174 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   Future<void> _reloadPhoneCatalog() async {
     final client = _client;
     if (client == null) return;
+    if (_type == SeerrDiscoverType.all && _discoverySource != SeerrDiscoverySource.trending) {
+      setState(() => _type = SeerrDiscoverType.movies);
+      unawaited(_ensureGenres(_type));
+    }
     final type = _type == SeerrDiscoverType.tv ? SeerrDiscoverType.tv : SeerrDiscoverType.movies;
     final genre = _genreId;
     final provider = _provider;
+    final watchRegion = provider == null ? null : _watchRegion;
     final sort = _phoneSort;
+    final source = _discoverySource;
+    final window = seerrReleaseWindow(
+      year: _releaseYear,
+      upcoming: source == SeerrDiscoverySource.upcoming,
+      today: DateTime.now(),
+    );
     final row = _SeerrRow(
       title: '',
-      fetch: (c, page) => type == SeerrDiscoverType.tv
+      fetch: (c, page) => source == SeerrDiscoverySource.trending
+          ? c.discoverTrending(page: page)
+          : type == SeerrDiscoverType.tv
           ? c.discoverTv(
               page: page,
               genre: genre,
               watchProvider: provider?.id,
-              watchRegion: provider == null ? null : _watchRegion,
+              watchRegion: watchRegion,
               sortBy: mobileSeerrSortWire(sort, type),
+              releaseDateFrom: window.from,
+              releaseDateThrough: window.through,
+              // A handful of perfect scores must not outrank established titles.
+              minimumVotes: sort == MobileSeerrCatalogSort.rating ? SeerrMedia.mainstreamMinVotesUs : null,
             )
           : c.discoverMovies(
               page: page,
               genre: genre,
               watchProvider: provider?.id,
-              watchRegion: provider == null ? null : _watchRegion,
+              watchRegion: watchRegion,
               sortBy: mobileSeerrSortWire(sort, type),
+              releaseDateFrom: window.from,
+              releaseDateThrough: window.through,
+              // A handful of perfect scores must not outrank established titles.
+              minimumVotes: sort == MobileSeerrCatalogSort.rating ? SeerrMedia.mainstreamMinVotesUs : null,
             ),
     );
-    setState(() => _phoneCatalogRow = row);
+    setState(() {
+      _phoneCatalogRow = row;
+      _expandedRow = null;
+    });
     await _loadFirst(row, client);
   }
 
   void _clearPhoneFilters() {
     setState(() {
+      if (!PlatformDetector.isPhone(context)) _type = SeerrDiscoverType.all;
       _genreId = null;
       _provider = null;
       _phoneAvailability = MobileSeerrAvailability.all;
+      _discoverySource = SeerrDiscoverySource.popular;
+      _releaseYear = null;
+      _phoneSort = MobileSeerrCatalogSort.popularity;
+      _phoneCatalogRow = null;
+      _genreRow = null;
+      _providerRow = null;
+      _expandedRow = null;
     });
-    unawaited(_reloadPhoneCatalog());
+    if (PlatformDetector.isPhone(context)) unawaited(_reloadPhoneCatalog());
   }
 
   List<SeerrMedia> get _phoneCatalogItems {
     final items = _phoneCatalogRow?.items ?? const <SeerrMedia>[];
+    if (!PlatformDetector.isPhone(context)) return items;
     return items.where((item) => mobileSeerrMatchesAvailability(item.status, _phoneAvailability)).toList();
   }
 
   int get _phoneActiveFilterCount =>
       (_genreId == null ? 0 : 1) +
       (_provider == null ? 0 : 1) +
-      (_phoneAvailability == MobileSeerrAvailability.all ? 0 : 1);
+      (_phoneAvailability == MobileSeerrAvailability.all ? 0 : 1) +
+      (_releaseYear == null ? 0 : 1) +
+      (_discoverySource == SeerrDiscoverySource.popular ? 0 : 1);
+
+  bool get _hasDiscoveryRefinement => _phoneActiveFilterCount > 0 || _phoneSort != MobileSeerrCatalogSort.popularity;
+
+  String _sourceLabel(SeerrDiscoverySource source) => switch (source) {
+    SeerrDiscoverySource.popular => t.seerr.discoverAction,
+    SeerrDiscoverySource.trending => t.seerr.trending,
+    SeerrDiscoverySource.upcoming => t.seerr.upcoming,
+  };
+
+  String get _discoverySummary => [
+    _sourceLabel(_discoverySource),
+    if (_releaseYear != null) '$_releaseYear',
+    if (_discoverySource != SeerrDiscoverySource.trending) mobileSeerrSortLabel(_phoneSort, _type),
+  ].join(' · ');
+
+  String get _activeDiscoverySummary => [
+    _discoverySummary,
+    for (final genre in _activeGenres)
+      if (genre.id == _genreId) genre.name,
+    if (_provider != null) _provider!.name,
+    if (_phoneAvailability != MobileSeerrAvailability.all) mobileSeerrAvailabilityLabel(_phoneAvailability),
+  ].join(' · ');
+
+  Future<bool> _selectDiscoverySource(SeerrDiscoverySource source) async {
+    if (source == _discoverySource) return true;
+    final client = _client;
+    final dropped = <String>[
+      if (source == SeerrDiscoverySource.trending) ...[
+        if (_type != SeerrDiscoverType.all) _type == SeerrDiscoverType.tv ? t.seerr.filterShows : t.seerr.filterMovies,
+        if (_genreId != null) t.libraries.filterCategories.genre,
+        if (_provider != null) _provider!.name,
+        if (_phoneSort != MobileSeerrCatalogSort.popularity) mobileSeerrSortLabel(_phoneSort, _type),
+        if (_phoneAvailability != MobileSeerrAvailability.all) mobileSeerrAvailabilityLabel(_phoneAvailability),
+        if (_releaseYear != null) '$_releaseYear',
+      ],
+      if (source == SeerrDiscoverySource.upcoming && _releaseYear != null && _releaseYear! < DateTime.now().year)
+        '$_releaseYear',
+    ];
+    if (dropped.isNotEmpty && !await _confirmDiscoveryReset(_sourceLabel(source), dropped)) return false;
+    if (!mounted || client == null || !_isCurrent(client)) return false;
+    setState(() {
+      _discoverySource = source;
+      _expandedRow = null;
+      if (source == SeerrDiscoverySource.trending) {
+        // Trending is a separate, mixed endpoint. It cannot apply date,
+        // genre, provider or arbitrary sort parameters on supported servers.
+        _type = SeerrDiscoverType.all;
+        _releaseYear = null;
+        _genreId = null;
+        _provider = null;
+        _phoneAvailability = MobileSeerrAvailability.all;
+        _phoneSort = MobileSeerrCatalogSort.popularity;
+      } else {
+        if (_type == SeerrDiscoverType.all) _type = SeerrDiscoverType.movies;
+        if (source == SeerrDiscoverySource.upcoming) {
+          if (_releaseYear != null && _releaseYear! < DateTime.now().year) _releaseYear = null;
+        }
+      }
+    });
+    await Future.wait([
+      if (_type != SeerrDiscoverType.all) _ensureGenres(_type),
+      _loadProviders(),
+      _reloadPhoneCatalog(),
+    ]);
+    return true;
+  }
+
+  Future<void> _pickReleaseYear() async {
+    final client = _client;
+    final current = DateTime.now().year;
+    final selected = await showMobileSeerrChoiceSheet<int>(
+      context,
+      title: t.libraries.filterCategories.year,
+      selected: _releaseYear ?? 0,
+      automationPrefix: 'year',
+      choices: [
+        (value: 0, label: t.libraries.all),
+        for (
+          var year = current + 10;
+          year >= (_discoverySource == SeerrDiscoverySource.upcoming ? current : 1870);
+          year--
+        )
+          (value: year, label: '$year'),
+      ],
+    );
+    if (!mounted || selected == null || client == null || !_isCurrent(client)) return;
+    setState(() => _releaseYear = selected == 0 ? null : selected);
+    await _reloadPhoneCatalog();
+  }
 
   Future<void> _pickPhoneType(BuildContext sheetContext) async {
     final selected = await showMobileSeerrChoiceSheet<SeerrDiscoverType>(
@@ -686,14 +852,17 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       title: t.seerr.title,
       selected: _type,
       choices: [
+        if (_discoverySource == SeerrDiscoverySource.trending) (value: SeerrDiscoverType.all, label: t.seerr.filterAll),
         (value: SeerrDiscoverType.movies, label: t.seerr.filterMovies),
         (value: SeerrDiscoverType.tv, label: t.seerr.filterShows),
       ],
     );
-    if (selected != null && mounted) _onTypeSelected(selected);
+    if (selected != null && mounted) await _requestTypeSelected(selected);
   }
 
   Future<void> _pickPhoneSort(BuildContext sheetContext) async {
+    if (_discoverySource == SeerrDiscoverySource.trending) return;
+    final client = _client;
     final selected = await showMobileSeerrChoiceSheet<MobileSeerrCatalogSort>(
       sheetContext,
       title: t.unifiedCatalog.sort.title,
@@ -702,14 +871,16 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         for (final sort in MobileSeerrCatalogSort.values) (value: sort, label: mobileSeerrSortLabel(sort, _type)),
       ],
     );
-    if (selected == null || selected == _phoneSort || !mounted) return;
+    if (!mounted || selected == null || client == null || !_isCurrent(client)) return;
     setState(() => _phoneSort = selected);
     await _reloadPhoneCatalog();
   }
 
   Future<void> _pickPhoneFilters(BuildContext sheetContext) async {
-    await OverlaySheetController.showAdaptive<void>(
+    final nextPicker = await OverlaySheetController.showAdaptive<String>(
       sheetContext,
+      initialFocusNode: _discoveryPanelFocus,
+      restoreLauncherFocus: true,
       presentation: OverlaySheetPresentation.panel,
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
@@ -723,54 +894,115 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
                 shrinkWrap: true,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  _phoneFilterHeading(t.libraries.filterCategories.genre),
-                  _phoneFilterChoice(
-                    label: t.libraries.all,
-                    selected: _genreId == null,
-                    onTap: () {
-                      _onGenreSelected(null);
-                      refreshSheet(() {});
-                    },
-                  ),
-                  for (final genre in _activeGenres)
+                  if (_query.isEmpty) ...[
+                    _phoneFilterHeading(t.seerr.discoverAction),
+                    for (final source in SeerrDiscoverySource.values)
+                      _phoneFilterChoice(
+                        label: _type == SeerrDiscoverType.all && source != SeerrDiscoverySource.trending
+                            ? '${_sourceLabel(source)} · ${t.seerr.filterMovies}'
+                            : _sourceLabel(source),
+                        automationInstance: 'source.${source.name}',
+                        focusNode: source == SeerrDiscoverySource.popular ? _discoveryPanelFocus : null,
+                        selected: _discoverySource == source,
+                        onTap: () async {
+                          await _selectDiscoverySource(source);
+                          if (context.mounted) refreshSheet(() {});
+                        },
+                      ),
+                    if (_discoverySource != SeerrDiscoverySource.trending) ...[
+                      _phoneFilterHeading(t.seerr.railKind),
+                      for (final type in [SeerrDiscoverType.movies, SeerrDiscoverType.tv])
+                        _phoneFilterChoice(
+                          label: type == SeerrDiscoverType.movies ? t.seerr.filterMovies : t.seerr.filterShows,
+                          automationInstance: 'kind.${type.name}',
+                          selected: _type == type,
+                          onTap: () async {
+                            await _requestTypeSelected(type);
+                            if (context.mounted) refreshSheet(() {});
+                          },
+                        ),
+                    ],
+                    if (_discoverySource != SeerrDiscoverySource.trending && _type != SeerrDiscoverType.all) ...[
+                      _phoneFilterChoice(
+                        label: '${t.libraries.filterCategories.year}: ${_releaseYear ?? t.libraries.all}',
+                        automationInstance: 'year',
+                        selected: _releaseYear != null,
+                        onTap: () => OverlaySheetController.closeAdaptive(context, 'year'),
+                      ),
+                      _phoneFilterChoice(
+                        label: '${t.unifiedCatalog.sort.title}: ${mobileSeerrSortLabel(_phoneSort, _type)}',
+                        automationInstance: 'sort',
+                        selected: _phoneSort != MobileSeerrCatalogSort.popularity,
+                        onTap: () => OverlaySheetController.closeAdaptive(context, 'sort'),
+                      ),
+                    ],
                     _phoneFilterChoice(
-                      label: genre.name,
-                      selected: _genreId == genre.id,
+                      label: t.unifiedCatalog.states.clearFilters,
+                      automationInstance: 'clear',
+                      selected: false,
                       onTap: () {
-                        _onGenreSelected(genre.id);
+                        _clearPhoneFilters();
                         refreshSheet(() {});
                       },
                     ),
-                  if (_providers.isNotEmpty) ...[
-                    _phoneFilterHeading(t.seerr.byStreamingService),
+                  ],
+                  if (_query.isEmpty &&
+                      _discoverySource != SeerrDiscoverySource.trending &&
+                      _type != SeerrDiscoverType.all) ...[
+                    _phoneFilterHeading(t.libraries.filterCategories.genre),
                     _phoneFilterChoice(
                       label: t.libraries.all,
-                      selected: _provider == null,
+                      selected: _genreId == null,
                       onTap: () {
-                        unawaited(_selectProvider(null));
+                        _onGenreSelected(null);
                         refreshSheet(() {});
                       },
                     ),
-                    for (final provider in _providers)
+                    for (final genre in _activeGenres)
                       _phoneFilterChoice(
-                        label: provider.name,
-                        selected: _provider?.id == provider.id,
+                        label: genre.name,
+                        selected: _genreId == genre.id,
                         onTap: () {
-                          unawaited(_selectProvider(provider));
+                          _onGenreSelected(genre.id);
+                          refreshSheet(() {});
+                        },
+                      ),
+                    if (_providers.isNotEmpty) ...[
+                      _phoneFilterHeading(t.seerr.byStreamingService),
+                      _phoneFilterChoice(
+                        label: t.libraries.all,
+                        selected: _provider == null,
+                        onTap: () {
+                          unawaited(_selectProvider(null));
+                          refreshSheet(() {});
+                        },
+                      ),
+                      for (final provider in _providers)
+                        _phoneFilterChoice(
+                          label: provider.name,
+                          selected: _provider?.id == provider.id,
+                          onTap: () {
+                            unawaited(_selectProvider(provider));
+                            refreshSheet(() {});
+                          },
+                        ),
+                    ],
+                  ],
+                  if (PlatformDetector.isPhone(context)) ...[
+                    _phoneFilterHeading(t.seerr.filterAvailable),
+                    for (final availability in MobileSeerrAvailability.values)
+                      _phoneFilterChoice(
+                        label: mobileSeerrAvailabilityLabel(availability),
+                        focusNode: _query.isNotEmpty && availability == MobileSeerrAvailability.all
+                            ? _discoveryPanelFocus
+                            : null,
+                        selected: _phoneAvailability == availability,
+                        onTap: () {
+                          setState(() => _phoneAvailability = availability);
                           refreshSheet(() {});
                         },
                       ),
                   ],
-                  _phoneFilterHeading(t.seerr.filterAvailable),
-                  for (final availability in MobileSeerrAvailability.values)
-                    _phoneFilterChoice(
-                      label: mobileSeerrAvailabilityLabel(availability),
-                      selected: _phoneAvailability == availability,
-                      onTap: () {
-                        setState(() => _phoneAvailability = availability);
-                        refreshSheet(() {});
-                      },
-                    ),
                 ],
               ),
             ),
@@ -778,6 +1010,9 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         ),
       ),
     );
+    if (!mounted) return;
+    if (nextPicker == 'year') await _pickReleaseYear();
+    if (nextPicker == 'sort') await _pickPhoneSort(context);
   }
 
   Widget _phoneFilterHeading(String label) => Padding(
@@ -785,14 +1020,30 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     child: Text(label, style: Theme.of(context).textTheme.titleSmall),
   );
 
-  Widget _phoneFilterChoice({required String label, required bool selected, required VoidCallback onTap}) {
-    return FocusableListTile(
+  Widget _phoneFilterChoice({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    String? automationInstance,
+    FocusNode? focusNode,
+  }) {
+    final tile = FocusableListTile(
+      focusNode: focusNode,
       leading: AppIcon(
         selected ? Symbols.radio_button_checked_rounded : Symbols.radio_button_unchecked_rounded,
         fill: 1,
       ),
       title: Text(label),
       onTap: onTap,
+    );
+    return AutomationNode(
+      id: automationInstance == null ? null : AutomationIds.seerrDiscoverFilter,
+      instance: automationInstance,
+      role: 'button',
+      label: label,
+      focusNode: focusNode,
+      state: () => {'selected': selected},
+      child: Semantics(selected: selected, child: tile),
     );
   }
 
@@ -825,7 +1076,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
     return AutomationScreen(
       id: AutomationIds.screenRequests,
-      readiness: () => (_query.isEmpty ? !_allLoaded : _searching)
+      readiness: () => (_query.isEmpty ? (_phoneCatalogRow?.loadingFirst ?? !_allLoaded) : _searching)
           ? const AutomationReadiness.loading('requests')
           : const AutomationReadiness.ready(),
       child: FocusedScrollScaffold(
@@ -871,14 +1122,44 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
             SliverToBoxAdapter(
               child: MobileSeerrCatalogControls(
                 type: _type,
-                activeFilterCount: _phoneActiveFilterCount,
-                sortLabel: mobileSeerrSortLabel(_phoneSort, _type),
+                activeFilterCount: _query.isEmpty
+                    ? _phoneActiveFilterCount
+                    : (_phoneAvailability == MobileSeerrAvailability.all ? 0 : 1),
+                sortLabel: _discoverySource == SeerrDiscoverySource.trending
+                    ? t.seerr.trending
+                    : _discoverySource == SeerrDiscoverySource.upcoming
+                    ? '${t.seerr.upcoming} · ${mobileSeerrSortLabel(_phoneSort, _type)}'
+                    : mobileSeerrSortLabel(_phoneSort, _type),
+                discoveryEnabled: _query.isEmpty,
                 automationInstance: 'requests',
                 onTypePressed: () => unawaited(_pickPhoneType(context)),
                 onFiltersPressed: () => unawaited(_pickPhoneFilters(context)),
-                onSortPressed: () => unawaited(_pickPhoneSort(context)),
+                onSortPressed: () => unawaited(
+                  _discoverySource == SeerrDiscoverySource.trending
+                      ? _pickPhoneFilters(context)
+                      : _pickPhoneSort(context),
+                ),
               ),
             ),
+            if (_query.isEmpty && _hasDiscoveryRefinement)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _activeDiscoverySummary,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      TextButton(onPressed: _clearPhoneFilters, child: Text(t.unifiedCatalog.states.clearFilters)),
+                    ],
+                  ),
+                ),
+              ),
             if (_query.isEmpty) SliverToBoxAdapter(child: _buildMyRequestsEntry()),
             ..._query.isEmpty ? _buildPhoneCatalogSlivers() : _buildSearchSlivers(),
             mobileDiscoveryTailSliver(context),
@@ -934,7 +1215,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     final items = _phoneCatalogItems;
     if (items.isEmpty && !row.hasMore) {
       // Empty is not a failure: with a filter on, the way out is the filter.
-      final filtered = _phoneActiveFilterCount > 0;
+      final filtered = _hasDiscoveryRefinement;
       return [
         SliverFillRemaining(
           hasScrollBody: false,
@@ -956,6 +1237,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         loadMoreFailed: row.loadMoreFailed,
         onLoadMore: () => _loadMore(row),
         automationInstance: 'requests',
+        firstItemFocusNode: _firstDiscoverItemFocusNode,
       ),
     ];
   }
@@ -977,7 +1259,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       type: _type,
       onTypeSelected: (type) {
         _collapseRowGrid();
-        _onTypeSelected(type);
+        unawaited(_requestTypeSelected(type));
       },
       genres: [for (final genre in _activeGenres) (id: genre.id, name: genre.name)],
       genreId: _genreId,
@@ -985,17 +1267,26 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         _collapseRowGrid();
         _onGenreSelected(id);
       },
-      providers: [for (final provider in _providers) (id: provider.id, name: provider.name)],
+      providers: _discoverySource == SeerrDiscoverySource.trending
+          ? const []
+          : [for (final provider in _providers) (id: provider.id, name: provider.name)],
       providerId: _provider?.id,
       onProviderSelected: (id) {
         _collapseRowGrid();
         unawaited(_selectProvider(id == null ? null : _providers.firstWhere((p) => p.id == id)));
       },
-      isLoading: _query.isEmpty ? _visibleRows.any((row) => row.loadingFirst) && _allEmpty : _searching,
+      onDiscoveryFiltersPressed: _query.isEmpty ? () => unawaited(_pickPhoneFilters(context)) : null,
+      discoverySummary: _query.isEmpty && _phoneCatalogRow != null ? _discoverySummary : null,
+      onClearDiscovery: _clearPhoneFilters,
+      isLoading: _query.isEmpty
+          ? (_phoneCatalogRow?.loadingFirst ?? (_visibleRows.any((row) => row.loadingFirst) && _allEmpty))
+          : _searching,
       error: _tvError(),
       onReload: () {
         if (_query.isNotEmpty) {
           unawaited(_runSearch(_query));
+        } else if (_phoneCatalogRow != null) {
+          unawaited(_reloadPhoneCatalog());
         } else {
           unawaited(_retry());
         }
@@ -1020,6 +1311,10 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       _clearSearch();
       return;
     }
+    if (_phoneCatalogRow != null) {
+      _clearPhoneFilters();
+      return;
+    }
     if (_genreId != null) {
       _onGenreSelected(null);
       return;
@@ -1040,6 +1335,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         onLoadMore: () => unawaited(_loadMoreSearch()),
       );
     }
+    final catalog = _phoneCatalogRow;
+    if (catalog != null) return _tvGridFor(catalog, t.seerr.title);
     final expanded = _expandedRow;
     if (expanded != null) return _tvGridFor(expanded, expanded.title);
     final genreRow = _genreRow;
@@ -1088,6 +1385,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   /// The message to show when the page has nothing at all, or null.
   String? _tvError() {
     if (_query.isNotEmpty) return _searchErrored ? seerrErrorMessage(_searchErrorKind) : null;
+    final catalog = _phoneCatalogRow;
+    if (catalog != null) return catalog.errored ? seerrErrorMessage(catalog.errorKind) : null;
     if (_expandedRow?.errored ?? false) return seerrErrorMessage(_expandedRow!.errorKind);
     if (_genreRow?.errored ?? false) return seerrErrorMessage(_genreRow!.errorKind);
     if (_providerRow?.errored ?? false) return seerrErrorMessage(_providerRow!.errorKind);
@@ -1114,8 +1413,10 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       // running: same rule the outlined chip row had.
       genres: _query.isEmpty ? _activeGenres : const [],
       genreId: _genreId,
-      onTypeSelected: _onTypeSelected,
+      onTypeSelected: (type) => unawaited(_requestTypeSelected(type)),
       onGenreSelected: _onGenreSelected,
+      onDiscoveryFiltersPressed: _query.isEmpty ? () => unawaited(_pickPhoneFilters(context)) : null,
+      discoverySummary: _phoneCatalogRow == null ? null : _activeDiscoverySummary,
       firstTabFocusNode: _filterFirstTabFocusNode,
       onExitLeft: _navigateToSidebar,
       onExitUp: _searchFocusNode.requestFocus,
@@ -1281,6 +1582,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   }
 
   List<Widget> _buildDiscoverSlivers() {
+    if (_phoneCatalogRow != null) return _buildPhoneCatalogSlivers();
     // A genre is active → one filtered grid instead of the mixed shelves.
     if (_type != SeerrDiscoverType.all && _genreId != null) {
       return _buildGenreGridSlivers();

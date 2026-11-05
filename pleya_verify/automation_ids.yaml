@@ -273,6 +273,9 @@ ids:
   - id: seerr.search.inbox
     role: button
     instanceable: false
+  - id: seerr.discover.filter
+    role: button
+    instanceable: true
   - id: screen.my_pleya
     role: screen
     instanceable: false
