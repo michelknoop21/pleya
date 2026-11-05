@@ -63,7 +63,26 @@ echo "→ Pleya Web bouwen"
 
 echo "→ bronnen versturen naar $SSH_HOST:$REMOTE_DIR"
 COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml compose.test.yaml compose.hwaccel.yaml .dockerignore go.mod go.sum cmd internal \
-  | ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR && tar xzf - -C $REMOTE_DIR"
+  | ssh "$SSH_HOST" "set -e
+    mkdir -p $REMOTE_DIR
+    incoming=\$(mktemp -d $REMOTE_DIR/.deploy-sources.XXXXXX)
+    trap 'if [ ! -d \"\$incoming/previous-dist\" ]; then rm -rf \"\$incoming\"; fi' EXIT
+    cat > \"\$incoming/sources.tar.gz\"
+    tar tzf \"\$incoming/sources.tar.gz\" > /dev/null
+    tar tzf \"\$incoming/sources.tar.gz\" | grep -qx 'internal/web/dist/index.html'
+    # Tar verwijdert geen oude chunks; bewaar de vorige bundel tot extractie slaagt.
+    if [ -d $REMOTE_DIR/internal/web/dist ]; then
+      mv $REMOTE_DIR/internal/web/dist \"\$incoming/previous-dist\"
+    fi
+    if tar xzf \"\$incoming/sources.tar.gz\" -C $REMOTE_DIR; then
+      rm -rf \"\$incoming/previous-dist\"
+      exit 0
+    fi
+    rm -rf $REMOTE_DIR/internal/web/dist
+    if [ -d \"\$incoming/previous-dist\" ]; then
+      mv \"\$incoming/previous-dist\" $REMOTE_DIR/internal/web/dist
+    fi
+    exit 1"
 
 COMPOSE_FILES="-f compose.yaml"
 [ "$INSTANCE" = test ] && COMPOSE_FILES="-f compose.yaml -f compose.test.yaml"
