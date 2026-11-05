@@ -8,6 +8,10 @@ class _UnifiedDetailSource {
   UnifiedTitlePlayback? title;
   bool titleRead = false;
 
+  /// The other sources of a series page that came with one source only, looked
+  /// up once per page. Null until asked.
+  Future<UnifiedTitlePlayback?>? lookup;
+
   /// What Play starts on a series page: read ahead, so the button can say
   /// whether it resumes. Null until known.
   UnifiedPlayTarget? onDeckTarget;
@@ -133,8 +137,9 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
   /// A series moves on across its sources: the page's play target follows the
   /// source that is furthest along, and Play knows whether it resumes.
   Future<void> _syncUnifiedOnDeck() async {
-    final title = _unifiedTitle;
-    if (title == null || !_metadata.isShow) return;
+    if (!_metadata.isShow) return;
+    final title = _unifiedTitle ?? await _lookUpUnifiedTitle();
+    if (title == null || !mounted) return;
     // A play or a mark moved the positions: the next build reads the season anew.
     _unifiedSource.seasonRequest = null;
     final own = _onDeckEpisode;
@@ -145,6 +150,19 @@ extension _MediaDetailUnifiedSource on _MediaDetailScreenState {
       _onDeckEpisode = across;
       _unifiedSource.onDeckTarget = target;
     });
+  }
+
+  /// A series page reached with one source (the Series tab, a library row)
+  /// finds the title's other copies itself, the way a mark or a play already
+  /// does, so it continues where Verder kijken does (device log zvu4o). The
+  /// page keeps its own source; only what Play starts and resumes follows.
+  Future<UnifiedTitlePlayback?> _lookUpUnifiedTitle() async {
+    final state = _unifiedSource;
+    if (widget.isOffline || (_routeContext?.titleSources.length ?? 0) >= 2) return null;
+    final found = await (state.lookup ??= UnifiedTitleDiscovery.of(context)?.titleOf(_metadata) ?? Future.value());
+    if (found == null || !mounted || state.title != null) return state.title;
+    setStateIfMounted(() => state.title = found);
+    return found;
   }
 
   /// The chosen copy was deleted, from the page's own menu or elsewhere: the

@@ -90,6 +90,7 @@ import '../services/settings_service.dart';
 import '../services/track_preference_store.dart';
 import '../services/rating_actions.dart';
 import '../services/unified_action_outcome.dart';
+import '../services/unified_catalog/unified_title_discovery.dart';
 import '../services/unified_catalog/unified_title_playback.dart';
 import '../services/unified_catalog/unified_title_scope.dart';
 import '../services/watch_actions.dart';
