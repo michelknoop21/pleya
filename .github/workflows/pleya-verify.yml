@@ -8,6 +8,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      requests_discovery:
+        description: Run the Requests discovery-filter acceptance pack
+        type: boolean
+        default: false
   schedule:
     # Weekly extended run for the tvOS gate (idb-dependent, not required on
     # every push). Portable and macOS jobs also run here: they are cheap
@@ -261,6 +266,57 @@ jobs:
         working-directory: pleya_verify/runner
         run: dart run bin/verify.dart run ../scenarios/discover.layout.yaml --json
 
+      - if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.requests_discovery }}
+        name: Requests discovery filters (macOS)
+        working-directory: pleya_verify/runner
+        run: dart run bin/verify.dart run ../scenarios/macos.requests.discovery-filters.yaml --json
+
+      - if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.requests_discovery }}
+        name: Select available Requests iPhone and iPad targets
+        id: requests-targets
+        run: |
+          python3 - <<'PY_SELECT'
+          import json, os, subprocess
+          result = subprocess.run(
+              ['xcrun', 'simctl', 'list', 'devices', 'available', '--json'],
+              check=True, capture_output=True, text=True,
+          )
+          devices = [
+              device
+              for runtime, entries in json.loads(result.stdout)['devices'].items()
+              if '.iOS-' in runtime
+              for device in entries
+              if device.get('isAvailable')
+          ]
+          selected = {}
+          for kind, prefix in [('iphone', 'iPhone'), ('ipad', 'iPad')]:
+              matches = [device for device in devices if device['name'].startswith(prefix)]
+              if not matches:
+                  raise SystemExit(f'No available {prefix} simulator on this runner')
+              device = next((device for device in matches if device['state'] == 'Booted'), matches[-1])
+              selected[kind] = device['udid']
+              print(f"{kind}: {device['name']} {device['udid']} ({device['state']})")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for kind, udid in selected.items():
+                  output.write(f'{kind}={udid}\n')
+          PY_SELECT
+
+      - if: ${{ always() && steps.requests-targets.outputs.iphone != '' }}
+        name: Requests discovery filters (iPhone)
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_IOS_UDID: ${{ steps.requests-targets.outputs.iphone }}
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+        run: dart run bin/verify.dart run ../scenarios/ios.requests.discovery-filters.yaml --json
+
+      - if: ${{ always() && steps.requests-targets.outputs.ipad != '' }}
+        name: Requests discovery filters (iPad)
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_IOS_UDID: ${{ steps.requests-targets.outputs.ipad }}
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+        run: dart run bin/verify.dart run ../scenarios/ipados.requests.discovery-filters.yaml --json
+
       - if: ${{ always() && (needs.changes.result != 'success' || needs.changes.outputs.apple != 'false') }}
         name: Upload evidence bundles
         uses: actions/upload-artifact@v7
@@ -372,6 +428,21 @@ jobs:
         env:
           PLEYA_VERIFY_REUSE_BUILD: "1"
         run: dart run bin/verify.dart run ../scenarios/tvos.profile.picker.yaml --json
+
+      - name: Requests discovery filters (tvOS)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.requests_discovery }}
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+          TVOS_SIM_REQUIRE_IDB: "1"
+        run: |
+          PLEYA_VERIFY_TVOS_UDID="$(xcrun simctl list devices available --json | python3 -c 'import json, sys; data = json.load(sys.stdin); targets = [d for runtime, devices in data["devices"].items() if "tvOS" in runtime for d in devices if d.get("isAvailable") and d["name"] == "Pleya Verify Apple TV 4K"]; assert targets, "No dedicated Verify Apple TV is available"; print(targets[0]["udid"])')"
+          export PLEYA_VERIFY_TVOS_UDID
+          TVOS_SIM_UDID="$PLEYA_VERIFY_TVOS_UDID"
+          export TVOS_SIM_UDID
+          echo "Requests tvOS target: $TVOS_SIM_UDID"
+          ../../scripts/tvos_sim.sh doctor --json | python3 -c 'import json, sys; report = json.load(sys.stdin); print(json.dumps(report)); sys.exit(0 if report.get("input") == "idb" else 1)'
+          dart run bin/verify.dart run ../scenarios/tvos.requests.discovery-filters.yaml --json
 
       - name: Upload evidence bundle
         if: always()
