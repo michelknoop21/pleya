@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # TestFlight release: build & upload, commit het (auto-bepaalde) buildnummer.
-# Gebruik: scripts/testflight_release.sh [--clean] [beta|ios_beta|tvos_beta|macos_beta]
+# Gebruik: scripts/testflight_release.sh [--clean] [beta|ios_beta|tvos_beta|macos_beta] [lane-opties]
+# iOS en tvOS onder één buildnummer: scripts/testflight_release.sh beta platforms:ios,tvos
+# (losse ios_beta- en tvos_beta-runs krijgen elk een eigen nummer).
 # Het buildnummer wordt in de Fastfile bepaald (hoogste TestFlight-build +1),
 # dus dit script bumpt niet zelf. Draait ook headless via launchd (zie docs/TESTFLIGHT.md).
 set -euo pipefail
