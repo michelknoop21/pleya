@@ -2373,7 +2373,7 @@ class _MainScreenState extends State<MainScreen>
   /// unchanged, and the caller (`AutomationNavigationHooks`, ultimately
   /// `/v1/open`) can report that instead of polling out a full timeout
   /// waiting for a screen that was never going to mount.
-  bool _selectTab(NavigationTabId tab, {bool isUserInitiated = true}) {
+  bool _selectTab(NavigationTabId tab, {bool isUserInitiated = true, bool ringFollows = true}) {
     // Guard: ignore if tab isn't available in current mode
     if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return false;
 
@@ -2391,8 +2391,10 @@ class _MainScreenState extends State<MainScreen>
       // (Menu to Home, a deferred startup section, the companion remote) takes
       // the ring with it, also off the avatar or the reconnect item (review
       // 593-R2-M1), or a second Menu would leave the app with the ring never
-      // having shown Home.
-      if (_tvNavNodes.hasFocus && !_tvNavNodes.isFocused(_tvNav.active.focusKey)) {
+      // having shown Home. The ring's own delayed switch passes
+      // `ringFollows: false`: the ring has moved on by then, for instance to
+      // the avatar after a fast sweep, and must stay there (review 593 I-1).
+      if (ringFollows && _tvNavNodes.hasFocus && !_tvNavNodes.isFocused(_tvNav.active.focusKey)) {
         _focusTvPill(_tvNav.active);
       }
     }
@@ -2931,7 +2933,7 @@ class _MainScreenState extends State<MainScreen>
   void _activateTvRingDestination() {
     if (!mounted || !_isTvShell) return;
     final destination = _tvNav.focusedDestination;
-    if (_tvNav.activate(destination)) _selectTab(destination.tab);
+    if (_tvNav.activate(destination)) _selectTab(destination.tab, ringFollows: false);
     // The passthrough is held off while a window is open; recompute it once
     // the window has closed, also when the page did not change.
     _updateTvosMenuPassthrough();
