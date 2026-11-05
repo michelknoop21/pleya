@@ -104,6 +104,9 @@ Eén buildnummer voor meerdere platforms krijg je alleen binnen één fastlane-r
 Draai je `ios_beta` en daarna los `tvos_beta`, dan ziet de tweede run de verse
 iOS-upload als hoogste nummer en neemt hij dat plus één. Zo werd bundel 444 op
 5 november 2026 iOS 444 en tvOS 445. Gebruik daarom `beta platforms:ios,tvos`.
+Moet macOS hetzelfde nummer krijgen, draai dan `beta` zonder optie (alle drie)
+of `beta platforms:ios,tvos,macos`; een losse `macos_beta` daarna krijgt weer
+een eigen nummer.
 
 ## Verplicht vóór een iOS-upload: QR-scannen op echte hardware
 
