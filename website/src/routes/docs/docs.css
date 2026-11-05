@@ -611,6 +611,23 @@
   width: 18px;
 }
 
+/* Four chips at their natural width need about 330px, more than a 320px
+   phone leaves inside the gutters: the row spans the width there and the
+   chips share it. */
+@media (max-width: 400px) {
+  .segmented {
+    display: flex;
+    max-width: 100%;
+  }
+
+  .segmented button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 8px 4px 5px;
+    font-size: 0.8125rem;
+  }
+}
+
 .release-list {
   display: grid;
   gap: 2.5rem;
