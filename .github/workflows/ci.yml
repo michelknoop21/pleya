@@ -560,7 +560,12 @@ jobs:
     name: Native Formatting
     needs: changes
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    # Vast op 24.04: format_native.sh gebruikt de Swift van het runner-image.
+    # `ubuntu-latest` schuift tot 19 november 2026 per run tussen 24.04 en 26.04
+    # (actions/runner-images#14748), en niet elk 26.04-image had `swift`
+    # ("swift-format not found", o.a. image 20261101.64). Terug naar
+    # ubuntu-latest zodra 26.04 Swift betrouwbaar meelevert.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     env:
@@ -578,6 +583,22 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "17"
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Swift toolchain
+        # Zet in het log welke swift-format de check gebruikt; ontbreekt hij,
+        # dan faalt deze stap al met een duidelijke melding.
+        # Dezelfde volgorde als format_native.sh: eerst een losse swift-format,
+        # anders `swift format`.
+        run: |
+          swift --version
+          if command -v swift-format >/dev/null; then
+            echo "swift-format: $(command -v swift-format)"
+            swift-format --version
+          else
+            echo "swift-format: via swift format"
+            swift format --version
+          fi
 
       - if: ${{ env.RUN_FLUTTER != 'false' }}
         name: Verify native formatting
