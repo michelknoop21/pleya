@@ -28,6 +28,7 @@ import '../media_markers.dart';
 import '../new_content_badge.dart';
 import '../optimized_media_image.dart';
 import '../pressable.dart';
+import '../tv/tv_expandable_media_tile.dart' show discoveryPosterPath, discoveryWideArtPath;
 
 /// Which artwork a [MobileMediaCard] draws: a 2:3 poster for a Home/landing
 /// rail, or a 16:9 still for Verder kijken.
@@ -58,7 +59,10 @@ class MobileMediaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final item = group.representativeSource.item;
     final client = context.tryGetMediaClientWithFallback(serverIdOrNull(item.serverId));
-    final imagePath = shape == MobileCardShape.portrait ? item.posterThumb() : item.thumbPath;
+    // An episode without a still of its own borrows its series' backdrop, then
+    // its poster: a grey tile says nothing about what resumes (zvu4o).
+    final stillPath = item.isEpisode ? discoveryWideArtPath(item) ?? discoveryPosterPath(item) : item.thumbPath;
+    final imagePath = shape == MobileCardShape.portrait ? item.posterThumb() : stillPath;
     final localPath = context.select<LocalLibraryProvider?, String?>((p) => p?.posterPath(item.serverId, imagePath));
     final aspect = shape == MobileCardShape.portrait ? 2 / 3 : 16 / 9;
     final height = width / aspect;
@@ -79,7 +83,7 @@ class MobileMediaCard extends StatelessWidget {
         : OptimizedMediaImage.thumb(
             client: client,
             localFilePath: localPath,
-            imagePath: item.thumbPath,
+            imagePath: stillPath,
             width: width,
             height: height,
             fallbackIcon: fallbackIcon,

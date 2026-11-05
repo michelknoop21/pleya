@@ -25,6 +25,7 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/focus/focusable_action_bar.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
+import 'package:pleya/media/media_identity.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_availability.dart';
 import 'package:pleya/media/unified/source_coverage_state.dart';
@@ -1710,6 +1711,92 @@ void main() {
 
           expect(player.screens.single.metadata.globalKey, 'server_2:ep_server_2');
           expect(player.screens.single.startPosition, const Duration(milliseconds: 600000));
+        });
+
+        testWidgets('a series page reached with one source continues where another server is (zvu4o)', (tester) async {
+          const numbers = ExternalIds(tvdb: 4242);
+          MediaItem show(String server) => MediaItem(
+            id: 'show_$server',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.show,
+            title: 'American Hostage',
+            serverId: server,
+            serverName: server,
+          );
+          MediaItem episode(String server, int number, {int? viewOffsetMs, int? viewCount, int? lastViewedAt}) =>
+              MediaItem(
+                id: 'ep${number}_$server',
+                backend: MediaBackend.jellyfin,
+                kind: MediaKind.episode,
+                title: 'Episode $number',
+                grandparentId: 'show_$server',
+                parentIndex: 1,
+                index: number,
+                durationMs: 3000000,
+                viewOffsetMs: viewOffsetMs,
+                viewCount: viewCount,
+                lastViewedAt: lastViewedAt,
+                serverId: server,
+              );
+          final main = show('server_1');
+          final mainEpisodes = [
+            episode('server_1', 1, viewCount: 1),
+            episode('server_1', 2, viewCount: 1),
+            episode('server_1', 3),
+            episode('server_1', 4),
+            episode('server_1', 5),
+          ];
+          final client = _FakeMediaServerClient(
+            show: main,
+            childrenByParent: const {},
+            onDeck: mainEpisodes[2],
+            episodes: mainEpisodes,
+            externalIds: const {'show_server_1': numbers},
+          );
+          final second = _FakeMediaServerClient(
+            id: 'server_2',
+            name: 'server_2',
+            show: show('server_2'),
+            childrenByParent: const {},
+            episodes: [
+              episode('server_2', 4, viewCount: 1, lastViewedAt: 1000),
+              episode('server_2', 5, viewOffsetMs: 2160000, lastViewedAt: 2000),
+            ],
+            externalIds: const {'show_server_2': numbers},
+            identityMatches: [show('server_2')],
+          );
+          final player = _PlayerRouteSpy();
+
+          // No route: the Series tab, a library row.
+          await pumpPhoneDetail(
+            tester,
+            client,
+            main,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            navigatorObservers: [player],
+            otherClients: [second],
+          );
+          for (var i = 0; i < 5; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+            await tester.pump();
+          }
+
+          final play = find.byKey(const Key('media-detail.play'));
+          await tester.ensureVisible(play);
+          await tester.pumpAndSettle();
+          await tester.tap(play);
+          for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+            await tester.pump();
+          }
+
+          expect(
+            player.screens.single.metadata.globalKey,
+            'server_1:ep5_server_1',
+            reason: 'the page keeps its source',
+          );
+          expect(player.screens.single.startPosition, const Duration(milliseconds: 2160000));
         });
 
         testWidgets('a series whose server names no next episode still moves on across its sources', (tester) async {
@@ -4253,7 +4340,20 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.playableFuture,
     this.id = 'server_1',
     this.name = 'Server',
+    this.externalIds = const {},
+    this.identityMatches = const [],
   });
+
+  /// Provider numbers per item id, and what an identity lookup answers: what
+  /// a page needs to find this server's copy of a title itself.
+  final Map<String, ExternalIds> externalIds;
+  final List<MediaItem> identityMatches;
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async => externalIds[itemId] ?? const ExternalIds();
+
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => identityMatches;
 
   final markedWatched = <String>[];
 

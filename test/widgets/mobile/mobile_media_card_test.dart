@@ -187,6 +187,31 @@ void main() {
     serverName: 'nas',
   );
 
+  testWidgets('an episode without a still of its own draws its series backdrop, not an empty tile (zvu4o)', (
+    tester,
+  ) async {
+    final drawn = <String?>[];
+    OptimizedMediaImage.debugImageBuilder = (_, path) {
+      drawn.add(path);
+      return const SizedBox.expand();
+    };
+    addTearDown(() => OptimizedMediaImage.debugImageBuilder = null);
+    final bare = episode(episode: 5, viewOffsetMs: 30 * 60 * 1000).copyWith(grandparentArtPath: '/series/art');
+    final withStill = bare.copyWith(thumbPath: '/episode/still');
+
+    await pump(
+      tester,
+      MobileMediaCard(group: group(bare), shape: MobileCardShape.wide, width: 220, isInContinueWatching: true),
+    );
+    await pump(
+      tester,
+      MobileMediaCard(group: group(withStill), shape: MobileCardShape.wide, width: 220, isInContinueWatching: true),
+    );
+
+    expect(drawn.first, '/series/art');
+    expect(drawn.last, '/episode/still', reason: 'a still of its own still wins');
+  });
+
   testWidgets('begonnen: place and what is left', (tester) async {
     final item = episode(episode: 4, viewOffsetMs: 30 * 60 * 1000);
     await pump(
