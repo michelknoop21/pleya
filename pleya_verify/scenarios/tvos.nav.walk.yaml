@@ -3,7 +3,7 @@ target: tvos-sim
 # WALK, on the surface the jumps were reported on: the top navigation bar.
 #
 # The bar is seven focus stops wide since A-24c — the profile chip, Zoeken, Home, Series,
-# Films and Mijn Pleya, in that order (hoofdstuk 33; no Live TV in this
+# Films, Mijn Pleya and Instellingen, in that order (hoofdstuk 33; no Live TV in this
 # fixture). Until now a scenario could only say where a named press landed,
 # which finds a jump one press at a time and only where someone thought to
 # look. A `walk` presses the same direction across the whole bar and judges
@@ -38,6 +38,10 @@ steps:
   # would land on a node the scenario cannot name.
   - walk: {direction: left, expect: [nav.search, nav.profile], timeout: 20000, settle: 800}
   - assert: {id: nav.profile, focused: true}
+  # DEC-XXX: the ring on Zoeken made it the page; the avatar is not a
+  # destination, so the ring on it leaves Zoeken on screen.
+  - assert: {id: nav.search, state: {active: true}}
+  - assert: {id: nav.discover, state: {active: false}}
   - snapshot: 01-left-end
 
   # And all the way back. Six hops, one per stop, ending on Instellingen
@@ -49,8 +53,9 @@ steps:
       timeout: 40000
       settle: 800
   - assert: {id: nav.settings, focused: true}
-  # The ring moves and the page stays (A-24c, LEESMIJ-v4): Home is still on
-  # screen after the whole walk.
-  - assert: {id: nav.discover, state: {active: true}}
+  # The ring is the page (DEC-XXX, which replaced the A-24c rule that kept
+  # Home on screen after the whole walk): Instellingen is on screen now.
+  - assert: {id: nav.settings, state: {active: true}}
   - assert: {id: nav.myPleya, state: {active: false}}
+  - assert: {id: nav.discover, state: {active: false}}
   - snapshot: 02-right-end

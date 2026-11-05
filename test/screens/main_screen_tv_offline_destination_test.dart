@@ -103,7 +103,9 @@ void main() {
     });
   }
 
-  testWidgets('NAV-GLASS1 Apple TV: focus previews, Select activates, content returns to active tab', (tester) async {
+  // NAV-GLASS1 under DEC-XXX: the ring on a pill is the page, rapid reversals
+  // end on the pill the ring rests on, and Select on it enters the content.
+  testWidgets('NAV-GLASS1 Apple TV: focus switches, reversals settle, Select enters the content', (tester) async {
     appleTv();
     final h = await pumpTvMainScreen(tester);
     h.shell.onFocusNav();
@@ -113,13 +115,13 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await h.settle();
     expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
-    expect(h.shell.coordinator.active, TvDestinationId.home, reason: 'focus alone must not switch pages');
+    expect(h.shell.coordinator.active, TvDestinationId.series, reason: 'the ring on the pill is the page');
 
     h.shell.onFocusContent();
     await h.settle();
     h.shell.onFocusNav();
     await h.settle();
-    expect(h.shell.navNodes.isFocused(TvDestinationId.home.focusKey), isTrue, reason: 'return starts on active tab');
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue, reason: 'return starts on active tab');
 
     for (var i = 0; i < 6; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
@@ -128,13 +130,73 @@ void main() {
       await tester.pump();
     }
     await h.settle();
-    expect(h.shell.coordinator.active, TvDestinationId.home);
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    await h.settle();
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
+    expect(h.shell.coordinator.active, TvDestinationId.series, reason: 'the page ends where the ring rests');
+
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await h.settle();
     expect(h.shell.coordinator.active, TvDestinationId.series);
-    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isTrue);
+    expect(h.shell.navNodes.isFocused(TvDestinationId.series.focusKey), isFalse, reason: 'Select went into the page');
+    await h.dispose(tester);
+  });
+
+  // Review 593-I1, for both TVs (DEC-XXX point 5). A page changed from inside
+  // the content leaves the bar scope remembering the old pill. UP must land
+  // on the page's pill without switching to the remembered one on the way:
+  // on Android TV that detour flashed Home and refreshed it. Negative control:
+  // without the `_tvBarEntry` guard in `_focusTvDestination` the Android TV
+  // run goes red (`seen` passes through Home).
+  for (final platform in ['Android TV', 'Apple TV']) {
+    testWidgets('$platform: UP after a page change from the content goes straight to that page', (tester) async {
+      platform == 'Apple TV' ? appleTv() : await androidTv();
+      final h = await pumpTvMainScreen(tester);
+      h.shell.onFocusNav();
+      await h.settle();
+      expect(h.shell.coordinator.active, TvDestinationId.home);
+      h.shell.onFocusContent(restorePreviousFocus: false);
+      await h.settle();
+      h.shell.openLibraries!();
+      await h.settle();
+      expect(h.shell.coordinator.active, TvDestinationId.myPleya);
+
+      final seen = <TvDestinationId>[];
+      void record() => seen.add(h.shell.coordinator.active);
+      h.shell.coordinator.addListener(record);
+      h.shell.onFocusNav();
+      await h.settle();
+      await h.settle();
+      h.shell.coordinator.removeListener(record);
+      expect(seen, isNot(contains(TvDestinationId.home)), reason: 'no detour over the remembered pill: $seen');
+      expect(h.shell.coordinator.active, TvDestinationId.myPleya);
+      expect(h.shell.navNodes.isFocused(TvDestinationId.myPleya.focusKey), isTrue);
+      await h.dispose(tester);
+    });
+  }
+
+  // Review 593-R2-M3: on Android TV the page's pill is focused a frame after
+  // the bar scope. If it cannot take the remote then, the pill the scope
+  // restored becomes the page, so ring and page agree. Negative control:
+  // without the fallback, Mijn Pleya stays on screen with the ring on Home.
+  testWidgets('Android TV: UP when the page pill cannot take focus makes the ring pill the page', (tester) async {
+    await androidTv();
+    final h = await pumpTvMainScreen(tester);
+    h.shell.onFocusNav();
+    await h.settle();
+    h.shell.onFocusContent(restorePreviousFocus: false);
+    await h.settle();
+    h.shell.openLibraries!();
+    await h.settle();
+    expect(h.shell.coordinator.active, TvDestinationId.myPleya);
+
+    final pill = h.shell.navNodes.get(TvDestinationId.myPleya.focusKey);
+    pill.canRequestFocus = false;
+    h.shell.onFocusNav();
+    await h.settle();
+    await h.settle();
+    final ring = h.shell.coordinator.destinations.where((d) => h.shell.navNodes.isFocused(d.focusKey)).toList();
+    expect(ring, hasLength(1), reason: 'the remote is on one pill');
+    expect(h.shell.coordinator.active, ring.single, reason: 'ring and page agree');
+    pill.canRequestFocus = true;
     await h.dispose(tester);
   });
 

@@ -79,14 +79,14 @@ void main() {
               isNavFocused: isNavFocused,
               profile: null,
               onSelectDestination: selected.add,
-              // What `MainScreen._focusTvDestination` does since A-24c: the ring
-              // landing on a bar item moves the ring and leaves the page. The
-              // shell only reports; this harness stands in for the host.
+              // What `MainScreen._focusTvDestination` does: the ring landing on
+              // a bar item activates it. The shell only reports; activating is
+              // the host's call, and this harness stands in for that host.
               onFocusDestination:
                   onFocusDestination ??
                   (destination) {
                     ringMoves.add(destination);
-                    coordinator.focusDestination(destination);
+                    coordinator.activate(destination);
                   },
               onFocusContent: ({bool restorePreviousFocus = true}) => contentFocusCalls++,
               onFocusNav: onFocusNav ?? () => navFocusCalls++,
@@ -397,22 +397,26 @@ void main() {
     });
   });
 
-  // A-24c (DEC-167, LEESMIJ-v4): the ring moves and the page stays; Select
-  // changes the page. This replaces the remote contract of 2 September 2026,
-  // in which focus on a bar item was the navigation. The shell's job is one
-  // line, hand the ring's landing to the host; what the host does with it is
-  // pinned on the real `MainScreen` in
-  // `main_screen_tv_settings_destination_test.dart` (A13).
-  group('the ring moves, the page stays', () {
+  // DEC-XXX (besluit Michel 4 november 2026, reverses point 3 of DEC-167):
+  // focus on a destination pill is the navigation, Select is not required.
+  //
+  // The shell's job in that contract is one line: hand the ring's landing to
+  // the host, which activates. Under A-24c the host only moved the ring
+  // (`TvNavigationCoordinator.focusDestination`); that is the behaviour these
+  // guard against coming back. `main_screen_tv_settings_destination_test.dart`
+  // covers what the real host does with it, including the settle window.
+  group('focus is the destination', () {
     testWidgets('the ring landing on a bar item is reported to the host', (tester) async {
       await pump(tester);
-      final start = coordinator.active;
       nodes.get(TvDestinationId.series.focusKey).requestFocus();
       await tester.pump();
 
       expect(ringMoves, contains(TvDestinationId.series));
-      expect(coordinator.focusedDestination, TvDestinationId.series);
-      expect(coordinator.active, start);
+      // This harness activates on its own, so this line pins the shell's
+      // wiring to the host, not the host's rule. The negative control for the
+      // rule is on the real `MainScreen`
+      // (`main_screen_tv_settings_destination_test.dart`).
+      expect(coordinator.active, TvDestinationId.series);
       expect(selected, isEmpty, reason: 'a ring move is not a Select');
     });
 
@@ -425,9 +429,9 @@ void main() {
       }
 
       expect(ringMoves, [TvDestinationId.series, TvDestinationId.movies, TvDestinationId.myPleya]);
-      // The ring ends on the last item walked to; no page changed on the way.
-      expect(coordinator.focusedDestination, TvDestinationId.myPleya);
-      expect(coordinator.active, isNot(TvDestinationId.myPleya));
+      // The last item walked to is the one that stays active. No intermediate
+      // destination wins a race by finishing its load first.
+      expect(coordinator.active, TvDestinationId.myPleya);
       expect(selected, isEmpty);
     });
   });

@@ -21,6 +21,7 @@ import '../navigation/tv/tv_live_tv_capability.dart';
 import '../navigation/tv/tv_content_focus_authority.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
 import '../navigation/tv/tv_navigation_coordinator.dart';
+import '../navigation/tv/tv_ring_settle.dart';
 import '../widgets/settings/settings_studio_theme.dart' show kTvSettingsTopNav;
 import 'tv/sections/tv_servers_page.dart';
 import '../navigation/tv/tv_nested_surface.dart';
@@ -576,6 +577,13 @@ class _MainScreenState extends State<MainScreen>
   /// content now" (P2). See [TvContentFocusAuthority] for the three paths this
   /// replaces and the contract it keeps.
   final TvContentFocusAuthority _tvContentFocus = TvContentFocusAuthority();
+
+  /// Coalesces the page switches of a sweep over the bar (DEC-XXX).
+  late final TvRingSettle _tvRingSettle = TvRingSettle(activate: _activateTvRingDestination);
+
+  /// Android TV's way up into the bar while it is in flight: the pill it is
+  /// heading for and the focus request that owns it (see [_focusSidebar]).
+  ({TvDestinationId target, int intent})? _tvBarEntry;
 
   /// The bar's focus nodes. Owned here rather than by [TvTopNavigation] so a
   /// rebuild of the bar cannot dispose the node the remote is standing on —
@@ -1422,6 +1430,7 @@ class _MainScreenState extends State<MainScreen>
     _startupSettleTimeout = null;
     _focus.removeListener(_handleSidebarFocusChanged);
     _focus.dispose();
+    _tvRingSettle.dispose();
     _tvNav.dispose();
     _tvNavNodes.dispose();
     _setTvosMenuPassthrough(false);
@@ -1879,27 +1888,34 @@ class _MainScreenState extends State<MainScreen>
       // bar. Under a collapsible bar (DEC-115) that reads as the bar opening and
       // snapping shut again.
       _tvNav.activeNestedRoute?.surfaceKey.currentState?.cancelPendingEntry();
+      final target = _tvNav.active;
       if (PlatformDetector.isAppleTV()) {
         // NAV-GLASS1: fence pending content work, then focus the active item
         // now so a deferred restore cannot overwrite the next remote step.
         _focus.focusSidebar(focusActiveItem: () {});
-        final node = _tvNavNodes.get(_tvNav.active.focusKey);
-        if (node.canRequestFocus) node.requestFocus();
+        _focusTvPill(target);
       } else {
-        // Read before the scope takes the focus: the scope restores the pill it
-        // last held, that pill reports itself focused, and since A-24c the ring
-        // memory follows it, so reading it after the frame would return the
-        // pill the ring wandered to rather than the one it left from.
-        final target = _tvNav.focusedDestination;
+        // The scope's own request restores the pill it last held, and the
+        // page's pill follows a frame later (a pill that just came back into
+        // the bar has no element before that). Since the ring on a pill is
+        // the page (DEC-XXX), that restored pill would switch the page on the
+        // way up; `_focusTvDestination` ignores it while this request is the
+        // live one (review 593-I1).
         _focus.focusSidebar(
           focusActiveItem: () {
+            _tvBarEntry = null;
             if (!mounted) return;
-            // The item the ring was last on before the remote went into the
-            // page; DOWN resets that to the page's own pill (`_focusContent`).
-            final node = _tvNavNodes.get(target.focusKey);
-            if (node.canRequestFocus) node.requestFocus();
+            if (_tvNavNodes.get(target.focusKey).canRequestFocus) {
+              _focusTvPill(target);
+              return;
+            }
+            // The page's pill cannot take the remote: make the page the pill
+            // the scope restored, so ring and page still agree (593-R2-M3).
+            final held = _tvNav.destinations.where((d) => _tvNavNodes.isFocused(d.focusKey)).firstOrNull;
+            if (held != null) _focusTvDestination(held);
           },
         );
+        _tvBarEntry = (target: target, intent: _focus.intent);
       }
       return;
     }
@@ -1921,11 +1937,10 @@ class _MainScreenState extends State<MainScreen>
     // route opening. A screen that cannot satisfy it yet leaves it armed, and
     // consumes it when its content finally lands (P2).
     if (_isTvShell) {
+      // DOWN inside a sweep's settle window: the page under the ring first,
+      // so the remote goes into the page the ring is on (DEC-XXX).
+      _tvRingSettle.flush();
       _tvContentFocus.arm(restorePreviousFocus ? TvContentFocusIntent.restore : TvContentFocusIntent.primary);
-      // A-24c: the ring may have wandered off the active pill without
-      // changing the page. The remote goes into the page that is on screen,
-      // so the way back up is that page's pill, not the one it wandered to.
-      _tvNav.focusDestination(_tvNav.active);
     }
     _focus.focusContent(
       restorePreviousFocus: restorePreviousFocus,
@@ -1979,10 +1994,9 @@ class _MainScreenState extends State<MainScreen>
       isShowingProfileSelection: _isShowingProfileSelection,
       isOverlaySheetOpen: _isOverlaySheetOpen,
       isRouteCurrent: ModalRoute.of(context)?.isCurrent == true,
-      // A-24c: with the ring on another pill than the page on screen, Menu
-      // first brings the ring home ([_handleBackKey]); only on the page's own
-      // pill does it leave the app (review 557-M6).
-      isSidebarFocused: _isSidebarFocused && !_tvRingAwayFromPage,
+      // Inside a sweep's settle window ring and page can differ, so Menu stays
+      // the app's until the page has caught up (review 593-M2).
+      isSidebarFocused: _isSidebarFocused && !_tvRingSettle.isPending,
       hasVisibleTabs: tabs.isNotEmpty,
       // Fase 7: a nested Mijn Pleya section is a route the app can still pop,
       // so Menu belongs to the app, not to the system, until it is closed.
@@ -2151,9 +2165,6 @@ class _MainScreenState extends State<MainScreen>
     }
 
     if (_isTvShell) {
-      if (!_tvNav.activeCanPop && _isSidebarFocused && _tvRingAwayFromPage) {
-        return handleBackKeyAction(event, _returnTvRingToPage);
-      }
       return switch (tvBackStep(hasNestedRoute: _tvNav.activeCanPop, isNavigationFocused: _isSidebarFocused)) {
         TvBackStep.popNested => handleBackKeyAction(event, _popTvNestedRoute),
         TvBackStep.focusTopNavigation => handleBackKeyAction(event, _focusSidebar),
@@ -2362,7 +2373,7 @@ class _MainScreenState extends State<MainScreen>
   /// unchanged, and the caller (`AutomationNavigationHooks`, ultimately
   /// `/v1/open`) can report that instead of polling out a full timeout
   /// waiting for a screen that was never going to mount.
-  bool _selectTab(NavigationTabId tab, {bool isUserInitiated = true}) {
+  bool _selectTab(NavigationTabId tab, {bool isUserInitiated = true, bool ringFollows = true}) {
     // Guard: ignore if tab isn't available in current mode
     if (!_getVisibleTabs(_isOffline).any((t) => t.id == tab)) return false;
 
@@ -2376,6 +2387,16 @@ class _MainScreenState extends State<MainScreen>
         return true;
       }
       _tvNav.syncToTab(tab);
+      // The ring is the page (DEC-XXX): a page changed from outside the bar
+      // (Menu to Home, a deferred startup section, the companion remote) takes
+      // the ring with it, also off the avatar or the reconnect item (review
+      // 593-R2-M1), or a second Menu would leave the app with the ring never
+      // having shown Home. The ring's own delayed switch passes
+      // `ringFollows: false`: the ring has moved on by then, for instance to
+      // the avatar after a fast sweep, and must stay there (review 593 I-1).
+      if (ringFollows && _tvNavNodes.hasFocus && !_tvNavNodes.isFocused(_tvNav.active.focusKey)) {
+        _focusTvPill(_tvNav.active);
+      }
     }
 
     final previousTab = _currentTab;
@@ -2439,10 +2460,10 @@ class _MainScreenState extends State<MainScreen>
 
     // Focus search input after rebuild so IndexedStack has made it visible.
     //
-    // Not on the TV shell unless the viewer actually asked to go in. Select on
-    // Zoeken (and, before A-24c, the ring landing on it) switches to Search
-    // without that request, and the caret dropping into the field would
-    // strand the remote outside the navigation. Same rule as the `!_isTvShell` guard
+    // Not on the TV shell unless the viewer actually asked to go in. The ring
+    // landing on Zoeken switches to Search without that request (DEC-XXX),
+    // and the caret dropping into the field would strand the remote outside
+    // the navigation. Same rule as the `!_isTvShell` guard
     // above, expressed against the one authority instead of a second flag:
     // DOWN and Select arm an intent, a destination switch does not.
     if (tab == NavigationTabId.search && (!_isTvShell || _tvContentFocus.hasPendingIntent)) {
@@ -2877,52 +2898,60 @@ class _MainScreenState extends State<MainScreen>
     return _handleBackKey(event);
   }
 
-  /// A destination was activated in the bar.
+  /// The ring landed on a destination pill, which switches the page
+  /// (DEC-XXX, besluit Michel 4 november 2026; reverses point 3 of DEC-167).
   ///
-  /// Re-selecting the destination you are already on restores the position you
-  /// had inside it instead of resetting to the top, and starts no refresh
-  /// (hoofdstuk 7.2) — [_selectTab] already returns early for an unchanged tab.
-  /// Two different presses, and they were being treated as one.
-  ///
-  /// Select on the destination you are **already on** is hoofdstuk 7.2's
-  /// "restore where I was", and it keeps calling `_focusContent`. Select on
-  /// **another** destination is a change of what is on screen, not a request to
-  /// go stand in it: the viewer is walking the bar, the page behind it changes,
-  /// and the remote stays where the ring is. Focusing the content there was the
-  /// first of the three paths P2 is about, and it is the one the report opened
-  /// with — choosing Home dropped the remote onto the billboard's Afspelen pill
-  /// before the viewer had asked for anything.
-  /// The ring moved to another item in the top bar.
-  ///
-  /// A-24c (LEESMIJ-v4, "Over een andere bestemming focussen verandert de
-  /// actieve pagina niet"): the ring moves and the page stays, for every
-  /// destination; Select changes the page ([_selectTvDestination]). This
-  /// replaces the remote contract of 2 September 2026, in which the ring was
-  /// the navigation. The northstar needs it twice: A13 draws the ring on
-  /// Instellingen with Mijn Pleya still the active capsule, and A14 opens the
-  /// account menu over Mijn Pleya, which a walk to the avatar past Zoeken
-  /// could never show while every pill it passed swapped the page.
+  /// The ring memory moves at once; the page follows through [_tvRingSettle]:
+  /// a single press switches immediately, a sweep switches on the pill the
+  /// ring rests on. Nothing here arms a content-focus intent, so the remote
+  /// stays in the bar while the page behind it changes. The avatar and the
+  /// reconnect item are not destinations and never get here.
   void _focusTvDestination(TvDestinationId destination) {
+    if (_tvBarEntry case (:final target, :final intent) when destination != target && _focus.ownsIntent(intent)) {
+      return;
+    }
     _tvNav.focusDestination(destination);
-    // Cancels anything armed against the page: the viewer is in the bar.
+    // Cancels anything armed against the page the ring just left: content
+    // landing late must not pull the remote out of the bar.
     _tvContentFocus.onDestinationFocused();
-    // Whether Menu leaves the app depends on the ring being on the page's
-    // own pill now (review 557-M6). The service parks an enable while a key
-    // is held, so a held arrow is not released twice (NAV1).
+    // The ring arriving on the page's own pill (UP from the page, Menu to
+    // Home, start-up focus) switches nothing and must not open a window, or
+    // the next arrow would wait for it (review 593-I3). Only a move between
+    // pills starts or extends a sweep.
+    if (destination == _tvNav.active && !_tvRingSettle.isPending) return;
+    // With VoiceOver on, every pill switches at once, so the "current
+    // section" in its label is true when it is read (review 593-M6).
+    final coalesce = !WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.accessibleNavigation;
+    _tvRingSettle.ringMoved(coalesce: coalesce);
+  }
+
+  /// Puts the page under the ring. Idempotent: `activate` is false when the
+  /// page already is the ring's, and `_selectTab` only runs on a real switch
+  /// (Home refreshes on every `_selectTab`). The Menu passthrough follows
+  /// through `_selectTab`; its service parks an enable while a key is held,
+  /// so a held arrow is not released twice (NAV1).
+  void _activateTvRingDestination() {
+    if (!mounted || !_isTvShell) return;
+    final destination = _tvNav.focusedDestination;
+    if (_tvNav.activate(destination)) _selectTab(destination.tab, ringFollows: false);
+    // The passthrough is held off while a window is open; recompute it once
+    // the window has closed, also when the page did not change.
     _updateTvosMenuPassthrough();
   }
 
-  /// The ring stands on a pill other than the page on screen (A-24c).
-  bool get _tvRingAwayFromPage => _isTvShell && _tvNav.focusedDestination != _tvNav.active;
-
-  /// Menu with the ring away from the page's pill: the ring goes back to that
-  /// pill, nothing else changes (review 557-M6).
-  void _returnTvRingToPage() {
-    final node = _tvNavNodes.get(_tvNav.active.focusKey);
+  void _focusTvPill(TvDestinationId destination) {
+    final node = _tvNavNodes.get(destination.focusKey);
     if (node.canRequestFocus) node.requestFocus();
   }
 
+  /// Select on a pill in the bar.
+  ///
+  /// With the ring as the page, Select is on the destination you are already
+  /// on: hoofdstuk 7.2's "restore where I was", into the content, without a
+  /// refresh. Inside a sweep's settle window the switch is made first, so
+  /// Select means the same thing however fast the ring got there.
   void _selectTvDestination(TvDestinationId destination) {
+    _tvRingSettle.flush();
     final wasActive = _tvNav.active == destination && _currentTab == destination.tab;
     _tvNav.activate(destination);
     // `_selectTab` is *not* a no-op for the tab it is already on: it setStates

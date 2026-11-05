@@ -16,7 +16,6 @@ steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
   - walk: {direction: right, expect: [nav.series, nav.movies], timeout: 40000, settle: 800}
-  - press: select
   - wait_until: {id: "tv.catalog.state[movies.landing_empty]", timeout: 15000}
   - settle: 1500
   - snapshot: 00-empty-landing

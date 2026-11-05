@@ -1,21 +1,25 @@
 name: tvos.nav.focus-switches-destination
 target: tvos-sim
-# The name is historical. From 2 September 2026 to A-24c focus on a top-nav
-# item was the navigation; LEESMIJ-v4 (A-24c, review 557-I4) reverses that for
-# every destination: "Over een andere bestemming focussen verandert de actieve
-# pagina niet". The ring moves, the page stays, Select changes the page and
-# keeps the remote on the pill, DOWN goes into the page that is on screen.
-# The file keeps its name because the Verify MCP tests and the agent guide
-# point at it.
+# DEC-XXX (besluit Michel 4 november 2026; replaces point 3 of DEC-167): the
+# ring on a destination pill IS the page. LEFT/RIGHT changes the page, the
+# ring stays in the bar, DOWN goes into the page on screen, Select on the pill
+# you are on goes into it as well, and Select is never required to switch.
+# Instellingen follows the same rule as every other pill. The avatar is not a
+# destination and never switches the page.
 #
 # `active` is the pill's own white-capsule flag, published by
-# `TvTopNavigation` as automation state, so "Home is the page you are on" is
+# `TvTopNavigation` as automation state, so "Films is the page you are on" is
 # asserted separately from "Films is where the ring is". Asserting only focus
-# would pass on the 2 September behaviour too.
+# would pass on the A-24c behaviour too, which is exactly the regression this
+# scenario exists to catch: under A-24c the ring moved and the page did not
+# follow until Select.
 #
-# Every assertion here is on a real HID press. The fast walk at the end
-# presses with nothing in between: the ring has to end on the last item and
-# the page must not have moved at all.
+# The 400 ms settles are measurement hygiene: a `wait_until` on focus returns
+# the frame the ring lands, which can precede the bar's rebuild. A single press
+# switches the page at once; only presses less than 150 ms apart are coalesced
+# into one switch on the pill the ring rests on (`TvRingSettle`).
+#
+# Every assertion here is on a real HID press.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -28,48 +32,46 @@ steps:
   - assert: {id: nav.discover, focused: true, state: {active: true}}
   - snapshot: 00-home
 
-  # --- RIGHT walks the ring; Home stays on screen --------------------------
+  # --- RIGHT walks the bar, and the page follows without a Select -----------
   - press: right
   - wait_until: {focused: nav.series, timeout: 5000}
   - settle: 400
-  - assert: {id: nav.series, focused: true, state: {active: false}}
-  - assert: {id: nav.discover, state: {active: true}}
-  - snapshot: 01-ring-on-series
+  - assert: {id: nav.series, focused: true, state: {active: true}}
+  - assert: {id: nav.discover, state: {active: false}}
+  - snapshot: 01-series
 
   - press: right
   - wait_until: {focused: nav.movies, timeout: 5000}
   - settle: 400
-  - assert: {id: nav.movies, focused: true, state: {active: false}}
-  - assert: {id: nav.discover, state: {active: true}}
+  - assert: {id: nav.movies, focused: true, state: {active: true}}
+  - assert: {id: nav.series, state: {active: false}}
+  - snapshot: 02-movies
 
   - press: right
   - wait_until: {focused: nav.myPleya, timeout: 5000}
   - settle: 400
-  - assert: {id: nav.myPleya, focused: true, state: {active: false}}
-  - assert: {id: nav.discover, state: {active: true}}
-  - assert: {id: screen.discover}
-  - snapshot: 02-ring-on-my-pleya
-
-  # --- Select changes the page and keeps the remote on the pill -------------
-  - press: select
-  - wait_until: {id: screen.my_pleya, timeout: 15000}
-  - settle: 400
   - assert: {id: nav.myPleya, focused: true, state: {active: true}}
-  - assert: {id: nav.discover, state: {active: false}}
+  - assert: {id: nav.movies, state: {active: false}}
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  # The content behind the bar is up and addressable, and the ring is still on
+  # the bar. This is the half a late-arriving provider used to break.
+  - assert: {id: nav.myPleya, focused: true}
   - snapshot: 03-my-pleya
 
-  # Instellingen follows the same rule as every other pill (A13).
+  # --- Instellingen is a pill like the others (DEC-XXX) ---------------------
   - press: right
   - wait_until: {focused: nav.settings, timeout: 5000}
   - settle: 400
-  - assert: {id: nav.settings, focused: true, state: {active: false}}
-  - assert: {id: nav.myPleya, state: {active: true}}
-  - assert: {id: screen.my_pleya}
-  - snapshot: 03b-settings-ring
+  - assert: {id: nav.settings, focused: true, state: {active: true}}
+  - assert: {id: nav.myPleya, state: {active: false}}
+  - snapshot: 03b-settings
+  - press: left
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - settle: 400
+  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
 
-  # --- DOWN goes into the page on screen ------------------------------------
-  # From the Instellingen ring the page is still Mijn Pleya: Big P, then the
-  # first tile of the Snel naar dock.
+  # --- DOWN is the way in ---------------------------------------------------
+  # Big P, then the first tile of the Snel naar dock.
   - press: down
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - press: down
@@ -77,7 +79,7 @@ steps:
   - assert: {id: nav.myPleya, state: {active: true}}
   - snapshot: 04-content-focused
 
-  # --- UP comes back to the pill of the page on screen ----------------------
+  # --- UP comes back to the active pill, and the page does not change -------
   - press: up
   - press: up
   - wait_until: {focused: nav.myPleya, timeout: 8000}
@@ -85,34 +87,48 @@ steps:
   - assert: {id: nav.myPleya, focused: true, state: {active: true}}
   - snapshot: 05-back-on-nav
 
-  # --- LEFT walks back to Search, and Mijn Pleya stays ----------------------
-  # Landing on Search must not let the text field claim the remote.
+  # --- LEFT walks back, Search included ------------------------------------
+  # Search sits left of Home. Landing on it must switch the destination without
+  # the text field claiming the remote, or a viewer walking left would be
+  # stranded outside the navigation.
   - press: left
   - press: left
   - press: left
   - wait_until: {focused: nav.discover, timeout: 8000}
   - settle: 400
-  - assert: {id: nav.discover, focused: true, state: {active: false}}
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
   - press: left
   - wait_until: {focused: nav.search, timeout: 8000}
   - settle: 400
-  - assert: {id: nav.search, focused: true, state: {active: false}}
-  - assert: {id: nav.myPleya, state: {active: true}}
-  - assert: {id: screen.my_pleya}
-  - snapshot: 06-search-ring-my-pleya-on-screen
+  - assert: {id: nav.search, focused: true, state: {active: true}}
+  - snapshot: 06-search-focused-not-entered
 
-  # --- The fast walk: three presses with nothing in between ----------------
+  # --- The fast walk: presses with nothing in between ----------------------
+  # Back to Home first, so the burst starts where a viewer starts.
   - press: right
   - wait_until: {focused: nav.discover, timeout: 8000}
   - settle: 1200
+
+  # No `wait_until`, no `settle`. The page has to end on the pill the ring
+  # rests on, not on whichever page finished loading last.
   - press: right
   - press: right
   - press: right
-  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - press: right
+  - wait_until: {focused: nav.settings, timeout: 8000}
   - settle: 1500
-  - assert: {id: nav.myPleya, focused: true, state: {active: true}}
+  - assert: {id: nav.settings, focused: true, state: {active: true}}
+  - assert: {id: nav.myPleya, state: {active: false}}
   - assert: {id: nav.movies, state: {active: false}}
   - assert: {id: nav.series, state: {active: false}}
   - assert: {id: nav.discover, state: {active: false}}
-  - assert: {id: screen.my_pleya}
   - snapshot: 07-fast-walk
+
+  # --- Menu on the bar: another page goes Home, and the ring with it --------
+  # Ring and page coincide, so Menu on the bar follows the rule from before
+  # A-24c: off Home it goes Home; on Home it belongs to tvOS (passthrough).
+  - press: menu
+  - wait_until: {id: nav.discover, focused: true, state: {active: true}, timeout: 8000}
+  - settle: 600
+  - assert: {id: tvos.menu_passthrough, state: {enabled: true}}
+  - snapshot: 08-menu-home

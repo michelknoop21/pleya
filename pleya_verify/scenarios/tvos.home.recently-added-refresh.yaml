@@ -43,15 +43,15 @@ steps:
   # Past the return threshold, away to the next destination (Series) and back.
   - settle: 125000
   - assert: {id: "discover.rail.item[2.0]", state: {title: Aurora}}
-  # A-24c (LEESMIJ-v4): the ring alone does not change the page, Select does.
+  # The ring on a pill is the page (DEC-XXX): no Select, but the page has to
+  # have switched before the refresh on the way back is asserted.
   - press: right
   - wait_until: {focused: nav.series, timeout: 10000}
-  - press: select
   - wait_until: {id: nav.series, state: {active: true}, timeout: 10000}
+  - assert: {id: nav.discover, state: {active: false}}
   - settle: 1500
   - press: left
   - wait_until: {focused: nav.discover, timeout: 10000}
-  - press: select
   - wait_until: {id: nav.discover, state: {active: true}, timeout: 10000}
   - settle: 5000
   - assert: {id: "discover.rail.item[2.0]", state: {title: Verify Nieuw}}

@@ -12,9 +12,8 @@ steps:
   - settle: 3500
   # A-24c: Instellingen is a destination in the top bar, right after Mijn Pleya.
   - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
-  - press: select
   - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
-  # Select leaves the remote on the pill; Down enters the page.
+  # The ring on Instellingen already shows it (DEC-XXX); Down enters the page.
   - press: down
   # A-24b: Weergave's rows sit on the Instellingen page; it opens on Thema.
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
@@ -34,8 +33,6 @@ steps:
   # A-24c: Menu from the settings page is the bar, on Instellingen.
   - wait_until: {focused: nav.settings, timeout: 8000}
   - walk: {direction: left, expect: [nav.myPleya, nav.movies, nav.series, nav.discover], timeout: 45000, settle: 800}
-  # A-24c (LEESMIJ-v4): the walk leaves the page; Select puts Home on screen.
-  - press: select
   - wait_until: {id: screen.discover, timeout: 15000}
   - settle: 1500
   - press: down

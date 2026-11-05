@@ -126,7 +126,7 @@ class _HostState extends State<_Host> {
       _nav.activate(destination);
       _focusContent(restorePreviousFocus: false);
     },
-    onFocusDestination: _nav.focusDestination,
+    onFocusDestination: _nav.activate,
     onFocusContent: _focusContent,
     onFocusNav: _focusNav,
     onOpenProfiles: () {},
@@ -320,9 +320,7 @@ void main() {
       expect(navRect(tester).top, 0);
     });
 
-    // A-24c (DEC-167): the ring moving to another pill leaves the page, so
-    // the route stays under the visible bar until Select.
-    testWidgets('moving the ring to another destination keeps the route under a visible bar', (tester) async {
+    testWidgets('moving the ring to another destination shows that destination under a visible bar', (tester) async {
       await pump(tester);
       final start = coordinator.active;
       await open(tester, TvTopNavPresentation.collapsible);
@@ -333,9 +331,8 @@ void main() {
       hostKey.currentState!.navNodes.get(other.focusKey).requestFocus();
       await tester.pumpAndSettle();
 
-      expect(coordinator.active, start);
-      expect(coordinator.focusedDestination, other);
-      expect(find.byKey(const ValueKey('route')), findsOneWidget, reason: 'the page did not change');
+      expect(coordinator.active, other);
+      expect(find.byKey(const ValueKey('route')), findsNothing, reason: 'the route belongs to the destination left');
       expect(navRect(tester).top, 0);
       expect(hostKey.currentState!.isNavFocused, isTrue);
     });

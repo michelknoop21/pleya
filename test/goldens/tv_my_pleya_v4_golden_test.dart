@@ -12,7 +12,6 @@ library;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/navigation/tv/tv_destination.dart';
 import 'package:flutter/material.dart' show MaterialApp;
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart' show tvNavProfileFocusKey;
@@ -53,12 +52,10 @@ void main() {
     });
   }
 
-  testWidgets('A13: the ring on Instellingen, the capsule on Mijn Pleya', (tester) async {
-    final page = await pumpTvMyPleyaPage(tester);
-    page.navNodes.get(TvDestinationId.settings.focusKey).requestFocus();
-    await tester.pumpAndSettle();
-    await shoot(tester, 'tv_my_pleya_v4_settings_focus');
-  });
+  // No A13 golden: since DEC-XXX (topmenu wisselt pagina bij focus) the ring on
+  // Instellingen puts Instellingen on screen, so "ring on Instellingen, capsule
+  // on Mijn Pleya" no longer exists. main_screen_tv_settings_destination_test
+  // covers the new behaviour.
 
   testWidgets('A14: the account menu under the avatar', (tester) async {
     final page = await pumpTvMyPleyaPage(tester);

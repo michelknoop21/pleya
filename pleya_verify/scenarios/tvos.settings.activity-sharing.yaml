@@ -18,7 +18,6 @@ steps:
   - wait_until: {id: screen.discover, timeout: 30000}
   - settle: 3500
   - walk: {direction: right, steps: 8, stopAt: nav.settings, timeout: 60000, settle: 600}
-  - press: select
   - wait_until: {id: nav.settings, state: {active: true}, timeout: 15000}
   - press: down
   - wait_until: {focused: "my_pleya.section.tile[setting.theme_mode]", timeout: 8000}
