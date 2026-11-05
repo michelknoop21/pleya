@@ -138,6 +138,9 @@ class SeerrClient {
     String? watchRegion,
     String? sortBy,
     List<int>? keywords,
+    String? releaseDateFrom,
+    String? releaseDateThrough,
+    int? minimumVotes,
   }) => _mediaPage('/discover/movies', {
     'page': page,
     'genre': ?genre,
@@ -145,6 +148,9 @@ class SeerrClient {
     'watchProviders': ?watchProvider?.toString(),
     'watchRegion': ?watchRegion,
     'sortBy': ?sortBy,
+    'voteCountGte': ?minimumVotes,
+    'primaryReleaseDateGte': ?releaseDateFrom,
+    'primaryReleaseDateLte': ?releaseDateThrough,
   });
   Future<SeerrMediaPage> discoverTv({
     int page = 1,
@@ -153,6 +159,9 @@ class SeerrClient {
     String? watchRegion,
     String? sortBy,
     List<int>? keywords,
+    String? releaseDateFrom,
+    String? releaseDateThrough,
+    int? minimumVotes,
   }) => _mediaPage('/discover/tv', {
     'page': page,
     'genre': ?genre,
@@ -160,6 +169,9 @@ class SeerrClient {
     'watchProviders': ?watchProvider?.toString(),
     'watchRegion': ?watchRegion,
     'sortBy': ?sortBy,
+    'voteCountGte': ?minimumVotes,
+    'firstAirDateGte': ?releaseDateFrom,
+    'firstAirDateLte': ?releaseDateThrough,
   });
 
   /// `GET /search/keyword`: TMDB keywords matching [query], for the

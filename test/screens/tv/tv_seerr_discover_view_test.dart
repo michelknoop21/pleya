@@ -61,6 +61,7 @@ void main() {
     void Function(SeerrDiscoverType)? onTypeSelected,
     void Function(int?)? onGenreSelected,
     VoidCallback? onLeaveGrid,
+    VoidCallback? onDiscoveryFiltersPressed,
   }) async {
     await tester.pumpWidget(
       TranslationProvider(
@@ -83,6 +84,7 @@ void main() {
               onReload: () {},
               onActivate: (_) {},
               onLeaveGrid: onLeaveGrid,
+              onDiscoveryFiltersPressed: onDiscoveryFiltersPressed,
               error: error,
             ),
           ),
@@ -176,6 +178,20 @@ void main() {
 
       final rows = tester.widget<TvCatalogFilterRailPanel>(find.byKey(tvCatalogFilterRailKey)).rows;
       expect(rows.map((row) => row.label), [t.seerr.railKind, t.seerr.byStreamingService]);
+    });
+
+    testWidgets('the shared discovery controls are reachable with the remote', (tester) async {
+      var opened = 0;
+      await pumpView(tester, shelves: [_shelf('films')], onDiscoveryFiltersPressed: () => opened++);
+      await openRail(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      final rows = tester.widget<TvCatalogFilterRailPanel>(find.byKey(tvCatalogFilterRailKey)).rows;
+      expect(rows.last.label, t.unifiedCatalog.filters.title);
+      expect(rows.last.focusNode.hasFocus, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(opened, 1);
     });
 
     testWidgets('picking a type reports it and closes the subview', (tester) async {

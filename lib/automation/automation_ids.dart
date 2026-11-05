@@ -744,6 +744,9 @@ class AutomationIds {
   /// The inbox button beside that field, which opens Alle aanvragen.
   static const String seerrSearchInbox = 'seerr.search.inbox';
 
+  /// A discovery source, date or sort choice in the Requests filter panel.
+  static const String seerrDiscoverFilter = 'seerr.discover.filter';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -915,6 +918,7 @@ class AutomationIds {
     catalogHeaderSearch,
     catalogChipSources,
     catalogChipFilters,
+    seerrDiscoverFilter,
     catalogChipSort,
     catalogCount,
     catalogGrid,
@@ -1019,6 +1023,7 @@ class AutomationIds {
     {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchField, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchInbox, 'role': 'button', 'instanceable': false},
+    {'id': seerrDiscoverFilter, 'role': 'button', 'instanceable': true},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},

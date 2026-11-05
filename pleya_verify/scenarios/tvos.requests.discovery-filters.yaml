@@ -1,0 +1,29 @@
+name: tvos.requests.discovery-filters
+target: tvos-sim
+# REQ-DISCOVERY-FILTERS; remote-only input. Not yet executed on an Apple target.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.requests.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+  - open: screen.requests
+steps:
+  - wait_until: {id: seerr.search.field, timeout: 15000}
+  - settle: 2000
+  - press: down
+  - press: left
+  - wait_until: {focused: "tv.catalog.rail.row[discover.kind]", timeout: 5000}
+  - walk: {direction: down, steps: 6, stopAt: "tv.catalog.rail.row[discover.discovery]", timeout: 15000, settle: 300}
+  - press: select
+  - wait_until: {focused: "seerr.discover.filter[source.popular]", timeout: 5000}
+  - snapshot: requests-filter-panel
+  - press: down
+  - press: select
+  - assert: {id: "seerr.discover.filter[source.trending]", state: {selected: true}}
+  - assert: {id: "seerr.discover.filter[year]", present: false}
+  - snapshot: requests-trending-panel
+  - press: menu
+  - wait_until: {focused: "tv.catalog.rail.row[discover.discovery]", timeout: 5000}
+  - snapshot: requests-filter-focus-restored
