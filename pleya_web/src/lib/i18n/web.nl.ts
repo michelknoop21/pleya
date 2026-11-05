@@ -240,6 +240,7 @@ export const webNl = {
 
   'artwork.none': 'Geen artwork',
   'card.remaining': 'nog {duration}',
+  'card.episodeCode': 'S{season} · A{episode}',
   'card.watched': 'Gezien',
   'card.new': 'Nieuw',
   'card.versions.one': '{count} versie',
