@@ -266,57 +266,6 @@ jobs:
         working-directory: pleya_verify/runner
         run: dart run bin/verify.dart run ../scenarios/discover.layout.yaml --json
 
-      - if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.requests_discovery }}
-        name: Requests discovery filters (macOS)
-        working-directory: pleya_verify/runner
-        run: dart run bin/verify.dart run ../scenarios/macos.requests.discovery-filters.yaml --json
-
-      - if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.requests_discovery }}
-        name: Select available Requests iPhone and iPad targets
-        id: requests-targets
-        run: |
-          python3 - <<'PY_SELECT'
-          import json, os, subprocess
-          result = subprocess.run(
-              ['xcrun', 'simctl', 'list', 'devices', 'available', '--json'],
-              check=True, capture_output=True, text=True,
-          )
-          devices = [
-              device
-              for runtime, entries in json.loads(result.stdout)['devices'].items()
-              if '.iOS-' in runtime
-              for device in entries
-              if device.get('isAvailable')
-          ]
-          selected = {}
-          for kind, prefix in [('iphone', 'iPhone'), ('ipad', 'iPad')]:
-              matches = [device for device in devices if device['name'].startswith(prefix)]
-              if not matches:
-                  raise SystemExit(f'No available {prefix} simulator on this runner')
-              device = next((device for device in matches if device['state'] == 'Booted'), matches[-1])
-              selected[kind] = device['udid']
-              print(f"{kind}: {device['name']} {device['udid']} ({device['state']})")
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              for kind, udid in selected.items():
-                  output.write(f'{kind}={udid}\n')
-          PY_SELECT
-
-      - if: ${{ always() && steps.requests-targets.outputs.iphone != '' }}
-        name: Requests discovery filters (iPhone)
-        working-directory: pleya_verify/runner
-        env:
-          PLEYA_VERIFY_IOS_UDID: ${{ steps.requests-targets.outputs.iphone }}
-          PLEYA_VERIFY_REUSE_BUILD: "1"
-        run: dart run bin/verify.dart run ../scenarios/ios.requests.discovery-filters.yaml --json
-
-      - if: ${{ always() && steps.requests-targets.outputs.ipad != '' }}
-        name: Requests discovery filters (iPad)
-        working-directory: pleya_verify/runner
-        env:
-          PLEYA_VERIFY_IOS_UDID: ${{ steps.requests-targets.outputs.ipad }}
-          PLEYA_VERIFY_REUSE_BUILD: "1"
-        run: dart run bin/verify.dart run ../scenarios/ipados.requests.discovery-filters.yaml --json
-
       - if: ${{ always() && (needs.changes.result != 'success' || needs.changes.outputs.apple != 'false') }}
         name: Upload evidence bundles
         uses: actions/upload-artifact@v7
@@ -449,6 +398,118 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: pleya-verify-tvos-evidence-${{ github.run_id }}
+          path: |
+            .build/pleya-verify/*
+            !.build/pleya-verify/*-app
+          if-no-files-found: warn
+          retention-days: 14
+
+  requests-discovery-verify:
+    name: Requests discovery native acceptance
+    if: github.event_name == 'workflow_dispatch' && inputs.requests_discovery
+    runs-on: macos-26
+    permissions:
+      contents: read
+    timeout-minutes: 45
+    env:
+      FLUTTER_XCODE_CODE_SIGN_IDENTITY: "-"
+      FLUTTER_XCODE_CODE_SIGN_STYLE: Manual
+      FLUTTER_XCODE_DEVELOPMENT_TEAM: ""
+      FLUTTER_XCODE_PROVISIONING_PROFILE_SPECIFIER: ""
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: "stable"
+          flutter-version-file: .fvmrc
+          cache: true
+          pub-cache: false
+
+      - name: Cache Pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-v2-${{ hashFiles('pubspec.yaml', 'pubspec.lock') }}
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v6
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Install app dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: runner dependencies
+        working-directory: pleya_verify/runner
+        run: dart pub get
+
+
+      - if: always()
+        name: Requests discovery filters (macOS)
+        working-directory: pleya_verify/runner
+        run: dart run bin/verify.dart run ../scenarios/macos.requests.discovery-filters.yaml --json
+
+      - if: always()
+        name: Select available Requests iPhone and iPad targets
+        id: requests-targets
+        run: |
+          python3 - <<'PY_SELECT'
+          import json, os, subprocess
+          result = subprocess.run(
+              ['xcrun', 'simctl', 'list', 'devices', 'available', '--json'],
+              check=True, capture_output=True, text=True,
+          )
+          devices = [
+              device
+              for runtime, entries in json.loads(result.stdout)['devices'].items()
+              if '.iOS-' in runtime
+              for device in entries
+              if device.get('isAvailable')
+          ]
+          selected = {}
+          for kind, prefix in [('iphone', 'iPhone'), ('ipad', 'iPad')]:
+              matches = [device for device in devices if device['name'].startswith(prefix)]
+              if not matches:
+                  raise SystemExit(f'No available {prefix} simulator on this runner')
+              device = next((device for device in matches if device['state'] == 'Booted'), matches[-1])
+              selected[kind] = device['udid']
+              print(f"{kind}: {device['name']} {device['udid']} ({device['state']})")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for kind, udid in selected.items():
+                  output.write(f'{kind}={udid}\n')
+          PY_SELECT
+
+      - if: ${{ always() && steps.requests-targets.outputs.iphone != '' }}
+        name: Requests discovery filters (iPhone)
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_IOS_UDID: ${{ steps.requests-targets.outputs.iphone }}
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+        run: dart run bin/verify.dart run ../scenarios/ios.requests.discovery-filters.yaml --json
+
+      - if: ${{ always() && steps.requests-targets.outputs.ipad != '' }}
+        name: Requests discovery filters (iPad)
+        working-directory: pleya_verify/runner
+        env:
+          PLEYA_VERIFY_IOS_UDID: ${{ steps.requests-targets.outputs.ipad }}
+          PLEYA_VERIFY_REUSE_BUILD: "1"
+        run: dart run bin/verify.dart run ../scenarios/ipados.requests.discovery-filters.yaml --json
+
+      - name: Upload Requests evidence bundles
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pleya-verify-requests-evidence-${{ github.run_id }}
           path: |
             .build/pleya-verify/*
             !.build/pleya-verify/*-app
