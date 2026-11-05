@@ -865,6 +865,53 @@ void main() {
       expect(await title.onDeckAcross(own), same(own));
     });
 
+    test('an own episode with under a minute left loses to a source further along', () async {
+      // Device log zvu4o: the page's source sits 30 s before the end of E3,
+      // never marked watched; another source is in the middle of E5.
+      final credits = _episode('page', 1, 3, viewOffsetMs: _hour - 30000, lastViewedAt: 9000);
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([
+            _episode('page', 1, 1, viewCount: 1),
+            _episode('page', 1, 2, viewCount: 1),
+            credits,
+            _episode('page', 1, 4),
+            _episode('page', 1, 5),
+          ]),
+          'chosen': _Client([
+            _episode('chosen', 1, 4, viewCount: 1, lastViewedAt: 1000),
+            _episode('chosen', 1, 5, viewOffsetMs: _hour - 14 * 60000, lastViewedAt: 1000),
+          ]),
+        },
+      );
+
+      final onDeck = await title.onDeckAcross(credits.copyWith(serverId: 'page'));
+
+      expect(onDeck?.globalKey, 'page:ep-page-1-5');
+    });
+
+    test('an episode with under a minute left counts as done for the next one', () async {
+      final title = _title(
+        [_show('page'), _show('chosen')],
+        chosen: 'chosen',
+        page: 'page',
+        clients: {
+          'page': _Client([_episode('page', 1, 1), _episode('page', 1, 2), _episode('page', 1, 3)]),
+          'chosen': _Client([
+            _episode('chosen', 1, 1, viewCount: 1),
+            _episode('chosen', 1, 2, viewOffsetMs: _hour - 20000, lastViewedAt: 2000),
+          ]),
+        },
+      );
+
+      final onDeck = await title.onDeckAcross(null);
+
+      expect(onDeck?.globalKey, 'page:ep-page-1-3');
+    });
+
     test('nothing started anywhere leaves the page alone', () async {
       final title = _title(
         [_show('page'), _show('chosen')],

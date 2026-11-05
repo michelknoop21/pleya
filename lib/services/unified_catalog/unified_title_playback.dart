@@ -81,6 +81,11 @@ class UnifiedSourceGate {
       _inView(source) && !isAuthRejected(source.serverId) && isOwn(source.serverId);
 }
 
+/// Less left than this and [UnifiedTitlePlayback.onDeckAcross] reads an
+/// episode as watched: a server can keep a position in the credits without
+/// ever marking the episode watched (device log zvu4o).
+const nearlyFinishedRemaining = Duration(minutes: 1);
+
 /// The concrete item a play starts, and where, when the position lives on
 /// another source than the one that plays.
 class UnifiedPlayTarget {
@@ -281,7 +286,9 @@ class UnifiedTitlePlayback {
     }
     final rows = byCoordinate.values.where((copies) => !isSpecialSeasonNumber(copies.values.first.parentIndex)).toList()
       ..sort((a, b) => _compareEpisodes(a.values.first, b.values.first));
-    final states = [for (final row in rows) selectRepresentativeWatchState(row)];
+    final states = [
+      for (final row in rows) selectRepresentativeWatchState({for (final e in row.entries) e.key: _settled(e.value)}),
+    ];
     final lastStarted = states.lastIndexWhere((s) => s.hasActiveProgress);
     final lastDone = states.lastIndexWhere((s) => s.isWatched && !s.hasActiveProgress);
 
@@ -298,11 +305,22 @@ class UnifiedTitlePlayback {
     final across = rows[acrossAt].values.first;
     if (onDeck != null) {
       if (_compareEpisodes(onDeck, across) >= 0) return onDeck;
-      if (gate.freshen(onDeck).hasActiveProgress && !_provablyNewer(states[provenAt], gate.freshen(onDeck))) {
+      final own = _settled(gate.freshen(onDeck));
+      if (own.hasActiveProgress && !_provablyNewer(states[provenAt], own)) {
         return onDeck;
       }
     }
     return lists[routeContext.pageSourceKey]?.at(episodeCoordinateOf(across)!) ?? across;
+  }
+
+  /// [item] as finished when less than [nearlyFinishedRemaining] is left: a
+  /// position in the credits that the server never marked watched is not a
+  /// place to resume, and must not hold the series back on its episode.
+  static MediaItem _settled(MediaItem item) {
+    final duration = item.durationMs;
+    final offset = item.viewOffsetMs;
+    if (!item.hasActiveProgress || duration! - offset! >= nearlyFinishedRemaining.inMilliseconds) return item;
+    return item.copyWith(viewOffsetMs: 0, viewCount: (item.viewCount ?? 0) < 1 ? 1 : item.viewCount);
   }
 
   /// Whether [state] happened after [item], by more than two clocks can
