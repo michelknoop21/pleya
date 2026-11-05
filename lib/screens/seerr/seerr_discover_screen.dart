@@ -516,6 +516,9 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   bool get _allLoaded => _visibleRows.every((r) => !r.loadingFirst);
   bool get _allErrored => _visibleRows.isNotEmpty && _visibleRows.every((r) => r.errored);
   bool get _allEmpty => _visibleRows.every((r) => r.items.isEmpty);
+  bool get _tvLoading => _query.isEmpty
+      ? (_phoneCatalogRow?.loadingFirst ?? (_visibleRows.any((row) => row.loadingFirst) && _allEmpty))
+      : _searching;
 
   /// The failure to name when every visible row failed.
   SeerrErrorKind get _dominantErrorKind =>
@@ -1071,7 +1074,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       );
     }
 
-    if (PlatformDetector.isTV()) return _buildTv();
+    if (PlatformDetector.isTV()) {
+      return AutomationScreen(
+        id: AutomationIds.screenRequests,
+        readiness: () => _tvLoading ? const AutomationReadiness.loading('requests') : const AutomationReadiness.ready(),
+        child: _buildTv(),
+      );
+    }
     if (PlatformDetector.isPhone(context)) return _buildPhone();
 
     return AutomationScreen(
@@ -1278,9 +1287,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       onDiscoveryFiltersPressed: _query.isEmpty ? () => unawaited(_pickPhoneFilters(context)) : null,
       discoverySummary: _query.isEmpty && _phoneCatalogRow != null ? _discoverySummary : null,
       onClearDiscovery: _clearPhoneFilters,
-      isLoading: _query.isEmpty
-          ? (_phoneCatalogRow?.loadingFirst ?? (_visibleRows.any((row) => row.loadingFirst) && _allEmpty))
-          : _searching,
+      isLoading: _tvLoading,
       error: _tvError(),
       onReload: () {
         if (_query.isNotEmpty) {

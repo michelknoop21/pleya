@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_screen.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/screens/seerr/seerr_discover_screen.dart';
+import 'package:pleya/screens/tv/tv_seerr_discover_view.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 import '../../test_helpers/prefs.dart';
 import '../../test_helpers/seerr_fake.dart';
@@ -48,7 +51,7 @@ void main() {
       tester,
       provider,
       const SeerrDiscoverScreen(),
-      host: false,
+      host: TvDetectionService.isTVSync(),
       theme: monoTheme(dark: true).copyWith(platform: TargetPlatform.iOS),
     );
     await seerrSettle(tester);
@@ -97,6 +100,37 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('TV requests readiness follows the visible loading state', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+    final held = [
+      for (final route in ['movies', 'tv', 'trending', 'movies/upcoming', 'tv/upcoming'])
+        fake.hold('GET /discover/$route'),
+    ];
+    await open(tester, const Size(1920, 1080));
+    final screen = find.byWidgetPredicate(
+      (widget) => widget is AutomationScreen && widget.id == AutomationIds.screenRequests,
+    );
+    expect(screen, findsOneWidget);
+    expect(tester.widget<TvSeerrDiscoverView>(find.byType(TvSeerrDiscoverView)).isLoading, isTrue);
+    expect(tester.widget<AutomationScreen>(screen).readiness().isReady, isFalse);
+    for (final response in held) {
+      response.complete(
+        FakeSeerr.json({
+          'page': 1,
+          'totalPages': 1,
+          'results': [
+            {'id': 603, 'mediaType': 'movie', 'title': 'Title 603'},
+          ],
+        }),
+      );
+    }
+    await seerrSettle(tester);
+    expect(tester.widget<TvSeerrDiscoverView>(find.byType(TvSeerrDiscoverView)).isLoading, isFalse);
+    expect(tester.widget<AutomationScreen>(screen).readiness().isReady, isTrue);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('small phone filters support large text and reduced motion', (tester) async {
     tester.platformDispatcher.textScaleFactorTestValue = 2;

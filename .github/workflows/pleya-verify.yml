@@ -13,6 +13,13 @@ on:
         description: Run the Requests discovery-filter acceptance pack
         type: boolean
         default: false
+      requests_targets:
+        description: Targets for the requested discovery-filter acceptance pack
+        type: choice
+        default: all
+        options:
+          - all
+          - tvos
   schedule:
     # Weekly extended run for the tvOS gate (idb-dependent, not required on
     # every push). Portable and macOS jobs also run here: they are cheap
@@ -406,7 +413,7 @@ jobs:
 
   requests-discovery-verify:
     name: Requests discovery native acceptance
-    if: github.event_name == 'workflow_dispatch' && inputs.requests_discovery
+    if: github.event_name == 'workflow_dispatch' && inputs.requests_discovery && inputs.requests_targets != 'tvos'
     runs-on: macos-26
     permissions:
       contents: read
