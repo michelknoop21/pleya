@@ -1,10 +1,11 @@
 import 'dart:io';
 
 /// Deletes a test's temporary folder while a store write of a provider may
-/// still be running. That write can sit on a fake-time timer, so awaiting it
-/// inside `tester.runAsync` hangs; deleting the folder under it fails now and
-/// then instead. Call it inside `runAsync`: it retries a few times in real time
-/// and rethrows the last error.
+/// still be running. The store chains its writes on a future inside the widget
+/// test's fake-async zone, so they only advance while the test pumps; awaiting
+/// them inside `tester.runAsync` hangs. Deleting the folder under a running
+/// write fails now and then instead. Call it inside `runAsync`: it retries a few
+/// times in real time and rethrows the last error.
 Future<void> deleteTempDir(Directory root) async {
   for (var attempt = 0; ; attempt++) {
     try {
