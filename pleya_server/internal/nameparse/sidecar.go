@@ -106,6 +106,16 @@ type Artwork struct {
 	MediaBase string // leeg betekent: hoort bij de map, dus bij het item
 	FullBase  string
 	Kind      string // poster of backdrop
+	// SameName: alleen de naam van een mediabestand maakte hier een poster van.
+	// Dan telt hij alleen naast dat bestand, nooit als poster van de map.
+	SameName bool
+}
+
+// ignoredArtworkNames zijn afbeeldingen die geen poster of achtergrond zijn. Een
+// banner van 758 bij 140 als poster in een 2:3-vak geeft een opgeblazen beeld.
+var ignoredArtworkNames = map[string]bool{
+	"banner": true, "clearlogo": true, "logo": true, "landscape": true,
+	"clearart": true, "discart": true, "disc": true, "characterart": true,
 }
 
 var posterNames = map[string]bool{
@@ -130,6 +140,9 @@ func ParseArtwork(fileName string) (Artwork, bool) {
 	base := strings.TrimSuffix(fileName, path.Ext(fileName))
 	lower := strings.ToLower(base)
 
+	if ignoredArtworkNames[lower] {
+		return Artwork{}, false
+	}
 	if posterNames[lower] {
 		return Artwork{Kind: "poster", FullBase: base}, true
 	}
@@ -142,6 +155,8 @@ func ParseArtwork(fileName string) (Artwork, bool) {
 		suffix := strings.ToLower(strings.TrimSpace(base[idx+1:]))
 		trimmed := strings.TrimRight(base[:idx], " -.")
 		switch {
+		case ignoredArtworkNames[suffix]:
+			return Artwork{}, false
 		case posterNames[suffix]:
 			return Artwork{MediaBase: trimmed, FullBase: base, Kind: "poster"}, true
 		case backdropNames[suffix]:
@@ -150,7 +165,7 @@ func ParseArtwork(fileName string) (Artwork, bool) {
 	}
 
 	// Een afbeelding met dezelfde naam als het mediabestand is de poster ervan.
-	return Artwork{MediaBase: base, FullBase: base, Kind: "poster"}, true
+	return Artwork{MediaBase: base, FullBase: base, Kind: "poster", SameName: true}, true
 }
 
 // iso6391to2b vertaalt de tweeletterige codes die in bestandsnamen staan naar de

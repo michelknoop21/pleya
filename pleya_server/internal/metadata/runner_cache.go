@@ -61,6 +61,12 @@ type preparedArtwork struct {
 // prepareImage schrijft uitsluitend een nieuwe bestandsnaam; de cacherij wordt
 // samen met de velden en kandidaat gepubliceerd door CommitMetadata.
 func (r *Runner) prepareImage(ctx context.Context, itemID id.ID, kind, ref string) (*preparedArtwork, error) {
+	return r.prepareImageAs(ctx, itemID, kind, kind, ref)
+}
+
+// prepareImageAs haalt de afbeelding in de maat van imageKind (een still is een
+// andere maat dan een poster) en bewaart hem onder de artworkrol kind.
+func (r *Runner) prepareImageAs(ctx context.Context, itemID id.ID, kind, imageKind, ref string) (*preparedArtwork, error) {
 	existing, found, err := r.store.GetProviderArtwork(ctx, itemID, kind, r.name)
 	if err != nil {
 		return nil, err
@@ -74,7 +80,7 @@ func (r *Runner) prepareImage(ctx context.Context, itemID id.ID, kind, ref strin
 		ext  string
 	}
 	got, err := withBackoff(ctx, r, func() (img, error) {
-		data, ext, err := r.provider.Image(ctx, kind, ref)
+		data, ext, err := r.provider.Image(ctx, imageKind, ref)
 		return img{data, ext}, err
 	})
 	if err != nil {
@@ -114,11 +120,13 @@ func (r *Runner) prepareImage(ctx context.Context, itemID id.ID, kind, ref strin
 	}, previous: existing.FileName}, nil
 }
 
-func (r *Runner) cleanupPrepared(ctx context.Context, itemID id.ID, prepared []preparedArtwork) {
+// cleanupPrepared kijkt per bestand naar het item waar het bij hoort: bij een
+// serie zitten de stills van haar afleveringen in dezelfde poging.
+func (r *Runner) cleanupPrepared(ctx context.Context, prepared []preparedArtwork) {
 	check, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
 	defer cancel()
 	for _, a := range prepared {
-		current, found, err := r.store.GetProviderArtwork(check, itemID, a.row.Kind, r.name)
+		current, found, err := r.store.GetProviderArtwork(check, a.row.ItemID, a.row.Kind, r.name)
 		if err == nil && (!found || current.FileName != a.row.FileName) {
 			_ = os.Remove(filepath.Join(r.cacheDir, "artwork", a.row.FileName))
 		}

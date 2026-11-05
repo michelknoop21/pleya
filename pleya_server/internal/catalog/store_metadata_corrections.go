@@ -106,6 +106,11 @@ func (s *Store) RejectMatch(ctx context.Context, itemID id.ID, provider string) 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	episodeFiles, err := rejectEpisodes(ctx, tx, itemID, provider)
+	if err != nil {
+		return nil, err
+	}
+	files = append(files, episodeFiles...)
 
 	if err := rememberMetadataLayer(ctx, tx, itemID, provider, MetadataDetails{}); err != nil {
 		return nil, err

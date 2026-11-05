@@ -34,8 +34,16 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 	if c.ItemID != target.ID {
 		return errors.New("metadata-publicatie hoort niet bij het gelockte item")
 	}
+	var episodes []EpisodeMetadata
+	if details != nil {
+		episodes = details.Episodes
+	}
+	ownEpisode := map[id.ID]bool{}
+	for _, e := range episodes {
+		ownEpisode[e.ItemID] = true
+	}
 	for _, a := range artwork {
-		if a.ItemID != target.ID {
+		if a.ItemID != target.ID && !ownEpisode[a.ItemID] {
 			return errors.New("metadata-artwork hoort niet bij het gelockte item")
 		}
 	}
@@ -57,6 +65,9 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 		return err
 	} else if target.CandidateUpdatedAt == nil || !actual.Equal(*target.CandidateUpdatedAt) {
 		return ErrMetadataSuperseded
+	}
+	if err := checkShowEpisodes(ctx, tx, target.ID, episodes); err != nil {
+		return err
 	}
 	if target.SidecarReadError != nil || c.State == CandidateFailed {
 		if _, err := tx.Exec(ctx, `UPDATE media_items SET metadata_nfo_safe=false WHERE id=$1`, target.ID); err != nil {
@@ -87,6 +98,9 @@ func (s *Store) CommitMetadata(ctx context.Context, target MetadataTarget, c Met
 	}
 	if details != nil {
 		if err := reconcileProviderArtwork(ctx, tx, target.ID, c.Provider, *details); err != nil {
+			return err
+		}
+		if err := publishEpisodes(ctx, tx, c.Provider, episodes); err != nil {
 			return err
 		}
 	}

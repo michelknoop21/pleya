@@ -209,6 +209,24 @@ func TestParseArtwork(t *testing.T) {
 	}
 }
 
+// TestParseArtworkIgnoresBannersAndLogos: een banner, logo of landscape in een
+// seriemap werd de poster van de serie (opgeblazen 758x140 in een 2:3-vak).
+func TestParseArtworkIgnoresBannersAndLogos(t *testing.T) {
+	for _, file := range []string{"banner.jpg", "clearlogo.png", "landscape.jpg", "logo.png",
+		"clearart.png", "discart.png", "Friends-banner.jpg", "Grease (1978).landscape.jpg"} {
+		if got, ok := nameparse.ParseArtwork(file); ok {
+			t.Errorf("%s werd artwork: %+v", file, got)
+		}
+	}
+	// Alleen de naam van een mediabestand maakt een poster; die telt niet voor de map.
+	if got, _ := nameparse.ParseArtwork("Grease (1978).jpg"); !got.SameName {
+		t.Errorf("poster op mediabestandsnaam niet gemarkeerd: %+v", got)
+	}
+	if got, _ := nameparse.ParseArtwork("poster.jpg"); got.SameName {
+		t.Errorf("poster.jpg is geen naamgebonden poster: %+v", got)
+	}
+}
+
 // TestLanguageCodeRefusesWhatItCannotPromise: het protocol belooft ISO 639-2/B
 // of niets. Een taal die een client verkeerd interpreteert is erger dan geen.
 func TestLanguageCodeRefusesWhatItCannotPromise(t *testing.T) {

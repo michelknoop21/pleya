@@ -39,8 +39,9 @@ type Provider interface {
 // currentPass is het rondenummer van deze versie van de ronde. Verhogen zet
 // geschikte items één keer opnieuw aan de beurt: geen rejected/ambiguous en
 // nooit vóór een geplande retry. 2: .nfo als bron. 3: alternatieven bij
-// titels die niet matchen, en handmatige keuzes (M2b).
-const currentPass = 3
+// titels die niet matchen, en handmatige keuzes (M2b). 4: stills en titels van
+// afleveringen bij een gematchte serie (S22.4).
+const currentPass = 4
 
 // maxAlternatives is het aantal zoektreffers dat een beheerder te zien krijgt.
 const maxAlternatives = 5
@@ -274,6 +275,14 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 			prepared = append(prepared, *saved)
 		}
 	}
+	if t.Kind == "show" {
+		episodes, stills, episodeRetry := r.showEpisodes(ctx, t, chosen.ID)
+		details.Episodes = episodes
+		prepared = append(prepared, stills...)
+		if episodeRetry != nil && (retry == nil || episodeRetry.Before(*retry)) {
+			retry = episodeRetry
+		}
+	}
 
 	var artwork []catalog.ProviderArtwork
 	for _, a := range prepared {
@@ -288,7 +297,7 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	// Alleen succes of expliciete supersession geeft directe cleanup vrij.
 	// Andere fouten behouden ook mogelijk ongebruikte bytes voor de bestaande GC.
 	if commitErr == nil || errors.Is(commitErr, catalog.ErrMetadataSuperseded) {
-		r.cleanupPrepared(ctx, t.ID, prepared)
+		r.cleanupPrepared(ctx, prepared)
 	}
 	if commitErr != nil {
 		return commitErr

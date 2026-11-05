@@ -150,10 +150,23 @@ func (s *Store) DropProviderArtwork(ctx context.Context, artworkID id.ID) error 
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE metadata_candidates SET next_attempt_at = now(), updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
-		WHERE item_id = $1 AND state = 'matched'`, itemID); err != nil {
+		WHERE state = 'matched' AND item_id IN (
+		    SELECT $1::uuid
+		    -- Een afleveringsstill hoort bij de match van haar serie.
+		    UNION SELECT se.parent_id FROM media_items e JOIN media_items se ON se.id = e.parent_id
+		    WHERE e.id = $1 AND e.kind = 'episode')`, itemID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// localArtworkRankSQL ordent de lokale afbeeldingen van één rol: poster.jpg (ook
+// "<naam>-poster.jpg") gaat voor cover.jpg, en die voor folder.jpg en de rest.
+// Zonder rang won alleen de padvolgorde, en dan sorteert een "banner.jpg" of een
+// kleine "folder.jpg" vóór de echte "poster.jpg".
+func localArtworkRankSQL(alias string) string {
+	return fmt.Sprintf(`CASE WHEN lower(%[1]s.relative_path) ~ '(^|[/.-])poster\.[a-z0-9]+$' THEN 0
+	    WHEN lower(%[1]s.relative_path) ~ '(^|[/.-])cover\.[a-z0-9]+$' THEN 1 ELSE 2 END`, alias)
 }
 
 // CandidateAttempts geeft het aantal pogingen dat voor een item is vastgelegd.

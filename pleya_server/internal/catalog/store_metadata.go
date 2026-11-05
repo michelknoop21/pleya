@@ -82,6 +82,9 @@ type MetadataDetails struct {
 	Alternatives []Alternative `json:"alternatives,omitempty"`
 	PosterRef    string        `json:"poster_ref,omitempty"`
 	BackdropRef  string        `json:"backdrop_ref,omitempty"`
+	// Episodes zijn de afleveringen van een serie die met deze poging mee
+	// gepubliceerd worden. Alleen publicatie, nooit opgeslagen in de kandidaat.
+	Episodes []EpisodeMetadata `json:"-"`
 }
 
 // MetadataCandidate is de uitkomst van één providerpoging voor een item.
@@ -98,7 +101,8 @@ type MetadataCandidate struct {
 
 // MetadataDue geeft top-level items (films en series) die nog geen uitkomst
 // hebben, of waarvan een eerdere poging (zonder treffer, mislukt, of een match
-// waarvan een afbeelding ontbrak) opnieuw aan de beurt is. 'ambiguous' staat hier
+// waarvan een afbeelding ontbrak) opnieuw aan de beurt is, of een gematchte serie
+// met een aflevering die na de laatste poging binnenkwam. 'ambiguous' staat hier
 // bewust nooit in: die wacht op een mens.
 //
 // Eén kandidaatrij per item, ongeacht de provider: M2a kent er één. Een tweede
@@ -148,6 +152,11 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		                        AND c.applied_provider IS NULL)
 		                    OR (c.state IN ('unmatched', 'failed', 'matched')
 		                        AND c.next_attempt_at IS NOT NULL AND c.next_attempt_at <= now())))
+		           -- Een nieuwe aflevering bij een gematchte serie wacht niet op de
+		           -- geplande herhaling: haar still en titel komen met de volgende ronde.
+		           OR (c.state = 'matched' AND i.kind = 'show' AND EXISTS (
+		               SELECT 1 FROM media_items se JOIN media_items e ON e.parent_id = se.id
+		               WHERE se.parent_id = i.id AND e.kind = 'episode' AND e.added_at > c.last_attempt_at))
 		      END
 		  AND NOT (i.id = ANY($3))
 		ORDER BY i.added_at, i.id
@@ -336,7 +345,8 @@ func sourceRank(src string) int {
 
 // attachMetadata leest beschrijving, artwork en identiteitsbewijs in één
 // SQL-snapshot. Een publicatie tussen losse reads mag nooit A-velden met B-id
-// vormen. De lokale afbeelding wint per rol, met dezelfde stabiele padvolgorde.
+// vormen. De lokale afbeelding wint per rol; binnen de lokale bestanden gaat
+// een expliciete poster.jpg voor (localArtworkRankSQL), daarna de stabiele padvolgorde.
 func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.ID, byID map[id.ID]*Item) error {
 	rows, err := reader.Query(ctx, `
         SELECT i.id, i.summary, i.content_rating, i.genres, i.people,
@@ -345,18 +355,18 @@ func (s *Store) attachMetadata(ctx context.Context, reader itemReader, ids []id.
         FROM media_items i
         LEFT JOIN metadata_candidates c ON c.item_id=i.id AND i.kind IN ('movie','show')
         LEFT JOIN LATERAL (
-            SELECT (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
+            SELECT (array_agg(a.id ORDER BY a.priority,a.name_rank,a.path,a.provider,a.id)
                         FILTER (WHERE a.kind='poster'))[1] AS poster,
-                   (array_agg(a.id ORDER BY a.priority,a.path,a.provider,a.id)
+                   (array_agg(a.id ORDER BY a.priority,a.name_rank,a.path,a.provider,a.id)
                         FILTER (WHERE a.kind='backdrop'))[1] AS backdrop
             FROM (
-                SELECT pin.id,pin.kind,-1 AS priority,''::text AS path,''::text AS provider
+                SELECT pin.id,pin.kind,-1 AS priority,0 AS name_rank,''::text AS path,''::text AS provider
                 FROM artwork_pins pin WHERE pin.item_id=i.id
                 UNION ALL
-                SELECT f.id,f.artwork_kind AS kind,0 AS priority,f.relative_path AS path,''::text AS provider
+                SELECT f.id,f.artwork_kind AS kind,0 AS priority,`+localArtworkRankSQL("f")+` AS name_rank,f.relative_path AS path,''::text AS provider
                 FROM media_files f WHERE f.item_id=i.id AND f.role='artwork' AND f.missing_since IS NULL
                 UNION ALL
-                SELECT p.id,p.kind,1,''::text,p.provider FROM provider_artwork p WHERE p.item_id=i.id
+                SELECT p.id,p.kind,1,0,''::text,p.provider FROM provider_artwork p WHERE p.item_id=i.id
             ) a
         ) art ON true
         WHERE i.id=ANY($1)`, ids)

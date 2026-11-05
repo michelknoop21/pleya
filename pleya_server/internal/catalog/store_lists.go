@@ -187,15 +187,15 @@ func (s *Store) attachListArtwork(ctx context.Context, kind ListKind, viewer Lis
 			JOIN media_items i ON i.id = li.item_id
 			CROSS JOIN LATERAL (
 				SELECT c.art FROM (
-					SELECT pin.id AS art, -1 AS rank, pin.kind AS tie FROM artwork_pins pin WHERE pin.item_id=i.id AND pin.kind='poster'
-					UNION ALL SELECT f.id, 0, f.relative_path
+					SELECT pin.id AS art, -1 AS rank, 0 AS name_rank, pin.kind AS tie FROM artwork_pins pin WHERE pin.item_id=i.id AND pin.kind='poster'
+					UNION ALL SELECT f.id, 0, `+localArtworkRankSQL("f")+`, f.relative_path
 					FROM media_files f
 					WHERE f.item_id = i.id AND f.role = 'artwork' AND f.artwork_kind = 'poster' AND f.missing_since IS NULL
 					UNION ALL
-					SELECT pa.id, 1, pa.provider
+					SELECT pa.id, 1, 0, pa.provider
 					FROM provider_artwork pa
 					WHERE pa.item_id = i.id AND pa.kind = 'poster'
-				) c ORDER BY c.rank, c.tie, c.art LIMIT 1
+				) c ORDER BY c.rank, c.name_rank, c.tie, c.art LIMIT 1
 			) p
 			WHERE li.%[2]s = l.id%[3]s
 			ORDER BY li.position
