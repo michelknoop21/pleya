@@ -10,6 +10,7 @@ import 'package:pleya/services/local_library/local_library_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/settings_section.dart';
 import '../../services/local_library/local_library_store_test.dart' show library, film;
+import '../../test_helpers/temp_dir.dart';
 
 void main() {
   testWidgets('confirmed clear offers a separate explicit refill choice and stays off when dismissed', (tester) async {
@@ -35,7 +36,7 @@ void main() {
     });
     addTearDown(() async {
       provider.dispose();
-      await root.delete(recursive: true);
+      await tester.runAsync(() => deleteTempDir(root));
     });
     LocaleSettings.setLocaleSync(AppLocale.en);
     await tester.pumpWidget(
@@ -97,7 +98,7 @@ void main() {
     });
     addTearDown(() async {
       provider.dispose();
-      await root.delete(recursive: true);
+      await tester.runAsync(() => deleteTempDir(root));
     });
     LocaleSettings.setLocaleSync(AppLocale.en);
     tester.view.physicalSize = const Size(400, 2000);

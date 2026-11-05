@@ -23,6 +23,7 @@ import 'package:pleya/widgets/mobile/mobile_media_card.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
+import '../../test_helpers/temp_dir.dart';
 
 /// The 2:3/16:9 card the northstar's Home rails and Verder kijken use — see
 /// `docs/ios-unified-2026-fase1-plan.md` stap 4's BEWIJS list.
@@ -148,7 +149,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     local.dispose();
     changes.dispose();
-    await tester.runAsync(() => root.delete(recursive: true));
+    await tester.runAsync(() => deleteTempDir(root));
   });
 
   testWidgets('a portrait card measures its poster at 2:3', (tester) async {
