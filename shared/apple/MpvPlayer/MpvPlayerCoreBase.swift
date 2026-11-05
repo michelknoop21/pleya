@@ -799,9 +799,10 @@ class MpvPlayerCoreBase: NSObject {
         checkError(mpv_set_option_string(mpv, "avfoundation-composite-osd", "no"))
         checkError(mpv_set_option_string(mpv, "hwdec", "no"))
       #else
-        // tvOS HDR is HDMI mode switching, not EDR — an SDR sibling layer
-        // doesn't dim the video, so skip the per-frame CI composite that
-        // round-trips BT.2020/PQ through linear P3.
+        // Both device platforms skip the per-frame CI composite. On tvOS the
+        // reason is HDR: it is HDMI mode switching, not EDR — an SDR sibling
+        // layer doesn't dim the video, and the composite round-trips
+        // BT.2020/PQ through linear P3.
         checkError(mpv_set_option_string(mpv, "avfoundation-composite-osd", "no"))
         checkError(mpv_set_option_string(mpv, "hwdec", "videotoolbox"))
         // mpv's default order puts audiounit first, and that AO reads

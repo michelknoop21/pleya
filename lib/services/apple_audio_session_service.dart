@@ -144,9 +144,10 @@ class AppleAudioRoute {
 /// than stereo.
 ///
 /// The multichannel opt-in has to be in effect *before* mpv initialises its
-/// audio output — `ao_audiounit` samples the route once at init and hard
-/// downmixes when it sees two channels. [configure] is therefore called ahead
-/// of `loadfile`, not after.
+/// audio output, which reads the route once at init: `ao_avfoundation` (first
+/// on iPhone, iPad and Apple TV) for its preferred channel count, and the
+/// fallback `ao_audiounit` to hard-downmix when it sees two channels.
+/// [configure] is therefore called ahead of `loadfile`, not after.
 ///
 /// iOS and tvOS only (Flutter reports Apple TV as iOS). Everywhere else the
 /// methods no-op and return [AppleAudioRoute.unknown].
