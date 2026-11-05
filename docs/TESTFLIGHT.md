@@ -95,9 +95,15 @@ Connect API `.p8`, rol App Manager).
 
 ```bash
 scripts/testflight_release.sh            # alles: bump + iOS + tvOS + macOS
+scripts/testflight_release.sh beta platforms:ios,tvos   # iOS + tvOS, één buildnummer
 scripts/testflight_release.sh ios_beta   # alleen iOS
 fastlane ios_beta                        # rechtstreeks; zonder wrappercommit/push
 ```
+
+Eén buildnummer voor meerdere platforms krijg je alleen binnen één fastlane-run.
+Draai je `ios_beta` en daarna los `tvos_beta`, dan ziet de tweede run de verse
+iOS-upload als hoogste nummer en neemt hij dat plus één. Zo werd bundel 444 op
+5 november 2026 iOS 444 en tvOS 445. Gebruik daarom `beta platforms:ios,tvos`.
 
 ## Verplicht vóór een iOS-upload: QR-scannen op echte hardware
 

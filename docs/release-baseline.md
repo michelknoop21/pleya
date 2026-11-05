@@ -116,6 +116,9 @@ Never put a secret in a dart-define. The release lanes therefore pass no Trakt s
 # All platforms
 scripts/testflight_release.sh
 
+# iOS and tvOS under one build number (separate runs get separate numbers)
+scripts/testflight_release.sh beta platforms:ios,tvos
+
 # Single platform
 scripts/testflight_release.sh ios_beta
 scripts/testflight_release.sh tvos_beta

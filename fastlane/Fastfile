@@ -123,8 +123,11 @@ end
 # mag op iOS én tvOS. We hergebruiken daarom het pubspec-nummer zolang dát
 # platform het nog niet heeft; alleen als het al op dít platform staat bumpen we
 # naar (eigen hoogste + 1). Zo krijgen iOS/tvOS/macOS binnen één release
-# hetzelfde nummer — ook als de lanes in aparte fastlane-runs draaien i.p.v. via
-# `beta` (geen gedeelde memoization tussen processen).
+# hetzelfde nummer, maar alleen binnen één fastlane-run: `$ensured_build_number`
+# leeft per proces. Draai je `ios_beta` en daarna los `tvos_beta`, dan ziet de
+# tweede run de verse iOS-upload als hoogste en neemt hij dat nummer plus één
+# (build 444 voor iOS, 445 voor tvOS op 5 november 2026). Voor één nummer:
+# `beta platforms:ios,tvos`.
 #
 # platform: "ios" | "appletvos" | "osx".
 ALL_TESTFLIGHT_PLATFORMS = %w[ios appletvos osx].freeze
@@ -1056,33 +1059,43 @@ ensure
   $skip_attach = false
 end
 
-# PLEYA_BETA_PLATFORMS="ios,tvos" bouwt een deel van de platforms onder één
-# buildnummer (ensure_build_number onthoudt het per run). Standaard alle drie.
-def beta_platform?(name)
-  ENV.fetch("PLEYA_BETA_PLATFORMS", "ios,tvos,macos").split(",").map(&:strip).include?(name)
+# `beta platforms:ios,tvos` (of PLEYA_BETA_PLATFORMS="ios,tvos") bouwt een deel
+# van de platforms onder één buildnummer (ensure_build_number onthoudt het per
+# run). Standaard alle drie. De lane-optie wint van de omgevingsvariabele.
+BETA_PLATFORMS = %w[ios tvos macos].freeze
+
+def beta_platforms(options)
+  raw = options[:platforms] || ENV.fetch("PLEYA_BETA_PLATFORMS", BETA_PLATFORMS.join(","))
+  chosen = raw.to_s.split(",").map(&:strip).reject(&:empty?)
+  unknown = chosen - BETA_PLATFORMS
+  UI.user_error!("Onbekend platform: #{unknown.join(', ')} (kies uit #{BETA_PLATFORMS.join(', ')})") unless unknown.empty?
+  UI.user_error!("Geen platform gekozen") if chosen.empty?
+  chosen
 end
 
-desc "Alle platforms → TestFlight; gaat door als één platform faalt"
-lane :beta do
+desc "Alle platforms (of platforms:ios,tvos) → TestFlight onder één buildnummer; gaat door als één platform faalt"
+lane :beta do |options|
+  platforms = beta_platforms(options)
+  UI.message("beta: #{platforms.join(', ')} onder één buildnummer")
   failures = []
   # Uploads eerst, koppelen daarna: anders staat iedere lane te wachten op
   # Apple's processing terwijl het volgende platform nog gebouwd moet worden.
   $defer_attach = true
   $pending_attach = {}
   begin
-    ios_beta if beta_platform?("ios")
+    ios_beta if platforms.include?("ios")
   rescue => e
     UI.error("ios faalde: #{e.message}")
     failures << "ios"
   end
   begin
-    tvos_beta if beta_platform?("tvos")
+    tvos_beta if platforms.include?("tvos")
   rescue => e
     UI.error("tvos faalde: #{e.message}")
     failures << "tvos"
   end
   begin
-    macos_beta if beta_platform?("macos")
+    macos_beta if platforms.include?("macos")
   rescue => e
     UI.error("macos faalde: #{e.message}")
     failures << "macos"
