@@ -57,7 +57,7 @@ Michel opende expliciet het [begrensde cachebeheer-venster](plans/2026-11-01-ser
 
 De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
 
-Per taak, en dat is de maat die telt: **163 taken, 91 gereed, 31 bezig, 41 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **164 taken, 92 gereed, 31 bezig, 41 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
