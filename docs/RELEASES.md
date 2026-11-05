@@ -57,8 +57,8 @@ Nothing user-facing since the last published build.
 ### Improved
 
 - **The top bar on Apple TV switches page as soon as you land on a tab.** Moving right to Films
-  shows the films straight away; Select is no longer needed. Sweeping across several tabs only
-  loads the page you stop on. Android TV behaves the same way.
+  shows the films straight away; Select is no longer needed. A fast sweep across several tabs
+  skips the pages in between.
 - **Apple TV feels lighter while you browse.** The offline library walked every series and
   season again every ten minutes and each time you came back to the app, which kept the app busy
   while you were clicking. It now checks a library at most once an hour, or sooner when the
