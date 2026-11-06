@@ -74,8 +74,8 @@ Nothing user-facing since the last published build.
   last. Two cards stay only when Pleya cannot prove from the series ids that they are the same
   show; a matching title alone is not enough.
 - **Films that are in your library but not released yet now appear in the hero.**
-- **Subtitles keep their size and place when you zoom or fill the screen.** Styled (ASS)
-  subtitles used to grow with the picture under the fill and zoom modes.
+- **Subtitles keep their size and place when you zoom or crop the picture to fill the
+  screen.** Styled (ASS) subtitles used to grow with the picture in those modes.
 - **Episodes without their own still show the series artwork** on the iPhone, iPad and Apple TV
   rows that were still showing an empty tile, and on Pleya Web.
 
@@ -84,8 +84,8 @@ Nothing user-facing since the last published build.
 - Internal iOS/tvOS TestFlight build, one build number for iPhone, iPad and Apple TV.
 - Episode stills from TMDB for Pleya Server need a server update and a metadata round; until
   then, those episodes show the series artwork.
-- Not yet checked on a device: the iPhone hero crop, subtitle size under zoom, and the single
-  Continue Watching card on Apple TV.
+- Not yet checked on a device: the iPhone hero crop, subtitle size under zoom, the single
+  Continue Watching card on Apple TV, and the Requests filters.
 
 ## 2.8.1 · build 446 · 5 November 2026 · iPhone, iPad and Apple TV
 
