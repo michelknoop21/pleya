@@ -43,7 +43,7 @@
 /// ## The wider activation-lookup pool
 ///
 /// When [heroGroups] is empty (no visible film library, or every recent film
-/// filtered out as unreleased/untitled), `DiscoverScreen` keeps its existing
+/// filtered out as untitled), `DiscoverScreen` keeps its existing
 /// fallback of showing an on-deck or hub item as the billboard, and rail
 /// focus can put any rail item there at any time. [featuredGroupFor] exists
 /// for those: it searches every group this projection produced — CW and hubs
@@ -319,7 +319,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
       // (DEC-067). `FeaturedSelector` never re-ranks, so
       // `DiscoverProvider.latestMovies`' release-date order survives the
       // projection; what it does do is drop ineligible titles (loose
-      // episodes, unreleased metadata, no usable title) and collapse two
+      // episodes, no usable title) and collapse two
       // servers' copies of one film into the single logical slide the old
       // `latestMovies`-driven rotation showed twice.
       //

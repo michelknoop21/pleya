@@ -684,8 +684,7 @@ Wil fase 8 alsnog gemengde hero-kandidaten, dan is dat een nieuw expliciet produ
 implementatiedetail.
 
 Selectieregels: ten hoogste 8 unieke `UnifiedMediaGroup`s (de bovengrens van de oude 5-tot-8-band; de
-ondergrens is geen quotum, zie hierboven); geen dubbele bronnen als losse slides; geen unreleased
-titel door foute toekomstige metadata; geen item zonder bruikbare titel; stabiele volgorde tijdens
+ondergrens is geen quotum, zie hierboven); geen dubbele bronnen als losse slides; geen item zonder bruikbare titel; stabiele volgorde tijdens
 een sessie; een bron die offline gaat verwijdert de slide niet zolang een andere bron bruikbaar
 blijft; als alle bronnen wegvallen verdwijnt de slide pas bij een veilige refreshgrens en niet
 terwijl de gebruiker de CTA focust.
