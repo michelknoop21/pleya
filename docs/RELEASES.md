@@ -50,6 +50,43 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 447 · 6 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 416d59f987c431445bebf4245cd2fb117f184730 -->
+
+### New
+
+- **Requests can combine filters.** Genre, year, streaming service and sort order now work
+  together on the Requests page on iPhone, iPad and Apple TV. Coming Soon lists films and series
+  that have not been released yet, and Rating only counts titles with at least 100 votes.
+
+### Improved
+
+- **The iPhone hero keeps the subject in frame.** The card now crops each backdrop around the
+  part of the picture that matters, such as a face or the main figure, instead of always cutting
+  the middle. The check runs on the phone once per image, and the first frame still shows the
+  old crop.
+
+### Fixed
+
+- **A series appears once in Continue Watching.** When two of your servers are at different
+  episodes of the same series, the row now shows a single card with the episode you watched
+  last. Two cards stay only when Pleya cannot prove from the series ids that they are the same
+  show; a matching title alone is not enough.
+- **Films that are in your library but not released yet now appear in the hero.**
+- **Subtitles keep their size and place when you zoom or fill the screen.** Styled (ASS)
+  subtitles used to grow with the picture under the fill and zoom modes.
+- **Episodes without their own still show the series artwork** on the iPhone, iPad and Apple TV
+  rows that were still showing an empty tile, and on Pleya Web.
+
+### Notes
+
+- Internal iOS/tvOS TestFlight build, one build number for iPhone, iPad and Apple TV.
+- Episode stills from TMDB for Pleya Server need a server update and a metadata round; until
+  then, those episodes show the series artwork.
+- Not yet checked on a device: the iPhone hero crop, subtitle size under zoom, and the single
+  Continue Watching card on Apple TV.
+
 ## 2.8.1 · build 446 · 5 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: bd106da29f31288c2b629009ce23f13d7379ee12 -->
