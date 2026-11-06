@@ -238,6 +238,54 @@ void main() {
       expect(seen[1].queryParameters['sortBy'], 'first_air_date.desc');
     });
 
+    test('release windows remain backend filters on every requested page', () async {
+      final seen = <Uri>[];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          seen.add(request.url);
+          return _json({'page': 2, 'totalPages': 3, 'results': []}, 200);
+        }),
+      );
+      addTearDown(client.dispose);
+      for (final page in [1, 2]) {
+        await client.discoverMovies(
+          page: page,
+          releaseDateFrom: '2027-01-01',
+          releaseDateThrough: '2027-12-31',
+          genre: 28,
+          watchProvider: 8,
+          watchRegion: 'NL',
+          sortBy: 'primary_release_date.asc',
+          minimumVotes: 100,
+        );
+        await client.discoverTv(
+          page: page,
+          releaseDateFrom: '2024-01-01',
+          releaseDateThrough: '2024-12-31',
+          minimumVotes: 100,
+        );
+      }
+      for (var index = 0; index < seen.length; index++) {
+        final query = seen[index].queryParameters;
+        expect(query['page'], '${index ~/ 2 + 1}');
+        expect(query['voteCountGte'], '100');
+        if (index.isEven) {
+          expect(query['primaryReleaseDateGte'], '2027-01-01');
+          expect(query['primaryReleaseDateLte'], '2027-12-31');
+          expect(query['genre'], '28');
+          expect(query['watchProviders'], '8');
+          expect(query['watchRegion'], 'NL');
+          expect(query['sortBy'], 'primary_release_date.asc');
+          expect(query.containsKey('firstAirDateGte'), isFalse);
+        } else {
+          expect(query['firstAirDateGte'], '2024-01-01');
+          expect(query['firstAirDateLte'], '2024-12-31');
+          expect(query.containsKey('primaryReleaseDateGte'), isFalse);
+        }
+      }
+    });
+
     test('season detail is read from /tv/{id}/season/{n}', () async {
       final seen = <Uri>[];
       final client = SeerrClient(

@@ -50,6 +50,27 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 446 · 5 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: bd106da29f31288c2b629009ce23f13d7379ee12 -->
+
+### Fixed
+
+- **A series page continues where you actually are.** When a series is on more than one of your
+  servers, the page now checks the other copies too, so Resume picks the episode you were last
+  watching on any of them instead of an older one on the server you happened to open.
+- **An episode that you stopped in the last minute counts as watched** when Pleya decides where a
+  series continues, so a position left during the credits no longer pulls you back to that
+  episode.
+- **Continue Watching cards on iPhone and iPad show artwork for every episode.** An episode
+  without its own still now shows the series artwork instead of an empty tile.
+
+### Notes
+
+- Internal iOS/tvOS TestFlight build. iPhone, iPad and Apple TV carry the same build number this
+  time. Not yet checked on a device: Resume across servers on a series page, and the series
+  artwork on Continue Watching cards.
+
 ## 2.8.1 · build 444 (iPhone and iPad) and build 445 (Apple TV) · 5 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: 2c5f4b765d7cd14f7baf5e9a2d9430da7d4fecc4 -->

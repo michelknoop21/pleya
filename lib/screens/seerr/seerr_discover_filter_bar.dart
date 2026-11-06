@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../automation/automation_ids.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
@@ -50,6 +51,8 @@ class SeerrDiscoverFilterBar extends StatefulWidget {
     this.onExitLeft,
     this.onExitUp,
     this.onExitDown,
+    this.onDiscoveryFiltersPressed,
+    this.discoverySummary,
   });
 
   /// The active type tab.
@@ -81,6 +84,8 @@ class SeerrDiscoverFilterBar extends StatefulWidget {
 
   /// DOWN from anywhere on the line. The first item of the content below.
   final VoidCallback? onExitDown;
+  final VoidCallback? onDiscoveryFiltersPressed;
+  final String? discoverySummary;
 
   @override
   State<SeerrDiscoverFilterBar> createState() => _SeerrDiscoverFilterBarState();
@@ -90,6 +95,7 @@ class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
   /// [LibraryHeaderAction] owns no focus node of its own: whoever draws the
   /// header keeps them, so remote navigation can aim at a specific action.
   final _genreActionFocusNode = FocusNode(debugLabel: 'SeerrGenreAction');
+  final _filtersFocusNode = FocusNode(debugLabel: 'SeerrDiscoveryFilters');
 
   /// Every tab needs a node for the same reason. Without one a chip is still
   /// focusable, but nothing can *send* focus to it, and the remote is left to
@@ -110,11 +116,15 @@ class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
     if (!_showGenreAction && _genreActionFocusNode.hasFocus) {
       _tabFocusNode(_lastTabIndex).requestFocus();
     }
+    if (widget.onDiscoveryFiltersPressed == null && _filtersFocusNode.hasFocus) {
+      _tabFocusNode(_lastTabIndex).requestFocus();
+    }
   }
 
   @override
   void dispose() {
     _genreActionFocusNode.dispose();
+    _filtersFocusNode.dispose();
     _ownedFirstTabFocusNode.dispose();
     for (final node in _laterTabFocusNodes) {
       node.dispose();
@@ -167,12 +177,27 @@ class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
             onNavigateLeft: i > 0 ? () => _tabFocusNode(i - 1).requestFocus() : widget.onExitLeft,
             onNavigateRight: i < _lastTabIndex
                 ? () => _tabFocusNode(i + 1).requestFocus()
-                : (showGenre ? _genreActionFocusNode.requestFocus : null),
+                : (widget.onDiscoveryFiltersPressed != null
+                      ? _filtersFocusNode.requestFocus
+                      : (showGenre ? _genreActionFocusNode.requestFocus : null)),
             onNavigateUp: widget.onExitUp,
             onNavigateDown: widget.onExitDown,
           ),
       ],
       actions: [
+        if (widget.onDiscoveryFiltersPressed != null)
+          LibraryHeaderAction(
+            label: t.unifiedCatalog.filters.title,
+            automationId: AutomationIds.catalogChipFilters,
+            value: widget.discoverySummary,
+            isActive: widget.discoverySummary != null,
+            focusNode: _filtersFocusNode,
+            onPressed: widget.onDiscoveryFiltersPressed!,
+            onNavigateLeft: () => _tabFocusNode(_lastTabIndex).requestFocus(),
+            onNavigateRight: showGenre ? _genreActionFocusNode.requestFocus : null,
+            onNavigateUp: widget.onExitUp,
+            onNavigateDown: widget.onExitDown,
+          ),
         if (showGenre)
           LibraryHeaderAction(
             label: t.libraries.filterCategories.genre,
@@ -180,7 +205,9 @@ class _SeerrDiscoverFilterBarState extends State<SeerrDiscoverFilterBar> {
             isActive: widget.genreId != null,
             focusNode: _genreActionFocusNode,
             onPressed: _openGenrePicker,
-            onNavigateLeft: () => _tabFocusNode(_lastTabIndex).requestFocus(),
+            onNavigateLeft: widget.onDiscoveryFiltersPressed != null
+                ? _filtersFocusNode.requestFocus
+                : () => _tabFocusNode(_lastTabIndex).requestFocus(),
             onNavigateUp: widget.onExitUp,
             onNavigateDown: widget.onExitDown,
           ),

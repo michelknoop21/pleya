@@ -117,4 +117,15 @@ void main() {
       TvDetectionService.debugSetAppleTVOverride(null);
     }
   });
+
+  testWidgets('large system text keeps title and year inside the shared row', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpRow(tester);
+    expect(tester.takeException(), isNull);
+    final row = tester.getRect(find.byType(ListView));
+    final card = tester.getRect(find.byType(SeerrPosterCard).first);
+    expect(card.height, moreOrLessEquals(row.height, epsilon: 0.5));
+    expect(find.text('2026'), findsWidgets);
+  });
 }

@@ -131,6 +131,9 @@ class TvSeerrDiscoverView extends StatefulWidget {
     this.onProviderSelected,
     this.error,
     this.onExitTop,
+    this.onDiscoveryFiltersPressed,
+    this.discoverySummary,
+    this.onClearDiscovery,
   });
 
   /// The shelves the current type shows, already filtered by the screen.
@@ -174,6 +177,9 @@ class TvSeerrDiscoverView extends StatefulWidget {
   final Widget searchField;
 
   final VoidCallback? onExitTop;
+  final VoidCallback? onDiscoveryFiltersPressed;
+  final String? discoverySummary;
+  final VoidCallback? onClearDiscovery;
 
   /// Menu while [grid] is set: back to the shelves.
   ///
@@ -192,6 +198,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
   final _kindFocus = FocusNode(debugLabel: 'TvSeerrDiscoverRailKind');
   final _genreFocus = FocusNode(debugLabel: 'TvSeerrDiscoverRailGenre');
   final _providerFocus = FocusNode(debugLabel: 'TvSeerrDiscoverRailProvider');
+  final _discoveryFocus = FocusNode(debugLabel: 'TvSeerrDiscoveryFilters');
   final _clearFocus = FocusNode(debugLabel: 'TvSeerrDiscoverRailClear');
   final _stateActionFocus = FocusNode(debugLabel: 'TvSeerrDiscoverStateAction');
   final _loadMoreRetryFocus = FocusNode(debugLabel: 'TvSeerrDiscoverLoadMoreRetry');
@@ -205,6 +212,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     _kindFocus.dispose();
     _genreFocus.dispose();
     _providerFocus.dispose();
+    _discoveryFocus.dispose();
     _clearFocus.dispose();
     _stateActionFocus.dispose();
     _loadMoreRetryFocus.dispose();
@@ -397,6 +405,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
       if (widget.type != SeerrDiscoverType.all) TvCatalogSelectionTag(_typeLabel(widget.type)),
       ?_genreTag(),
       ?_providerTag(),
+      if (widget.discoverySummary != null) TvCatalogSelectionTag(widget.discoverySummary!),
     ];
     if (tags.isNotEmpty) return tags;
     return [TvCatalogSelectionTag(t.seerr.discoverNow, muted: true)];
@@ -426,10 +435,18 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     SeerrDiscoverType.tv => t.seerr.kindShow,
   };
 
-  bool get _hasFilters => widget.type != SeerrDiscoverType.all || widget.genreId != null || widget.providerId != null;
+  bool get _hasFilters =>
+      widget.type != SeerrDiscoverType.all ||
+      widget.genreId != null ||
+      widget.providerId != null ||
+      widget.discoverySummary != null;
 
   void _clearFilters() {
     if (_clearFocus.hasFocus) _kindFocus.requestFocus();
+    if (widget.onClearDiscovery != null) {
+      widget.onClearDiscovery!.call();
+      return;
+    }
     widget.onProviderSelected?.call(null);
     widget.onGenreSelected(null);
     widget.onTypeSelected(SeerrDiscoverType.all);
@@ -509,6 +526,15 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
           key: 'provider',
           node: _providerFocus,
           open: () => setState(() => _subview = TvSeerrDiscoverSubview.provider),
+        ),
+      if (widget.onDiscoveryFiltersPressed != null)
+        (
+          icon: Symbols.filter_list_rounded,
+          label: t.unifiedCatalog.filters.title,
+          value: widget.discoverySummary == null ? t.seerr.discoverNow : t.unifiedCatalog.filters.title,
+          key: 'discovery',
+          node: _discoveryFocus,
+          open: widget.onDiscoveryFiltersPressed!,
         ),
     ];
 
