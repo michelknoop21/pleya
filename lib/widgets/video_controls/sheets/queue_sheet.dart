@@ -105,7 +105,8 @@ class _QueueSheetState extends State<QueueSheet> {
   }
 
   Widget? _buildThumbnail(BuildContext context, MediaItem item, bool isCurrent, {required bool hideSpoilers}) {
-    if (item.thumbPath == null) return null;
+    final imagePath = item.rowThumbPath;
+    if (imagePath == null) return null;
 
     // Try to get client for thumbnails, may fail in offline mode
     final client = context.tryGetMediaClientForServer(serverIdOrNull(item.serverId));
@@ -115,7 +116,7 @@ class _QueueSheetState extends State<QueueSheet> {
       height: _kThumbHeight,
       thumbnail: OptimizedMediaImage.thumb(
         client: client,
-        imagePath: item.thumbPath,
+        imagePath: imagePath,
         width: _kThumbWidth,
         height: _kThumbHeight,
         fit: BoxFit.cover,

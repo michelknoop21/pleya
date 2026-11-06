@@ -64,12 +64,21 @@ func (s *Scanner) processSidecars(ctx context.Context, root catalog.StorageLocat
 		// maar zijn eigenaar wel: anchors bouwt zijn kaarten op de map en de
 		// basisnaam, dus het eigenaarschap volgt uit het pad. Overslaan zou hem
 		// aan de film laten hangen waar hij niet meer naast ligt.
+		fileName := path.Base(c.entry.RelPath)
 		if c.action == actionUnchanged && !c.renamed && c.prev != nil &&
 			(c.prev.VersionID != nil || c.prev.ItemID != nil) {
+			// Een eerder als poster gekoppelde banner of logo laat los, zodat
+			// de echte poster of die van de provider zichtbaar wordt.
+			if c.entry.Kind == nameparse.KindImage {
+				if _, ok := nameparse.ParseArtwork(fileName); !ok {
+					if err := s.store.DetachSidecar(ctx, c.fileID); err != nil {
+						return err
+					}
+				}
+			}
 			continue
 		}
 
-		fileName := path.Base(c.entry.RelPath)
 		switch c.entry.Kind {
 		case nameparse.KindSubtitle:
 			if err := s.attachSubtitle(ctx, c, fileName, anchors, stats, log); err != nil {
@@ -224,7 +233,13 @@ func (s *Scanner) attachArtwork(ctx context.Context, c *candidate, fileName stri
 	if !ok {
 		return nil
 	}
-	anchor, _, found := anchors.lookup(c.entry.Dir, parsed.MediaBase, parsed.FullBase)
+	anchor, matched, found := anchors.lookup(c.entry.Dir, parsed.MediaBase, parsed.FullBase)
+	// Een afbeelding die alleen door haar naam een poster is, hoort bij het
+	// mediabestand met die naam en niet bij de map: anders wordt elke losse
+	// afbeelding in een seriemap de poster van de serie.
+	if parsed.SameName && matched == "" {
+		found = false
+	}
 	if !found {
 		return s.releaseIfMoved(ctx, c)
 	}

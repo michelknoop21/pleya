@@ -10,8 +10,10 @@
   import type { Item } from '#lib/api/types.js';
   import { t } from '#lib/i18n/index.js';
   import { videoContext } from '#lib/util/videoContext.js';
+  import { dedupeReader, type ItemReader } from '#lib/util/homeArtwork.js';
 
   let items = $state<Item[]>([]);
+  let parentReader = $state<ItemReader | undefined>(undefined);
   let episodeTitles = $state(new Map<string, string>());
   let released = $state<Item[]>([]);
   let continuing = $state<Item[]>([]);
@@ -37,14 +39,11 @@
         })))
       ]);
       if (signal.aborted) return;
-      // Resolve the small hero candidate set only. Library rows and playback
-      // continue using their own items; parent reads share this load's cache.
-      const parents = new Map<string, Promise<Item>>();
-      const getParent = (id: string, active: AbortSignal) => {
-        let pending = parents.get(id);
-        if (!pending) { pending = session.client.item(id, active); parents.set(id, pending); }
-        return pending;
-      };
+      // One parent cache per load: the hero and the episode rails below share it,
+      // so a series that appears in Next up and in Recently added is read once.
+      // Shared reads follow this load's signal, not the first rail that asked.
+      const getParent = dedupeReader((id) => session.client.item(id, signal));
+      parentReader = getParent;
       items = page.items;
       released = [];
       // Bounded year-ordered film pool; the protocol has no full release date.
@@ -132,9 +131,9 @@
   <div class="home" class:home--with-hero={Boolean(hero)}>
     {#if !hero}<h1 class="sr-only">{t('home.title')}</h1>{/if}
     <ContinueWatchingRail items={continuing} />
-    <HubRail title={t('home.nextUp')} items={next} />
+    <HubRail title={t('home.nextUp')} items={next} getParent={parentReader} />
     {#each recent as row (row.id)}
-      <HubRail title={`${t('home.recentlyAdded')} · ${row.title}`} items={row.items} href={`/libraries/${encodeURIComponent(row.id)}`} />
+      <HubRail title={`${t('home.recentlyAdded')} · ${row.title}`} items={row.items} href={`/libraries/${encodeURIComponent(row.id)}`} getParent={parentReader} />
     {/each}
   </div>
 {/if}

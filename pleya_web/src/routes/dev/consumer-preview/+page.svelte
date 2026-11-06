@@ -11,16 +11,23 @@
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import { setArtworkLoader } from '#lib/components/artworkLoader.js';
   import { cardSubtitle } from '#lib/util/format.js';
-  import { featured, recent, continuing, coverTitles } from './fixtures';
+  import { featured, recent, continuing, coverTitles, newEpisodes, fixtureParent } from './fixtures';
   import './preview.css';
 
   setLocale('nl');
   const before = $derived(page.url.searchParams.has('before'));
   let sidebarOpen = $state(true);
   let previewState = $state(untrack(() => page.url.searchParams.get('state') ?? 'populated'));
+  // Zonder lokale review-art tekent de preview een vlak met het artwork-id erop,
+  // zodat een opname laat zien welk beeld een kaart koos.
+  const labelled = (id: string) => {
+    const hue = [...id].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 360;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="hsl(${hue} 45% 32%)"/><text x="24" y="330" font-family="sans-serif" font-size="34" fill="#fff">${id}</text></svg>`;
+    return new Blob([svg], { type: 'image/svg+xml' });
+  };
   setArtworkLoader(async (id, signal) => {
-    const response = await fetch(`/review-art/${encodeURIComponent(id)}.jpg`, { signal });
-    if (!response.ok || !response.headers.get('content-type')?.startsWith('image/')) throw new Error('Fixture artwork unavailable');
+    const response = await fetch(`/review-art/${encodeURIComponent(id)}.jpg`, { signal }).catch(() => null);
+    if (!response?.ok || !response.headers.get('content-type')?.startsWith('image/')) return labelled(id);
     return response.blob();
   });
 </script>
@@ -68,6 +75,7 @@
         {/snippet}
       </HubRail>
       <HubRail title="Volgende afleveringen" items={[continuing[0]!, continuing[2]!]} shape="wide" />
+      <HubRail title="Recent toegevoegd · Series" items={newEpisodes} getParent={fixtureParent} />
       <HubRail title="Recent toegevoegd · Films" items={recent} href="/libraries/films">
         {#snippet card(item, _index, shape)}<MediaCard {item} {shape} eager />{/snippet}
       </HubRail>

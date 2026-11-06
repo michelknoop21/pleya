@@ -268,6 +268,9 @@ class PleyaServerMappers {
       grandparentId: isEpisode ? grandparent?.id ?? parent?.parentId : null,
       grandparentTitle: isEpisode ? grandparent?.title : null,
       grandparentThumbPath: isEpisode ? _posterPath(grandparent) : null,
+      // The show backdrop: a wide episode card falls back to it when the
+      // episode has no still of its own.
+      grandparentArtPath: isEpisode ? _backdropPath(grandparent) : null,
       thumbPath: _posterPath(wire),
       artPath: _backdropPath(wire),
       durationMs: wire.durationMs,

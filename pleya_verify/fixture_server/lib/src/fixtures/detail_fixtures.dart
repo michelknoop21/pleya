@@ -175,7 +175,11 @@ void _applyCatalogDetailMovieV1(PleyaFakeServer server) {
 /// One series the way northstars 03, 04, 05 and 01 show it: two seasons, the
 /// first watched and the second under way, cast, a trailer and a collection,
 /// over the film catalog so the collection has titles to hold.
-void _applyCatalogDetailSeriesV1(PleyaFakeServer server) {
+///
+/// [withoutLateStills] is `catalog.detail-series.no-stills.v1`: episodes 3 and
+/// 4 of every season carry no artwork, the way a Pleya Server episode looks
+/// before the metadata round found a still (S22.4). Everything else is equal.
+void _applyCatalogDetailSeriesV1(PleyaFakeServer server, {bool withoutLateStills = false}) {
   const fixture = 'catalog.detail-series.v1';
   _applyCatalogStudioArtV1(server);
   final films = {for (final film in studioArtFilms) film.slug: server.seededIds['movie/${film.slug}']!};
@@ -303,7 +307,8 @@ void _applyCatalogDetailSeriesV1(PleyaFakeServer server) {
       final episodeId = _mintId(server, fixture, 'episode', 'charge-s0${season.number}e$episode');
       final seen = episode <= watched;
       final started = !seen && episode == watched + 1;
-      server.artworkById[episodeId] = server.artworkById['${films[stills[episode - 1]]}-backdrop']!;
+      final hasStill = !withoutLateStills || episode <= 2;
+      if (hasStill) server.artworkById[episodeId] = server.artworkById['${films[stills[episode - 1]]}-backdrop']!;
       server.addItem(
         id: episodeId,
         kind: 'episode',
@@ -311,7 +316,7 @@ void _applyCatalogDetailSeriesV1(PleyaFakeServer server) {
         parentId: seasonId,
         index: episode,
         durationMs: 3000000,
-        posterId: episodeId,
+        posterId: hasStill ? episodeId : null,
         userState: {
           'position_ms': started ? 1200000 : 0,
           'watched': seen,

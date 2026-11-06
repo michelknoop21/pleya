@@ -157,13 +157,12 @@ class TvUnifiedMediaCard extends StatelessWidget {
     final scale = TvLayoutConstants.scaleOf(context);
     final item = group.representativeSource.item;
     final serverId = group.representativeSource.serverId.value;
+    final imagePath = item.rowThumbPath;
     final artwork = TvCatalogArtworkFill(
       child: OptimizedMediaImage(
         client: clientFor?.call(serverId),
-        imagePath: item.thumbPath,
-        localFilePath: context.select<LocalLibraryProvider?, String?>(
-          (p) => p?.posterPath(item.serverId, item.thumbPath),
-        ),
+        imagePath: imagePath,
+        localFilePath: context.select<LocalLibraryProvider?, String?>((p) => p?.posterPath(item.serverId, imagePath)),
         fit: BoxFit.cover,
         fallbackIcon: Symbols.movie_rounded,
       ),

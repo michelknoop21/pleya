@@ -8,6 +8,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_stream.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_library.dart';
 import 'package:pleya/services/pleya_server_mappers.dart';
+import 'package:pleya/services/settings_service.dart' show EpisodePosterMode;
 
 /// The mapper is the backend boundary: above it nothing knows Pleya Protocol,
 /// below it nothing knows the app's model. These tests read the same fixtures
@@ -203,6 +204,25 @@ void main() {
       expect(episode.parentIndex, 2);
       expect(episode.grandparentId, show.id);
       expect(episode.grandparentTitle, 'How I Met Your Mother');
+    });
+
+    test('an episode without a still gets the show backdrop to fall back on', () {
+      final showJson = load('item_show.json');
+      final show = PleyaItem.fromJson({
+        ...showJson,
+        'artwork': {
+          'poster_id': '0198f2c0-0001-7000-8000-000000000002',
+          'backdrop_id': '0198f2c0-0001-7000-8000-000000000003',
+        },
+      });
+      final episode = mapFixture('item_episode.json', grandparent: show);
+      expect(episode.thumbPath, isNull);
+      expect(episode.grandparentArtPath, PleyaServerMappers.artworkPath('0198f2c0-0001-7000-8000-000000000003'));
+      expect(episode.grandparentThumbPath, PleyaServerMappers.artworkPath('0198f2c0-0001-7000-8000-000000000002'));
+      expect(episode.rowThumbPath, episode.grandparentArtPath);
+      expect(episode.posterThumb(mode: EpisodePosterMode.episodeThumbnail), episode.grandparentArtPath);
+      // A show is not an episode: it never borrows a grandparent backdrop.
+      expect(mapFixture('item_show.json').grandparentArtPath, isNull);
     });
 
     test('an episode without ancestors keeps ids and leaves titles empty', () {

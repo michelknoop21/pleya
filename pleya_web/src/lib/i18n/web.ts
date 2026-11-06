@@ -238,6 +238,7 @@ export const web = {
 
   'artwork.none': 'No artwork',
   'card.remaining': '{duration} left',
+  'card.episodeCode': 'S{season} · E{episode}',
   'card.watched': 'Watched',
   'card.new': 'New',
   'card.versions.one': '{count} version',

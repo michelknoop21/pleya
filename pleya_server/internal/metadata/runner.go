@@ -2,8 +2,6 @@ package metadata
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -41,8 +39,9 @@ type Provider interface {
 // currentPass is het rondenummer van deze versie van de ronde. Verhogen zet
 // geschikte items één keer opnieuw aan de beurt: geen rejected/ambiguous en
 // nooit vóór een geplande retry. 2: .nfo als bron. 3: alternatieven bij
-// titels die niet matchen, en handmatige keuzes (M2b).
-const currentPass = 3
+// titels die niet matchen, en handmatige keuzes (M2b). 4: stills en titels van
+// afleveringen bij een gematchte serie (S22.4).
+const currentPass = 4
 
 // maxAlternatives is het aantal zoektreffers dat een beheerder te zien krijgt.
 const maxAlternatives = 5
@@ -276,6 +275,14 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 			prepared = append(prepared, *saved)
 		}
 	}
+	if t.Kind == "show" {
+		episodes, stills, episodeRetry := r.showEpisodes(ctx, t, chosen.ID)
+		details.Episodes = episodes
+		prepared = append(prepared, stills...)
+		if episodeRetry != nil && (retry == nil || episodeRetry.Before(*retry)) {
+			retry = episodeRetry
+		}
+	}
 
 	var artwork []catalog.ProviderArtwork
 	for _, a := range prepared {
@@ -290,7 +297,7 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 	// Alleen succes of expliciete supersession geeft directe cleanup vrij.
 	// Andere fouten behouden ook mogelijk ongebruikte bytes voor de bestaande GC.
 	if commitErr == nil || errors.Is(commitErr, catalog.ErrMetadataSuperseded) {
-		r.cleanupPrepared(ctx, t.ID, prepared)
+		r.cleanupPrepared(ctx, prepared)
 	}
 	if commitErr != nil {
 		return commitErr
@@ -334,6 +341,12 @@ func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget, side *nfo
 		if n, err := strconv.Atoi(side.IDs["tmdb"]); err == nil && n > 0 {
 			return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, bySidecar, nil, nil
 		}
+	}
+	// Een herhaling van een toegepaste match (ontbrekende still, nieuwe
+	// aflevering) zoekt niet opnieuw: een tweede treffer met dezelfde titel bij
+	// de provider zou een gematchte titel anders ambigu maken.
+	if n, err := strconv.Atoi(t.AppliedExternalID); err == nil && n > 0 {
+		return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, bySearch, nil, nil
 	}
 
 	results, err := withBackoff(ctx, r, func() ([]SearchResult, error) {
@@ -392,115 +405,6 @@ func (r *Runner) recordFailure(ctx context.Context, t catalog.MetadataTarget) {
 	if err := r.store.CommitMetadata(ctx, t, catalog.MetadataCandidate{Pass: currentPass,
 		ItemID: t.ID, Provider: r.name, State: catalog.CandidateFailed, ExternalID: t.ManualExternalID, NextAttempt: &next}, nil, nil, nil); err != nil && !errors.Is(err, catalog.ErrMetadataSuperseded) {
 		r.log.Warn("mislukte poging vastleggen mislukt", slog.String("error", err.Error()))
-	}
-}
-
-// repairCache zet items weer aan de beurt waarvan het gecachede bestand weg is
-// (een opgeruimde of herkoppelde cache), en ruimt bestanden op die nergens meer
-// bij horen.
-func (r *Runner) repairCache(ctx context.Context) error {
-	rows, err := r.store.ListProviderArtwork(ctx)
-	if err != nil {
-		return err
-	}
-	dir := filepath.Join(r.cacheDir, "artwork")
-	known := make(map[string]bool, len(rows))
-	for _, a := range rows {
-		known[a.FileName] = true
-		if _, err := os.Stat(filepath.Join(dir, a.FileName)); errors.Is(err, os.ErrNotExist) {
-			r.log.Warn("gecachede afbeelding ontbreekt; opnieuw ophalen", slog.String("file", a.FileName))
-			if err := r.store.DropProviderArtwork(ctx, a.ID); err != nil {
-				return err
-			}
-		}
-	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
-	for _, e := range entries {
-		info, err := e.Info()
-		// Een uur respijt: een bestand dat net is neergezet heeft zijn rij misschien nog niet.
-		if err != nil || e.IsDir() || known[e.Name()] || time.Since(info.ModTime()) < time.Hour {
-			continue
-		}
-		_ = os.Remove(filepath.Join(dir, e.Name()))
-	}
-	return nil
-}
-
-type preparedArtwork struct {
-	row      catalog.ProviderArtwork
-	previous string
-}
-
-// prepareImage schrijft uitsluitend een nieuwe bestandsnaam; de cacherij wordt
-// samen met de velden en kandidaat gepubliceerd door CommitMetadata.
-func (r *Runner) prepareImage(ctx context.Context, itemID id.ID, kind, ref string) (*preparedArtwork, error) {
-	existing, found, err := r.store.GetProviderArtwork(ctx, itemID, kind, r.name)
-	if err != nil {
-		return nil, err
-	}
-	if found && existing.SourceRef == ref {
-		return nil, nil
-	}
-
-	type img struct {
-		data []byte
-		ext  string
-	}
-	got, err := withBackoff(ctx, r, func() (img, error) {
-		data, ext, err := r.provider.Image(ctx, kind, ref)
-		return img{data, ext}, err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sum := sha256.Sum256(got.data)
-	artID := id.New()
-	if found {
-		artID = existing.ID
-	}
-	name := artID.String() + "-" + id.New().String() + got.ext
-
-	dir := filepath.Join(r.cacheDir, "artwork")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, err
-	}
-	tmp, err := os.CreateTemp(dir, ".incoming-*")
-	if err != nil {
-		return nil, err
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
-	if _, err := tmp.Write(got.data); err != nil {
-		tmp.Close()
-		return nil, err
-	}
-	if err := tmp.Close(); err != nil {
-		return nil, err
-	}
-	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
-		return nil, err
-	}
-	return &preparedArtwork{row: catalog.ProviderArtwork{
-		ID: artID, ItemID: itemID, Kind: kind, Provider: r.name,
-		SourceRef: ref, FileName: name, SHA256: hex.EncodeToString(sum[:]),
-	}, previous: existing.FileName}, nil
-}
-
-func (r *Runner) cleanupPrepared(ctx context.Context, itemID id.ID, prepared []preparedArtwork) {
-	check, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
-	defer cancel()
-	for _, a := range prepared {
-		current, found, err := r.store.GetProviderArtwork(check, itemID, a.row.Kind, r.name)
-		if err == nil && (!found || current.FileName != a.row.FileName) {
-			_ = os.Remove(filepath.Join(r.cacheDir, "artwork", a.row.FileName))
-		}
 	}
 }
 

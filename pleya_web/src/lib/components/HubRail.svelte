@@ -18,10 +18,12 @@
   zou beloven dat daar ooit iets staat zonder dat de server dat zegt.
 -->
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import MediaCard from './MediaCard.svelte';
   import type { Item } from '../api/types';
   import { t } from '../i18n';
+  import { session } from '../stores/session.svelte';
+  import { dedupeReader, episodeCards, type EpisodeCard, type ItemReader } from '../util/homeArtwork';
   import { RailScroll } from './railScroll.svelte';
 
   interface Props {
@@ -43,9 +45,15 @@
      * Het derde argument is de vorm van de rij, voor de `shape` van de kaart.
      */
     card?: Snippet<[Item, number, 'poster' | 'wide']>;
+    /**
+     * Leest een serie of seizoen voor de standaardkaart van een aflevering.
+     * Home geeft één gedeelde lezer mee voor al zijn rijen; zonder lezer
+     * deelt de rij er een met zichzelf.
+     */
+    getParent?: ItemReader;
   }
 
-  let { title, items, href, viewAllLabel, shape: shapeOverride, card }: Props = $props();
+  let { title, items, href, viewAllLabel, shape: shapeOverride, card, getParent }: Props = $props();
 
   const uid = $props.id();
   const headingId = `${uid}-title`;
@@ -57,6 +65,25 @@
     shapeOverride ??
       (items.length > 0 && items.every((item) => item.kind === 'episode') ? 'wide' : 'poster')
   );
+
+  // Een aflevering zonder eigen still toont de serie, met de serienaam als
+  // titel en "S1 · A5" eronder. Alleen voor de standaardkaart: een snippet
+  // beslist zelf.
+  let episodes = $state(new Map<string, EpisodeCard>());
+  $effect(() => {
+    const current = items;
+    const currentShape = shape;
+    if (card || !current.some((item) => item.kind === 'episode')) return;
+    const controller = new AbortController();
+    untrack(() => {
+      episodes = new Map();
+      const read = getParent ?? dedupeReader((id, signal) => session.client.item(id, signal));
+      void episodeCards(current, currentShape, read, controller.signal, (id, resolved) => {
+        if (!controller.signal.aborted) episodes = new Map(episodes).set(id, resolved);
+      });
+    });
+    return () => controller.abort();
+  });
 
   let track = $state<HTMLUListElement | null>(null);
   const rail = new RailScroll();
@@ -142,7 +169,15 @@
             {#if card}
               {@render card(item, index, shape)}
             {:else}
-              <MediaCard {item} {shape} eager={index < 8} />
+              {@const episode = episodes.get(item.id)}
+              <MediaCard
+                {item}
+                {shape}
+                eager={index < 8}
+                title={episode?.title}
+                artworkId={episode ? episode.artworkId : undefined}
+                subtitle={episode?.subtitle}
+              />
             {/if}
           </li>
         {/each}

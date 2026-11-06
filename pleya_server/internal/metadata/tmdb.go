@@ -329,8 +329,11 @@ func rating(d *tmdbDetails, country string) string {
 // Image haalt de bytes van een afbeelding. ref is het pad dat Details gaf.
 func (c *TMDB) Image(ctx context.Context, kind, ref string) ([]byte, string, error) {
 	size := posterSize
-	if kind == "backdrop" {
+	switch kind {
+	case "backdrop":
 		size = backdropSize
+	case "still":
+		size = stillSize
 	}
 	// ref komt van de provider; alleen een eenvoudig pad is toegestaan.
 	if !strings.HasPrefix(ref, "/") || strings.Contains(ref, "..") || strings.ContainsAny(ref, "?#\\") {
