@@ -47,6 +47,10 @@ type MetadataTarget struct {
 	// handmatige keuze is; dan gaat de ronde op de .nfo en daarna op zoeken.
 	ManualExternalID string
 
+	// AppliedExternalID is de al toegepaste providerid van een match. Een
+	// herhaling gebruikt hem in plaats van opnieuw op titel te zoeken.
+	AppliedExternalID string
+
 	// CandidateUpdatedAt is de verwachte duurzame generatie van deze poging.
 	// nil betekent dat er bij het lezen nog geen kandidaat bestond.
 	CandidateUpdatedAt *time.Time
@@ -121,6 +125,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		       coalesce(mp.root_path, sp.root_path, ''),
 		       coalesce(mp.relative_path, sp.relative_path, ''),
 		       CASE WHEN c.manual THEN coalesce(c.external_id, '') ELSE '' END,
+		       CASE WHEN c.state = 'matched' AND c.applied_provider = $1 THEN coalesce(c.applied_external_id, '') ELSE '' END,
 		       c.updated_at
 		FROM media_items i
 		LEFT JOIN metadata_candidates c ON c.item_id = i.id
@@ -169,7 +174,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 	var out []MetadataTarget
 	for rows.Next() {
 		var t MetadataTarget
-		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.CandidateUpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.AppliedExternalID, &t.CandidateUpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

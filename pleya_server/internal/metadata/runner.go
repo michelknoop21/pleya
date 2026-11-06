@@ -342,6 +342,12 @@ func (r *Runner) decide(ctx context.Context, t catalog.MetadataTarget, side *nfo
 			return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, bySidecar, nil, nil
 		}
 	}
+	// Een herhaling van een toegepaste match (ontbrekende still, nieuwe
+	// aflevering) zoekt niet opnieuw: een tweede treffer met dezelfde titel bij
+	// de provider zou een gematchte titel anders ambigu maken.
+	if n, err := strconv.Atoi(t.AppliedExternalID); err == nil && n > 0 {
+		return catalog.CandidateMatched, SearchResult{ID: n, Title: t.Title}, bySearch, nil, nil
+	}
 
 	results, err := withBackoff(ctx, r, func() ([]SearchResult, error) {
 		return r.provider.Search(ctx, t.Kind, t.Title, t.Year)

@@ -45,6 +45,30 @@ func TestShowPosterIsPosterJpgNotABannerOrLogo(t *testing.T) {
 	}
 }
 
+// TestSeasonPosterDoesNotBecomeTheShowPoster: "season01-poster.jpg" in de
+// seriemap eindigt op -poster, maar is de poster van een seizoen. Zonder
+// poster.jpg hoort folder.jpg de serie te tekenen.
+func TestSeasonPosterDoesNotBecomeTheShowPoster(t *testing.T) {
+	h := newHarness(t, "shows")
+	testsupport.MakeVideo(t, h.path("Friends", "Season 1", "Friends S01E01.mkv"), 1)
+	for _, name := range []string{"folder.jpg", "season01-poster.jpg", "season-specials-poster.jpg"} {
+		testsupport.WriteFile(t, h.path("Friends", name), "niet echt een afbeelding")
+	}
+	h.scan()
+
+	show := h.show("Friends")
+	if show.PosterID == nil {
+		t.Fatal("de serie heeft geen poster")
+	}
+	var posterPath string
+	if err := h.pool.QueryRow(context.Background(), `SELECT relative_path FROM media_files WHERE id = $1`, *show.PosterID).Scan(&posterPath); err != nil {
+		t.Fatal(err)
+	}
+	if posterPath != "Friends/folder.jpg" {
+		t.Fatalf("poster_id wijst naar %s, verwacht Friends/folder.jpg", posterPath)
+	}
+}
+
 // TestAnAttachedBannerLetsGoOnTheNextScan: een banner die een oudere versie al
 // als poster koppelde, laat bij de volgende ronde los, ook als het bestand
 // ongewijzigd is. Anders bleef de opgeblazen banner op bestaande installaties.

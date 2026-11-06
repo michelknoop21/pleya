@@ -163,9 +163,11 @@ func (s *Store) DropProviderArtwork(ctx context.Context, artworkID id.ID) error 
 // localArtworkRankSQL ordent de lokale afbeeldingen van één rol: poster.jpg (ook
 // "<naam>-poster.jpg") gaat voor cover.jpg, en die voor folder.jpg en de rest.
 // Zonder rang won alleen de padvolgorde, en dan sorteert een "banner.jpg" of een
-// kleine "folder.jpg" vóór de echte "poster.jpg".
+// kleine "folder.jpg" vóór de echte "poster.jpg". Een seizoensposter in de
+// seriemap ("season01-poster.jpg") gaat achteraan: hij is niet de serie.
 func localArtworkRankSQL(alias string) string {
-	return fmt.Sprintf(`CASE WHEN lower(%[1]s.relative_path) ~ '(^|[/.-])poster\.[a-z0-9]+$' THEN 0
+	return fmt.Sprintf(`CASE WHEN lower(%[1]s.relative_path) ~ '(^|/)season[^/]*$' THEN 3
+	    WHEN lower(%[1]s.relative_path) ~ '(^|[/.-])poster\.[a-z0-9]+$' THEN 0
 	    WHEN lower(%[1]s.relative_path) ~ '(^|[/.-])cover\.[a-z0-9]+$' THEN 1 ELSE 2 END`, alias)
 }
 

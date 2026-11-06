@@ -23,10 +23,17 @@ type episodeTestProvider struct {
 	imageKinds []string
 	imageRefs  []string
 	onSeason   func()
+	// searches[n] is het antwoord op de n-de zoekopdracht; de laatste blijft gelden.
+	searches [][]SearchResult
+	searched int
 }
 
 func (p *episodeTestProvider) Search(context.Context, string, string, *int) ([]SearchResult, error) {
-	return nil, nil
+	p.searched++
+	if len(p.searches) == 0 {
+		return nil, nil
+	}
+	return p.searches[min(p.searched, len(p.searches))-1], nil
 }
 func (p *episodeTestProvider) Details(context.Context, string, int) (catalog.MetadataDetails, error) {
 	return catalog.MetadataDetails{Summary: "Serie"}, nil
@@ -59,6 +66,12 @@ type episodeFixture struct {
 }
 
 func newEpisodeFixture(t *testing.T) *episodeFixture {
+	return newEpisodeFixtureMatched(t, true)
+}
+
+// newEpisodeFixtureMatched zet met manual een handmatige match op TMDB 10;
+// zonder moet de ronde de serie zelf vinden.
+func newEpisodeFixtureMatched(t *testing.T, manual bool) *episodeFixture {
 	t.Helper()
 	pool := testsupport.Pool(t)
 	ctx := context.Background()
@@ -99,8 +112,10 @@ func newEpisodeFixture(t *testing.T) *episodeFixture {
 	if _, err := pool.Exec(ctx, `UPDATE media_items SET metadata_sources = '{"title":"manual"}' WHERE id = $1`, f.eps["Mijn eigen titel"]); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SetManualMatch(ctx, f.show, ProviderTMDB, "10"); err != nil {
-		t.Fatal(err)
+	if manual {
+		if err := store.SetManualMatch(ctx, f.show, ProviderTMDB, "10"); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return f
 }

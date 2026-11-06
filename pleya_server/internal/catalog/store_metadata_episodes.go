@@ -9,7 +9,6 @@ package catalog
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -88,7 +87,8 @@ func checkShowEpisodes(ctx context.Context, tx pgx.Tx, showID id.ID, eps []Episo
 		return err
 	}
 	if n != len(ids) {
-		return errors.New("metadata-aflevering hoort niet bij de gelockte serie")
+		// Een aflevering verdween tijdens de ronde: de volgende ronde leest opnieuw.
+		return ErrMetadataSuperseded
 	}
 	return nil
 }
