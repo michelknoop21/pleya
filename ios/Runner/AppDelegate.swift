@@ -3,6 +3,7 @@ import UIKit
 import AVFoundation
 import AVKit
 import MediaPlayer
+import Vision
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -86,6 +87,51 @@ import MediaPlayer
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ShareServiceChannel") {
       registerShareServiceChannel(messenger: registrar.messenger())
     }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "HeroFocusChannel") {
+      registerHeroFocusChannel(messenger: registrar.messenger())
+    }
+  }
+
+  // MARK: - Home hero focus point
+
+  // `focusPoint(path)` -> {x, y, aspect}: the centre of the salient region of
+  // the image file at `path`, normalised with a top-left origin, plus the
+  // image's width / height. Attention saliency first, faces when it finds
+  // nothing; nil when neither finds anything or the file is unreadable. The
+  // Dart side (lib/services/hero_focus_points.dart) caches the answer.
+  private func registerHeroFocusChannel(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "com.pleya/hero_focus", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "focusPoint", let path = call.arguments as? String else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      DispatchQueue.global(qos: .utility).async {
+        let point = AppDelegate.focusPoint(path: path)
+        DispatchQueue.main.async { result(point) }
+      }
+    }
+  }
+
+  private static func focusPoint(path: String) -> [String: Double]? {
+    guard let image = UIImage(contentsOfFile: path)?.cgImage, image.height > 0 else { return nil }
+    let handler = VNImageRequestHandler(cgImage: image, options: [:])
+    let saliency = VNGenerateAttentionBasedSaliencyImageRequest()
+    try? handler.perform([saliency])
+    var boxes = (saliency.results?.first?.salientObjects ?? []).map(\.boundingBox)
+    if boxes.isEmpty {
+      let faces = VNDetectFaceRectanglesRequest()
+      try? handler.perform([faces])
+      boxes = (faces.results ?? []).map(\.boundingBox)
+    }
+    guard let first = boxes.first else { return nil }
+    let union = boxes.dropFirst().reduce(first) { $0.union($1) }
+    // Vision's normalised rects start bottom-left, Flutter's Alignment top-left.
+    return [
+      "x": Double(union.midX), "y": Double(1 - union.midY),
+      "aspect": Double(image.width) / Double(image.height),
+    ]
   }
 
   // MARK: - Pleya Share host keepalive
