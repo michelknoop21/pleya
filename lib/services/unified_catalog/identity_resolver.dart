@@ -15,6 +15,7 @@ import '../../media/media_kind.dart';
 import '../../media/unified/canonical_media_identity.dart';
 import '../../media/unified/carried_external_ids.dart';
 import '../../media/unified/identity_evidence.dart';
+import '../../media/unified/unified_media_group.dart';
 import '../../utils/external_ids.dart';
 
 /// Where to fetch external ids for one item: which server, and which id on
@@ -232,12 +233,12 @@ Future<void> _runBounded(List<int> indices, int maxConcurrent, Future<void> Func
 
 // -- Continue Watching identity --------------------------------------------
 //
-// Hoofdstuk 11.8 is binding: Verder kijken groups on the **exact episode** —
-// `show identity + season + episode` — and never folds every episode of one
-// series into a single Continue Watching entry. Two servers holding the
-// viewer at S02E04 are one card with two sources; S02E04 and S02E05 are two
-// cards, even when both resolve the same series-wide tmdb/tvdb/Plex show
-// identity.
+// Hoofdstuk 11.8: Verder kijken groups on the **exact episode**:
+// `show identity + season + episode`. Two servers holding the viewer at
+// S02E04 are one card with two sources. S02E04 on one server and S02E05 on
+// another are never one group; since DEC-XXX the row shows only the most
+// recently watched of them ([oneContinueWatchingCardPerSeries]), and only
+// when a shared series number proves they are the same series.
 //
 // That is why an episode's series-wide external ids are never used raw here:
 // a backend asked for an episode's ids answers with the *series'* id, which
@@ -296,15 +297,20 @@ String? continueWatchingOrdinal(MediaItem item) {
   }
 }
 
-/// Continue Watching's cheap duplicate-bucket key: scope, a
-/// whitespace-collapsed lower-cased title, and — for an episode or season —
-/// its [continueWatchingOrdinal]. No year, no punctuation stripping; distinct
-/// from [CanonicalMediaIdentity.bucketKey] on purpose (see the section
-/// comment above).
+/// Continue Watching's cheap duplicate-bucket key: scope plus a
+/// whitespace-collapsed lower-cased title (the series title for an episode or
+/// season). No year, no punctuation stripping; distinct from
+/// [CanonicalMediaIdentity.bucketKey] on purpose (see the section comment
+/// above).
 ///
-/// Returns null for an episode or season whose ordinal is unknown: without it
-/// there is no exact-episode bucket, and bucketing such a row on its series
-/// alone is precisely the fold hoofdstuk 11.8 forbids.
+/// An episode buckets on its series, not on its ordinal, so two different
+/// episodes of one series on two servers still buy the series numbers that
+/// [oneContinueWatchingCardPerSeries] needs (DEC-XXX). The bucket only decides
+/// who is worth a lookup; the tokens stay narrowed to the exact episode.
+///
+/// Returns null for an episode or season whose ordinal is unknown: it has no
+/// exact-episode token, so a series-wide id would be its only evidence and it
+/// must never buy one (edge cases D6/D7).
 String? continueWatchingBucketKey(MediaItem item) {
   final scope = continueWatchingScope(item);
   if (scope == null) return null;
@@ -314,10 +320,10 @@ String? continueWatchingBucketKey(MediaItem item) {
   };
   final normalized = title?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   if (normalized == null || normalized.isEmpty) return null;
-  if (item.kind != MediaKind.episode && item.kind != MediaKind.season) return '$scope:$normalized';
-  final ordinal = continueWatchingOrdinal(item);
-  if (ordinal == null) return null;
-  return '$scope:$normalized:$ordinal';
+  if ((item.kind == MediaKind.episode || item.kind == MediaKind.season) && continueWatchingOrdinal(item) == null) {
+    return null;
+  }
+  return '$scope:$normalized';
 }
 
 /// Which id, on which server, Continue Watching fetches external ids for:
@@ -338,4 +344,61 @@ ExternalIdTarget? continueWatchingExternalIdTarget(MediaItem item) {
   };
   if (targetId == null || targetId.isEmpty) return null;
   return (serverId: serverId, targetId: targetId);
+}
+
+/// One Verder kijken card per series (DEC-XXX): of the episode groups whose
+/// series is proven the same, only the most recently watched one stays. Each
+/// backend already keeps one episode per series in its own row; this applies
+/// that rule across servers.
+///
+/// The series is read from the episode tokens' series number
+/// (`episode:tmdb:95396/s2e4` belongs to `tmdb:95396`), never from the title.
+/// Two groups are the same series when they share a number and disagree on
+/// none. Groups without such a number (no lookup, guid-only, movies) pass
+/// through untouched. Input order is kept.
+List<UnifiedMediaGroup> oneContinueWatchingCardPerSeries(
+  List<UnifiedMediaGroup> groups,
+  Map<String, IdentityEvidence> evidenceBySourceKey,
+) {
+  Map<String, String> seriesNumbersOf(UnifiedMediaGroup group) => {
+    for (final source in group.sources)
+      for (final token in evidenceBySourceKey[source.sourceKey]?.strongTokens ?? const <IdentityToken>{})
+        if (token.namespace != identityTokenNamespaceGuid && token.value.contains('/'))
+          token.namespace: token.value.substring(0, token.value.lastIndexOf('/')),
+  };
+  bool sameSeries(Map<String, String> a, Map<String, String> b) {
+    var shared = false;
+    for (final entry in a.entries) {
+      final other = b[entry.key];
+      if (other == null) continue;
+      if (other != entry.value) return false;
+      shared = true;
+    }
+    return shared;
+  }
+
+  int newestOf(UnifiedMediaGroup group) =>
+      group.sources.map((s) => s.item.recencySortKey).reduce((a, b) => a > b ? a : b);
+
+  final byRecency = [for (var i = 0; i < groups.length; i++) i]
+    ..sort((a, b) {
+      final cmp = newestOf(groups[b]).compareTo(newestOf(groups[a]));
+      return cmp != 0 ? cmp : a.compareTo(b);
+    });
+  final kept = <Map<String, String>>[];
+  final dropped = <int>{};
+  for (final i in byRecency) {
+    final numbers = seriesNumbersOf(groups[i]);
+    if (numbers.isEmpty) continue;
+    if (kept.any((k) => sameSeries(k, numbers))) {
+      dropped.add(i);
+    } else {
+      kept.add(numbers);
+    }
+  }
+  if (dropped.isEmpty) return groups;
+  return [
+    for (var i = 0; i < groups.length; i++)
+      if (!dropped.contains(i)) groups[i],
+  ];
 }

@@ -491,7 +491,7 @@ void main() {
       expect(sources.map((s) => (s.item.parentIndex, s.item.index)), [(2, 4), (2, 4)]);
     });
 
-    test('A/E: two episodes of one series stay two cards, on one shared series-wide id', () async {
+    test('A/E: two episodes of one proven series are one card, the newest episode and nothing folded in', () async {
       final onDeck = [
         _episode('a-e4', serverId: 'a', season: 2, episode: 4, lastViewedAt: 200),
         _episode('b-e5', serverId: 'b', season: 2, episode: 5, lastViewedAt: 100, serverName: 'Jellyfin'),
@@ -507,12 +507,11 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      expect(row.groups, hasLength(2), reason: 'S02E04 and S02E05 are two Continue Watching cards');
-      expect([for (final g in row.groups) g.representativeSource.item.id], ['a-e4', 'b-e5']);
-      expect(row.groups.first.groupId, isNot(row.groups.last.groupId));
+      expect(row.groups, hasLength(1), reason: 'DEC-XXX: one Continue Watching card per series');
+      expect(row.groups.single.sources.map((s) => s.item.id), ['a-e4'], reason: 'most recently watched wins');
     });
 
-    test('B: two seasons of one series stay two cards', () async {
+    test('B: two seasons of one proven series are one card, the newest one', () async {
       final onDeck = [
         _episode('a-s1e4', serverId: 'a', season: 1, episode: 4, lastViewedAt: 200),
         _episode('b-s2e4', serverId: 'b', season: 2, episode: 4, lastViewedAt: 100, serverName: 'Jellyfin'),
@@ -523,11 +522,7 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      expect(row.groups, hasLength(2), reason: 'S01E04 and S02E04 are two Continue Watching cards');
-      expect(
-        {for (final g in row.groups) (g.representativeSource.item.parentIndex, g.representativeSource.item.index)},
-        {(1, 4), (2, 4)},
-      );
+      expect(row.groups.single.sources.map((s) => s.item.id), ['a-s1e4']);
     });
 
     test('D: two servers reporting the same strong episode guid merge without any external id', () async {
@@ -560,7 +555,9 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      expect(row.groups, hasLength(2));
+      // DEC-XXX keeps one card for the series; the other episode is dropped,
+      // never added to it as a source.
+      expect(row.groups.single.sources.map((s) => s.item.id), ['a-e4']);
     });
 
     group('D9: absolute vs season/episode numbering', () {
@@ -611,10 +608,9 @@ void main() {
       });
 
       test('a shared series-wide id narrowed by disagreeing ordinals does not merge either', () async {
-        // The weaker D4 path (series id + ordinal) is exactly as strict:
-        // both sides resolve the same series tmdb, but the ordinal the id
-        // gets narrowed by differs, so the resulting tokens are for two
-        // different buckets and never even compete to merge.
+        // The weaker D4 path (series id + ordinal) is exactly as strict: the
+        // ordinals differ, so the two never become one group. DEC-XXX then
+        // keeps one card for the series, with only its own source.
         final onDeck = [
           _episode('a-e4', serverId: 'a', season: 2, episode: 4),
           _episode('b-e24', serverId: 'b', season: 1, episode: 24, serverName: 'Absolute Numbered Server'),
@@ -625,7 +621,7 @@ void main() {
 
         final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-        expect(row.groups, hasLength(2));
+        expect(row.groups.single.sources, hasLength(1));
       });
     });
 
@@ -744,7 +740,17 @@ void main() {
       final onDeck = [
         _episode('a-e4', serverId: 'a', season: 2, episode: 4, viewOffsetMs: 100, lastViewedAt: 300),
         _episode('b-e4', serverId: 'b', season: 2, episode: 4, viewOffsetMs: 800, lastViewedAt: 200, serverName: 'JF'),
-        _episode('a-e5', serverId: 'a', season: 2, episode: 5, viewOffsetMs: 400, lastViewedAt: 900),
+        // Another series, so DEC-XXX's one card per series leaves both cards.
+        _episode(
+          'a-e5',
+          serverId: 'a',
+          show: 'Andor',
+          showId: 'show-9',
+          season: 2,
+          episode: 5,
+          viewOffsetMs: 400,
+          lastViewedAt: 900,
+        ),
       ];
       final service = _service(
         ids: {'a:show-1': const ExternalIds(tmdb: 95396), 'b:show-1': const ExternalIds(tmdb: 95396)},
@@ -900,14 +906,9 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      expect(row.groups, hasLength(2));
-      final byOrdinal = {
-        for (final g in row.groups) g.representativeSource.item.index: g.sources.map((s) => s.item.id).toSet(),
-      };
-      expect(byOrdinal, {
-        4: {'a-double', 'b-e4'},
-        5: {'b-e5'},
-      });
+      // b-e5 never joins episode 4; DEC-XXX's one card per series then keeps
+      // the first of the equally dated cards.
+      expect(row.groups.single.sources.map((s) => s.item.id).toSet(), {'a-double', 'b-e4'});
     });
 
     test('D13: a show\'s watched-episode count stays with its representative source, never blended', () async {

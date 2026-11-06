@@ -930,8 +930,10 @@ verantwoordelijk. Watchprogress wordt niet automatisch tussen sterk afwijkende e
 ### 11.8 Series en episodes
 
 Series groepeert op series-identiteit. Verder kijken groepeert op exacte aflevering:
-`show identity + season + episode`. Nooit: alle afleveringen van dezelfde serie als één Continue
-Watching-item.
+`show identity + season + episode`. Twee verschillende afleveringen worden nooit één groep. Sinds
+DEC-XXX (één kaart per serie in Verder kijken) toont de rij per serie één kaart: staan twee servers
+op verschillende afleveringen van een bewezen dezelfde serie (een gedeeld seriesnummer, nooit alleen
+de titel), dan blijft alleen de laatst bekeken aflevering staan.
 
 Specials: seizoen 0 wordt expliciet ondersteund; ontbrekende indexen vereisen een sterk episode-ID;
 dubbele afleveringcodes worden zonder sterk bewijs niet samengevoegd; verschillende cuts of runtimes

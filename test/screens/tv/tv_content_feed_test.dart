@@ -674,14 +674,10 @@ void main() {
   });
 
   group('Continue Watching (fase-8 brief §14)', () {
-    testWidgets('two episodes of one show stay two cards', (tester) async {
-      // Series-level conflation is the failure: "Verder kijken" is a list of
-      // places you are in, and two of them in one show are two places.
-      //
-      // Both rows hang off the same show id and both resolve the same
-      // series-wide tmdb *and* tvdb, so this cannot pass merely because the
-      // fake client had no external ids to offer — the exact-episode identity
-      // of hoofdstuk 11.8 is what keeps them apart.
+    testWidgets('two episodes of one proven show are one card holding one episode', (tester) async {
+      // DEC-XXX: one Verder kijken card per series. Both rows resolve the same
+      // series tmdb and tvdb, so one card stays; the exact-episode identity of
+      // hoofdstuk 11.8 still keeps the other episode out of it as a source.
       await boot(
         tester,
         onDeck: [
@@ -692,12 +688,8 @@ void main() {
       );
 
       final cw = rows(tester).firstWhere((r) => r.hub.title == t.discover.continueWatching);
-      expect(cw.hub.groups, hasLength(2));
-      final labels = [
-        for (final g in cw.hub.groups)
-          '${g.representativeSource.item.parentIndex}x${g.representativeSource.item.index}',
-      ];
-      expect(labels.toSet(), {'2x4', '3x1'});
+      expect(cw.hub.groups, hasLength(1));
+      expect(cw.hub.groups.single.sources, hasLength(1));
     });
 
     testWidgets('Continue Watching leads the feed', (tester) async {

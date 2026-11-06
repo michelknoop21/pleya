@@ -25,6 +25,7 @@ import '../../media/media_item.dart';
 import '../../media/unified/carried_external_ids.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/canonical_media_identity.dart';
+import '../../media/unified/identity_evidence.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
 import '../../media/unified/unified_media_source.dart';
@@ -309,6 +310,7 @@ class HomeProjectionService {
     ]);
 
     final candidates = <GroupingCandidate>[];
+    final evidenceBySourceKey = <String, IdentityEvidence>{};
     for (var i = 0; i < onDeck.length; i++) {
       final serverId = onDeck[i].serverId;
       // Same guard `_deduplicateContinueWatching` applies: a row with no
@@ -322,10 +324,17 @@ class HomeProjectionService {
         appLogger.w('Continue Watching projection: dropping item ${onDeck[i].id} with no resolvable serverId');
         continue;
       }
-      candidates.add(GroupingCandidate(source: UnifiedMediaSource.fromItem(onDeck[i]), evidence: evidence[i]));
+      final source = UnifiedMediaSource.fromItem(onDeck[i]);
+      evidenceBySourceKey[source.sourceKey] = evidence[i];
+      candidates.add(GroupingCandidate(source: source, evidence: evidence[i]));
     }
 
-    return _inContinueWatchingOrder(groupUnifiedMediaSources(candidates, allowWeakFallback: false));
+    return _inContinueWatchingOrder(
+      oneContinueWatchingCardPerSeries(
+        groupUnifiedMediaSources(candidates, allowWeakFallback: false),
+        evidenceBySourceKey,
+      ),
+    );
   }
 
   /// Hoofdstuk 13.3: a card sorts on the newest recency among its own valid

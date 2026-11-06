@@ -549,11 +549,10 @@ void main() {
       expect(result.succeededServerIds, {'plex-1'});
     });
 
-    // The other direction, and the regression that catches the old
-    // series-wide fold: same show, same show tvdb, same everything except the
-    // episode number. Two Continue Watching rows, and the upstream dedup must
-    // not reduce them to one before the Home projection ever sees them.
-    test('getOnDeckFromAllServers keeps two different episodes of one show under one stable show id', () async {
+    // DEC-XXX: same show, same show tvdb, two episode numbers. One Continue
+    // Watching row per series: the most recently watched episode stays and the
+    // other is dropped, never folded into it as a second source.
+    test('getOnDeckFromAllServers keeps only the newest of two episodes of one proven show', () async {
       final client = PlexClient.forTesting(
         config: PlexConfig(
           baseUrl: 'https://plex.example.com',
@@ -630,12 +629,7 @@ void main() {
 
       final result = await service.getOnDeckFromAllServers(limit: 10);
 
-      expect(
-        result.items.map((item) => item.id),
-        ['episode-s2e5', 'episode-s2e4'],
-        reason: 'hoofdstuk 11.8: S02E04 and S02E05 are two Continue Watching entries, not one',
-      );
-      expect(result.items.map((item) => (item.parentIndex, item.index)), [(2, 5), (2, 4)]);
+      expect(result.items.map((item) => item.id), ['episode-s2e5'], reason: 'DEC-XXX: one entry per series');
     });
 
     test('getOnDeckFromAllServers keeps duplicate titles without stable ids', () async {
