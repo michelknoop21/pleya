@@ -43,6 +43,7 @@ import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
 import 'services/fullscreen_state_manager.dart';
 import 'services/icloud_sync_service.dart';
+import 'services/integration_credential_sync_service.dart';
 import 'services/settings_service.dart';
 import 'services/sync_rule_executor.dart';
 import 'utils/platform_detector.dart';
@@ -285,6 +286,9 @@ Future<void> _bootstrapApp() async {
       unawaited(LocaleSettings.setLocale(settings.read(SettingsService.appLocale)));
     },
   );
+
+  // Fixture verification must never query a real Apple credential account.
+  if (!kPleyaVerify) await IntegrationCredentialSyncService.start(settings);
 
   FullscreenStateManager().startMonitoring();
 

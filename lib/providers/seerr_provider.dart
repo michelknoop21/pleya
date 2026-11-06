@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../mixins/disposable_change_notifier_mixin.dart';
+import '../services/integration_credential_changes.dart';
 import '../services/seerr/seerr_account_store.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
@@ -25,7 +26,14 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
   /// inject a client that survives `close()` (such as `MockClient`).
   SeerrProvider({http.Client? httpClient, SeerrAccountStore? store})
     : _httpClient = httpClient,
-      _store = store ?? SeerrAccountStore.instance;
+      _store = store ?? SeerrAccountStore.instance {
+    _credentialChanges = IntegrationCredentialChanges.remoteChanges.listen((keys) {
+      final key = _activeUserUuid.isEmpty ? 'seerr_session' : 'user_${_activeUserUuid}_seerr_session';
+      if (keys.contains(key)) unawaited(onActiveProfileChanged(_activeUserUuid));
+    });
+  }
+
+  late final StreamSubscription<Set<String>> _credentialChanges;
 
   final http.Client? _httpClient;
   final SeerrAccountStore _store;
@@ -79,7 +87,7 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
     final uuid = newUserUuid ?? '';
     final generation = ++_generation;
     _activeUserUuid = uuid;
-    final loaded = await _store.load(uuid);
+    final loaded = await IntegrationCredentialChanges.exclusively(() => _store.load(uuid));
     if (isDisposed || generation != _generation || uuid != _activeUserUuid) return;
     _setSession(loaded);
     safeNotifyListeners();
@@ -122,13 +130,16 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
 
   /// Persist a tested session and make it active.
   Future<void> commit(SeerrSession session) async {
-    await _store.save(_activeUserUuid, session);
-    _setSession(session);
-    safeNotifyListeners();
+    final uuid = _activeUserUuid;
+    _generation++;
+    _clientGeneration++;
+    await _store.save(uuid, session);
+    if (!isDisposed && uuid == _activeUserUuid) await onActiveProfileChanged(uuid);
   }
 
   Future<void> disconnect() async {
     final uuid = _activeUserUuid;
+    _generation++;
     _setSession(null);
     safeNotifyListeners();
     await _store.clear(uuid);
@@ -155,12 +166,13 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
     // a session that disconnect() just cleared.
     if (isDisposed || generation != _clientGeneration || boundUuid != _activeUserUuid) return;
     _session = session;
-    unawaited(_store.save(boundUuid, session));
+    unawaited(_store.save(boundUuid, session, refresh: true));
     safeNotifyListeners();
   }
 
   @override
   void dispose() {
+    unawaited(_credentialChanges.cancel());
     _client?.dispose();
     super.dispose();
   }

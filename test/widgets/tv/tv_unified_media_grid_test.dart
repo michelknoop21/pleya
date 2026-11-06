@@ -595,6 +595,53 @@ void main() {
       expect(tester.getSize(find.text('Title 399')), isNot(Size.zero), reason: 'layout stays for traversal');
     });
 
+    testWidgets('filtering a deep catalog from outside the grid keeps short results painted', (tester) async {
+      final outside = FocusNode(debugLabel: 'FilterControls');
+      addTearDown(outside.dispose);
+      Widget frame(int count) => TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: Scaffold(
+              body: Column(
+                children: [
+                  Focus(focusNode: outside, child: const SizedBox(width: 200, height: 40)),
+                  Expanded(
+                    child: TvUnifiedMediaGrid(
+                      groups: [for (var i = 0; i < count; i++) _group(i)],
+                      onActivate: (_) {},
+                      hasMore: false,
+                      isLoadingMore: false,
+                      onLoadMore: () {},
+                      precache: (_, __) async {},
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(frame(400));
+      await tester.pumpAndSettle();
+      await focusCard(tester, 'Title ${columnsOf(tester) * 14}');
+      outside.requestFocus();
+      await tester.pumpAndSettle();
+      expect(outside.hasPrimaryFocus, isTrue);
+
+      await tester.pumpWidget(frame(3));
+      await tester.pumpAndSettle();
+
+      expect(outside.hasPrimaryFocus, isTrue, reason: 'filtering must not steal focus from its controls');
+      for (var i = 0; i < 3; i++) {
+        final row = tester.widget<Visibility>(
+          find.ancestor(of: find.text('Title $i'), matching: find.byType(Visibility)).first,
+        );
+        expect(row.visible, isTrue, reason: 'the remaining results must be painted after scroll clamping');
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('moving the window does not rebuild cards far from it', (tester) async {
       await pumpGrid(tester, count: 400);
       final columns = columnsOf(tester);

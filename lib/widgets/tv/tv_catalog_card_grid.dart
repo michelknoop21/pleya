@@ -749,6 +749,11 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     _cardHeight = cardHeight;
     final rows = <Widget>[];
     final focusedIndex = _focusedId == null ? -1 : widget.itemIds.indexOf(_focusedId!);
+    // Filtering from the controls does not move focus back into the grid. Its
+    // old paint window must still fit the shortened list when scrolling clamps.
+    final lastRow = math.max(0, (widget.itemIds.length - 1) ~/ grid.columns);
+    final center = _artworkCenter.value;
+    if (center != null && center > lastRow) _artworkCenter.value = lastRow;
     _artworkCenter.value ??= focusedIndex < 0 ? 0 : focusedIndex ~/ grid.columns;
 
     for (var start = 0; start < widget.itemIds.length; start += grid.columns) {

@@ -4,7 +4,8 @@
 /// data: one key opens the whole API, including `sql`, `download_database` and
 /// `delete_all_user_history`. There is no read-only variant and no per-user
 /// scoping, so every Tautulli-backed surface in the app is gated on server
-/// ownership and the credential never leaves the admin's device.
+/// ownership. Optional connection sync uses a private encrypted CloudKit field
+/// between the administrator's Apple devices; KVS and exports exclude it.
 ///
 /// Contracts were measured against Tautulli v2.17.2; the sanitised captures and
 /// what each measurement showed live in `test/fixtures/tautulli/`.

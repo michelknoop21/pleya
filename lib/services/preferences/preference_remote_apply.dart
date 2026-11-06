@@ -50,7 +50,14 @@ class PreferenceRemoteApply {
   /// [storeWins] is the first read of another iCloud account's store: a merge
   /// family with [PreferenceMergeFamily.adoptStore] takes the store's entries
   /// over this device's instead of merging them by timestamp.
-  Future<void> applyEntries(Map<String, String?> entries, {bool storeWins = false}) async {
+  /// Only [isLiveLegacyChange] is evidence of a legacy peer. Snapshots retain
+  /// frozen v1 records even after every device has been upgraded. The predicate
+  /// is checked per entry so an account switch can invalidate an in-flight batch.
+  Future<void> applyEntries(
+    Map<String, String?> entries, {
+    bool storeWins = false,
+    bool Function()? isLiveLegacyChange,
+  }) async {
     var changed = 0;
     var skipped = 0;
     final stale = <PreferenceRefreshFamily>{};
@@ -65,7 +72,9 @@ class PreferenceRemoteApply {
         // circumstances: v1 carries no revision, so there is no way to tell a
         // newer user action from an older snapshot of one. Surfaced, not
         // applied, and not deleted.
-        _setStatus(_status.value.sawLegacyPeer());
+        if (entry.value != null && (isLiveLegacyChange?.call() ?? false)) {
+          _setStatus(_status.value.sawLegacyPeer());
+        }
         // A profile-scoped one is also permanently unattributable, so it keeps
         // its quarantine record and the removal condition that goes with it.
         if (PreferenceSyncPolicyRegistry.isProfileScoped(cloudKey)) {
