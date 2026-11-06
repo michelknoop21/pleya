@@ -382,7 +382,11 @@ class VideoFilterManager {
         // cached value is unreliable; forget it so the next run rewrites it.
         _appliedProps.remove('video-aspect-override');
       }
-      await _applyProperty('sub-ass-force-margins', coverMode || zoomScale > 1.0001 ? 'yes' : 'no');
+      final cropped = coverMode || zoomScale > 1.0001;
+      await _applyProperty('sub-ass-force-margins', cropped ? 'yes' : 'no');
+      // ASS font size follows the video rect by default (text subs already
+      // follow the window), so panscan/zoom would enlarge ASS subtitles.
+      await _applyProperty('sub-ass-scale-with-window', cropped ? 'yes' : 'no');
       await _applyProperty('panscan', coverMode ? '1.0' : '0');
       await _applyProperty('video-zoom', videoZoomPropertyForScale(zoomScale).toString());
 

@@ -219,6 +219,26 @@ void main() {
     expect(player.zoomCalls, [1.0, 0.8]);
   });
 
+  test('cover and zoom keep ASS subtitle size tied to the window', () async {
+    final player = _RecordingPlayer();
+    final manager = VideoFilterManager(player: player);
+    addTearDown(manager.dispose);
+    String? last() => player.writes.lastWhere((w) => w.key == 'sub-ass-scale-with-window').value;
+
+    await manager.updateVideoFilter();
+    expect(last(), 'no');
+    manager.setBoxFitMode(1);
+    await manager.updateVideoFilter();
+    expect(last(), 'yes');
+    manager.setBoxFitMode(0);
+    manager.setZoomScale(1.5);
+    await manager.updateVideoFilter();
+    expect(last(), 'yes');
+    manager.setZoomScale(1.0);
+    await manager.updateVideoFilter();
+    expect(last(), 'no');
+  });
+
   test('ambient-active run leaves aspect-override unknown', () async {
     final player = _RecordingPlayer();
     final ambient = _FakeAmbientLightingService(player);
