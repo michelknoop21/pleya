@@ -507,7 +507,7 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      expect(row.groups, hasLength(1), reason: 'DEC-XXX: one Continue Watching card per series');
+      expect(row.groups, hasLength(1), reason: 'DEC-195: one Continue Watching card per series');
       expect(row.groups.single.sources.map((s) => s.item.id), ['a-e4'], reason: 'most recently watched wins');
     });
 
@@ -555,7 +555,7 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      // DEC-XXX keeps one card for the series; the other episode is dropped,
+      // DEC-195 keeps one card for the series; the other episode is dropped,
       // never added to it as a source.
       expect(row.groups.single.sources.map((s) => s.item.id), ['a-e4']);
     });
@@ -609,7 +609,7 @@ void main() {
 
       test('a shared series-wide id narrowed by disagreeing ordinals does not merge either', () async {
         // The weaker D4 path (series id + ordinal) is exactly as strict: the
-        // ordinals differ, so the two never become one group. DEC-XXX then
+        // ordinals differ, so the two never become one group. DEC-195 then
         // keeps one card for the series, with only its own source.
         final onDeck = [
           _episode('a-e4', serverId: 'a', season: 2, episode: 4),
@@ -740,7 +740,7 @@ void main() {
       final onDeck = [
         _episode('a-e4', serverId: 'a', season: 2, episode: 4, viewOffsetMs: 100, lastViewedAt: 300),
         _episode('b-e4', serverId: 'b', season: 2, episode: 4, viewOffsetMs: 800, lastViewedAt: 200, serverName: 'JF'),
-        // Another series, so DEC-XXX's one card per series leaves both cards.
+        // Another series, so DEC-195's one card per series leaves both cards.
         _episode(
           'a-e5',
           serverId: 'a',
@@ -906,7 +906,7 @@ void main() {
 
       final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
 
-      // b-e5 never joins episode 4; DEC-XXX's one card per series then keeps
+      // b-e5 never joins episode 4; DEC-195's one card per series then keeps
       // the first of the equally dated cards.
       expect(row.groups.single.sources.map((s) => s.item.id).toSet(), {'a-double', 'b-e4'});
     });

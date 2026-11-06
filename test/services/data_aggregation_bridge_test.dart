@@ -549,7 +549,7 @@ void main() {
       expect(result.succeededServerIds, {'plex-1'});
     });
 
-    // DEC-XXX: same show, same show tvdb, two episode numbers. One Continue
+    // DEC-195: same show, same show tvdb, two episode numbers. One Continue
     // Watching row per series: the most recently watched episode stays and the
     // other is dropped, never folded into it as a second source.
     test('getOnDeckFromAllServers keeps only the newest of two episodes of one proven show', () async {
@@ -629,7 +629,7 @@ void main() {
 
       final result = await service.getOnDeckFromAllServers(limit: 10);
 
-      expect(result.items.map((item) => item.id), ['episode-s2e5'], reason: 'DEC-XXX: one entry per series');
+      expect(result.items.map((item) => item.id), ['episode-s2e5'], reason: 'DEC-195: one entry per series');
     });
 
     test('getOnDeckFromAllServers keeps duplicate titles without stable ids', () async {

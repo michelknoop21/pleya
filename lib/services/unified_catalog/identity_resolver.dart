@@ -236,7 +236,7 @@ Future<void> _runBounded(List<int> indices, int maxConcurrent, Future<void> Func
 // Hoofdstuk 11.8: Verder kijken groups on the **exact episode**:
 // `show identity + season + episode`. Two servers holding the viewer at
 // S02E04 are one card with two sources. S02E04 on one server and S02E05 on
-// another are never one group; since DEC-XXX the row shows only the most
+// another are never one group; since DEC-195 the row shows only the most
 // recently watched of them ([oneContinueWatchingCardPerSeries]), and only
 // when a shared series number proves they are the same series.
 //
@@ -305,7 +305,7 @@ String? continueWatchingOrdinal(MediaItem item) {
 ///
 /// An episode buckets on its series, not on its ordinal, so two different
 /// episodes of one series on two servers still buy the series numbers that
-/// [oneContinueWatchingCardPerSeries] needs (DEC-XXX). The bucket only decides
+/// [oneContinueWatchingCardPerSeries] needs (DEC-195). The bucket only decides
 /// who is worth a lookup; the tokens stay narrowed to the exact episode.
 ///
 /// Returns null for an episode or season whose ordinal is unknown: it has no
@@ -346,7 +346,7 @@ ExternalIdTarget? continueWatchingExternalIdTarget(MediaItem item) {
   return (serverId: serverId, targetId: targetId);
 }
 
-/// One Verder kijken card per series (DEC-XXX): of the episode groups whose
+/// One Verder kijken card per series (DEC-195): of the episode groups whose
 /// series is proven the same, only the most recently watched one stays. Each
 /// backend already keeps one episode per series in its own row; this applies
 /// that rule across servers.

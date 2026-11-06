@@ -952,7 +952,7 @@ void main() {
     );
 
     test('another episode of the same proven series is one card: the most recently watched episode wins', () async {
-      // DEC-XXX: one card per series across servers. The Pleya Server copy
+      // DEC-195: one card per series across servers. The Pleya Server copy
       // was watched in 2026, the Plex one in 2023, so S2E4 on Pleya Server stays.
       for (final (season, episode) in [(1, 4), (2, 5), (1, 14)]) {
         final onDeck = [plexEpisode(season: season, episode: episode), ...await pleya.fetchContinueWatching()];

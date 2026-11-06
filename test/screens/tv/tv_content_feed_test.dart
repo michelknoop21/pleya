@@ -675,7 +675,7 @@ void main() {
 
   group('Continue Watching (fase-8 brief §14)', () {
     testWidgets('two episodes of one proven show are one card holding one episode', (tester) async {
-      // DEC-XXX: one Verder kijken card per series. Both rows resolve the same
+      // DEC-195: one Verder kijken card per series. Both rows resolve the same
       // series tmdb and tvdb, so one card stays; the exact-episode identity of
       // hoofdstuk 11.8 still keeps the other episode out of it as a source.
       await boot(

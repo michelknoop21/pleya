@@ -931,7 +931,7 @@ verantwoordelijk. Watchprogress wordt niet automatisch tussen sterk afwijkende e
 
 Series groepeert op series-identiteit. Verder kijken groepeert op exacte aflevering:
 `show identity + season + episode`. Twee verschillende afleveringen worden nooit één groep. Sinds
-DEC-XXX (één kaart per serie in Verder kijken) toont de rij per serie één kaart: staan twee servers
+DEC-195 (één kaart per serie in Verder kijken) toont de rij per serie één kaart: staan twee servers
 op verschillende afleveringen van een bewezen dezelfde serie (een gedeeld seriesnummer, nooit alleen
 de titel), dan blijft alleen de laatst bekeken aflevering staan.
 

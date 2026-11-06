@@ -5658,10 +5658,10 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 
 **Consequences:** Punt 3 van DEC-167 is hiermee vervallen; de rest van DEC-167 blijft staan. Bord `A13` (ring op Instellingen terwijl Mijn Pleya actief blijft) is geen doelbeeld meer, en voor `A14` geldt punt 6. `tvos.nav.focus-switches-destination` en `tvos.nav.walk` toetsen na elke echte HID-druk `active: true` op de pil met focus; de referentiegate van DEC-120 houdt de `active`-state als invariant. De Verify-scenario's die na een pijl nog Select en DOWN drukten, drukken nu één van de twee. Simulatorbewijs is geen hardware-acceptatie: of een vastgehouden pijl op de Siri Remote soepel over de balk loopt, staat als HARDWARE ONLY in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen TV-navigatie (Apple TV en Android TV), geen backend, protocol of datamodel.
 
-## DEC-XXX: Eén kaart per serie in Verder kijken, de laatst bekeken aflevering wint
+## DEC-195: Eén kaart per serie in Verder kijken, de laatst bekeken aflevering wint
 
 **Date:** 2026-11-06
-**Status:** accepted (Michel Knoop, 6 november 2026). Het nummer volgt bij de merge (AGENTS.md).
+**Status:** accepted (Michel Knoop, 6 november 2026).
 **Roadmap:** A-07
 
 **Context:** Op de Apple TV (build 446) stond American Hostage twee keer naast elkaar in Verder kijken: Plex en Pleya Server stonden op verschillende afleveringen. Hoofdstuk 11.8 groepeert op exacte aflevering, dus twee afleveringen waren twee kaarten. Binnen één server hield elke backend al maar één aflevering per serie over (`mergeContinueWatchingAndNextUp`), over servers heen niet. De identiteit was niet het probleem: log `zvu4o` toont dat de voortgangsspiegeling Plex en Pleya Server voor deze serie al op providernummer koppelt.

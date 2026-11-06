@@ -211,7 +211,7 @@ void main() {
       expect(continueWatchingScope(_movie('m')), 'movie');
     });
 
-    test('the bucket key is the series, so two episodes of one series both buy its numbers (DEC-XXX)', () {
+    test('the bucket key is the series, so two episodes of one series both buy its numbers (DEC-195)', () {
       final e4 = continueWatchingBucketKey(_episode('a', season: 2, episode: 4));
 
       expect(e4, 'episode:harbourlight');
@@ -297,7 +297,7 @@ void main() {
       expect(_tokenKeys(evidence.single.strongTokens), {'episode:guid:plex://episode/5d9c08'});
     });
 
-    test('a season row is scoped at its own season and bucketed on its show (DEC-XXX)', () {
+    test('a season row is scoped at its own season and bucketed on its show (DEC-195)', () {
       final s1 = MediaItem(
         id: 's1',
         backend: MediaBackend.plex,

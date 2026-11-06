@@ -440,7 +440,7 @@ void main() {
     });
 
     test('D1: two episodes of one proven series on two servers are one card, never one folded group', () async {
-      // DEC-XXX: both rows resolve the same series tmdb, so the row shows one
+      // DEC-195: both rows resolve the same series tmdb, so the row shows one
       // card per series. The ordinal still keeps the two episodes from becoming
       // one group: the card carries a single episode, not both as sources.
       registerServerWithShowIds('server_1', {'show-1': const ExternalIds(tmdb: 95396)});
