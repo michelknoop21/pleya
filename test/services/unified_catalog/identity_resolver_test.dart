@@ -211,15 +211,12 @@ void main() {
       expect(continueWatchingScope(_movie('m')), 'movie');
     });
 
-    test('the bucket key carries the season and episode, so two episodes never share one', () {
+    test('the bucket key is the series, so two episodes of one series both buy its numbers (DEC-195)', () {
       final e4 = continueWatchingBucketKey(_episode('a', season: 2, episode: 4));
-      final e5 = continueWatchingBucketKey(_episode('b', season: 2, episode: 5));
-      final s1e4 = continueWatchingBucketKey(_episode('c', season: 1, episode: 4));
 
-      expect(e4, 'episode:harbourlight:s2e4');
-      expect(e4, isNot(e5));
-      expect(e4, isNot(s1e4));
-      expect(continueWatchingBucketKey(_episode('d', season: 2, episode: 4)), e4);
+      expect(e4, 'episode:harbourlight');
+      expect(continueWatchingBucketKey(_episode('b', season: 2, episode: 5)), e4);
+      expect(continueWatchingBucketKey(_episode('c', season: 1, episode: 4)), e4);
     });
 
     test('D6/D7: an episode with no usable ordinal has no bucket at all, so it never buys a series id', () async {
@@ -262,11 +259,9 @@ void main() {
     });
 
     test('E: two episodes forced into one bucket still get different tokens from one series id', () async {
-      // The bucket key already separates S02E04 from S02E05, so the fetch
-      // normally never happens. This forces it anyway — a hand-made shared
-      // bucket override — to prove the *token* is the second line of defence
-      // and not just an artefact of the bucket: give both rows the identical
-      // series tmdb AND tvdb and they must still disagree.
+      // A hand-made shared bucket override proves the *token* keeps two
+      // episodes apart, not the bucket: give both rows the identical series
+      // tmdb AND tvdb and they must still disagree.
       final resolver = UnifiedIdentityResolver(
         fetchExternalIds: (_, _) async => const ExternalIds(tmdb: 95396, tvdb: 371980),
       );
@@ -302,7 +297,7 @@ void main() {
       expect(_tokenKeys(evidence.single.strongTokens), {'episode:guid:plex://episode/5d9c08'});
     });
 
-    test('a season row is scoped and bucketed at its own season, not at its show', () {
+    test('a season row is scoped at its own season and bucketed on its show (DEC-195)', () {
       final s1 = MediaItem(
         id: 's1',
         backend: MediaBackend.plex,
@@ -315,8 +310,8 @@ void main() {
       final s2 = s1.copyWith(id: 's2', index: 2);
 
       expect(continueWatchingScope(s1), 'season');
-      expect(continueWatchingBucketKey(s1), 'season:harbourlight:s1');
-      expect(continueWatchingBucketKey(s2), isNot(continueWatchingBucketKey(s1)));
+      expect(continueWatchingBucketKey(s1), 'season:harbourlight');
+      expect(continueWatchingBucketKey(s2), continueWatchingBucketKey(s1));
       expect(continueWatchingOrdinal(s2), 's2');
     });
 

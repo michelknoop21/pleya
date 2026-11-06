@@ -5657,3 +5657,19 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 7. Een pagina die buiten de balk wisselt terwijl de ring in de balk staat (Menu naar Home, een uitgestelde startsectie, de companion-remote), neemt de ring mee naar haar pil. Op Android TV, waar de pil van de pagina pas een frame na de balkscope focus krijgt, wisselt de pil die de scope onthield in dat frame niets (review 593). De eigen, uitgestelde paginawissel van de ring neemt de ring niet mee terug: staat hij na een snelle sweep al op de avatar, dan blijft hij daar (review 593 I-1).
 
 **Consequences:** Punt 3 van DEC-167 is hiermee vervallen; de rest van DEC-167 blijft staan. Bord `A13` (ring op Instellingen terwijl Mijn Pleya actief blijft) is geen doelbeeld meer, en voor `A14` geldt punt 6. `tvos.nav.focus-switches-destination` en `tvos.nav.walk` toetsen na elke echte HID-druk `active: true` op de pil met focus; de referentiegate van DEC-120 houdt de `active`-state als invariant. De Verify-scenario's die na een pijl nog Select en DOWN drukten, drukken nu één van de twee. Simulatorbewijs is geen hardware-acceptatie: of een vastgehouden pijl op de Siri Remote soepel over de balk loopt, staat als HARDWARE ONLY in [`docs/tvos-fysieke-correctieronde.md`](tvos-fysieke-correctieronde.md). Unified impact: alleen TV-navigatie (Apple TV en Android TV), geen backend, protocol of datamodel.
+
+## DEC-195: Eén kaart per serie in Verder kijken, de laatst bekeken aflevering wint
+
+**Date:** 2026-11-06
+**Status:** accepted (Michel Knoop, 6 november 2026).
+**Roadmap:** A-07
+
+**Context:** Op de Apple TV (build 446) stond American Hostage twee keer naast elkaar in Verder kijken: Plex en Pleya Server stonden op verschillende afleveringen. Hoofdstuk 11.8 groepeert op exacte aflevering, dus twee afleveringen waren twee kaarten. Binnen één server hield elke backend al maar één aflevering per serie over (`mergeContinueWatchingAndNextUp`), over servers heen niet. De identiteit was niet het probleem: log `zvu4o` toont dat de voortgangsspiegeling Plex en Pleya Server voor deze serie al op providernummer koppelt.
+
+**Besluit:**
+1. Verder kijken toont per serie één kaart, over alle servers heen. Van de afleveringen van een bewezen dezelfde serie blijft alleen de laatst bekeken staan (`recencySortKey`).
+2. Bewezen betekent een gedeeld seriesnummer (tmdb, tvdb of imdb) en geen tegenstrijdig nummer. Dezelfde titel alleen is nooit genoeg, ook niet bij hetzelfde jaar.
+3. Twee verschillende afleveringen worden geen groep: de oudere kaart valt weg en geeft haar bron niet aan de nieuwere. Dezelfde aflevering op twee servers blijft één kaart met twee bronnen, zoals hoofdstuk 11.8 al zei.
+4. Om het seriesnummer te kennen, deelt een aflevering de opzoekemmer met haar serie in plaats van met haar exacte aflevering. De tokens blijven per aflevering. Een aflevering zonder seizoen- of afleveringsnummer koopt nog steeds geen seriesnummer.
+
+**Consequences:** Een serie waarvan één server geen bewezen nummer heeft, blijft twee kaarten tonen tot die server matcht. Rij-ordening en labels (DEC-177) zijn ongewijzigd en lezen de overgebleven kaart. **Unified impact:** gedeelde eigenaar is `oneContinueWatchingCardPerSeries` in `identity_resolver.dart`, aangeroepen door `DataAggregationService` en `HomeProjectionService`; geldt voor Plex, Jellyfin, Emby en Pleya Server, lokale mappen en Pleya Share blijven ongemerged. Geen protocolwijziging. Bewijs in `test/services/unified_catalog/unified_pleya_server_test.dart` en `identity_resolver_test.dart`.

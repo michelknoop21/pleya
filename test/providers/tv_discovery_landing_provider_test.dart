@@ -439,11 +439,10 @@ void main() {
       expect(sources.map((s) => (s.item.parentIndex, s.item.index)).toSet(), {(2, 4)});
     });
 
-    test('D1: two episodes of one series on two servers stay two cards', () async {
-      // The other half of D1, and the regression that catches the old
-      // series-wide fold: both rows resolve the *same* series tmdb, and both
-      // carry the same show title and show id. Only the episode ordinal
-      // separates them, and it has to be enough.
+    test('D1: two episodes of one proven series on two servers are one card, never one folded group', () async {
+      // DEC-195: both rows resolve the same series tmdb, so the row shows one
+      // card per series. The ordinal still keeps the two episodes from becoming
+      // one group: the card carries a single episode, not both as sources.
       registerServerWithShowIds('server_1', {'show-1': const ExternalIds(tmdb: 95396)});
       registerServerWithShowIds('server_2', {'show-1': const ExternalIds(tmdb: 95396)});
       aggregation.onDeckResult = () => [
@@ -456,11 +455,8 @@ void main() {
       await _settleHome(home);
 
       final cw = home.continueWatching!;
-      expect(cw.groups, hasLength(2), reason: 'S02E04 and S02E05 are two Continue Watching entries');
-      expect(
-        {for (final g in cw.groups) (g.representativeSource.item.parentIndex, g.representativeSource.item.index)},
-        {(2, 4), (2, 5)},
-      );
+      expect(cw.groups, hasLength(1), reason: 'one Continue Watching card per series');
+      expect(cw.groups.single.sources, hasLength(1));
     });
 
     test('two series with no shared identity stay two cards', () async {

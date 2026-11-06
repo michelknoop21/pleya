@@ -6,6 +6,7 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
+import '../media/unified/identity_evidence.dart';
 import '../media/unified/unified_media_source.dart';
 import '../services/unified_catalog/grouping_service.dart';
 import '../services/unified_catalog/identity_resolver.dart';
@@ -401,14 +402,19 @@ class DataAggregationService {
     };
 
     final originalIndexOf = <String, int>{};
+    final evidenceBySourceKey = <String, IdentityEvidence>{};
     final candidates = <GroupingCandidate>[];
     for (var i = 0; i < items.length; i++) {
       if (malformedIndexes.contains(i)) continue;
       final source = UnifiedMediaSource.fromItem(items[i]);
       originalIndexOf[source.sourceKey] = i;
+      evidenceBySourceKey[source.sourceKey] = evidence[i];
       candidates.add(GroupingCandidate(source: source, evidence: evidence[i]));
     }
-    final groups = groupUnifiedMediaSources(candidates, allowWeakFallback: false);
+    final groups = oneContinueWatchingCardPerSeries(
+      groupUnifiedMediaSources(candidates, allowWeakFallback: false),
+      evidenceBySourceKey,
+    );
 
     // `sources` preserves candidates' original (recency-sorted) order, so the
     // first source in each group is the one with the highest recency —

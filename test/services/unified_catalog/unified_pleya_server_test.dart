@@ -951,7 +951,9 @@ void main() {
       },
     );
 
-    test('a different season or episode number is another card, never an equal by assumption', () async {
+    test('another episode of the same proven series is one card: the most recently watched episode wins', () async {
+      // DEC-195: one card per series across servers. The Pleya Server copy
+      // was watched in 2026, the Plex one in 2023, so S2E4 on Pleya Server stays.
       for (final (season, episode) in [(1, 4), (2, 5), (1, 14)]) {
         final onDeck = [plexEpisode(season: season, episode: episode), ...await pleya.fetchContinueWatching()];
 
@@ -959,8 +961,20 @@ void main() {
           fetchExternalIds: idsFor,
         ).projectContinueWatching(onDeck, title: 'Verder kijken');
 
-        expect(row.groups, hasLength(2), reason: 'S${season}E$episode');
+        expect(row.groups, hasLength(1), reason: 'S${season}E$episode');
+        expect(row.groups.single.sources.single.item.id, 'ps-sev-s2e4');
       }
+    });
+
+    test('another episode without a series number from the server stays its own card', () async {
+      fake.items['ps-sev']!['external_ids'] = null;
+      final onDeck = [plexEpisode(season: 2, episode: 5), ...await pleya.fetchContinueWatching()];
+
+      final row = await HomeProjectionService(
+        fetchExternalIds: idsFor,
+      ).projectContinueWatching(onDeck, title: 'Verder kijken');
+
+      expect(row.groups, hasLength(2), reason: 'the same title alone never folds two series');
     });
 
     test('without a number from the server the two episodes stay two cards', () async {
