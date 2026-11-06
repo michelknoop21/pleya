@@ -10,6 +10,7 @@ import '../services/download_artwork_helpers.dart';
 import '../services/image_cache_service.dart';
 import '../utils/home_hero_layout.dart';
 import '../utils/media_image_helper.dart';
+import 'hero_focus_crop.dart';
 import 'optimized_media_image.dart' show blurArtwork;
 
 /// The home hero's artwork: a full-hero ambient wash beneath a smaller,
@@ -31,6 +32,7 @@ class HomeHeroArtwork extends StatelessWidget {
     required this.art,
     required this.geometry,
     this.scrollController,
+    this.focusCrop = false,
   });
 
   static const Key artworkKey = Key('home-hero-artwork');
@@ -202,6 +204,10 @@ class HomeHeroArtwork extends StatelessWidget {
   final BillboardArt art;
   final HomeHeroArtGeometry geometry;
   final ScrollController? scrollController;
+
+  /// Shift a full-bleed (`coversHero`) crop to the image's salient point, see
+  /// [HeroFocusCrop]. Only the iPhone Home card sets it.
+  final bool focusCrop;
 
   /// Alpha mask for the sharp layer's bottom blend into the ambient layer
   /// beneath it. `BlendMode.dstIn` keeps the sharp layer wherever this
@@ -401,7 +407,7 @@ class HomeHeroArtwork extends StatelessWidget {
     required String cacheKey,
     required int memHeight,
   }) {
-    final image = CachedNetworkImage(
+    Widget imageAt(Alignment alignment) => CachedNetworkImage(
       imageUrl: imageUrl,
       cacheKey: cacheKey,
       cacheManager: PlexImageCacheManager.instance,
@@ -410,12 +416,21 @@ class HomeHeroArtwork extends StatelessWidget {
       // already sized to the source's own ratio (see `homeHeroArtGeometry`),
       // so `contain` there is crop-free rather than a no-op.
       fit: geometry.coversHero ? BoxFit.cover : BoxFit.contain,
-      alignment: Alignment.topCenter,
+      alignment: alignment,
       memCacheHeight: memHeight,
       placeholder: (context, url) => ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
       errorBuilder: (context, error, stackTrace) =>
           ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest),
     );
+
+    final image = focusCrop && geometry.coversHero && geometry.sharpHeight > 0
+        ? HeroFocusCrop(
+            imageUrl: imageUrl,
+            cacheKey: cacheKey,
+            boxAspect: geometry.sharpWidth / geometry.sharpHeight,
+            builder: imageAt,
+          )
+        : imageAt(Alignment.topCenter);
 
     final rendered = blurArtwork(
       art.shouldBlur ? ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: image) : image,

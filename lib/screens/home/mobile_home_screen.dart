@@ -10,6 +10,7 @@
 /// deviation, not an oversight.
 library;
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show SliverConstraints;
 import 'package:provider/provider.dart';
@@ -94,6 +95,9 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
           height: height,
           onPlay: _play,
           onSecondaryAction: _openDetails,
+          // iPhone only: this screen is the phone Home, and the Vision
+          // channel lives in the iOS Runner.
+          focusCrop: defaultTargetPlatform == TargetPlatform.iOS,
         ),
       ),
     );

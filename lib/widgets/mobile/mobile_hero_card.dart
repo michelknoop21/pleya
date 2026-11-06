@@ -48,6 +48,10 @@ class MobileHeroCard extends StatefulWidget {
   /// Where a hardware keyboard leaves this card. Null keeps the buttons plain.
   final MobileHeroKeyboardRoute? keyboardRoute;
 
+  /// Crop each backdrop around its salient point (on-device Vision, iOS).
+  /// Set by the iPhone Home only; the iPad's card keeps the plain crop.
+  final bool focusCrop;
+
   const MobileHeroCard({
     super.key,
     required this.groups,
@@ -59,6 +63,7 @@ class MobileHeroCard extends StatefulWidget {
     this.onActiveGroupChanged,
     this.hideSpoilers = false,
     this.keyboardRoute,
+    this.focusCrop = false,
   });
 
   @override
@@ -237,6 +242,7 @@ class MobileHeroCardState extends State<MobileHeroCard> {
                     onPlay: () => widget.onPlay(widget.groups[index]),
                     onSecondaryAction: () => widget.onSecondaryAction(widget.groups[index]),
                     hideSpoilers: widget.hideSpoilers,
+                    focusCrop: widget.focusCrop,
                     focus: _actionFocus(index),
                   ),
                 ),
@@ -262,6 +268,7 @@ class _MobileHeroSlide extends StatelessWidget {
   final VoidCallback onPlay;
   final VoidCallback onSecondaryAction;
   final bool hideSpoilers;
+  final bool focusCrop;
   final MobileHeroActionFocus? focus;
 
   const _MobileHeroSlide({
@@ -271,6 +278,7 @@ class _MobileHeroSlide extends StatelessWidget {
     required this.onPlay,
     required this.onSecondaryAction,
     required this.hideSpoilers,
+    required this.focusCrop,
     this.focus,
   });
 
@@ -295,7 +303,7 @@ class _MobileHeroSlide extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         if (billboardArt != null)
-          HomeHeroArtwork(client: client, art: billboardArt, geometry: geometry)
+          HomeHeroArtwork(client: client, art: billboardArt, geometry: geometry, focusCrop: focusCrop)
         else
           ColoredBox(color: tokens(context).surfaceElevated),
         DecoratedBox(
