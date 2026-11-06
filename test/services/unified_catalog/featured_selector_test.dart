@@ -1,5 +1,5 @@
 /// Covers hoofdstuk 9.5's selection rules: films and series only, unique
-/// groups, no unreleased title, and an exactly reproducible list for a given
+/// groups, and an exactly reproducible list for a given
 /// input — fase 8 has to be able to reason about which slide is which.
 library;
 
@@ -13,8 +13,6 @@ import 'package:pleya/media/unified/unified_media_hub.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/services/unified_catalog/featured_selector.dart';
-
-final _asOf = DateTime.utc(2026, 8, 30);
 
 MediaItem _item(
   String id, {
@@ -61,7 +59,7 @@ void main() {
         _hub('recentFilms', [_movie('3', title: 'Sicario', year: 2015)]),
       ];
 
-      final selected = const FeaturedSelector().select(hubs, now: _asOf);
+      final selected = const FeaturedSelector().select(hubs);
 
       expect([for (final group in selected) group.representativeSource.item.title], ['Dune', 'Arrival', 'Sicario']);
     });
@@ -74,8 +72,8 @@ void main() {
         ]),
       ];
 
-      final first = const FeaturedSelector().select(hubs, now: _asOf);
-      final second = const FeaturedSelector().select(hubs, now: _asOf);
+      final first = const FeaturedSelector().select(hubs);
+      final second = const FeaturedSelector().select(hubs);
 
       expect([for (final g in first) g.groupId], [for (final g in second) g.groupId]);
       expect([for (final g in first) g.groupId], ['group:server-a:1', 'group:server-a:2', 'group:server-a:4']);
@@ -86,8 +84,8 @@ void main() {
         _hub('topPicks', [for (var i = 0; i < 20; i++) _movie('$i', title: 'Film $i', year: 2000 + i)]),
       ];
 
-      expect(const FeaturedSelector().select(hubs, now: _asOf), hasLength(12));
-      expect(const FeaturedSelector(maxCount: 5).select(hubs, now: _asOf), hasLength(5));
+      expect(const FeaturedSelector().select(hubs), hasLength(12));
+      expect(const FeaturedSelector(maxCount: 5).select(hubs), hasLength(5));
     });
 
     test('returns fewer than five rather than inventing slides', () {
@@ -95,7 +93,7 @@ void main() {
         _hub('topPicks', [_movie('1', title: 'Dune'), _movie('2', title: 'Arrival', year: 2016)]),
       ];
 
-      expect(const FeaturedSelector().select(hubs, now: _asOf), hasLength(2));
+      expect(const FeaturedSelector().select(hubs), hasLength(2));
     });
 
     test('the same group reaching the selector from two rows is one slide', () {
@@ -105,7 +103,7 @@ void main() {
         _hub('recentFilms', [dune]),
       ];
 
-      expect(const FeaturedSelector().select(hubs, now: _asOf), hasLength(1));
+      expect(const FeaturedSelector().select(hubs), hasLength(1));
     });
 
     test('two groups that share a concrete source are one slide', () {
@@ -120,7 +118,7 @@ void main() {
         ]),
       ];
 
-      final selected = const FeaturedSelector().select(hubs, now: _asOf);
+      final selected = const FeaturedSelector().select(hubs);
 
       expect(selected, hasLength(1));
       expect(selected.single.groupId, 'group:one');
@@ -132,7 +130,7 @@ void main() {
         _hub('recentFilms', [_movie('2', title: 'Dune', year: 2021, serverId: 'server-b')]),
       ];
 
-      expect(const FeaturedSelector().select(hubs, now: _asOf), hasLength(1));
+      expect(const FeaturedSelector().select(hubs), hasLength(1));
     });
 
     test('a loose episode is never a hero slide', () {
@@ -143,13 +141,13 @@ void main() {
         ]),
       ];
 
-      final selected = const FeaturedSelector().select(hubs, now: _asOf);
+      final selected = const FeaturedSelector().select(hubs);
 
       expect(selected, hasLength(1));
       expect(selected.single.representativeSource.item.kind, MediaKind.movie);
     });
 
-    test('a title with a future release date is not featured', () {
+    test('a playable title with a future release date is still featured', () {
       final hubs = [
         _hub('topPicks', [
           _groupOf([
@@ -165,19 +163,19 @@ void main() {
         ]),
       ];
 
-      final selected = const FeaturedSelector().select(hubs, now: _asOf);
+      final selected = const FeaturedSelector().select(hubs);
 
-      expect([for (final g in selected) g.representativeSource.item.title], ['Arrival']);
+      expect([for (final g in selected) g.representativeSource.item.title], ['Dune Part Three', 'Arrival']);
     });
 
-    test('a release year beyond the current one is caught even without a date', () {
+    test('a release year beyond the current one is still featured', () {
       final hubs = [
         _hub('topPicks', [_movie('1', title: 'Ghost Release', year: 2031), _movie('2', title: 'Arrival', year: 2016)]),
       ];
 
-      final selected = const FeaturedSelector().select(hubs, now: _asOf);
+      final selected = const FeaturedSelector().select(hubs);
 
-      expect([for (final g in selected) g.representativeSource.item.title], ['Arrival']);
+      expect([for (final g in selected) g.representativeSource.item.title], ['Ghost Release', 'Arrival']);
     });
 
     test('a title released earlier this year is still featured', () {
@@ -189,7 +187,7 @@ void main() {
         ]),
       ];
 
-      expect(const FeaturedSelector().select(hubs, now: _asOf), hasLength(1));
+      expect(const FeaturedSelector().select(hubs), hasLength(1));
     });
 
     test('an item without a usable title is skipped', () {
@@ -200,14 +198,14 @@ void main() {
         ]),
       ];
 
-      final selected = const FeaturedSelector().select(hubs, now: _asOf);
+      final selected = const FeaturedSelector().select(hubs);
 
       expect([for (final g in selected) g.representativeSource.item.title], ['Arrival']);
     });
 
     test('no candidates at all yields no slides', () {
-      expect(const FeaturedSelector().select(const [], now: _asOf), isEmpty);
-      expect(const FeaturedSelector().select([_hub('topPicks', const [])], now: _asOf), isEmpty);
+      expect(const FeaturedSelector().select(const []), isEmpty);
+      expect(const FeaturedSelector().select([_hub('topPicks', const [])]), isEmpty);
     });
   });
 }

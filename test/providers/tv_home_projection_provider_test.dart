@@ -269,10 +269,10 @@ void main() {
   });
 
   test('a hero with no eligible recent film is empty rather than padded from hubs', () async {
-    // Every recent "film" is unreleased metadata, so FeaturedSelector rejects
-    // all of them; hoofdstuk 9.5's fallback is DiscoverScreen's on-deck/hub
+    // Every recent "film" is untitled, so FeaturedSelector rejects all of
+    // them; hoofdstuk 9.5's fallback is DiscoverScreen's on-deck/hub
     // billboard, not a hub-filled rotation claiming to be new releases.
-    aggregation.latestMoviesResult = () => [_movie('m1', title: 'Next Year', year: DateTime.now().year + 3)];
+    aggregation.latestMoviesResult = () => [_movie('m1', title: '   ')];
     aggregation.hubsResult = () => [
       _hub('top-picks', items: [_movie('h1', title: 'Top Pick One')]),
     ];

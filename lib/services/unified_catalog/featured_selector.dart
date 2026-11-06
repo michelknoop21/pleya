@@ -15,7 +15,6 @@
 /// and the picker like every other card (hoofdstuk 4.4).
 library;
 
-import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
@@ -45,11 +44,7 @@ class FeaturedSelector {
   /// [candidateHubs] is expected to be the bounded set the caller already
   /// projected. This selector never loads anything, and in particular never
   /// walks the complete catalogue looking for a better hero.
-  ///
-  /// [now] decides what counts as unreleased; it is injected so a given
-  /// input always produces the same list.
-  List<UnifiedMediaGroup> select(List<UnifiedMediaHub> candidateHubs, {DateTime? now}) {
-    final asOf = now ?? DateTime.now();
+  List<UnifiedMediaGroup> select(List<UnifiedMediaHub> candidateHubs) {
     final selected = <UnifiedMediaGroup>[];
     final seenGroupIds = <String>{};
     final seenSourceKeys = <String>{};
@@ -58,7 +53,7 @@ class FeaturedSelector {
     for (final hub in candidateHubs) {
       for (final group in hub.groups) {
         if (selected.length >= maxCount) return selected;
-        if (!_isEligible(group, asOf)) continue;
+        if (!_isEligible(group)) continue;
         if (_isDuplicate(group, seenGroupIds, seenSourceKeys, seenBucketKeys)) continue;
 
         seenGroupIds.add(group.groupId);
@@ -72,24 +67,13 @@ class FeaturedSelector {
   }
 
   /// Hoofdstuk 9.5: films and series only — never a loose episode — with a
-  /// usable title, and never a title the metadata claims is still unreleased.
-  bool _isEligible(UnifiedMediaGroup group, DateTime asOf) {
+  /// usable title. A title in a library is playable, so a future release
+  /// date does not disqualify it.
+  bool _isEligible(UnifiedMediaGroup group) {
     final item = group.representativeSource.item;
     if (item.kind != MediaKind.movie && item.kind != MediaKind.show) return false;
     if ((item.title ?? '').trim().isEmpty) return false;
-    return !_isUnreleased(item, asOf);
-  }
-
-  /// A release date in the future, or a release *year* beyond the current
-  /// one. Both are checked because the two arrive from different places and
-  /// a wrong one is common: hoofdstuk 9.5 calls this out as "geen
-  /// unreleased titel door foute toekomstige metadata", so the stricter of
-  /// the two available signals wins.
-  bool _isUnreleased(MediaItem item, DateTime asOf) {
-    final available = DateTime.tryParse((item.originallyAvailableAt ?? '').trim());
-    if (available != null && available.isAfter(asOf)) return true;
-    final year = item.year;
-    return year != null && year > asOf.year;
+    return true;
   }
 
   /// A title already on a slide never gets a second one — including when it
