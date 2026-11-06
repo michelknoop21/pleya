@@ -83,7 +83,11 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     PlexApiCache.initialize(db);
-    PleyaServerApiCache.initialize(db);
+    // The default encoder hops to a real isolate, which takes wall-clock time that
+    // sync()'s event-queue pump cannot wait for: the fetch behind an own-play
+    // announcement could land after the expectations. Encoding inline keeps the
+    // whole chain on this isolate, so the pump settles it every time.
+    PleyaServerApiCache.initializeWithEncoder(db, (data) async => jsonEncode(data));
     manager = MultiServerManager();
     heard = [];
     told = [];
