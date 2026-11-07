@@ -241,6 +241,11 @@ func TestChildren(t *testing.T) {
 	if len(seasons.Items) != 2 {
 		t.Fatalf("%d seizoenen, verwacht 2", len(seasons.Items))
 	}
+	// Zonder totaal kan de offline catalogus van de app een serie nooit als
+	// compleet vastleggen ("Snapshot count is unavailable").
+	if seasons.TotalEstimate == nil || *seasons.TotalEstimate != 2 {
+		t.Fatalf("total_estimate van de seizoenen is %v, verwacht 2", seasons.TotalEstimate)
+	}
 
 	var episodes api.ItemPage
 	e.getJSON("/pleya/v1/items/"+seasons.Items[0].ID+"/children", "", http.StatusOK, &episodes)
@@ -260,6 +265,9 @@ func TestChildren(t *testing.T) {
 	e.getJSON("/pleya/v1/items/"+movies.Items[0].ID+"/children", "", http.StatusOK, &empty)
 	if len(empty.Items) != 0 {
 		t.Fatalf("een film leverde %d kinderen op", len(empty.Items))
+	}
+	if empty.TotalEstimate == nil || *empty.TotalEstimate != 0 {
+		t.Fatalf("total_estimate van een film is %v, verwacht 0", empty.TotalEstimate)
 	}
 }
 
