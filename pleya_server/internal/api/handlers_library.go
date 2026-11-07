@@ -204,17 +204,28 @@ func (s *Server) handleChildren(w http.ResponseWriter, r *http.Request) {
 	}
 
 	limit, _ := queryInt(r, "limit")
-	page, err := s.opts.Catalog.Items(r.Context(), catalog.Query{
+	query := catalog.Query{
 		ParentID: &itemID,
 		Sort:     catalog.SortIndex,
 		Cursor:   cursor,
 		Limit:    limit,
-	})
+	}
+	page, err := s.opts.Catalog.Items(r.Context(), query)
 	if err != nil {
 		s.writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, nil)))
+
+	// Het totaal hoort erbij: de offline catalogus van de app vergelijkt per
+	// ouder het aantal kinderen met wat hij binnenkreeg, en zonder getal kan
+	// hij een serie nooit als compleet vastleggen.
+	query.Cursor = nil
+	total, err := s.opts.Catalog.Count(r.Context(), query)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.hydratePage(r, mapPage(page, &total)))
 }
 
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
