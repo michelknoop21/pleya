@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:ui' show FramePhase;
 
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
+
+import '../focus/focusable_wrapper.dart';
 
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
@@ -96,4 +100,60 @@ void startFrameTimingLog() {
     );
     appLogger.d('FrameTiming: $summary');
   });
+}
+
+/// Writes, per focus change on TV, how long until the frame that shows it was
+/// built. Paired with `AppleTvRemoteTouchService: native keydown` this is the
+/// input latency of a remote press on the device itself, where neither
+/// DevTools nor Instruments reach a Release build. Several focus changes before
+/// one frame log once: they share that frame.
+void startFocusFrameLog() {
+  var pending = false;
+  FocusManager.instance.addListener(() {
+    if (pending || !PlatformDetector.isTV()) return;
+    pending = true;
+    final since = Stopwatch()..start();
+    SchedulerBinding.instance
+      ..addPostFrameCallback((_) {
+        pending = false;
+        appLogger.d(
+          'FocusFrame: +${(since.elapsedMicroseconds / 1000).toStringAsFixed(1)}ms '
+          '${describeFocus(FocusManager.instance.primaryFocus)}',
+        );
+      })
+      ..ensureVisualUpdate();
+  });
+}
+
+/// What holds the focus and where, for a hardware run to check: a step that
+/// skips a card, goes the wrong way, lands off screen or on the wrong first
+/// control. Release builds carry no debug labels, so the identity is the
+/// focusable's automation id and its semantic label (a card's title).
+@visibleForTesting
+String describeFocus(FocusNode? node) {
+  final context = node?.context;
+  if (node == null || context == null) return 'focus=none';
+  final wrapper = context.findAncestorWidgetOfExactType<FocusableWrapper>();
+  final id = [wrapper?.automationId, wrapper?.automationInstance].nonNulls.join('#');
+  final label = (wrapper?.semanticLabel ?? '').replaceAll('"', "'").replaceAll('\n', ' ');
+  String rect;
+  try {
+    final r = node.rect;
+    rect = '${r.left.round()},${r.top.round()},${r.width.round()},${r.height.round()}';
+  } catch (_) {
+    rect = '?';
+  }
+  final view = View.maybeOf(context);
+  final size = view == null ? null : view.physicalSize / view.devicePixelRatio;
+  final viewport = size == null ? '?' : '${size.width.round()}x${size.height.round()}';
+  return 'id=${id.isEmpty ? '-' : id} label="$label" rect=$rect view=$viewport';
+}
+
+/// Writes resident memory and the image cache to the diagnostic log every
+/// [interval] on TV. A long session that grows shows up as a rising series
+/// in an uploaded log, which a single snapshot at the end cannot tell apart
+/// from a large but steady working set.
+Timer? startMemoryCheckpointLog({Duration interval = const Duration(minutes: 5)}) {
+  if (!PlatformDetector.isTV()) return null;
+  return Timer.periodic(interval, (_) => logCheckpoint('MemoryCheckpoint'));
 }

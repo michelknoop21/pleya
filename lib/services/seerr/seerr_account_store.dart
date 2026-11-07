@@ -1,4 +1,5 @@
 import '../base_shared_preferences_service.dart';
+import '../integration_credential_changes.dart';
 import 'seerr_session.dart';
 
 /// Per-Plex-profile persistence for the seerr session, keyed by
@@ -24,13 +25,36 @@ class SeerrAccountStore {
     }
   }
 
-  Future<void> save(String userUuid, SeerrSession session) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.setString(_scopedKey(userUuid), await session.encode());
+  Future<void> save(String userUuid, SeerrSession session, {bool refresh = false}) async {
+    final key = _scopedKey(userUuid);
+    if (refresh) {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      final expected = prefs.getString(key);
+      if (expected == null) return; // A refresh never creates a disconnected binding.
+      final SeerrSession current;
+      try {
+        current = await SeerrSession.decode(expected);
+      } catch (_) {
+        return; // A background refresh cannot repair an unreadable binding.
+      }
+      if (current.baseUrl != session.baseUrl ||
+          current.authMode != session.authMode ||
+          current.apiKey != session.apiKey ||
+          current.email != session.email ||
+          current.password != session.password)
+        return;
+      await IntegrationCredentialChanges.write(
+        key,
+        await session.encode(),
+        source: IntegrationCredentialChangeSource.refresh,
+        expected: {key: expected},
+      );
+    } else {
+      await IntegrationCredentialChanges.write(key, await session.encode());
+    }
   }
 
   Future<void> clear(String userUuid) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.remove(_scopedKey(userUuid));
+    await IntegrationCredentialChanges.write(_scopedKey(userUuid), null);
   }
 }

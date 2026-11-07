@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../media/ids.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
+import '../services/integration_credential_changes.dart';
 import '../models/tautulli/tautulli_models.dart';
 import '../utils/app_logger.dart';
 import '../services/tautulli/tautulli_client.dart';
@@ -30,7 +31,16 @@ typedef TautulliTestResult = ({String? serverName, String? version, TautulliSess
 /// `MultiServerManager.isOwnerOrAdmin`: Tautulli has a single admin key, so
 /// everything it can tell us is admin data.
 class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin implements TautulliImportAccess {
-  final TautulliIntegrationStore _store = TautulliIntegrationStore.instance;
+  TautulliProvider({TautulliIntegrationStore? store}) : _store = store ?? TautulliIntegrationStore.instance {
+    _credentialChanges = IntegrationCredentialChanges.remoteChanges.listen((keys) {
+      if (keys.any((key) => key.startsWith(TautulliIntegrationStore.keyPrefix))) {
+        unawaited(onActiveProfileChanged(_activeUserUuid));
+      }
+    });
+  }
+
+  late final StreamSubscription<Set<String>> _credentialChanges;
+  final TautulliIntegrationStore _store;
 
   /// Every integration on this device, keyed by machine identifier. Device-wide
   /// on purpose: one admin pairing serves every local profile that has the
@@ -210,8 +220,9 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     try {
       // Runs before the load so a just-migrated record is in the map right away.
       await _store.migrateLegacySession(uuid);
-      final integrations = await _store.loadAll();
-      final legacy = await _store.loadLegacySession(uuid);
+      final (integrations, legacy) = await IntegrationCredentialChanges.exclusively(() async {
+        return (await _store.loadAll(), await _store.loadLegacySession(uuid));
+      });
       if (isDisposed || generation != _generation || uuid != _activeUserUuid) return;
 
       _integrations = integrations;
@@ -348,16 +359,16 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// admin policy, so an explicit "off" is not quietly undone by reconnecting.
   /// Only a server never seen here starts on the default.
   Future<void> commit(TautulliSession session) async {
+    final uuid = _activeUserUuid;
+    _generation++;
     final identifier = session.machineIdentifier?.trim() ?? '';
     if (identifier.isEmpty) {
       // Nothing to key a server record on. Keep it profile-scoped, exactly as
       // before; the presence surfaces work and import refuses, which is what an
       // unidentified instance deserves.
       appLogger.w('TautulliProvider: pairing without a server identifier stays profile-scoped');
-      await TautulliIntegrationStore.instance.saveLegacySession(_activeUserUuid, session);
-      _legacySession = session;
-      _rebind();
-      safeNotifyListeners();
+      await TautulliIntegrationStore.instance.saveLegacySession(uuid, session);
+      if (!isDisposed && uuid == _activeUserUuid) await onActiveProfileChanged(uuid);
       return;
     }
     if (!_mayAdminister(identifier)) return;
@@ -366,7 +377,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       session,
       machineIdentifier: identifier,
       existing: _integrations[identifier],
-      configuredByProfileId: _activeUserUuid.isEmpty ? null : _activeUserUuid,
+      configuredByProfileId: uuid.isEmpty ? null : uuid,
     );
     await _store.save(integration);
     // Every profile's legacy blob for this server is now superseded, and
@@ -377,17 +388,16 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     // restart later — and for a household, on whichever launch the *other*
     // profile happens to be active. The credentials in them also have no reason
     // to outlive the pairing they belonged to.
-    final removed = await _store.clearLegacySessionsForServer(identifier);
+    final removed = await IntegrationCredentialChanges.exclusively(
+      () => _store.clearLegacySessionsForServer(identifier),
+    );
     if (removed > 0) {
       appLogger.i('TautulliProvider: dropped $removed superseded profile-scoped pairing(s) for this server');
     }
     // Also the active profile's own, which may predate `pms_identifier` and so
     // would not have matched on the identifier above.
-    await _store.clearLegacySession(_activeUserUuid);
-    _legacySession = null;
-    _integrations = {..._integrations, identifier: integration};
-    _rebind();
-    safeNotifyListeners();
+    await _store.clearLegacySession(uuid);
+    if (!isDisposed && uuid == _activeUserUuid) await onActiveProfileChanged(uuid);
   }
 
   /// Sets the admin policy for the administered integration.
@@ -398,15 +408,16 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     final current = _adminIntegration;
     if (current == null || !_mayAdminister(current.machineIdentifier)) return;
     if (current.useHistoryForRecommendations == enabled) return;
+    final uuid = _activeUserUuid;
+    _generation++;
 
     final updated = current.copyWith(
       useHistoryForRecommendations: enabled,
       policyChangedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
-    await _store.save(updated);
-    _integrations = {..._integrations, updated.machineIdentifier: updated};
+    await _store.save(updated, policyOnly: true);
     appLogger.d('TautulliProvider: history policy for ${_shortIdentifier(updated.machineIdentifier)} set to $enabled');
-    safeNotifyListeners();
+    if (!isDisposed && uuid == _activeUserUuid) await onActiveProfileChanged(uuid);
   }
 
   /// Drops the credential and marks the pairing disconnected, keeping the
@@ -417,6 +428,8 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// kept but stop counting, because a disconnected integration is not an
   /// enabled one.
   Future<void> disconnect() async {
+    final boundUuid = _activeUserUuid;
+    _generation++;
     final current = _adminIntegration;
     if (current == null) {
       // Legacy, profile-scoped pairing.
@@ -431,9 +444,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
     final updated = current.copyWith(clearToken: true, connectionState: TautulliConnectionState.disconnected);
     await _store.save(updated);
-    _integrations = {..._integrations, updated.machineIdentifier: updated};
-    _rebind();
-    safeNotifyListeners();
+    if (!isDisposed && boundUuid == _activeUserUuid) await onActiveProfileChanged(boundUuid);
   }
 
   /// Configuring needs owner rights on the Plex server. Consuming does not:
@@ -535,6 +546,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   @override
   void dispose() {
+    unawaited(_credentialChanges.cancel());
     // Release anything still waiting, or a background import started just
     // before a profile switch keeps a pending future alive for the run.
     _markHydrated();

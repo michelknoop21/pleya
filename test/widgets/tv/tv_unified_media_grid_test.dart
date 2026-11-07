@@ -67,6 +67,7 @@ void main() {
     bool hasMore = false,
     bool isLoadingMore = false,
     VoidCallback? onLoadMore,
+    bool fullBleed = false,
   }) async {
     warmed.clear();
     if (surfaceSize != null) setGoldenSurfaceSize(tester, size: surfaceSize);
@@ -83,6 +84,8 @@ void main() {
                 isLoadingMore: isLoadingMore,
                 onLoadMore: onLoadMore ?? () {},
                 precache: (request, context) async => warmed.add(request.groupId),
+                fullBleed: fullBleed,
+                rowAligned: fullBleed,
               ),
             ),
           ),
@@ -559,6 +562,98 @@ void main() {
       await focusCard(tester, 'Title 0');
       expect(Focus.of(tester.element(find.text('Title 0'))).hasPrimaryFocus, isTrue);
       expect(find.descendant(of: firstCard, matching: find.byType(OptimizedMediaImage)), findsOneWidget);
+    });
+
+    for (final fullBleed in [false, true]) {
+      testWidgets('DOWN walks past the window edge (fullBleed: $fullBleed)', (tester) async {
+        await pumpGrid(tester, count: 400, fullBleed: fullBleed);
+        await focusCard(tester, 'Title 0');
+        final grid = tester.state(find.byType(TvUnifiedMediaGrid));
+        final rows = tvCatalogArtworkWindowRows * 3;
+        for (var i = 0; i < rows; i++) {
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+          await tester.pump(const Duration(milliseconds: 170));
+        }
+        await tester.pumpAndSettle();
+        final focused = FocusManager.instance.primaryFocus!.context!;
+        final card =
+            focused.findAncestorWidgetOfExactType<TvUnifiedMediaCard>() ??
+            (focused.widget is TvUnifiedMediaCard ? focused.widget as TvUnifiedMediaCard : null);
+        expect(grid.mounted, isTrue);
+        expect(card?.group.representativeSource.item.displayTitle, 'Title ${rows * columnsOf(tester)}');
+      });
+    }
+
+    testWidgets('a row far from the focus is laid out but not painted', (tester) async {
+      await pumpGrid(tester, count: 400);
+      await focusCard(tester, 'Title 0');
+
+      Visibility rowOf(String title) =>
+          tester.widget<Visibility>(find.ancestor(of: find.text(title), matching: find.byType(Visibility)).first);
+      expect(rowOf('Title 0').visible, isTrue);
+      expect(rowOf('Title 399').visible, isFalse, reason: 'a Column paints every child on every scroll frame');
+      expect(tester.getSize(find.text('Title 399')), isNot(Size.zero), reason: 'layout stays for traversal');
+    });
+
+    testWidgets('filtering a deep catalog from outside the grid keeps short results painted', (tester) async {
+      final outside = FocusNode(debugLabel: 'FilterControls');
+      addTearDown(outside.dispose);
+      Widget frame(int count) => TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: Scaffold(
+              body: Column(
+                children: [
+                  Focus(focusNode: outside, child: const SizedBox(width: 200, height: 40)),
+                  Expanded(
+                    child: TvUnifiedMediaGrid(
+                      groups: [for (var i = 0; i < count; i++) _group(i)],
+                      onActivate: (_) {},
+                      hasMore: false,
+                      isLoadingMore: false,
+                      onLoadMore: () {},
+                      precache: (_, __) async {},
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(frame(400));
+      await tester.pumpAndSettle();
+      await focusCard(tester, 'Title ${columnsOf(tester) * 14}');
+      outside.requestFocus();
+      await tester.pumpAndSettle();
+      expect(outside.hasPrimaryFocus, isTrue);
+
+      await tester.pumpWidget(frame(3));
+      await tester.pumpAndSettle();
+
+      expect(outside.hasPrimaryFocus, isTrue, reason: 'filtering must not steal focus from its controls');
+      for (var i = 0; i < 3; i++) {
+        final row = tester.widget<Visibility>(
+          find.ancestor(of: find.text('Title $i'), matching: find.byType(Visibility)).first,
+        );
+        expect(row.visible, isTrue, reason: 'the remaining results must be painted after scroll clamping');
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('moving the window does not rebuild cards far from it', (tester) async {
+      await pumpGrid(tester, count: 400);
+      final columns = columnsOf(tester);
+      await focusCard(tester, 'Title 0');
+      TvUnifiedMediaCard card(String title) => tester.widget<TvUnifiedMediaCard>(
+        find.ancestor(of: find.text(title), matching: find.byType(TvUnifiedMediaCard)),
+      );
+      final far = card('Title 399');
+
+      await focusCard(tester, 'Title ${columns * (tvCatalogArtworkWindowRows ~/ 2 + 1)}');
+
+      expect(identical(card('Title 399'), far), isTrue, reason: 'a recenter must not rebuild every card');
     });
   });
 

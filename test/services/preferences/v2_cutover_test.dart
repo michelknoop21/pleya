@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:pleya/services/preferences/preference_quarantine.dart';
 import 'package:pleya/services/preferences/preference_revision.dart';
 import 'package:pleya/services/preferences/preference_sync_coordinator.dart';
 import 'package:pleya/services/preferences/preference_sync_scope.dart';
+import 'package:pleya/services/preferences/preference_transport.dart';
 import 'package:pleya/services/settings_service.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -33,9 +35,9 @@ void main() {
   late SettingsService settings;
   late FakeTransport transport;
 
-  Future<PreferenceSyncCoordinator> build({String? activeProfile}) async {
+  Future<PreferenceSyncCoordinator> build({String? activeProfile, FakeTransport? remote}) async {
     settings = await SettingsService.getInstance();
-    transport = FakeTransport();
+    transport = remote ?? FakeTransport();
     return PreferenceSyncCoordinator(
       prefs: settings.prefs,
       activeProfileId: () => activeProfile,
@@ -231,6 +233,67 @@ void main() {
   });
 
   group('the compatibility warning', () {
+    test('frozen v1 records in a full snapshot do not prove a live old device', () async {
+      final coordinator = await build();
+      transport.store['subtitle_font_size'] = enc('int', 99);
+
+      await coordinator.applyAllRemote();
+
+      expect(coordinator.status.value.legacyPeerDetected, isFalse);
+    });
+
+    test('initial sync of retained v1 records does not report a live old device', () async {
+      final coordinator = await build();
+      transport.store['subtitle_font_size'] = enc('int', 99);
+
+      await coordinator.handleRemoteChange(
+        const RemotePreferenceChange(reason: RemoteChangeReason.initialSync, changedKeys: ['subtitle_font_size']),
+      );
+
+      expect(coordinator.status.value.legacyPeerDetected, isFalse);
+    });
+
+    test('removing an old record does not prove an old device is writing', () async {
+      final coordinator = await build();
+
+      await coordinator.applyRemoteKeys(['subtitle_font_size']);
+
+      expect(coordinator.status.value.legacyPeerDetected, isFalse);
+    });
+
+    test('a live v1 warning belongs only to the current iCloud account', () async {
+      final coordinator = await build();
+      transport.store['subtitle_font_size'] = enc('int', 99);
+      await coordinator.applyRemoteKeys(['subtitle_font_size']);
+      expect(coordinator.status.value.legacyPeerDetected, isTrue);
+      transport.store.clear();
+
+      await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+
+      expect(coordinator.status.value.legacyPeerDetected, isFalse);
+    });
+
+    for (final available in [true, false]) {
+      test('an in-flight read cannot restore the old account warning (available=$available)', () async {
+        final gate = _ReadGate();
+        final coordinator = await build(remote: gate);
+        transport.store['subtitle_font_size'] = enc('int', 99);
+        final oldChange = coordinator.applyRemoteKeys(['subtitle_font_size']);
+        await gate.readStarted.future;
+        transport.store.clear();
+        transport.available = available;
+
+        final accountChange = coordinator.handleRemoteChange(
+          const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged),
+        );
+        gate.release.complete();
+        await oldChange;
+        await accountChange;
+
+        expect(coordinator.status.value.legacyPeerDetected, isFalse);
+      });
+    }
+
     test('post-cutover activity on a known v1 key raises it', () async {
       final coordinator = await build();
       transport.store['subtitle_font_size'] = enc('int', 99);
@@ -256,11 +319,26 @@ void main() {
       transport.store['theme_mode'] = enc('string', 'dark'); // v1 peer activity
       transport.store[v2Key] = enc('int', 60);
 
-      await coordinator.applyAllRemote();
+      await coordinator.applyRemoteKeys(['theme_mode', v2Key]);
 
       expect(settings.prefs.getInt('subtitle_font_size'), 60, reason: 'the v2 record still lands');
       expect(settings.prefs.getString('theme_mode'), isNull, reason: 'the v1 record still does not');
       expect(coordinator.status.value.legacyPeerDetected, isTrue);
     });
   });
+}
+
+class _ReadGate extends FakeTransport {
+  final readStarted = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<Map<String, String>?> readAll() async {
+    final snapshot = await super.readAll();
+    if (!readStarted.isCompleted) {
+      readStarted.complete();
+      await release.future;
+    }
+    return snapshot;
+  }
 }

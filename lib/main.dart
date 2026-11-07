@@ -43,6 +43,7 @@ import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
 import 'services/fullscreen_state_manager.dart';
 import 'services/icloud_sync_service.dart';
+import 'services/integration_credential_sync_service.dart';
 import 'services/settings_service.dart';
 import 'services/sync_rule_executor.dart';
 import 'utils/platform_detector.dart';
@@ -137,7 +138,10 @@ Future<void> main() async {
   // accessibilityIdentifier/resource-id, addressable via idb/XCUITest.
   if (kDebugMode || kPleyaVerify) binding.ensureSemantics();
   _installZeroOffsetPointerGuard(); // Workaround for iPadOS 26.1+ modal dismissal bug
+  routeFrameworkErrorsToLog();
   startFrameTimingLog();
+  startFocusFrameLog();
+  startMemoryCheckpointLog();
 
   // On tvOS, Flutter's generated plugin registrant doesn't run (no tvOS
   // target in Flutter's tool), so register platform stores manually for
@@ -282,6 +286,9 @@ Future<void> _bootstrapApp() async {
       unawaited(LocaleSettings.setLocale(settings.read(SettingsService.appLocale)));
     },
   );
+
+  // Fixture verification must never query a real Apple credential account.
+  if (!kPleyaVerify) await IntegrationCredentialSyncService.start(settings);
 
   FullscreenStateManager().startMonitoring();
 

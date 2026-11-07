@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../utils/app_logger.dart';
 import 'tv_navigation_coordinator.dart';
 
 /// How a caller anywhere in the tree opens a screen without losing the TV shell.
@@ -42,7 +43,13 @@ class TvContentRouteRegistry {
 
   /// Opens [route] inside the active destination, or returns null when no TV
   /// shell is listening — the caller's signal to push the way it always did.
-  Future<Object?>? push(TvNestedRoute route) => _push?.call(route);
+  Future<Object?>? push(TvNestedRoute route) {
+    if (_push == null) return null;
+    // Marks a screen change in the diagnostic log, so a latency measurement can
+    // be split per scenario.
+    appLogger.d('RouteMarker: tv-push ${route.id}');
+    return _push!(route);
+  }
 }
 
 /// Process-wide, like `profileNavigationRegistry` next to it, and for the same

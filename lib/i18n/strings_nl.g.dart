@@ -416,7 +416,9 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get importSettingsInvalidFile => 'Dit bestand is geen geldige Pleya-export';
 	@override String get importSettingsNoUser => 'Meld je aan voordat je instellingen importeert';
 	@override String get icloudSync => 'iCloud-synchronisatie';
-	@override String get icloudSyncDescription => 'Houd je voorkeuren gesynchroniseerd op al je Apple-apparaten';
+	@override String get icloudSyncDescription => 'Synchroniseer je voorkeuren en koppelingen met je eigen Apple-apparaten';
+	@override String get icloudCredentialSyncError => 'Tautulli en Aanvragen konden niet via iCloud synchroniseren. Je koppelingen blijven op dit apparaat beschikbaar.';
+	@override String get icloudCredentialSyncAccountChanged => 'Je iCloud-account is gewijzigd. Meld je aan met je oorspronkelijke account om Tautulli en Aanvragen weer te synchroniseren.';
 	@override String get icloudSyncUnavailable => 'Log in bij iCloud op dit apparaat om instellingen te synchroniseren';
 	@override String get icloudSyncEnableFailed => 'Kon iCloud-synchronisatie van instellingen niet inschakelen';
 	@override String get icloudSyncLegacyPeer => 'Een ander Apple-apparaat gebruikt nog een oudere Pleya-versie, waardoor instellingen er niet mee worden gedeeld. Werk Pleya overal bij om weer te synchroniseren.';
@@ -2401,7 +2403,7 @@ class _TranslationsTautulliNl extends TranslationsTautulliEn {
 	// Translations
 	@override String get title => 'Tautulli';
 	@override String get subtitle => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.';
-	@override String get adminOnlyNote => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.';
+	@override String get adminOnlyNote => 'Tautulli heeft één sleutel die zijn hele beheer-API opent. Pleya bewaart die versleuteld en deelt de koppeling met je eigen Apple-apparaten als iCloud-synchronisatie aanstaat. Alleen beheerders zien wat hij meldt. De mensen met wie je je server deelt hoeven niets in te stellen.';
 	@override String get useHistoryForRecommendations => 'Kijkgeschiedenis gebruiken voor aanbevelingen';
 	@override String get useHistoryForRecommendationsDescription => 'Gebruikt kijkgeschiedenis van deze Tautulli-server om persoonlijke aanbevelingen te verbeteren voor elk profiel op dit apparaat. Elk profiel krijgt alleen zijn eigen geschiedenis en de verwerking blijft lokaal in Pleya.';
 	@override String get integrationConflictNote => 'Er zijn twee verschillende Tautulli-koppelingen voor deze server gevonden, dus de kijkgeschiedenis wordt niet gebruikt tot je opnieuw koppelt met de koppeling die je wilt houden.';
@@ -4869,7 +4871,9 @@ extension on TranslationsNl {
 			'settings.importSettingsInvalidFile' => 'Dit bestand is geen geldige Pleya-export',
 			'settings.importSettingsNoUser' => 'Meld je aan voordat je instellingen importeert',
 			'settings.icloudSync' => 'iCloud-synchronisatie',
-			'settings.icloudSyncDescription' => 'Houd je voorkeuren gesynchroniseerd op al je Apple-apparaten',
+			'settings.icloudSyncDescription' => 'Synchroniseer je voorkeuren en koppelingen met je eigen Apple-apparaten',
+			'settings.icloudCredentialSyncError' => 'Tautulli en Aanvragen konden niet via iCloud synchroniseren. Je koppelingen blijven op dit apparaat beschikbaar.',
+			'settings.icloudCredentialSyncAccountChanged' => 'Je iCloud-account is gewijzigd. Meld je aan met je oorspronkelijke account om Tautulli en Aanvragen weer te synchroniseren.',
 			'settings.icloudSyncUnavailable' => 'Log in bij iCloud op dit apparaat om instellingen te synchroniseren',
 			'settings.icloudSyncEnableFailed' => 'Kon iCloud-synchronisatie van instellingen niet inschakelen',
 			'settings.icloudSyncLegacyPeer' => 'Een ander Apple-apparaat gebruikt nog een oudere Pleya-versie, waardoor instellingen er niet mee worden gedeeld. Werk Pleya overal bij om weer te synchroniseren.',
@@ -5130,10 +5134,10 @@ extension on TranslationsNl {
 			'tooltips.shufflePlay' => 'Willekeurig afspelen',
 			'tooltips.playTrailer' => 'Trailer afspelen',
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
-			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
-			'videoControls.audioLabel' => 'Audio',
 			_ => null,
 		} ?? switch (path) {
+			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
+			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
 			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
@@ -5644,10 +5648,10 @@ extension on TranslationsNl {
 			'libraries.sortLabels.random' => 'Willekeurig',
 			'libraries.sortLabels.dateShared' => 'Gedeeld op',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
-			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
-			'about.title' => 'Over',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
+			'about.title' => 'Over',
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -6158,10 +6162,10 @@ extension on TranslationsNl {
 			'performanceOverlay.speed' => 'Snelheid',
 			'performanceOverlay.player' => 'Speler',
 			'performanceOverlay.memory' => 'Geheugen',
-			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'Externe speler',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.uiFps' => 'UI FPS',
+			'externalPlayer.title' => 'Externe speler',
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6596,7 +6600,7 @@ extension on TranslationsNl {
 			'seerr.requestNotInOwnList' => 'Die aanvraag staat niet meer in je eigen lijst. Hij is mogelijk afgehandeld of verwijderd.',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
-			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
+			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent. Pleya bewaart die versleuteld en deelt de koppeling met je eigen Apple-apparaten als iCloud-synchronisatie aanstaat. Alleen beheerders zien wat hij meldt. De mensen met wie je je server deelt hoeven niets in te stellen.',
 			'tautulli.useHistoryForRecommendations' => 'Kijkgeschiedenis gebruiken voor aanbevelingen',
 			'tautulli.useHistoryForRecommendationsDescription' => 'Gebruikt kijkgeschiedenis van deze Tautulli-server om persoonlijke aanbevelingen te verbeteren voor elk profiel op dit apparaat. Elk profiel krijgt alleen zijn eigen geschiedenis en de verwerking blijft lokaal in Pleya.',
 			'tautulli.integrationConflictNote' => 'Er zijn twee verschillende Tautulli-koppelingen voor deze server gevonden, dus de kijkgeschiedenis wordt niet gebruikt tot je opnieuw koppelt met de koppeling die je wilt houden.',
@@ -6672,10 +6676,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} bronnen',
 			'unifiedCatalog.allSources' => 'Alle bronnen',
 			'unifiedCatalog.oneSource' => '1 bron',
-			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
-			'unifiedCatalog.oneSeason' => '1 seizoen',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
+			'unifiedCatalog.oneSeason' => '1 seizoen',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
@@ -7186,10 +7190,10 @@ extension on TranslationsNl {
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
 			'assistant.examples.tonight.0' => 'Wat uit mijn bibliotheek kan ik vanavond kijken?',
 			'assistant.examples.tonight.1' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
-			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
-			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
+			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
 			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',

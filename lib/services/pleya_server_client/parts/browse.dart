@@ -258,6 +258,9 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     try {
       final item = PleyaItem.fromJson(json);
       if (item.kind == null) return null;
+      // An ancestor lookup for this item's children asks for this same answer
+      // next; a library scan otherwise read every show and season twice.
+      _itemCache[id] = item;
       // The next playback_started claims the revision this client last saw. A
       // read that moves the item past it, say another device watched on, would
       // otherwise get that event refused as stale and leave the viewing
@@ -917,6 +920,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   }
 
   final Map<String, PleyaItem> _itemCache = {};
+  final Map<String, Future<PleyaItem?>> _itemReadsInFlight = {};
 
   /// The numbers of the item [fetchItem] answered last, for [fetchExternalIds].
   final Map<
@@ -936,6 +940,19 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   Future<PleyaItem?> _rawItem(String id) async {
     final cached = _itemCache[id];
     if (cached != null) return cached;
+    // Two lookups of the same ancestor at once share one request.
+    final inFlight = _itemReadsInFlight[id];
+    if (inFlight != null) return inFlight;
+    final read = _readRawItem(id);
+    _itemReadsInFlight[id] = read;
+    try {
+      return await read;
+    } finally {
+      _itemReadsInFlight.remove(id);
+    }
+  }
+
+  Future<PleyaItem?> _readRawItem(String id) async {
     final json = await _getJson('/items/${Uri.encodeComponent(id)}');
     if (json == null) return null;
     try {

@@ -110,7 +110,8 @@ class _MemoryStore implements SeerrAccountStore {
   Future<SeerrSession?> load(String userUuid) async => sessions[userUuid];
 
   @override
-  Future<void> save(String userUuid, SeerrSession session) async => sessions[userUuid] = session;
+  Future<void> save(String userUuid, SeerrSession session, {bool refresh = false}) async =>
+      sessions[userUuid] = session;
 
   @override
   Future<void> clear(String userUuid) async => sessions.remove(userUuid);

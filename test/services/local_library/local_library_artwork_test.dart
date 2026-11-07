@@ -11,6 +11,17 @@ import 'package:pleya/services/local_library/local_library_sync.dart';
 import 'local_library_store_test.dart' show film, library;
 import 'local_library_sync_test.dart' show Client;
 
+class _CountingStore extends LocalLibraryStore {
+  _CountingStore(super.directory);
+  int freshnessReads = 0;
+
+  @override
+  Map<String, dynamic> posterFreshness(String serverId, String path) {
+    freshnessReads++;
+    return super.posterFreshness(serverId, path);
+  }
+}
+
 void main() {
   late Directory root;
   late LocalLibraryStore store;
@@ -143,6 +154,26 @@ void main() {
     error = false;
     await sync();
     expect(store.posterPath('one', item.thumbPath!), isNotNull);
+  });
+
+  test('choosing which posters to revalidate reads each item once, not once per comparison', () async {
+    // The selection ran synchronously over the whole library and re-read two
+    // states per comparison while keeping a sorted top-60: about 20 s of a
+    // frozen UI isolate on an Apple TV 4K after every incomplete scan.
+    final counting = _CountingStore(root);
+    await counting.load();
+    final items = [for (var i = 0; i < 2000; i++) film('$i').copyWith(thumbPath: '/poster/$i')];
+    await counting.saveLibrary(library, items, complete: true);
+    counting.freshnessReads = 0;
+
+    await LocalLibrarySync(
+      store: counting,
+      clock: () => now,
+      posterRevalidator: (_, item, _) async => LocalPosterResult(variant: item.thumbPath!, etag: 'e'),
+    ).syncPosters(items, (_) => Client(), isCurrent: () => true);
+
+    // One read per item to choose, and one per chosen item to revalidate.
+    expect(counting.freshnessReads, lessThanOrEqualTo(items.length + 60));
   });
 
   test('pilot is fair beyond 60 with repeated priority, persistent failure and restart', () async {

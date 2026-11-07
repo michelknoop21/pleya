@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../services/integration_credential_sync_service.dart';
 import '../../services/preferences/preference_sync_status.dart';
 
 /// One line under the iCloud toggle saying what the sync is doing.
@@ -12,16 +13,18 @@ import '../../services/preferences/preference_sync_status.dart';
 /// shows a key, a value or a count that carries an identity — the point is
 /// health, not a dump of what synced.
 class ICloudSyncStatusLine extends StatelessWidget {
-  const ICloudSyncStatusLine({super.key, required this.status});
+  const ICloudSyncStatusLine({super.key, required this.status, this.credentials});
 
   final ValueListenable<PreferenceSyncStatus> status;
+  final ValueListenable<IntegrationCredentialSyncStatus>? credentials;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<PreferenceSyncStatus>(
-      valueListenable: status,
-      builder: (context, value, _) {
-        final lines = messagesFor(value, context);
+    final credentialStatus = credentials ?? IntegrationCredentialSyncService.instance?.status;
+    return ListenableBuilder(
+      listenable: Listenable.merge([status, if (credentialStatus != null) credentialStatus]),
+      builder: (context, _) {
+        final lines = messagesFor(status.value, context, credentials: credentialStatus?.value);
         if (lines.isEmpty) return const SizedBox.shrink();
         final scheme = Theme.of(context).colorScheme;
         return Padding(
@@ -48,7 +51,11 @@ class ICloudSyncStatusLine extends StatelessWidget {
   /// The compatibility warning is its own line rather than a state: it is a
   /// fact about the account, and it is true whether or not the last write went
   /// well.
-  static List<SyncStatusMessage> messagesFor(PreferenceSyncStatus status, BuildContext? context) {
+  static List<SyncStatusMessage> messagesFor(
+    PreferenceSyncStatus status,
+    BuildContext? context, {
+    IntegrationCredentialSyncStatus? credentials,
+  }) {
     final lines = <SyncStatusMessage>[];
     switch (status.state) {
       case PreferenceSyncState.disabled:
@@ -74,6 +81,13 @@ class ICloudSyncStatusLine extends StatelessWidget {
     }
     if (status.legacyPeerDetected) {
       lines.add(SyncStatusMessage(t.settings.icloudSyncLegacyPeer, attention: true));
+    }
+    if (status.state != PreferenceSyncState.disabled) {
+      if (credentials == IntegrationCredentialSyncStatus.error) {
+        lines.add(SyncStatusMessage(t.settings.icloudCredentialSyncError, attention: true));
+      } else if (credentials == IntegrationCredentialSyncStatus.accountChanged) {
+        lines.add(SyncStatusMessage(t.settings.icloudCredentialSyncAccountChanged, attention: true));
+      }
     }
     return lines;
   }

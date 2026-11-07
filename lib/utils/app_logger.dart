@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:logger/logger.dart';
 
@@ -219,6 +220,17 @@ class ProductionFilter extends LogFilter {
 }
 
 final _productionFilter = ProductionFilter();
+
+/// Puts framework errors (a layout overflow, an exception in build) in the
+/// diagnostic log as well. They otherwise only reach the previous handler, so
+/// an uploaded log showed nothing for a screen that rendered an error box.
+void routeFrameworkErrorsToLog() {
+  final previous = FlutterError.onError;
+  FlutterError.onError = (details) {
+    appLogger.e('FlutterError: ${details.exceptionAsString()}', error: details.exception, stackTrace: details.stack);
+    previous?.call(details);
+  };
+}
 
 /// A log line that has to survive the process ending right after it.
 ///
