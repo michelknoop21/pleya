@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../media/media_item.dart';
+import '../media/unified/unified_media_group.dart';
 import '../media/watch_progress.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/watch_state_resolver.dart';
@@ -214,6 +215,20 @@ extension WatchStateResolution on BuildContext {
     } on ProviderNotFoundException {
       return item;
     }
+  }
+
+  /// [withFreshWatchState] for every source of [group], with the group's watch
+  /// state chosen again over what came out. A catalog group is read once from
+  /// a library snapshot that a scan refreshes at most hourly, so a mark made
+  /// here, or the copy it wrote to another server, otherwise never reaches the
+  /// card or the menu that offers the next mark. Use in `build`.
+  UnifiedMediaGroup withFreshWatchStateGroup(UnifiedMediaGroup group) {
+    final fresh = {for (final source in group.sources) source.sourceKey: withFreshWatchState(source.item)};
+    if (group.sources.every((source) => identical(fresh[source.sourceKey], source.item))) return group;
+    return group.withFreshSourceItems(
+      (item) => fresh[item.globalKey] ?? item,
+      preferredSourceKey: group.watchState.representativeSourceKey,
+    );
   }
 
   /// Point-in-time resolution for handlers and non-build code paths.

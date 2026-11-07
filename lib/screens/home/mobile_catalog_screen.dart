@@ -40,6 +40,7 @@ import '../../media/unified/unified_route_context.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/unified_catalog_provider.dart';
 import '../../providers/unified_catalogs.dart';
+import '../../providers/watch_state_store.dart';
 import '../../screens/tv/tv_unified_activation.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
@@ -798,13 +799,16 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
                                   'sources': group.sources.length,
                                 },
                                 child: Builder(
-                                  builder: (cardContext) => MobileMediaCard(
-                                    group: group,
-                                    shape: MobileCardShape.portrait,
-                                    width: cardWidth,
-                                    onTap: () => _openDetails(group),
-                                    onLongPress: () => unawaited(_openQuickMenu(cardContext, group)),
-                                  ),
+                                  builder: (cardContext) {
+                                    final fresh = cardContext.withFreshWatchStateGroup(group);
+                                    return MobileMediaCard(
+                                      group: fresh,
+                                      shape: MobileCardShape.portrait,
+                                      width: cardWidth,
+                                      onTap: () => _openDetails(fresh),
+                                      onLongPress: () => unawaited(_openQuickMenu(cardContext, fresh)),
+                                    );
+                                  },
                                 ),
                               );
                             },
