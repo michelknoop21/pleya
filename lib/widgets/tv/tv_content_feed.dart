@@ -334,11 +334,17 @@ class TvContentFeedState extends State<TvContentFeed>
 
   bool get _routeIsCurrent => ModalRoute.of(context)?.isCurrent ?? true;
 
-  Future<void> _activate(UnifiedMediaGroup group, {String? containerId}) async {
+  Future<void> _activate(UnifiedMediaGroup group, {String? containerId, bool isContinueWatching = false}) async {
     // A Nu op tv card tunes its channel; it has no detail page to open.
     if (await context.read<HomeExtraRowsProvider?>()?.activateLiveTv(context, group) ?? false) return;
     if (!mounted) return;
-    await activateDiscoveryGroup(group, onManageServers: widget.onManageServers, containerId: containerId);
+    await activateDiscoveryGroup(
+      group,
+      onManageServers: widget.onManageServers,
+      containerId: containerId,
+      intent: isContinueWatching ? UnifiedActivationIntent.play : UnifiedActivationIntent.details,
+      playDirectly: isContinueWatching,
+    );
   }
 
   /// HERO7: resolves a card by its stable rowId+groupId directly, instead of
@@ -374,16 +380,20 @@ class TvContentFeedState extends State<TvContentFeed>
     return Navigator.of(context).push(MaterialPageRoute(builder: builder));
   }
 
-  Future<void> _openContextMenu(UnifiedMediaGroup group, {required bool isInContinueWatching}) =>
-      openDiscoveryContextMenu(
-        group,
-        isInContinueWatching: isInContinueWatching,
-        onChanged: () => _refreshGroupSources(group),
-        // A1b, the short way in: the same entry the footer offers, reachable
-        // from any card on Home without walking past every row to the bottom
-        // (DEC-100 (3)).
-        extraAction: (label: t.unifiedCatalog.homeRows.customize, onSelected: _openCustomize),
-      );
+  Future<void> _openContextMenu(
+    UnifiedMediaGroup group, {
+    required bool isInContinueWatching,
+    required String containerId,
+  }) => openDiscoveryContextMenu(
+    group,
+    isInContinueWatching: isInContinueWatching,
+    containerId: containerId,
+    onChanged: () => _refreshGroupSources(group),
+    // A1b, the short way in: the same entry the footer offers, reachable
+    // from any card on Home without walking past every row to the bottom
+    // (DEC-100 (3)).
+    extraAction: (label: t.unifiedCatalog.homeRows.customize, onSelected: _openCustomize),
+  );
 
   /// ROW1c: a viewer-defined row's own "Alle N" tile opens the complete
   /// catalog with that row's exact filter and sort already applied, for this
@@ -623,7 +633,11 @@ class TvContentFeedState extends State<TvContentFeed>
                               clientFor: _clientFor,
                               initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
                               onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
-                              onActivate: (group) => _activate(group, containerId: rows[i].hubId),
+                              onActivate: (group) => _activate(
+                                group,
+                                containerId: rows[i].hubId,
+                                isContinueWatching: rows[i].hubId == continueWatchingHubId,
+                              ),
                               // No menu on a Nu op tv card: every action in
                               // it is about a library title.
                               onContextMenu: (group) => extraRows?.isLiveTv(group) ?? false
@@ -631,6 +645,7 @@ class TvContentFeedState extends State<TvContentFeed>
                                   : _openContextMenu(
                                       group,
                                       isInContinueWatching: rows[i].hubId == continueWatchingHubId,
+                                      containerId: rows[i].hubId,
                                     ),
                               // Row to row, at the column the step leaves from
                               // (LAND4). UP that runs out of rows above goes back

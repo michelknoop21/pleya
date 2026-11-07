@@ -240,6 +240,9 @@ void handlePlaybackReturn(
 /// activation; those surfaces use the Continue Watching action setting instead
 /// of the normal Episode Action setting.
 ///
+/// Set [forceDetails] for an explicit More info command, independent of
+/// passive activation preferences.
+///
 /// Set [restartFromBeginning] for an explicit "play from beginning" — mirrors
 /// what the legacy `MediaContextMenu`'s own `play_from_beginning` case does at
 /// its call site: the item that reaches the player carries a zeroed
@@ -275,6 +278,7 @@ Future<MediaNavigationResult> navigateToMediaItem(
   void Function(String)? onRefresh,
   bool isOffline = false,
   bool playDirectly = false,
+  bool forceDetails = false,
   bool restartFromBeginning = false,
   Object? heroTag,
   String? traceId,
@@ -296,6 +300,22 @@ Future<MediaNavigationResult> navigateToMediaItem(
     return MediaNavigationResult.unsupported;
   }
   final mi = item;
+  // An explicit More info command must not be reinterpreted by the passive
+  // episode / Continue Watching activation preferences.
+  if (forceDetails) {
+    return navigateToMediaItemDetails(
+      context,
+      mi,
+      onRefresh: onRefresh,
+      isOffline: isOffline,
+      heroTag: heroTag,
+      traceId: traceId,
+      unifiedRouteContext: unifiedRouteContext,
+      onChangeSource: onChangeSource,
+      restoreTarget: restoreTarget,
+    );
+  }
+
   final unifiedTitle = isOffline ? null : unifiedTitleFor(context, unifiedRouteContext);
   // Without a title the context is all there is. With one, the position is
   // read at the start, from the session's newest watch state.

@@ -19,6 +19,7 @@ import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../media/unified/unified_route_context.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
 import '../../providers/continue_watching_hidden_provider.dart';
 import '../../providers/multi_server_provider.dart';
@@ -216,8 +217,14 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
                 width: cell.width,
                 clientFor: _clientFor,
                 focusNode: cell.focusNode,
-                onSelect: () => activateDiscoveryGroup(group, containerId: tvContinueWatchingSurface),
-                onContextMenu: () => openDiscoveryContextMenu(group, isInContinueWatching: true),
+                onSelect: () => activateDiscoveryGroup(
+                  group,
+                  intent: UnifiedActivationIntent.play,
+                  playDirectly: true,
+                  containerId: tvContinueWatchingSurface,
+                ),
+                onContextMenu: () =>
+                    openDiscoveryContextMenu(group, isInContinueWatching: true, containerId: tvContinueWatchingSurface),
                 onFocusChange: cell.onFocusChange,
                 onNavigateUp: cell.onNavigateUp,
                 onNavigateDown: cell.onNavigateDown,
