@@ -6,6 +6,8 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../media/media_item.dart';
+import '../media/unified/unified_media_group.dart';
+import '../media/unified/unified_watch_state.dart';
 import '../media/watch_progress.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/watch_state_resolver.dart';
@@ -214,6 +216,40 @@ extension WatchStateResolution on BuildContext {
     } on ProviderNotFoundException {
       return item;
     }
+  }
+
+  /// [withFreshWatchState] for every source of [group], with the group's watch
+  /// state chosen again. A catalog group is read once from a library snapshot
+  /// that a scan refreshes at most hourly, so a mark made here, or the copy it
+  /// wrote to another server, otherwise never reaches the card or the menu that
+  /// offers the next mark. Use in `build`.
+  ///
+  /// Only the marked sources speak for the group: a patch carries no
+  /// timestamp, so against the snapshot's own timestamps and tie-break a stale
+  /// copy would win again. A server read newer than the patch still drops it,
+  /// in [WatchStateStore.patchForItem].
+  UnifiedMediaGroup withFreshWatchStateGroup(UnifiedMediaGroup group) {
+    final marked = <String, MediaItem>{};
+    for (final source in group.sources) {
+      final fresh = withFreshWatchState(source.item);
+      if (!identical(fresh, source.item)) marked[source.sourceKey] = fresh;
+    }
+    if (marked.isEmpty) return group;
+    final updated = group.withFreshSourceItems((item) => marked[item.globalKey] ?? item);
+    final state = selectRepresentativeWatchState(marked, preferredSourceKey: group.watchState.representativeSourceKey);
+    return UnifiedMediaGroup(
+      groupId: updated.groupId,
+      identity: updated.identity,
+      sources: updated.sources,
+      representativeSourceKey: updated.representativeSourceKey,
+      watchState: UnifiedWatchState(
+        representativeSourceKey: state.representativeSourceKey,
+        lastViewedAt: state.lastViewedAt,
+        hasActiveProgress: state.hasActiveProgress,
+        isWatched: state.isWatched,
+        runtimesDiffer: updated.watchState.runtimesDiffer,
+      ),
+    );
   }
 
   /// Point-in-time resolution for handlers and non-build code paths.

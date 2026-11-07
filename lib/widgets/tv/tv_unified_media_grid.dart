@@ -25,6 +25,7 @@ import '../../focus/focus_theme.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../providers/watch_state_store.dart';
 import '../../services/unified_catalog/unified_artwork_prefetcher.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../theme/mono_tokens.dart';
@@ -259,44 +260,47 @@ class TvUnifiedMediaGridState extends State<TvUnifiedMediaGrid> {
       reservedLeading: widget.reservedLeading,
       footer: widget.footer,
       nodeDebugLabel: 'TvUnifiedCard',
-      itemBuilder: (context, cell) {
-        final group = widget.groups[cell.index];
-        final card = TvUnifiedMediaCard(
-          key: ValueKey(group.groupId),
-          group: group,
-          width: cell.width,
-          clientFor: widget.clientFor,
-          focusNode: cell.focusNode,
-          onSelect: () => widget.onActivate(group),
-          onContextMenu: widget.onContextMenu == null ? null : () => widget.onContextMenu!(group),
-          onFocusChange: cell.onFocusChange,
-          onNavigateUp: cell.onNavigateUp,
-          onNavigateDown: cell.onNavigateDown,
-          onNavigateLeft: cell.onNavigateLeft,
-          onNavigateRight: cell.onNavigateRight,
-          onBack: cell.onBack,
-          compact: widget.fullBleed,
-          activeSort: widget.activeSort,
-        );
-        final surface = widget.automationSurface;
-        if (surface == null) return card;
-        return AutomationNode(
-          id: AutomationIds.tvCatalogGridItem,
-          instance: '$surface.${cell.index}',
-          role: 'grid.item',
-          state: () {
-            final sortValue = tvCatalogSortValueItem(group, widget.activeSort);
-            return {
-              'title': group.representativeSource.item.displayTitle,
-              'meta':
-                  tvCatalogSortScore(sortValue, widget.activeSort)?.percent.round().toString() ??
-                  tvCatalogSortedMetaLine(sortValue, sort: widget.activeSort),
-            };
-          },
-          focusNode: cell.focusNode,
-          child: card,
-        );
-      },
+      // A cell of its own, so a watch event rebuilds the one card it touches.
+      itemBuilder: (_, cell) => Builder(
+        builder: (context) {
+          final group = context.withFreshWatchStateGroup(widget.groups[cell.index]);
+          final card = TvUnifiedMediaCard(
+            key: ValueKey(group.groupId),
+            group: group,
+            width: cell.width,
+            clientFor: widget.clientFor,
+            focusNode: cell.focusNode,
+            onSelect: () => widget.onActivate(group),
+            onContextMenu: widget.onContextMenu == null ? null : () => widget.onContextMenu!(group),
+            onFocusChange: cell.onFocusChange,
+            onNavigateUp: cell.onNavigateUp,
+            onNavigateDown: cell.onNavigateDown,
+            onNavigateLeft: cell.onNavigateLeft,
+            onNavigateRight: cell.onNavigateRight,
+            onBack: cell.onBack,
+            compact: widget.fullBleed,
+            activeSort: widget.activeSort,
+          );
+          final surface = widget.automationSurface;
+          if (surface == null) return card;
+          return AutomationNode(
+            id: AutomationIds.tvCatalogGridItem,
+            instance: '$surface.${cell.index}',
+            role: 'grid.item',
+            state: () {
+              final sortValue = tvCatalogSortValueItem(group, widget.activeSort);
+              return {
+                'title': group.representativeSource.item.displayTitle,
+                'meta':
+                    tvCatalogSortScore(sortValue, widget.activeSort)?.percent.round().toString() ??
+                    tvCatalogSortedMetaLine(sortValue, sort: widget.activeSort),
+              };
+            },
+            focusNode: cell.focusNode,
+            child: card,
+          );
+        },
+      ),
     );
   }
 }
