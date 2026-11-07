@@ -33,7 +33,7 @@ const _pleyaServer = 'pleya-physical';
 /// connection, not the server.
 const _pleyaConnection = 'pleyaServer.pleya-physical.account';
 
-MediaItem _movie(String id, MediaBackend backend, String serverId) => MediaItem(
+MediaItem _movie(String id, MediaBackend backend, String serverId, {int? viewCount, int? lastViewedAt}) => MediaItem(
   id: id,
   backend: backend,
   kind: MediaKind.movie,
@@ -41,10 +41,15 @@ MediaItem _movie(String id, MediaBackend backend, String serverId) => MediaItem(
   year: 2026,
   durationMs: 6299840,
   serverId: serverId,
+  viewCount: viewCount,
+  lastViewedAt: lastViewedAt,
 );
 
 final _plex = _movie('60112', MediaBackend.plex, 'plex-machine');
 final _pleya = _movie('01a1b549', MediaBackend.pleyaServer, _pleyaServer);
+
+/// A day old: the snapshot's own viewing, far outside any reliability margin.
+final _yesterday = DateTime.now().subtract(const Duration(days: 1)).millisecondsSinceEpoch ~/ 1000;
 
 /// One card for [items], read from a snapshot taken before the viewing.
 UnifiedMediaGroup _group([List<MediaItem>? items]) {
@@ -56,7 +61,7 @@ UnifiedMediaGroup _group([List<MediaItem>? items]) {
     identity: CanonicalMediaIdentity.movie(title: 'Heart of the Beast', year: 2026),
     sources: sources,
     representativeSourceKey: sources.first.sourceKey,
-    watchState: UnifiedWatchState(representativeSourceKey: sources.first.sourceKey),
+    watchState: selectRepresentativeWatchState({for (final s in sources) s.sourceKey: s.item}),
   );
 }
 
@@ -113,5 +118,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TvCatalogWatchedBadge), findsOneWidget);
+  });
+
+  // Plex first, so it is the representative a tie falls back to.
+  testWidgets('a watched mark on the Pleya copy wins over a stale Plex copy without a timestamp', (tester) async {
+    await pumpGrid(tester, _group([_plex, _pleya]));
+
+    WatchStateNotifier().notifyWatched(item: _pleya, cacheServerId: _pleyaConnection, isCopy: true);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TvCatalogWatchedBadge), findsOneWidget);
+  });
+
+  testWidgets('a watched mark on the Pleya copy wins over an older Plex viewing in the snapshot', (tester) async {
+    await pumpGrid(
+      tester,
+      _group([_movie('60112', MediaBackend.plex, 'plex-machine', lastViewedAt: _yesterday), _pleya]),
+    );
+
+    WatchStateNotifier().notifyWatched(item: _pleya, cacheServerId: _pleyaConnection, isCopy: true);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TvCatalogWatchedBadge), findsOneWidget);
+  });
+
+  testWidgets('an unwatched mark on the Pleya copy wins over a stale watched Plex copy', (tester) async {
+    final menus = await pumpGrid(
+      tester,
+      _group([_movie('60112', MediaBackend.plex, 'plex-machine', viewCount: 1, lastViewedAt: _yesterday), _pleya]),
+    );
+    expect(find.byType(TvCatalogWatchedBadge), findsOneWidget, reason: 'the snapshot says Plex was watched');
+
+    WatchStateNotifier().notifyWatched(item: _pleya, isNowWatched: false, cacheServerId: _pleyaConnection);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TvCatalogWatchedBadge), findsNothing);
+    tester.widget<TvUnifiedMediaCard>(find.byType(TvUnifiedMediaCard)).onContextMenu!();
+    expect(menus.single.watchState.isWatched, isFalse);
   });
 }
