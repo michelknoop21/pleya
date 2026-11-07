@@ -14,7 +14,8 @@ final class ICloudKvsPlugin: NSObject, FlutterPlugin {
   private static let channelName = "com.pleya/icloud_kvs"
   private static let eventChannelName = "com.pleya/icloud_kvs/events"
 
-  private let credentials = ICloudCredentialStore()
+  // KVS and Verify registration must not initialize CloudKit before opt-in.
+  private lazy var credentials = ICloudCredentialStore()
   private let store = NSUbiquitousKeyValueStore.default
   private var eventSink: FlutterEventSink?
 
