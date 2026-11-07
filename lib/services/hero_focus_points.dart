@@ -50,7 +50,9 @@ class HeroFocusPoints {
   static final HeroFocusPoints instance = HeroFocusPoints();
 
   static const _channel = MethodChannel('com.pleya/hero_focus');
-  static const prefsKey = 'hero_focus_points_v1';
+
+  /// v2: v1 held union-of-salient-boxes points, which missed the subject.
+  static const prefsKey = 'hero_focus_points_v2';
 
   /// ponytail: oldest entry goes first, not least recently used. A hero set
   /// is a handful of films; raise this if the carousel ever grows large.

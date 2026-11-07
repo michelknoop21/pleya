@@ -95,11 +95,12 @@ import Vision
 
   // MARK: - Home hero focus point
 
-  // `focusPoint(path)` -> {x, y, aspect}: the centre of the salient region of
+  // `focusPoint(path)` -> {x, y, aspect}: the centre of the main subject of
   // the image file at `path`, normalised with a top-left origin, plus the
-  // image's width / height. Attention saliency first, faces when it finds
-  // nothing; nil when neither finds anything or the file is unreadable. The
-  // Dart side (lib/services/hero_focus_points.dart) caches the answer.
+  // image's width / height. The largest face first, else the largest salient
+  // object; never a union, which on a backdrop with a face left and cars right
+  // centres on neither. Nil when nothing is found or the file is unreadable.
+  // The Dart side (lib/services/hero_focus_points.dart) caches the answer.
   private func registerHeroFocusChannel(messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: "com.pleya/hero_focus", binaryMessenger: messenger)
     channel.setMethodCallHandler { call, result in
@@ -117,19 +118,17 @@ import Vision
   private static func focusPoint(path: String) -> [String: Double]? {
     guard let image = UIImage(contentsOfFile: path)?.cgImage, image.height > 0 else { return nil }
     let handler = VNImageRequestHandler(cgImage: image, options: [:])
+    let faces = VNDetectFaceRectanglesRequest()
     let saliency = VNGenerateAttentionBasedSaliencyImageRequest()
-    try? handler.perform([saliency])
-    var boxes = (saliency.results?.first?.salientObjects ?? []).map(\.boundingBox)
-    if boxes.isEmpty {
-      let faces = VNDetectFaceRectanglesRequest()
-      try? handler.perform([faces])
-      boxes = (faces.results ?? []).map(\.boundingBox)
-    }
-    guard let first = boxes.first else { return nil }
-    let union = boxes.dropFirst().reduce(first) { $0.union($1) }
+    try? handler.perform([faces, saliency])
+    let area = { (r: CGRect) in r.width * r.height }
+    let largestFace = (faces.results ?? []).map(\.boundingBox).max { area($0) < area($1) }
+    let largestObject = (saliency.results?.first?.salientObjects ?? []).map(\.boundingBox)
+      .max { area($0) < area($1) }
+    guard let box = largestFace ?? largestObject else { return nil }
     // Vision's normalised rects start bottom-left, Flutter's Alignment top-left.
     return [
-      "x": Double(union.midX), "y": Double(1 - union.midY),
+      "x": Double(box.midX), "y": Double(1 - box.midY),
       "aspect": Double(image.width) / Double(image.height),
     ]
   }
