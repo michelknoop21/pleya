@@ -120,7 +120,9 @@ import Vision
     let handler = VNImageRequestHandler(cgImage: image, options: [:])
     let faces = VNDetectFaceRectanglesRequest()
     let saliency = VNGenerateAttentionBasedSaliencyImageRequest()
-    try? handler.perform([faces, saliency])
+    // Separate calls: a failing face request must not cost the saliency result.
+    try? handler.perform([faces])
+    try? handler.perform([saliency])
     let area = { (r: CGRect) in r.width * r.height }
     let largestFace = (faces.results ?? []).map(\.boundingBox).max { area($0) < area($1) }
     let largestObject = (saliency.results?.first?.salientObjects ?? []).map(\.boundingBox)
