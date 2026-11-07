@@ -210,7 +210,7 @@ describe('MediaCard, staten van scherm 16', () => {
   it('heeft geen overlay zonder snippet', () => {
     const { container } = render(MediaCard, { props: { item: item() } });
     expect(container.querySelector('.card__over')).toBeNull();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(container.querySelector('.card__actions')).toBeNull();
   });
 
   it('gebruikt een opgegeven artworkId in plaats van het eigen beeld', async () => {
