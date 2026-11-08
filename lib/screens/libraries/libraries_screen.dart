@@ -17,9 +17,6 @@ import '../../focus/dpad_navigator.dart';
 import '../../focus/input_mode_tracker.dart';
 import '../../focus/key_event_utils.dart';
 import '../../mixins/tab_navigation_mixin.dart';
-import '../../../services/plex_client.dart';
-import '../../media/ids.dart';
-import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
 import '../../media/media_library.dart';
 import '../../media/media_server_client.dart';
@@ -49,6 +46,7 @@ import '../../widgets/library_header_bar.dart';
 import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/mobile/library_phone_look.dart';
 import '../../widgets/tv/tv_page_chip_bar.dart';
+import 'library_maintenance.dart';
 import 'mobile_library_filter_row.dart';
 import 'mobile_library_header.dart';
 import 'state_messages.dart';
@@ -724,65 +722,56 @@ class _LibrariesScreenState extends State<LibrariesScreen>
   }
 
   List<ContextMenuItem> _getLibraryMenuItems(MediaLibrary library) {
-    // Every entry here is library maintenance on the server, so it is only
-    // offered to the server's owner. Empty hides the options button.
-    final serverId = library.serverId;
-    if (serverId == null ||
-        !context.read<MultiServerProvider>().serverManager.canManageServerMetadata(ServerId(serverId))) {
-      return const [];
-    }
-    // Refresh metadata is the only admin action both backends support — Plex
-    // hits `/library/sections/{id}/refresh?force=1`, Jellyfin posts to
-    // `/Items/{id}/Refresh` (the library view is itself an item).
-    final refresh = ContextMenuItem(
-      value: 'refresh',
+    // Library maintenance on the library's own server, offered as far as that
+    // client implements it and the profile may administer the server. Empty
+    // hides the options button.
+    final client = libraryMaintenanceClient(context.read<MultiServerProvider>().serverManager, library);
+    return [for (final action in libraryMaintenanceFor(client)) _libraryMenuItem(action, library)];
+  }
+
+  ContextMenuItem _libraryMenuItem(LibraryMaintenance action, MediaLibrary library) => switch (action) {
+    LibraryMaintenance.scan => ContextMenuItem(
+      value: action.name,
+      icon: Symbols.refresh_rounded,
+      label: t.libraries.scanLibraryFiles,
+      requiresConfirmation: true,
+      confirmationTitle: t.libraries.scanLibrary,
+      confirmationMessage: t.libraries.scanLibraryConfirm(title: library.title),
+    ),
+    LibraryMaintenance.analyze => ContextMenuItem(
+      value: action.name,
+      icon: Symbols.analytics_rounded,
+      label: t.libraries.analyze,
+      requiresConfirmation: true,
+      confirmationTitle: t.libraries.analyzeLibrary,
+      confirmationMessage: t.libraries.analyzeLibraryConfirm(title: library.title),
+    ),
+    LibraryMaintenance.refreshMetadata => ContextMenuItem(
+      value: action.name,
       icon: Symbols.sync_rounded,
       label: t.libraries.refreshMetadata,
       requiresConfirmation: true,
       confirmationTitle: t.libraries.refreshMetadata,
       confirmationMessage: t.libraries.refreshMetadataConfirm(title: library.title),
       isDestructive: true,
-    );
-    // Scan / analyze / empty trash hit Plex-only endpoints. Gating them keeps
-    // [getPlexClientForLibrary] from falling back through `_resolveClient` to
-    // the first online Plex server and firing the action against the wrong
-    // backend.
-    if (library.backend != MediaBackend.plex) return [refresh];
-    return [
-      ContextMenuItem(
-        value: 'scan',
-        icon: Symbols.refresh_rounded,
-        label: t.libraries.scanLibraryFiles,
-        requiresConfirmation: true,
-        confirmationTitle: t.libraries.scanLibrary,
-        confirmationMessage: t.libraries.scanLibraryConfirm(title: library.title),
-      ),
-      ContextMenuItem(
-        value: 'analyze',
-        icon: Symbols.analytics_rounded,
-        label: t.libraries.analyze,
-        requiresConfirmation: true,
-        confirmationTitle: t.libraries.analyzeLibrary,
-        confirmationMessage: t.libraries.analyzeLibraryConfirm(title: library.title),
-      ),
-      refresh,
-      ContextMenuItem(
-        value: 'empty_trash',
-        icon: Symbols.delete_outline_rounded,
-        label: t.libraries.emptyTrash,
-        requiresConfirmation: true,
-        confirmationTitle: t.libraries.emptyTrash,
-        confirmationMessage: t.libraries.emptyTrashConfirm(title: library.title),
-        isDestructive: true,
-      ),
-    ];
-  }
+    ),
+    LibraryMaintenance.emptyTrash => ContextMenuItem(
+      value: action.name,
+      icon: Symbols.delete_outline_rounded,
+      label: t.libraries.emptyTrash,
+      requiresConfirmation: true,
+      confirmationTitle: t.libraries.emptyTrash,
+      confirmationMessage: t.libraries.emptyTrashConfirm(title: library.title),
+      isDestructive: true,
+    ),
+  };
 
   Future<void> _handleLibraryMenuAction(String action, MediaLibrary library) async {
     // Find the menu item for confirmation details
     final menuItems = _getLibraryMenuItems(library);
     final item = menuItems.where((i) => i.value == action).firstOrNull;
-    if (item == null) return;
+    final maintenance = LibraryMaintenance.values.asNameMap()[action];
+    if (item == null || maintenance == null) return;
 
     if (item.requiresConfirmation) {
       final confirmed = await showConfirmDialog(
@@ -795,20 +784,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
       if (!confirmed) return;
     }
 
-    switch (action) {
-      case 'scan':
-        unawaited(_scanLibrary(library));
-        break;
-      case 'analyze':
-        unawaited(_analyzeLibrary(library));
-        break;
-      case 'refresh':
-        unawaited(_refreshLibraryMetadata(library));
-        break;
-      case 'empty_trash':
-        unawaited(_emptyLibraryTrash(library));
-        break;
-    }
+    unawaited(_runLibraryMaintenance(library, maintenance));
   }
 
   void _showLibraryManagementSheet() {
@@ -850,87 +826,39 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     }
   }
 
-  Future<void> _performLibraryAction({
-    required MediaLibrary library,
-    required Future<void> Function(PlexClient client) action,
-    required String progressMessage,
-    required String successMessage,
-  }) {
+  /// Runs [action] on the library's own client. Resolves the provider here,
+  /// while context is valid, and hands the *provider* (not context, not
+  /// `this`) to the retry-capable top-level [_runMediaLibraryAction]: a retry
+  /// built from an instance method would capture this screen's State, and a
+  /// persistent error notice keeps that closure alive in the global
+  /// NoticeController after the screen is gone. MultiServerProvider is
+  /// app-scoped, so capturing it is free.
+  Future<void> _runLibraryMaintenance(MediaLibrary library, LibraryMaintenance action) {
     if (!mounted) return Future.value();
-    // Resolve the provider once, here, while context is definitely valid,
-    // and hand the *provider* (not context, not `this`) to the retry-capable
-    // top-level function below. A retry built from an instance method
-    // (`() => _performLibraryAction(...)`) implicitly captures `this` —
-    // this screen's State — and a persistent error notice keeps that
-    // closure (and everything the disposed State still references) alive
-    // in the global NoticeController until the notice is dismissed, long
-    // after the screen itself is gone. MultiServerProvider is app-scoped
-    // and outlives this screen either way, so capturing it instead is free.
-    final multiServer = context.read<MultiServerProvider>();
-    return _runLibraryAction(
-      multiServer: multiServer,
-      library: library,
-      action: action,
-      progressMessage: progressMessage,
-      successMessage: successMessage,
-    );
-  }
-
-  /// Backend-neutral counterpart to [_performLibraryAction] for ops that exist
-  /// on the [MediaServerClient] interface (currently just refresh metadata).
-  /// Resolves the client through `getMediaClientForLibrary` so a Jellyfin
-  /// library is routed to its own server, not a fallback Plex one.
-  Future<void> _performMediaLibraryAction({
-    required MediaLibrary library,
-    required Future<void> Function(MediaServerClient client) action,
-    required String progressMessage,
-    required String successMessage,
-  }) {
-    if (!mounted) return Future.value();
-    // See _performLibraryAction's comment: pass the provider down, not `this`.
-    final multiServer = context.read<MultiServerProvider>();
+    final (progressMessage, successMessage) = switch (action) {
+      LibraryMaintenance.scan => (
+        t.messages.libraryScanning(title: library.title),
+        t.messages.libraryScanStarted(title: library.title),
+      ),
+      LibraryMaintenance.analyze => (
+        t.libraries.analyzing(title: library.title),
+        t.libraries.analysisStarted(title: library.title),
+      ),
+      LibraryMaintenance.refreshMetadata => (
+        t.messages.metadataRefreshing(title: library.title),
+        t.messages.metadataRefreshStarted(title: library.title),
+      ),
+      LibraryMaintenance.emptyTrash => (
+        t.libraries.emptyingTrash(title: library.title),
+        t.libraries.trashEmptied(title: library.title),
+      ),
+    };
     return _runMediaLibraryAction(
-      multiServer: multiServer,
+      multiServer: context.read<MultiServerProvider>(),
       library: library,
-      action: action,
+      action: (client) => runLibraryMaintenance(client, action, library.id),
       progressMessage: progressMessage,
       successMessage: successMessage,
-    );
-  }
-
-  Future<void> _scanLibrary(MediaLibrary library) {
-    return _performLibraryAction(
-      library: library,
-      action: (client) => client.scanLibrary(library.id),
-      progressMessage: t.messages.libraryScanning(title: library.title),
-      successMessage: t.messages.libraryScanStarted(title: library.title),
-    );
-  }
-
-  Future<void> _refreshLibraryMetadata(MediaLibrary library) {
-    return _performMediaLibraryAction(
-      library: library,
-      action: (client) => client.refreshLibraryMetadata(library.id),
-      progressMessage: t.messages.metadataRefreshing(title: library.title),
-      successMessage: t.messages.metadataRefreshStarted(title: library.title),
-    );
-  }
-
-  Future<void> _emptyLibraryTrash(MediaLibrary library) {
-    return _performLibraryAction(
-      library: library,
-      action: (client) => client.emptyLibraryTrash(library.id),
-      progressMessage: t.libraries.emptyingTrash(title: library.title),
-      successMessage: t.libraries.trashEmptied(title: library.title),
-    );
-  }
-
-  Future<void> _analyzeLibrary(MediaLibrary library) {
-    return _performLibraryAction(
-      library: library,
-      action: (client) => client.analyzeLibrary(library.id),
-      progressMessage: t.libraries.analyzing(title: library.title),
-      successMessage: t.libraries.analysisStarted(title: library.title),
     );
   }
 
@@ -2080,56 +2008,11 @@ class _LibraryManagementSheetState extends State<_LibraryManagementSheet> {
   }
 }
 
-/// Runs a Plex library action (scan/empty trash/analyze) and, on failure,
-/// shows a retryable error [Notice]. Deliberately a top-level function, not
-/// a method on `_LibrariesScreenState`: its `onRetry` closure recurses into
-/// itself, and if this were an instance method that recursion would
-/// implicitly capture `this`. Errors are persistent [Notice]s retained by
-/// the global `noticeController` — a `this`-capturing retry would keep this
-/// screen's disposed `State` (and everything it references) reachable from
-/// that global singleton until the notice is dismissed. [multiServer] is
-/// captured instead: it's app-scoped and outlives any single screen anyway,
-/// so retaining it costs nothing.
-Future<void> _runLibraryAction({
-  required MultiServerProvider multiServer,
-  required MediaLibrary library,
-  required Future<void> Function(PlexClient client) action,
-  required String progressMessage,
-  required String successMessage,
-}) async {
-  try {
-    final client = _requirePlexClientForLibrary(multiServer, library);
-    noticeController.show(
-      Notice(
-        level: NoticeLevel.info,
-        title: progressMessage,
-        groupKey: 'library-progress:${library.id}',
-        durationOverride: const Duration(seconds: 2),
-      ),
-    );
-    await action(client);
-    noticeController.show(
-      Notice(level: NoticeLevel.success, title: successMessage, groupKey: 'library-success:${library.id}'),
-    );
-  } catch (e) {
-    noticeController.show(
-      noticeForError(
-        e,
-        context: library.title,
-        onRetry: () => _runLibraryAction(
-          multiServer: multiServer,
-          library: library,
-          action: action,
-          progressMessage: progressMessage,
-          successMessage: successMessage,
-        ),
-      ),
-    );
-  }
-}
-
-/// Backend-neutral counterpart to [_runLibraryAction] — see its doc comment
-/// for why this is a top-level function rather than a screen method.
+/// Runs a library maintenance action and, on failure, shows a retryable
+/// error [Notice]. Deliberately a top-level function, not a method on
+/// `_LibrariesScreenState`: its `onRetry` closure recurses into itself, and as
+/// an instance method that recursion would capture `this`, keeping the
+/// disposed State reachable from the global `noticeController`.
 Future<void> _runMediaLibraryAction({
   required MultiServerProvider multiServer,
   required MediaLibrary library,
@@ -2168,34 +2051,7 @@ Future<void> _runMediaLibraryAction({
   }
 }
 
-/// Mirrors `BuildContext.getPlexClientForLibrary` (provider_extensions.dart)
-/// against an already-resolved [MultiServerProvider] instead of a
-/// [BuildContext], so callers don't need a live element tree. Same fallback
-/// order: the library's own server first, then any online server.
-PlexClient _requirePlexClientForLibrary(MultiServerProvider multiServer, MediaLibrary library) {
-  final serverId = serverIdOrNull(library.serverId);
-  if (serverId != null) {
-    final client = multiServer.getPlexClientForServer(serverId);
-    if (client != null) return client;
-  }
-  for (final id in multiServer.onlineServerIds) {
-    final client = multiServer.getPlexClientForServer(ServerId(id));
-    if (client != null) return client;
-  }
-  throw Exception(t.errors.noClientAvailable);
-}
-
-/// Backend-neutral counterpart to [_requirePlexClientForLibrary], mirroring
-/// `BuildContext.getMediaClientForLibrary`.
-MediaServerClient _requireMediaClientForLibrary(MultiServerProvider multiServer, MediaLibrary library) {
-  final serverId = serverIdOrNull(library.serverId);
-  if (serverId != null) {
-    final client = multiServer.getClientForServer(serverId);
-    if (client != null) return client;
-  }
-  for (final id in multiServer.onlineServerIds) {
-    final client = multiServer.getClientForServer(ServerId(id));
-    if (client != null) return client;
-  }
-  throw Exception(t.errors.noClientAvailable);
-}
+/// The library's own maintenance client; never another server's. Re-checks
+/// the rights at run time, so a revoked right starts nothing.
+MediaServerClient _requireMediaClientForLibrary(MultiServerProvider multiServer, MediaLibrary library) =>
+    libraryMaintenanceClient(multiServer.serverManager, library) ?? (throw Exception(t.errors.noClientAvailable));
