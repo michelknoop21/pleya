@@ -217,8 +217,8 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   /// The exact `DiscoverProvider.latestMovies` list [heroGroups] was built
   /// from, or `null` before the first projection completes.
   ///
-  /// `DiscoverProvider` replaces that list wholesale on every real change, so
-  /// a consumer can answer "is the hero caught up with what Home is showing?"
+  /// Equivalent list snapshots are rebound without re-projecting, so a
+  /// consumer can answer "is the hero caught up with what Home is showing?"
   /// with one `identical()` check — and, crucially, tell an *authoritative*
   /// empty [heroGroups] ("this library's recent films are all ineligible")
   /// from a transient one ("the films just landed, the projection is still
@@ -256,11 +256,16 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
     // See the `_last*` field docs: reference identity for the three lists
     // `DiscoverProvider` reassigns wholesale, set equality for the computed
     // `unansweredServerIds`.
-    if (_lastUnansweredServerIds != null &&
+    if (!_projecting &&
+        _lastUnansweredServerIds != null &&
         listEquals(_discover.latestMovies, _lastLatestMovies) &&
         listEquals(_discover.allContinueWatching, _lastAllOnDeck) &&
         listEquals(_discover.hubs, _lastHubs) &&
         setEquals(_discover.unansweredServerIds, _lastUnansweredServerIds)) {
+      // Readiness consumers compare this reference with the current feed.
+      // Equal content is already projected; retain that equivalence when a
+      // refresh replaces only the list instance, without unmounting the hero.
+      _lastLatestMovies = _discover.latestMovies;
       return;
     }
     if (_projecting) {

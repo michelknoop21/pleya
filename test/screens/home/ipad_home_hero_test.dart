@@ -379,7 +379,11 @@ void main() {
       await pump(tester, _landscape);
       await settleProviders(tester);
 
-      expect(identical(projection.projectedLatestMovies, discover.latestMovies), isFalse, reason: 'the trap itself');
+      expect(
+        identical(projection.projectedLatestMovies, discover.latestMovies),
+        isTrue,
+        reason: 'an equivalent empty snapshot keeps the existing projection authoritative',
+      );
       expect(bandHeight(tester), pageTop);
       await finish(tester);
     });

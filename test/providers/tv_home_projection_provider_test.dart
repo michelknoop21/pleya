@@ -9,6 +9,8 @@
 /// covers the same contract end-to-end through the real screen.
 library;
 
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -118,6 +120,41 @@ class _FakeClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _GatedClient extends _FakeClient {
+  final entered = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    if (itemId == 'second') {
+      if (!entered.isCompleted) entered.complete();
+      await release.future;
+    }
+    return const ExternalIds();
+  }
+}
+
+class _ProjectionFeed extends ChangeNotifier implements DiscoverProvider {
+  @override
+  List<MediaItem> latestMovies = [];
+  @override
+  List<MediaItem> get allContinueWatching => const [];
+  @override
+  List<MediaHub> get hubs => const [];
+  @override
+  Set<String> get unansweredServerIds => const {};
+  @override
+  void setTopShelfHero(List<MediaItem> hero) {}
+
+  void replace(List<MediaItem> movies) {
+    latestMovies = movies;
+    notifyListeners();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 /// Same polling shape `tv_discovery_landing_provider_test.dart` uses: a
 /// microtask-only yield, since this is a plain `test`, not `testWidgets`,
 /// and a real `Timer` never fires without a widget binding to pump it.
@@ -162,6 +199,38 @@ void main() {
     continueWatchingTitle: 'Continue Watching',
     latestMoviesTitle: 'Recently Released',
   );
+
+  test('a reversion to projected data supersedes an in-flight different projection', () async {
+    final client = _GatedClient();
+    multiServer.serverManager.debugRegisterClientForTesting(client);
+    final first = _movie('first', title: 'First film', year: 2026);
+    final feed = _ProjectionFeed()..latestMovies = [first];
+    final home = TvHomeProjectionProvider(
+      discover: feed,
+      multiServer: multiServer,
+      continueWatchingTitle: 'Continue Watching',
+      latestMoviesTitle: 'Recently Released',
+    );
+    addTearDown(home.dispose);
+    addTearDown(feed.dispose);
+    await _settle(home);
+    expect(home.heroGroups.single.representativeSource.item.id, 'first');
+    // Identity enrichment is intentionally limited to duplicate buckets.
+    feed.replace([
+      _movie('second', title: 'Second film', year: 2026),
+      _movie('second-copy', title: 'Second film', year: 2026),
+    ]);
+    try {
+      await client.entered.future.timeout(const Duration(seconds: 2));
+      expect(home.isProjecting, true);
+      feed.replace([first]);
+    } finally {
+      client.release.complete();
+    }
+    await _settle(home);
+    expect(home.heroGroups.map((g) => g.representativeSource.item.id), ['first']);
+    expect(home.projectedLatestMovies, same(feed.latestMovies));
+  });
 
   test('FeaturedSelector output becomes heroGroups for real latestMovies input', () async {
     aggregation.latestMoviesResult = () => [_movie('m1', title: 'Recent One'), _movie('m2', title: 'Recent Two')];
