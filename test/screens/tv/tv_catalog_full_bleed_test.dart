@@ -261,6 +261,25 @@ void main() {
     }
   });
 
+  testWidgets('all 500 focus shells remain attached while offscreen content stays bounded', (tester) async {
+    final h = await _harness(500);
+    await h.pump(tester, canvas: _canvas);
+    await h.open(tester);
+    final cards = tester.widgetList<TvCatalogCompactCard>(find.byType(TvCatalogCompactCard)).toList();
+    expect(cards, hasLength(500));
+    expect(cards.every((card) => card.focusNode?.context != null), isTrue);
+    expect(cards.every((card) => card.semanticLabel?.isNotEmpty ?? false), isTrue);
+    final textCount = find
+        .descendant(of: find.byType(TvCatalogCompactCard), matching: find.byType(Text))
+        .evaluate()
+        .length;
+    expect(textCount, lessThan(200), reason: 'a distant card keeps its focus shell without laying out all 500 footers');
+    expect(
+      tester.getSize(find.byType(TvCatalogCompactCard).last),
+      tester.getSize(find.byType(TvCatalogCompactCard).first),
+    );
+  });
+
   testWidgets('a press on a wall of 500 cards', (tester) async {
     final h = await _harness(500);
     await h.pump(tester, canvas: _canvas);
