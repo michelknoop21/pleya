@@ -66,7 +66,7 @@ func jobWire(rec jobs.Record) Job {
 		v := rec.CancelRequestedAt.UTC().Format(time.RFC3339)
 		out.CancelRequestedAt = &v
 	}
-	if rec.Kind == JobScanLibrary {
+	if rec.Kind == JobScanLibrary || rec.Kind == JobEmptyLibraryTrash {
 		var args ScanJobArgs
 		if json.Unmarshal(rec.Args, &args) == nil {
 			if args.LibraryID != "" {

@@ -1705,6 +1705,59 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /libraries/{library_id}/empty-trash:
+    post:
+      tags: [administration]
+      operationId: emptyLibraryTrash
+      summary: Leeg de prullenbak van een bibliotheek.
+      description: |
+        Klasse `admin`, capability `library_maintenance` (DEC-XXX). Zet een job
+        `empty_library_trash` in de wachtrij met de dedupe key van de scan.
+        De job verwijdert niets als een root van de bibliotheek niet te lezen
+        of leeg is; anders alleen versies waarvan elk mediabestand als
+        verdwenen gemarkeerd staat en op schijf ontbreekt (een bestand onder
+        een lege map telt als aanwezig), daarna de titels zonder versie met hun
+        kijkstatus (hoofdstuk 17f). 202 bevestigt de ontvangst, niet het
+        opruimen.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      responses:
+        "202":
+          description: De job staat in de wachtrij.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryMaintenance" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.scan_in_progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /libraries/{library_id}/refresh-metadata:
+    post:
+      tags: [administration]
+      operationId: refreshLibraryMetadata
+      summary: Haal de metadata van een bibliotheek opnieuw op.
+      description: |
+        Klasse `admin`, capability `library_maintenance` (DEC-XXX).
+        Zet elke film en serie meteen aan de beurt voor de metadataronde en
+        wekt die. Afgewezen en onbesliste titels blijven buiten; handmatige
+        velden, locks en pins blijven staan.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      responses:
+        "202":
+          description: De titels staan aan de beurt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryMaintenance" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /scans:
     get:
       tags: [administration]
@@ -3997,6 +4050,13 @@ components:
         artwork_cache_admin:
           type: boolean
           description: Optioneel; afwezig is false. Alleen true bij volledige geregistreerde stats-/purgeketen.
+        library_maintenance:
+          type: boolean
+          default: false
+          description: |
+            DEC-XXX (bibliotheekonderhoud). `POST /libraries/{library_id}/empty-trash` en
+            `POST /libraries/{library_id}/refresh-metadata` bestaan voor klasse
+            admin. Zonder de vlag biedt een client op deze server alleen de scan.
         artwork_sizes:
           type: boolean
           default: false
@@ -5726,10 +5786,25 @@ components:
         cancel_requested_at: { type: [string, "null"], format: date-time }
         library_id:
           allOf: [{ $ref: "#/components/schemas/Id" }]
-          description: Alleen voor jobs van soort scan_library.
+          description: Alleen voor jobs van soort scan_library en empty_library_trash.
         scan_id:
           allOf: [{ $ref: "#/components/schemas/Id" }]
           description: Alleen voor een scanjob die via POST /libraries/{id}/scan is gestart.
+    LibraryMaintenance:
+      type: object
+      required: [items]
+      additionalProperties: false
+      properties:
+        items:
+          type: integer
+          minimum: 0
+          description: |
+            Bij legen het aantal kandidaten: titels waarvan bij de aanvraag elk
+            bestand als verdwenen gemarkeerd stond; de job kan er minder
+            verwijderen. Bij metadata het aantal titels dat aan de beurt staat.
+        job_id:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Alleen bij legen.
     JobPage:
       allOf:
         - { $ref: "#/components/schemas/Page" }

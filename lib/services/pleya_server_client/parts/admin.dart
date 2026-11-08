@@ -70,7 +70,7 @@ typedef PleyaWatchedTitle = ({
 /// alone: `GET /scans` lists the same work again with file counters, and a
 /// second source would show every scan twice.
 mixin _PleyaServerAdminMethods on _PleyaServerRequests
-    implements LibraryScanClient, RetryableJobsClient, ServerUserAdministration {
+    implements LibraryScanClient, LibraryTrashClient, RetryableJobsClient, ServerUserAdministration {
   MediaServerHttpClient get _http;
 
   void assertCanAdministerServer();
@@ -84,10 +84,27 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     await _adminSend('POST', '/libraries/${adminPathSegment(libraryId)}/scan');
   }
 
-  /// Refresh a library's metadata. A scan is the only refresh the protocol has:
-  /// it walks the files and then runs the metadata pass over what is due, so
-  /// this starts one. Admin only, like the scan itself.
-  Future<void> refreshLibraryMetadata(String libraryId) => scanLibrary(libraryId);
+  /// Refresh a library's metadata: `POST /libraries/{id}/refresh-metadata`
+  /// puts every film and series back in the metadata round. A server without
+  /// `library_maintenance` has no such route; there a scan is the closest
+  /// thing, because it runs the metadata pass over what is due afterwards.
+  Future<void> refreshLibraryMetadata(String libraryId) async {
+    if (!wireCapabilities.libraryMaintenance) return scanLibrary(libraryId);
+    assertCanAdministerServer();
+    await _adminSend('POST', '/libraries/${adminPathSegment(libraryId)}/refresh-metadata');
+  }
+
+  @override
+  bool get supportsLibraryTrash => wireCapabilities.libraryMaintenance;
+
+  /// `POST /libraries/{id}/empty-trash`: a server job removes the titles whose
+  /// files are marked missing and are gone from disk. Refused (409) while a
+  /// scan of that library is queued or running.
+  @override
+  Future<void> emptyLibraryTrash(String libraryId) async {
+    assertCanAdministerServer();
+    await _adminSend('POST', '/libraries/${adminPathSegment(libraryId)}/empty-trash');
+  }
 
   /// The newest page of jobs.
   // ponytail: one page of 100; follow `next_cursor` when a screen needs history.

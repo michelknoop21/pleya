@@ -225,6 +225,7 @@ func run() int {
 		}
 	}
 	runner.Register(api.JobScanLibrary, scanHandler(catalogStore, sc, runner, logging.Component(log, "scanner"), onScanned))
+	runner.Register(api.JobEmptyLibraryTrash, emptyTrashHandler(catalogStore, logging.Component(log, "scanner")))
 	downloadStore := downloads.NewStore(pool)
 	runner.Register(api.JobDownloadDigest, downloads.DigestHandler(downloadStore, catalogStore, logging.Component(log, "downloads")))
 	resizer, cacheAdminReady := newArtworkResizer(ctx, catalogStore, cfg, backups.Dir(), logging.Component(log, "artwork"))

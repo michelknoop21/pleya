@@ -1334,16 +1334,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             onPressed: () => bigP.stage == BigPStage.out ? bigP.park() : bigP.summon(),
                             child: const BigPFaceButton(),
                           ),
-                        // Server Tasks — Plex-only (`/activities` API has no
-                        // Jellyfin equivalent), hide the button entirely on
-                        // Jellyfin-only profiles so the chrome doesn't show
-                        // a permanently empty popover. Excluded on TV: the panel
+                        // Server Tasks: Plex activities plus the jobs of a
+                        // server this profile administers (Pleya Server,
+                        // Jellyfin). Hidden when no online server has either,
+                        // so the chrome doesn't show a permanently empty
+                        // popover. Excluded on TV: the panel
                         // is a pointer/hover popover that can't be focused with
                         // the remote, so it read as a dead button on Apple TV
                         // (isDesktop is true there because isMobile excludes TV).
                         if (PlatformDetector.isDesktop(context) &&
                             !PlatformDetector.isTV() &&
-                            context.select<MultiServerProvider, bool>((p) => p.hasOnlinePlexServers))
+                            context.select<MultiServerProvider, bool>((p) => p.hasOnlineServerTasks))
                           FocusableAction(
                             onPressed: () => _serverActivitiesButtonKey.currentState?.togglePanel(),
                             child: ServerActivitiesButton(key: _serverActivitiesButtonKey),

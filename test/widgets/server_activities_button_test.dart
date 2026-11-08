@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pleya/connection/connection.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -12,6 +13,7 @@ import 'package:pleya/models/plex/plex_config.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -131,5 +133,77 @@ void main() {
       expect(find.byTooltip(t.common.cancel), findsOneWidget);
       button.togglePanel();
     });
+  });
+
+  testWidgets('lists the queued and running jobs of an administered Pleya Server, with a stop button', (tester) async {
+    final cancelled = <String>[];
+    http.Response json(Object body, {int status = 200}) =>
+        http.Response(jsonEncode(body), status, headers: const {'content-type': 'application/json'});
+    final client = PleyaServerClient.create(
+      PleyaServerConnection(
+        id: 'pleyaServer.srv-1',
+        baseUrl: 'http://nas.lan:8832',
+        serverId: 'srv-1',
+        serverName: 'Zolder',
+        userName: 'michel',
+        refreshToken: 'rt-1',
+        role: 'admin',
+        createdAt: DateTime.utc(2026, 10, 2),
+      ),
+      httpClientFactory: () => MockClient((request) async {
+        final path = request.url.path.replaceFirst('/pleya/v1', '');
+        return switch (path) {
+          '/auth/refresh' => json(const {
+            'access_token': 'at',
+            'refresh_token': 'rt-2',
+            'token_type': 'bearer',
+            'expires_in_ms': 900000,
+          }),
+          '/info' => json(const {
+            'protocol': {'major': 1, 'feature_level': 1, 'profile': 'full'},
+            'server': {'id': 'srv-1'},
+            'capabilities': {
+              'browse': true,
+              'search': true,
+              'artwork': true,
+              'watch_state': true,
+              'administration': true,
+            },
+            'auth': {
+              'methods': ['password'],
+              'setup_required': false,
+            },
+          }),
+          '/jobs' => json(const {
+            'items': [
+              {'id': 'job-1', 'kind': 'empty_library_trash', 'state': 'running', 'created_at': '2026-11-08T10:00:00Z'},
+              {'id': 'job-2', 'kind': 'scan_library', 'state': 'succeeded', 'created_at': '2026-11-08T09:00:00Z'},
+            ],
+            'next_cursor': null,
+          }),
+          '/jobs/job-1/cancel' => () {
+            cancelled.add('job-1');
+            return json(const {'id': 'job-1'});
+          }(),
+          _ => json(const {}, status: 404),
+        };
+      }),
+    );
+    await tester.runAsync(client.refreshCapabilities);
+    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    final button = await pumpButton(tester, manager);
+
+    button.togglePanel();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+
+    expect(find.text('Empty Trash'), findsOneWidget);
+    expect(find.text('Scan Library'), findsNothing, reason: 'a finished job is not a running task');
+
+    await tester.tap(find.byTooltip(t.common.cancel));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    expect(cancelled, ['job-1']);
+    button.togglePanel();
   });
 }

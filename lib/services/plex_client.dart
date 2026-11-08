@@ -221,6 +221,7 @@ class PlexClient
         PersonSearchClient,
         GracefullyCloseable,
         LibraryScanClient,
+        LibraryTrashClient,
         ItemMetadataRefreshClient,
         ServerJobsClient {
   @override
@@ -3096,7 +3097,11 @@ class PlexClient
     await _getWithFailover('/library/sections/$sectionId/refresh?force=1');
   }
 
+  @override
+  bool get supportsLibraryTrash => true;
+
   /// Empty trash for a library section
+  @override
   Future<void> emptyLibraryTrash(String sectionId) async {
     assertCanManageServerMetadata();
     await _http.put('/library/sections/$sectionId/emptyTrash');
