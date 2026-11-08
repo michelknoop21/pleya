@@ -4696,7 +4696,7 @@ De eerdere draaiblokkade is voor deze run opgeheven door de geselecteerde iPad P
 
 ### PLR12: app stopt na het sluiten van het spelerpaneel boven 4K Dolby Vision (build 360, log `i8tj0`, 13 oktober 2026)
 
-Roadmap: A-12. Status: OORZAAK ONBEKEND · DIAGNOSTIEK GEBOUWD · HARDWARE OPEN.
+Roadmap: A-12. Status: MITIGATIE · HARDWARE OPEN. Sinds het vierde voorval (8 november 2026, hieronder) is de stop bewezen een geheugenkill door de kernel.
 
 Wat het log laat zien (Apple TV 4K 3e generatie, tvOS 27.0, 2.8.1 build 360):
 
@@ -4751,6 +4751,22 @@ Status oorspronkelijke incident: **CRASHOORZAAK ONBEWEZEN · HARDWARE OPEN**. Lo
 - Nieuw bewijs uit het toestel: `Retired/Runner-2026-10-15-224754.ips` (build 368) is een SIGKILL `0x8BADF00D` (5 s watchdog) met de hoofdthread in `AVAudioSession setActive` vanuit `os_media_controls setPlaybackState`. Dat is een andere stop dan de panelstop, en toont dat de audiodienst de hoofdthread kan blokkeren. Dit rapport staat los van deze wijziging.
 - De avfoundation-VO heeft al `osd-max-height` (inline OSD, patch 0007, `vo_avfoundation.m`), dus er is geen MPVKit-wijziging nodig. De speler zet op Apple TV nu `avfoundation-osd-max-height=1080`: de pool wordt 1920x1080 (circa 8 MiB per buffer in plaats van 31,6), de laag wordt naar het scherm opgeschaald. Dit vervangt de eerdere kanttekening dat er geen toestemming is om de ondertitelresolutie te verlagen: die is hier door Michel gegeven, als mitigatie en niet als bewezen oplossing. Ondertitels op een 4K-scherm worden daardoor op 1080p gerasterd; de instelling Ondertitelresolutie 'Video' gaat daar nog onder. iPhone en iPad ongewijzigd.
 - Status: **MITIGATIE, OORZAAK ONBEWEZEN · HARDWARE OPEN**. Gerichte test met negatieve controle en `scripts/ci_checks.sh` groen. Pas bevestigd als dezelfde handelingen (eerste ondertitel van de sessie aan, wisselen, paneel sluiten, een paar keer) op een build mét deze wijziging niet meer stoppen; de log moet dan `Created OSD overlay pool: 1920x1080` tonen.
+
+**Vierde voorval, 8 november 2026, log `6pzfy` en sysdiagnose, build 448 (`7ea8fa4`):**
+
+- Apple TV 4K (3e generatie, 4 GB), 4K HEVC-MKV van Pleya Server. 12:29:02 start; tussen 12:29:03 en 12:29:05 zes meldingen van geheugendruk bij rss 683 tot 698 MB. 12:31:41,901 `TvInfoPanel: opened tab=information rss=804MB` is de laatste regel. De OSD-begrenzing van het derde voorval (`avfoundation-osd-max-height=1080`) stond aan.
+- Het systeemlog uit de sysdiagnose geeft voor het eerst de oorzaak. Eerst beëindigt de kernel alle inactieve daemons die hij kan missen, daarna 64 ms na de paneelregel:
+  `12:31:41.965 kernel memorystatus: killing process 5418 [Runner] in high band FOREGROUND (100) - memorystatus_available_pages: 22724`
+  (pagina's van 16 KB, ruim 355 MB vrij voor het hele systeem). Om 12:31:42,007 volgt `killing_highwater_process pid 5418 [Runner] ... 2152563KB`, en launchd meldt `JETSAM_REASON_MEMORY_HIGHWATER`. De footprint van Pleya was dus 2,1 GB, terwijl het app-log 804 MB rss meet: het verschil zit in IOSurface-, GPU- en decodergeheugen, dat rss niet telt. Bij zo'n kill schrijft tvOS geen crashrapport en geen JetsamEvent naar `systemCrashLogs`, wat het ontbrekende rapport in de eerdere voorvallen verklaart.
+- De paneelcheckpoint in het systeemlog toont `demuxer-max-bytes=157286400 demuxer-max-back-bytes=52428800`: de standaardwaarden van mpv (150 en 50 MiB), omdat de app in de automatische buffermodus op Apple TV niets instelde.
+
+Wat er verandert (tvOS, andere platforms ongewijzigd):
+
+- `TvPanelCard` tekent op Apple TV met glas uit (de standaard) geen `BackdropFilter` meer. mpv tekent onder de FlutterView, dus de vervaging van 24 sigma zag alleen transparante pixels en liet niets zien, maar vroeg bij het openen van het paneel wel een offscreen-pass ter grootte van het 4K-scherm. Vulling, rand en schaduw blijven gelijk. Met glas aan was er al geen backdrop. Android TV houdt de vervaging.
+- In de automatische buffermodus zet de speler op Apple TV `demuxer-max-bytes` op 64 MiB en `demuxer-max-back-bytes` op 16 MiB (`appleTvDemuxerLimits` in `video_player_screen.dart`). Een zelf gekozen buffergrootte blijft gelden.
+- Onderzocht en niet aangepast: de bibliotheekscan liep niet tijdens deze sessie (geen regel tussen 12:29 en 12:31), en de beeldcaches waren al leeg (`imageCacheBytes=0` bij elke melding van geheugendruk).
+
+Status: **MITIGATIE · HARDWARE OPEN**. Gerichte tests met negatieve controle en `scripts/ci_checks.sh` groen. De grootste post, het geheugen buiten rss (ongeveer 1,3 GB), is niet aangepakt; de footprint van de decoder- en weergavebuffers is daar de volgende onderzoeksroute. Bevestigd pas als dezelfde 4K-film met herhaald paneel openen en sluiten op een build met deze wijziging blijft draaien, met in het systeemlog geen `killing process ... [Runner]`.
 
 ### TS1: Top Shelf schreef op hardware niets, de map voor de beelden werd geweigerd (build 357 en 360, log `i8tj0`, 13 oktober 2026)
 

@@ -221,6 +221,20 @@ _PlaybackOpenTiming _playbackOpenTiming({
 @visibleForTesting
 int avfoundationOsdMaxHeight({required bool isAppleTV}) => isAppleTV ? 1080 : 0;
 
+/// Demuxer limits for Apple TV in auto buffer mode ([bufferSizeMB] `0`),
+/// empty elsewhere and for an explicit buffer size, which the user chose.
+///
+/// Ceiling: 64 MiB ahead, 16 MiB behind. Without them mpv's defaults (150 and
+/// 50 MiB) hold about 200 MB during 4K playback on a 4 GB Apple TV, where the
+/// kernel killed the foreground app on memory at panel open (PLR12, build 448,
+/// footprint 2.1 GB). 64 MiB is several seconds of a 4K remux, enough to ride
+/// out a LAN hiccup; the back buffer only serves short seeks backwards.
+@visibleForTesting
+Map<String, String> appleTvDemuxerLimits({required bool isAppleTV, required int bufferSizeMB}) =>
+    isAppleTV && bufferSizeMB == 0
+    ? const {'demuxer-max-bytes': '${64 * 1024 * 1024}', 'demuxer-max-back-bytes': '${16 * 1024 * 1024}'}
+    : const {};
+
 /// Builds a [TrackPreferencePersister] that writes the per-episode stream
 /// selection out to a [PlexClient] resolved lazily on each call. Returns a
 /// no-op-on-null persister so the [TrackManager] doesn't have to import
@@ -979,6 +993,12 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         await currentPlayer.setProperty('demuxer-max-bytes', bufferSizeBytes.toString());
         final backBytes = bufferSizeBytes ~/ 4;
         await currentPlayer.setProperty('demuxer-max-back-bytes', backBytes.toString());
+      }
+      for (final MapEntry(:key, :value) in appleTvDemuxerLimits(
+        isAppleTV: PlatformDetector.isAppleTV(),
+        bufferSizeMB: bufferSizeMB,
+      ).entries) {
+        await currentPlayer.setProperty(key, value);
       }
       if (Platform.isAndroid) {
         // Cap demuxer buffers based on device heap to prevent OOM crashes.
