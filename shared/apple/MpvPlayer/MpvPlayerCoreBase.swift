@@ -818,6 +818,13 @@ class MpvPlayerCoreBase: NSObject {
     #endif
     checkError(mpv_set_option_string(mpv, "hwdec-codecs", "all"))
     checkError(mpv_set_option_string(mpv, "hwdec-software-fallback", "yes"))
+    // mpv runs hardware decoding on 4 frame threads by default, but libavcodec
+    // serializes the VideoToolbox hwaccel (not thread-safe), so the threads only
+    // add thread_count - 1 frames of output delay plus a reference list per
+    // thread. Each of those frames pins a decoded surface, about 25 MB at 4K
+    // 10-bit, on top of a 4K session that already sits near the 2 GB Apple TV
+    // limit. Software fallback keeps its own vd-lavc-threads.
+    checkError(mpv_set_option_string(mpv, "hwdec-threads", "1"))
     checkError(mpv_set_option_string(mpv, "target-colorspace-hint", "auto"))
     // Pause on the last frame at EOF instead of unloading the file, so seeking
     // back after the video ends still works (matches Linux/Windows).
