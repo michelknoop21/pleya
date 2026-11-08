@@ -17,6 +17,7 @@ import '../profiles/profile_connection_registry.dart';
 import '../services/companion_remote/companion_remote_peer_service.dart';
 import '../services/companion_remote/lan_discovery_service.dart';
 import '../services/companion_remote/playback_handoff.dart';
+import '../services/companion_remote/pleya_fly_follow.dart';
 import '../models/pleya_server/pleya_wire_companion.dart';
 import '../services/companion_remote/pleya_companion_identity.dart';
 import '../services/companion_remote/pleya_server_remote_auth.dart';
@@ -44,6 +45,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   String _platform = PlatformDetector.isAppleTV() ? 'tvOS' : 'unknown';
   bool _isPlayerActive = false;
   final PlaybackHandoffTracker _handoffs = PlaybackHandoffTracker();
+  final FlyFollowTracker _follows = FlyFollowTracker();
+  bool _nowPlaying = false;
 
   static const int _maxReconnectAttempts = 5;
 
@@ -623,6 +626,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
       // Start LAN discovery broadcasting
       _discoveryService ??= LanDiscoveryService();
+      _discoveryService!.nowPlaying = () =>
+          advertisesPlaying(playerOpen: _nowPlaying, clientConnected: _clientConnected);
       final localIps = result.addresses.map((a) => a.split(':').first).toList();
       await _discoveryService!.startBroadcastingForContexts(
         contexts: contexts,
@@ -734,6 +739,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _discoveryService ??= LanDiscoveryService();
     return _discoveryService!.startListeningForContexts(_clientAuthContexts);
   }
+
+  bool get isListeningForHosts => _discoveryService?.isListening ?? false;
 
   /// Stop listening for host beacons.
   void stopDiscovery() {
@@ -865,6 +872,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
     _deviceDisconnectedSubscription = _peerService!.onDeviceDisconnected.listen((_) {
       _handoffs.failAll();
+      _follows.failAll();
       appLogger.d('CompanionRemote: Device disconnected (intentional: $_intentionalDisconnect)');
       if (_intentionalDisconnect) {
         _session = _session?.copyWith(status: RemoteSessionStatus.disconnected, connectedDevice: null);
@@ -929,8 +937,31 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     return answer;
   }
 
+  /// Host side: beacons say whether a player is open, so a phone in the Home
+  /// knows when to ask what plays (A-23e).
+  void setNowPlayingBeacon(bool playing) => _nowPlaying = playing;
+
+  /// A host with a connected client hides the hint: a phone that peeks would
+  /// connect, and a new connection replaces the client (another phone's
+  /// remote session). The hint returns when that client leaves (A-23e).
+  static bool advertisesPlaying({required bool playerOpen, required bool clientConnected}) =>
+      playerOpen && !clientConnected;
+
+  bool get _clientConnected => isHost && _session?.connectedDevice != null;
+
+  /// Phone side: asks the connected Apple TV what it plays (A-23e). With
+  /// [peek] only that; without, the Apple TV also opens the session to follow.
+  Future<FlyFollowAnswer> askFlyFollow({required bool peek, Duration timeout = const Duration(seconds: 10)}) {
+    if (!_linkUp) return Future.value(const FlyFollowAnswer.refused(FlyFollowRefusal.failed));
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final answer = _follows.wait(id, timeout);
+    sendCommand(RemoteCommandType.follow, data: {flyFollowRequestKey: id, flyFollowPeekKey: peek});
+    return answer;
+  }
+
   void _handleSyncState(RemoteCommand command) {
     _handoffs.handleSyncState(command.data);
+    _follows.handleSyncState(command.data);
     final cancelled = command.data?[handoffCancelKey];
     if (cancelled is String) onHandoffCancelled?.call(cancelled);
     final query = command.data?[handoffQueryKey];
@@ -1086,6 +1117,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     _reconnectTimer?.cancel();
     _reconnectAttempts = 0;
     _handoffs.failAll(force: true);
+    _follows.failAll();
 
     // Don't stop the host server when leaving: only stop discovery listening.
     final leaving = isHost ? null : _peerService;

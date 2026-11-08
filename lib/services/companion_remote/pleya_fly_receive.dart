@@ -74,19 +74,22 @@ Future<void> followLifecycleWithPleyaFlyHost(
   }
 }
 
-/// Wires what a host receives: a fly to [onHandoff], every other command to
-/// [onCommand]. A handoff-only host drops the rest ([routesHostCommand]).
+/// Wires what a host receives: a fly to [onHandoff], a Meenemen request
+/// (A-23e) to [onFollow], every other command to [onCommand]. A handoff-only
+/// host drops the rest ([routesHostCommand]).
 void installHostCommandRouting(
   CompanionRemoteProvider provider, {
   required bool handoffOnly,
   required bool Function() isMounted,
   required void Function(RemoteCommand command) onHandoff,
   required void Function(RemoteCommand command) onCommand,
+  void Function(RemoteCommand command)? onFollow,
 }) {
   provider.onCommandReceived = (command) {
     if (!isMounted()) return;
     if (!routesHostCommand(command.type, handoffOnly: handoffOnly)) return;
     if (command.type == RemoteCommandType.handoff) return onHandoff(command);
+    if (command.type == RemoteCommandType.follow) return onFollow?.call(command);
     onCommand(command);
   };
 }

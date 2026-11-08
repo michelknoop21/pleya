@@ -8,6 +8,7 @@ import '../../mpv/mpv.dart';
 import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/error_message_utils.dart';
+import '../../utils/log_redaction_manager.dart';
 import '../models/playback_state.dart';
 import '../models/sync_message.dart';
 import '../models/watch_session.dart';
@@ -36,6 +37,10 @@ class WatchTogetherProvider with ChangeNotifier {
   PlaybackPhase? _playbackPhase;
   String _displayName = 'User';
   String? _lastHandledCurrentPlaybackKey;
+
+  /// A Pleya Fly Meenemen session (A-23e): the Apple TV hosts, phones follow.
+  bool _flySession = false;
+  String? _flyHostName;
 
   // Coalesce rapid-fire notifyListeners() calls into a single rebuild per frame.
   // During Watch Together join, 4-5 notifications fire within milliseconds;
@@ -97,6 +102,24 @@ class WatchTogetherProvider with ChangeNotifier {
   ControlMode get controlMode => _session?.controlMode ?? ControlMode.hostOnly;
   String? get sessionId => _session?.sessionId;
   bool get isWaitingForHostReconnect => _isWaitingForHostReconnect;
+
+  /// Whether this session is a Pleya Fly Meenemen session (A-23e).
+  bool get isFlySession => isInSession && _flySession;
+
+  /// This phone follows an Apple TV (A-23e): it plays muted and hides speed.
+  bool get isFlyFollower => isFlySession && !isHost;
+
+  /// Name of the host this phone follows ("Synchroon met Woonkamer"). Kept
+  /// past the host's leave, so the stop notice can still name it.
+  String? get flyHostName => isFlyFollower ? _flyHostName : null;
+
+  /// Names of the phones that follow this host (45-t5), self excluded.
+  List<String> get flyFollowerNames => isFlySession && isHost
+      ? [
+          for (final p in _participants)
+            if (!p.isHost) p.displayName,
+        ]
+      : const [];
 
   /// Whether the room is held up waiting on peers (readiness or stalls) —
   /// drives the "Waiting for …" pill.
@@ -281,7 +304,31 @@ class WatchTogetherProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Create a new watch together session as host
+  static WatchTogetherPeerService _newPeerService({bool joiningFly = false, String? relayUrl}) =>
+      WatchTogetherPeerService(
+        customBaseUrl: relayBaseFor(
+          joiningFly: joiningFly,
+          payloadRelay: relayUrl,
+          ownRelay: SettingsService.instanceOrNull?.read(SettingsService.customRelayUrl),
+        ),
+      );
+
+  /// The relay a session uses. A phone that joins a Pleya Fly session uses
+  /// the relay the Apple TV named, or the built-in one; never its own custom
+  /// relay, which the Apple TV does not use (A-23e). Everything else uses this
+  /// device's setting (null: the built-in relay).
+  @visibleForTesting
+  static String? relayBaseFor({required bool joiningFly, String? payloadRelay, String? ownRelay}) =>
+      joiningFly ? payloadRelay : ownRelay;
+
+  /// The Apple TV's fly session lost its last phone, or none came: end it,
+  /// so no empty room stays open on the relay (A-23e).
+  Future<void> leaveFlySessionIfAlone() async {
+    if (isFlySession && isHost && flyFollowerNames.isEmpty) await leaveSession();
+  }
+
+  /// Create a new watch together session as host. [flySession] makes every
+  /// guest a follower that never holds the room (A-23e).
   Future<String> createSession({
     required ControlMode controlMode,
     String? displayName,
@@ -289,15 +336,17 @@ class WatchTogetherProvider with ChangeNotifier {
     String? mediaRatingKey,
     String? mediaServerId,
     String? mediaTitle,
+    bool flySession = false,
   }) async {
     // Clean up any existing session
     await leaveSession();
     _lastHandledCurrentPlaybackKey = null;
 
     appLogger.d('WatchTogether: Creating session with control mode: $controlMode');
+    // A fly session id is the only key to the room: keep it out of shared logs.
+    if (flySession) LogRedactionManager.registerCustomValue(sessionId);
 
-    final customRelayUrl = SettingsService.instanceOrNull?.read(SettingsService.customRelayUrl);
-    _peerService = WatchTogetherPeerService(customBaseUrl: customRelayUrl);
+    _peerService = _newPeerService();
     _setupPeerServiceListeners();
 
     try {
@@ -315,7 +364,8 @@ class WatchTogetherProvider with ChangeNotifier {
       _displayName = displayName ?? _generateDisplayName();
       _participants.add(Participant(peerId: _peerService!.myPeerId!, displayName: _displayName, isHost: true));
 
-      _controller = WatchTogetherController(peerService: _peerService!, session: _session!);
+      _flySession = flySession;
+      _controller = WatchTogetherController(peerService: _peerService!, session: _session!, guestsFollow: flySession);
 
       _wireController();
       _wireReconnectHandler();
@@ -332,17 +382,19 @@ class WatchTogetherProvider with ChangeNotifier {
     }
   }
 
-  /// Join an existing session as guest
-  Future<void> joinSession(String sessionId, {String? displayName}) async {
+  /// Join an existing session as guest. [flySession] joins a Pleya Fly host
+  /// as a follower; [relayUrl] is the relay that host named (A-23e).
+  Future<void> joinSession(String sessionId, {String? displayName, bool flySession = false, String? relayUrl}) async {
     // Clean up any existing session
     await leaveSession();
     _lastHandledCurrentPlaybackKey = null;
 
-    appLogger.d('WatchTogether: Joining session: $sessionId');
+    if (flySession) LogRedactionManager.registerCustomValue(sessionId);
+    appLogger.d('WatchTogether: Joining session${flySession ? ' (Pleya Fly)' : ': $sessionId'}');
 
-    final customRelayUrl = SettingsService.instanceOrNull?.read(SettingsService.customRelayUrl);
-    _peerService = WatchTogetherPeerService(customBaseUrl: customRelayUrl);
+    _peerService = _newPeerService(joiningFly: flySession, relayUrl: relayUrl);
     _setupPeerServiceListeners();
+    _flySession = flySession;
 
     _session = WatchSession.joinAsGuest(sessionId: sessionId);
     notifyListeners();
@@ -384,8 +436,7 @@ class WatchTogetherProvider with ChangeNotifier {
     // Probe the relay with a lightweight peer service to check room occupancy,
     // then do a single createSession or joinSession. This avoids the crash-prone
     // join→teardown→create cycle on the provider.
-    final customRelayUrl = SettingsService.instanceOrNull?.read(SettingsService.customRelayUrl);
-    final probe = WatchTogetherPeerService(customBaseUrl: customRelayUrl);
+    final probe = _newPeerService();
     bool shouldBeHost;
     try {
       await probe.joinSession(sessionId);
@@ -450,6 +501,8 @@ class WatchTogetherProvider with ChangeNotifier {
     _lastHandledCurrentPlaybackKey = null;
     _lastActionEventMs.clear();
     _hostIntentionallyLeft = false;
+    _flySession = false;
+    _flyHostName = null;
 
     notifyListeners();
     appLogger.d('WatchTogether: Session left');
@@ -460,7 +513,8 @@ class WatchTogetherProvider with ChangeNotifier {
   /// [hasFirstFrame] is the screen's first-frame snapshot, [startupHold]
   /// delays sync readiness past platform startup gates (frame-rate switch),
   /// and [remoteSeek] routes sync-issued seeks through the screen's seek
-  /// path (Plex transcode restarts).
+  /// path (Plex transcode restarts). [adoptPlayback] attaches a host to a
+  /// player that already runs: the room keeps its state (A-23e).
   void attachPlayer(
     Player player, {
     required String ratingKey,
@@ -469,6 +523,7 @@ class WatchTogetherProvider with ChangeNotifier {
     bool hasFirstFrame = false,
     Future<void>? startupHold,
     Future<void> Function(Duration target)? remoteSeek,
+    bool adoptPlayback = false,
   }) {
     if (_controller == null) {
       appLogger.w('WatchTogether: Cannot attach player - no sync controller');
@@ -483,6 +538,7 @@ class WatchTogetherProvider with ChangeNotifier {
       hasFirstFrame: hasFirstFrame,
       startupHold: startupHold,
       remoteSeek: remoteSeek,
+      adoptPlayback: adoptPlayback,
     );
   }
 
@@ -558,6 +614,9 @@ class WatchTogetherProvider with ChangeNotifier {
     switch (message.type) {
       case SyncMessageType.join:
         if (message.peerId != null && message.displayName != null) {
+          if (_flySession && message.isHost == true && message.peerId == _session?.hostPeerId) {
+            _flyHostName = message.displayName;
+          }
           // Check if participant already exists
           final existingIndex = _participants.indexWhere((p) => p.peerId == message.peerId);
           if (existingIndex >= 0) {

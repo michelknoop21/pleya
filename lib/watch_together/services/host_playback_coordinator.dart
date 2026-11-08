@@ -46,6 +46,7 @@ class HostPlaybackCoordinator {
     required this._controlMode,
     required this._sendState,
     this._callbacks = const HostCoordinatorCallbacks(),
+    this.guestsFollow = false,
     int Function()? nowMs,
   }) : _nowMs = nowMs ?? _systemNowMs;
 
@@ -65,6 +66,12 @@ class HostPlaybackCoordinator {
   static const int selfRecoveryMinBufferAheadMs = 2000;
 
   final String myPeerId;
+
+  /// Pleya Fly Meenemen (A-23e): every guest follows this host. A follower
+  /// never holds the room: not at the first start and not when it stalls; it
+  /// catches up on its own, so a phone that buffers never pauses the Apple TV.
+  final bool guestsFollow;
+
   final void Function(PlaybackState state, {String? toPeerId}) _sendState;
   final HostCoordinatorCallbacks _callbacks;
   final int Function() _nowMs;
@@ -162,6 +169,7 @@ class HostPlaybackCoordinator {
     String? mediaTitle,
     bool hasFirstFrame = false,
     Future<void>? startupHold,
+    bool adoptPlayback = false,
   }) {
     detachPlayer();
     final sameEpoch =
@@ -198,9 +206,23 @@ class HostPlaybackCoordinator {
 
     if (hasFirstFrame) {
       _localReady = true;
-      _maybeLocalLoaded();
+      if (adoptPlayback && _phase == PlaybackPhase.loading && _gatingPeers().isEmpty) {
+        _adoptRunningPlayback(player);
+      } else {
+        _maybeLocalLoaded();
+      }
     }
     _restartHeartbeat();
+  }
+
+  /// A session that opens around a player that already plays or stands paused
+  /// (Pleya Fly Meenemen, A-23e): the room takes that state over as it is, so
+  /// the screen neither pauses for a group start nor starts when it was paused.
+  void _adoptRunningPlayback(AttachedPlayer player) {
+    _intendedPlaying = player.playing;
+    _firstStartCompleted = true;
+    _setPhase(player.playing ? PlaybackPhase.playing : PlaybackPhase.paused);
+    _broadcast();
   }
 
   /// Detach the player (episode switch keeps the session; [exiting] ends the
@@ -289,6 +311,7 @@ class HostPlaybackCoordinator {
     // Stall detection: a ready peer that reports buffering while the room
     // plays gets a short grace window before pausing everyone.
     if (status.ready && status.buffering) {
+      if (guestsFollow) return; // A follower catches up by itself.
       if (_phase == PlaybackPhase.playing && !_stalledPeers.contains(peerId)) {
         _peerStallGraceTimers[peerId] ??= Timer(const Duration(milliseconds: stallGraceMs), () {
           _peerStallGraceTimers.remove(peerId);
@@ -541,7 +564,7 @@ class HostPlaybackCoordinator {
     if (mediaKey == null) return gating;
 
     for (final peerId in _knownPeers) {
-      if (_excused.contains(peerId)) continue;
+      if (guestsFollow || _excused.contains(peerId)) continue;
       final status = _peerStatuses[peerId];
       if (status == null || status.mediaKey != mediaKey) {
         // Never reported for this epoch: gate only the initial start —

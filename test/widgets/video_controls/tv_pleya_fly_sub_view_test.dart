@@ -7,6 +7,7 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/services/companion_remote/lan_discovery_service.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
 import 'package:pleya/services/companion_remote/playback_handoff_sender.dart';
+import 'package:pleya/services/companion_remote/pleya_fly_follow.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_panel_types.dart';
@@ -42,7 +43,11 @@ void main() {
     first.dispose();
   });
 
-  Future<void> pumpView(WidgetTester tester) async {
+  Future<void> pumpView(
+    WidgetTester tester, {
+    ValueChanged<DiscoveredHost>? followHost,
+    String? followUnavailable,
+  }) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -56,6 +61,8 @@ void main() {
             from: const Duration(minutes: 3, seconds: 46),
             firstFocusNode: first,
             onSelectHost: selected.add,
+            onFollowHost: followHost,
+            followUnavailable: followUnavailable,
           ),
         ),
       ),
@@ -71,6 +78,10 @@ void main() {
 
   TvPanelRow row(WidgetTester tester, String title) =>
       tester.widget<TvPanelRow>(find.widgetWithText(TvPanelRow, title));
+
+  /// The Move row of the [index]th phone (45-t3: a header per phone, then its rows).
+  Finder moveRow(int index) => find.widgetWithText(TvPanelRow, 'Move').at(index);
+  TvPanelRow move(WidgetTester tester, int index) => tester.widget<TvPanelRow>(moveRow(index));
 
   testWidgets('searching: one focusable row says so, with the title on the right', (tester) async {
     await pumpView(tester);
@@ -112,14 +123,19 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('iPhone van Michel'), findsOneWidget);
-    expect(find.text('iPad'), findsOneWidget);
-    expect(find.text('Apple TV slaapkamer'), findsNothing);
-    expect(find.text('Pleya open'), findsNWidgets(2));
+    expect(find.text('IPHONE VAN MICHEL · PLEYA OPEN'), findsOneWidget);
+    expect(find.text('IPAD · PLEYA OPEN'), findsOneWidget);
+    expect(find.textContaining('APPLE TV SLAAPKAMER'), findsNothing);
+    expect(moveRow(0), findsOneWidget);
+    expect(find.widgetWithText(TvPanelRow, 'Move'), findsNWidgets(2));
+    expect(find.text('Continue on the iPhone, the Apple TV stops'), findsOneWidget);
+    expect(find.text('Continue on the iPad, the Apple TV stops'), findsOneWidget);
+    // No Meenemen row without a follow handler.
+    expect(find.widgetWithText(TvPanelRow, 'Take along'), findsNothing);
 
     first.requestFocus();
     await tester.pump();
-    expect(row(tester, 'iPhone van Michel').focusNode, same(first));
+    expect(move(tester, 0).focusNode, same(first));
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pump();
     expect(selected.map((h) => h.name), ['iPhone van Michel']);
@@ -140,14 +156,14 @@ void main() {
     await tester.pump();
 
     expect(find.text('Starting on iPhone van Michel…'), findsOneWidget);
-    final busy = row(tester, 'iPhone van Michel');
-    final other = row(tester, 'iPad');
+    final busy = move(tester, 0);
+    final other = move(tester, 1);
     expect(busy.onSelect, isNull);
     expect(other.dimmed, isTrue);
     expect(other.onSelect, isNull);
 
     // Select on the dimmed row does nothing.
-    final otherFocus = find.descendant(of: find.widgetWithText(TvPanelRow, 'iPad'), matching: find.byType(Focus)).first;
+    final otherFocus = find.descendant(of: moveRow(1), matching: find.byType(Focus)).first;
     tester.widget<Focus>(otherFocus).focusNode!.requestFocus();
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
@@ -158,7 +174,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('Uses another profile. Pick your profile on iPhone van Michel and try again.'), findsOneWidget);
-    expect(row(tester, 'iPad').dimmed, isFalse);
+    expect(move(tester, 1).dimmed, isFalse);
     await finish(tester);
   });
 
@@ -192,6 +208,96 @@ void main() {
     await finish(tester);
   });
 
+  group('Meenemen (A-23e, 45-t3)', () {
+    testWidgets('each phone gets Move first and Take along under it; Select follows', (tester) async {
+      final followed = <DiscoveredHost>[];
+      await pumpView(tester, followHost: followed.add);
+      transport.beacons.add([fakeHost('iPhone van Michel'), fakeHost('iPad van Sanne', clientId: 'ipad')]);
+      await tester.pump();
+      await tester.pump();
+
+      final takes = find.widgetWithText(TvPanelRow, 'Take along');
+      expect(takes, findsNWidgets(2));
+      expect(find.text('The Apple TV plays on, the iPhone watches along in sync'), findsOneWidget);
+      expect(find.text('The Apple TV plays on, the iPad watches along in sync'), findsOneWidget);
+      expect(find.textContaining('Take along starts on the iPhone without sound'), findsOneWidget);
+      // Move keeps the landing focus of A-23d.
+      expect(move(tester, 0).focusNode, same(first));
+      expect(
+        tester.getTopLeft(takes.at(0)).dy,
+        greaterThan(tester.getTopLeft(moveRow(0)).dy),
+        reason: 'Take along sits under Move',
+      );
+
+      tester.widget<TvPanelRow>(takes.at(1)).onSelect!();
+      expect(followed.map((h) => h.name), ['iPad van Sanne']);
+      expect(selected, isEmpty, reason: 'Take along is not a move');
+      await finish(tester);
+    });
+
+    testWidgets('a phone whose build has no Meenemen gets only Move', (tester) async {
+      await pumpView(tester, followHost: (_) {});
+      transport.beacons.add([fakeHost('iPhone van Michel'), fakeHost('Oude iPad', clientId: 'old', follow: false)]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.widgetWithText(TvPanelRow, 'Move'), findsNWidgets(2));
+      expect(find.widgetWithText(TvPanelRow, 'Take along'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('while Watch Together with a code runs, Take along is dimmed with the reason', (tester) async {
+      await pumpView(tester, followHost: (_) {}, followUnavailable: 'Watch Together is already running');
+      transport.beacons.add([fakeHost('iPhone van Michel')]);
+      await tester.pump();
+      await tester.pump();
+
+      final take = tester.widget<TvPanelRow>(find.widgetWithText(TvPanelRow, 'Take along'));
+      expect(take.dimmed, isTrue);
+      expect(take.onSelect, isNull);
+      expect(find.text('Watch Together is already running'), findsOneWidget);
+      expect(move(tester, 0).onSelect, isNotNull);
+      await finish(tester);
+    });
+
+    testWidgets('a running Take along shows on its own row, Move stays quiet', (tester) async {
+      final answer = Completer<PlaybackHandoffOutcome>();
+      transport.answer = (_) => answer.future;
+      await pumpView(tester, followHost: (_) {});
+      final phone = fakeHost('iPhone van Michel');
+      transport.beacons.add([phone]);
+      await tester.pump();
+      await tester.pump();
+
+      unawaited(
+        sender.handOff(
+          phone,
+          serverId: 'srv',
+          itemId: '42',
+          positionMs: 0,
+          title: 'Big Buck Bunny',
+          follow: () async => const FlyFollowOffer(
+            serverId: 'srv',
+            itemId: '42',
+            positionMs: 1000,
+            title: 'Big Buck Bunny',
+            from: 'Apple TV',
+            sessionId: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Taking along to iPhone van Michel…'), findsOneWidget);
+      expect(find.text('Starting on iPhone van Michel…'), findsNothing);
+      answer.complete(PlaybackHandoffOutcome.playing);
+      await tester.pump();
+      await tester.pump();
+      await finish(tester);
+    });
+  });
+
   test('the failure notice says why the phone refused', () {
     expect(
       pleyaFlyFailureBody('iPad', PlaybackHandoffRefusal.wrongProfile),
@@ -211,7 +317,7 @@ void main() {
     await tester.pump();
 
     // The user moves to the iPad, then the iPhone's beacon goes stale.
-    final ipadFocus = find.descendant(of: find.widgetWithText(TvPanelRow, 'iPad'), matching: find.byType(Focus)).first;
+    final ipadFocus = find.descendant(of: moveRow(1), matching: find.byType(Focus)).first;
     tester.widget<Focus>(ipadFocus).focusNode!.requestFocus();
     await tester.pump();
     transport.beacons.add([fakeHost('iPad', clientId: 'ipad')]);

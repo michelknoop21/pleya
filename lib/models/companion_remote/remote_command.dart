@@ -55,6 +55,10 @@ enum RemoteCommandType {
 
   /// Playback Handoff (A-23). Appended last: the wire format is the enum index.
   handoff,
+
+  /// Pleya Fly Meenemen (A-23e): a phone asks the Apple TV what it plays and,
+  /// unless it only peeks, for a Watch Together session to follow it in.
+  follow,
 }
 
 class _RemoteCommandTypeConverter extends IndexedEnumConverter<RemoteCommandType> {

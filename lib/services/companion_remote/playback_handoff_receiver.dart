@@ -16,6 +16,7 @@ import '../../utils/formatters.dart';
 import '../../utils/video_player_navigation.dart';
 import '../../widgets/notice/notice.dart';
 import '../../widgets/notice/notice_controller.dart';
+import '../../watch_together/providers/watch_together_provider.dart';
 import 'companion_remote_receiver.dart';
 import 'playback_handoff.dart';
 
@@ -164,6 +165,8 @@ Future<void> _receive(
   if (_cancelled.remove(request.id)) return;
   if (attempt.late) return fail('past its start window');
 
+  if (request.isFollow) return _follow(context, request, provider, release, attempt);
+
   noticeController.show(
     Notice(
       level: NoticeLevel.info,
@@ -191,4 +194,39 @@ Future<void> _receive(
     onPlaybackInitFailed: () => fail('player did not start'),
   );
   if (_activeHandoffId == request.id) _activeHandoffId = null;
+}
+
+/// Meenemen from the Apple TV (A-23e): join its session as a follower. The
+/// session's playback state opens the player (the Watch Together navigation
+/// of the main screen), at the Apple TV's position and in sync with it.
+Future<void> _follow(
+  BuildContext context,
+  PlaybackHandoffRequest request,
+  CompanionRemoteProvider provider,
+  VoidCallback release,
+  _HandoffAttempt attempt,
+) async {
+  final watchTogether = context.read<WatchTogetherProvider>();
+  attempt.opened = true;
+  release();
+  // Samen kijken with a code is this phone's own session: Meenemen refuses
+  // instead of leaving it behind the user's back.
+  if (watchTogether.isInSession && !watchTogether.isFlySession) {
+    appLogger.w('Playback handoff ${request.id} refused: Watch Together runs on this phone');
+    reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
+    return;
+  }
+  try {
+    await watchTogether.joinSession(
+      request.followSessionId!,
+      displayName: provider.deviceName,
+      flySession: true,
+      relayUrl: request.relayUrl,
+    );
+  } catch (e) {
+    appLogger.w('Playback handoff ${request.id} failed: could not follow (${e.runtimeType})');
+    reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
+    return;
+  }
+  reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.playing);
 }

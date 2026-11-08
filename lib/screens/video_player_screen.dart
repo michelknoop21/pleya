@@ -55,6 +55,7 @@ import '../providers/companion_remote_provider.dart';
 import '../services/companion_remote/companion_remote_receiver.dart';
 import '../services/companion_remote/playback_handoff.dart';
 import '../services/companion_remote/playback_handoff_receiver.dart';
+import '../services/companion_remote/pleya_fly_follow.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../services/discord_rpc_service.dart';
 import '../services/trackers/tracker_coordinator.dart';
@@ -110,6 +111,7 @@ import '../utils/stream_buffer_sizing.dart';
 import '../utils/video_player_navigation.dart';
 import 'video_player/auto_play_countdown.dart';
 import 'video_player/completion_latch.dart';
+import 'video_player/fly_follow_mute.dart';
 import 'video_player/frame_rate_matcher.dart';
 import 'video_player/live_tv_session_args.dart';
 import 'video_player/live_tv_session_state.dart';
@@ -124,7 +126,9 @@ import '../focus/input_mode_tracker.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/key_event_utils.dart';
 import '../i18n/strings.g.dart';
+import '../watch_together/models/watch_session.dart';
 import '../watch_together/providers/watch_together_provider.dart';
+import '../widgets/pleya_fly/fly_follow_indicators.dart';
 import '../widgets/notice/notice_controller.dart';
 import '../media/playback_language_notice.dart';
 import '../utils/language_codes.dart';
@@ -148,6 +152,7 @@ part 'video_player/parts/playback_start.dart';
 part 'video_player/parts/seeking.dart';
 part 'video_player/parts/build.dart';
 part 'video_player/parts/watch_together.dart';
+part 'video_player/parts/fly_follow.dart';
 part 'video_player/parts/assistant_playback.dart';
 part 'video_player/parts/unified_title.dart';
 
@@ -631,6 +636,12 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   CompanionRemoteProvider? _companionRemoteProvider;
   bool _handoffAcknowledged = false;
   VoidCallback? _savedOnHome;
+
+  /// A phone that follows an Apple TV plays muted until "Geluid aan" (A-23e).
+  final FlyFollowMute _flyMute = FlyFollowMute();
+
+  /// A fly session that opens now; a second phone that asks meanwhile waits for it.
+  Future<bool>? _flySessionOpening;
 
   /// Backend-neutral lookup. Returns whichever client (Plex or Jellyfin)
   /// owns this item. Used by the playback-init path in [_initializePlayer].
@@ -1328,13 +1339,17 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     try {
       // For non-host participants, show leave session confirmation
       if (_watchTogetherProvider != null && _watchTogetherProvider!.isInSession && !_watchTogetherProvider!.isHost) {
-        final confirmed = await showConfirmDialog(
-          context,
-          title: t.watchTogether.leaveSessionQuestion,
-          message: t.watchTogether.leaveSessionConfirm,
-          confirmText: t.watchTogether.leave,
-          isDestructive: true,
-        );
+        // A phone that follows an Apple TV just stops following (A-23e): no
+        // question, and leaving first keeps the exit's pause off the Apple TV.
+        final confirmed =
+            leavesWithoutConfirm(_watchTogetherProvider!) ||
+            await showConfirmDialog(
+              context,
+              title: t.watchTogether.leaveSessionQuestion,
+              message: t.watchTogether.leaveSessionConfirm,
+              confirmText: t.watchTogether.leave,
+              isDestructive: true,
+            );
 
         if (confirmed && mounted) {
           await _watchTogetherProvider!.leaveSession();
@@ -1432,6 +1447,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _detachFromWatchTogetherSession();
 
     _isBuffering.dispose();
+    _flyMute.dispose();
     _hasFirstFrame.dispose();
     _isExiting.dispose();
     _chromeController.dispose();

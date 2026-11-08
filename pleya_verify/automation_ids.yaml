@@ -501,6 +501,21 @@ ids:
   - id: player.handoff_button
     role: button
     instanceable: false
+  - id: player.fly_synced_with
+    role: status
+    instanceable: false
+  - id: player.fly_sound_on
+    role: button
+    instanceable: false
+  - id: player.fly_followers
+    role: status
+    instanceable: false
+  - id: home.fly_follow_card
+    role: region
+    instanceable: false
+  - id: home.fly_follow_take
+    role: button
+    instanceable: false
   - id: tvos.menu_passthrough
     role: service
     instanceable: false

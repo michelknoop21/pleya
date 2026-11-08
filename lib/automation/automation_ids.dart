@@ -579,6 +579,24 @@ class AutomationIds {
   /// the device picker sheet.
   static const String playerHandoffButton = 'player.handoff_button';
 
+  /// Pleya Fly Meenemen (A-23e). The line "Synchroon met <tv>" under the title
+  /// of a following phone (45-i); `state.host` names the Apple TV.
+  static const String playerFlySyncedWith = 'player.fly_synced_with';
+
+  /// The "Geluid aan" button of a following phone, shown while it is muted (45-i).
+  static const String playerFlySoundOn = 'player.fly_sound_on';
+
+  /// The label in the Apple TV's info line while a phone follows (45-t5);
+  /// `state.followers` lists the phones.
+  static const String playerFlyFollowers = 'player.fly_followers';
+
+  /// The Home card "Speelt op <tv>" on the iPhone (45-h); `state` carries the
+  /// Apple TV, the title and whether this phone can follow.
+  static const String homeFlyFollowCard = 'home.fly_follow_card';
+
+  /// The Meenemen button on that card.
+  static const String homeFlyFollowTake = 'home.fly_follow_take';
+
   /// The play/pause button in the player bar; `state.playing` mirrors the
   /// icon it draws. On TV the player opens with this button focused.
   static const String playerPlayPause = 'player.play_pause';
@@ -1099,6 +1117,11 @@ class AutomationIds {
     {'id': playerTracksButton, 'role': 'button', 'instanceable': false},
     {'id': playerSettingsButton, 'role': 'button', 'instanceable': false},
     {'id': playerHandoffButton, 'role': 'button', 'instanceable': false},
+    {'id': playerFlySyncedWith, 'role': 'status', 'instanceable': false},
+    {'id': playerFlySoundOn, 'role': 'button', 'instanceable': false},
+    {'id': playerFlyFollowers, 'role': 'status', 'instanceable': false},
+    {'id': homeFlyFollowCard, 'role': 'region', 'instanceable': false},
+    {'id': homeFlyFollowTake, 'role': 'button', 'instanceable': false},
     {'id': tvosMenuPassthrough, 'role': 'service', 'instanceable': false},
     {'id': tvosNativeTextEntry, 'role': 'service', 'instanceable': false},
     {'id': homeHeader, 'role': 'region', 'instanceable': false},

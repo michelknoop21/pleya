@@ -34,6 +34,7 @@ import 'mobile_continue_watching_screen.dart';
 import '../../widgets/mobile/mobile_chip_bar.dart';
 import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../widgets/mobile/mobile_hero_card.dart';
+import '../../widgets/pleya_fly/fly_follow_card.dart';
 import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
@@ -160,6 +161,8 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
           child: MobileChipBar(selected: _chip, onSelected: (chip) => setState(() => _chip = chip)),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        // Meenemen (A-23e, 45-h): only while an Apple TV in the Home plays, and only on Home.
+        if (_chip == MobileHomeChip.home) const SliverToBoxAdapter(child: FlyFollowHomeCard()),
         // `Voor jou` names what a filtered Home is: the same recommendation
         // feed, narrowed to one kind. Only with a chip active, because
         // unfiltered Home carries the hero and the wordmark instead and

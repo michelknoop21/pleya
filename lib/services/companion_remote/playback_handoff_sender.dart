@@ -7,6 +7,7 @@ import '../../models/companion_remote/remote_command.dart';
 import '../../providers/companion_remote_provider.dart';
 import '../../utils/app_logger.dart';
 import 'playback_handoff.dart';
+import 'pleya_fly_follow.dart';
 import 'pleya_fly_receive.dart';
 
 /// What the sender needs from the Companion Remote, so it can be driven by a
@@ -113,6 +114,7 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     required this.transport,
     required this.currentStop,
     this.onPlaying,
+    this.onFollowing,
     this.onFailed,
     this.searchTimeout = const Duration(seconds: 8),
   });
@@ -124,6 +126,9 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
 
   /// The phone plays; this device has stopped its player.
   final void Function(DiscoveredHost host)? onPlaying;
+
+  /// The phone joined to follow (Meenemen, A-23e); this device plays on.
+  final void Function(DiscoveredHost host)? onFollowing;
 
   /// The phone did not start; this device keeps playing. [refusal] says why,
   /// when the phone said so and no open view could mark its row.
@@ -137,6 +142,7 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   List<DiscoveredHost> _hosts = const [];
   bool _searching = false;
   DiscoveredHost? _handingTo;
+  bool _follow = false;
   ({String profile, bool pin})? _switching;
   ({String clientId, PlaybackHandoffRefusal reason})? _refusal;
   bool _viewOpen = false;
@@ -152,6 +158,9 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
   bool get searching => _searching;
   DiscoveredHost? get handingTo => _handingTo;
   bool get busy => _handingTo != null;
+
+  /// The fly under way is a Meenemen, not a Verplaatsen (A-23e).
+  bool get busyFollowing => busy && _follow;
 
   /// Whether [host] is the phone this fly goes to. Beacons are rebuilt as they
   /// arrive, so a host is known by its client id, not by the object.
@@ -239,26 +248,32 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     if (!busy) transport.stopDiscovery();
   }
 
-  /// Hands the playback to [host]. Returns once the phone answered or the
-  /// wait ended; this device keeps playing unless the phone plays.
-  Future<void> handOff(
+  /// Hands the playback to [host]. Returns the outcome once the phone answered
+  /// or the wait ended (null when no fly started); this device keeps playing
+  /// unless the phone plays.
+  ///
+  /// With [follow] it is a Meenemen (A-23e): [follow] opens the Watch
+  /// Together session first, the phone joins it, and this device plays on.
+  Future<PlaybackHandoffOutcome?> handOff(
     DiscoveredHost host, {
     required String serverId,
     required String itemId,
     required int positionMs,
     required String title,
+    Future<FlyFollowOffer?> Function()? follow,
   }) async {
-    if (_handingTo != null) return;
+    if (_handingTo != null) return null;
     if (!transport.beginFly()) {
       appLogger.w('Pleya Fly: another fly is under way');
-      return;
+      return null;
     }
     _handingTo = host;
+    _follow = follow != null;
     _refusal = null;
     _switching = null;
     safeNotifyListeners();
 
-    final request = PlaybackHandoffRequest(
+    var request = PlaybackHandoffRequest(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       serverId: serverId,
       itemId: itemId,
@@ -271,6 +286,21 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     final hadHost = transport.hostRunning;
     var outcome = PlaybackHandoffOutcome.failed;
     try {
+      if (follow != null) {
+        final offer = await follow();
+        final sessionId = offer?.sessionId;
+        if (offer == null || sessionId == null) throw StateError('Meenemen: no session to follow');
+        request = PlaybackHandoffRequest(
+          id: request.id,
+          serverId: offer.serverId,
+          itemId: offer.itemId,
+          positionMs: offer.positionMs,
+          title: offer.title,
+          from: request.from,
+          followSessionId: sessionId,
+          relayUrl: offer.relayUrl,
+        );
+      }
       // Joining overwrites the peer service a running host still holds.
       if (hadHost) await transport.stopHost();
       await transport.connect(host);
@@ -305,14 +335,22 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     transport.endFly();
     _handingTo = null;
     _switching = null;
+    _follow = false;
     // The view closed while this ran: its search stopped, so stop listening too.
     if (!_viewOpen) transport.stopDiscovery();
+    if (outcome == PlaybackHandoffOutcome.playing && request.isFollow) {
+      // Meenemen: this device plays on.
+      safeNotifyListeners();
+      onFollowing?.call(host);
+      _disposeIfReleased();
+      return outcome;
+    }
     if (outcome == PlaybackHandoffOutcome.playing) {
       if (currentStop() == stopThisPlayer) stopThisPlayer?.call();
       safeNotifyListeners();
       onPlaying?.call(host);
       _disposeIfReleased();
-      return;
+      return outcome;
     }
     final refusal = switch (outcome) {
       PlaybackHandoffOutcome.wrongProfile => PlaybackHandoffRefusal.wrongProfile,
@@ -324,12 +362,13 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
       // The user can fix it on the phone and try again, so the list stays.
       _refusal = (clientId: host.clientId, reason: refusal);
       safeNotifyListeners();
-      return;
+      return outcome;
     }
     safeNotifyListeners();
     onFailed?.call(host, refusal);
     onViewFailed?.call();
     _disposeIfReleased();
+    return outcome;
   }
 
   /// A view shows this sender again: a fly under way keeps its sender, so the
