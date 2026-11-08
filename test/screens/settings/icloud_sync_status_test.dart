@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/screens/settings/icloud_sync_status_line.dart';
+import 'package:pleya/services/integration_credential_sync_service.dart';
 import 'package:pleya/services/preferences/preference_sync_status.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
@@ -12,6 +13,37 @@ void main() {
 
   const ready = PreferenceSyncStatus(availability: PreferenceSyncAvailability.ready);
   final at = DateTime.utc(2026, 8, 21, 12, 34);
+
+  test('connection failure remains visible beside a successful preference upload', () {
+    final lines = ICloudSyncStatusLine.messagesFor(
+      ready.writeSucceeded(at),
+      null,
+      credentials: IntegrationCredentialSyncStatus.error,
+    );
+    expect(lines.any((line) => line.text.contains('Tautulli and Requests could not sync')), isTrue);
+    expect(lines.any((line) => line.text.contains('Last sent')), isTrue);
+  });
+
+  test('account mismatch gives recovery guidance without exposing account identities', () {
+    final lines = ICloudSyncStatusLine.messagesFor(
+      ready,
+      null,
+      credentials: IntegrationCredentialSyncStatus.accountChanged,
+    );
+    expect(lines.single.text, contains('original account'));
+    expect(lines.single.attention, isTrue);
+  });
+
+  test('disabled preference sync suppresses stale credential errors', () {
+    expect(
+      ICloudSyncStatusLine.messagesFor(
+        const PreferenceSyncStatus(),
+        null,
+        credentials: IntegrationCredentialSyncStatus.error,
+      ),
+      isEmpty,
+    );
+  });
 
   Future<void> pump(WidgetTester tester, PreferenceSyncStatus status) async {
     final listenable = ValueNotifier<PreferenceSyncStatus>(status);

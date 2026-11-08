@@ -499,6 +499,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
                 // (the ring outside the fill, and the secondary's inversion), so
                 // it owns the whole treatment.
                 dimWhenUnfocused: false,
+                semanticLabel: '${resume != null ? t.common.resume : t.common.play}, ${heroTitleFor(group)}',
                 onPressed: () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true),
                 onNavigateDown: widget.onNavigateDown,
                 onNavigateUp: widget.onNavigateUp,
@@ -534,6 +535,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
               // (the ring outside the fill, and the secondary's inversion), so
               // it owns the whole treatment.
               dimWhenUnfocused: false,
+              semanticLabel: '${t.mediaMenu.viewDetails}, ${heroTitleFor(group)}',
               onPressed: () => _activate(intent: UnifiedActivationIntent.details, playDirectly: false),
               onNavigateDown: widget.onNavigateDown,
               onNavigateUp: widget.onNavigateUp,

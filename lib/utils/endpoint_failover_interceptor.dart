@@ -18,14 +18,21 @@ class EndpointFailoverManager {
 
   String get current => _endpoints[_currentIndex];
 
-  bool get hasFallback => _currentIndex < _endpoints.length - 1;
+  /// Every other endpoint, preferred-first: the cascade's candidates after
+  /// [failedUrl] failed. Walking the whole list (instead of one step down from
+  /// the current index) means a failure on the last entry still tries the
+  /// earlier ones before the server counts as exhausted.
+  List<String> alternativesTo(String failedUrl) => [
+    for (final url in _endpoints)
+      if (url != failedUrl) url,
+  ];
 
-  /// Move to the next endpoint, returning its URL or null if exhausted.
-  String? moveToNext() {
-    if (!hasFallback) return null;
-    _currentIndex++;
+  /// Make [url] the active endpoint (it must be in the list).
+  void switchTo(String url) {
+    final index = _endpoints.indexOf(url);
+    if (index < 0 || index == _currentIndex) return;
+    _currentIndex = index;
     _generation++;
-    return _endpoints[_currentIndex];
   }
 
   /// Reset back to the first (preferred) endpoint. Called when all endpoints

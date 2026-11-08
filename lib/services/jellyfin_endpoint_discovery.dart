@@ -147,7 +147,6 @@ class JellyfinEndpointDiscovery {
       failureLogFields: (candidate, result) => {'error': result.error, 'latencyMs': result.latencyMs},
       raceTimeout: raceTimeout ?? MediaServerTimeouts.connectionRace,
       probe: (candidate, timeout) => _probeWithLatency(candidate.url, timeout: timeout),
-      measure: (candidate) => _probeWithAverageLatency(candidate.url, attempts: 2),
       isSuccess: (result) => result.success,
       selectBestCandidate: (results) => _selectLowestLatencyCandidate(results),
     )) {
@@ -233,21 +232,6 @@ class JellyfinEndpointDiscovery {
       stopwatch.stop();
       return JellyfinEndpointProbeResult(success: false, latencyMs: stopwatch.elapsedMilliseconds, error: e.toString());
     }
-  }
-
-  Future<JellyfinEndpointProbeResult> _probeWithAverageLatency(String baseUrl, {required int attempts}) async {
-    final results = <JellyfinEndpointProbeResult>[];
-    JellyfinServerInfo? info;
-    for (var i = 0; i < attempts; i++) {
-      final result = await _probeWithLatency(baseUrl, timeout: MediaServerTimeouts.connectionRace);
-      if (!result.success) {
-        return JellyfinEndpointProbeResult(success: false, latencyMs: result.latencyMs, error: result.error);
-      }
-      info = result.serverInfo;
-      results.add(result);
-    }
-    final avgLatency = results.map((result) => result.latencyMs).reduce((a, b) => a + b) ~/ results.length;
-    return JellyfinEndpointProbeResult(success: true, latencyMs: avgLatency, serverInfo: info);
   }
 
   JellyfinEndpointCandidate? _selectLowestLatencyCandidate(

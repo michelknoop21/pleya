@@ -23,6 +23,7 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_route_context.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
+import 'package:pleya/services/frame_timing_log.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
@@ -266,6 +267,20 @@ void main() {
   });
 
   group('activation boundary (hoofdstuk 4.4)', () {
+    testWidgets('both CTAs carry a semantic label with the title, so the focus log names them', (tester) async {
+      await pump(tester, [_group('g1', 'Blue Signal')]);
+
+      node(tester, 'tvHeroPlay').requestFocus();
+      await tester.pump();
+      expect(describeFocus(FocusManager.instance.primaryFocus), contains('label="Play, Blue Signal"'));
+      node(tester, 'tvHeroMoreInfo').requestFocus();
+      await tester.pump();
+      expect(
+        describeFocus(FocusManager.instance.primaryFocus),
+        contains('label="${t.mediaMenu.viewDetails}, Blue Signal"'),
+      );
+    });
+
     testWidgets('Afspelen hands over the whole group, never the representative source', (tester) async {
       final group = _group('g1', 'Blue Signal', servers: ['nas', 'attic']);
       final calls = await pump(tester, [group]);
@@ -528,8 +543,8 @@ void main() {
         _group('g1', 'Blue Signal', servers: ['nas', 'attic']),
       ]);
 
-      expect(find.bySemanticsLabel('Play'), findsOneWidget);
-      expect(find.bySemanticsLabel(t.mediaMenu.viewDetails), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Play')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^${t.mediaMenu.viewDetails}')), findsOneWidget);
       expect(find.bySemanticsLabel(RegExp('Featured: Blue Signal')), findsOneWidget);
       handle.dispose();
     });

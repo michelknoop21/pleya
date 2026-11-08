@@ -17,6 +17,7 @@
 ///   not all answer says so; the feed's lifecycle flag reaches the carousel.
 library;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -136,6 +137,7 @@ class _FakeAggregation extends DataAggregationService {
   List<MediaItem> onDeck = const [];
   List<MediaHub> hubs = const [];
   List<MediaItem> latestMovies = const [];
+  Completer<void>? hubsGate;
 
   /// Which servers answered. `null` means all of them — the honest default for
   /// every scenario except the partial-coverage one.
@@ -157,7 +159,10 @@ class _FakeAggregation extends DataAggregationService {
     bool useGlobalHubs = true,
     bool includePlaybackHubs = true,
     Set<String>? serverIds,
-  }) async => (hubs: hubs, succeededServerIds: succeeded ?? serverIds ?? _all);
+  }) async {
+    await hubsGate?.future;
+    return (hubs: hubs, succeededServerIds: succeeded ?? serverIds ?? _all);
+  }
 
   @override
   Future<OnDeckAggregationResult> getLatestMoviesFromAllServers({
@@ -731,6 +736,37 @@ void main() {
   });
 
   group('the empty and near-empty hero (fase-8 brief §22)', () {
+    testWidgets('an equivalent empty recent-films refresh keeps the fallback hero and CTA focus', (tester) async {
+      await boot(tester, onDeck: [_episode('e1', show: 'Harbourlight', season: 2, episode: 4)]);
+      final carousel = tester.state<TvHeroBillboardCarouselState>(find.byType(TvHeroBillboardCarousel));
+      carousel.focusPlay();
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      final focused = FocusManager.instance.primaryFocus!;
+      expect(focused.debugLabel, 'tvHeroMoreInfo');
+
+      final gate = Completer<void>();
+      aggregation.hubsGate = gate;
+      aggregation.latestMovies = <MediaItem>[];
+      final pending = discover.refreshIfStale(maxAge: Duration.zero);
+      try {
+        for (var i = 0; i < 20 && !identical(discover.latestMovies, aggregation.latestMovies); i++) {
+          await tester.pump(const Duration(milliseconds: 1));
+        }
+        expect(identical(discover.latestMovies, aggregation.latestMovies), true);
+        await tester.pump();
+        expect(find.byType(TvHeroBillboardCarousel), findsOneWidget, reason: 'equal data is already projected');
+        expect(tester.state(find.byType(TvHeroBillboardCarousel)), same(carousel));
+        expect(FocusManager.instance.primaryFocus, same(focused));
+      } finally {
+        gate.complete();
+        await pending;
+        await tester.pumpAndSettle();
+      }
+      expect(FocusManager.instance.primaryFocus, same(focused));
+    });
+
     testWidgets('no recent films falls back to the first Continue Watching title', (tester) async {
       await boot(tester, onDeck: [_episode('e1', show: 'Harbourlight', season: 2, episode: 4)]);
 

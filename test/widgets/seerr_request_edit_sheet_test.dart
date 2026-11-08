@@ -13,6 +13,7 @@ import 'package:pleya/models/seerr/seerr_request.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/widgets/seerr_request_edit_sheet.dart';
 
+import '../test_helpers/prefs.dart';
 import '../test_helpers/seerr_fake.dart';
 
 Finder _button(String instance) => seerrNode(AutomationIds.requestsFormButton, instance);
@@ -26,6 +27,8 @@ bool _enabled(WidgetTester tester, String instance) =>
     null;
 
 void main() {
+  setUp(resetSharedPreferencesForTest);
+
   late FakeSeerr fake;
   late SeerrProvider provider;
 

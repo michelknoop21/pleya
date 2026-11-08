@@ -15,6 +15,7 @@ import 'package:pleya/services/seerr/seerr_constants.dart';
 import 'package:pleya/widgets/seerr_request_form_parts.dart';
 import 'package:pleya/widgets/seerr_request_sheet.dart';
 
+import '../test_helpers/prefs.dart';
 import '../test_helpers/seerr_fake.dart';
 
 const _movie = SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'Charge');
@@ -60,6 +61,8 @@ double _listScrolls(WidgetTester tester) => tester
     .maxScrollExtent;
 
 void main() {
+  setUp(resetSharedPreferencesForTest);
+
   late FakeSeerr fake;
 
   void show(int seasons) => fake.on('GET /tv/1399', {

@@ -25,6 +25,35 @@ int _imageFailureCount = 0;
 DateTime _lastFailureLog = DateTime.now();
 const _logInterval = Duration(seconds: 10);
 
+/// Image revisions the server answered 404 for. CachedNetworkImage keeps no
+/// failures, so a missing asset was fetched again on every rebuild and every
+/// detail open. A new content key or an app restart asks again. Keep the URL
+/// too, so custom cache keys cannot suppress another authenticated source.
+// ponytail: unbounded growth capped by clearing at 256 entries; an LRU only if
+// a session ever collects that many distinct missing images.
+final Set<(String, String)> _missingImageUrls = {};
+
+/// Remembers [url] when [error] is a 404 and logs which asset it was, once.
+/// Returns whether the URL is now known missing.
+@visibleForTesting
+bool rememberMissingImage(String url, Object error, {String? cacheKey}) {
+  if (error is! HttpExceptionWithStatus || error.statusCode != 404) return false;
+  if (_missingImageUrls.length >= 256) _missingImageUrls.clear();
+  if (_missingImageUrls.add((url, cacheKey ?? OptimizedMediaImage.artworkCacheKey(url)))) {
+    final uri = Uri.tryParse(url);
+    // Plex /photo/:/transcode carries the real asset in `url=`; drop its
+    // query and authority (which can contain credentials); log only a path.
+    final nested = Uri.tryParse(uri?.queryParameters['url'] ?? '');
+    final source = nested?.path.isNotEmpty == true ? nested!.path : uri?.path ?? '';
+    appLogger.w('Image missing on the server (404); not requesting it again this session', error: {'source': source});
+  }
+  return true;
+}
+
+@visibleForTesting
+bool isKnownMissingImage(String url, {String? cacheKey}) =>
+    _missingImageUrls.contains((url, cacheKey ?? OptimizedMediaImage.artworkCacheKey(url)));
+
 Widget blurArtwork(Widget child, {double sigma = 30, bool clip = true}) {
   if (!kBlurArtwork) return child;
   final filtered = ImageFiltered(
@@ -268,6 +297,9 @@ class OptimizedMediaImage extends StatelessWidget {
   @visibleForTesting
   static void Function(String url)? debugResolvedUrlObserver;
 
+  @visibleForTesting
+  static void debugResetMissingImages() => _missingImageUrls.clear();
+
   /// The disk cache key for [imageUrl].
   ///
   /// Public because anything that *warms* the cache has to produce a key that
@@ -427,9 +459,6 @@ class OptimizedMediaImage extends StatelessWidget {
     if (imageUrl.isEmpty) {
       return _buildFallback(context);
     }
-
-    debugResolvedUrlObserver?.call(imageUrl);
-
     final scaledWidth = requestWidth * devicePixelRatio;
     final scaledHeight = requestHeight * devicePixelRatio;
     final (_, memHeight) = MediaImageHelper.getMemCacheDimensions(
@@ -445,50 +474,57 @@ class OptimizedMediaImage extends StatelessWidget {
           : owner?.artworkCacheKey(client!.serverId, imageUrl, baseCacheKey) ?? baseCacheKey,
     );
 
-    final provider = CachedNetworkImageProvider(
-      imageUrl,
-      cacheKey: effectiveCacheKey,
-      cacheManager: context.read<LocalLibraryProvider?>()?.artworkCache ?? PlexImageCacheManager.instance,
-      headers: const {'User-Agent': 'Pleya'},
-    );
+    final Widget image;
+    if (isKnownMissingImage(imageUrl, cacheKey: effectiveCacheKey)) {
+      image = errorWidget?.call(context, imageUrl, 'HTTP 404') ?? _buildErrorWidget(context, null);
+    } else {
+      debugResolvedUrlObserver?.call(imageUrl);
+      final provider = CachedNetworkImageProvider(
+        imageUrl,
+        cacheKey: effectiveCacheKey,
+        cacheManager: context.read<LocalLibraryProvider?>()?.artworkCache ?? PlexImageCacheManager.instance,
+        headers: const {'User-Agent': 'Pleya'},
+      );
 
-    final image = Image(
-      image: ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider),
-      width: width,
-      height: height,
-      fit: fit,
-      filterQuality: filterQuality,
-      alignment: alignment,
-      errorBuilder: (context, error, stackTrace) {
-        _imageFailureCount++;
-        final now = DateTime.now();
-        if (now.difference(_lastFailureLog) >= _logInterval) {
-          appLogger.w('Image load failed ($_imageFailureCount since last log): $error');
-          _imageFailureCount = 0;
-          _lastFailureLog = now;
-        }
-        if (errorWidget != null) {
-          return errorWidget!(context, imageUrl, error);
-        }
-        return _buildErrorWidget(context, error);
-      },
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded) return child;
-        // Reduced tier: swap in directly — each in-flight fade is a tile-sized
-        // saveLayer, and grid scrolling runs many of them concurrently.
-        // TV: the AnimatedSwitcher is a paint-time swap that defers compositing
-        // under the rail's reveal transform, leaving lazy rows blank until an
-        // L/R nudge. A plain child-swap dirties the RenderImage and composites
-        // correctly under the transform.
-        if (DevicePerformance.isReduced || PlatformDetector.isTV()) {
-          return frame != null ? child : _buildPlaceholder(context, imageUrl);
-        }
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: frame != null ? child : _buildPlaceholder(context, imageUrl),
-        );
-      },
-    );
+      image = Image(
+        image: ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider),
+        width: width,
+        height: height,
+        fit: fit,
+        filterQuality: filterQuality,
+        alignment: alignment,
+        errorBuilder: (context, error, stackTrace) {
+          rememberMissingImage(imageUrl, error, cacheKey: effectiveCacheKey);
+          _imageFailureCount++;
+          final now = DateTime.now();
+          if (now.difference(_lastFailureLog) >= _logInterval) {
+            appLogger.w('Image load failed ($_imageFailureCount since last log): $error');
+            _imageFailureCount = 0;
+            _lastFailureLog = now;
+          }
+          if (errorWidget != null) {
+            return errorWidget!(context, imageUrl, error);
+          }
+          return _buildErrorWidget(context, error);
+        },
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          // Reduced tier: swap in directly — each in-flight fade is a tile-sized
+          // saveLayer, and grid scrolling runs many of them concurrently.
+          // TV: the AnimatedSwitcher is a paint-time swap that defers compositing
+          // under the rail's reveal transform, leaving lazy rows blank until an
+          // L/R nudge. A plain child-swap dirties the RenderImage and composites
+          // correctly under the transform.
+          if (DevicePerformance.isReduced || PlatformDetector.isTV()) {
+            return frame != null ? child : _buildPlaceholder(context, imageUrl);
+          }
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: frame != null ? child : _buildPlaceholder(context, imageUrl),
+          );
+        },
+      );
+    }
     return _VisibleArtworkRegistration(
       epoch: context.select<LocalLibraryProvider?, int>((owner) => owner?.artworkRegistrationEpoch ?? 0),
       owner: context.read<LocalLibraryProvider?>(),

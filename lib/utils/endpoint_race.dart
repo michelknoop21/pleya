@@ -28,10 +28,14 @@ class EndpointRaceSelection<C, R> {
 /// [preferredHeadStart]; otherwise the full candidate race starts with the
 /// still-pending cached probe merged in as a participant, so a stale cached
 /// endpoint (e.g. a LAN address probed from outside the LAN) costs the head
-/// start instead of the full [preferredTimeout] serially. Phase 2 measures all
-/// candidates and emits the selector's best endpoint, letting callers promote
+/// start instead of the full [preferredTimeout] serially. Phase 2 collects every
+/// candidate's result and emits the selector's best endpoint, letting callers promote
 /// a lower-latency URL in the background without blocking initial connection
 /// setup.
+///
+/// Each URL is probed at most once per call: the cached probe, the race and
+/// the phase-2 sweep share one probe future per URL, and phase 2 reads the
+/// race's results instead of measuring again.
 Stream<EndpointRaceSelection<C, R>> raceEndpointCandidates<C, R>({
   required String label,
   required List<C> candidates,
@@ -41,7 +45,6 @@ Stream<EndpointRaceSelection<C, R>> raceEndpointCandidates<C, R>({
   String? preferredUrl,
   C? Function(String url)? candidateForUrl,
   required Future<R> Function(C candidate, Duration timeout) probe,
-  required Future<R> Function(C candidate) measure,
   required bool Function(R result) isSuccess,
   required C? Function(Map<C, R> successfulResults) selectBestCandidate,
   void Function(C candidate, R result)? onFirstSuccess,
@@ -49,6 +52,10 @@ Stream<EndpointRaceSelection<C, R>> raceEndpointCandidates<C, R>({
   Duration preferredHeadStart = MediaServerTimeouts.preferredEndpointHeadStart,
   Duration raceTimeout = MediaServerTimeouts.connectionRace,
 }) async* {
+  final probes = <String, Future<R>>{};
+  Future<R> probeOnce(C candidate, Duration timeout) =>
+      probes.putIfAbsent(urlOf(candidate), () => probe(candidate, timeout));
+
   if (candidates.isEmpty) {
     appLogger.w('No endpoint candidates available for $label discovery');
     return;
@@ -67,7 +74,7 @@ Stream<EndpointRaceSelection<C, R>> raceEndpointCandidates<C, R>({
   if (cachedCandidate != null) {
     final cached = cachedCandidate;
     appLogger.d('Testing cached $label endpoint with a head start on the race', error: {'uri': preferredUrl});
-    final cachedProbe = probe(cached, preferredTimeout);
+    final cachedProbe = probeOnce(cached, preferredTimeout);
     final headStartResult = await Future.any<R?>([cachedProbe, Future<R?>.delayed(preferredHeadStart, () => null)]);
 
     if (headStartResult != null && isSuccess(headStartResult)) {
@@ -81,8 +88,7 @@ Stream<EndpointRaceSelection<C, R>> raceEndpointCandidates<C, R>({
       onFirstSuccess?.call(cached, headStartResult);
     } else if (headStartResult != null) {
       // Failed within the head start (e.g. connection refused) — run the
-      // plain race; the cached URL is among the candidates and gets a fresh
-      // probe like any other.
+      // plain race; the cached URL keeps its failed result, no second probe.
       appLogger.w(
         'Cached $label endpoint failed, falling back to candidate race',
         error: {'uri': preferredUrl, 'elapsedMs': stopwatch.elapsedMilliseconds},
@@ -109,8 +115,8 @@ Stream<EndpointRaceSelection<C, R>> raceEndpointCandidates<C, R>({
       urlOf: urlOf,
       displayTypeOf: displayTypeOf,
       failureLogFields: failureLogFields,
-      probe: (candidate, timeout) =>
-          mergedCached != null && identical(candidate, mergedCached) ? pendingCachedProbe! : probe(candidate, timeout),
+      // The still-pending cached probe is reused through probeOnce.
+      probe: probeOnce,
       isSuccess: isSuccess,
       onFirstSuccess: onFirstSuccess,
       timeout: raceTimeout,
@@ -151,9 +157,11 @@ Stream<EndpointRaceSelection<C, R>> raceEndpointCandidates<C, R>({
   final successfulResults = <C, R>{};
   await Future.wait(
     candidates.map((candidate) async {
-      final result = await measure(candidate);
-      if (isSuccess(result)) {
-        successfulResults[candidate] = result;
+      try {
+        final result = await probeOnce(candidate, raceTimeout);
+        if (isSuccess(result)) successfulResults[candidate] = result;
+      } catch (_) {
+        // Already logged by the race; a thrown probe is just not a success.
       }
     }),
   );

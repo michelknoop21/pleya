@@ -1,4 +1,9 @@
+import 'package:fake_async/fake_async.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/focus/focusable_wrapper.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/services/frame_timing_log.dart';
 
 void main() {
@@ -36,5 +41,102 @@ void main() {
 
     expect(summary.pacingP50, 16667);
     expect(summary.pacingMax, 33333);
+  });
+
+  testWidgets('a focus change on TV logs once, after the frame that shows it', (tester) async {
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    startFocusFrameLog();
+    final a = FocusNode();
+    final b = FocusNode();
+    addTearDown(a.dispose);
+    addTearDown(b.dispose);
+    await tester.pumpWidget(
+      Column(
+        children: [
+          Focus(focusNode: a, child: const SizedBox()),
+          Focus(focusNode: b, child: const SizedBox()),
+        ],
+      ),
+    );
+    int count() => MemoryLogOutput.getLogs().where((e) => e.message.startsWith('FocusFrame: +')).length;
+    final before = count();
+
+    // Focus applies in a microtask, so the change can land after the pumped
+    // frame; the second pump is the frame that shows it.
+    a.requestFocus();
+    await tester.pump();
+    await tester.pump();
+    expect(count() - before, 1);
+
+    b.requestFocus();
+    await tester.pump();
+    await tester.pump();
+    expect(count() - before, 2);
+  });
+
+  test('on TV a memory checkpoint lands every five minutes', () {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    int count() => MemoryLogOutput.getLogs().where((e) => e.message.startsWith('MemoryCheckpoint rss=')).length;
+    fakeAsync((async) {
+      final before = count();
+      final timer = startMemoryCheckpointLog();
+      async.elapse(const Duration(minutes: 11));
+      timer?.cancel();
+      expect(count() - before, 2);
+    });
+  });
+
+  test('off TV there is no memory checkpoint timer', () {
+    TvDetectionService.debugSetTVOverride(false);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    expect(startMemoryCheckpointLog(), isNull);
+  });
+
+  testWidgets('the focus line names what holds the focus and where it is', (tester) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 40, top: 30),
+            child: FocusableWrapper(
+              focusNode: node,
+              automationId: 'grid.item',
+              automationInstance: '7',
+              semanticLabel: 'The "Film"',
+              child: const SizedBox(width: 100, height: 150),
+            ),
+          ),
+        ),
+      ),
+    );
+    node.requestFocus();
+    await tester.pump();
+
+    final line = describeFocus(FocusManager.instance.primaryFocus);
+    expect(line, contains('id=grid.item#7'));
+    expect(line, contains('label="The \'Film\'"'));
+    expect(line, matches(RegExp(r'rect=\d+,\d+,\d+,\d+')));
+    expect(line, contains('view=800x600'));
+  });
+
+  test('no focus is said as such', () => expect(describeFocus(null), 'focus=none'));
+
+  test('a framework error reaches the log and the handler that was there before', () {
+    final previous = FlutterError.onError;
+    var forwarded = 0;
+    FlutterError.onError = (_) => forwarded++;
+    addTearDown(() => FlutterError.onError = previous);
+    routeFrameworkErrorsToLog();
+
+    FlutterError.onError!(FlutterErrorDetails(exception: StateError('overflowed by 12 pixels')));
+
+    expect(MemoryLogOutput.getLogs().first.message, contains('FlutterError: Bad state: overflowed by 12 pixels'));
+    expect(forwarded, 1);
   });
 }

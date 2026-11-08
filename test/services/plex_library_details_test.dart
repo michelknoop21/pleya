@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:pleya/media/ids.dart';
 
 import 'package:drift/native.dart';
@@ -36,6 +37,39 @@ void main() {
       serverId: ServerId('server-id'),
       httpClient: MockClient(handler),
     );
+  }
+
+  for (final path in ['filters', 'sorts']) {
+    test('optional library $path failure keeps the working endpoint', () async {
+      final requests = <Uri>[];
+      final client = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex.example.com',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Pleya',
+          version: '1',
+        ),
+        serverId: ServerId('server-id'),
+        prioritizedEndpoints: const ['https://plex.example.com', 'https://fallback.example.com'],
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          if (request.url.path.endsWith('/$path')) throw TimeoutException('optional metadata stalled');
+          return http.Response('{"MediaContainer":{"Metadata":[]}}', 200);
+        }),
+      );
+      addTearDown(client.close);
+
+      if (path == 'filters') {
+        await expectLater(client.getLibraryFilters('1'), throwsException);
+      } else {
+        expect(await client.fetchSortOptions('1', libraryType: 'show'), isNotEmpty);
+      }
+      expect(requests, hasLength(1), reason: 'menu failure must not start a connection cascade');
+      expect(client.config.baseUrl, 'https://plex.example.com');
+      await client.fetchLibraryPage('1');
+      expect(requests.last.host, 'plex.example.com');
+    });
   }
 
   group('includeGuids answers keep their numbers through the real client', () {

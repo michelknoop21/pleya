@@ -14,6 +14,7 @@ import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
 import 'package:pleya/widgets/seerr_request_sheet.dart';
 
+import '../test_helpers/prefs.dart';
 import '../test_helpers/seerr_fake.dart';
 
 const _movie = SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'Charge');
@@ -54,6 +55,8 @@ SeerrRequest request({int by = 7, bool is4k = false, SeerrRequestStatus status =
     SeerrRequest(id: 3, status: status, mediaType: 'movie', requestedById: by, is4k: is4k);
 
 void main() {
+  setUp(resetSharedPreferencesForTest);
+
   late FakeSeerr fake;
   late SeerrProvider provider;
   var requested = 0;

@@ -1,4 +1,5 @@
 import '../base_shared_preferences_service.dart';
+import '../integration_credential_changes.dart';
 import 'tautulli_session.dart';
 
 /// Per-Plex-profile persistence for the Tautulli session, keyed by
@@ -31,12 +32,24 @@ class TautulliAccountStore {
   }
 
   Future<void> save(String userUuid, TautulliSession session) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.setString(_scopedKey(userUuid), await session.encode());
+    await IntegrationCredentialChanges.write(_scopedKey(userUuid), await session.encode());
   }
 
   Future<void> clear(String userUuid) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.remove(_scopedKey(userUuid));
+    await IntegrationCredentialChanges.write(_scopedKey(userUuid), null);
   }
+
+  /// A delayed migration may only remove the legacy pairing it actually read.
+  Future<void> clearMigrated(String userUuid, TautulliSession expected) =>
+      IntegrationCredentialChanges.exclusively(() async {
+        final current = await load(userUuid);
+        if (current == null ||
+            current.baseUrl != expected.baseUrl ||
+            current.authMode != expected.authMode ||
+            current.token != expected.token ||
+            current.machineIdentifier != expected.machineIdentifier)
+          return;
+        final prefs = await BaseSharedPreferencesService.sharedCache();
+        await prefs.remove(_scopedKey(userUuid));
+      });
 }

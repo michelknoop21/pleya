@@ -104,10 +104,9 @@ void main() {
     // -- Credentials and sessions.
     'lib/services/tautulli/tautulli_integration_store.dart': RawWriteRecord(
       WriteCategory.secret,
-      3,
-      'the encrypted per-server Tautulli integration blob; device-local by design, denied by prefix '
-      'in the export service and unregistered in the policy registry, so it reaches neither an '
-      'export nor iCloud',
+      1,
+      'the sweep of legacy Tautulli sessions for one server once its integration blob arrives; the blob '
+      'itself is written through IntegrationCredentialChanges',
     ),
     'lib/assistant/assistant_provider_store.dart': RawWriteRecord(
       WriteCategory.secret,
@@ -122,6 +121,18 @@ void main() {
       1,
       'the device-local encryption key for DB-stored connection tokens',
     ),
+    'lib/services/integration_credential_changes.dart': RawWriteRecord(
+      WriteCategory.secret,
+      3,
+      'the serialized write path for the integration credential blobs (set, remove, transform); '
+      'the values stay vault-encrypted per device and only reach iCloud through the CloudKit outbox',
+    ),
+    'lib/services/integration_credential_sync_service.dart': RawWriteRecord(
+      WriteCategory.secret,
+      5,
+      'the CloudKit credential outbox: applying an imported blob (set or remove, twice: live and from the '
+      'crash journal) plus its own sync metadata, which holds no plaintext credential or vault key',
+    ),
     'lib/services/trackers/tracker_account_store.dart': RawWriteRecord(
       WriteCategory.secret,
       10,
@@ -129,15 +140,11 @@ void main() {
       'migration, removed once the keychain holds it) and the `_kc` marker that ties a device-keychain item '
       'to this install (set, restored after a refused write, tombstoned after a refused delete, removed)',
     ),
-    'lib/services/seerr/seerr_account_store.dart': RawWriteRecord(
-      WriteCategory.secret,
-      2,
-      'Jellyseerr session, vault-encrypted with a device-local key so it is unusable elsewhere',
-    ),
     'lib/services/tautulli/tautulli_account_store.dart': RawWriteRecord(
       WriteCategory.secret,
-      2,
-      'Tautulli API key: opens that server\'s whole admin API, so it never leaves the device',
+      1,
+      'removal of a migrated legacy Tautulli pairing, only when it still matches what the migration read; '
+      'saves and clears go through IntegrationCredentialChanges',
     ),
     'lib/services/pleya_share/pleya_share_host_service.dart': RawWriteRecord(
       WriteCategory.secret,
@@ -286,8 +293,8 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 113, reason: 'total raw preference writes still classified as staying outside the coordinator');
-    expect(inventory.length, 32, reason: 'files containing them');
+    expect(total, 116, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(inventory.length, 33, reason: 'files containing them');
   });
 
   test('no category is a dumping ground', () {

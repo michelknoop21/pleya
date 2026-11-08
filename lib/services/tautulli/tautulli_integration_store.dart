@@ -1,5 +1,6 @@
 import '../../utils/app_logger.dart';
 import '../base_shared_preferences_service.dart';
+import '../integration_credential_changes.dart';
 import 'tautulli_account_store.dart';
 import 'tautulli_server_integration.dart';
 import 'tautulli_session.dart';
@@ -12,8 +13,9 @@ import 'tautulli_session.dart';
 /// profile would force each household member to hold the admin credential.
 /// The blob is protected exactly as the old per-profile session was, by the
 /// same device-local [CredentialVault] key, and `tautulli_integration_` is a
-/// deny prefix in `SettingsExportService`, so it never reaches an export or an
-/// iCloud payload.
+/// denied by `SettingsExportService`, so it never reaches an export or KVS.
+/// The separate credential synchronizer uses a private encrypted CloudKit field
+/// and re-encrypts the received credential with each device's own vault.
 class TautulliIntegrationStore {
   TautulliIntegrationStore._();
   static final TautulliIntegrationStore instance = TautulliIntegrationStore._();
@@ -42,17 +44,28 @@ class TautulliIntegrationStore {
     return out;
   }
 
-  Future<void> save(TautulliServerIntegration integration) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.setString(keyFor(integration.machineIdentifier), await integration.encode());
+  Future<void> save(TautulliServerIntegration integration, {bool policyOnly = false}) async {
+    final key = keyFor(integration.machineIdentifier);
+    if (policyOnly) {
+      await IntegrationCredentialChanges.update(key, (raw) async {
+        final current = await TautulliServerIntegration.decode(raw);
+        return current
+            .copyWith(
+              useHistoryForRecommendations: integration.useHistoryForRecommendations,
+              policyChangedAtMs: integration.policyChangedAtMs,
+            )
+            .encode();
+      }, source: IntegrationCredentialChangeSource.refresh);
+    } else {
+      await IntegrationCredentialChanges.write(key, await integration.encode());
+    }
   }
 
   /// Removes a record outright. Disconnecting does *not* use this: it clears
   /// the credential and keeps the admin's policy, because deleting a credential
   /// is not the same act as revoking a decision.
   Future<void> remove(String machineIdentifier) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.remove(keyFor(machineIdentifier));
+    await IntegrationCredentialChanges.write(keyFor(machineIdentifier), null);
   }
 
   /// Moves a legacy per-profile session into the server-scoped store.
@@ -84,8 +97,17 @@ class TautulliIntegrationStore {
   ///
   /// The log line names the category only, never a URL, a token or a profile.
   Future<TautulliServerIntegration?> migrateLegacySession(String userUuid) async {
-    final legacy = await TautulliAccountStore.instance.load(userUuid);
-    if (legacy == null) return null;
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    const base = TautulliAccountStore.baseKey;
+    final legacyKey = userUuid.isEmpty ? base : 'user_${userUuid}_$base';
+    final legacyRaw = prefs.getString(legacyKey);
+    if (legacyRaw == null) return null;
+    final TautulliSession legacy;
+    try {
+      legacy = await TautulliSession.decode(legacyRaw);
+    } catch (_) {
+      return null;
+    }
 
     final identifier = legacy.machineIdentifier?.trim() ?? '';
     if (identifier.isEmpty) {
@@ -99,27 +121,48 @@ class TautulliIntegrationStore {
       configuredByProfileId: userUuid.isEmpty ? null : userUuid,
     );
 
-    final existing = (await loadAll())[identifier];
+    final expectedRaw = prefs.getString(keyFor(identifier));
+    TautulliServerIntegration? existing;
+    if (expectedRaw != null) {
+      try {
+        existing = await TautulliServerIntegration.decode(expectedRaw);
+      } catch (_) {
+        // Replace an unreadable target only if its original bytes still match.
+      }
+    }
     if (existing != null) {
-      await TautulliAccountStore.instance.clear(userUuid);
       if (existing.describesSamePairing(candidate)) {
+        await TautulliAccountStore.instance.clearMigrated(userUuid, legacy);
         appLogger.i('TautulliIntegrationStore: duplicate legacy session for a known server, discarded');
         return existing;
       }
-      if (existing.hasUnresolvedConflict) return existing;
+      if (existing.hasUnresolvedConflict) {
+        await TautulliAccountStore.instance.clearMigrated(userUuid, legacy);
+        return existing;
+      }
       final flagged = existing.copyWith(hasUnresolvedConflict: true);
-      await save(flagged);
+      await _saveMigration(flagged, {keyFor(identifier): expectedRaw, legacyKey: legacyRaw});
+      await TautulliAccountStore.instance.clearMigrated(userUuid, legacy);
       appLogger.w(
         'TautulliIntegrationStore: conflicting legacy pairings for one server, '
         'import disabled until an admin re-pairs',
       );
-      return flagged;
+      return (await loadAll())[identifier];
     }
 
-    await save(candidate);
-    await TautulliAccountStore.instance.clear(userUuid);
+    await _saveMigration(candidate, {keyFor(identifier): expectedRaw, legacyKey: legacyRaw});
+    await TautulliAccountStore.instance.clearMigrated(userUuid, legacy);
     appLogger.i('TautulliIntegrationStore: migrated a legacy session to the server-scoped store');
-    return candidate;
+    return (await loadAll())[identifier];
+  }
+
+  Future<void> _saveMigration(TautulliServerIntegration integration, Map<String, String?> expected) async {
+    await IntegrationCredentialChanges.write(
+      keyFor(integration.machineIdentifier),
+      await integration.encode(),
+      source: IntegrationCredentialChangeSource.migration,
+      expected: expected,
+    );
   }
 
   /// The legacy per-profile session, for the presence surfaces of a profile

@@ -26,6 +26,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../media_rating_badge.dart';
+import 'tv_catalog_artwork_window.dart';
 import 'tv_catalog_card.dart';
 import 'tv_unified_layout.dart';
 
@@ -88,6 +89,9 @@ class _TvCatalogCompactCardState extends State<TvCatalogCompactCard> {
     final scale = TvLayoutConstants.scaleOf(context);
     final radius = TvCatalogLayout.cardRadius * scale;
     final isFocused = _isFocused;
+    // Keep every focus shell mounted; only nearby or focused cards need their
+    // animated poster and footer. The same window already bounds artwork.
+    final drawContent = TvCatalogArtworkScope.drawsArtwork(context) || isFocused;
     final posterHeight = widget.width / TvCatalogLayout.posterAspectRatio;
     final duration = reduceMotion(context, TvCatalogFullBleedLayout.footerFocusDuration);
     final footerShift = TvCatalogFullBleedLayout.focusedFooterShift(posterHeight, scale);
@@ -113,32 +117,47 @@ class _TvCatalogCompactCardState extends State<TvCatalogCompactCard> {
         disableScale: true,
         mode: FocusIndicatorMode.delegated,
         semanticLabel: widget.semanticLabel,
-        child: ExcludeSemantics(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AnimatedScale(
-                scale: isFocused ? TvCatalogFullBleedLayout.posterFocusScale : 1,
-                duration: duration,
-                curve: Curves.easeOut,
-                child: _Poster(
-                  radius: radius,
-                  scale: scale,
-                  isFocused: isFocused,
-                  artwork: widget.artwork,
-                  topLeftMarker: widget.topLeftMarker,
-                  topRightMarker: widget.topRightMarker,
-                  progressFraction: widget.progressFraction,
-                ),
-              ),
-              AnimatedSlide(
-                offset: Offset(0, isFocused ? footerShift / (TvCatalogFullBleedLayout.footerHeight * scale) : 0),
-                duration: duration,
-                curve: Curves.easeOut,
-                child: _Footer(title: widget.title, meta: widget.meta, score: widget.score, scale: scale, tk: tk),
-              ),
-            ],
+        child: TvCatalogArtworkScope(
+          // A direct focus jump can precede the grid's window update.
+          drawArtwork: drawContent,
+          child: ExcludeSemantics(
+            child: drawContent
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AnimatedScale(
+                        scale: isFocused ? TvCatalogFullBleedLayout.posterFocusScale : 1,
+                        duration: duration,
+                        curve: Curves.easeOut,
+                        child: _Poster(
+                          radius: radius,
+                          scale: scale,
+                          isFocused: isFocused,
+                          artwork: widget.artwork,
+                          topLeftMarker: widget.topLeftMarker,
+                          topRightMarker: widget.topRightMarker,
+                          progressFraction: widget.progressFraction,
+                        ),
+                      ),
+                      AnimatedSlide(
+                        offset: Offset(
+                          0,
+                          isFocused ? footerShift / (TvCatalogFullBleedLayout.footerHeight * scale) : 0,
+                        ),
+                        duration: duration,
+                        curve: Curves.easeOut,
+                        child: _Footer(
+                          title: widget.title,
+                          meta: widget.meta,
+                          score: widget.score,
+                          scale: scale,
+                          tk: tk,
+                        ),
+                      ),
+                    ],
+                  )
+                : SizedBox(height: TvCatalogFullBleedLayout.cardHeight(widget.width, scale)),
           ),
         ),
       ),

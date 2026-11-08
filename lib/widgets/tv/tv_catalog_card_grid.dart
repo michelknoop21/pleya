@@ -297,8 +297,10 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   TvCatalogGrid? _grid;
 
   /// The row the poster window is centred on (CAT18). Moves with the focus,
-  /// but only every few rows; see [tvCatalogArtworkShouldRecenter].
-  int? _artworkCenterRow;
+  /// but only every few rows; see [tvCatalogArtworkShouldRecenter]. A notifier
+  /// rather than grid state: moving the window rebuilds the rows that enter or
+  /// leave it, not every card of a catalog of thousands.
+  final _artworkCenter = ValueNotifier<int?>(null);
 
   /// The card height that went with [_grid], kept beside it for the same
   /// reason: [_keepFocusRingVisible] needs the row pitch and must not re-derive
@@ -390,8 +392,8 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     if (measured == null) return;
     final offset = _controller.offset;
     final wasScrolling = _controller.position.isScrollingNotifier.value;
-    final center = _artworkCenterRow;
-    if (center != null) _artworkCenterRow = math.max(0, center + rowDelta);
+    final center = _artworkCenter.value;
+    if (center != null) _artworkCenter.value = math.max(0, center + rowDelta);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_controller.hasClients || _focusedId != id || !(_nodes[id]?.hasFocus ?? false)) return;
       if (widget.itemIds.indexOf(id) != newIndex || _grid?.columns != grid.columns) return;
@@ -413,6 +415,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     for (final node in _nodes.values) {
       node.dispose();
     }
+    _artworkCenter.dispose();
     super.dispose();
   }
 
@@ -746,13 +749,19 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     _cardHeight = cardHeight;
     final rows = <Widget>[];
     final focusedIndex = _focusedId == null ? -1 : widget.itemIds.indexOf(_focusedId!);
-    final centerRow = _artworkCenterRow ??= focusedIndex < 0 ? 0 : focusedIndex ~/ grid.columns;
+    // Filtering from the controls does not move focus back into the grid. Its
+    // old paint window must still fit the shortened list when scrolling clamps.
+    final lastRow = math.max(0, (widget.itemIds.length - 1) ~/ grid.columns);
+    final center = _artworkCenter.value;
+    if (center != null && center > lastRow) _artworkCenter.value = lastRow;
+    _artworkCenter.value ??= focusedIndex < 0 ? 0 : focusedIndex ~/ grid.columns;
 
     for (var start = 0; start < widget.itemIds.length; start += grid.columns) {
       final end = (start + grid.columns).clamp(0, widget.itemIds.length);
       rows.add(
-        TvCatalogArtworkScope(
-          drawArtwork: tvCatalogArtworkRowInWindow(row: start ~/ grid.columns, centerRow: centerRow),
+        _TvCatalogWindowRow(
+          center: _artworkCenter,
+          row: start ~/ grid.columns,
           child: _buildRow(grid: grid, start: start, end: end, isFirstRow: start == 0),
         ),
       );
@@ -830,9 +839,9 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
             if (!hasFocus) return;
             _focusedId = id;
             final row = index ~/ grid.columns;
-            final center = _artworkCenterRow;
+            final center = _artworkCenter.value;
             if (center == null || tvCatalogArtworkShouldRecenter(focusedRow: row, centerRow: center)) {
-              setState(() => _artworkCenterRow = row);
+              _artworkCenter.value = row;
             }
             widget.onFocusedIdChanged?.call(id);
             _keepFocusRingVisible(index);
@@ -868,4 +877,41 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
 /// Private key type prevents collisions with other uses of the same node.
 class _TvCatalogCellKey extends GlobalObjectKey {
   const _TvCatalogCellKey(FocusNode super.value);
+}
+
+/// One grid row and its place in the poster window (CAT18).
+///
+/// A row outside the window keeps its layout, state and focus nodes (D-pad
+/// traversal is wired across every row) but is not painted: the grid is one
+/// `Column`, and a `Column` paints every child on every scroll frame. On a
+/// movie library of thousands that was about 10 ms of UI thread per frame on an
+/// Apple TV 4K, for rows nobody could see.
+class _TvCatalogWindowRow extends StatelessWidget {
+  const _TvCatalogWindowRow({required this.center, required this.row, required this.child});
+
+  final ValueNotifier<int?> center;
+  final int row;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<int?>(
+    valueListenable: center,
+    child: child,
+    builder: (context, centerRow, child) {
+      final inWindow = tvCatalogArtworkRowInWindow(row: row, centerRow: centerRow ?? 0);
+      return TvCatalogArtworkScope(
+        drawArtwork: inWindow,
+        child: Visibility(
+          visible: inWindow,
+          maintainState: true,
+          maintainAnimation: true,
+          maintainSize: true,
+          maintainSemantics: true,
+          maintainInteractivity: true,
+          maintainFocusability: true,
+          child: child!,
+        ),
+      );
+    },
+  );
 }

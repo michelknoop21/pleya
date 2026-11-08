@@ -905,8 +905,14 @@ class TranslationsSettingsEn {
 	/// en: 'Sync Settings via iCloud'
 	String get icloudSync => 'Sync Settings via iCloud';
 
-	/// en: 'Keep your preferences in sync across your Apple devices'
-	String get icloudSyncDescription => 'Keep your preferences in sync across your Apple devices';
+	/// en: 'Sync preferences and connections across your own Apple devices'
+	String get icloudSyncDescription => 'Sync preferences and connections across your own Apple devices';
+
+	/// en: 'Tautulli and Requests could not sync through iCloud. Your connections remain available on this device.'
+	String get icloudCredentialSyncError => 'Tautulli and Requests could not sync through iCloud. Your connections remain available on this device.';
+
+	/// en: 'Your iCloud account has changed. Sign in to your original account to resume syncing Tautulli and Requests.'
+	String get icloudCredentialSyncAccountChanged => 'Your iCloud account has changed. Sign in to your original account to resume syncing Tautulli and Requests.';
 
 	/// en: 'Sign in to iCloud on this device to sync settings'
 	String get icloudSyncUnavailable => 'Sign in to iCloud on this device to sync settings';
@@ -5488,8 +5494,8 @@ class TranslationsTautulliEn {
 	/// en: 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.'
 	String get subtitle => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.';
 
-	/// en: 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.'
-	String get adminOnlyNote => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.';
+	/// en: 'Tautulli has one key that opens its whole admin API. Pleya stores it encrypted and shares the connection with your own Apple devices when iCloud sync is enabled. Only administrators see what it reports. The people you share your server with need to set up nothing.'
+	String get adminOnlyNote => 'Tautulli has one key that opens its whole admin API. Pleya stores it encrypted and shares the connection with your own Apple devices when iCloud sync is enabled. Only administrators see what it reports. The people you share your server with need to set up nothing.';
 
 	/// en: 'Use history for recommendations'
 	String get useHistoryForRecommendations => 'Use history for recommendations';
@@ -10754,7 +10760,9 @@ extension on Translations {
 			'settings.importSettingsInvalidFile' => 'This file isn\'t a valid Pleya settings export',
 			'settings.importSettingsNoUser' => 'Sign in before importing settings',
 			'settings.icloudSync' => 'Sync Settings via iCloud',
-			'settings.icloudSyncDescription' => 'Keep your preferences in sync across your Apple devices',
+			'settings.icloudSyncDescription' => 'Sync preferences and connections across your own Apple devices',
+			'settings.icloudCredentialSyncError' => 'Tautulli and Requests could not sync through iCloud. Your connections remain available on this device.',
+			'settings.icloudCredentialSyncAccountChanged' => 'Your iCloud account has changed. Sign in to your original account to resume syncing Tautulli and Requests.',
 			'settings.icloudSyncUnavailable' => 'Sign in to iCloud on this device to sync settings',
 			'settings.icloudSyncEnableFailed' => 'Could not turn on iCloud settings sync',
 			'settings.icloudSyncLegacyPeer' => 'Another Apple device is still on an older Pleya version, so settings are not being shared with it. Update Pleya everywhere to sync again.',
@@ -11015,10 +11023,10 @@ extension on Translations {
 			'tooltips.shufflePlay' => 'Shuffle play',
 			'tooltips.playTrailer' => 'Play trailer',
 			'tooltips.markAsWatched' => 'Mark as watched',
-			'tooltips.markAsUnwatched' => 'Mark as unwatched',
-			'videoControls.audioLabel' => 'Audio',
 			_ => null,
 		} ?? switch (path) {
+			'tooltips.markAsUnwatched' => 'Mark as unwatched',
+			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Subtitles',
 			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
 			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
@@ -11529,10 +11537,10 @@ extension on Translations {
 			'libraries.sortLabels.random' => 'Random',
 			'libraries.sortLabels.dateShared' => 'Date Shared',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
-			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
-			'about.title' => 'About',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
+			'about.title' => 'About',
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -12043,10 +12051,10 @@ extension on Translations {
 			'performanceOverlay.speed' => 'Speed',
 			'performanceOverlay.player' => 'Player',
 			'performanceOverlay.memory' => 'Memory',
-			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'External Player',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.uiFps' => 'UI FPS',
+			'externalPlayer.title' => 'External Player',
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -12336,7 +12344,7 @@ extension on Translations {
 			'seerr.requestNotInOwnList' => 'That request is no longer in your own list. It may have been handled or removed.',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
-			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
+			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API. Pleya stores it encrypted and shares the connection with your own Apple devices when iCloud sync is enabled. Only administrators see what it reports. The people you share your server with need to set up nothing.',
 			'tautulli.useHistoryForRecommendations' => 'Use history for recommendations',
 			'tautulli.useHistoryForRecommendationsDescription' => 'Uses viewing history from this Tautulli server to improve personal recommendations for every profile on this device. Each profile only ever gets its own history, and processing stays local in Pleya.',
 			'tautulli.integrationConflictNote' => 'Two different Tautulli pairings were found for this server, so history is not being used until you reconnect the one you want to keep.',
@@ -12557,10 +12565,10 @@ extension on Translations {
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} sources',
 			'unifiedCatalog.allSources' => 'All sources',
 			'unifiedCatalog.oneSource' => '1 source',
-			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
-			'unifiedCatalog.oneSeason' => '1 season',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
+			'unifiedCatalog.oneSeason' => '1 season',
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
@@ -13071,10 +13079,10 @@ extension on Translations {
 			'assistant.idle.examplesHeader' => 'For example',
 			'assistant.examples.tonight.0' => 'What in my library can I watch tonight?',
 			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
-			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
-			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
+			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',

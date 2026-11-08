@@ -12,11 +12,14 @@ import 'package:pleya/widgets/seerr_request_edit_sheet.dart';
 import 'package:pleya/widgets/seerr_request_form_parts.dart';
 import 'package:pleya/widgets/seerr_request_sheet.dart';
 
+import '../test_helpers/prefs.dart';
 import '../test_helpers/seerr_fake.dart';
 
 const _show = SeerrMedia(tmdbId: 1399, mediaType: 'tv', title: 'Wadlopers');
 
 void main() {
+  setUp(resetSharedPreferencesForTest);
+
   late FakeSeerr fake;
 
   setUp(() {

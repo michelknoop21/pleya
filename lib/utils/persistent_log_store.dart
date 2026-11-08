@@ -54,16 +54,19 @@ class PersistentLogStore {
     return _enqueue(() async {
       var size = await _current.exists() ? await _current.length() : 0;
       final batch = StringBuffer();
-      Future<void> writeBatch() async {
+      void writeBatch() {
         if (batch.isEmpty) return;
-        await _current.writeAsString(batch.toString(), mode: FileMode.append, flush: true);
+        // Append opens at EOF, so an asynchronous handle can overwrite a
+        // checkpoint appended by flushSync before that handle writes. Keep
+        // this buffered append indivisible within the isolate.
+        _current.writeAsStringSync(batch.toString(), mode: FileMode.append, flush: true);
         batch.clear();
       }
 
       for (final line in lines) {
         final bytes = utf8.encode(line).length;
         if (size + bytes > maxFileBytes) {
-          await writeBatch();
+          writeBatch();
           if (await _previous.exists()) await _previous.delete();
           if (await _current.exists()) await _current.rename(_previous.path);
           size = 0;
@@ -71,7 +74,7 @@ class PersistentLogStore {
         batch.write(line);
         size += bytes;
       }
-      await writeBatch();
+      writeBatch();
     });
   }
 

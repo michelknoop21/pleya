@@ -628,38 +628,6 @@ class PlexClient
     }
   }
 
-  /// Test connection multiple times and return average latency
-  static Future<ConnectionTestResult> testConnectionWithAverageLatency(
-    String baseUrl,
-    String token, {
-    int attempts = 3,
-    Duration timeout = const Duration(seconds: 5),
-    String? clientIdentifier,
-  }) async {
-    final results = <ConnectionTestResult>[];
-
-    for (int i = 0; i < attempts; i++) {
-      final result = await testConnectionWithLatency(
-        baseUrl,
-        token,
-        timeout: timeout,
-        clientIdentifier: clientIdentifier,
-      );
-
-      // If any attempt fails, return failed result immediately
-      if (!result.success) {
-        return ConnectionTestResult(success: false, latencyMs: result.latencyMs);
-      }
-
-      results.add(result);
-    }
-
-    // Calculate average latency from successful attempts
-    final avgLatency = results.fold<int>(0, (sum, result) => sum + result.latencyMs) ~/ results.length;
-
-    return ConnectionTestResult(success: true, latencyMs: avgLatency);
-  }
-
   @override
   Map<String, dynamic>? _getMediaContainer(MediaServerResponse response) {
     if (response.data is Map && response.data.containsKey('MediaContainer')) {
@@ -1899,10 +1867,15 @@ class PlexClient
     return _parseSettingsMap(response);
   }
 
-  /// Get available filters for a library section
+  /// Get available filters for a library section. Optional menu metadata must
+  /// not switch a working server away from its endpoint on a transient failure.
   Future<List<MediaFilter>> getLibraryFilters(String sectionId) async {
     if (sectionId == 'shared') return [];
-    final response = await _getWithFailover('/library/sections/$sectionId/filters');
+    final response = await _getWithFailover(
+      '/library/sections/$sectionId/filters',
+      timeout: MediaServerTimeouts.interactive,
+      allowEndpointFailover: false,
+    );
     return _extractDirectoryList(response, MediaFilter.fromJson);
   }
 
@@ -1937,7 +1910,8 @@ class PlexClient
     return _extractDirectoryList(response, MediaFilterValue.fromJson);
   }
 
-  /// Get available sort options for a library section
+  /// Get available sort options for a library section. Like filters, a failed
+  /// menu probe must not trigger a server-wide reconnection.
   ///
   /// If [libraryType] is provided (e.g., 'movie', 'show'), it's used for fallback
   /// sorts without needing to re-fetch the library sections list.
@@ -1960,7 +1934,11 @@ class PlexClient
       ];
     }
     try {
-      final response = await _getWithFailover('/library/sections/$sectionId/sorts');
+      final response = await _getWithFailover(
+        '/library/sections/$sectionId/sorts',
+        timeout: MediaServerTimeouts.interactive,
+        allowEndpointFailover: false,
+      );
       final sorts = _extractDirectoryList(response, MediaSort.fromJson);
 
       // Fallback: return common sort options if API doesn't provide them
@@ -3335,6 +3313,7 @@ class PlexClient
   Future<void> applyTokenUpdate(String newToken) async {
     if (config.token == newToken) return;
     config = config.copyWith(token: newToken);
+    _dvrs = null;
     _http.defaultHeaders = Map.of(config.headers);
     LogRedactionManager.registerToken(newToken);
     await _initMediaProviders();

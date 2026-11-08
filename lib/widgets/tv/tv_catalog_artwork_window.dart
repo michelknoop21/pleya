@@ -6,6 +6,8 @@
 /// image something still listens to, so a long scroll through Alle films grew
 /// memory until tvOS killed the app. The cells stay; rows far from the focus
 /// draw the placeholder fill in the same box instead.
+/// Compact cards also defer their poster/footer contents in this window,
+/// while keeping their focus shell, label and exact cell dimensions mounted.
 library;
 
 import 'package:flutter/widgets.dart';

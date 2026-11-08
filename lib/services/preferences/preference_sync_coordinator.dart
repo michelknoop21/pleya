@@ -419,6 +419,8 @@ class PreferenceSyncCoordinator {
         _setStatus(status.value.raise(PreferenceSyncHealth.quota));
       case RemoteChangeReason.accountChanged:
         _accountChangePending = true;
+        // Evidence from the previous account says nothing about this one.
+        _setStatus(status.value.copyWith(legacyPeerDetected: false));
         // The account under the store changed, or went away. Re-ask whether
         // there is a store to talk to at all before deciding this is a sync:
         // signing out is not an error, and reporting it as one sends the user
@@ -430,7 +432,7 @@ class PreferenceSyncCoordinator {
       case RemoteChangeReason.serverChange:
         if (change.changedKeys.isNotEmpty) await applyRemoteKeys(change.changedKeys);
       case RemoteChangeReason.initialSync:
-        if (change.changedKeys.isNotEmpty) await applyRemoteKeys(change.changedKeys);
+        if (change.changedKeys.isNotEmpty) await applyRemoteKeys(change.changedKeys, detectLegacyPeer: false);
         await requestReconcile(ReconcileTrigger.initialSync);
     }
   }
@@ -448,7 +450,7 @@ class PreferenceSyncCoordinator {
   }
 
   /// Apply the keys a remote event named. Queued behind a running reconcile.
-  Future<void> applyRemoteKeys(List<String> keys) => _exclusively(() async {
+  Future<void> applyRemoteKeys(List<String> keys, {bool detectLegacyPeer = true}) => _exclusively(() async {
     final generation = _turnGeneration;
     final all = await _transport?.readAll();
     // Timed out and answered after a newer turn ran: applying this snapshot
@@ -458,7 +460,12 @@ class PreferenceSyncCoordinator {
     // the read succeeded; inferring removals from a broken channel wipes local
     // settings on a transient error.
     if (all == null) return;
-    await applyEntries({for (final k in keys) k: all[k]});
+    await _remoteApply.applyEntries(
+      {for (final k in keys) k: all[k]},
+      // Account changes are announced before their queued reconcile can run.
+      // A prior read or batch must not restore evidence from the old account.
+      isLiveLegacyChange: () => detectLegacyPeer && !_accountChangePending && generation == _turnGeneration,
+    );
   });
 
   late final PreferenceRemoteApply _remoteApply = PreferenceRemoteApply(

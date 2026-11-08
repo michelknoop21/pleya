@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 // ignore: implementation_imports
 import 'package:cached_network_image_ce/src/cache/default_cache_manager.dart' as ce;
 import 'package:file/file.dart' as fs;
@@ -150,6 +151,7 @@ void main() {
     cache.writes = 0;
   });
   tearDown(() async {
+    OptimizedMediaImage.debugResetMissingImages();
     if (!provider.isDisposed) provider.dispose();
     await provider.pendingStoreWrites;
     changes.dispose();
@@ -324,6 +326,35 @@ void main() {
       if (!oldGate.isCompleted) oldGate.complete();
       newer.dispose();
     }
+  });
+
+  testWidgets('a known missing poster retains its visible revalidation lease', (tester) async {
+    wifi = false;
+    Widget tree() => ChangeNotifierProvider.value(
+      value: provider,
+      child: MaterialApp(
+        home: OptimizedMediaImage.poster(client: client, imagePath: '/shared-poster', width: 200, height: 300),
+      ),
+    );
+    await tester.pumpWidget(tree());
+    expect(provider.visibleArtworkCount, 1);
+    tester.widget<Image>(find.byType(Image)).errorBuilder!(
+      tester.element(find.byType(Image)),
+      const HttpExceptionWithStatus(404, 'missing'),
+      StackTrace.empty,
+    );
+    await tester.pumpWidget(tree());
+    expect(find.byType(Image), findsNothing);
+    expect(provider.visibleArtworkCount, 1, reason: 'the fallback must remain eligible for background revalidation');
+    wifi = true;
+    colorArtwork = true;
+    await tester.runAsync(provider.revalidateVisibleArtwork);
+    await tester.pump();
+    expect(key(), isNot(base));
+    expect(find.byType(Image), findsOneWidget, reason: 'successful revalidation must replace the mounted fallback');
+    expect(provider.visibleArtworkCount, 1);
+    await tester.pumpWidget(const SizedBox());
+    expect(provider.visibleArtworkCount, 0);
   });
 
   testWidgets('widget and prefetch use the same changed decoded key; leases survive rebuild and unregister', (

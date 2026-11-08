@@ -387,31 +387,34 @@ class LocalLibrarySync {
     const interval = Duration(minutes: 10);
     final budget = store.posterBudget(now);
     if (budget.total >= 60) return;
-    final priority = <MediaItem>[];
-    final oldest = <MediaItem>[];
     String key(MediaItem i) => '${i.serverId}|${artworkStorageKey(i.thumbPath!)}';
-    DateTime attempted(MediaItem i) =>
-        DateTime.tryParse(store.posterFreshness(i.serverId!, i.thumbPath!)['attempted'] as String? ?? '') ??
-        DateTime.utc(1970);
-    void insert(List<MediaItem> list, MediaItem item, int cap) {
-      if (list.any((i) => key(i) == key(item))) return;
-      list.add(item);
-      list.sort((a, b) {
-        final order = attempted(a).compareTo(attempted(b));
-        return order == 0 ? key(a).compareTo(key(b)) : order;
-      });
-      if (list.length > cap) list.removeLast();
-    }
-
+    // One pass that reads each item's state once, then one sort. Keeping a
+    // sorted top-60 per item re-read and re-parsed both states on every
+    // comparison; over a full library that held the UI isolate for about
+    // 20 s on an Apple TV 4K, right after every incomplete scan.
+    final candidates = <({MediaItem item, String key, DateTime attempted, bool priority})>[];
+    final seen = <String>{};
     for (final item in items) {
       if (item.serverId == null || item.thumbPath == null || item.thumbPath!.isEmpty) continue;
       final state = store.posterFreshness(item.serverId!, item.thumbPath!);
-      final last = attempted(item);
+      final last = DateTime.tryParse(state['attempted'] as String? ?? '') ?? DateTime.utc(1970);
       final retry = DateTime.tryParse(state['retry'] as String? ?? '');
       if (now.difference(last) < interval || (retry != null && now.isBefore(retry))) continue;
-      insert(oldest, item, 60);
-      if (store.posterIsPriority(item.serverId!, item.thumbPath!)) insert(priority, item, 20);
+      final k = key(item);
+      if (!seen.add(k)) continue;
+      candidates.add((
+        item: item,
+        key: k,
+        attempted: last,
+        priority: store.posterIsPriority(item.serverId!, item.thumbPath!),
+      ));
     }
+    candidates.sort((a, b) {
+      final order = a.attempted.compareTo(b.attempted);
+      return order == 0 ? a.key.compareTo(b.key) : order;
+    });
+    final oldest = [for (final c in candidates.take(60)) c.item];
+    final priority = [for (final c in candidates.where((c) => c.priority).take(20)) c.item];
     final selected = <MediaItem>[...priority.take(20 - budget.priority)];
     final priorityKeys = selected.map(key).toSet();
     selected.addAll(oldest.where((i) => !priorityKeys.contains(key(i))).take(40 - (budget.total - budget.priority)));

@@ -55,6 +55,31 @@ void main() {
     expect((await PersistentLogStore(directory).read()).map((e) => e['message']), ['one', 'two']);
   });
 
+  test('an in-flight flush cannot overwrite synchronous checkpoints', () async {
+    for (var round = 0; round < 20; round++) {
+      final folder = await Directory('${directory.path}/$round').create();
+      final store = PersistentLogStore(folder);
+      final pending = <Future<void>>[];
+      final expected = <String>{};
+      for (var i = 0; i < 10; i++) {
+        final regular = 'regular-$i';
+        final checkpoint = 'checkpoint-$i';
+        expected.addAll([regular, checkpoint]);
+        store.add({'message': regular});
+        pending.add(store.flush());
+        // Let the asynchronous append open before the immediate checkpoint.
+        await Future<void>.delayed(Duration.zero);
+        store.add({'message': checkpoint});
+        store.flushSync();
+      }
+      await Future.wait(pending);
+      await store.flush();
+      final saved = await PersistentLogStore(folder).read();
+      expect(saved.map((entry) => entry['message']).toSet(), expected, reason: 'round $round');
+      expect(saved, hasLength(expected.length), reason: 'no duplicate replay');
+    }
+  });
+
   test('rotation bounds disk usage and preserves the newest entries', () async {
     final store = PersistentLogStore(directory, maxFileBytes: 80);
     for (var i = 0; i < 20; i++) {
