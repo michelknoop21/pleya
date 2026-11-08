@@ -41,6 +41,7 @@ Future<void> switchProfileForHandoff(BuildContext context, PlaybackHandoffReques
       connectionId: connectionId,
       userUuid: userUuid,
       joinRows: joinRows,
+      connectionIsAccount: provider.peerConnectionIsAccount,
     );
   }
   // The active profile itself would not rebuild the session, so nothing would take the request.

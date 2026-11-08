@@ -448,6 +448,76 @@ void main() {
       expect(provider.debugCryptoUserUuid, jellyfin.userId);
     });
 
+    test(
+      'ensureCryptoReady gives a Pleya Server-only profile an identity, with the Home members on this device',
+      () async {
+        final db = AppDatabase.forTesting(NativeDatabase.memory());
+        final connections = ConnectionRegistry(db);
+        final profileConnections = ProfileConnectionRegistry(db);
+        final profiles = ProfileRegistry(db);
+        final storage = await StorageService.getInstance();
+        final plexHome = PlexHomeService(
+          connections: connections,
+          profileConnections: profileConnections,
+          storage: storage,
+          plexHomeUserFetcher: (_) async => const [],
+        );
+        final active = ActiveProfileProvider(
+          registry: profiles,
+          plexHome: plexHome,
+          connections: connections,
+          storage: storage,
+        );
+        addTearDown(() async {
+          await active.resetForTesting();
+          active.dispose();
+          await plexHome.dispose();
+          await db.close();
+        });
+
+        final bob = _pleyaServerAccount('srv', 'u-bob');
+        final anna = _pleyaServerAccount('srv', 'u-anna');
+        final elsewhere = _pleyaServerAccount('other-srv', 'u-carl');
+        final bobProfile = _localProfile('profile-bob');
+        final annaProfile = _localProfile('profile-anna');
+        for (final c in [bob, anna, elsewhere]) {
+          await connections.upsert(c);
+        }
+        await profiles.upsert(bobProfile);
+        await profiles.upsert(annaProfile);
+        await profileConnections.upsert(
+          ProfileConnection(profileId: bobProfile.id, connectionId: bob.id, userIdentifier: bob.userName),
+          makeDefault: true,
+        );
+        await profileConnections.upsert(
+          ProfileConnection(profileId: annaProfile.id, connectionId: anna.id, userIdentifier: anna.userName),
+          makeDefault: true,
+        );
+        await storage.setActiveProfileId(bobProfile.id);
+        await active.initialize();
+
+        final provider = CompanionRemoteProvider();
+        addTearDown(provider.dispose);
+        final ok = await provider.ensureCryptoReady(
+          null,
+          connections: connections,
+          activeProfile: active,
+          profileConnections: profileConnections,
+        );
+
+        expect(ok, isTrue);
+        expect(provider.debugCryptoConnectionIds, [bob.id, anna.id]);
+        expect(provider.debugCryptoUserUuid, 'u-bob');
+        final contexts = provider.debugAuthContexts;
+        expect(contexts.map((c) => c.hostOnly), [false, true]);
+        expect(contexts.last.allowedUserUuids, ['u-anna']);
+        // The beacon id is this installation, never the connection id that carries the user id.
+        expect(contexts.first.clientIdentifier, isNotEmpty);
+        expect(contexts.first.clientIdentifier, isNot(contains('u-bob')));
+        expect(provider.peerConnectionIsAccount, isFalse);
+      },
+    );
+
     test('ensureCryptoReady includes every active local profile remote identity', () async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       final connections = ConnectionRegistry(db);
@@ -586,6 +656,18 @@ JellyfinConnection _jellyfinConnection(String id) {
     userName: 'User $id',
     accessToken: 'token-$id',
     deviceId: 'device-$id',
+    createdAt: DateTime(2026, 1, 1),
+  );
+}
+
+PleyaServerConnection _pleyaServerAccount(String serverId, String userId) {
+  return PleyaServerConnection(
+    id: pleyaServerConnectionId(serverId: serverId, userId: userId),
+    baseUrl: 'http://nas.test',
+    serverId: serverId,
+    serverName: 'NAS',
+    userName: 'name-$userId',
+    refreshToken: 'refresh-$userId',
     createdAt: DateTime(2026, 1, 1),
   );
 }

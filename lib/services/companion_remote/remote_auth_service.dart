@@ -77,10 +77,21 @@ class RemoteAuthService {
   }
 
   /// Derive a companion remote secret from a Jellyfin server/user identity.
-  Future<List<int>> deriveJellyfinSecret({required String serverMachineId, required String userId}) async {
-    final normalizedServerId = serverMachineId.toLowerCase();
+  Future<List<int>> deriveJellyfinSecret({required String serverMachineId, required String userId}) =>
+      _deriveServerUserSecret('jellyfin', serverMachineId, userId);
+
+  /// Derive a companion remote secret from a Pleya Server account (DEC-XXX):
+  /// the server id from `/info` and the account's user id. The server id is
+  /// public; the user id is what only the household knows (a UUIDv7 that a
+  /// member sees for himself, and for others only as owner or admin, or in
+  /// `/items/{id}/activity` of a member who shares).
+  Future<List<int>> derivePleyaServerSecret({required String serverId, required String userId}) =>
+      _deriveServerUserSecret('pleya-server', serverId, userId);
+
+  Future<List<int>> _deriveServerUserSecret(String kind, String serverId, String userId) async {
+    final normalizedServerId = serverId.toLowerCase();
     final normalizedUserId = userId.toLowerCase();
-    final cacheKey = 'jellyfin:$normalizedServerId:$normalizedUserId';
+    final cacheKey = '$kind:$normalizedServerId:$normalizedUserId';
     if (_cachedSecret != null && _cachedSecretKey == cacheKey) {
       return _cachedSecret!;
     }
@@ -92,13 +103,13 @@ class RemoteAuthService {
     final secretKey = await _hkdf.deriveKey(
       secretKey: SecretKey(buf.toBytes()),
       nonce: utf8.encode('pleya-remote-v1'),
-      info: utf8.encode('jellyfin-secret'),
+      info: utf8.encode('$kind-secret'),
     );
 
     _cachedSecret = await secretKey.extractBytes();
     _cachedSecretKey = cacheKey;
 
-    appLogger.d('RemoteAuth: Derived Jellyfin secret');
+    appLogger.d('RemoteAuth: Derived $kind secret');
     return _cachedSecret!;
   }
 

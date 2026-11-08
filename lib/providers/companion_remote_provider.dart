@@ -17,8 +17,10 @@ import '../profiles/profile_connection_registry.dart';
 import '../services/companion_remote/companion_remote_peer_service.dart';
 import '../services/companion_remote/lan_discovery_service.dart';
 import '../services/companion_remote/playback_handoff.dart';
+import '../services/companion_remote/pleya_server_remote_auth.dart';
 import '../services/companion_remote/remote_auth_context.dart';
 import '../services/companion_remote/remote_auth_service.dart';
+import '../services/pleya_server_device_identity.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_message_utils.dart';
 import '../utils/platform_detector.dart';
@@ -96,6 +98,11 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   /// authenticated; together they name its profile here (A-23b).
   String? get peerUserUuid => _peerService?.clientUserUuid;
   String? get peerConnectionId => _authContextForId(_peerService?.selectedAuthContextId)?.connectionId;
+
+  /// Host side: the phone's connection is its own account, so the connection
+  /// alone names its profile here (Pleya Server, DEC-XXX).
+  bool get peerConnectionIsAccount =>
+      _authContextForId(_peerService?.selectedAuthContextId)?.backend == pleyaServerAuthBackend;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
 
   /// The running host receives only a Pleya Fly (A-23d); see [startHostServer].
@@ -246,6 +253,12 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   bool get isCryptoReady => _authContexts.isNotEmpty;
 
+  /// The identities this device joins a host with: never another member's.
+  List<RemoteAuthContext> get _clientAuthContexts => [
+    for (final context in _authContexts)
+      if (!context.hostOnly) context,
+  ];
+
   /// Convenience: ensure crypto is initialized for every remote identity
   /// attached to the active profile.
   /// Returns true if crypto is ready (already initialized or just initialized).
@@ -311,6 +324,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   }) async {
     final contexts = <RemoteAuthContext>[];
     final seen = <String>{};
+    final pleyaAccounts = <PleyaServerConnection>[];
     final all = await connections.list();
     final byId = {for (final c in all) c.id: c};
 
@@ -341,13 +355,12 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
           );
         case JellyfinConnection():
           addContext(await _createJellyfinAuthContext(connection: connection));
+        case PleyaServerConnection():
+          // After the loop: the other accounts of the same server join in (DEC-XXX).
+          pleyaAccounts.add(connection);
         case LocalFolderConnection():
         case PleyaShareConnection():
-        case PleyaServerConnection():
-          // No remote auth context: the companion protocol hands a token to
-          // another device, and these three have nothing an off-device
-          // client could use. Pleya Server access tokens are short-lived and
-          // bound to this device's refresh chain.
+          // No remote auth context: nothing here names a Home or a user.
           break;
       }
     }
@@ -366,6 +379,15 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       final connection = byId[pc.connectionId];
       if (connection == null) continue;
       await addConnection(connection, userUuid: pc.userIdentifier.isEmpty ? null : pc.userIdentifier);
+    }
+
+    if (pleyaAccounts.isNotEmpty) {
+      final deviceId = (await pleyaServerDeviceIdentity())?.id;
+      if (deviceId == null) {
+        appLogger.w('CompanionRemote: Skipping Pleya Server remote identity: no device id');
+      } else {
+        (await pleyaServerAuthContexts(own: pleyaAccounts, onDevice: all, deviceId: deviceId)).forEach(addContext);
+      }
     }
 
     return contexts;
@@ -440,6 +462,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
           left.connectionId != right.connectionId ||
           left.clientIdentifier != right.clientIdentifier ||
           left.userUuid != right.userUuid ||
+          left.hostOnly != right.hostOnly ||
           !_sameStrings(left.allowedUserUuids, right.allowedUserUuids)) {
         return false;
       }
@@ -508,6 +531,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   @visibleForTesting
   List<String> get debugCryptoConnectionIds => _authContexts.map((context) => context.connectionId).toList();
+
+  @visibleForTesting
+  List<RemoteAuthContext> get debugAuthContexts => _authContexts;
 
   /// Starts hosting. [handoffOnly] marks a host that receives a Pleya Fly and
   /// nothing else (A-23d): the app then drops every other command, and joining
@@ -678,7 +704,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     }
 
     _discoveryService ??= LanDiscoveryService();
-    return _discoveryService!.startListeningForContexts(_authContexts);
+    return _discoveryService!.startListeningForContexts(_clientAuthContexts);
   }
 
   /// Stop listening for host beacons.
@@ -722,7 +748,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
         _deviceName,
         _platform,
         host.addresses,
-        _authContexts,
+        _clientAuthContexts,
         authContextId: authContext.id,
         expectedHostClientId: host.clientId,
       );
@@ -769,7 +795,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     safeNotifyListeners();
 
     try {
-      await _peerService!.joinSessionWithContexts(_deviceName, _platform, hostAddress, _authContexts);
+      await _peerService!.joinSessionWithContexts(_deviceName, _platform, hostAddress, _clientAuthContexts);
       _lastAuthContextId = _peerService!.selectedAuthContextId;
       _lastHostClientId = _peerService!.selectedHostClientId ?? '';
 
@@ -983,7 +1009,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
         _deviceName,
         _platform,
         _lastHostAddresses!.first,
-        _authContexts,
+        _clientAuthContexts,
         authContextId: authContextId,
         expectedHostClientId: _lastHostClientId ?? '',
       );
