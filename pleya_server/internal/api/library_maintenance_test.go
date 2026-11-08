@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,10 +11,11 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
 
-// POST /libraries/{id}/empty-trash en /refresh-metadata (DEC-XXX, voorstel
-// bibliotheekonderhoud). De autorisatie staat in de matrix (regels 107 en 108);
+// POST /libraries/{id}/empty-trash en /refresh-metadata (DEC-XXX,
+// bibliotheekonderhoud). De autorisatie staat in de matrix (regels 108 en 109);
 // hier staat wat ze doen.
 
 // markMissing zet de markering die een scan op een verdwenen bestand zet,
@@ -27,8 +29,13 @@ func (e *env) markMissing(relPath string, removeFromDisk bool, root string) {
 		e.t.Fatalf("%s markeren: %v (%d rijen)", relPath, err, tag.RowsAffected())
 	}
 	if removeFromDisk {
-		if err := os.Remove(filepath.Join(root, relPath)); err != nil {
+		path := filepath.Join(root, relPath)
+		if err := os.Remove(path); err != nil {
 			e.t.Fatal(err)
+		}
+		// Een map die zo leeg raakt gaat mee, zoals wanneer iemand de map van een
+		// film weggooit. Een lege map laat FileGone het bestand als aanwezig zien.
+		for dir := filepath.Dir(path); dir != root && os.Remove(dir) == nil; dir = filepath.Dir(dir) {
 		}
 	}
 }
@@ -145,34 +152,135 @@ func TestEmptyLibraryTrashRemovesOnlyTitlesWhoseFilesAreGone(t *testing.T) {
 	}
 }
 
-// TestEmptyLibraryTrashKeepsEverythingOnAnUnreadableRoot is de controle op de
-// schijfcheck: zonder FileGone (alles telt als weg) verdwijnt hier een titel,
-// met FileGone niet, want de root zelf is er niet.
-func TestEmptyLibraryTrashKeepsEverythingOnAnUnreadableRoot(t *testing.T) {
+// TestEmptyLibraryTrashKeepsEverythingWhenARootLooksUnmounted: een root die
+// weg is of als lege map achterblijft (een share die niet gemount is) laat de
+// hele bibliotheek staan.
+func TestEmptyLibraryTrashKeepsEverythingWhenARootLooksUnmounted(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		replace func(t *testing.T, root string)
+	}{
+		{"root weg", func(t *testing.T, root string) {
+			if err := os.Rename(root, root+"-offline"); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"root een lege map", func(t *testing.T, root string) {
+			if err := os.Rename(root, root+"-offline"); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(root, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			e.setup(e.putSetupCode())
+			ctx := context.Background()
+			films := e.libs[0]
+			filmsRoot := filepath.Join(e.root, "films")
+
+			e.markMissing("The Matrix (1999)/The Matrix (1999).mkv", false, filmsRoot)
+			tc.replace(t, filmsRoot)
+
+			removed, err := e.store.EmptyTrash(ctx, films.ID, catalog.FileGone)
+			if !errors.Is(err, catalog.ErrTrashRootUnavailable) || removed != 0 {
+				t.Fatalf("legen: %d (%v), wil 0 en ErrTrashRootUnavailable", removed, err)
+			}
+			if !e.itemExists(films.ID, "movie", "The Matrix") {
+				t.Fatal("The Matrix is verwijderd terwijl de root er niet gemount uitzag")
+			}
+		})
+	}
+}
+
+// TestEmptyLibraryTrashKeepsFilesUnderAnEmptyNestedDirectory: een lege map onder
+// een gevulde root is wat een niet-gemount genest koppelpunt achterlaat. Wat
+// eronder hoort te staan telt als aanwezig.
+func TestEmptyLibraryTrashKeepsFilesUnderAnEmptyNestedDirectory(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	ctx := context.Background()
+	series := e.libs[1]
+	seriesRoot := filepath.Join(e.root, "series")
+	show := filepath.Join(seriesRoot, "How I Met Your Mother (2005)")
+
+	for _, rel := range himymEpisodes {
+		e.markMissing(rel, false, seriesRoot)
+	}
+	if err := os.RemoveAll(show); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(show, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if removed, err := e.store.EmptyTrash(ctx, series.ID, catalog.FileGone); err != nil || removed != 0 {
+		t.Fatalf("legen onder een leeg koppelpunt: %d (%v), wil 0", removed, err)
+	}
+	if !e.itemExists(series.ID, "show", "How I Met Your Mother") {
+		t.Fatal("de serie is verwijderd terwijl haar map een leeg koppelpunt kan zijn")
+	}
+}
+
+var himymEpisodes = []string{
+	"How I Met Your Mother (2005)/Season 01/How I Met Your Mother - S01E09 - Slap Bet.mkv",
+	"How I Met Your Mother (2005)/Season 01/How I Met Your Mother - S01E10 - The Pineapple Incident.mkv",
+	"How I Met Your Mother (2005)/Season 02/How I Met Your Mother - S02E01 - Where Were We.mkv",
+}
+
+// TestEmptyLibraryTrashRemovesAWholeShow: alle afleveringen weg, en de map van
+// de serie ook. Seizoenen en serie gaan mee; de root blijft gevuld.
+func TestEmptyLibraryTrashRemovesAWholeShow(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	ctx := context.Background()
+	series := e.libs[1]
+	seriesRoot := filepath.Join(e.root, "series")
+
+	// Iets anders in de root, zodat die na het weggooien niet leeg is.
+	if err := os.WriteFile(filepath.Join(seriesRoot, "notities.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range himymEpisodes {
+		e.markMissing(rel, true, seriesRoot)
+	}
+
+	if removed, err := e.store.EmptyTrash(ctx, series.ID, catalog.FileGone); err != nil || removed != 3 {
+		t.Fatalf("serie legen: %d (%v), wil 3", removed, err)
+	}
+	var left int
+	if err := e.pool.QueryRow(ctx, `SELECT count(*) FROM media_items WHERE library_id = $1`, series.ID).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("%d items over in de series (%v), wil 0", left, err)
+	}
+}
+
+// TestEmptyLibraryTrashKeepsAStackedVersionWithOnePartLeft: een film in twee
+// delen waarvan één deel weg is, heeft nog een aanwezig bestand en blijft.
+func TestEmptyLibraryTrashKeepsAStackedVersionWithOnePartLeft(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
 	ctx := context.Background()
 	films := e.libs[0]
 	filmsRoot := filepath.Join(e.root, "films")
 
-	e.markMissing("The Matrix (1999)/The Matrix (1999).mkv", false, filmsRoot)
-	// De share is weg: de map bestaat niet meer.
-	if err := os.Rename(filmsRoot, filmsRoot+"-offline"); err != nil {
-		t.Fatal(err)
+	testsupport.MakeVideo(t, filepath.Join(filmsRoot, "Heat (1995)", "Heat (1995) cd1.mkv"), 1)
+	testsupport.MakeVideo(t, filepath.Join(filmsRoot, "Heat (1995)", "Heat (1995) cd2.mkv"), 1)
+	e.rescan()
+	var parts int
+	if err := e.pool.QueryRow(ctx, `
+		SELECT count(*) FROM media_files f JOIN media_versions v ON v.id = f.version_id
+		JOIN media_items i ON i.id = v.item_id WHERE i.title = 'Heat' AND f.role = 'media'`).Scan(&parts); err != nil || parts != 2 {
+		t.Fatalf("Heat heeft %d delen (%v), wil 2", parts, err)
 	}
-	if catalog.FileGone(filmsRoot, "The Matrix (1999)/The Matrix (1999).mkv") {
-		t.Fatal("FileGone zegt weg bij een root die er niet is")
-	}
-	if removed, err := e.store.EmptyTrash(ctx, films.ID, catalog.FileGone); err != nil || removed != 0 {
-		t.Fatalf("legen op een weggevallen root: %d (%v), wil 0", removed, err)
-	}
-	if !e.itemExists(films.ID, "movie", "The Matrix") {
-		t.Fatal("The Matrix is verwijderd terwijl de root onleesbaar was")
-	}
+	e.markMissing("Heat (1995)/Heat (1995) cd2.mkv", true, filmsRoot)
 
-	// Negatieve controle: zonder de schijfcheck was hij wel verdwenen.
-	if removed, err := e.store.EmptyTrash(ctx, films.ID, func(string, string) bool { return true }); err != nil || removed != 1 {
-		t.Fatalf("zonder schijfcheck: %d (%v), wil 1", removed, err)
+	if removed, err := e.store.EmptyTrash(ctx, films.ID, catalog.FileGone); err != nil || removed != 0 {
+		t.Fatalf("legen: %d (%v), wil 0", removed, err)
+	}
+	if got := e.versionCount(films.ID, "Heat"); got != 1 {
+		t.Fatalf("Heat heeft %d versies, wil 1", got)
 	}
 }
 

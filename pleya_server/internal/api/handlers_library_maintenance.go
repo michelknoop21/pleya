@@ -7,8 +7,8 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 )
 
-// Bibliotheekonderhoud naast de scan (DEC-XXX, voorstel bibliotheekonderhoud,
-// matrixregels 107 en 108): de prullenbak legen en de metadata opnieuw laten
+// Bibliotheekonderhoud naast de scan (DEC-XXX, bibliotheekonderhoud,
+// matrixregels 108 en 109): de prullenbak legen en de metadata opnieuw laten
 // ophalen. Klasse admin, in de handler zoals de scan.
 
 // JobEmptyLibraryTrash is de job achter POST /libraries/{id}/empty-trash. Hij
@@ -18,8 +18,8 @@ import (
 const JobEmptyLibraryTrash = "empty_library_trash"
 
 // LibraryMaintenance is het antwoord van beide endpoints. Items is bij het
-// legen het aantal titels dat bij de aanvraag in de prullenbak lag (de job
-// slaat er een over waarvan het bestand toch op schijf staat), en bij de
+// legen het aantal kandidaten: titels waarvan elk bestand als verdwenen
+// gemarkeerd staat (de job kan er minder verwijderen), en bij de
 // metadata het aantal titels dat nu aan de beurt is. JobID is er alleen bij
 // het legen.
 type LibraryMaintenance struct {

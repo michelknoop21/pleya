@@ -7,13 +7,14 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/jackc/pgx/v5"
 )
 
 // Bibliotheekonderhoud op verzoek van een beheerder: de prullenbak legen en de
-// metadata van een hele bibliotheek opnieuw laten ophalen (DEC-XXX, voorstel
+// metadata van een hele bibliotheek opnieuw laten ophalen (DEC-XXX,
 // bibliotheekonderhoud).
 //
 // De prullenbak is wat een scan als verdwenen aanmerkte en nog niet opruimde.
@@ -24,16 +25,38 @@ import (
 // cascade als PruneEmpty: een verwijderd item neemt zijn kijkstatus,
 // geschiedenis, favorieten, waarderingen, downloads en lijstregels mee.
 
-// FileGone zegt of een bestand aantoonbaar weg is: de root staat er als map en
-// het pad eronder bestaat niet. Een root die zelf niet te lezen is bewijst
-// niets (een niet-gemounte share ziet eruit als een lege map of als niets), en
-// een andere fout dan "bestaat niet" ook niet.
+// ErrTrashRootUnavailable zegt dat EmptyTrash niets verwijderde omdat een root
+// van de bibliotheek niet te lezen of leeg is terwijl de catalogus er bestanden
+// kent: zo ziet een share eruit die niet gemount is.
+var ErrTrashRootUnavailable = errors.New("root niet te lezen of leeg terwijl de catalogus er bestanden kent; niets verwijderd")
+
+// FileGone zegt of een bestand aantoonbaar weg is: het pad bestaat niet, en de
+// dichtstbijzijnde map erboven die wel bestaat is de root zelf of een map met
+// inhoud. Is die map leeg, dan telt het bestand als aanwezig: een lege map
+// onder de root is ook wat een niet-gemount genest koppelpunt achterlaat. Een
+// andere fout dan "bestaat niet" bewijst niets. Of de root zelf gevuld is,
+// toetst EmptyTrash één keer per root.
 func FileGone(root, rel string) bool {
-	if info, err := os.Stat(root); err != nil || !info.IsDir() {
+	root = filepath.Clean(root)
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
 		return false
 	}
-	_, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel)))
-	return errors.Is(err, fs.ErrNotExist)
+	for dir := filepath.Dir(path); strings.HasPrefix(dir, root+string(filepath.Separator)); dir = filepath.Dir(dir) {
+		entries, err := os.ReadDir(dir)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		return err == nil && len(entries) > 0
+	}
+	info, err := os.Stat(root)
+	return err == nil && info.IsDir()
+}
+
+// rootUnavailable zegt of een root niet te lezen of leeg is.
+func rootUnavailable(root string) bool {
+	entries, err := os.ReadDir(root)
+	return err != nil || len(entries) == 0
 }
 
 // trashedItemsSQL telt films en afleveringen waarvan elk mediabestand als
@@ -66,6 +89,10 @@ func (s *Store) TrashedItemCount(ctx context.Context, libraryID id.ID) (int64, e
 // te halen, niet deze opruiming. Het antwoord is het aantal verwijderde films
 // en afleveringen.
 //
+// Is één root van de bibliotheek niet te lezen of leeg terwijl de catalogus er
+// bestanden kent, dan verwijdert EmptyTrash niets en geeft het
+// ErrTrashRootUnavailable: een niet-gemounte share is geen lege bibliotheek.
+//
 // De aanroeper sluit een gelijktijdige scan van dezelfde bibliotheek uit (de
 // job deelt de dedupe key van de scan): een scan maakt een item en zijn versie
 // in twee stappen.
@@ -74,6 +101,23 @@ func (s *Store) EmptyTrash(ctx context.Context, libraryID id.ID, gone func(root,
 		version   id.ID
 		root, rel string
 	}
+	roots, err := s.pool.Query(ctx, `
+		SELECT sl.root_path FROM storage_locations sl
+		WHERE sl.library_id = $1
+		  AND EXISTS (SELECT 1 FROM media_files f WHERE f.storage_location_id = sl.id)`, libraryID)
+	if err != nil {
+		return 0, fmt.Errorf("roots lezen: %w", err)
+	}
+	rootPaths, err := pgx.CollectRows(roots, pgx.RowTo[string])
+	if err != nil {
+		return 0, fmt.Errorf("roots lezen: %w", err)
+	}
+	for _, root := range rootPaths {
+		if rootUnavailable(root) {
+			return 0, fmt.Errorf("%w: %s", ErrTrashRootUnavailable, root)
+		}
+	}
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT v.id, sl.root_path, f.relative_path
 		FROM media_versions v

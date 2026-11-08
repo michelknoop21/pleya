@@ -120,7 +120,7 @@ type Capabilities struct {
 	ArtworkSizes      bool `json:"artwork_sizes"`
 	ArtworkCacheAdmin bool `json:"artwork_cache_admin"`
 
-	// LibraryMaintenance (DEC-XXX, voorstel). Aan zodra POST
+	// LibraryMaintenance (DEC-XXX, bibliotheekonderhoud). Aan zodra POST
 	// /libraries/{id}/empty-trash en /refresh-metadata bestaan; legen vraagt de
 	// wachtrij, net als de scan.
 	LibraryMaintenance bool `json:"library_maintenance"`

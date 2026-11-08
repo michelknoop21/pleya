@@ -98,7 +98,7 @@ func (s *Server) routeTable() []route {
 		// Scans en jobs (S2.4, J.3 venster 2, matrixregels 33 tot en met 38).
 		// Klasse admin, in de handler zoals hierboven.
 		{"POST " + p + "/libraries/{library_id}/scan", s.authenticated(s.handleStartScan)},
-		// Bibliotheekonderhoud (DEC-XXX, voorstel, matrixregels 107 en 108).
+		// Bibliotheekonderhoud (DEC-XXX, matrixregels 108 en 109).
 		{"POST " + p + "/libraries/{library_id}/empty-trash", s.authenticated(s.handleEmptyLibraryTrash)},
 		{"POST " + p + "/libraries/{library_id}/refresh-metadata", s.authenticated(s.handleRefreshLibraryMetadata)},
 		{"GET " + p + "/scans", s.authenticated(s.handleListScans)},

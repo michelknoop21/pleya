@@ -1663,12 +1663,14 @@ paths:
       operationId: emptyLibraryTrash
       summary: Leeg de prullenbak van een bibliotheek.
       description: |
-        Klasse `admin`, capability `library_maintenance` (voorstel, DEC-XXX).
-        Zet een job `empty_library_trash` in de wachtrij met de dedupe key van
-        de scan. De job verwijdert alleen versies waarvan elk mediabestand als
-        verdwenen gemarkeerd staat en op schijf ontbreekt, daarna de titels
-        zonder versie met hun kijkstatus (hoofdstuk 17f). 202 bevestigt de
-        ontvangst, niet het opruimen.
+        Klasse `admin`, capability `library_maintenance` (DEC-XXX). Zet een job
+        `empty_library_trash` in de wachtrij met de dedupe key van de scan.
+        De job verwijdert niets als een root van de bibliotheek niet te lezen
+        of leeg is; anders alleen versies waarvan elk mediabestand als
+        verdwenen gemarkeerd staat en op schijf ontbreekt (een bestand onder
+        een lege map telt als aanwezig), daarna de titels zonder versie met hun
+        kijkstatus (hoofdstuk 17f). 202 bevestigt de ontvangst, niet het
+        opruimen.
       parameters:
         - $ref: "#/components/parameters/LibraryId"
       responses:
@@ -1692,7 +1694,7 @@ paths:
       operationId: refreshLibraryMetadata
       summary: Haal de metadata van een bibliotheek opnieuw op.
       description: |
-        Klasse `admin`, capability `library_maintenance` (voorstel, DEC-XXX).
+        Klasse `admin`, capability `library_maintenance` (DEC-XXX).
         Zet elke film en serie meteen aan de beurt voor de metadataronde en
         wekt die. Afgewezen en onbesliste titels blijven buiten; handmatige
         velden, locks en pins blijven staan.
@@ -4004,7 +4006,7 @@ components:
           type: boolean
           default: false
           description: |
-            Voorstel (DEC-XXX). `POST /libraries/{library_id}/empty-trash` en
+            DEC-XXX (bibliotheekonderhoud). `POST /libraries/{library_id}/empty-trash` en
             `POST /libraries/{library_id}/refresh-metadata` bestaan voor klasse
             admin. Zonder de vlag biedt een client op deze server alleen de scan.
         artwork_sizes:
@@ -5721,8 +5723,9 @@ components:
           type: integer
           minimum: 0
           description: |
-            Bij legen het aantal titels dat bij de aanvraag in de prullenbak
-            lag; bij metadata het aantal titels dat aan de beurt staat.
+            Bij legen het aantal kandidaten: titels waarvan bij de aanvraag elk
+            bestand als verdwenen gemarkeerd stond; de job kan er minder
+            verwijderen. Bij metadata het aantal titels dat aan de beurt staat.
         job_id:
           allOf: [{ $ref: "#/components/schemas/Id" }]
           description: Alleen bij legen.

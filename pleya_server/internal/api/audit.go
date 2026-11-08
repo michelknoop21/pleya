@@ -56,7 +56,7 @@ const (
 	auditCancelJob = "cancelJob"
 	auditRetryJob  = "retryJob"
 
-	// Bibliotheekonderhoud (DEC-XXX, voorstel). Legen verwijdert titels, en
+	// Bibliotheekonderhoud (DEC-XXX). Legen verwijdert titels, en
 	// opnieuw ophalen kan veel providerverkeer geven: allebei terug te vinden.
 	auditEmptyLibraryTrash      = "emptyLibraryTrash"
 	auditRefreshLibraryMetadata = "refreshLibraryMetadata"
