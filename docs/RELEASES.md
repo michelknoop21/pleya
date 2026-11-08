@@ -56,8 +56,8 @@ Nothing user-facing since the last published build.
 
 ### New
 
-- **Take the film with you.** While the Apple TV plays, an iPhone in the same Home shows a card
-  on Home: "Speelt op" with the TV's name and a Meenemen button. One tap and the phone plays the
+- **Take the film with you.** While the Apple TV plays, an iPhone on the same network shows a
+  card on Home: "Speelt op" with the TV's name and a Meenemen button. One tap and the phone plays the
   same title in sync, muted, with a Geluid aan button. The Apple TV keeps playing. Pause and
   skip work on both screens. If the phone stalls or locks, the TV plays on; when the TV stops,
   the phone stops too. The Pleya Fly picker on the Apple TV has a Meenemen row next to
@@ -67,16 +67,19 @@ Nothing user-facing since the last published build.
   a restricted account cannot pose as the owner and skip the PIN.
 - **Empty trash and refresh metadata on Pleya Server.** The library menu for an owner or
   administrator has Empty trash, which removes titles whose files are all gone, and Refresh
-  metadata, which fetches the details of every title again. Empty trash removes nothing when a
+  metadata now runs the metadata round again for every film and series in the library (it used
+  to start a scan). Empty trash removes nothing when a
   share looks unmounted. Running Pleya Server jobs show up in the tasks panel and can be
   stopped there.
 
 ### Notes
 
-- Needs the server update deployed on 8 November 2026 (22:21). An older server offers neither
-  Empty trash nor Pleya Fly.
+- Needs the Pleya Server update deployed on 8 November 2026. On an older server Empty trash and
+  Pleya Fly are missing, and Refresh metadata falls back to a scan.
 - Worth checking: Meenemen from the Home card and from the Apple TV picker, with the phone in
   another room; and Pleya Fly on a profile that only has Pleya Server.
+- Not yet checked on hardware: Meenemen as a whole, the phone resyncing after it was locked,
+  the phone stopping when the TV stops, and the PIN switch from the Apple TV picker.
 
 ## 2.8.1 · build 450 · 8 November 2026 · iPhone, iPad and Apple TV
 
