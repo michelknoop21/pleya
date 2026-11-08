@@ -50,6 +50,37 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 450 · 8 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: b37b3b4b3d87f5173ba0d4c30127a432738090c7 -->
+
+### Improved
+
+- **Tap the active tab to jump to the top.** On iPhone and iPad, tapping the tab you are
+  already on in the bottom bar scrolls that page back to the top.
+- **Pleya Server libraries can be scanned from the library menu.** An owner or administrator
+  of a Pleya Server now gets the library menu with Scan library files and Refresh metadata.
+  Jellyfin and Emby administrators get Scan library files as well.
+
+### Fixed
+
+- **Apple TV should no longer run out of memory when you skip through a 4K HDR film.** Build
+  449 still quit when you skipped ahead right after starting a 4K HDR film, or opened the
+  player panel. The system log showed Pleya hitting the 2 GB memory limit that tvOS sets per
+  app. The video decoder now holds fewer frames at once, and the interface on Apple TV draws
+  in standard colour, which halves the memory its screen buffers need. Video still plays in
+  HDR.
+- **Menus on Apple TV open on their first option.** The library menu and other sheets with a
+  list opened with Close selected at the bottom; they now start on the top row.
+
+### Notes
+
+- Worth checking on Apple TV: start a 4K HDR film, skip ahead straight away, and open and
+  close the panel a few times. If Pleya still quits, a sysdiagnose shows how much memory it
+  used.
+- Worth checking on Apple TV: the menus and posters look the same as before. Posters with
+  very wide colours may look a little flatter.
+
 ## 2.8.1 · build 449 · 8 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: 32c7516a4055d98f922131f99f5527422c64423e -->
