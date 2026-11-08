@@ -80,5 +80,13 @@ void main() {
         expect(options['avfoundation-composite-osd'], 'no', reason: os);
       }
     });
+
+    test('VideoToolbox decodes on one thread on every Apple device', () {
+      // libavcodec serializes the VideoToolbox hwaccel, so mpv's default of 4
+      // frame threads only holds 3 extra decoded 4K surfaces per session.
+      for (final os in ['iOS', 'tvOS', 'macOS']) {
+        expect(_optionsFor(os: os, simulator: false)['hwdec-threads'], '1', reason: os);
+      }
+    });
   });
 }
