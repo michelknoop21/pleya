@@ -344,6 +344,15 @@ func matrixProbes() []matrixProbe {
 		{row: 33, name: "POST /libraries/{id}/scan", method: http.MethodPost,
 			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/scan" },
 			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
+		// Bibliotheekonderhoud (DEC-XXX, voorstel). Legen deelt de dedupe key
+		// van de scan, dus de wachtende scanjob van de fixture geeft owner en
+		// admin elke keer dezelfde 409 en er wordt niets verwijderd.
+		{row: 107, name: "POST /libraries/{id}/empty-trash", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/empty-trash" },
+			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
+		{row: 108, name: "POST /libraries/{id}/refresh-metadata", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/refresh-metadata" },
+			body: noBody, ok: http.StatusAccepted, expect: adminSurface()},
 		{row: 34, name: "GET /scans", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/scans"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 		{row: 35, name: "GET /scans/{id}", method: http.MethodGet,

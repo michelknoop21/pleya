@@ -5673,3 +5673,19 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 4. Om het seriesnummer te kennen, deelt een aflevering de opzoekemmer met haar serie in plaats van met haar exacte aflevering. De tokens blijven per aflevering. Een aflevering zonder seizoen- of afleveringsnummer koopt nog steeds geen seriesnummer.
 
 **Consequences:** Een serie waarvan één server geen bewezen nummer heeft, blijft twee kaarten tonen tot die server matcht. Rij-ordening en labels (DEC-177) zijn ongewijzigd en lezen de overgebleven kaart. **Unified impact:** gedeelde eigenaar is `oneContinueWatchingCardPerSeries` in `identity_resolver.dart`, aangeroepen door `DataAggregationService` en `HomeProjectionService`; geldt voor Plex, Jellyfin, Emby en Pleya Server, lokale mappen en Pleya Share blijven ongemerged. Geen protocolwijziging. Bewijs in `test/services/unified_catalog/unified_pleya_server_test.dart` en `identity_resolver_test.dart`.
+
+## DEC-XXX: Voorstel: bibliotheekonderhoud op Pleya Server zoals bij Plex
+
+**Date:** 2026-11-08
+**Status:** voorstel, in afwachting van Michels besluit over een protocolvenster. De wijziging aan `openapi.yaml` op branch `feat/pleya-server-library-maintenance` is een kandidaat; het contract op `main` blijft bevroren. Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit voorstel DEC-XXX (bibliotheekonderhoud).
+**Roadmap:** C-05. Geen volgordewijziging.
+**Context:** Michel wil dat elke bibliotheekactie die de app voor Plex heeft ook op Pleya Server werkt. PR #633 gaf Pleya Server de scan. Prullenbak legen, metadata vernieuwen en analyseren hadden geen route: "metadata vernieuwen" startte een scan, en een titel waarvan het bestand verdween bleef staan zodra een root bij de scan onvolledig was, want dan slaat de scanner het opruimen (`PruneEmpty`) voor de hele bibliotheek over.
+
+**Voorstel:**
+
+1. `POST /libraries/{library_id}/empty-trash`, klasse admin, matrixregel 107. Zet een job `empty_library_trash` in de wachtrij met de dedupe key van de scan (`scan:<id>`), dus nooit naast een scan van die bibliotheek; anders `409 library.scan_in_progress`. De job verwijdert alleen versies waarvan elk mediabestand `missing_since` heeft en die op schijf ontbreken. Een root die zelf niet leesbaar is telt als aanwezig. Daarna gaan films en afleveringen zonder versie weg, en seizoenen en series die daardoor leeg werden. Antwoord `202` met `items` (titels die bij de aanvraag in de prullenbak lagen) en `job_id`.
+2. `POST /libraries/{library_id}/refresh-metadata`, klasse admin, matrixregel 108. Zet elke film en serie van de bibliotheek meteen aan de beurt voor de bestaande metadataronde (`next_attempt_at`, `sidecar_checked_at`) en wekt die. Afgewezen en onbesliste titels blijven buiten; handmatige velden, locks en pins houdt de ronde zelf in stand. Antwoord `202` met `items`.
+3. `capabilities.library_maintenance` zegt dat beide routes bestaan. Een oudere server zonder de vlag biedt in de app alleen de scan, en "metadata vernieuwen" valt daar terug op een scan zoals voorheen.
+4. Geen "analyseren": de scan analyseert elk nieuw of gewijzigd bestand al, en ffprobe op ongewijzigde bytes met dezelfde gepinde ffmpeg geeft hetzelfde antwoord. Er is geen bestaande stap om te forceren.
+
+**Gevolgen:** Legen verwijdert met dezelfde cascade als het opruimen na een volledige scan: kijkstatus, geschiedenis, favorieten, waarderingen, downloads en lijstregels van een verwijderde titel gaan mee. Een bestand dat later terugkomt wordt een nieuw item. Geen migratie, geen nieuwe tabel. Het takenpaneel in de app toont naast Plex-activiteiten de lopende jobs van een server die het profiel beheert.

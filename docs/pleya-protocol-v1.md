@@ -234,6 +234,10 @@ hetzelfde zijn. De vlag is netheid en geen beveiliging: een client die hem niet 
 beheer, en de server weigert los daarvan met `404` voor wie er niet bij mag (16.4, regel 16 tot en
 met 26).
 
+`capabilities.library_maintenance` staat aan zodra `POST /libraries/{id}/empty-trash` en
+`POST /libraries/{id}/refresh-metadata` bestaan (17f, voorstel). Een client zonder de vlag biedt op
+deze server alleen de scan aan.
+
 `capabilities.mcp` staat aan zodra er een MCP-endpoint is waarmee een agent deze server kan beheren.
 Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
 dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
@@ -1737,6 +1741,8 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 104 | `DELETE /items/{id}/overrides/{field}` | veilige ontgrendeling naar actuele bron | klasse `admin`, actuele item/libraryscope; metadata_overrides; 409 behoudt lock bij onvoldoende bronbewijs |
 | 105 | `GET /items/{id}/artwork-candidates` | begrensde itemgebonden lokale/TMDB-keuzes en duurzame pins | klasse `admin`, actuele item/libraryscope; artwork_choices; film/serie |
 | 106 | `PUT /items/{id}/artwork` | poster/achtergrond pinnen of null-ontpinnen | klasse `admin`, actuele item/libraryscope; artwork_choices; gesloten body/EOF en actuele base_token |
+| 107 | `POST /libraries/{id}/empty-trash` | titels verwijderen waarvan de bestanden weg zijn, met hun kijkstatus | klasse `admin`, `404` voor de rest; botst met een wachtende of lopende scan van die bibliotheek (`409` `library.scan_in_progress`) (17f, voorstel) |
+| 108 | `POST /libraries/{id}/refresh-metadata` | een providerronde over een hele bibliotheek | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f, voorstel) |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2461,6 +2467,22 @@ scanrondes van de oude bibliotheek weg.
 
 Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries/{id}/scan` hem aanmaakt, `running` wordt wanneer de job hem claimt en eindigt op `done`, `failed` of `cancelled`. Annuleren gaat via de job (`Job.scan_id` wijst terug): de scanner stopt binnen één walk-stap en laat de tellers staan. Een retry zet `attempts` op nul en, voor een scanjob, ook `probe_attempts` van die bibliotheek. Een bestand waarvan de probe faalde wacht `min(2^(pogingen-1), 24)` uur voordat een volgende ronde het opnieuw analyseert, tenzij het bestand zelf veranderde. `current_path` is afgekort tot de bestandsnaam met een ellipsis ervoor en is nooit het volledige pad.
 
+**Bibliotheekonderhoud (voorstel, DEC-XXX).** Onder `capabilities.library_maintenance`, klasse
+`admin`. `POST /libraries/{id}/empty-trash` is de prullenbak legen: een scan markeert een verdwenen
+bestand met `missing_since` en ruimt na een volledige ronde zelf op, maar slaat dat opruimen over
+zodra één root onvolledig was. Het endpoint zet een job van soort `empty_library_trash` in de
+wachtrij met dezelfde dedupe key als de scan, dus het botst met een wachtende of lopende scan van die
+bibliotheek (`409` `library.scan_in_progress`). De job verwijdert alleen versies waarvan elk
+mediabestand gemarkeerd is én op schijf ontbreekt; een root die zelf niet leesbaar is telt als
+aanwezig. Een film of aflevering zonder versie verdwijnt daarna, met kijkstatus, geschiedenis,
+favorieten, waarderingen, downloads en lijstregels, net als na het opruimen van een scan. `items` in
+het antwoord is het aantal titels dat bij de aanvraag in de prullenbak lag, `job_id` de job.
+`POST /libraries/{id}/refresh-metadata` zet elke film en serie van de bibliotheek meteen aan de beurt
+voor de metadataronde en wekt die; afgewezen en onbesliste titels blijven buiten, handmatige velden,
+locks en pins blijven staan. `items` is het aantal titels dat aan de beurt staat. Er is geen
+"analyseren": de scan analyseert elk nieuw of gewijzigd bestand al, en ffprobe op ongewijzigde bytes
+met dezelfde gepinde ffmpeg geeft hetzelfde antwoord.
+
 ### 17g. Back-up, restore en faalpaden
 
 Onder `capabilities.backups`, alles klasse `admin` (venster 7, S25, RB-26). Een back-up is één tar in
@@ -2531,6 +2553,8 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/storage/roots` | `admin` | nee |
 | `POST /pleya/v1/storage/roots/recheck` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/scan` | `admin` | nee |
+| `POST /pleya/v1/libraries/{id}/empty-trash` | `admin` | nee |
+| `POST /pleya/v1/libraries/{id}/refresh-metadata` | `admin` | nee |
 | `GET /pleya/v1/scans` | `admin` | ja |
 | `GET /pleya/v1/scans/{id}` | `admin` | nee |
 | `GET /pleya/v1/jobs` | `admin` | ja |
