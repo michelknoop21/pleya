@@ -628,38 +628,6 @@ class PlexClient
     }
   }
 
-  /// Test connection multiple times and return average latency
-  static Future<ConnectionTestResult> testConnectionWithAverageLatency(
-    String baseUrl,
-    String token, {
-    int attempts = 3,
-    Duration timeout = const Duration(seconds: 5),
-    String? clientIdentifier,
-  }) async {
-    final results = <ConnectionTestResult>[];
-
-    for (int i = 0; i < attempts; i++) {
-      final result = await testConnectionWithLatency(
-        baseUrl,
-        token,
-        timeout: timeout,
-        clientIdentifier: clientIdentifier,
-      );
-
-      // If any attempt fails, return failed result immediately
-      if (!result.success) {
-        return ConnectionTestResult(success: false, latencyMs: result.latencyMs);
-      }
-
-      results.add(result);
-    }
-
-    // Calculate average latency from successful attempts
-    final avgLatency = results.fold<int>(0, (sum, result) => sum + result.latencyMs) ~/ results.length;
-
-    return ConnectionTestResult(success: true, latencyMs: avgLatency);
-  }
-
   @override
   Map<String, dynamic>? _getMediaContainer(MediaServerResponse response) {
     if (response.data is Map && response.data.containsKey('MediaContainer')) {
@@ -3345,6 +3313,7 @@ class PlexClient
   Future<void> applyTokenUpdate(String newToken) async {
     if (config.token == newToken) return;
     config = config.copyWith(token: newToken);
+    _dvrs = null;
     _http.defaultHeaders = Map.of(config.headers);
     LogRedactionManager.registerToken(newToken);
     await _initMediaProviders();

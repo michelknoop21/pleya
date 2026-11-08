@@ -295,4 +295,75 @@ void main() {
     expect(operations.single.program?.grandparentTitle, 'Fresh Off the Boat');
     expect(operations.single.program?.channelIdentifier, '004');
   });
+
+  group('/livetv/dvrs is asked once per connection', () {
+    Map<String, dynamic> dvrBody() => {
+      'MediaContainer': {
+        'Dvr': [
+          {'key': '1', 'uuid': 'dvr-1', 'lineup': 'lineup-1'},
+        ],
+      },
+    };
+
+    test('the availability check and concurrent callers share one request', () async {
+      var dvrRequests = 0;
+      final client = makeClient((request) async {
+        if (request.url.path == '/livetv/dvrs') dvrRequests++;
+        return jsonResponse(dvrBody());
+      });
+      addTearDown(client.close);
+
+      final results = await Future.wait([
+        client.liveTv.fetchDvrs(),
+        client.liveTv.fetchDvrs(),
+        client.liveTv.isAvailable(),
+      ]);
+      expect(await client.liveTv.isAvailable(), isTrue);
+
+      expect((results.first as List).length, 1);
+      expect(dvrRequests, 1);
+    });
+
+    test('a 403 is an answer and is kept', () async {
+      var dvrRequests = 0;
+      final client = makeClient((request) async {
+        dvrRequests++;
+        return http.Response('forbidden', 403);
+      });
+      addTearDown(client.close);
+
+      expect(await client.liveTv.fetchDvrs(), isEmpty);
+      expect(await client.liveTv.isAvailable(), isFalse);
+      expect(dvrRequests, 1);
+    });
+
+    test('a transport failure is not kept', () async {
+      var dvrRequests = 0;
+      final client = makeClient((request) async {
+        dvrRequests++;
+        if (dvrRequests == 1) throw http.ClientException('Connection closed before full header was received');
+        return jsonResponse(dvrBody());
+      });
+      addTearDown(client.close);
+
+      expect(await client.liveTv.fetchDvrs(), isEmpty);
+      expect(await client.liveTv.fetchDvrs(), hasLength(1));
+      expect(dvrRequests, 2);
+    });
+
+    test('a token change asks again', () async {
+      final dvrTokens = <String?>[];
+      final client = makeClient((request) async {
+        if (request.url.path == '/livetv/dvrs') dvrTokens.add(request.headers['X-Plex-Token']);
+        return jsonResponse(dvrBody());
+      });
+      addTearDown(client.close);
+
+      await client.liveTv.fetchDvrs();
+      await client.applyTokenUpdate('other-user');
+      await client.liveTv.fetchDvrs();
+
+      expect(dvrTokens, ['tok', 'other-user']);
+    });
+  });
 }

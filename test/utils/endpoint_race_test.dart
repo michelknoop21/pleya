@@ -12,7 +12,6 @@ void main() {
     required List<String> candidates,
     String? preferred,
     required Future<_Result> Function(String url) probe,
-    Future<_Result> Function(String url)? measure,
     String? Function(Map<String, _Result> results)? selectBest,
   }) {
     return raceEndpointCandidates<String, _Result>(
@@ -21,7 +20,6 @@ void main() {
       urlOf: (c) => c,
       preferredUrl: preferred,
       probe: (c, _) => probe(c),
-      measure: measure ?? (c) async => (url: c, ok: false),
       isSuccess: (r) => r.ok,
       selectBestCandidate: selectBest ?? (results) => results.keys.first,
       preferredTimeout: const Duration(milliseconds: 500),
@@ -50,8 +48,8 @@ void main() {
     expect(selections.first.candidate, 'cached');
     expect(selections.first.fromPreferred, isTrue);
     expect(probeCounts['cached'], 1);
-    // The race never started; only the phase-2 measure touches other URLs.
-    expect(probeCounts.containsKey('a'), isFalse);
+    // The race never started; only the phase-2 sweep touches the other URL, once.
+    expect(probeCounts['a'], 1);
   });
 
   test('stale-slow cached endpoint overlaps the race instead of serially blocking it', () async {
@@ -109,7 +107,7 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 400));
   });
 
-  test('cached endpoint failing within the head start falls back to a fresh race', () async {
+  test('cached endpoint failing within the head start is not probed again by the race', () async {
     final probeCounts = <String, int>{};
     final selections = await race(
       candidates: ['cached', 'alt'],
@@ -122,9 +120,9 @@ void main() {
 
     expect(selections.first.candidate, 'alt');
     expect(selections.first.fromPreferred, isFalse);
-    // Fast-fail keeps today's semantics: the cached URL re-races as a
-    // normal candidate (one probe up front, one inside the race).
-    expect(probeCounts['cached'], 2);
+    // One probe per URL per run: the fast-failed cached URL keeps its result
+    // through the race and the phase-2 sweep.
+    expect(probeCounts, {'cached': 1, 'alt': 1});
   });
 
   test('preferred URL not among candidates skips the cached probe entirely', () async {
@@ -161,7 +159,6 @@ void main() {
         url == 'quick' ? const Duration(milliseconds: 10) : const Duration(milliseconds: 80),
         ok: true,
       ),
-      measure: (url) async => (url: url, ok: true),
       selectBest: (results) => 'better',
     ).toList();
 
@@ -170,5 +167,21 @@ void main() {
     expect(selections.first.candidate, 'quick');
     expect(selections.last.phase, EndpointRacePhase.best);
     expect(selections.last.candidate, 'better');
+  });
+
+  test('every endpoint is probed once across the race and the phase-2 sweep', () async {
+    final probeCounts = <String, int>{};
+    final selections = await race(
+      candidates: ['a', 'b', 'cached'],
+      preferred: 'cached',
+      probe: (url) {
+        probeCounts[url] = (probeCounts[url] ?? 0) + 1;
+        return resultAfter(url, Duration(milliseconds: url == 'cached' ? 150 : 20), ok: true);
+      },
+      selectBest: (results) => 'b',
+    ).toList();
+
+    expect(selections.map((s) => s.phase), [EndpointRacePhase.first, EndpointRacePhase.best]);
+    expect(probeCounts, {'cached': 1, 'a': 1, 'b': 1});
   });
 }

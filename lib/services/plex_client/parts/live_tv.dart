@@ -184,9 +184,27 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
     return null;
   }
 
-  /// Get all DVR devices configured on this server
-  Future<List<LiveTvDvr>> getDvrs() async {
-    return _wrapListApiCall<LiveTvDvr>(() => _http.get('/livetv/dvrs'), (response) {
+  /// DVR list for this connection; see [getDvrs]. Cleared on a token change.
+  Future<List<LiveTvDvr>>? _dvrs;
+
+  /// Get all DVR devices configured on this server.
+  ///
+  /// Asked once per connection: concurrent callers (the availability check
+  /// runs fetchDvrs and then hasDvr, and several status changes schedule it)
+  /// share one request, and the answer is kept, a 403 included. A transport
+  /// failure or a 5xx clears the memo so the next call asks again.
+  Future<List<LiveTvDvr>> getDvrs() => _dvrs ??= _wrapListApiCall<LiveTvDvr>(
+    () async {
+      try {
+        final response = await _http.get('/livetv/dvrs');
+        if (response.statusCode >= 500) _dvrs = null;
+        return response;
+      } catch (_) {
+        _dvrs = null;
+        rethrow;
+      }
+    },
+    (response) {
       final container = _getMediaContainer(response);
       if (container != null && container['Dvr'] != null) {
         final rootMappings = container['ChannelMapping'];
@@ -197,8 +215,9 @@ mixin _PlexLiveTvClientMethods on MediaServerCacheMixin {
         }).toList();
       }
       return [];
-    }, 'Failed to get DVRs');
-  }
+    },
+    'Failed to get DVRs',
+  );
 
   /// Check if this server has at least one DVR configured
   Future<bool> hasDvr() async {

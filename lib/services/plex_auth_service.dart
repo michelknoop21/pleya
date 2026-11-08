@@ -475,6 +475,15 @@ class PlexServer {
       );
     }
 
+    // One probe per URL for this discovery run: the race, its phase-2 sweep
+    // and the HTTPS upgrade checks all share these futures.
+    final probes = <String, Future<ConnectionTestResult>>{};
+    Future<ConnectionTestResult> probeUrl(String url, Duration timeout) => probes.putIfAbsent(
+      url,
+      () =>
+          PlexClient.testConnectionWithLatency(url, accessToken, timeout: timeout, clientIdentifier: clientIdentifier),
+    );
+
     PlexConnection? firstConnection;
     await for (final selection in raceEndpointCandidates<_ConnectionCandidate, ConnectionTestResult>(
       label: 'Plex server connection',
@@ -488,18 +497,7 @@ class PlexServer {
         'error': result.error,
         'latencyMs': result.latencyMs,
       },
-      probe: (candidate, timeout) => PlexClient.testConnectionWithLatency(
-        candidate.url,
-        accessToken,
-        timeout: timeout,
-        clientIdentifier: clientIdentifier,
-      ),
-      measure: (candidate) => PlexClient.testConnectionWithAverageLatency(
-        candidate.url,
-        accessToken,
-        attempts: 2,
-        clientIdentifier: clientIdentifier,
-      ),
+      probe: (candidate, timeout) => probeUrl(candidate.url, timeout),
       isSuccess: (result) => result.success,
       selectBestCandidate: _selectBestCandidateWithLatency,
       onFirstSuccess: (_, result) {
@@ -520,10 +518,7 @@ class PlexServer {
           error: {'uri': firstConnection.uri},
         );
 
-        final upgradedFirstCandidate = await _upgradeCandidateToHttpsIfPossible(
-          firstCandidate,
-          clientIdentifier: clientIdentifier,
-        );
+        final upgradedFirstCandidate = await _upgradeCandidateToHttpsIfPossible(firstCandidate, probe: probeUrl);
         if (upgradedFirstCandidate != null && upgradedFirstCandidate.url != firstCandidate.url) {
           appLogger.i(
             'Phase 1 winner upgraded to HTTPS',
@@ -539,7 +534,7 @@ class PlexServer {
 
       final bestCandidate = selection.candidate;
       final upgradedCandidate =
-          await _upgradeCandidateToHttpsIfPossible(bestCandidate, clientIdentifier: clientIdentifier) ?? bestCandidate;
+          await _upgradeCandidateToHttpsIfPossible(bestCandidate, probe: probeUrl) ?? bestCandidate;
 
       final bestConnection = _updateConnectionUrl(upgradedCandidate.connection, upgradedCandidate.url);
       if (firstConnection == null || bestConnection.uri != firstConnection.uri) {
@@ -690,7 +685,7 @@ class PlexServer {
 
   Future<_ConnectionCandidate?> _upgradeCandidateToHttpsIfPossible(
     _ConnectionCandidate candidate, {
-    String? clientIdentifier,
+    required Future<ConnectionTestResult> Function(String url, Duration timeout) probe,
   }) async {
     final currentUrl = candidate.url;
     if (currentUrl.startsWith('https://')) {
@@ -744,12 +739,7 @@ class PlexServer {
 
     appLogger.d('Attempting HTTPS upgrade for candidate endpoint', error: {'from': currentUrl, 'to': httpsUrl});
 
-    final result = await PlexClient.testConnectionWithLatency(
-      httpsUrl,
-      accessToken,
-      timeout: MediaServerTimeouts.connectionRace,
-      clientIdentifier: clientIdentifier,
-    );
+    final result = await probe(httpsUrl, MediaServerTimeouts.connectionRace);
 
     if (!result.success) {
       appLogger.w(
@@ -790,7 +780,10 @@ class PlexServer {
       current.uri.contains('.plex.direct'),
       current.uri.startsWith('https://'),
     );
-    final upgradedCandidate = await _upgradeCandidateToHttpsIfPossible(candidate);
+    final upgradedCandidate = await _upgradeCandidateToHttpsIfPossible(
+      candidate,
+      probe: (url, timeout) => PlexClient.testConnectionWithLatency(url, accessToken, timeout: timeout),
+    );
     if (upgradedCandidate == null) {
       return null;
     }

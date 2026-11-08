@@ -43,6 +43,10 @@ class FocusableButton extends StatefulWidget {
   /// out of the dim as well.
   final bool dimWhenUnfocused;
 
+  /// What a screen reader and the hardware focus log call this button; a child
+  /// that paints its own label (a hero pill) otherwise leaves it nameless.
+  final String? semanticLabel;
+
   const FocusableButton({
     super.key,
     required this.child,
@@ -58,6 +62,7 @@ class FocusableButton extends StatefulWidget {
     this.mode = FocusIndicatorMode.ring,
     this.shape = MonoShapes.cta,
     this.dimWhenUnfocused = true,
+    this.semanticLabel,
   });
 
   @override
@@ -86,6 +91,7 @@ class _FocusableButtonState extends State<FocusableButton> {
       focusNode: widget.focusNode,
       disableScale: true,
       mode: widget.mode,
+      semanticLabel: widget.semanticLabel,
       focusShapeBorder: widget.shape,
       descendantsAreFocusable: false,
       onFocusChange: (f) => setState(() => _isFocused = f),
