@@ -24,6 +24,7 @@ import '../../../widgets/overlay_sheet_geometry.dart';
 import '../../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../../widgets/tv/tv_panel_primitives.dart';
 import '../../../widgets/tv/tv_unified_layout.dart';
+import '../../libraries/library_maintenance.dart';
 import 'tv_libraries_screen.dart';
 
 String _labelFor(TvLibraryAction action, MediaLibrary library, {required bool isHidden}) => switch (action) {
@@ -49,17 +50,14 @@ Future<void> showTvLibraryActionSheet(
   BuildContext context, {
   required MediaLibrary library,
   required bool isHidden,
-  required bool canManage,
+  required List<LibraryMaintenance> maintenance,
   required VoidCallback onOpenInCatalog,
-  required VoidCallback onRefreshMetadata,
-  required VoidCallback onScan,
+  required ValueChanged<LibraryMaintenance> onMaintenance,
   required VoidCallback onToggleVisibility,
-  required VoidCallback onAnalyze,
-  required VoidCallback onEmptyTrash,
   bool canAskBigP = false,
   VoidCallback? onAskBigP,
 }) async {
-  final actions = tvLibraryActionsFor(library, canManage: canManage, canAskBigP: canAskBigP && onAskBigP != null);
+  final actions = tvLibraryActionsFor(library, maintenance: maintenance, canAskBigP: canAskBigP && onAskBigP != null);
   if (actions.isEmpty) return;
 
   final chosen = await OverlaySheetController.showAdaptive<TvLibraryAction>(
@@ -79,15 +77,15 @@ Future<void> showTvLibraryActionSheet(
     case TvLibraryAction.openInCatalog:
       onOpenInCatalog();
     case TvLibraryAction.refreshMetadata:
-      onRefreshMetadata();
+      onMaintenance(LibraryMaintenance.refreshMetadata);
     case TvLibraryAction.scan:
-      onScan();
+      onMaintenance(LibraryMaintenance.scan);
     case TvLibraryAction.toggleVisibility:
       onToggleVisibility();
     case TvLibraryAction.analyze:
-      onAnalyze();
+      onMaintenance(LibraryMaintenance.analyze);
     case TvLibraryAction.emptyTrash:
-      onEmptyTrash();
+      onMaintenance(LibraryMaintenance.emptyTrash);
     case TvLibraryAction.askBigP:
       onAskBigP?.call();
     case null:
@@ -118,7 +116,7 @@ class _TvLibraryActionPanel extends StatelessWidget {
 
     // The divider mockup 27 B draws before "Verbergen op dit profiel": every
     // action up to and including the visibility toggle sits above it, the
-    // Plex-only owner actions below.
+    // analyze and empty trash (Plex only) below.
     final dividerIndex = actions.indexOf(TvLibraryAction.toggleVisibility) + 1;
 
     return AutomationNode(

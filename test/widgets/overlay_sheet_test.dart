@@ -506,4 +506,46 @@ void main() {
     controller.close();
     await tester.pumpAndSettle();
   });
+
+  // The TV library action sheet opened on its Close button, at the bottom: a
+  // lazy ListView registers its rows' focus nodes during layout, after the
+  // eagerly built footer, so "first descendant" in registration order was the
+  // footer. Focus has to start on the top row.
+  testWidgets('on TV a sheet opens focused on its top row, not on a footer built before the list', (tester) async {
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    late BuildContext hostContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OverlaySheetHost(
+          child: Builder(
+            builder: (context) {
+              hostContext = context;
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      ),
+    );
+
+    OverlaySheetController.of(hostContext).show<void>(
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: 3,
+              itemBuilder: (_, index) => TextButton(onPressed: () {}, child: Text('Row $index')),
+            ),
+          ),
+          TextButton(onPressed: () {}, child: const Text('Close')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final focused = FocusManager.instance.primaryFocus!.context!;
+    expect(find.descendant(of: find.byWidget(focused.widget), matching: find.text('Row 0')), findsOneWidget);
+  });
 }
