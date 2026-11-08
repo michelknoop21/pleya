@@ -56,11 +56,11 @@ Nothing user-facing since the last published build.
 
 ### Improved
 
-- **Scrolling All Movies and All Series no longer stalls while the library refreshes.** The
+- **Scrolling All Movies and All Series should stall less while the library refreshes.** The
   background refresh that keeps the library up to date read every title from a Pleya Server
-  one by one and asked twice for each list of seasons and episodes. A refresh now makes
-  about 600 requests instead of about 3,750, so it no longer competes with the grid while you
-  scroll.
+  one by one and asked twice for each list of seasons and episodes. In one test library a
+  refresh now makes about 600 requests instead of about 3,750, which leaves the grid more
+  room while you scroll.
 
 ### Fixed
 
@@ -72,7 +72,7 @@ Nothing user-facing since the last published build.
 ### Notes
 
 - Worth checking on Apple TV: play a 4K film and open and close the panel with a swipe down
-  a few times. If Pleya still quits, send a log; the cause is now visible in the system log.
+  a few times. If Pleya still quits, send a log; the system log shows whether it was a memory kill.
 - Worth checking on Apple TV: open Pleya, go straight to All Movies and scroll down quickly.
 
 ## 2.8.1 · build 448 · 7 November 2026 · iPhone, iPad and Apple TV
