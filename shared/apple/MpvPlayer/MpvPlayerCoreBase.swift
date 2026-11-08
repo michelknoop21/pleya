@@ -830,6 +830,8 @@ class MpvPlayerCoreBase: NSObject {
     #endif
     checkError(mpv_set_option_string(mpv, "hwdec-codecs", "all"))
     checkError(mpv_set_option_string(mpv, "hwdec-software-fallback", "yes"))
+    // Reduce the frame-thread delay and retained decoded surfaces of hardware decoding.
+    checkError(mpv_set_option_string(mpv, "hwdec-threads", "1"))
     checkError(mpv_set_option_string(mpv, "target-colorspace-hint", "auto"))
     // Pause on the last frame at EOF instead of unloading the file, so seeking
     // back after the video ends still works (matches Linux/Windows).
