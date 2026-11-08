@@ -7,6 +7,7 @@ import '../../../i18n/strings.g.dart';
 import '../../../watch_together/widgets/watch_together_overlay.dart';
 import '../../../watch_together/providers/watch_together_provider.dart';
 import '../../app_bar_back_button.dart';
+import '../../pleya_fly/fly_follow_indicators.dart';
 
 /// Header layout style for video controls
 enum VideoHeaderStyle {
@@ -60,8 +61,10 @@ class VideoControlsHeader extends StatelessWidget {
           const SizedBox(width: 16),
         ],
         Expanded(child: style == VideoHeaderStyle.singleLine ? _buildSingleLineTitle() : _buildMultiLineTitle()),
+        // A Meenemen session shows itself in the title line (45-i) and the
+        // Apple TV's info line (45-t5), not as a Samen kijken pill.
         Selector<WatchTogetherProvider, bool>(
-          selector: (_, p) => p.isInSession,
+          selector: (_, p) => p.isInSession && !p.isFlySession,
           builder: (context, inSession, child) {
             if (!inSession) return const SizedBox.shrink();
             return const Padding(padding: .only(right: 8), child: WatchTogetherSessionIndicator());
@@ -120,6 +123,7 @@ class VideoControlsHeader extends StatelessWidget {
             maxLines: 1,
             overflow: .ellipsis,
           ),
+        const FlySyncedWithLine(),
       ],
     );
   }

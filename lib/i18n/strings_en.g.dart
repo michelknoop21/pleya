@@ -107,6 +107,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
 	late final TranslationsAssistantEn assistant = TranslationsAssistantEn.internal(_root);
 	late final TranslationsPlaybackHandoffEn playbackHandoff = TranslationsPlaybackHandoffEn.internal(_root);
+	late final TranslationsFlyFollowEn flyFollow = TranslationsFlyFollowEn.internal(_root);
 	late final TranslationsLocalLibraryEn localLibrary = TranslationsLocalLibraryEn.internal(_root);
 	late final TranslationsSettingsStudioEn settingsStudio = TranslationsSettingsStudioEn.internal(_root);
 }
@@ -6727,6 +6728,81 @@ class TranslationsPlaybackHandoffEn {
 
 	/// en: 'Pick it up on your iPhone or iPad'
 	String get playingOnPhoneBody => 'Pick it up on your iPhone or iPad';
+}
+
+// Path: flyFollow
+class TranslationsFlyFollowEn {
+	TranslationsFlyFollowEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Playing on $name'
+	String playingOn({required Object name}) => 'Playing on ${name}';
+
+	/// en: 'at $time'
+	String at({required Object time}) => 'at ${time}';
+
+	/// en: 'Take along'
+	String get take => 'Take along';
+
+	/// en: 'Can't be taken along: a local folder, Pleya Share or live TV'
+	String get unsupported => 'Can\'t be taken along: a local folder, Pleya Share or live TV';
+
+	/// en: 'Watch Together is already running on $name'
+	String busy({required Object name}) => 'Watch Together is already running on ${name}';
+
+	/// en: 'Watch Together is already running'
+	String get busyHere => 'Watch Together is already running';
+
+	/// en: 'This profile can't reach the server of this title'
+	String get unreachable => 'This profile can\'t reach the server of this title';
+
+	/// en: 'Taking along didn't work'
+	String get failedTitle => 'Taking along didn\'t work';
+
+	/// en: '$name keeps playing'
+	String failedBody({required Object name}) => '${name} keeps playing';
+
+	/// en: 'In sync with $name'
+	String syncedWith({required Object name}) => 'In sync with ${name}';
+
+	/// en: 'Sound on'
+	String get soundOn => 'Sound on';
+
+	/// en: '$name stopped'
+	String tvStopped({required Object name}) => '${name} stopped';
+
+	/// en: 'Watching along has ended'
+	String get tvStoppedBody => 'Watching along has ended';
+
+	/// en: '$name is watching along'
+	String watchingAlong({required Object name}) => '${name} is watching along';
+
+	/// en: 'In sync · pausing and seeking apply to both'
+	String get watchingAlongBody => 'In sync · pausing and seeking apply to both';
+
+	/// en: 'Watching along with $from'
+	String received({required Object from}) => 'Watching along with ${from}';
+
+	/// en: '$name · Pleya open'
+	String deviceReady({required Object name}) => '${name} · Pleya open';
+
+	/// en: 'Move'
+	String get move => 'Move';
+
+	/// en: 'Continue on the $device, the Apple TV stops'
+	String moveSubtitle({required Object device}) => 'Continue on the ${device}, the Apple TV stops';
+
+	/// en: 'The Apple TV plays on, the $device watches along in sync'
+	String followSubtitle({required Object device}) => 'The Apple TV plays on, the ${device} watches along in sync';
+
+	/// en: 'Taking along to $name…'
+	String followingOn({required Object name}) => 'Taking along to ${name}…';
+
+	/// en: 'Take along starts on the $device without sound. Pausing and seeking work on both screens. If the $device locks or you close it, the Apple TV plays on.'
+	String side({required Object device}) => 'Take along starts on the ${device} without sound. Pausing and seeking work on both screens. If the ${device} locks or you close it, the Apple TV plays on.';
 }
 
 // Path: localLibrary
@@ -13420,6 +13496,28 @@ extension on Translations {
 			'playbackHandoff.noPhone' => 'An Apple TV cannot open Pleya on your iPhone by itself. Open Pleya on your iPhone or iPad on the same Wi-Fi network.',
 			'playbackHandoff.resumeAt' => ({required Object time}) => 'Continue from ${time}',
 			'playbackHandoff.playingOnPhoneBody' => 'Pick it up on your iPhone or iPad',
+			'flyFollow.playingOn' => ({required Object name}) => 'Playing on ${name}',
+			'flyFollow.at' => ({required Object time}) => 'at ${time}',
+			'flyFollow.take' => 'Take along',
+			'flyFollow.unsupported' => 'Can\'t be taken along: a local folder, Pleya Share or live TV',
+			'flyFollow.busy' => ({required Object name}) => 'Watch Together is already running on ${name}',
+			'flyFollow.busyHere' => 'Watch Together is already running',
+			'flyFollow.unreachable' => 'This profile can\'t reach the server of this title',
+			'flyFollow.failedTitle' => 'Taking along didn\'t work',
+			'flyFollow.failedBody' => ({required Object name}) => '${name} keeps playing',
+			'flyFollow.syncedWith' => ({required Object name}) => 'In sync with ${name}',
+			'flyFollow.soundOn' => 'Sound on',
+			'flyFollow.tvStopped' => ({required Object name}) => '${name} stopped',
+			'flyFollow.tvStoppedBody' => 'Watching along has ended',
+			'flyFollow.watchingAlong' => ({required Object name}) => '${name} is watching along',
+			'flyFollow.watchingAlongBody' => 'In sync · pausing and seeking apply to both',
+			'flyFollow.received' => ({required Object from}) => 'Watching along with ${from}',
+			'flyFollow.deviceReady' => ({required Object name}) => '${name} · Pleya open',
+			'flyFollow.move' => 'Move',
+			'flyFollow.moveSubtitle' => ({required Object device}) => 'Continue on the ${device}, the Apple TV stops',
+			'flyFollow.followSubtitle' => ({required Object device}) => 'The Apple TV plays on, the ${device} watches along in sync',
+			'flyFollow.followingOn' => ({required Object name}) => 'Taking along to ${name}…',
+			'flyFollow.side' => ({required Object device}) => 'Take along starts on the ${device} without sound. Pausing and seeking work on both screens. If the ${device} locks or you close it, the Apple TV plays on.',
 			'localLibrary.playbackUnavailable' => 'Connect to the server or download this video to play.',
 			'localLibrary.title' => 'Local library',
 			'localLibrary.enable' => 'Store library in advance',

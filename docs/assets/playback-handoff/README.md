@@ -42,7 +42,7 @@ schermicoon uit 45-a; de beelden hier blijven het ontwerp van lay-out en gedrag.
 
 ## Meenemen (A-23e), voorstel van 8 november 2026
 
-Status: voorstel, wacht op akkoord van Michel Knoop. Niet bouwen voordat de beelden goedgekeurd zijn.
+Status: goedgekeurd door Michel Knoop op 8 november 2026; in bouw op `feat/a23e-fly-meenemen`.
 Besluit: DEC-XXX (Pleya Fly Meenemen) in `docs/DECISIONS.md`.
 
 Meenemen laat de Apple TV doorspelen en zet dezelfde titel synchroon op een iPhone of iPad, via

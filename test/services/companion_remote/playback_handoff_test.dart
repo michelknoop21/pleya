@@ -287,7 +287,9 @@ void main() {
 
   test('the handoff command is appended after syncState: the wire format is the enum index', () {
     expect(RemoteCommandType.handoff.index, RemoteCommandType.syncState.index + 1);
-    expect(RemoteCommandType.handoff.index, RemoteCommandType.values.length - 1);
+    // Meenemen (A-23e) is appended after it; nothing moves an existing index.
+    expect(RemoteCommandType.follow.index, RemoteCommandType.handoff.index + 1);
+    expect(RemoteCommandType.follow.index, RemoteCommandType.values.length - 1);
   });
 
   test('an Apple TV listens for a handoff by default; a phone does not', () {

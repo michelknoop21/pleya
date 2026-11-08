@@ -25,6 +25,7 @@ class WatchTogetherController {
   WatchTogetherController({
     required WatchTogetherPeerService peerService,
     required WatchSession session,
+    bool guestsFollow = false,
     int Function()? nowMs,
   }) : _peerService = peerService,
        _session = session,
@@ -33,6 +34,7 @@ class WatchTogetherController {
       _coordinator = HostPlaybackCoordinator(
         myPeerId: peerService.myPeerId ?? '',
         controlMode: session.controlMode,
+        guestsFollow: guestsFollow,
         sendState: _sendState,
         callbacks: HostCoordinatorCallbacks(
           onPhaseChanged: (phase) => onPhaseChanged?.call(phase),
@@ -122,6 +124,7 @@ class WatchTogetherController {
     bool hasFirstFrame = false,
     Future<void>? startupHold,
     Future<void> Function(Duration target)? remoteSeek,
+    bool adoptPlayback = false,
   }) {
     detachPlayer();
 
@@ -144,6 +147,7 @@ class WatchTogetherController {
         mediaTitle: mediaTitle,
         hasFirstFrame: hasFirstFrame,
         startupHold: startupHold,
+        adoptPlayback: adoptPlayback,
       );
     } else {
       _reconciler!.attach(

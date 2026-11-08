@@ -100,6 +100,8 @@ class TvPleyaFlySubView extends StatefulWidget {
     required this.from,
     required this.firstFocusNode,
     required this.onSelectHost,
+    this.onFollowHost,
+    this.followUnavailable,
   });
 
   final PlaybackHandoffSender sender;
@@ -108,7 +110,16 @@ class TvPleyaFlySubView extends StatefulWidget {
   final String title;
   final Duration from;
   final FocusNode firstFocusNode;
+
+  /// Verplaatsen: the phone takes over and this device stops (A-23d).
   final ValueChanged<DiscoveredHost> onSelectHost;
+
+  /// Meenemen: this device plays on and the phone follows (A-23e, 45-t3).
+  /// Null hides the row.
+  final ValueChanged<DiscoveredHost>? onFollowHost;
+
+  /// Why Meenemen cannot start now; the row is dimmed with this reason.
+  final String? followUnavailable;
 
   @override
   State<TvPleyaFlySubView> createState() => _TvPleyaFlySubViewState();
@@ -140,9 +151,18 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
     super.dispose();
   }
 
+  /// iPhone or iPad, from the name the phone gives itself.
+  static String _deviceKind(DiscoveredHost host) => host.name.toLowerCase().contains('ipad') ? 'iPad' : 'iPhone';
+
+  String _followDetail(DiscoveredHost host) {
+    final sender = widget.sender;
+    if (sender.isHandingTo(host) && sender.busyFollowing) return t.flyFollow.followingOn(name: host.name);
+    return widget.followUnavailable ?? t.flyFollow.followSubtitle(device: _deviceKind(host));
+  }
+
   String _detail(DiscoveredHost host) {
     final sender = widget.sender;
-    if (sender.isHandingTo(host)) {
+    if (sender.isHandingTo(host) && !sender.busyFollowing) {
       return switch (sender.switching) {
         null => t.playbackHandoff.startingOn(name: host.name),
         (profile: _, pin: true) => t.playbackHandoff.switchingPinOn(name: host.name),
@@ -152,8 +172,18 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
     return switch (sender.refusalFor(host)) {
       PlaybackHandoffRefusal.wrongProfile => t.playbackHandoff.wrongProfileOn(name: host.name),
       PlaybackHandoffRefusal.pinNotEntered => t.playbackHandoff.pinNotEnteredOn(name: host.name),
-      null => t.playbackHandoff.phoneReady,
+      null => t.flyFollow.moveSubtitle(device: _deviceKind(host)),
     };
+  }
+
+  Widget? _spinner(bool busy) {
+    if (!busy) return null;
+    final m = TvPanelMetrics.of(context);
+    return SizedBox(
+      width: m.gap(20),
+      height: m.gap(20),
+      child: const CircularProgressIndicator(strokeWidth: 2, color: TvPanelTheme.textMuted),
+    );
   }
 
   List<Widget> _left(BuildContext context) {
@@ -208,35 +238,62 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
     final anchorGone = _anchorClientId != null && !hosts.any((h) => h.clientId == _anchorClientId);
     if (anchorGone && widget.firstFocusNode.hasFocus) _anchorClientId = null;
     _anchorClientId ??= hosts.first.clientId;
-    left.add(
-      TvPanelGroup(
-        key: const ValueKey('pleya-fly-hosts'),
-        children: [
-          for (final (i, host) in hosts.indexed)
+    // Per phone a header and two rows (45-t3): Verplaatsen first, so the
+    // landing focus of A-23d stays where it was; Meenemen under it. The
+    // phone's own header replaces "Continue watching on".
+    left.clear();
+    for (final (i, host) in hosts.indexed) {
+      final handing = sender.isHandingTo(host);
+      final follow = widget.onFollowHost;
+      if (i > 0) left.add(SizedBox(height: m.gap(14)));
+      left.add(TvPanelSectionHeader(label: t.flyFollow.deviceReady(name: host.name)));
+      left.add(
+        TvPanelGroup(
+          // The anchor's group keeps the key of the searching and empty
+          // states, so the landing row's element and focus survive the switch.
+          key: host.clientId == _anchorClientId
+              ? const ValueKey('pleya-fly-hosts')
+              : ValueKey('pleya-fly-host:${host.clientId}'),
+          children: [
             TvPanelRow(
               key: host.clientId == _anchorClientId ? _anchorKey : ValueKey('pleya-fly:${host.clientId}'),
               focusNode: host.clientId == _anchorClientId ? widget.firstFocusNode : null,
               icon: Symbols.smartphone,
-              title: host.name,
+              title: t.flyFollow.move,
               subtitle: _detail(host),
-              highlighted: sender.isHandingTo(host),
+              highlighted: handing && !sender.busyFollowing,
               // While one phone starts, the others are dimmed and take no Select.
-              dimmed: busy && !sender.isHandingTo(host),
-              trailing: sender.isHandingTo(host)
-                  ? SizedBox(
-                      width: m.gap(20),
-                      height: m.gap(20),
-                      child: const CircularProgressIndicator(strokeWidth: 2, color: TvPanelTheme.textMuted),
-                    )
-                  : null,
+              dimmed: busy && !(handing && !sender.busyFollowing),
+              trailing: _spinner(handing && !sender.busyFollowing),
               onSelect: busy ? null : () => widget.onSelectHost(host),
               automationId: AutomationIds.playerPanelRow,
               automationInstance: 'pleya_fly.device.$i',
-              automationState: () => {'busy': sender.isHandingTo(host), 'refused': sender.refusalFor(host)?.name},
+              automationState: () => {
+                'busy': handing && !sender.busyFollowing,
+                'refused': sender.refusalFor(host)?.name,
+              },
             ),
-        ],
-      ),
-    );
+            if (follow != null)
+              TvPanelRow(
+                key: ValueKey('pleya-fly-follow:${host.clientId}'),
+                leading: const TvPleyaFlyGlyph(),
+                title: t.flyFollow.take,
+                subtitle: _followDetail(host),
+                highlighted: handing && sender.busyFollowing,
+                dimmed: widget.followUnavailable != null || (busy && !(handing && sender.busyFollowing)),
+                trailing: _spinner(handing && sender.busyFollowing),
+                onSelect: busy || widget.followUnavailable != null ? null : () => follow(host),
+                automationId: AutomationIds.playerPanelRow,
+                automationInstance: 'pleya_fly.follow.$i',
+                automationState: () => {
+                  'busy': handing && sender.busyFollowing,
+                  'unavailable': widget.followUnavailable != null,
+                },
+              ),
+          ],
+        ),
+      );
+    }
     return left;
   }
 
@@ -252,6 +309,8 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
             title: widget.title,
             subtitle: t.playbackHandoff.resumeAt(time: formatDurationTimestamp(widget.from)),
           ),
+          if (widget.onFollowHost != null && widget.sender.visibleHosts.isNotEmpty)
+            _FollowSide(device: _deviceKind(widget.sender.visibleHosts.first)),
         ],
       ),
     );
@@ -269,6 +328,25 @@ class TvPleyaFlyGlyph extends StatelessWidget {
     return PleyaFlyIcon(
       size: TvPanelMetrics.of(context).rowIconSize,
       color: focused ? TvPanelTheme.focusInk : Colors.white,
+    );
+  }
+}
+
+/// The explanation beside the rows (45-t3): what Meenemen does.
+class _FollowSide extends StatelessWidget {
+  const _FollowSide({required this.device});
+
+  final String device;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = TvPanelMetrics.of(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(m.rowPaddingHorizontal, m.gap(18), m.rowPaddingHorizontal, 0),
+      child: Text(
+        t.flyFollow.side(device: device),
+        style: TextStyle(color: TvPanelTheme.textMuted, fontSize: m.sectionFontSize * 1.1, height: 1.45),
+      ),
     );
   }
 }

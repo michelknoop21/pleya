@@ -88,9 +88,12 @@ import '../services/companion_remote/companion_remote_receiver.dart';
 import '../services/companion_remote/playback_handoff.dart';
 import '../services/companion_remote/playback_handoff_profile_switch.dart';
 import '../services/companion_remote/playback_handoff_receiver.dart';
+import '../services/companion_remote/pleya_fly_follow.dart';
 import '../services/companion_remote/pleya_fly_receive.dart';
+import '../widgets/pleya_fly/fly_follow_indicators.dart';
 import '../services/fullscreen_state_manager.dart';
 import '../providers/companion_remote_provider.dart';
+import '../models/companion_remote/remote_command.dart';
 import '../utils/desktop_window_padding.dart';
 import '../widgets/side_navigation_rail.dart';
 import '../focus/dpad_navigator.dart';
@@ -1088,6 +1091,9 @@ class _MainScreenState extends State<MainScreen>
       };
       watchTogether.onHostExitedPlayer = () {
         appLogger.d('WatchTogether: Host exited player - exiting player for guest');
+        // Meenemen: the Apple TV stopped, so this phone stops too and says why.
+        final flyHost = watchTogether.flyHostName;
+        if (flyHost != null) showFlyTvStoppedNotice(flyHost);
         // Watch Together playback lives in the profile navigator; root-level
         // dialogs/profile picker must not be affected.
         if (!mounted) return;
@@ -1312,6 +1318,14 @@ class _MainScreenState extends State<MainScreen>
         unawaited(receivePlaybackHandoff(context, request));
       },
       onCommand: (command) => CompanionRemoteReceiver.instance.handleCommand(command, context),
+      // Meenemen (A-23e): a phone asks what plays; the open player answers.
+      onFollow: (command) => unawaited(
+        answerFlyFollowRequest(
+          command.data,
+          player: CompanionRemoteReceiver.instance.onFlyFollow,
+          send: (data) => companionRemote.sendCommand(RemoteCommandType.syncState, data: data),
+        ),
+      ),
     );
 
     final receiver = CompanionRemoteReceiver.instance;

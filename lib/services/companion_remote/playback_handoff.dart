@@ -17,6 +17,7 @@ import '../../profiles/profile.dart';
 import '../../profiles/profile_connection.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/log_redaction_manager.dart';
+import 'pleya_fly_follow.dart';
 
 @immutable
 class PlaybackHandoffRequest {
@@ -28,6 +29,8 @@ class PlaybackHandoffRequest {
     required this.title,
     required this.from,
     this.plexUserToken,
+    this.followSessionId,
+    this.relayUrl,
   });
 
   /// Correlates the request with the acknowledgement.
@@ -45,6 +48,14 @@ class PlaybackHandoffRequest {
   /// or when the check fails, it asks the PIN. Never log it.
   final String? plexUserToken;
 
+  /// Meenemen from the Apple TV's Fly picker (A-23e): the receiver joins this
+  /// Watch Together session and follows instead of taking over, and the
+  /// sender plays on. [relayUrl] is the sender's relay, when not the built-in one.
+  final String? followSessionId;
+  final String? relayUrl;
+
+  bool get isFollow => followSessionId != null;
+
   Map<String, dynamic> toData() => {
     'id': id,
     'serverId': serverId,
@@ -53,7 +64,12 @@ class PlaybackHandoffRequest {
     'title': title,
     'from': from,
     if (plexUserToken != null) _plexUserTokenKey: plexUserToken,
+    _followSessionKey: ?followSessionId,
+    _relayUrlKey: ?relayUrl,
   };
+
+  static const _followSessionKey = 'followSession';
+  static const _relayUrlKey = 'relayUrl';
 
   static const _plexUserTokenKey = 'plexUserToken';
 
@@ -69,6 +85,8 @@ class PlaybackHandoffRequest {
     title: title,
     from: from,
     plexUserToken: token,
+    followSessionId: followSessionId,
+    relayUrl: relayUrl,
   );
 
   /// Null for a malformed request: it came over the wire, so nothing is trusted.
@@ -82,6 +100,11 @@ class PlaybackHandoffRequest {
     if (serverId is! String || serverId.isEmpty) return null;
     if (itemId is! String || itemId.isEmpty) return null;
     if (positionMs is! int || positionMs < 0) return null;
+    // A follow that does not parse must not turn into a plain handoff.
+    final followSession = data[_followSessionKey];
+    if (followSession != null && (followSession is! String || !isFlySessionId(followSession))) return null;
+    final relayUrl = data[_relayUrlKey];
+    if (relayUrl != null && (relayUrl is! String || !isRelayUrl(relayUrl))) return null;
     final title = data['title'];
     final from = data['from'];
     // A token of the wrong type only costs the PIN skip, not the handoff.
@@ -94,6 +117,8 @@ class PlaybackHandoffRequest {
       title: title is String ? title : '',
       from: from is String ? from : '',
       plexUserToken: token is String && token.isNotEmpty && token.length <= maxPlexUserTokenLength ? token : null,
+      followSessionId: followSession as String?,
+      relayUrl: relayUrl as String?,
     );
   }
 }

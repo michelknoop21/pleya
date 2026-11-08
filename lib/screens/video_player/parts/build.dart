@@ -401,6 +401,12 @@ extension _VideoPlayerBuildMethods on VideoPlayerScreenState {
               ),
               // Watch Together overlays (isolated from video surface repaints)
               const VideoPlayerWatchTogetherOverlays(),
+              // Meenemen: a following phone starts muted, the way back is here (45-i).
+              Positioned(
+                left: 60,
+                bottom: 78,
+                child: FlySoundOnButton(muted: _flyMute.muted, onUnmute: () => unawaited(_unmuteFlyFollow())),
+              ),
               // Black overlay during exit (no spinner - just covers transparency)
               VideoPlayerExitOverlay(isExiting: _isExiting),
             ],

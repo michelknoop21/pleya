@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../models/companion_remote/remote_command.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/key_event_simulator.dart';
+import 'pleya_fly_follow.dart';
 
 class CompanionRemoteReceiver {
   CompanionRemoteReceiver._();
@@ -39,6 +40,10 @@ class CompanionRemoteReceiver {
   VoidCallback? onSubtitles;
   VoidCallback? onAudioTracks;
   VoidCallback? onFullscreen;
+
+  /// The open player answers what it plays and, unless [peek], opens the
+  /// Watch Together session a phone follows it in (A-23e). Null without a player.
+  Future<FlyFollowAnswer> Function({required bool peek})? onFlyFollow;
 
   void handleCommand(RemoteCommand command, BuildContext? _) {
     appLogger.d('CompanionRemoteReceiver: Handling command: ${command.type}');
@@ -129,7 +134,8 @@ class CompanionRemoteReceiver {
       case RemoteCommandType.disconnect:
       case RemoteCommandType.syncState:
       case RemoteCommandType.handoff:
-        // handoff is routed by the main screen, never turned into a key press.
+      case RemoteCommandType.follow:
+        // handoff and follow are routed by the main screen, never turned into a key press.
         break;
 
       default:

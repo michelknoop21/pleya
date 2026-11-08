@@ -106,6 +106,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsLanguageSettingsNl languageSettings = _TranslationsLanguageSettingsNl._(_root);
 	@override late final _TranslationsAssistantNl assistant = _TranslationsAssistantNl._(_root);
 	@override late final _TranslationsPlaybackHandoffNl playbackHandoff = _TranslationsPlaybackHandoffNl._(_root);
+	@override late final _TranslationsFlyFollowNl flyFollow = _TranslationsFlyFollowNl._(_root);
 	@override late final _TranslationsLocalLibraryNl localLibrary = _TranslationsLocalLibraryNl._(_root);
 	@override late final _TranslationsSettingsStudioNl settingsStudio = _TranslationsSettingsStudioNl._(_root);
 }
@@ -2763,6 +2764,37 @@ class _TranslationsPlaybackHandoffNl extends TranslationsPlaybackHandoffEn {
 	@override String get noPhone => 'Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.';
 	@override String resumeAt({required Object time}) => 'Verder vanaf ${time}';
 	@override String get playingOnPhoneBody => 'Kijk verder op je iPhone of iPad';
+}
+
+// Path: flyFollow
+class _TranslationsFlyFollowNl extends TranslationsFlyFollowEn {
+	_TranslationsFlyFollowNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String playingOn({required Object name}) => 'Speelt op ${name}';
+	@override String at({required Object time}) => 'bij ${time}';
+	@override String get take => 'Meenemen';
+	@override String get unsupported => 'Meenemen kan niet: een lokale map, Pleya Share of live tv';
+	@override String busy({required Object name}) => 'Samen kijken loopt al op ${name}';
+	@override String get busyHere => 'Samen kijken loopt al';
+	@override String get unreachable => 'Dit profiel kan de server van deze titel niet bereiken';
+	@override String get failedTitle => 'Meenemen lukte niet';
+	@override String failedBody({required Object name}) => '${name} speelt gewoon door';
+	@override String syncedWith({required Object name}) => 'Synchroon met ${name}';
+	@override String get soundOn => 'Geluid aan';
+	@override String tvStopped({required Object name}) => '${name} is gestopt';
+	@override String get tvStoppedBody => 'Meekijken is gestopt';
+	@override String watchingAlong({required Object name}) => '${name} kijkt mee';
+	@override String get watchingAlongBody => 'Synchroon · pauzeren en spoelen gelden voor beide';
+	@override String received({required Object from}) => 'Meekijken met ${from}';
+	@override String deviceReady({required Object name}) => '${name} · Pleya open';
+	@override String get move => 'Verplaatsen';
+	@override String moveSubtitle({required Object device}) => 'Verder op de ${device}, de Apple TV stopt';
+	@override String followSubtitle({required Object device}) => 'De Apple TV speelt door, de ${device} kijkt synchroon mee';
+	@override String followingOn({required Object name}) => 'Meenemen naar ${name}…';
+	@override String side({required Object device}) => 'Meenemen start op de ${device} zonder geluid. Pauzeren en spoelen werkt op beide schermen. Gaat de ${device} op slot of sluit je hem, dan speelt de Apple TV door.';
 }
 
 // Path: localLibrary
@@ -7535,6 +7567,28 @@ extension on TranslationsNl {
 			'playbackHandoff.noPhone' => 'Een Apple TV kan Pleya op je iPhone niet zelf openen. Open Pleya op je iPhone of iPad op hetzelfde wifi-netwerk.',
 			'playbackHandoff.resumeAt' => ({required Object time}) => 'Verder vanaf ${time}',
 			'playbackHandoff.playingOnPhoneBody' => 'Kijk verder op je iPhone of iPad',
+			'flyFollow.playingOn' => ({required Object name}) => 'Speelt op ${name}',
+			'flyFollow.at' => ({required Object time}) => 'bij ${time}',
+			'flyFollow.take' => 'Meenemen',
+			'flyFollow.unsupported' => 'Meenemen kan niet: een lokale map, Pleya Share of live tv',
+			'flyFollow.busy' => ({required Object name}) => 'Samen kijken loopt al op ${name}',
+			'flyFollow.busyHere' => 'Samen kijken loopt al',
+			'flyFollow.unreachable' => 'Dit profiel kan de server van deze titel niet bereiken',
+			'flyFollow.failedTitle' => 'Meenemen lukte niet',
+			'flyFollow.failedBody' => ({required Object name}) => '${name} speelt gewoon door',
+			'flyFollow.syncedWith' => ({required Object name}) => 'Synchroon met ${name}',
+			'flyFollow.soundOn' => 'Geluid aan',
+			'flyFollow.tvStopped' => ({required Object name}) => '${name} is gestopt',
+			'flyFollow.tvStoppedBody' => 'Meekijken is gestopt',
+			'flyFollow.watchingAlong' => ({required Object name}) => '${name} kijkt mee',
+			'flyFollow.watchingAlongBody' => 'Synchroon · pauzeren en spoelen gelden voor beide',
+			'flyFollow.received' => ({required Object from}) => 'Meekijken met ${from}',
+			'flyFollow.deviceReady' => ({required Object name}) => '${name} · Pleya open',
+			'flyFollow.move' => 'Verplaatsen',
+			'flyFollow.moveSubtitle' => ({required Object device}) => 'Verder op de ${device}, de Apple TV stopt',
+			'flyFollow.followSubtitle' => ({required Object device}) => 'De Apple TV speelt door, de ${device} kijkt synchroon mee',
+			'flyFollow.followingOn' => ({required Object name}) => 'Meenemen naar ${name}…',
+			'flyFollow.side' => ({required Object device}) => 'Meenemen start op de ${device} zonder geluid. Pauzeren en spoelen werkt op beide schermen. Gaat de ${device} op slot of sluit je hem, dan speelt de Apple TV door.',
 			'localLibrary.playbackUnavailable' => 'Maak verbinding met de server of download deze video om af te spelen.',
 			'localLibrary.title' => 'Lokale bibliotheek',
 			'localLibrary.enable' => 'Offline index inschakelen',

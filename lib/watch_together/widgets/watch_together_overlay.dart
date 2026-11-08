@@ -11,6 +11,7 @@ import '../../utils/dialogs.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../widgets/pleya_fly/fly_follow_indicators.dart';
 import '../models/watch_session.dart';
 import '../providers/watch_together_provider.dart';
 
@@ -285,13 +286,14 @@ class _ParticipantNotificationOverlayState extends State<ParticipantNotification
   StreamSubscription<ParticipantEvent>? _subscription;
   final List<_NotificationEntry> _notifications = [];
   int _nextId = 0;
+  WatchTogetherProvider? _provider;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _subscription?.cancel();
     try {
-      final provider = context.read<WatchTogetherProvider>();
+      final provider = _provider = context.read<WatchTogetherProvider>();
       _subscription = provider.participantEvents.listen(_onEvent);
     } catch (e) {
       appLogger.d('WatchTogetherOverlay: provider unavailable', error: e);
@@ -300,6 +302,16 @@ class _ParticipantNotificationOverlayState extends State<ParticipantNotification
 
   void _onEvent(ParticipantEvent event) {
     if (!mounted) return;
+    final provider = _provider;
+    if (provider != null && provider.isFlySession) {
+      // Meenemen (A-23e): the Apple TV says who follows in its notice (45-t4);
+      // a phone needs no word that the Apple TV it just joined is there.
+      if (event.type == ParticipantEventType.joined) {
+        if (provider.isHost) showFlyWatchingAlongNotice(event.displayName);
+        return;
+      }
+      if (event.type == ParticipantEventType.left) return;
+    }
     final id = _nextId++;
     setState(() {
       _notifications.add(_NotificationEntry(id: id, event: event));

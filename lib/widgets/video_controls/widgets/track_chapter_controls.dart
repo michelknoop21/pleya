@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../../automation/automation_ids.dart';
 import '../../../focus/dpad_navigator.dart';
@@ -17,6 +18,7 @@ import '../../../utils/haptics.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../widgets/overlay_sheet.dart';
+import '../../../watch_together/providers/watch_together_provider.dart';
 import '../models/track_controls_state.dart';
 import '../../../models/transcode_quality_preset.dart';
 import '../sheets/chapter_sheet.dart';
@@ -250,7 +252,8 @@ class TrackChapterControls extends StatelessWidget {
                           videoZoomScale: videoZoomScale,
                           onVideoZoomChanged: onVideoZoomChanged,
                           onResetVideoZoom: onResetVideoZoom,
-                          canControl: canControl,
+                          // A following phone has no speed: it would speed up the Apple TV too (A-23e).
+                          canControl: canControl && !(context.read<WatchTogetherProvider?>()?.isFlyFollower ?? false),
                           isLive: isLive,
                           availableVersions: availableVersions,
                           selectedMediaIndex: selectedMediaIndex,

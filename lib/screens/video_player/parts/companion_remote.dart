@@ -58,6 +58,7 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
     receiver.onSubtitles = _cycleSubtitleTrack;
     receiver.onAudioTracks = _cycleAudioTrack;
     receiver.onFullscreen = _toggleFullscreen;
+    receiver.onFlyFollow = _answerFlyFollow;
 
     // Override home to exit the player first (main screen handler runs after pop)
     _savedOnHome = receiver.onHome;
@@ -69,6 +70,8 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
     try {
       _companionRemoteProvider = context.read<CompanionRemoteProvider>();
       _companionRemoteProvider!.sendCommand(RemoteCommandType.syncState, data: {'playerActive': true});
+      // Phones in the Home see that a player is open and may ask what (A-23e).
+      _companionRemoteProvider!.setNowPlayingBeacon(true);
     } catch (e) {
       appLogger.d('CompanionRemote provider unavailable', error: e);
     }
@@ -87,11 +90,13 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
     receiver.onSubtitles = null;
     receiver.onAudioTracks = null;
     receiver.onFullscreen = null;
+    receiver.onFlyFollow = null;
     receiver.onHome = _savedOnHome;
     _savedOnHome = null;
 
     // Notify remote that player is no longer active
     _companionRemoteProvider?.sendCommand(RemoteCommandType.syncState, data: {'playerActive': false});
+    _companionRemoteProvider?.setNowPlayingBeacon(false);
     _companionRemoteProvider = null;
   }
 

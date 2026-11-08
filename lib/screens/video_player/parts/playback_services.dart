@@ -244,8 +244,9 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     }
 
     // Scrobblers — Discord RPC, Trakt, unified tracker. All accept the
-    // neutral [MediaServerClient]; null short-circuits cleanly.
-    if (mediaClient != null) {
+    // neutral [MediaServerClient]; null short-circuits cleanly. A phone that
+    // follows an Apple TV scrobbles nothing: the Apple TV does (A-23e).
+    if (mediaClient != null && _playbackReportsAllowed) {
       unawaited(DiscordRPCService.instance.startPlayback(metadata, mediaClient));
       unawaited(TraktScrobbleService.instance.startPlayback(metadata, mediaClient, isLive: widget.isLive));
       unawaited(TrackerCoordinator.instance.startPlayback(metadata, mediaClient, isLive: widget.isLive));
@@ -265,6 +266,13 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
   }) {
     final currentPlayer = player;
     if (currentPlayer == null) return;
+
+    // A phone that follows an Apple TV writes no watch state (A-23e).
+    if (!_playbackReportsAllowed) {
+      _progressTracker = null;
+      _playbackWriteAuthority = null;
+      return;
+    }
 
     // Local media still reports live when its server is online; only queue
     // locally when no reporting client is reachable.

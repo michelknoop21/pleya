@@ -11,8 +11,9 @@ extension _VideoPlayerWatchTogetherMethods on VideoPlayerScreenState {
   /// Attach player to Watch Together session for playback sync.
   ///
   /// [startupHold] delays sync readiness until platform startup gates (e.g.
-  /// the Android frame-rate switch) release.
-  void _attachToWatchTogetherSession({Future<void>? startupHold}) {
+  /// the Android frame-rate switch) release. [adoptPlayback] attaches a
+  /// player that already runs to a session opened around it (A-23e).
+  void _attachToWatchTogetherSession({Future<void>? startupHold, bool adoptPlayback = false}) {
     try {
       final watchTogether = context.read<WatchTogetherProvider>();
       _watchTogetherProvider = watchTogether; // Store reference for use in dispose
@@ -28,8 +29,11 @@ extension _VideoPlayerWatchTogetherMethods on VideoPlayerScreenState {
           // Sync-issued seeks ride the screen's seek path so Plex transcode
           // restarts keep working for out-of-buffer targets.
           remoteSeek: _seekPlayback,
+          adoptPlayback: adoptPlayback,
         );
         appLogger.d('WatchTogether: Player attached for sync');
+        // A phone that follows an Apple TV starts muted (A-23e, 45-i).
+        _flyMute.engage(player!, following: watchTogether.isFlyFollower);
 
         // If guest, handle mediaSwitch internally for proper navigation context
         if (!watchTogether.isHost) {
@@ -50,6 +54,7 @@ extension _VideoPlayerWatchTogetherMethods on VideoPlayerScreenState {
       if (watchTogether.isInSession) {
         watchTogether.detachPlayer(exiting: true);
         appLogger.d('WatchTogether: Player detached');
+        _leaveFlySessionOnExit(watchTogether);
       }
       watchTogether.onPlayerMediaSwitched = null; // Always clear player callback
     } catch (e) {

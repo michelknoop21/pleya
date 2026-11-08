@@ -17,6 +17,11 @@ class DiscoveredHost {
   final String platform;
   final int port;
   final List<String> ips;
+
+  /// The beacon says a player is open (A-23e). Outside the beacon HMAC, so
+  /// only a hint: the phone asks over the authenticated session before it
+  /// shows anything, and a forged flag costs one question.
+  final bool playing;
   DateTime lastSeen;
 
   DiscoveredHost({
@@ -26,6 +31,7 @@ class DiscoveredHost {
     required this.platform,
     required this.port,
     required this.ips,
+    this.playing = false,
     DateTime? lastSeen,
   }) : lastSeen = lastSeen ?? DateTime.now();
 
@@ -41,6 +47,9 @@ class LanDiscoveryService {
   static const int _broadcastIntervalSeconds = 3;
   static const int _staleTimeoutSeconds = 10;
   static const int _beaconVersion = 1;
+
+  /// Whether this host's beacons say a player is open (A-23e); read at each send.
+  bool nowPlaying = false;
 
   // Broadcaster state (host)
   UdpBroadcastSocketSet? _broadcastSockets;
@@ -165,6 +174,7 @@ class LanDiscoveryService {
         'port': wsPort,
         'ips': ips,
         'hmac': beaconHmac,
+        if (nowPlaying) 'playing': true,
       }),
     );
   }
@@ -382,6 +392,7 @@ class LanDiscoveryService {
       final clientId = json['clientId'] as String? ?? '';
       final port = json['port'] as int? ?? 0;
       final ips = (json['ips'] as List<dynamic>?)?.cast<String>() ?? [];
+      final playing = json['playing'] == true;
 
       final matchedContext = _matchContext(json, contexts);
       if (matchedContext == null) {
@@ -399,7 +410,7 @@ class LanDiscoveryService {
         final existing = _discoveredHosts[hostKey]!;
         existing.lastSeen = DateTime.now();
         // Only emit if fields actually changed
-        if (existing.name != name || existing.port != port) {
+        if (existing.name != name || existing.port != port || existing.playing != playing) {
           _discoveredHosts[hostKey] = DiscoveredHost(
             authContextId: existing.authContextId,
             clientId: clientId,
@@ -407,6 +418,7 @@ class LanDiscoveryService {
             platform: platform,
             port: port,
             ips: ips,
+            playing: playing,
           );
           _emitHosts();
         }
@@ -418,6 +430,7 @@ class LanDiscoveryService {
           platform: platform,
           port: port,
           ips: ips,
+          playing: playing,
         );
         appLogger.d('LanDiscovery: Discovered host: $name ($platform) at ${ips.join(", ")}:$port');
         _emitHosts();

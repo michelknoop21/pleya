@@ -36,6 +36,7 @@ import 'widgets/tv_title_scrim.dart';
 import 'widgets/video_controls_header.dart';
 import 'widgets/video_timeline_bar.dart';
 import 'widgets/tv_quality_summary_line.dart';
+import '../pleya_fly/fly_follow_indicators.dart';
 import 'widgets/volume_control.dart';
 import 'widgets/track_chapter_controls.dart';
 
@@ -1067,7 +1068,16 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
           // apply to a live channel.
           if (PlatformDetector.isTV() && !_isLive) ...[
             const SizedBox(height: 4),
-            TvQualitySummaryLine(player: widget.player, isTranscoding: _trackControlsState.isTranscoding),
+            Row(
+              mainAxisSize: .min,
+              children: [
+                Flexible(
+                  child: TvQualitySummaryLine(player: widget.player, isTranscoding: _trackControlsState.isTranscoding),
+                ),
+                // A phone follows this Apple TV (Meenemen, 45-t5).
+                const Padding(padding: EdgeInsets.only(left: 10), child: FlyFollowersLabel()),
+              ],
+            ),
           ],
         ],
       ),
