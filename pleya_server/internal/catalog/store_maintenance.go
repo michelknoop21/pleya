@@ -49,8 +49,9 @@ func FileGone(root, rel string) bool {
 		}
 		return err == nil && len(entries) > 0
 	}
-	info, err := os.Stat(root)
-	return err == nil && info.IsDir()
+	// Opnieuw de root zelf, niet alleen "is een map": een share die wegvalt
+	// nadat EmptyTrash zijn roots toetste, laat een leeg koppelpunt achter.
+	return !rootUnavailable(root)
 }
 
 // rootUnavailable zegt of een root niet te lezen of leeg is.
