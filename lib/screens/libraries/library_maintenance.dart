@@ -25,8 +25,9 @@ MediaServerClient? libraryMaintenanceClient(MultiServerManager servers, MediaLib
   return client;
 }
 
-/// What [client] can do for a library, in menu order. Analyze and empty
-/// trash have no equivalent outside Plex.
+/// What [client] can do for a library, in menu order. Analyze has no
+/// equivalent outside Plex: Pleya Server analyses every new or changed file
+/// during its scan, and re-probing unchanged bytes gives the same answer.
 List<LibraryMaintenance> libraryMaintenanceFor(MediaServerClient? client) => [
   // False alarm: the linter only sees the static type. Concrete clients
   // implement this capability contract, so the check is not always false.
@@ -34,7 +35,7 @@ List<LibraryMaintenance> libraryMaintenanceFor(MediaServerClient? client) => [
   if (client is LibraryScanClient) LibraryMaintenance.scan,
   if (client is PlexClient) LibraryMaintenance.analyze,
   if (client != null) LibraryMaintenance.refreshMetadata,
-  if (client is PlexClient) LibraryMaintenance.emptyTrash,
+  if (client case LibraryTrashClient(supportsLibraryTrash: true)) LibraryMaintenance.emptyTrash,
 ];
 
 /// Runs [action] on [client]. Only call with an action [libraryMaintenanceFor]
@@ -44,5 +45,5 @@ Future<void> runLibraryMaintenance(MediaServerClient client, LibraryMaintenance 
       LibraryMaintenance.scan => (client as LibraryScanClient).scanLibrary(libraryId),
       LibraryMaintenance.analyze => (client as PlexClient).analyzeLibrary(libraryId),
       LibraryMaintenance.refreshMetadata => client.refreshLibraryMetadata(libraryId),
-      LibraryMaintenance.emptyTrash => (client as PlexClient).emptyLibraryTrash(libraryId),
+      LibraryMaintenance.emptyTrash => (client as LibraryTrashClient).emptyLibraryTrash(libraryId),
     };

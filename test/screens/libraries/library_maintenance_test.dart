@@ -16,14 +16,18 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
+import 'package:pleya/media/server_administration.dart';
 import 'package:pleya/models/plex/plex_config.dart';
+import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/libraries/library_maintenance.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/services/plex_client.dart';
+import 'package:pleya/widgets/server_activities_button.dart';
 
 http.Response _json(Object? body, {int status = 200}) =>
     http.Response(body == null ? '' : jsonEncode(body), status, headers: const {'content-type': 'application/json'});
@@ -31,7 +35,12 @@ http.Response _json(Object? body, {int status = 200}) =>
 MediaLibrary _library(String serverId, MediaBackend backend) =>
     MediaLibrary(id: 'lib-1', backend: backend, title: 'Films', kind: MediaKind.movie, serverId: serverId);
 
-Future<PleyaServerClient> _pleya({required String role, bool administration = true, List<String>? requests}) async {
+Future<PleyaServerClient> _pleya({
+  required String role,
+  bool administration = true,
+  bool maintenance = false,
+  List<String>? requests,
+}) async {
   final client = PleyaServerClient.create(
     PleyaServerConnection(
       id: 'pleyaServer.srv-1',
@@ -64,6 +73,7 @@ Future<PleyaServerClient> _pleya({required String role, bool administration = tr
             'watch_state': true,
             'users': true,
             'administration': administration,
+            'library_maintenance': maintenance,
           },
           'auth': {
             'methods': ['password'],
@@ -73,6 +83,8 @@ Future<PleyaServerClient> _pleya({required String role, bool administration = tr
       }
       requests?.add('${request.method} $path');
       if (path == '/libraries/lib-1/scan') return _json({'id': 'scan-1', 'state': 'queued'}, status: 202);
+      if (path == '/libraries/lib-1/empty-trash') return _json({'items': 2, 'job_id': 'job-1'}, status: 202);
+      if (path == '/libraries/lib-1/refresh-metadata') return _json({'items': 3}, status: 202);
       return _json(null, status: 404);
     }),
   );
@@ -156,6 +168,16 @@ void main() {
       ]);
     });
 
+    test('a Pleya Server with library_maintenance also empties the trash', () async {
+      final m = _manager()..debugRegisterClientForTesting(await _pleya(role: 'admin', maintenance: true));
+
+      expect(_offered(m, _library('srv-1', MediaBackend.pleyaServer)), [
+        LibraryMaintenance.scan,
+        LibraryMaintenance.refreshMetadata,
+        LibraryMaintenance.emptyTrash,
+      ]);
+    });
+
     test('a Pleya Server owner gets the same', () async {
       final m = _manager()..debugRegisterClientForTesting(await _pleya(role: 'owner'));
 
@@ -219,4 +241,76 @@ void main() {
 
     expect(requests, ['POST /libraries/lib-1/scan']);
   });
+
+  group('Pleya Server library maintenance requests', () {
+    Future<(List<String>, _RunMaintenance)> start({required bool maintenance}) async {
+      final requests = <String>[];
+      final m = _manager()
+        ..debugRegisterClientForTesting(await _pleya(role: 'admin', maintenance: maintenance, requests: requests));
+      final library = _library('srv-1', MediaBackend.pleyaServer);
+      return (
+        requests,
+        (LibraryMaintenance action) => runLibraryMaintenance(libraryMaintenanceClient(m, library)!, action, library.id),
+      );
+    }
+
+    test('empty trash posts to the library on its server', () async {
+      final (requests, run) = await start(maintenance: true);
+
+      await run(LibraryMaintenance.emptyTrash);
+
+      expect(requests, ['POST /libraries/lib-1/empty-trash']);
+    });
+
+    test('refresh metadata uses the refresh route, not a scan', () async {
+      final (requests, run) = await start(maintenance: true);
+
+      await run(LibraryMaintenance.refreshMetadata);
+
+      expect(requests, ['POST /libraries/lib-1/refresh-metadata']);
+    });
+
+    test('an older server without the capability still refreshes through a scan', () async {
+      final (requests, run) = await start(maintenance: false);
+
+      await run(LibraryMaintenance.refreshMetadata);
+
+      expect(requests, ['POST /libraries/lib-1/scan']);
+    });
+  });
+
+  group('server tasks panel', () {
+    MultiServerProvider provider(MultiServerManager m) {
+      final p = MultiServerProvider(m, DataAggregationService(m));
+      addTearDown(p.dispose);
+      return p;
+    }
+
+    test('lists the jobs of a Pleya Server this profile administers', () async {
+      final m = _manager()..debugRegisterClientForTesting(await _pleya(role: 'admin'));
+
+      expect(provider(m).serverTasksClient(ServerId('srv-1')), isA<PleyaServerClient>());
+    });
+
+    test('not for a member, and not for Plex, which keeps its own activities read', () async {
+      final member = _manager()..debugRegisterClientForTesting(await _pleya(role: 'member'));
+      final plex = _manager();
+      await _registerOwnedPlex(plex);
+
+      expect(provider(member).serverTasksClient(ServerId('srv-1')), isNull);
+      expect(provider(plex).serverTasksClient(ServerId('plex-1')), isNull);
+    });
+
+    test('shows queued and running jobs only, with the menu wording', () {
+      ServerJob job(String kind, ServerJobState state) => ServerJob(id: 'j', title: kind, state: state);
+
+      expect(serverTaskRow(job('empty_library_trash', ServerJobState.queued))?.title, 'Empty Trash');
+      expect(serverTaskRow(job('scan_library', ServerJobState.running))?.title, 'Scan Library');
+      expect(serverTaskRow(job('backup_create', ServerJobState.running))?.title, 'backup_create');
+      expect(serverTaskRow(job('scan_library', ServerJobState.succeeded)), isNull);
+      expect(serverTaskRow(job('scan_library', ServerJobState.failed)), isNull);
+    });
+  });
 }
+
+typedef _RunMaintenance = Future<void> Function(LibraryMaintenance action);
