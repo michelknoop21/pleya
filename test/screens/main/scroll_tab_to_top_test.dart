@@ -43,6 +43,14 @@ void main() {
     expect(_vertical().map((s) => s.position.pixels), [0, 800]);
   });
 
+  testWidgets('re-tap on a later tab scrolls that tab, not the first one', (t) async {
+    final key = GlobalKey();
+    await pump(t, key, ValueNotifier(1));
+    scrollTabToTop(key, 1);
+    await t.pumpAndSettle();
+    expect(_vertical().map((s) => s.position.pixels), [800, 0]);
+  });
+
   testWidgets('switching to another tab scrolls nothing', (t) async {
     final index = ValueNotifier(0);
     await pump(t, GlobalKey(), index);

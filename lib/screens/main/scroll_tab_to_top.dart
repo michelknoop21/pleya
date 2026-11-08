@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 /// iOS convention: re-tapping the active tab scrolls its page back to the top.
 ///
@@ -6,7 +7,14 @@ import 'package:flutter/material.dart';
 /// active tab. Its outermost vertical [Scrollable] is animated to offset 0, so
 /// every tab works without exposing a controller.
 void scrollTabToTop(GlobalKey stackKey, int index) {
-  final stack = stackKey.currentContext as Element?;
+  Element? stack = stackKey.currentContext as Element?;
+  // IndexedStack is a StatelessWidget around the element that owns the
+  // children, so walk down to the RenderIndexedStack before counting.
+  while (stack != null && !(stack is RenderObjectElement && stack.renderObject is RenderIndexedStack)) {
+    Element? only;
+    stack.visitChildren((child) => only = child);
+    stack = only;
+  }
   if (stack == null) return;
   Element? tab;
   var i = 0;
