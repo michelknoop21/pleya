@@ -15,6 +15,18 @@ protocol MpvPlayerDelegate: AnyObject {
   func onEvent(name: String, data: [String: Any]?)
 }
 
+func applePlaybackFootprintBytes() -> UInt64? {
+  var info = task_vm_info_data_t()
+  var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+  let result = withUnsafeMutablePointer(to: &info) {
+    $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+      task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+    }
+  }
+  guard result == KERN_SUCCESS else { return nil }
+  return info.phys_footprint
+}
+
 enum MpvTeardownScheduler {
   static func run(
     on queue: DispatchQueue,
@@ -1018,11 +1030,13 @@ class MpvPlayerCoreBase: NSObject {
       completeGetPropertyRequest(event)
 
     case MPV_EVENT_FILE_LOADED:
+      logMemoryFootprint("file-loaded")
       DispatchQueue.main.async {
         self.delegate?.onEvent(name: "file-loaded", data: nil)
       }
 
     case MPV_EVENT_END_FILE:
+      logMemoryFootprint("end-file")
       if let endFilePtr = event.data?.assumingMemoryBound(to: mpv_event_end_file.self) {
         let endFile = endFilePtr.pointee
         var data: [String: Any] = ["reason": Int(endFile.reason.rawValue)]
@@ -1043,9 +1057,13 @@ class MpvPlayerCoreBase: NSObject {
       print("[MpvPlayerCore] MPV shutdown event")
 
     case MPV_EVENT_PLAYBACK_RESTART:
+      logMemoryFootprint("playback-restart")
       DispatchQueue.main.async {
         self.delegate?.onEvent(name: "playback-restart", data: nil)
       }
+
+    case MPV_EVENT_SEEK:
+      logMemoryFootprint("seek")
 
     case MPV_EVENT_LOG_MESSAGE:
       if isBackgrounded { break }
@@ -1065,6 +1083,17 @@ class MpvPlayerCoreBase: NSObject {
 
     default:
       break
+    }
+  }
+
+  private func logMemoryFootprint(_ stage: String) {
+    // RSS omits memory charged to the app that can still trigger a jetsam kill.
+    let bytes = applePlaybackFootprintBytes().map(String.init) ?? "unavailable"
+    let text = "\(stage) footprintBytes=\(bytes)"
+    NSLog("[MpvPlayerCore memory] %@", text)
+    DispatchQueue.main.async {
+      self.delegate?.onEvent(
+        name: "log-message", data: ["prefix": "memory", "level": "info", "text": text])
     }
   }
 
