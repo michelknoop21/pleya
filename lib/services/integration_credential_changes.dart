@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'base_shared_preferences_service.dart';
 
 enum IntegrationCredentialChangeSource { edit, migration, refresh }
@@ -7,15 +9,22 @@ enum IntegrationCredentialChangeSource { edit, migration, refresh }
 /// Serializes integration writes with cloud imports. Network calls never hold
 /// this lock. Values remain in the device's existing encrypted stores.
 class IntegrationCredentialChanges {
-  static Future<void> _turn = Future.value();
+  static Future<void>? _turn;
   static Future<void> Function(String key, IntegrationCredentialChangeSource source)? onLocalChange;
   static bool Function(String key, IntegrationCredentialChangeSource source)? mayWrite;
   static final _remoteChanges = StreamController<Set<String>>.broadcast();
 
   static Stream<Set<String>> get remoteChanges => _remoteChanges.stream;
 
+  /// Fresh test fixtures have a new fake-async zone. Reset only between tests,
+  /// after the previous fixture's providers and writes have finished.
+  @visibleForTesting
+  static void resetForTesting() {
+    _turn = null;
+  }
+
   static Future<T> exclusively<T>(Future<T> Function() body) {
-    final run = _turn.then((_) => body());
+    final run = (_turn ?? Future<void>.value()).then((_) => body());
     _turn = run.then<void>((_) {}, onError: (Object _, StackTrace __) {});
     return run;
   }
