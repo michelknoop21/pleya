@@ -64,14 +64,14 @@ Nothing user-facing since the last published build.
 
 ### Fixed
 
-- **Apple TV should no longer run out of memory when you skip through a 4K HDR film.** Build
-  449 still quit when you skipped ahead right after starting a 4K HDR film, or opened the
-  player panel. The system log showed Pleya hitting the 2 GB memory limit that tvOS sets per
-  app. The video decoder now holds fewer frames at once, and the interface on Apple TV draws
-  in standard colour, which halves the memory its screen buffers need. Video still plays in
-  HDR.
-- **Menus on Apple TV open on their first option.** The library menu and other sheets with a
-  list opened with Close selected at the bottom; they now start on the top row.
+- **Apple TV is less likely to run out of memory when you skip through a 4K HDR film.** Pleya
+  quit when you skipped ahead right after starting a 4K HDR film, or opened the player panel.
+  The system log showed Pleya hitting the 2 GB memory limit that tvOS sets per app. The video
+  decoder now holds fewer frames at once, and the interface on Apple TV draws in standard
+  colour, which should need less memory for its screen buffers. Video still plays in HDR.
+- **Menus and sheets open on their first option.** The library menu and other sheets with a
+  list opened with Close selected at the bottom; they now start on the top row. You notice
+  this with the remote or a keyboard.
 
 ### Notes
 
