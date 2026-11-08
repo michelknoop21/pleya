@@ -66,8 +66,14 @@ class PleyaCompanionIdentity {
     return {'ticket': ticket.ticket, 'ticketSig': _b64(signature.bytes)};
   }
 
+  /// Fetches a ticket now, so an account whose server cannot issue one gets
+  /// no context and no beacon. Throws when the server cannot.
+  Future<void> ensureTicket() => _currentTicket();
+
   /// Host side: whether [auth] proves [claimedUser] on this server for this
-  /// [transcript]. Fails closed on anything missing or malformed.
+  /// [transcript]. False for anything the client sent that does not check
+  /// out, malformed input included; throws only when this host cannot get
+  /// its own ticket (the server key), which is not the client's fault.
   Future<bool> verify(Map<String, dynamic> auth, List<int> transcript, String claimedUser) async {
     final ticket = auth['ticket'];
     final ticketSig = auth['ticketSig'];
@@ -77,31 +83,44 @@ class PleyaCompanionIdentity {
     if (ticket.length > 2048 || ticketSig.length > 128) return false;
     final parts = ticket.split('.');
     if (parts.length != 3 || parts[0] != _ticketPrefix) return false;
-    final payload = jsonDecode(utf8.decode(_unb64(parts[1])));
-    if (payload is! Map<String, dynamic>) return false;
+    final Map<String, dynamic> payload;
+    final List<int> serverSig;
+    final List<int> deviceSig;
+    final List<int> deviceKey;
+    try {
+      final decoded = jsonDecode(utf8.decode(_unb64(parts[1])));
+      if (decoded is! Map<String, dynamic>) return false;
+      payload = decoded;
+      final cnf = payload['cnf'];
+      if (cnf is! String) return false;
+      serverSig = _unb64(parts[2]);
+      deviceSig = _unb64(ticketSig);
+      deviceKey = _unb64(cnf);
+    } on FormatException {
+      return false;
+    }
     final kid = payload['kid'];
-    if (kid is! String) return false;
+    final exp = payload['exp'];
+    final iat = payload['iat'];
+    if (kid is! String || exp is! int || iat is! int) return false;
+    if (serverSig.length != 64 || deviceSig.length != 64 || deviceKey.length != 32) return false;
 
     final serverKey = await _serverKey(kid);
     if (serverKey == null) return false;
     final signed = await _ed25519.verify(
       utf8.encode('${parts[0]}.${parts[1]}'),
-      signature: Signature(_unb64(parts[2]), publicKey: SimplePublicKey(serverKey, type: KeyPairType.ed25519)),
+      signature: Signature(serverSig, publicKey: SimplePublicKey(serverKey, type: KeyPairType.ed25519)),
     );
     if (!signed) return false;
 
-    final exp = payload['exp'];
-    final iat = payload['iat'];
-    final cnf = payload['cnf'];
     if (payload['srv'] != serverId || payload['sub'] != claimedUser) return false;
-    if (exp is! int || iat is! int || cnf is! String) return false;
     final now = _now();
     if (!now.isBefore(DateTime.fromMillisecondsSinceEpoch(exp * 1000).add(skew))) return false;
     if (DateTime.fromMillisecondsSinceEpoch(iat * 1000).isAfter(now.add(skew))) return false;
 
     return _ed25519.verify(
       transcript,
-      signature: Signature(_unb64(ticketSig), publicKey: SimplePublicKey(_unb64(cnf), type: KeyPairType.ed25519)),
+      signature: Signature(deviceSig, publicKey: SimplePublicKey(deviceKey, type: KeyPairType.ed25519)),
     );
   }
 

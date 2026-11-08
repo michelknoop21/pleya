@@ -39,9 +39,9 @@ Bron voor de scope:
 
 Michel opende expliciet het [additieve metadata-venster](plans/2026-11-01-server-gap/METADATA-VENSTERVOORSTEL.md), [DEC-172: additief metadata-venster](DECISIONS.md#metadata-venster-2026-11-01), C-05/S4/S22/S14.5. Applied-identiteit/lookup/status, zoeken/kandidaten/vaste-host-beeldpreview, veld-overrides/locks en artworkkeuze/pins met behoud van legacy wirebetekenis. Alleen deze scope; overige vensters blijven bevroren. Lokale migratiebestanden binnen deze functionaliteit zijn toegestaan met de vereiste tests/review; geen productie-/NAS-uitrol. De uitvoeringskaart en detailregels behouden afzonderlijke status, geen acceptatie gesloten door dit besluit.
 
-## Scoped companion-ticketvenster, besluit 8 november 2026 (bekrachtiging open)
+## Scoped companion-ticketvenster, besluit 8 november 2026
 
-Michel besloot (doorgegeven door de coördinator) dat Pleya Fly op Pleya Server een echt serverticket krijgt in plaats van een afleidbaar geheim, DEC-XXX (companion-ticket), Roadmap A-23. Scope uitsluitend: `POST /companion/ticket` (klasse `authenticated`, elke rol, altijd over de aanvrager, geen API-token), de schema's `CompanionTicketRequest` en `CompanionTicket`, foutcode `auth.device_key_invalid` en matrixregel 107. Geen migratie: de Ed25519-sleutel komt uit de bestaande ondertekensleutel en roteert met `POST /server/rotate-signing-key`. Gebouwd op branch `feat/pleya-server-fly-auth` (PR #634), niet gedeployed; Michel bekrachtigt het venster vóór de merge. Alle overige protocolbevriezing blijft gelden.
+Michel besloot op 8 november 2026 zelf dat Pleya Fly op Pleya Server een echt serverticket krijgt in plaats van een afleidbaar geheim, en bekrachtigde dit begrensde venster dezelfde dag, DEC-XXX (companion-ticket), Roadmap A-23. Scope uitsluitend: `POST /companion/ticket` (klasse `authenticated`, elke rol, altijd over de aanvrager, geen API-token), de schema's `CompanionTicketRequest` en `CompanionTicket`, foutcode `auth.device_key_invalid` en matrixregel 107. Geen migratie: de Ed25519-sleutel komt uit de bestaande ondertekensleutel en roteert met `POST /server/rotate-signing-key`. Gebouwd op branch `feat/pleya-server-fly-auth` (PR #634), niet gedeployed. Alle overige protocolbevriezing blijft gelden.
 
 ## Scoped artworkcache-beheervenster, besluit 2 november 2026
 

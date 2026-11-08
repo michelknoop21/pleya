@@ -1,4 +1,5 @@
 import '../../connection/connection.dart';
+import '../../utils/app_logger.dart';
 import 'pleya_companion_identity.dart';
 import 'remote_auth_context.dart';
 import 'remote_auth_service.dart';
@@ -24,7 +25,8 @@ const pleyaServerAuthBackend = 'pleyaServer';
 /// member list is therefore the set of accounts signed in here.
 ///
 /// [identityFor] gives the ticket identity of an own account; an account
-/// without one gets no context. [deviceId] is announced in beacons; it must
+/// without one, or whose server does not issue a ticket now, gets no context
+/// (and so no beacon). [deviceId] is announced in beacons; it must
 /// not be the connection id, which carries the user id.
 Future<List<RemoteAuthContext>> pleyaServerAuthContexts({
   required Iterable<PleyaServerConnection> own,
@@ -64,10 +66,20 @@ Future<List<RemoteAuthContext>> pleyaServerAuthContexts({
   }
 
   final members = onDevice.whereType<PleyaServerConnection>().where(_usable).toList();
-  final active = [
-    for (final account in own.where(_usable))
-      if (identityFor(account) case final identity?) (account: account, identity: identity),
-  ];
+  final active = <({PleyaServerConnection account, PleyaCompanionIdentity identity})>[];
+  for (final account in own.where(_usable)) {
+    final identity = identityFor(account);
+    if (identity == null) continue;
+    try {
+      // One ticket now: a server without the route, or an account that is
+      // not bound, would otherwise announce a host every Fly to it fails on.
+      await identity.ensureTicket();
+    } catch (e) {
+      appLogger.w('CompanionRemote: No companion ticket for a Pleya Server account (${e.runtimeType})');
+      continue;
+    }
+    active.add((account: account, identity: identity));
+  }
   for (final (:account, :identity) in active) {
     await add(account, hostUser: account.accountUserId!, identity: identity, hostOnly: false);
   }

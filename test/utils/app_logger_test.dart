@@ -26,6 +26,13 @@ void main() {
   });
 
   group('redaction', () {
+    // Through the real logger, as an uploaded log would carry it.
+    String redactLogMessageForTest(String message) {
+      MemoryLogOutput.clearLogs();
+      appLogger.i(message);
+      return MemoryLogOutput.getLogs().first.message;
+    }
+
     const userId = '0191e27b-0000-7aaa-bbbb-123456789abc';
 
     test('the user id of a Pleya Server connection id stays out of a log', () {

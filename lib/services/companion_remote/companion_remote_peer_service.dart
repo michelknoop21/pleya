@@ -226,6 +226,19 @@ class CompanionRemotePeerService with KeepaliveMixin {
     }
   }
 
+  @visibleForTesting
+  int debugFailedAuthAttempts(String ip) => _failedAuthAttempts[ip] ?? 0;
+
+  /// The client nonce, or null unless it is exactly 32 bytes of base64.
+  static List<int>? _decodeNonce(String value) {
+    try {
+      final bytes = base64Decode(value);
+      return bytes.length == 32 ? bytes : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
   void _handleNewWebSocketConnection(
     WebSocket socket,
     String hostDeviceName,
@@ -236,6 +249,9 @@ class CompanionRemotePeerService with KeepaliveMixin {
     appLogger.d('CompanionRemote: New WebSocket connection from $sourceIp');
 
     bool isAuthenticated = false;
+    // One auth message per connection: a second one arriving while the first
+    // awaits its checks would otherwise run the same handshake twice.
+    bool authInFlight = false;
     Timer? authTimeout;
     final auth = RemoteAuthService.instance;
     final hostNonce = auth.generateNonce();
@@ -274,9 +290,11 @@ class CompanionRemotePeerService with KeepaliveMixin {
       (data) async {
         try {
           if (!isAuthenticated) {
+            if (authInFlight) return;
             final json = jsonDecode(data as String) as Map<String, dynamic>;
 
             if (json['type'] == 'auth') {
+              authInFlight = true;
               final authTag = json['authTag'] as String?;
               final clientNonceB64 = json['clientNonce'] as String?;
               final userUUID = json['userUUID'] as String?;
@@ -296,7 +314,14 @@ class CompanionRemotePeerService with KeepaliveMixin {
                 return;
               }
 
-              final clientNonce = base64Decode(clientNonceB64);
+              final clientNonce = _decodeNonce(clientNonceB64);
+              if (clientNonce == null) {
+                _recordFailedAuth(sourceIp);
+                appLogger.w('CompanionRemote: Auth failed — malformed client nonce');
+                socket.add(jsonEncode({'type': 'authFailed'}));
+                unawaited(socket.close(4003, 'Authentication failed'));
+                return;
+              }
               RemoteAuthContext? selectedContext;
               if (authContextId != null && authContextId.isNotEmpty) {
                 for (final context in authContexts) {
@@ -359,11 +384,17 @@ class CompanionRemotePeerService with KeepaliveMixin {
                   deviceName: deviceName,
                   platform: platform,
                 );
-                var proven = false;
+                bool proven;
                 try {
                   proven = await verify(json, transcript, userUUID);
                 } catch (e) {
-                  appLogger.w('CompanionRemote: Identity check failed (${e.runtimeType})');
+                  // verify answers false for anything the client sent; a throw
+                  // is this host failing to reach its server, which is not the
+                  // client's failed attempt and does not count toward its lockout.
+                  appLogger.w('CompanionRemote: Identity check unavailable (${e.runtimeType})');
+                  socket.add(jsonEncode({'type': 'authFailed'}));
+                  unawaited(socket.close(4003, 'Authentication failed'));
+                  return;
                 }
                 if (!proven) {
                   _recordFailedAuth(sourceIp);
@@ -372,6 +403,8 @@ class CompanionRemotePeerService with KeepaliveMixin {
                   unawaited(socket.close(4003, 'Authentication failed'));
                   return;
                 }
+                // Gone while the check ran: nothing to adopt.
+                if (socket.readyState != WebSocket.open) return;
               }
 
               // Auth success — derive per-session encryption key
@@ -380,6 +413,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
               authTimeout?.cancel();
 
               final sessionEncKey = await auth.deriveSessionEncKey(selectedContext.homeSecret, hostNonce, clientNonce);
+              if (socket.readyState != WebSocket.open) return;
 
               // Close existing client if present
               if (_clientSocket != null) {

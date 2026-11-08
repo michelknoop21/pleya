@@ -3,7 +3,6 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/painting.dart';
 import 'package:logger/logger.dart';
 
@@ -42,9 +41,6 @@ String _redactSensitiveData(String message) {
 
   return redacted;
 }
-
-@visibleForTesting
-String redactLogMessageForTest(String message) => _redactSensitiveData(message);
 
 /// Represents a single log entry stored in memory
 class LogEntry {

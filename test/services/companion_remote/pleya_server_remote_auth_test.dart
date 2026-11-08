@@ -110,6 +110,79 @@ void main() {
       expect(await server.identityFor('u-bob').verify(proof, transcript, 'u-anna'), isFalse);
     });
 
+    test('a ticket issued in the future fails', () async {
+      final early = PleyaCompanionIdentity(
+        serverId: 'srv',
+        fetch: server.fetchFor('u-anna', issuedAt: DateTime.now().add(const Duration(minutes: 5))),
+      );
+      final proof = await early.prove(transcript);
+      expect(await server.identityFor('u-bob').verify(proof, transcript, 'u-anna'), isFalse);
+    });
+
+    test('garbage never throws, it answers false', () async {
+      final host = server.identityFor('u-bob');
+      final good = await server.identityFor('u-anna').prove(transcript);
+      final parts = good['ticket']!.split('.');
+      final garbage = <Map<String, dynamic>>[
+        {'ticket': 'plc1.!!!.!!!', 'ticketSig': good['ticketSig']},
+        {'ticket': 'plc1.${b64(utf8.encode('not json'))}.${parts[2]}', 'ticketSig': good['ticketSig']},
+        {
+          'ticket': 'plc1.${b64([0xff, 0xfe])}.${parts[2]}',
+          'ticketSig': good['ticketSig'],
+        },
+        {'ticket': 'plc1.${b64(utf8.encode('[1]'))}.${parts[2]}', 'ticketSig': good['ticketSig']},
+        {'ticket': good['ticket'], 'ticketSig': 'not*base64'},
+        {
+          'ticket': good['ticket'],
+          'ticketSig': b64([1, 2, 3]),
+        },
+        {
+          'ticket': '${parts[0]}.${parts[1]}.${b64([1, 2])}',
+          'ticketSig': good['ticketSig'],
+        },
+        {
+          'ticket':
+              'plc1.${b64(utf8.encode(jsonEncode({'kid': server.keyId, 'iat': 1, 'exp': 2, 'cnf': '***'})))}.${parts[2]}',
+          'ticketSig': good['ticketSig'],
+        },
+        {'ticket': 42, 'ticketSig': good['ticketSig']},
+      ];
+      for (final proof in garbage) {
+        expect(await host.verify(proof, transcript, 'u-anna'), isFalse, reason: '$proof');
+      }
+    });
+
+    test('an unknown kid refetches the own ticket at most once a minute', () async {
+      var fetches = 0;
+      var now = DateTime.now();
+      final fetch = server.fetchFor('u-bob');
+      final host = PleyaCompanionIdentity(
+        serverId: 'srv',
+        now: () => now,
+        fetch: (key) {
+          fetches++;
+          return fetch(key);
+        },
+      );
+      await host.ensureTicket();
+      expect(fetches, 1);
+      final rotated = await FakePleyaTicketServer.create('srv', seed: 3);
+      final proof = await rotated.identityFor('u-anna').prove(transcript);
+      expect(await host.verify(proof, transcript, 'u-anna'), isFalse);
+      expect(fetches, 2, reason: 'an unknown kid asks once for a fresh ticket');
+      expect(await host.verify(proof, transcript, 'u-anna'), isFalse);
+      expect(fetches, 2, reason: 'not again within a minute');
+      now = now.add(const Duration(seconds: 61));
+      expect(await host.verify(proof, transcript, 'u-anna'), isFalse);
+      expect(fetches, 3);
+    });
+
+    test('a host that cannot fetch its own ticket throws instead of blaming the client', () async {
+      final host = PleyaCompanionIdentity(serverId: 'srv', fetch: (_) async => throw StateError('offline'));
+      final proof = await server.identityFor('u-anna').prove(transcript);
+      await expectLater(host.verify(proof, transcript, 'u-anna'), throwsStateError);
+    });
+
     test('a missing or broken proof fails closed', () async {
       final host = server.identityFor('u-bob');
       final proof = await server.identityFor('u-anna').prove(transcript);
@@ -159,6 +232,16 @@ void main() {
       expect(anna.userUuid, 'u-bob', reason: 'the member is never the host user, so the host switches');
       expect(anna.proveIdentity, isNull);
       expect(anna.verifyIdentity, isNotNull);
+    });
+
+    test('an account whose server issues no ticket gets no context (no beacon)', () async {
+      final contexts = await pleyaServerAuthContexts(
+        own: [_account('srv', 'u-bob')],
+        onDevice: [_account('srv', 'u-anna')],
+        deviceId: 'device-tv',
+        identityFor: (_) => PleyaCompanionIdentity(serverId: 'srv', fetch: (_) async => throw StateError('404')),
+      );
+      expect(contexts, isEmpty);
     });
 
     test('no identity without a ticket source, an account id or a live sign-in', () async {
@@ -397,6 +480,20 @@ void main() {
         join(await phone('other-srv', 'u-bob', from: elsewhere)),
         throwsA(isA<RemotePeerError>().having((e) => e.type, 'type', RemotePeerErrorType.authFailed)),
       );
+    });
+
+    test('a garbage ticket in a real handshake is refused, not crashed on', () async {
+      final anna = (await phone('srv', 'u-anna')).single;
+      expect(
+        await hostReply(
+          secret: anna.homeSecret,
+          contextId: anna.id,
+          claim: 'u-anna',
+          prove: (_) async => {'ticket': 'plc1.%%%.%%%', 'ticketSig': '%%%'},
+        ),
+        'authFailed',
+      );
+      expect(host.debugFailedAuthAttempts('127.0.0.1'), 1);
     });
 
     test('a host-only context cannot join: its claim is the host user, not the member', () async {

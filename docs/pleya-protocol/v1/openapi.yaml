@@ -682,12 +682,23 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CompanionTicket" }
         "400":
-          description: auth.device_key_invalid.
+          description: |
+            auth.device_key_invalid: de `device_key` is geen publieke
+            Ed25519-sleutel in base64url, of het lichaam is niet precies
+            `{device_key}` (een onbekend veld, zoals een `user_id`, valt hier
+            ook onder; `CompanionTicketRequest` is gesloten).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            auth.user_not_found als de gebruiker achter dit token niet meer
+            bestaat. Een oudere server kent de route niet en geeft ook `404`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /users/{id}:

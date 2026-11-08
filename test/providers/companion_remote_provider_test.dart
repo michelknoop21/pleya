@@ -18,6 +18,7 @@ import 'package:pleya/services/companion_remote/companion_remote_peer_service.da
 import 'package:pleya/services/companion_remote/remote_auth_service.dart';
 import 'package:pleya/services/storage_service.dart';
 
+import '../services/companion_remote/fake_pleya_ticket_server.dart';
 import '../test_helpers/prefs.dart';
 
 void main() {
@@ -509,6 +510,24 @@ void main() {
           isFalse,
         );
 
+        // A server that issues no ticket (no route, account not bound): no
+        // context and so no beacon, instead of a host every Fly fails on.
+        final noRoute = CompanionRemoteProvider();
+        addTearDown(noRoute.dispose);
+        expect(
+          await noRoute.ensureCryptoReady(
+            null,
+            connections: connections,
+            activeProfile: active,
+            profileConnections: profileConnections,
+            pleyaTicketFetch: (_, _) => throw StateError('404'),
+          ),
+          isFalse,
+        );
+        expect(noRoute.debugAuthContexts, isEmpty);
+
+        final server = await FakePleyaTicketServer.create('srv');
+        var fetches = 0;
         final provider = CompanionRemoteProvider();
         addTearDown(provider.dispose);
         final ok = await provider.ensureCryptoReady(
@@ -516,11 +535,14 @@ void main() {
           connections: connections,
           activeProfile: active,
           profileConnections: profileConnections,
-          // Building contexts fetches nothing; a ticket is asked at the handshake.
-          pleyaTicketFetch: (_, _) => throw StateError('no fetch while building'),
+          pleyaTicketFetch: (account, deviceKey) {
+            fetches++;
+            return server.fetchFor(account.accountUserId!)(deviceKey);
+          },
         );
 
         expect(ok, isTrue);
+        expect(fetches, 1, reason: 'one ticket for the own account while building');
         expect(provider.debugCryptoConnectionIds, [bob.id, anna.id]);
         expect(provider.debugAuthContexts.every((c) => c.verifyIdentity != null), isTrue);
         expect(provider.debugCryptoUserUuid, 'u-bob');
