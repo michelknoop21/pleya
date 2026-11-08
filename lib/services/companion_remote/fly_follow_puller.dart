@@ -180,6 +180,9 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
   void _onHosts(List<DiscoveredHost> hosts) {
     final tv = hosts.where((h) => h.platform == 'tvOS' && h.playing).firstOrNull;
     if (tv == null) {
+      // While this phone is connected (a peek or the tap), the Apple TV hides
+      // its hint for it: that is no stop, and the answer under way stays valid.
+      if (_linkBusy || _taking) return;
       // The Apple TV stopped, or left the network: the card goes (45-h).
       _askedFor = null;
       if (_card != null && !_taking) {

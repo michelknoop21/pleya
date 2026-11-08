@@ -39,9 +39,9 @@ bool leavesFlySessionOnExit(WatchTogetherProvider watchTogether, {required bool 
     watchTogether.isFlySession && !replacingWithVideo;
 
 /// A following phone starts without sound (45-i): the room hears the Apple
-/// TV. "Geluid aan" brings the usual level back, and so does turning the
-/// volume up any other way. The volume setting is never written, so the next
-/// player opens at the usual level.
+/// TV. "Geluid aan" brings the usual level back, and so does any other volume
+/// change through the player. The volume setting is never written, so the
+/// next player opens at the usual level.
 class FlyFollowMute {
   final ValueNotifier<bool> muted = ValueNotifier(false);
   StreamSubscription<double>? _volume;
@@ -52,7 +52,9 @@ class FlyFollowMute {
     if (_disposed || !following || muted.value) return false;
     muted.value = true;
     unawaited(player.setVolume(0));
-    // Sound turned up with the buttons or Control Center: the button goes.
+    // Sound turned up through the player (the remote's volume command, or any
+    // other setVolume): the button goes. The stream reports only player
+    // volume, so the hardware buttons and Control Center leave it standing.
     _volume = player.streams.volume.listen((volume) {
       if (volume > 0) _clear();
     });

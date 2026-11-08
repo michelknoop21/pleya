@@ -18,6 +18,7 @@ class _FakeTransport implements FlyFollowTransport {
   final asks = <bool>[];
   final log = <String>[];
   FlyFollowAnswer Function(bool peek) answer = (peek) => FlyFollowAnswer.offer(_offer(session: !peek));
+  Completer<void>? askGate;
   bool free = true;
   bool _listening = false;
   Completer<void>? discoverGate;
@@ -47,6 +48,7 @@ class _FakeTransport implements FlyFollowTransport {
   @override
   Future<FlyFollowAnswer> ask({required bool peek}) async {
     asks.add(peek);
+    await askGate?.future;
     return answer(peek);
   }
 
@@ -141,6 +143,29 @@ void main() {
 
     expect(await puller.take(), isFalse);
     expect(joined, isEmpty);
+  });
+
+  test('the hint the Apple TV hides while this phone peeks does not drop the answer', () async {
+    transport.askGate = Completer<void>();
+    await puller.start();
+    await beacon([_tv()]);
+    expect(transport.asks, [true]);
+
+    // Connected to this phone, the Apple TV leaves `playing` out of its beacon.
+    await beacon([_tv(playing: false)]);
+    transport.askGate!.complete();
+    await pumpEventQueue();
+
+    expect(puller.card, isNotNull, reason: 'the peek answer is kept');
+    expect(transport.asks, [true], reason: 'no second peek');
+  });
+
+  test('negative control: without a peek under way, a hint that drops removes the card', () async {
+    await puller.start();
+    await beacon([_tv()]);
+    expect(puller.card, isNotNull);
+    await beacon([_tv(playing: false)]);
+    expect(puller.card, isNull);
   });
 
   test('the card goes when the Apple TV stops', () async {
