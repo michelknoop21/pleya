@@ -35,14 +35,12 @@ import '../../../focus/key_event_utils.dart';
 import '../../../focus/dpad_navigator.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/library_query.dart';
-import '../../../media/media_backend.dart';
 import '../../../media/media_kind.dart';
 import '../../../media/media_library.dart';
 import '../../../mixins/refreshable.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../providers/hidden_libraries_provider.dart';
 import '../../../providers/libraries_provider.dart';
-import '../../../media/ids.dart';
 import '../../../providers/multi_server_provider.dart';
 import '../../../providers/unified_catalogs.dart';
 import '../../../services/unified_catalog/unified_catalog_filters.dart';
@@ -58,6 +56,7 @@ import '../../../utils/tv_hig.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
 import '../../../widgets/tv/tv_panel_primitives.dart';
 import '../assistant/tv_assistant_screen.dart';
+import '../../libraries/library_maintenance.dart';
 import '../tv_unified_catalog_screen.dart';
 import 'tv_library_action_sheet.dart';
 
@@ -66,24 +65,24 @@ enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, a
 
 /// Which actions [library] offers, in the order mockup 27 B draws them.
 ///
-/// Library maintenance (metadata refresh, scan, analyze, empty trash) changes
-/// canonical server data, so it needs [canManage] (the owner rule, see
-/// `MultiServerManager.canManageServerMetadata`); without it only the profile
-/// actions remain. Scan/Analyze/Prullenbak also hit Plex-only endpoints, the
-/// same gate `_getLibraryMenuItems` in the shared [LibrariesScreen] applies.
-/// Openen in catalogus only makes sense for a library the unified catalog
-/// actually browses.
-List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library, {required bool canManage, bool canAskBigP = false}) {
+/// Library maintenance (metadata refresh, scan, analyze, empty trash) is
+/// [maintenance]: what the library's own client offers this profile (see
+/// `libraryMaintenanceFor`), the same list the shared [LibrariesScreen] menu
+/// uses. Without it only the profile actions remain. Openen in catalogus only
+/// makes sense for a library the unified catalog actually browses.
+List<TvLibraryAction> tvLibraryActionsFor(
+  MediaLibrary library, {
+  List<LibraryMaintenance> maintenance = const [],
+  bool canAskBigP = false,
+}) {
   final isCatalogable = library.kind == MediaKind.movie || library.kind == MediaKind.show;
-  final canMaintain = canManage && (library.serverId?.isNotEmpty ?? false);
-  final isPlex = canMaintain && library.backend == MediaBackend.plex;
   return [
     if (isCatalogable) TvLibraryAction.openInCatalog,
-    if (canMaintain) TvLibraryAction.refreshMetadata,
-    if (isPlex) TvLibraryAction.scan,
+    if (maintenance.contains(LibraryMaintenance.refreshMetadata)) TvLibraryAction.refreshMetadata,
+    if (maintenance.contains(LibraryMaintenance.scan)) TvLibraryAction.scan,
     TvLibraryAction.toggleVisibility,
-    if (isPlex) TvLibraryAction.analyze,
-    if (isPlex) TvLibraryAction.emptyTrash,
+    if (maintenance.contains(LibraryMaintenance.analyze)) TvLibraryAction.analyze,
+    if (maintenance.contains(LibraryMaintenance.emptyTrash)) TvLibraryAction.emptyTrash,
     // DEC-142: Big P with this library as context, only where the
     // AssistantController shows him at all.
     if (canAskBigP && library.serverId != null) TvLibraryAction.askBigP,
@@ -258,19 +257,14 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
         context,
         library: library,
         isHidden: isHidden,
-        // No provider (a bare test harness) means no proof of ownership.
-        canManage: switch ((context.read<MultiServerProvider?>(), library.serverId)) {
-          (final multiServer?, final serverId?) => multiServer.serverManager.canManageServerMetadata(
-            ServerId(serverId),
-          ),
-          _ => false,
+        // No provider (a bare test harness) means no proof of rights.
+        maintenance: switch (context.read<MultiServerProvider?>()) {
+          final multiServer? => libraryMaintenanceFor(libraryMaintenanceClient(multiServer.serverManager, library)),
+          null => const [],
         },
         onOpenInCatalog: () => _openInCatalog(library),
-        onRefreshMetadata: () => _refreshMetadata(library),
-        onScan: () => _scan(library),
+        onMaintenance: (action) => _maintain(library, action),
         onToggleVisibility: () => _toggleVisibility(library, isHidden: isHidden),
-        onAnalyze: () => _analyze(library),
-        onEmptyTrash: () => _emptyTrash(library),
         canAskBigP:
             (context.read<AssistantController?>()?.availability ?? AssistantAvailability.hidden) !=
             AssistantAvailability.hidden,
@@ -329,37 +323,47 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
     }
   }
 
-  Future<void> _refreshMetadata(MediaLibrary library) => _confirmAndRun(
-    title: t.libraries.refreshMetadata,
-    message: t.libraries.refreshMetadataConfirm(title: library.title),
-    action: () => context.getMediaClientForLibrary(library).refreshLibraryMetadata(library.id),
-    successMessage: t.messages.metadataRefreshStarted(title: library.title),
-    failureMessage: t.libraries.failedToRefreshMetadata,
-  );
+  /// Runs [action] on the library's own client, never another server's. The
+  /// client is resolved again after the confirmation, so a right revoked
+  /// while the dialog was open starts nothing.
+  Future<void> _maintain(MediaLibrary library, LibraryMaintenance action) {
+    Future<void> run() {
+      final client = libraryMaintenanceClient(context.read<MultiServerProvider>().serverManager, library);
+      if (client == null) throw Exception(t.errors.noClientAvailable);
+      return runLibraryMaintenance(client, action, library.id);
+    }
 
-  Future<void> _scan(MediaLibrary library) => _confirmAndRun(
-    title: t.libraries.scanLibrary,
-    message: t.libraries.scanLibraryConfirm(title: library.title),
-    action: () => context.getPlexClientForLibrary(library).scanLibrary(library.id),
-    successMessage: t.messages.libraryScanStarted(title: library.title),
-    failureMessage: t.libraries.failedToScan,
-  );
-
-  Future<void> _analyze(MediaLibrary library) => _confirmAndRun(
-    title: t.libraries.analyzeLibrary,
-    message: t.libraries.analyzeLibraryConfirm(title: library.title),
-    action: () => context.getPlexClientForLibrary(library).analyzeLibrary(library.id),
-    successMessage: t.libraries.analysisStarted(title: library.title),
-    failureMessage: t.libraries.failedToAnalyze,
-  );
-
-  Future<void> _emptyTrash(MediaLibrary library) => _confirmAndRun(
-    title: t.libraries.emptyTrash,
-    message: t.libraries.emptyTrashConfirm(title: library.title),
-    action: () => context.getPlexClientForLibrary(library).emptyLibraryTrash(library.id),
-    successMessage: t.libraries.trashEmptied(title: library.title),
-    failureMessage: t.libraries.failedToEmptyTrash,
-  );
+    return switch (action) {
+      LibraryMaintenance.scan => _confirmAndRun(
+        title: t.libraries.scanLibrary,
+        message: t.libraries.scanLibraryConfirm(title: library.title),
+        action: run,
+        successMessage: t.messages.libraryScanStarted(title: library.title),
+        failureMessage: t.libraries.failedToScan,
+      ),
+      LibraryMaintenance.analyze => _confirmAndRun(
+        title: t.libraries.analyzeLibrary,
+        message: t.libraries.analyzeLibraryConfirm(title: library.title),
+        action: run,
+        successMessage: t.libraries.analysisStarted(title: library.title),
+        failureMessage: t.libraries.failedToAnalyze,
+      ),
+      LibraryMaintenance.refreshMetadata => _confirmAndRun(
+        title: t.libraries.refreshMetadata,
+        message: t.libraries.refreshMetadataConfirm(title: library.title),
+        action: run,
+        successMessage: t.messages.metadataRefreshStarted(title: library.title),
+        failureMessage: t.libraries.failedToRefreshMetadata,
+      ),
+      LibraryMaintenance.emptyTrash => _confirmAndRun(
+        title: t.libraries.emptyTrash,
+        message: t.libraries.emptyTrashConfirm(title: library.title),
+        action: run,
+        successMessage: t.libraries.trashEmptied(title: library.title),
+        failureMessage: t.libraries.failedToEmptyTrash,
+      ),
+    };
+  }
 
   Future<void> _toggleVisibility(MediaLibrary library, {required bool isHidden}) async {
     final hidden = context.read<HiddenLibrariesProvider>();

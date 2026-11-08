@@ -12,6 +12,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/screens/libraries/library_maintenance.dart';
 import 'package:pleya/screens/tv/sections/tv_libraries_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_navigator.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
@@ -62,8 +63,14 @@ void main() {
       kind: MediaKind.movie,
       serverId: 's',
     );
-    expect(tvLibraryActionsFor(library, canManage: true, canAskBigP: true).last, TvLibraryAction.askBigP);
-    expect(tvLibraryActionsFor(library, canManage: true), isNot(contains(TvLibraryAction.askBigP)));
+    expect(
+      tvLibraryActionsFor(library, maintenance: LibraryMaintenance.values, canAskBigP: true).last,
+      TvLibraryAction.askBigP,
+    );
+    expect(
+      tvLibraryActionsFor(library, maintenance: LibraryMaintenance.values),
+      isNot(contains(TvLibraryAction.askBigP)),
+    );
   });
 
   group('on the hub', () {

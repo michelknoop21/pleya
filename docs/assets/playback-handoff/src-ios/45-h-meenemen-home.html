@@ -1,0 +1,39 @@
+<style>
+.hero { height: 340px; }
+.hero img.bg { object-position: 50% 30%; }
+.hero .logo-text { font-size: 30px; letter-spacing: .2em; }
+.section-h .all { color: var(--ink); }
+.section-h h2 .n { color: var(--ink-3); font-weight: 500; margin-left: 4px; }
+.card.wide { flex-basis: 212px; width: 212px; }
+.card .t { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: none; }
+.card .s { font-size: 12px; color: var(--ink-2); }
+/* Meenemen-kaart: alleen zichtbaar zolang een Apple TV in de Home iets speelt */
+.fly { margin: 0 var(--inset) 12px; display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 14px; padding: 10px 10px 10px 10px; }
+.fly .th { position: relative; width: 64px; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; flex: none; background: #000; }
+.fly .th img { width: 100%; height: 100%; object-fit: cover; }
+.fly .th i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); }
+.fly .tx { flex: 1; min-width: 0; }
+.fly .k { white-space: nowrap; font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.fly .k .pill-dot { display: inline-block; width: 7px; height: 7px; }
+.fly .t { font-size: 15px; font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fly .s { white-space: nowrap; font-size: 12px; color: var(--ink-3); margin-top: 1px; }
+.fly .go { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 13px 0 10px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: 14px; font-weight: 700; }
+.fly .go svg { width: 20px; height: 20px; }
+</style>
+{{status}}{{header}}
+<div class="page"><div class="content">
+  <div class="chips" style="padding-top:2px"><span class="chip quiet on">Home</span><span class="chip quiet">Series</span><span class="chip quiet">Films</span></div>
+  <div class="fly">
+    <div class="th"><img src="art/dune2-backdrop.jpg"><i style="width:46%"></i></div>
+    <div class="tx"><div class="k"><span class="pill-dot ok"></span>Speelt op Woonkamer</div><div class="t">Dune: Part Two</div><div class="s">bij 1:16:42</div></div>
+    <div class="go"><svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.33 4.42H16.17C19 4.42 21.17 6.58 21.17 9.5C21.17 12.42 19.17 14.42 16.17 14.42H14L11 19.58H8.33Z"/><path d="M8.33 4.42H2.83C3.33 6.42 4.5 7.25 6.67 7.25H8.33"/><path d="M4.5 7.25C4.83 8.92 6 9.92 7.67 9.92H8.33"/></g><path d="M12.67 8.08C12.67 7.42 13 7.08 13.5 7.42L16.67 9.42C17.17 9.75 17.17 10.08 16.67 10.42L13.5 12.42C13 12.75 12.67 12.42 12.67 11.75Z" fill="currentColor"/></svg>Meenemen</div>
+  </div>
+  <div class="hero"><img class="bg" src="art/oppenheimer-backdrop.jpg"><div class="scrim"></div><div class="body">
+    <div class="logo-text">Oppenheimer</div>
+    <div class="meta"><span>Drama</span><span class="dotsep"></span><span>2023</span><span class="dotsep"></span><span>3u 0m</span><span class="tag">16</span></div>
+    <div class="cta"><div class="btn primary">{{icon:play}} Afspelen</div><div class="btn secondary">{{icon:info}} Meer info</div></div>
+  </div></div>
+  <div class="section" style="margin-top:8px"><div class="section-h"><h2>Verder kijken<span class="n">· 23</span></h2><span class="all">Alles bekijken {{icon:chev}}</span></div>
+    <div class="rail"><div class="card wide"><div class="art"><img src="art/thebear-backdrop.jpg"><div class="progress"><i style="width:62%"></i></div></div><div class="cap"><div class="t">The Bear</div><div class="s">S3 E4 · 18 min over</div></div></div><div class="card wide"><div class="art"><img src="art/andor-backdrop.jpg"></div><div class="cap"><div class="t">Andor</div><div class="s">S2 E5 · Volgende aflevering</div></div></div><div class="card wide"><div class="art"><img src="art/severance-backdrop.jpg"><div class="progress"><i style="width:70%"></i></div></div><div class="cap"><div class="t">Severance</div><div class="s">S2 E3 · 31 min over</div></div></div></div></div>
+</div></div>
+{{tabbar:home}}
