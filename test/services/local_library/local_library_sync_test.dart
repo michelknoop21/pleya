@@ -120,6 +120,22 @@ void main() {
     expect(store.items.map((i) => i.id), ['show']);
   });
 
+  test('a show and season that fit one page are listed once, without a second request to recheck them', () async {
+    final shows = library.copyWith(kind: MediaKind.show);
+    final show = film('show').copyWith(kind: MediaKind.show);
+    final season = film('season').copyWith(kind: MediaKind.season, parentId: 'show');
+    client.rows = [show];
+    client.childRows['show'] = [season];
+    client.childRows['season'] = [
+      film('ep').copyWith(kind: MediaKind.episode, parentId: 'season', grandparentId: 'show'),
+    ];
+
+    await LocalLibrarySync(store: store).syncLibrary(shows, client);
+
+    expect(client.childrenAsked, ['show', 'season']);
+    expect(store.items.map((i) => i.id).toSet(), {'show', 'season', 'ep'});
+  });
+
   test('a failed Plex id lookup does not fail the scan: the row is kept without ids', () async {
     client.idsError = MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 502);
 
@@ -270,6 +286,44 @@ void main() {
       expect(fake.requests.where((r) => r.contains('/items/later/children')), isEmpty);
       expect(store.isComplete(store.libraries.single.globalKey), isFalse);
       expect((await rescan()).keys.toSet(), {'later', 'other'});
+    });
+
+    test('a Pleya rescan asks no detail per title: the list row is the detail row', () async {
+      final fake = PleyaFakeServer();
+      fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');
+      fake.addItem(id: 'show', kind: 'show', title: 'Show', libraryId: 'lib-series', year: 2020);
+      fake.addItem(id: 'season', kind: 'season', title: 'Season 1', parentId: 'show', index: 1);
+      fake.addItem(id: 'episode', kind: 'episode', title: 'Pilot', parentId: 'season', index: 1);
+      final pleya = fake.client();
+      addTearDown(pleya.close);
+      await pleya.refreshCapabilities();
+      const pleyaLibrary = MediaLibrary(
+        id: 'lib-series',
+        backend: MediaBackend.pleyaServer,
+        title: 'Series',
+        kind: MediaKind.show,
+        serverId: 'srv-1',
+      );
+      await LocalLibrarySync(store: store).syncLibrary(pleyaLibrary, pleya);
+      fake.items['episode']!['title'] = 'Pilot, renamed';
+      fake.requests.clear();
+      // A new session: nothing read before is held in memory.
+      final next = fake.client();
+      addTearDown(next.close);
+      await next.refreshCapabilities();
+
+      await LocalLibrarySync(store: store).syncLibrary(pleyaLibrary, next);
+
+      final detailIds = [
+        for (final r in fake.requests)
+          if (RegExp(r'/items/([^/?]+)$').firstMatch(r.split('?').first) case final m?) m.group(1),
+      ];
+      expect(detailIds, unorderedEquals(['show', 'season']), reason: 'ancestor names once per parent, never per title');
+      final rows = {for (final i in store.items) i.id: i};
+      expect(rows.keys.toSet(), {'show', 'season', 'episode'});
+      expect(rows['episode']?.title, 'Pilot, renamed', reason: 'the fresh list row wins over the stored one');
+      expect(rows['episode']?.grandparentTitle, 'Show');
+      expect(rows['episode']?.parentTitle, 'Season 1');
     });
 
     test('a server that predates the field stores nothing final', () async {
