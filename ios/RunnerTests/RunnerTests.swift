@@ -5,6 +5,12 @@ import XCTest
 
 class RunnerTests: XCTestCase {
 
+  func testPlaybackFootprintReadsTheCurrentTask() throws {
+    let bytes = try XCTUnwrap(applePlaybackFootprintBytes())
+    XCTAssertGreaterThan(bytes, 0)
+    XCTAssertLessThan(bytes, ProcessInfo.processInfo.physicalMemory)
+  }
+
   func testExample() {
     // If you add code to the Runner application, consider adding tests here.
     // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
