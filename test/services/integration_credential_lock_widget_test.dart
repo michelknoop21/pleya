@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/services/integration_credential_changes.dart';
 
 import '../test_helpers/prefs.dart';
+import '../test_helpers/seerr_fake.dart';
 
 void main() {
   setUp(resetSharedPreferencesForTest);
@@ -41,6 +42,15 @@ void main() {
   for (final value in [1, 2]) {
     testWidgets('credential storage remains usable in widget test $value', (tester) async {
       expect(await IntegrationCredentialChanges.exclusively(() async => value), value);
+    }, timeout: const Timeout(Duration(seconds: 5)));
+  }
+
+  for (final value in [1, 2]) {
+    testWidgets('Seerr profile remains usable in widget test $value', (tester) async {
+      final provider = await seerrProvider(FakeSeerr());
+      addTearDown(provider.dispose);
+      expect(provider.isConfigured, isTrue);
+      expect(provider.session?.userId, 7);
     }, timeout: const Timeout(Duration(seconds: 5)));
   }
 }

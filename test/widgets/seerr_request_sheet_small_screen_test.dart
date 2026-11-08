@@ -11,6 +11,7 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/models/seerr/seerr_media.dart';
 import 'package:pleya/widgets/seerr_request_sheet.dart';
 
+import '../test_helpers/prefs.dart';
 import '../test_helpers/seerr_fake.dart';
 
 const _movie = SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'Charge');
@@ -20,6 +21,8 @@ Finder _button(String instance) => seerrNode(AutomationIds.requestsFormButton, i
 Finder _notice(String kind) => seerrNode(AutomationIds.requestsFormNotice, kind);
 
 void main() {
+  setUp(resetSharedPreferencesForTest);
+
   late FakeSeerr fake;
 
   /// Only an HD instance that is not the default: the list is read, and HD
