@@ -28,6 +28,9 @@ MediaServerClient? libraryMaintenanceClient(MultiServerManager servers, MediaLib
 /// What [client] can do for a library, in menu order. Analyze and empty
 /// trash have no equivalent outside Plex.
 List<LibraryMaintenance> libraryMaintenanceFor(MediaServerClient? client) => [
+  // False alarm: the linter only sees the static type. Concrete clients
+  // implement this capability contract, so the check is not always false.
+  // ignore: avoid-unrelated-type-assertions
   if (client is LibraryScanClient) LibraryMaintenance.scan,
   if (client is PlexClient) LibraryMaintenance.analyze,
   if (client != null) LibraryMaintenance.refreshMetadata,
