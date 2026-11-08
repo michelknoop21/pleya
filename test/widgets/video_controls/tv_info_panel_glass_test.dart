@@ -1,6 +1,6 @@
 /// Liquid Glass Task 9 (LG-05): the TV player panel's card on glass.
 ///
-/// Glass off keeps today's card (24-sigma blur). Glass on swaps only the
+/// Glass off keeps today's card (24-sigma blur, none on Apple TV: PLR12). Glass on swaps only the
 /// surface: a [GlassSurface] with tvOS tokens and no backdrop, because mpv
 /// draws under the FlutterView and a Flutter backdrop would sample nothing.
 /// Contrast is read over the lightest real fixture (Big Buck Bunny).
@@ -113,7 +113,28 @@ void main() {
               as BoxDecoration)
           .color!;
 
-  testWidgets('glas uit: de kaart van vandaag met blur sigma 24', (tester) async {
+  testWidgets('glas uit op Apple TV: dezelfde kaart zonder BackdropFilter boven de speler (PLR12)', (tester) async {
+    await _pumpPanel(tester, glass: false);
+    // mpv draws under the FlutterView, so a blur samples nothing and only
+    // costs a display-sized offscreen pass during 4K playback.
+    expect(find.byType(BackdropFilter), findsNothing);
+    final card = find.byWidgetPredicate((w) {
+      final d = w is Container ? w.decoration : null;
+      return d is BoxDecoration && d.color == TvPanelTheme.card;
+    });
+    expect(card, findsOneWidget);
+    final decoration = tester.widget<Container>(card).decoration! as BoxDecoration;
+    expect(decoration.border, Border.all(color: TvPanelTheme.cardBorder));
+    expect(decoration.boxShadow, isNotEmpty);
+    expect(find.ancestor(of: card, matching: find.byType(ClipRRect)), findsWidgets);
+    expect(pillFill(tester, videoPill()), TvPanelTheme.inactivePill);
+    expect(pillFill(tester, informationPill()), TvPanelTheme.activePill);
+  });
+
+  testWidgets('glas uit op Android TV: de kaart van vandaag met blur sigma 24', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(false);
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
     await _pumpPanel(tester, glass: false);
     final blur = tester.widget<BackdropFilter>(find.byType(BackdropFilter));
     expect(blur.filter, ui.ImageFilter.blur(sigmaX: kTvPanelBlurSigma, sigmaY: kTvPanelBlurSigma));
