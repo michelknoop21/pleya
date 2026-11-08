@@ -102,6 +102,7 @@ import 'libraries/libraries_screen.dart';
 import 'libraries/mobile_libraries_screen.dart';
 import 'tv/sections/tv_libraries_screen.dart';
 import 'tv/sections/tv_personal_media_overview_screens.dart';
+import 'main/scroll_tab_to_top.dart';
 import 'livetv/live_tv_screen.dart';
 import 'search_screen.dart';
 import 'seerr/seerr_discover_screen.dart';
@@ -453,8 +454,9 @@ MainBackDecision mainBackKeyDecision({
 /// production composition rather than as a copy of it — the same reason
 /// [mainScreenSideNavigationContentLayout] is.
 @visibleForTesting
-Widget mainScreenDestinationStack({required List<Widget> screens, required int currentIndex}) {
+Widget mainScreenDestinationStack({required List<Widget> screens, required int currentIndex, GlobalKey? stackKey}) {
   return IndexedStack(
+    key: stackKey,
     index: currentIndex,
     clipBehavior: Clip.none,
     children: [
@@ -566,6 +568,7 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<State<WatchlistScreen>> _watchlistKey = GlobalKey();
   final GlobalKey _myPleyaKey = GlobalKey();
   final GlobalKey<SideNavigationRailState> _sideNavKey = GlobalKey();
+  final GlobalKey _destinationStackKey = GlobalKey();
 
   /// Fase 7's TV root. Created once and never rebuilt away, for the same reason
   /// [_focus] is: it holds the active destination and the per-destination focus
@@ -1527,7 +1530,11 @@ class _MainScreenState extends State<MainScreen>
         // and it is the only affordance those layouts have.
         if (!_isTvShell) const AuthErrorBanner(),
         Expanded(
-          child: mainScreenDestinationStack(screens: _screens, currentIndex: _currentIndex),
+          child: mainScreenDestinationStack(
+            screens: _screens,
+            currentIndex: _currentIndex,
+            stackKey: _destinationStackKey,
+          ),
         ),
       ],
     );
@@ -3229,6 +3236,7 @@ class _MainScreenState extends State<MainScreen>
                     // Part of the fase-1 presentation, so it stays on the phone
                     // side: the iPad's bar behaves exactly as it did before fase 1.
                     if (isUnified && tabs[i].id != _currentTab) Haptics.light();
+                    if (tabs[i].id == _currentTab) scrollTabToTop(_destinationStackKey, _currentIndex);
                     _selectTab(tabs[i].id);
                   },
                   hideLabels: hideLabels,
