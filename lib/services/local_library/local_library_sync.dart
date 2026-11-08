@@ -132,6 +132,12 @@ class LocalLibrarySync {
           candidate.title == old.title &&
           candidate.year == old.year) {
         detail = retained!;
+      } else if (old != null && client is PleyaServerClient) {
+        // Pleya Server sends no updatedAt, and needs none here: it fills a list
+        // row like a detail row (hydrateRead in store_read.go) and the client
+        // adds the ancestor names per page, so the candidate is fresh. Asking
+        // anyway cost one request per title on every scan.
+        detail = candidate;
       } else {
         try {
           detail = await client.fetchItem(candidate.id).timeout(const Duration(seconds: 20));
@@ -255,7 +261,9 @@ class LocalLibrarySync {
       int? total;
       final seen = <String>{};
       String? first;
+      var pages = 0;
       while (true) {
+        pages++;
         await check();
         final page = await fetch(offset, pageSize).timeout(const Duration(seconds: 20));
         await check();
@@ -288,6 +296,9 @@ class LocalLibrarySync {
         if (page.items.length < pageSize || offset >= total) break;
       }
       if (seen.length != total) throw StateError('Incomplete library scan');
+      // One page is one server answer and cannot drift. Rechecking it cost a
+      // second request for every show and season.
+      if (pages == 1) return;
       // Recheck the head/count after enumeration. A drifting scan never prunes.
       final head = await fetch(0, 1).timeout(const Duration(seconds: 20));
       await check();
