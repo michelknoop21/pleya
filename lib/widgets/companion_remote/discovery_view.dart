@@ -16,6 +16,7 @@ import '../../profiles/active_profile_provider.dart';
 import '../../profiles/plex_home_service.dart';
 import '../../profiles/profile_connection_registry.dart';
 import '../../providers/companion_remote_provider.dart';
+import '../../services/companion_remote/companion_remote_host_controller.dart';
 import '../../services/companion_remote/pleya_fly_receive.dart';
 import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
@@ -84,6 +85,7 @@ class _DiscoveryViewState extends State<DiscoveryView> with ControllerDisposerMi
       profileConnections: profileConnections,
       identity: identity,
       plexHomeForConnection: plexHome.materializePlexHomeForConnection,
+      pleyaTicketFetch: pleyaCompanionTicketFetch(context),
     );
     if (!mounted) return;
 

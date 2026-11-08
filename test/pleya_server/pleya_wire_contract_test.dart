@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/pleya_server/pleya_wire.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_activity.dart';
+import 'package:pleya/models/pleya_server/pleya_wire_companion.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_library.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_lists.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_playback.dart';
@@ -186,6 +187,13 @@ void main() {
     'TokenPair': (json) => PleyaTokenPair.fromJson(json),
     'User': (json) => PleyaUser.fromJson(json),
     'StreamToken': (json) => PleyaStreamToken.fromJson(json),
+    'CompanionTicket': (json) {
+      final ticket = PleyaCompanionTicket.fromJson(json);
+      expect(ticket.ticket, startsWith('plc1.'));
+    },
+    'CompanionTicketRequest': (json) {
+      expect(PleyaCompanionTicket.request(json['device_key'] as String), json);
+    },
     'ErrorEnvelope': (json) => PleyaError.fromJson(json),
     'LibraryList': (json) => PleyaLibrary.listFromJson(json),
     'Library': (json) => PleyaLibrary.fromJson(json),
@@ -256,8 +264,8 @@ void main() {
       );
     });
 
-    test('covers the 154 fixtures the contract ships', () {
-      expect(fixtures, hasLength(154));
+    test('covers the 156 fixtures the contract ships', () {
+      expect(fixtures, hasLength(156));
     });
 
     for (final fixture in fixtures) {
