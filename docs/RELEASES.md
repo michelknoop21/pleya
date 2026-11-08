@@ -50,6 +50,31 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 449 · 8 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 32c7516a4055d98f922131f99f5527422c64423e -->
+
+### Improved
+
+- **Scrolling All Movies and All Series no longer stalls while the library refreshes.** The
+  background refresh that keeps the library up to date read every title from a Pleya Server
+  one by one and asked twice for each list of seasons and episodes. A refresh now makes
+  about 600 requests instead of about 3,750, so it no longer competes with the grid while you
+  scroll.
+
+### Fixed
+
+- **Apple TV is less likely to quit when you open the player panel during a 4K film.** tvOS
+  closed Pleya because the device ran out of memory. Pleya now keeps a smaller video buffer on Apple
+  TV, and the panel no longer draws a background blur that could not be seen over the video
+  anyway.
+
+### Notes
+
+- Worth checking on Apple TV: play a 4K film and open and close the panel with a swipe down
+  a few times. If Pleya still quits, send a log; the cause is now visible in the system log.
+- Worth checking on Apple TV: open Pleya, go straight to All Movies and scroll down quickly.
+
 ## 2.8.1 · build 448 · 7 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: e91627eb239db4b0802dffbc2038beecc04e94f8 -->
