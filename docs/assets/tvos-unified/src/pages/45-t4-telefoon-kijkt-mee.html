@@ -1,0 +1,13 @@
+<style>
+/* film speelt zonder bediening; de melding verschijnt een paar seconden als een telefoon aansluit (stijl van 45-t1) */
+.video { position: absolute; inset: 0; }
+.video img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.start-notice { position: absolute; right: var(--inset); top: 56px; width: 420px; box-sizing: border-box;
+                display: flex; gap: 12px; align-items: flex-start; padding: 12px;
+                background: var(--elevated); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.28); z-index: 5; }
+.start-notice .lead { flex: none; width: 20px; height: 20px; margin: 1px; color: var(--ink-2); }
+.start-notice .t { font-size: 14px; font-weight: 700; }
+.start-notice .s { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+</style>
+<div class="video"><img src="{{art:dune2-backdrop}}"></div>
+<div class="start-notice"><svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><div><div class="t">iPhone van Michel kijkt mee</div><div class="s">Synchroon · pauzeren en spoelen gelden voor beide</div></div></div>

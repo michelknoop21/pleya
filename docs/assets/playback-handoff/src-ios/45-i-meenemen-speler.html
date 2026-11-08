@@ -1,0 +1,33 @@
+<style>
+html,body{width:852px;height:393px}
+.pl{position:absolute;inset:0;background:#000}
+.pl img{width:100%;height:100%;object-fit:cover;opacity:.55}
+.pl .top{position:absolute;left:0;right:0;top:0;padding:14px 60px 0;display:flex;align-items:center;gap:14px;color:#fff}
+.pl .top svg{width:26px;height:26px}
+.pl .top .t{flex:1;font-size:15px;font-weight:600}
+.pl .top .t small{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);font-weight:400}
+.pl .top .t small .pill-dot{display:inline-block;width:7px;height:7px}
+.pl .mid{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;justify-content:center;gap:64px;align-items:center;color:#fff}
+.pl .mid svg{width:36px;height:36px}
+.pl .mid .big{width:64px;height:64px;border-radius:999px;background:rgba(255,255,255,.14);display:grid;place-items:center}
+.pl .mid .big svg{width:36px;height:36px}
+.pl .bot{position:absolute;left:0;right:0;bottom:0;padding:0 60px 18px;color:#fff}
+.pl .bar{height:4px;background:rgba(255,255,255,.25);border-radius:2px;position:relative;margin:8px 0}
+.pl .bar i{display:block;height:100%;width:46%;background:var(--accent);border-radius:2px}
+.pl .bar b{position:absolute;left:46%;top:50%;width:14px;height:14px;border-radius:999px;background:var(--accent);transform:translate(-50%,-50%)}
+.pl .bar em{position:absolute;top:0;height:100%;width:2px;background:rgba(255,255,255,.7)}
+.pl .times{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
+.pl .acts{display:flex;justify-content:space-between;margin-top:6px;font-size:12px}
+.pl .acts span{display:flex;align-items:center;gap:6px}
+.pl .acts svg{width:20px;height:20px}
+/* geluid staat uit bij het meenemen: één knop, op de plek waar de duim al is */
+.pl .unmute{position:absolute;left:60px;bottom:78px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.92);color:#141414;font-size:13px;font-weight:700;padding:8px 14px 8px 11px;border-radius:999px}
+.pl .unmute svg{width:20px;height:20px}
+</style>
+<div class="pl"><img src="art/dune2-backdrop.jpg">
+  <div class="top">{{icon:chevd}}<div class="t">Dune: Part Two<small><span class="pill-dot ok"></span>Synchroon met Woonkamer</small></div><svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.33 4.42H16.17C19 4.42 21.17 6.58 21.17 9.5C21.17 12.42 19.17 14.42 16.17 14.42H14L11 19.58H8.33Z"/><path d="M8.33 4.42H2.83C3.33 6.42 4.5 7.25 6.67 7.25H8.33"/><path d="M4.5 7.25C4.83 8.92 6 9.92 7.67 9.92H8.33"/></g><path d="M12.67 8.08C12.67 7.42 13 7.08 13.5 7.42L16.67 9.42C17.17 9.75 17.17 10.08 16.67 10.42L13.5 12.42C13 12.75 12.67 12.42 12.67 11.75Z" fill="currentColor"/></svg>{{icon:airplay}}{{icon:more}}</div>
+  <div class="mid">{{icon:rew}}<div class="big">{{icon:pause}}</div>{{icon:fwd}}</div>
+  <div class="unmute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="m16.5 9.5 5 5M21.5 9.5l-5 5"/></svg>Geluid aan</div>
+  <div class="bot"><div class="times"><span>1:16:42</span><span>-1:29:18</span></div><div class="bar"><i></i><b></b><em style="left:22%"></em><em style="left:61%"></em><em style="left:83%"></em></div>
+  <div class="acts"><span>{{icon:lock}} Vergrendelen</span><span>{{icon:cc}} Audio en ondertitels</span><span>{{icon:clock}} Slaaptimer</span></div></div>
+</div>
