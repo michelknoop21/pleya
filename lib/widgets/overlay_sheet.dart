@@ -592,7 +592,12 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     descendants.reduce((a, b) {
       final ra = a.rect;
       final rb = b.rect;
-      return rb.top < ra.top || (rb.top == ra.top && rb.left < ra.left) ? b : a;
+      // A row only counts as higher when it lies wholly above: buttons in
+      // one row differ in height, and a fraction of a pixel must not beat
+      // reading order. Within a row, the left one wins.
+      final above = rb.bottom <= ra.top;
+      final sameRow = rb.top < ra.bottom && ra.top < rb.bottom;
+      return above || (sameRow && rb.left < ra.left) ? b : a;
     }).requestFocus();
   }
 
