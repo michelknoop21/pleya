@@ -50,6 +50,34 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 451 · 8 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: b4e898c274d3bf5c19fbde5e1f8d5f9881bdc9ac -->
+
+### New
+
+- **Take the film with you.** While the Apple TV plays, an iPhone in the same Home shows a card
+  on Home: "Speelt op" with the TV's name and a Meenemen button. One tap and the phone plays the
+  same title in sync, muted, with a Geluid aan button. The Apple TV keeps playing. Pause and
+  skip work on both screens. If the phone stalls or locks, the TV plays on; when the TV stops,
+  the phone stops too. The Pleya Fly picker on the Apple TV has a Meenemen row next to
+  Verplaatsen as a second way in. Only the TV writes watch progress.
+- **Pleya Fly works with Pleya Server.** A household that only uses Pleya Server can now move
+  playback between iPhone and Apple TV. The server signs a short-lived proof of who you are, so
+  a restricted account cannot pose as the owner and skip the PIN.
+- **Empty trash and refresh metadata on Pleya Server.** The library menu for an owner or
+  administrator has Empty trash, which removes titles whose files are all gone, and Refresh
+  metadata, which fetches the details of every title again. Empty trash removes nothing when a
+  share looks unmounted. Running Pleya Server jobs show up in the tasks panel and can be
+  stopped there.
+
+### Notes
+
+- Needs the server update deployed on 8 November 2026 (22:21). An older server offers neither
+  Empty trash nor Pleya Fly.
+- Worth checking: Meenemen from the Home card and from the Apple TV picker, with the phone in
+  another room; and Pleya Fly on a profile that only has Pleya Server.
+
 ## 2.8.1 · build 450 · 8 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: b37b3b4b3d87f5173ba0d4c30127a432738090c7 -->
