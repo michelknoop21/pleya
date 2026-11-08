@@ -653,6 +653,43 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /companion/ticket:
+    post:
+      tags: [users]
+      operationId: createCompanionTicket
+      summary: Een kortlevend bewijs van wie dit toestel is, voor Pleya Fly.
+      description: |
+        Klasse `authenticated`, elke rol, altijd over de aanvrager zelf
+        (DEC-XXX). Het ticket draagt de server-id, de gebruiker uit het
+        accesstoken en de publieke sleutel van het toestel, ondertekend met
+        Ed25519. Twee toestellen van hetzelfde huishouden controleren het op het
+        lokale netwerk zonder de server; de client ondertekent de handdruk met
+        zijn eigen sleutel, zodat een afgeluisterd ticket niets waard is. Tien
+        minuten geldig. De sleutel komt uit de ondertekensleutel van de tokens,
+        dus `POST /server/rotate-signing-key` maakt elk ticket ongeldig en geeft
+        een nieuwe `key_id`. Een API-token krijgt `403` met
+        `auth.scope_insufficient`. Een oudere server kent de route niet en
+        antwoordt `404`; een client biedt Pleya Fly op Pleya Server dan niet aan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanionTicketRequest" }
+      responses:
+        "200":
+          description: Het ticket en de sleutel die het ondertekende.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanionTicket" }
+        "400":
+          description: auth.device_key_invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /users/{id}:
     patch:
       tags: [users]
@@ -5349,6 +5386,34 @@ components:
           description: |
             Of deze gebruiker nu met anderen deelt. Zonder eigen keuze waar, en
             onwaar voor een `restricted` gebruiker: die is opt-in.
+
+    CompanionTicketRequest:
+      type: object
+      required: [device_key]
+      additionalProperties: false
+      properties:
+        device_key:
+          type: string
+          minLength: 43
+          maxLength: 43
+          description: Publieke Ed25519-sleutel van het toestel, base64url zonder opvulling.
+
+    CompanionTicket:
+      type: object
+      required: [ticket, expires_at, key_id, public_key]
+      properties:
+        ticket:
+          type: string
+          description: |
+            `plc1.<payload>.<handtekening>`, beide base64url zonder opvulling.
+            De payload is JSON met `kid`, `srv`, `sub`, `iat`, `exp` en `cnf`
+            (de toestelsleutel); de handtekening is Ed25519 over
+            `plc1.<payload>`.
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+        key_id: { type: string }
+        public_key:
+          type: string
+          description: Publieke Ed25519-sleutel van de server, base64url zonder opvulling.
 
     ActivitySharingRequest:
       type: object

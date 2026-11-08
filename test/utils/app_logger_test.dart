@@ -24,4 +24,27 @@ void main() {
       expect(code, matches(RegExp(r'^[0-9A-F]{4}$')));
     });
   });
+
+  group('redaction', () {
+    const userId = '0191e27b-0000-7aaa-bbbb-123456789abc';
+
+    test('the user id of a Pleya Server connection id stays out of a log', () {
+      final out = redactLogMessageForTest('Skipping pleyaServer.0191e27a-4f8d-7c62-9b3a-2d5e8f1a6c00.$userId now');
+      expect(out, isNot(contains(userId)));
+      expect(out, contains('pleyaServer.0191e27a-4f8d-7c62-9b3a-2d5e8f1a6c00.[REDACTED]'));
+    });
+
+    test('Pleya Server tokens, tickets and stream_token query values are redacted', () {
+      const token = 'ply1.eyJzdWIiOiIwMTkxIn0.c2ln';
+      const ticket = 'plc1.eyJzdWIiOiIwMTkxIn0.c2ln';
+      final out = redactLogMessageForTest('GET /stream/v?stream_token=$token&x=1 ticket $ticket');
+      expect(out, isNot(contains('eyJzdWIiOiIwMTkxIn0')));
+      expect(out, contains('stream_token=[REDACTED]&x=1'));
+    });
+
+    test('negative control: other text passes untouched', () {
+      const plain = 'pleyaServer.srv connected; plex.tv ok';
+      expect(redactLogMessageForTest(plain), plain);
+    });
+  });
 }

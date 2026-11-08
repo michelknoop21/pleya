@@ -347,6 +347,33 @@ class CompanionRemotePeerService with KeepaliveMixin {
                 return;
               }
 
+              // The secret says which Home; a ticket, where the context asks
+              // for one, says which user (DEC-XXX).
+              if (selectedContext.verifyIdentity case final verify?) {
+                final transcript = auth.authTranscript(
+                  hostNonce: hostNonce,
+                  clientNonce: clientNonce,
+                  hostClientId: selectedContext.clientIdentifier,
+                  userUUID: userUUID,
+                  clientIdentifier: clientIdentifier,
+                  deviceName: deviceName,
+                  platform: platform,
+                );
+                var proven = false;
+                try {
+                  proven = await verify(json, transcript, userUUID);
+                } catch (e) {
+                  appLogger.w('CompanionRemote: Identity check failed (${e.runtimeType})');
+                }
+                if (!proven) {
+                  _recordFailedAuth(sourceIp);
+                  appLogger.w('CompanionRemote: Auth failed — identity not proven');
+                  socket.add(jsonEncode({'type': 'authFailed'}));
+                  unawaited(socket.close(4003, 'Authentication failed'));
+                  return;
+                }
+              }
+
               // Auth success — derive per-session encryption key
               _failedAuthAttempts.remove(sourceIp);
               isAuthenticated = true;
@@ -629,6 +656,33 @@ class CompanionRemotePeerService with KeepaliveMixin {
                   platform: platform,
                 );
 
+                Map<String, String> proof = const {};
+                if (selectedContext.proveIdentity case final prove?) {
+                  try {
+                    proof = await prove(
+                      auth.authTranscript(
+                        hostNonce: hostNonce!,
+                        clientNonce: clientNonce!,
+                        hostClientId: receivedHostClientId!,
+                        userUUID: selectedContext.userUuid,
+                        clientIdentifier: selectedContext.clientIdentifier,
+                        deviceName: deviceName,
+                        platform: platform,
+                      ),
+                    );
+                  } catch (e) {
+                    // Only the type: the error may carry a ticket.
+                    appLogger.w('CompanionRemote: No identity proof (${e.runtimeType})');
+                    if (!completer.isCompleted) {
+                      completer.completeError(
+                        const RemotePeerError(type: RemotePeerErrorType.authFailed, message: 'No identity proof'),
+                      );
+                    }
+                    unawaited(_channel?.sink.close(4003, 'Authentication failed'));
+                    return;
+                  }
+                }
+
                 _channel!.sink.add(
                   jsonEncode({
                     'type': 'auth',
@@ -639,6 +693,7 @@ class CompanionRemotePeerService with KeepaliveMixin {
                     'deviceName': deviceName,
                     'platform': platform,
                     'authTag': authTag,
+                    ...proof,
                   }),
                 );
 

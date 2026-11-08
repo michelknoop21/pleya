@@ -62,6 +62,7 @@ class _Phone extends CompanionRemoteProvider {
     ActivePlexIdentity? identity,
     PlexAccountConnection? account,
     PlexHomeResolver? plexHomeForConnection,
+    PleyaTicketFetchFor? pleyaTicketFetch,
   }) async => true;
 
   @override

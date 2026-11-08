@@ -496,6 +496,19 @@ void main() {
         await storage.setActiveProfileId(bobProfile.id);
         await active.initialize();
 
+        // Without a ticket source nobody could prove who they are: no identity.
+        final withoutTickets = CompanionRemoteProvider();
+        addTearDown(withoutTickets.dispose);
+        expect(
+          await withoutTickets.ensureCryptoReady(
+            null,
+            connections: connections,
+            activeProfile: active,
+            profileConnections: profileConnections,
+          ),
+          isFalse,
+        );
+
         final provider = CompanionRemoteProvider();
         addTearDown(provider.dispose);
         final ok = await provider.ensureCryptoReady(
@@ -503,10 +516,13 @@ void main() {
           connections: connections,
           activeProfile: active,
           profileConnections: profileConnections,
+          // Building contexts fetches nothing; a ticket is asked at the handshake.
+          pleyaTicketFetch: (_, _) => throw StateError('no fetch while building'),
         );
 
         expect(ok, isTrue);
         expect(provider.debugCryptoConnectionIds, [bob.id, anna.id]);
+        expect(provider.debugAuthContexts.every((c) => c.verifyIdentity != null), isTrue);
         expect(provider.debugCryptoUserUuid, 'u-bob');
         final contexts = provider.debugAuthContexts;
         expect(contexts.map((c) => c.hostOnly), [false, true]);

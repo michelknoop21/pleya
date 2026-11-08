@@ -743,6 +743,16 @@
     {
       "file": "info_artwork_cache_admin.json",
       "schema": "Info"
+    },
+    {
+      "file": "companion_ticket_request.json",
+      "schema": "CompanionTicketRequest",
+      "note": "DEC-XXX: toestelsleutel voor Pleya Fly"
+    },
+    {
+      "file": "companion_ticket.json",
+      "schema": "CompanionTicket",
+      "note": "DEC-XXX: ticket over de aanvrager"
     }
   ]
 }

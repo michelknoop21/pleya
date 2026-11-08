@@ -17,6 +17,8 @@ import '../profiles/profile_connection_registry.dart';
 import '../services/companion_remote/companion_remote_peer_service.dart';
 import '../services/companion_remote/lan_discovery_service.dart';
 import '../services/companion_remote/playback_handoff.dart';
+import '../models/pleya_server/pleya_wire_companion.dart';
+import '../services/companion_remote/pleya_companion_identity.dart';
 import '../services/companion_remote/pleya_server_remote_auth.dart';
 import '../services/companion_remote/remote_auth_context.dart';
 import '../services/companion_remote/remote_auth_service.dart';
@@ -30,6 +32,9 @@ export '../services/companion_remote/lan_discovery_service.dart' show Discovered
 
 typedef CommandReceivedCallback = void Function(RemoteCommand command);
 typedef PlexHomeResolver = Future<PlexHome?> Function(String connectionId);
+
+/// Fetches a companion ticket for [account] bound to [deviceKey] (DEC-XXX).
+typedef PleyaTicketFetchFor = Future<PleyaCompanionTicket> Function(PleyaServerConnection account, String deviceKey);
 
 class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin {
   RemoteSession? _session;
@@ -62,6 +67,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   // Crypto context (derived in memory, never persisted)
   List<RemoteAuthContext> _authContexts = const [];
   String? _cryptoProfileId;
+
+  // Ticket identities per Pleya Server connection: the device key and ticket
+  // outlive a rebuild of the contexts (DEC-XXX).
+  final Map<String, PleyaCompanionIdentity> _pleyaIdentities = {};
 
   int get reconnectAttempts => _reconnectAttempts;
 
@@ -270,6 +279,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     ActivePlexIdentity? identity,
     PlexAccountConnection? account,
     PlexHomeResolver? plexHomeForConnection,
+    PleyaTicketFetchFor? pleyaTicketFetch,
   }) async {
     await activeProfile.initialize();
     final profile = activeProfile.active;
@@ -286,6 +296,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       identity: identity,
       preferredAccount: account,
       plexHomeForConnection: plexHomeForConnection,
+      pleyaTicketFetch: pleyaTicketFetch,
     );
 
     if (nextContexts.isEmpty) {
@@ -321,6 +332,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     required ActivePlexIdentity? identity,
     required PlexAccountConnection? preferredAccount,
     required PlexHomeResolver? plexHomeForConnection,
+    required PleyaTicketFetchFor? pleyaTicketFetch,
   }) async {
     final contexts = <RemoteAuthContext>[];
     final seen = <String>{};
@@ -383,10 +395,25 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
     if (pleyaAccounts.isNotEmpty) {
       final deviceId = (await pleyaServerDeviceIdentity())?.id;
-      if (deviceId == null) {
-        appLogger.w('CompanionRemote: Skipping Pleya Server remote identity: no device id');
+      if (deviceId == null || pleyaTicketFetch == null) {
+        // Without a ticket nobody could prove who they are: no Pleya Server Fly.
+        appLogger.w('CompanionRemote: Skipping Pleya Server remote identity: no device id or ticket source');
       } else {
-        (await pleyaServerAuthContexts(own: pleyaAccounts, onDevice: all, deviceId: deviceId)).forEach(addContext);
+        PleyaCompanionIdentity identityFor(PleyaServerConnection account) {
+          Future<PleyaCompanionTicket> fetch(String deviceKey) => pleyaTicketFetch(account, deviceKey);
+          final identity = _pleyaIdentities.putIfAbsent(
+            account.id,
+            () => PleyaCompanionIdentity(serverId: account.serverId, fetch: fetch),
+          );
+          return identity..fetch = fetch;
+        }
+
+        (await pleyaServerAuthContexts(
+          own: pleyaAccounts,
+          onDevice: all,
+          deviceId: deviceId,
+          identityFor: identityFor,
+        )).forEach(addContext);
       }
     }
 
@@ -516,6 +543,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     await stopHostServer();
     stopDiscovery();
     _clearCryptoContext();
+    _pleyaIdentities.clear();
     RemoteAuthService.instance.clearCache();
     safeNotifyListeners();
   }

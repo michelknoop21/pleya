@@ -80,11 +80,10 @@ class RemoteAuthService {
   Future<List<int>> deriveJellyfinSecret({required String serverMachineId, required String userId}) =>
       _deriveServerUserSecret('jellyfin', serverMachineId, userId);
 
-  /// Derive a companion remote secret from a Pleya Server account (DEC-XXX):
-  /// the server id from `/info` and the account's user id. The server id is
-  /// public; the user id is what only the household knows (a UUIDv7 that a
-  /// member sees for himself, and for others only as owner or admin, or in
-  /// `/items/{id}/activity` of a member who shares).
+  /// Derive the context and transport key of a Pleya Server account
+  /// (DEC-XXX): the server id and the account's user id. Not a secret against
+  /// the household, since members can read user ids; who a device is comes
+  /// from the server-signed ticket (`PleyaCompanionIdentity`), not from this.
   Future<List<int>> derivePleyaServerSecret({required String serverId, required String userId}) =>
       _deriveServerUserSecret('pleya-server', serverId, userId);
 
@@ -237,6 +236,26 @@ class RemoteAuthService {
     );
     return _constantTimeEquals(expected, authTag);
   }
+
+  /// The bytes the auth tag covers. A Pleya Server client also signs them with
+  /// its device key (DEC-XXX), so its ticket is bound to this one handshake.
+  List<int> authTranscript({
+    required List<int> hostNonce,
+    required List<int> clientNonce,
+    required String hostClientId,
+    required String userUUID,
+    required String clientIdentifier,
+    required String deviceName,
+    required String platform,
+  }) => _buildAuthTranscript(
+    hostNonce: hostNonce,
+    clientNonce: clientNonce,
+    hostClientId: hostClientId,
+    userUUID: userUUID,
+    clientIdentifier: clientIdentifier,
+    deviceName: deviceName,
+    platform: platform,
+  );
 
   /// Build the auth transcript message bytes.
   List<int> _buildAuthTranscript({

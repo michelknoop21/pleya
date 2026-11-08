@@ -44,6 +44,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"auth.scope_exceeds_role":            {400, false},
 		"auth.scope_insufficient":            {403, false},
 		"auth.origin_rejected":               {403, false},
+		"auth.device_key_invalid":           {400, false},
 		"library.not_found":                  {404, false},
 		"library.scan_in_progress":           {409, true},
 		"library.cursor_invalid":             {400, false},

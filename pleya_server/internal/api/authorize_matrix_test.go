@@ -275,6 +275,15 @@ func matrixProbes() []matrixProbe {
 			path: fixedPath("/pleya/v1/users/me"), body: noBody,
 			ok: http.StatusOK, expect: everyRole()},
 
+		// Regel 107: een ticket over de aanvrager zelf; er staat geen doel in
+		// de aanvraag, dus niemand wordt geweigerd (DEC-XXX).
+		{row: 107, name: "POST /companion/ticket", method: http.MethodPost,
+			path: fixedPath("/pleya/v1/companion/ticket"),
+			body: func(*matrixFixture) any {
+				return map[string]string{"device_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}
+			},
+			ok: http.StatusOK, expect: everyRole()},
+
 		{row: 23, name: "GET /stream-sessions", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/stream-sessions"), body: noBody,
 			ok: http.StatusOK, expect: adminSurface()},

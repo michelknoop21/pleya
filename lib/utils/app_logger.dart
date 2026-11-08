@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/painting.dart';
 import 'package:logger/logger.dart';
 
@@ -24,8 +25,26 @@ String _redactSensitiveData(String message) {
     (match) => '${match.group(1)}[REDACTED]',
   );
 
+  // Pleya Server tokens and companion tickets are base64 JSON that carry the
+  // user id; a stream token also travels as a query parameter.
+  redacted = redacted.replaceAll(RegExp(r'\bpl[yc]1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'), '[REDACTED]');
+  redacted = redacted.replaceAllMapped(
+    RegExp(r'([?&]stream_token=)([^&\s"]+)'),
+    (match) => '${match.group(1)}[REDACTED]',
+  );
+
+  // A Pleya Server connection id is `pleyaServer.<serverId>.<userId>`; the
+  // server id is public, the user id stays out of a log (DEC-XXX).
+  redacted = redacted.replaceAllMapped(
+    RegExp(r'(pleyaServer\.[A-Za-z0-9_-]+\.)([A-Za-z0-9_-]+)'),
+    (match) => '${match.group(1)}[REDACTED]',
+  );
+
   return redacted;
 }
+
+@visibleForTesting
+String redactLogMessageForTest(String message) => _redactSensitiveData(message);
 
 /// Represents a single log entry stored in memory
 class LogEntry {
