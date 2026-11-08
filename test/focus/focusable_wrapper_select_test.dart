@@ -83,4 +83,50 @@ void main() {
 
     expect(b, 1);
   });
+  testWidgets('held Select opens menu once, release cannot select it, next press works', (tester) async {
+    var plays = 0, opens = 0, info = 0;
+    final card = FocusNode(debugLabel: 'continue-card');
+    final menu = FocusNode(debugLabel: 'more-info');
+    addTearDown(card.dispose);
+    addTearDown(menu.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            FocusableWrapper(
+              focusNode: card,
+              enableLongPress: true,
+              onSelect: () => plays++,
+              onLongPress: () {
+                opens++;
+                menu.requestFocus();
+              },
+              child: const SizedBox(width: 100, height: 100),
+            ),
+            FocusableWrapper(focusNode: menu, onSelect: () => info++, child: const SizedBox(width: 100, height: 100)),
+          ],
+        ),
+      ),
+    );
+    card.requestFocus();
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.select);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(opens, 1);
+    expect(plays, 0);
+    expect(info, 0);
+    expect(menu.hasFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(info, 1);
+    card.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(plays, 1);
+    expect(opens, 1);
+  });
 }

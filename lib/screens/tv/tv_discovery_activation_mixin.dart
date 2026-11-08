@@ -55,6 +55,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
     // details" the way a discovery tile press does.
     UnifiedActivationIntent intent = UnifiedActivationIntent.details,
     bool playDirectly = false,
+    bool forceDetails = false,
     bool restartFromBeginning = false,
     // HERO7: the row this card sits in, so a pop back from the route this
     // opens can put the remote back on it (`TvFocusRestoreTarget.containerId`).
@@ -66,6 +67,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
       group: group,
       intent: intent,
       playDirectly: playDirectly,
+      forceDetails: forceDetails,
       restartFromBeginning: restartFromBeginning,
       restoreTarget: TvFocusRestoreTarget(itemId: group.groupId, containerId: containerId),
       environment: _buildEnvironment(group, onManageServers: onManageServers),
@@ -133,6 +135,7 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
   Future<void> openDiscoveryContextMenu(
     UnifiedMediaGroup group, {
     bool isInContinueWatching = false,
+    String? containerId,
     VoidCallback? onChanged,
     TvContextMenuExtraAction? extraAction,
     VoidCallback? onManageServers,
@@ -164,7 +167,12 @@ mixin TvDiscoveryActivationMixin<T extends StatefulWidget> on State<T> {
           restartFromBeginning: true,
           onManageServers: onManageServers,
         ),
-        UnifiedNavigationAction.moreInfo => activateDiscoveryGroup(group, onManageServers: onManageServers),
+        UnifiedNavigationAction.moreInfo => activateDiscoveryGroup(
+          group,
+          forceDetails: true,
+          containerId: containerId,
+          onManageServers: onManageServers,
+        ),
         UnifiedNavigationAction.changeSource => _changeSourceFromDiscoveryMenu(group, onManageServers: onManageServers),
       },
     );

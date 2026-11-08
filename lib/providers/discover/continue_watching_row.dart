@@ -209,7 +209,13 @@ class ContinueWatchingRow {
   /// list, so the overview and the row agree after a player return.
   void replaceWhere(bool Function(MediaItem item) matches, MediaItem updatedItem) {
     final index = _all.indexWhere(matches);
-    if (index != -1) _set(List.of(_all)..[index] = updatedItem);
+    if (index == -1) return;
+    // fetchItem refreshes metadata, not hub membership. Losing this context
+    // moves a focused card to another overview band after player return.
+    final replacement = updatedItem.copyWith(
+      continueWatchingKind: updatedItem.continueWatchingKind ?? _all[index].continueWatchingKind,
+    );
+    _set(List.of(_all)..[index] = replacement);
   }
 
   /// Watch on-deck items and their parent shows/seasons (an episode's watch
