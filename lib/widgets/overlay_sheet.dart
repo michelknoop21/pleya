@@ -579,13 +579,26 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     });
   }
 
+  /// Focuses the top-most (then left-most) focusable in the sheet. Not the
+  /// first in registration order: a lazy `ListView` registers its rows during
+  /// layout, after an eagerly built footer, so that order put focus on the
+  /// footer's Close button, at the bottom of the sheet.
   void _focusFirstDescendant() {
     final descendants = _sheetFocusScopeNode.traversalDescendants.toList();
-    if (descendants.isNotEmpty) {
-      descendants.first.requestFocus();
-    } else {
+    if (descendants.isEmpty) {
       _sheetFocusScopeNode.requestFocus();
+      return;
     }
+    descendants.reduce((a, b) {
+      final ra = a.rect;
+      final rb = b.rect;
+      // A row only counts as higher when it lies wholly above: buttons in
+      // one row differ in height, and a fraction of a pixel must not beat
+      // reading order. Within a row, the left one wins.
+      final above = rb.bottom <= ra.top;
+      final sameRow = rb.top < ra.bottom && ra.top < rb.bottom;
+      return above || (sameRow && rb.left < ra.left) ? b : a;
+    }).requestFocus();
   }
 
   void _handleBack() {

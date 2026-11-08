@@ -19,6 +19,8 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_administration.dart';
 import 'package:pleya/navigation/tv/tv_content_focus_authority.dart';
 import 'package:pleya/navigation/tv/tv_content_route_registry.dart';
 import 'package:pleya/navigation/tv/tv_destination.dart';
@@ -27,6 +29,7 @@ import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/unified_catalogs.dart';
+import 'package:pleya/screens/libraries/library_maintenance.dart';
 import 'package:pleya/screens/tv/sections/tv_libraries_screen.dart';
 import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
@@ -56,16 +59,15 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('tvLibraryActionsFor', () {
-    test('missing server identity never grants maintenance even with an affirmative caller', () {
-      const library = MediaLibrary(id: 'missing', backend: MediaBackend.plex, title: 'Missing', kind: MediaKind.movie);
-      expect(tvLibraryActionsFor(library, canManage: true), [
+    test('without maintenance only the profile actions remain', () {
+      expect(tvLibraryActionsFor(_lib('1', serverId: ServerId('s'))), [
         TvLibraryAction.openInCatalog,
         TvLibraryAction.toggleVisibility,
       ]);
     });
 
-    test('a Plex movie library gets the full set, in mockup order', () {
-      final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s')), canManage: true);
+    test('full maintenance (an owned Plex server) gets the full set, in mockup order', () {
+      final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s')), maintenance: LibraryMaintenance.values);
       expect(actions, [
         TvLibraryAction.openInCatalog,
         TvLibraryAction.refreshMetadata,
@@ -76,39 +78,34 @@ void main() {
       ]);
     });
 
-    test('a Jellyfin show library skips the Plex-only admin actions', () {
+    test('scan and refresh only (Jellyfin, Pleya Server) skip analyze and empty trash', () {
       final actions = tvLibraryActionsFor(
-        _lib('1', serverId: ServerId('s'), kind: MediaKind.show, backend: MediaBackend.jellyfin),
-        canManage: true,
+        _lib('1', serverId: ServerId('s'), kind: MediaKind.show, backend: MediaBackend.pleyaServer),
+        maintenance: const [LibraryMaintenance.scan, LibraryMaintenance.refreshMetadata],
       );
       expect(actions, [
         TvLibraryAction.openInCatalog,
         TvLibraryAction.refreshMetadata,
+        TvLibraryAction.scan,
         TvLibraryAction.toggleVisibility,
       ]);
     });
 
     test('a music library has no catalog to open', () {
-      final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s'), kind: MediaKind.artist), canManage: true);
+      final actions = tvLibraryActionsFor(
+        _lib('1', serverId: ServerId('s'), kind: MediaKind.artist),
+        maintenance: LibraryMaintenance.values,
+      );
       expect(actions, isNot(contains(TvLibraryAction.openInCatalog)));
-    });
-
-    test('without owner rights only the profile actions remain, on every backend', () {
-      for (final backend in MediaBackend.values) {
-        expect(tvLibraryActionsFor(_lib('1', serverId: ServerId('s'), backend: backend), canManage: false), [
-          TvLibraryAction.openInCatalog,
-          TvLibraryAction.toggleVisibility,
-        ]);
-      }
     });
 
     test('every library can still be shown or hidden, regardless of kind', () {
       for (final kind in MediaKind.values) {
-        for (final canManage in [true, false]) {
+        for (final maintenance in [LibraryMaintenance.values, const <LibraryMaintenance>[]]) {
           expect(
             tvLibraryActionsFor(
               _lib('1', serverId: ServerId('s'), kind: kind),
-              canManage: canManage,
+              maintenance: maintenance,
             ),
             contains(TvLibraryAction.toggleVisibility),
           );
@@ -245,8 +242,9 @@ void main() {
       expect(find.text(t.libraries.openInAllSeries), findsOneWidget);
     });
 
-    MultiServerProvider authorityProvider({required bool canManage}) {
+    MultiServerProvider authorityProvider({required bool canManage, _ScanServer? server}) {
       final manager = _AuthorityManager()..canManage = canManage;
+      manager.debugRegisterClientForTesting(server ?? _ScanServer('srv'));
       final provider = MultiServerProvider(manager, DataAggregationService(manager));
       addTearDown(() {
         provider.dispose();
@@ -275,6 +273,30 @@ void main() {
 
       expect(find.text(t.libraries.refreshMetadata), findsOneWidget);
       expect(find.text(t.libraries.scanLibraryFiles), findsOneWidget);
+    });
+
+    testWidgets('a Pleya Server admin can scan a library, on that library\'s own server', (tester) async {
+      // The reported bug: a Pleya Server library offered no scan at all.
+      final pleya = _lib('p1', serverId: ServerId('srv'), backend: MediaBackend.pleyaServer, title: 'Zolder');
+      final server = _ScanServer('srv');
+      await pump(tester, [pleya], multiServer: authorityProvider(canManage: true, server: server));
+
+      await selectRow(tester, pleya.globalKey);
+      expect(find.text(t.libraries.analyze), findsNothing);
+      expect(find.text(t.libraries.emptyTrash), findsNothing);
+      // D-pad only rows: focus the row, press Select, then confirm.
+      Focus.of(tester.element(find.text(t.libraries.scanLibraryFiles))).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(server.scans, isEmpty, reason: 'nothing runs before the confirmation');
+      await tester.tap(find.text(t.common.confirm));
+      await tester.pumpAndSettle();
+
+      expect(server.scans, ['p1']);
+      // Let the success notice time out.
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('a music row has no catalog action — nothing to browse it with', (tester) async {
@@ -418,7 +440,10 @@ void main() {
     });
 
     testWidgets('maintenance authority is checked for the selected server only', (tester) async {
-      final manager = _AuthorityManager()..managedServers = {'other'};
+      final manager = _AuthorityManager()
+        ..managedServers = {'other'}
+        ..debugRegisterClientForTesting(_ScanServer('srv'))
+        ..debugRegisterClientForTesting(_ScanServer('other'));
       final provider = MultiServerProvider(manager, DataAggregationService(manager));
       addTearDown(provider.dispose);
       await pump(tester, [movie, show], multiServer: provider);
@@ -723,5 +748,25 @@ class _AuthorityManager extends MultiServerManager {
   Set<String>? managedServers;
 
   @override
-  bool canManageServerMetadata(ServerId serverId) => managedServers?.contains(serverId) ?? canManage;
+  bool canAdministerServer(ServerId serverId) => managedServers?.contains(serverId) ?? canManage;
+}
+
+/// A server that can scan and refresh a library, as Jellyfin and Pleya Server
+/// can. Anything else answers null: a failed row count, which the screen
+/// already tolerates, and a no-op close on dispose.
+class _ScanServer implements MediaServerClient, LibraryScanClient {
+  _ScanServer(String id) : serverId = ServerId(id);
+
+  @override
+  final ServerId serverId;
+  final scans = <String>[];
+
+  @override
+  bool get supportsServerAdministration => true;
+
+  @override
+  Future<void> scanLibrary(String libraryId) async => scans.add(libraryId);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

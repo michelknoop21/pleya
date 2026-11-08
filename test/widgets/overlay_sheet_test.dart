@@ -506,4 +506,87 @@ void main() {
     controller.close();
     await tester.pumpAndSettle();
   });
+
+  // The TV library action sheet opened on its Close button, at the bottom: a
+  // lazy ListView registers its rows' focus nodes during layout, after the
+  // eagerly built footer, so "first descendant" in registration order was the
+  // footer. Focus has to start on the top row.
+  testWidgets('on TV a sheet opens focused on its top row, not on a footer built before the list', (tester) async {
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    late BuildContext hostContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OverlaySheetHost(
+          child: Builder(
+            builder: (context) {
+              hostContext = context;
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      ),
+    );
+
+    OverlaySheetController.of(hostContext).show<void>(
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: 3,
+              itemBuilder: (_, index) => TextButton(onPressed: () {}, child: Text('Row $index')),
+            ),
+          ),
+          TextButton(onPressed: () {}, child: const Text('Close')),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final focused = FocusManager.instance.primaryFocus!.context!;
+    expect(find.descendant(of: find.byWidget(focused.widget), matching: find.text('Row 0')), findsOneWidget);
+  });
+
+  // Two buttons on one row, centred, the primary one taller: its top sits a
+  // little higher, but the shorter Close button to its right must not win on
+  // a fraction of a pixel either way. Reading order: the left one.
+  testWidgets('on TV a row of buttons opens focused on the left one, whatever their heights', (tester) async {
+    TvDetectionService.debugSetTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+    late BuildContext hostContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OverlaySheetHost(
+          child: Builder(
+            builder: (context) {
+              hostContext = context;
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      ),
+    );
+
+    OverlaySheetController.of(hostContext).show<void>(
+      builder: (_) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 40,
+            child: TextButton(onPressed: () {}, child: const Text('Primary')),
+          ),
+          SizedBox(
+            height: 46,
+            child: TextButton(onPressed: () {}, child: const Text('Close')),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final focused = FocusManager.instance.primaryFocus!.context!;
+    expect(find.descendant(of: find.byWidget(focused.widget), matching: find.text('Primary')), findsOneWidget);
+  });
 }
