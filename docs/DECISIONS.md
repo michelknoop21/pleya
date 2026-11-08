@@ -5674,14 +5674,14 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 
 **Consequences:** Een serie waarvan één server geen bewezen nummer heeft, blijft twee kaarten tonen tot die server matcht. Rij-ordening en labels (DEC-177) zijn ongewijzigd en lezen de overgebleven kaart. **Unified impact:** gedeelde eigenaar is `oneContinueWatchingCardPerSeries` in `identity_resolver.dart`, aangeroepen door `DataAggregationService` en `HomeProjectionService`; geldt voor Plex, Jellyfin, Emby en Pleya Server, lokale mappen en Pleya Share blijven ongemerged. Geen protocolwijziging. Bewijs in `test/services/unified_catalog/unified_pleya_server_test.dart` en `identity_resolver_test.dart`.
 
-## DEC-XXX: Voorstel: bibliotheekonderhoud op Pleya Server zoals bij Plex
+## DEC-XXX: Bibliotheekonderhoud op Pleya Server zoals bij Plex
 
 **Date:** 2026-11-08
-**Status:** voorstel, in afwachting van Michels besluit over een protocolvenster. De wijziging aan `openapi.yaml` op branch `feat/pleya-server-library-maintenance` is een kandidaat; het contract op `main` blijft bevroren. Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit voorstel DEC-XXX (bibliotheekonderhoud).
+**Status:** besloten (Michel, 8 november 2026). Michel opende het venster voor precies deze uitbreiding van `openapi.yaml` (zijn antwoord: "Ja, beide", samen met `/companion/ticket` uit PR #634). Het venster opent niets anders en sluit met de merge van PR #636. Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit besluit DEC-XXX (bibliotheekonderhoud).
 **Roadmap:** C-05. Geen volgordewijziging.
 **Context:** Michel wil dat elke bibliotheekactie die de app voor Plex heeft ook op Pleya Server werkt. PR #633 gaf Pleya Server de scan. Prullenbak legen, metadata vernieuwen en analyseren hadden geen route: "metadata vernieuwen" startte een scan, en een titel waarvan het bestand verdween bleef staan zodra een root bij de scan onvolledig was, want dan slaat de scanner het opruimen (`PruneEmpty`) voor de hele bibliotheek over.
 
-**Voorstel:**
+**Besluit:**
 
 1. `POST /libraries/{library_id}/empty-trash`, klasse admin, matrixregel 107. Zet een job `empty_library_trash` in de wachtrij met de dedupe key van de scan (`scan:<id>`), dus nooit naast een scan van die bibliotheek; anders `409 library.scan_in_progress`. De job verwijdert alleen versies waarvan elk mediabestand `missing_since` heeft en die op schijf ontbreken. Een root die zelf niet leesbaar is telt als aanwezig. Daarna gaan films en afleveringen zonder versie weg, en seizoenen en series die daardoor leeg werden. Antwoord `202` met `items` (titels die bij de aanvraag in de prullenbak lagen) en `job_id`.
 2. `POST /libraries/{library_id}/refresh-metadata`, klasse admin, matrixregel 108. Zet elke film en serie van de bibliotheek meteen aan de beurt voor de bestaande metadataronde (`next_attempt_at`, `sidecar_checked_at`) en wekt die. Afgewezen en onbesliste titels blijven buiten; handmatige velden, locks en pins houdt de ronde zelf in stand. Antwoord `202` met `items`.
