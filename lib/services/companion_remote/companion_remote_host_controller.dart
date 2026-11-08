@@ -2,11 +2,15 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../connection/connection_registry.dart';
+import '../../media/ids.dart';
 import '../../profiles/active_plex_identity.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../profiles/plex_home_service.dart';
 import '../../profiles/profile_connection_registry.dart';
 import '../../providers/companion_remote_provider.dart';
+import '../../providers/multi_server_provider.dart';
+import '../multi_server_manager.dart';
+import '../pleya_server_client.dart';
 import '../../utils/app_logger.dart';
 
 /// Builds the auth contexts for the active profile, so this device can host or
@@ -32,8 +36,28 @@ Future<bool> ensureCompanionRemoteCrypto(BuildContext context) async {
     profileConnections: profileConnections,
     identity: identity,
     plexHomeForConnection: plexHome.materializePlexHomeForConnection,
+    pleyaTicketFetch: pleyaCompanionTicketFetch(context),
   );
   return context.mounted && ok;
+}
+
+/// Fetches a companion ticket through the bound client of that Pleya Server
+/// account (DEC-XXX); throws when the account is not bound in this session.
+/// Null without server clients in the tree: then no Pleya Server identity.
+PleyaTicketFetchFor? pleyaCompanionTicketFetch(BuildContext context) {
+  final MultiServerManager manager;
+  try {
+    manager = context.read<MultiServerProvider>().serverManager;
+  } on ProviderNotFoundException {
+    return null;
+  }
+  return (account, deviceKey) {
+    final client = manager.getClient(ServerId(account.serverId));
+    if (client is! PleyaServerClient || client.connection.id != account.id) {
+      throw StateError('Pleya Server account not bound');
+    }
+    return client.companionTicket(deviceKey);
+  };
 }
 
 Future<bool> startCompanionRemoteHost(BuildContext context) async {

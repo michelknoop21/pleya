@@ -283,6 +283,59 @@ void main() {
         isNull,
       );
     });
+
+    group('Pleya Server (DEC-XXX)', () {
+      const account = 'pleyaServer.srv.u-sam';
+      // A Pleya Server join row holds the user name, not the user id.
+      final rows = [ProfileConnection(profileId: 'local-kids', connectionId: account, userIdentifier: 'Sam')];
+
+      test('the account connection alone names the profile', () {
+        final match = profileForHandoffSender(
+          [kids, guest],
+          connectionId: account,
+          userUuid: 'u-sam',
+          joinRows: rows,
+          connectionIsAccount: true,
+        );
+        expect(match?.id, 'local-kids');
+      });
+
+      test('negative control: without the flag the user-name row does not match', () {
+        expect(
+          profileForHandoffSender([kids, guest], connectionId: account, userUuid: 'u-sam', joinRows: rows),
+          isNull,
+        );
+      });
+
+      test('a row of another account never counts', () {
+        expect(
+          profileForHandoffSender(
+            [kids, guest],
+            connectionId: 'pleyaServer.srv.u-other',
+            userUuid: 'u-other',
+            joinRows: rows,
+            connectionIsAccount: true,
+          ),
+          isNull,
+        );
+      });
+
+      test('two profiles holding the account are ambiguous: no switch', () {
+        expect(
+          profileForHandoffSender(
+            [kids, guest],
+            connectionId: account,
+            userUuid: 'u-sam',
+            joinRows: [
+              ...rows,
+              ProfileConnection(profileId: 'local-guest', connectionId: account, userIdentifier: 'Sam'),
+            ],
+            connectionIsAccount: true,
+          ),
+          isNull,
+        );
+      });
+    });
   });
 
   test('the handoff command is appended after syncState: the wire format is the enum index', () {

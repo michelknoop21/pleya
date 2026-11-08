@@ -108,6 +108,10 @@ const (
 	// verkeerde helft van zijn opstelling.
 	CodeOriginRejected = "auth.origin_rejected"
 
+	// CodeDeviceKeyInvalid is het antwoord van POST /companion/ticket op een
+	// device_key die geen publieke Ed25519-sleutel in base64url is (DEC-XXX).
+	CodeDeviceKeyInvalid = "auth.device_key_invalid"
+
 	CodeNotFound         = "library.not_found"
 	CodeScanInProgress   = "library.scan_in_progress"
 	CodeCursorInvalid    = "library.cursor_invalid"
@@ -323,6 +327,7 @@ var errorTable = map[string]struct {
 	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
 	CodeScopeInsufficient:    {http.StatusForbidden, false},
 	CodeOriginRejected:       {http.StatusForbidden, false},
+	CodeDeviceKeyInvalid:     {http.StatusBadRequest, false},
 
 	CodeNotFound:                {http.StatusNotFound, false},
 	CodeScanInProgress:          {http.StatusConflict, true},

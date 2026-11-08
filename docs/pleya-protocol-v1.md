@@ -628,6 +628,7 @@ contract keurt ze af.
 | `auth.scope_exceeds_role` | 400 | nee | het gevraagde bereik van een API-token komt boven de rol van de eigenaar uit; `details` draagt `scope` en `role`. `400` en geen `409`: er is geen toestand die dit verzoek in de weg zit en later anders kan zijn, het verzoek zelf klopt niet |
 | `auth.scope_insufficient` | 403 | nee | een API-token onder bereik `admin` op een route die eigen geschiedenis of lijsten wijzigt, zie 17c.2; `details.scope` noemt het bereik van het token |
 | `auth.origin_rejected` | 403 | nee | een aanvraag in cookiemodus komt van een origin die deze server niet toestaat, of draagt helemaal geen `Origin`. Alleen op `POST /auth/login` en `POST /auth/refresh`, en alleen op het cookiepad; zie 17d.4 |
+| `auth.device_key_invalid` | 400 | nee | `POST /companion/ticket` kreeg een `device_key` die geen publieke Ed25519-sleutel in base64url zonder opvulling is (DEC-XXX) |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
@@ -1572,6 +1573,7 @@ bestaan (latere fasen).
 | `GET /pleya/v1/users` | `authenticated`, gefilterd |
 | `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf |
 | `GET`, `PUT /pleya/v1/users/me/activity-sharing` | `authenticated`, altijd zichzelf (14b) |
+| `POST /pleya/v1/companion/ticket` | `authenticated`, altijd zichzelf; geen API-token (DEC-XXX) |
 | `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf |
 | `DELETE /pleya/v1/users/{id}` | `admin` |
 | `PUT /pleya/v1/users/{id}/permissions` | `admin` |
@@ -1741,6 +1743,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 104 | `DELETE /items/{id}/overrides/{field}` | veilige ontgrendeling naar actuele bron | klasse `admin`, actuele item/libraryscope; metadata_overrides; 409 behoudt lock bij onvoldoende bronbewijs |
 | 105 | `GET /items/{id}/artwork-candidates` | begrensde itemgebonden lokale/TMDB-keuzes en duurzame pins | klasse `admin`, actuele item/libraryscope; artwork_choices; film/serie |
 | 106 | `PUT /items/{id}/artwork` | poster/achtergrond pinnen of null-ontpinnen | klasse `admin`, actuele item/libraryscope; artwork_choices; gesloten body/EOF en actuele base_token |
+| 107 | `POST /companion/ticket` | een ticket over een ander | klasse `authenticated` en elke rol, maar het ticket gaat altijd over de aanvrager zelf (`sub` uit het accesstoken, geen doel in de aanvraag); een API-token krijgt `403` met `auth.scope_insufficient`; DEC-XXX |
 | 108 | `POST /libraries/{id}/empty-trash` | titels verwijderen waarvan de bestanden weg zijn, met hun kijkstatus | klasse `admin`, `404` voor de rest; botst met een wachtende of lopende scan van die bibliotheek (`409` `library.scan_in_progress`) (17f) |
 | 109 | `POST /libraries/{id}/refresh-metadata` | een providerronde over een hele bibliotheek | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f) |
 
@@ -2655,8 +2658,9 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/items/{id}/activity` | `authenticated` | nee |
 | `GET /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
 | `PUT /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
+| `POST /pleya/v1/companion/ticket` | `authenticated`, altijd zichzelf | nee |
 
-Honderdvier operaties. De drie laatste zijn de activiteit van het huishouden uit hoofdstuk 14b
+Honderdvijf operaties. De laatste is het companion-ticket voor Pleya Fly (DEC-XXX). De drie daarvoor zijn de activiteit van het huishouden uit hoofdstuk 14b
 (DEC-169), de achttien daarvoor verzamelingen en afspeellijsten uit hoofdstuk 14c (venster 6 deel 1, S19), de vijf daarvoor back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
