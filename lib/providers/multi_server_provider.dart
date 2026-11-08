@@ -4,6 +4,7 @@ import '../media/ids.dart';
 import 'package:flutter/foundation.dart';
 
 import '../media/media_server_client.dart';
+import '../media/server_administration.dart';
 import '../models/livetv_dvr.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/plex_client.dart';
@@ -275,6 +276,24 @@ class MultiServerProvider extends ChangeNotifier with DisposableChangeNotifierMi
   /// Plex-only chrome (server-activities popover, conflict-resolution
   /// helpers) so they don't render against a Jellyfin-only profile.
   bool get hasOnlinePlexServers => onlineServerIds.any((id) => _serverManager.getPlexClient(ServerId(id)) != null);
+
+  /// The jobs a non-Plex server shows in the server-tasks popover (Pleya
+  /// Server jobs, Jellyfin tasks), or null when this profile may not read
+  /// them. Plex keeps its own `/activities` read there.
+  ServerJobsClient? serverTasksClient(ServerId serverId) {
+    return switch (_serverManager.getClient(serverId)) {
+      PlexClient() => null,
+      final ServerJobsClient jobs
+          when jobs.supportsServerAdministration && _serverManager.canAdministerServer(serverId) =>
+        jobs,
+      _ => null,
+    };
+  }
+
+  /// Whether the server-tasks popover has a server to ask.
+  bool get hasOnlineServerTasks => onlineServerIds.any(
+    (id) => _serverManager.getPlexClient(ServerId(id)) != null || serverTasksClient(ServerId(id)) != null,
+  );
 
   /// Visibility-filtered server ids whose latest health probe was rejected
   /// with HTTP 401/403 (token expired or revoked). UI uses this to show a

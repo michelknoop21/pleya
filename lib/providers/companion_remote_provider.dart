@@ -18,8 +18,12 @@ import '../services/companion_remote/companion_remote_peer_service.dart';
 import '../services/companion_remote/lan_discovery_service.dart';
 import '../services/companion_remote/playback_handoff.dart';
 import '../services/companion_remote/pleya_fly_follow.dart';
+import '../models/pleya_server/pleya_wire_companion.dart';
+import '../services/companion_remote/pleya_companion_identity.dart';
+import '../services/companion_remote/pleya_server_remote_auth.dart';
 import '../services/companion_remote/remote_auth_context.dart';
 import '../services/companion_remote/remote_auth_service.dart';
+import '../services/pleya_server_device_identity.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_message_utils.dart';
 import '../utils/platform_detector.dart';
@@ -29,6 +33,9 @@ export '../services/companion_remote/lan_discovery_service.dart' show Discovered
 
 typedef CommandReceivedCallback = void Function(RemoteCommand command);
 typedef PlexHomeResolver = Future<PlexHome?> Function(String connectionId);
+
+/// Fetches a companion ticket for [account] bound to [deviceKey] (DEC-XXX).
+typedef PleyaTicketFetchFor = Future<PleyaCompanionTicket> Function(PleyaServerConnection account, String deviceKey);
 
 class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin {
   RemoteSession? _session;
@@ -63,6 +70,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   // Crypto context (derived in memory, never persisted)
   List<RemoteAuthContext> _authContexts = const [];
   String? _cryptoProfileId;
+
+  // Ticket identities per Pleya Server connection: the device key and ticket
+  // outlive a rebuild of the contexts (DEC-XXX).
+  final Map<String, PleyaCompanionIdentity> _pleyaIdentities = {};
 
   int get reconnectAttempts => _reconnectAttempts;
 
@@ -99,6 +110,11 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   /// authenticated; together they name its profile here (A-23b).
   String? get peerUserUuid => _peerService?.clientUserUuid;
   String? get peerConnectionId => _authContextForId(_peerService?.selectedAuthContextId)?.connectionId;
+
+  /// Host side: the phone's connection is its own account, so the connection
+  /// alone names its profile here (Pleya Server, DEC-XXX).
+  bool get peerConnectionIsAccount =>
+      _authContextForId(_peerService?.selectedAuthContextId)?.backend == pleyaServerAuthBackend;
   bool get isHostServerRunning => _peerService?.isServerRunning ?? false;
 
   /// The running host receives only a Pleya Fly (A-23d); see [startHostServer].
@@ -249,6 +265,12 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   bool get isCryptoReady => _authContexts.isNotEmpty;
 
+  /// The identities this device joins a host with: never another member's.
+  List<RemoteAuthContext> get _clientAuthContexts => [
+    for (final context in _authContexts)
+      if (!context.hostOnly) context,
+  ];
+
   /// Convenience: ensure crypto is initialized for every remote identity
   /// attached to the active profile.
   /// Returns true if crypto is ready (already initialized or just initialized).
@@ -260,6 +282,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     ActivePlexIdentity? identity,
     PlexAccountConnection? account,
     PlexHomeResolver? plexHomeForConnection,
+    PleyaTicketFetchFor? pleyaTicketFetch,
   }) async {
     await activeProfile.initialize();
     final profile = activeProfile.active;
@@ -276,6 +299,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       identity: identity,
       preferredAccount: account,
       plexHomeForConnection: plexHomeForConnection,
+      pleyaTicketFetch: pleyaTicketFetch,
     );
 
     if (nextContexts.isEmpty) {
@@ -311,9 +335,11 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     required ActivePlexIdentity? identity,
     required PlexAccountConnection? preferredAccount,
     required PlexHomeResolver? plexHomeForConnection,
+    required PleyaTicketFetchFor? pleyaTicketFetch,
   }) async {
     final contexts = <RemoteAuthContext>[];
     final seen = <String>{};
+    final pleyaAccounts = <PleyaServerConnection>[];
     final all = await connections.list();
     final byId = {for (final c in all) c.id: c};
 
@@ -344,13 +370,12 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
           );
         case JellyfinConnection():
           addContext(await _createJellyfinAuthContext(connection: connection));
+        case PleyaServerConnection():
+          // After the loop: the other accounts of the same server join in (DEC-XXX).
+          pleyaAccounts.add(connection);
         case LocalFolderConnection():
         case PleyaShareConnection():
-        case PleyaServerConnection():
-          // No remote auth context: the companion protocol hands a token to
-          // another device, and these three have nothing an off-device
-          // client could use. Pleya Server access tokens are short-lived and
-          // bound to this device's refresh chain.
+          // No remote auth context: nothing here names a Home or a user.
           break;
       }
     }
@@ -369,6 +394,30 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
       final connection = byId[pc.connectionId];
       if (connection == null) continue;
       await addConnection(connection, userUuid: pc.userIdentifier.isEmpty ? null : pc.userIdentifier);
+    }
+
+    if (pleyaAccounts.isNotEmpty) {
+      final deviceId = (await pleyaServerDeviceIdentity())?.id;
+      if (deviceId == null || pleyaTicketFetch == null) {
+        // Without a ticket nobody could prove who they are: no Pleya Server Fly.
+        appLogger.w('CompanionRemote: Skipping Pleya Server remote identity: no device id or ticket source');
+      } else {
+        PleyaCompanionIdentity identityFor(PleyaServerConnection account) {
+          Future<PleyaCompanionTicket> fetch(String deviceKey) => pleyaTicketFetch(account, deviceKey);
+          final identity = _pleyaIdentities.putIfAbsent(
+            account.id,
+            () => PleyaCompanionIdentity(serverId: account.serverId, fetch: fetch),
+          );
+          return identity..fetch = fetch;
+        }
+
+        (await pleyaServerAuthContexts(
+          own: pleyaAccounts,
+          onDevice: all,
+          deviceId: deviceId,
+          identityFor: identityFor,
+        )).forEach(addContext);
+      }
     }
 
     return contexts;
@@ -443,6 +492,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
           left.connectionId != right.connectionId ||
           left.clientIdentifier != right.clientIdentifier ||
           left.userUuid != right.userUuid ||
+          left.hostOnly != right.hostOnly ||
           !_sameStrings(left.allowedUserUuids, right.allowedUserUuids)) {
         return false;
       }
@@ -496,6 +546,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     await stopHostServer();
     stopDiscovery();
     _clearCryptoContext();
+    _pleyaIdentities.clear();
     RemoteAuthService.instance.clearCache();
     safeNotifyListeners();
   }
@@ -511,6 +562,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   @visibleForTesting
   List<String> get debugCryptoConnectionIds => _authContexts.map((context) => context.connectionId).toList();
+
+  @visibleForTesting
+  List<RemoteAuthContext> get debugAuthContexts => _authContexts;
 
   /// Starts hosting. [handoffOnly] marks a host that receives a Pleya Fly and
   /// nothing else (A-23d): the app then drops every other command, and joining
@@ -683,7 +737,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     }
 
     _discoveryService ??= LanDiscoveryService();
-    return _discoveryService!.startListeningForContexts(_authContexts);
+    return _discoveryService!.startListeningForContexts(_clientAuthContexts);
   }
 
   bool get isListeningForHosts => _discoveryService?.isListening ?? false;
@@ -729,7 +783,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
         _deviceName,
         _platform,
         host.addresses,
-        _authContexts,
+        _clientAuthContexts,
         authContextId: authContext.id,
         expectedHostClientId: host.clientId,
       );
@@ -776,7 +830,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     safeNotifyListeners();
 
     try {
-      await _peerService!.joinSessionWithContexts(_deviceName, _platform, hostAddress, _authContexts);
+      await _peerService!.joinSessionWithContexts(_deviceName, _platform, hostAddress, _clientAuthContexts);
       _lastAuthContextId = _peerService!.selectedAuthContextId;
       _lastHostClientId = _peerService!.selectedHostClientId ?? '';
 
@@ -1014,7 +1068,7 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
         _deviceName,
         _platform,
         _lastHostAddresses!.first,
-        _authContexts,
+        _clientAuthContexts,
         authContextId: authContextId,
         expectedHostClientId: _lastHostClientId ?? '',
       );

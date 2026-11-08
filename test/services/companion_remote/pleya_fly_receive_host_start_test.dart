@@ -48,6 +48,7 @@ class _SlowIdentityPhone extends CompanionRemoteProvider {
     ActivePlexIdentity? identity,
     PlexAccountConnection? account,
     PlexHomeResolver? plexHomeForConnection,
+    PleyaTicketFetchFor? pleyaTicketFetch,
   }) async {
     await this.identity.future;
     return true;

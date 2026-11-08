@@ -9,7 +9,7 @@ import '../focus/key_event_utils.dart';
 import '../i18n/strings.g.dart';
 import '../theme/mono_tokens.dart';
 import 'package:pleya/widgets/app_icon.dart';
-import '../models/plex/plex_activity.dart';
+import '../media/server_administration.dart';
 import '../providers/multi_server_provider.dart';
 
 class ServerActivitiesButton extends StatefulWidget {
@@ -21,12 +21,31 @@ class ServerActivitiesButton extends StatefulWidget {
 
 enum _FetchState { loading, loaded, error }
 
+/// One row in the panel: a Plex activity or another server's job. [progress]
+/// runs from 0.0 to 1.0; null is indeterminate.
+typedef ServerTaskRow = ({String id, String title, String? subtitle, double? progress, bool cancellable});
+
+/// A job from [ServerJobsClient.listJobs] as a panel row, or null when it is
+/// not in progress. Pleya Server kinds the menu starts get its own wording.
+ServerTaskRow? serverTaskRow(ServerJob job) {
+  if (job.state != ServerJobState.queued && job.state != ServerJobState.running) return null;
+  final title = switch (job.title) {
+    'scan_library' => t.libraries.scanLibrary,
+    'empty_library_trash' => t.libraries.emptyTrash,
+    _ => job.title,
+  };
+  return (id: job.id, title: title, subtitle: null, progress: job.progress, cancellable: job.cancellable);
+}
+
 class _ServerResult {
   final String serverId;
   final String serverName;
-  final List<PlexActivity> activities;
+  final List<ServerTaskRow> activities;
 
-  const _ServerResult({required this.serverId, required this.serverName, required this.activities});
+  /// Plex cancels through `/activities`; any other server through its jobs.
+  final bool plex;
+
+  const _ServerResult({required this.serverId, required this.serverName, required this.activities, this.plex = false});
 }
 
 class _PanelData {
@@ -92,11 +111,32 @@ class ServerActivitiesButtonState extends State<ServerActivitiesButton> {
     final serverIds = multiServer.onlineServerIds;
 
     final futures = serverIds.map((serverId) async {
-      // Plex-only: `/activities` API is Plex-specific.
-      final client = multiServer.getPlexClientForServer(ServerId(serverId));
-      if (client == null) return null;
-      final activities = await client.getActivities();
-      return _ServerResult(serverId: serverId, serverName: client.serverName ?? serverId, activities: activities);
+      final plex = multiServer.getPlexClientForServer(ServerId(serverId));
+      if (plex != null) {
+        final activities = await plex.getActivities();
+        return _ServerResult(
+          serverId: serverId,
+          serverName: plex.serverName ?? serverId,
+          plex: true,
+          activities: [
+            for (final a in activities)
+              (
+                id: a.uuid,
+                title: a.title,
+                subtitle: a.subtitle,
+                progress: a.progress / 100.0,
+                cancellable: a.cancellable,
+              ),
+          ],
+        );
+      }
+      final jobs = multiServer.serverTasksClient(ServerId(serverId));
+      if (jobs == null) return null;
+      return _ServerResult(
+        serverId: serverId,
+        serverName: multiServer.serverManager.getClient(ServerId(serverId))?.serverName ?? serverId,
+        activities: [for (final job in await jobs.listJobs()) ?serverTaskRow(job)],
+      );
     });
 
     final rawResults = await Future.wait(futures);
@@ -133,11 +173,14 @@ class ServerActivitiesButtonState extends State<ServerActivitiesButton> {
 
   Future<void> _cancelActivity(ServerId serverId, String uuid) async {
     final multiServer = Provider.of<MultiServerProvider>(context, listen: false);
-    // Plex-only: `/activities` API is Plex-specific.
-    final client = multiServer.getPlexClientForServer(serverId);
-    if (client == null) return;
     try {
-      await client.cancelActivity(uuid);
+      if (multiServer.getPlexClientForServer(serverId) case final plex?) {
+        await plex.cancelActivity(uuid);
+      } else if (multiServer.serverTasksClient(serverId) case final jobs?) {
+        await jobs.cancelJob(uuid);
+      } else {
+        return;
+      }
     } catch (_) {
       return;
     }
@@ -282,14 +325,15 @@ class ServerActivitiesButtonState extends State<ServerActivitiesButton> {
                 ],
               ),
             ),
-            for (final activity in result.activities) _buildActivityTile(context, ServerId(result.serverId), activity),
+            for (final activity in result.activities)
+              _buildActivityTile(context, ServerId(result.serverId), activity, plex: result.plex),
           ],
         const SizedBox(height: 8),
       ],
     );
   }
 
-  Widget _buildActivityTile(BuildContext context, ServerId serverId, PlexActivity activity) {
+  Widget _buildActivityTile(BuildContext context, ServerId serverId, ServerTaskRow activity, {required bool plex}) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
@@ -318,20 +362,17 @@ class ServerActivitiesButtonState extends State<ServerActivitiesButton> {
                   ),
                 ],
                 const SizedBox(height: 6),
-                LinearProgressIndicator(
-                  value: activity.progress / 100.0,
-                  borderRadius: BorderRadius.circular(4),
-                  minHeight: 4,
-                ),
+                LinearProgressIndicator(value: activity.progress, borderRadius: BorderRadius.circular(4), minHeight: 4),
               ],
             ),
           ),
           // Stopping a server task is owner-only (the client refuses too).
+          // Another server's jobs are only listed for its administrators.
           if (activity.cancellable &&
-              context.read<MultiServerProvider>().serverManager.canManageServerMetadata(serverId))
+              (!plex || context.read<MultiServerProvider>().serverManager.canManageServerMetadata(serverId)))
             IconButton(
               icon: AppIcon(Symbols.close_rounded, size: 16, color: theme.colorScheme.onSurface),
-              onPressed: () => _cancelActivity(serverId, activity.uuid),
+              onPressed: () => _cancelActivity(serverId, activity.id),
               visualDensity: VisualDensity.compact,
               tooltip: t.common.cancel,
             ),

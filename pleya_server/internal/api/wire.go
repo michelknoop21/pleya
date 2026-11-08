@@ -120,6 +120,11 @@ type Capabilities struct {
 	ArtworkSizes      bool `json:"artwork_sizes"`
 	ArtworkCacheAdmin bool `json:"artwork_cache_admin"`
 
+	// LibraryMaintenance (DEC-XXX, bibliotheekonderhoud). Aan zodra POST
+	// /libraries/{id}/empty-trash en /refresh-metadata bestaan; legen vraagt de
+	// wachtrij, net als de scan.
+	LibraryMaintenance bool `json:"library_maintenance"`
+
 	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
 	// alleen de owner-rij. Een client die deze vlag ziet mag ervan uitgaan dat

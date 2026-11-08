@@ -224,11 +224,16 @@ Map<String, dynamic> handoffOutcomeData(String id, PlaybackHandoffOutcome outcom
 /// handoff, or null when there is none or more than one (A-23b). A Plex Home
 /// profile of that user on the same account wins; otherwise exactly one local
 /// profile that holds the account for that user through a join row.
+///
+/// [connectionIsAccount]: the connection is the sender's own account (Pleya
+/// Server, whose join rows hold a user name and not the user id), so any join
+/// row of it counts.
 Profile? profileForHandoffSender(
   Iterable<Profile> profiles, {
   required String connectionId,
   required String userUuid,
   required Iterable<ProfileConnection> joinRows,
+  bool connectionIsAccount = false,
 }) {
   if (connectionId.isEmpty || userUuid.isEmpty) return null;
   for (final profile in profiles) {
@@ -238,7 +243,7 @@ Profile? profileForHandoffSender(
   }
   final localIds = {
     for (final row in joinRows)
-      if (row.connectionId == connectionId && row.userIdentifier == userUuid) row.profileId,
+      if (row.connectionId == connectionId && (connectionIsAccount || row.userIdentifier == userUuid)) row.profileId,
   };
   final locals = [
     for (final profile in profiles)

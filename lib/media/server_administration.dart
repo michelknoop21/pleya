@@ -35,6 +35,16 @@ abstract interface class LibraryScanClient implements ServerAdministrationClient
   Future<void> scanLibrary(String libraryId);
 }
 
+/// Remove the items whose files are gone (Plex "Empty trash"). Only items the
+/// server has marked unavailable; never one with a file still present.
+abstract interface class LibraryTrashClient implements ServerAdministrationClient {
+  /// False where this server cannot do it right now (a Pleya Server without
+  /// the `library_maintenance` capability).
+  bool get supportsLibraryTrash;
+
+  Future<void> emptyLibraryTrash(String libraryId);
+}
+
 /// Re-read metadata for one item (a film, a series) from its providers.
 abstract interface class ItemMetadataRefreshClient implements ServerAdministrationClient {
   Future<void> refreshItemMetadata(String itemId);

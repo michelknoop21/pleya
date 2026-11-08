@@ -175,6 +175,7 @@ class PleyaCapabilities {
     this.streamSessions = false,
     this.sessions = false,
     this.administration = false,
+    this.libraryMaintenance = false,
   });
 
   /// What a client may assume before the first successful `GET /info`.
@@ -272,6 +273,10 @@ class PleyaCapabilities {
   /// refuses every admin route with a 404 for whoever is not an admin.
   final bool administration;
 
+  /// `POST /libraries/{id}/empty-trash` and `/refresh-metadata` exist
+  /// (chapter 17f, proposal). Without it a library offers only the scan.
+  final bool libraryMaintenance;
+
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
     browse: boolean(json, 'browse'),
     search: boolean(json, 'search'),
@@ -305,6 +310,7 @@ class PleyaCapabilities {
     users: booleanOr(json, 'users', orElse: false),
     sessions: booleanOr(json, 'sessions', orElse: false),
     administration: booleanOr(json, 'administration', orElse: false),
+    libraryMaintenance: booleanOr(json, 'library_maintenance', orElse: false),
   );
 }
 

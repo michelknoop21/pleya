@@ -50,6 +50,7 @@ import '../media/server_capabilities.dart';
 import '../i18n/strings.g.dart';
 import '../models/pleya_server/pleya_wire.dart';
 import '../models/pleya_server/pleya_wire_activity.dart';
+import '../models/pleya_server/pleya_wire_companion.dart';
 import '../models/pleya_server/pleya_wire_library.dart';
 import '../models/pleya_server/pleya_wire_lists.dart';
 import '../models/pleya_server/pleya_wire_playback.dart';
@@ -90,6 +91,7 @@ part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
 part 'pleya_server_client/parts/verify_detail.dart';
+part 'pleya_server_client/parts/companion.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
 ///

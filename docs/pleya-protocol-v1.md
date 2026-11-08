@@ -234,6 +234,10 @@ hetzelfde zijn. De vlag is netheid en geen beveiliging: een client die hem niet 
 beheer, en de server weigert los daarvan met `404` voor wie er niet bij mag (16.4, regel 16 tot en
 met 26).
 
+`capabilities.library_maintenance` staat aan zodra `POST /libraries/{id}/empty-trash` en
+`POST /libraries/{id}/refresh-metadata` bestaan (17f, DEC-XXX). Een client zonder de vlag biedt op
+deze server alleen de scan aan.
+
 `capabilities.mcp` staat aan zodra er een MCP-endpoint is waarmee een agent deze server kan beheren.
 Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
 dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
@@ -624,6 +628,7 @@ contract keurt ze af.
 | `auth.scope_exceeds_role` | 400 | nee | het gevraagde bereik van een API-token komt boven de rol van de eigenaar uit; `details` draagt `scope` en `role`. `400` en geen `409`: er is geen toestand die dit verzoek in de weg zit en later anders kan zijn, het verzoek zelf klopt niet |
 | `auth.scope_insufficient` | 403 | nee | een API-token onder bereik `admin` op een route die eigen geschiedenis of lijsten wijzigt, zie 17c.2; `details.scope` noemt het bereik van het token |
 | `auth.origin_rejected` | 403 | nee | een aanvraag in cookiemodus komt van een origin die deze server niet toestaat, of draagt helemaal geen `Origin`. Alleen op `POST /auth/login` en `POST /auth/refresh`, en alleen op het cookiepad; zie 17d.4 |
+| `auth.device_key_invalid` | 400 | nee | `POST /companion/ticket` kreeg een `device_key` die geen publieke Ed25519-sleutel in base64url zonder opvulling is (DEC-XXX) |
 | `settings.invalid_value` | 400 | nee | een waarde in `PATCH /settings` valt buiten zijn grens; `details` draagt veld en grens |
 | `server.confirm_mismatch` | 409 | nee | een destructieve handeling zonder de juiste bevestiging; `details.expected` zegt welk woord er moet staan. Voor S1.3 is dat `POST /server/rotate-signing-key` met `confirm: "rotate"` |
 | `server.internal` | 500 | nee | de handler liep op een fout die hij niet had voorzien; `details.request_id` verwijst naar de logregel. `nee` en niet `ja`: het contract dwingt een boolean af waar "onbekend" het eerlijke antwoord is, en een deterministische panic die als herhaalbaar binnenkomt levert een client op die precies het verzoek blijft sturen dat de server omver duwde |
@@ -1568,6 +1573,7 @@ bestaan (latere fasen).
 | `GET /pleya/v1/users` | `authenticated`, gefilterd |
 | `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf |
 | `GET`, `PUT /pleya/v1/users/me/activity-sharing` | `authenticated`, altijd zichzelf (14b) |
+| `POST /pleya/v1/companion/ticket` | `authenticated`, altijd zichzelf; geen API-token (DEC-XXX) |
 | `PATCH /pleya/v1/users/{id}` | `admin`, of `owner` op zichzelf |
 | `DELETE /pleya/v1/users/{id}` | `admin` |
 | `PUT /pleya/v1/users/{id}/permissions` | `admin` |
@@ -1737,6 +1743,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 104 | `DELETE /items/{id}/overrides/{field}` | veilige ontgrendeling naar actuele bron | klasse `admin`, actuele item/libraryscope; metadata_overrides; 409 behoudt lock bij onvoldoende bronbewijs |
 | 105 | `GET /items/{id}/artwork-candidates` | begrensde itemgebonden lokale/TMDB-keuzes en duurzame pins | klasse `admin`, actuele item/libraryscope; artwork_choices; film/serie |
 | 106 | `PUT /items/{id}/artwork` | poster/achtergrond pinnen of null-ontpinnen | klasse `admin`, actuele item/libraryscope; artwork_choices; gesloten body/EOF en actuele base_token |
+| 107 | `POST /companion/ticket` | een ticket over een ander | klasse `authenticated` en elke rol, maar het ticket gaat altijd over de aanvrager zelf (`sub` uit het accesstoken, geen doel in de aanvraag); een API-token krijgt `403` met `auth.scope_insufficient`; DEC-XXX |
+| 108 | `POST /libraries/{id}/empty-trash` | titels verwijderen waarvan de bestanden weg zijn, met hun kijkstatus | klasse `admin`, `404` voor de rest; botst met een wachtende of lopende scan van die bibliotheek (`409` `library.scan_in_progress`) (17f) |
+| 109 | `POST /libraries/{id}/refresh-metadata` | een providerronde over een hele bibliotheek | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f) |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2461,6 +2470,30 @@ scanrondes van de oude bibliotheek weg.
 
 Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries/{id}/scan` hem aanmaakt, `running` wordt wanneer de job hem claimt en eindigt op `done`, `failed` of `cancelled`. Annuleren gaat via de job (`Job.scan_id` wijst terug): de scanner stopt binnen één walk-stap en laat de tellers staan. Een retry zet `attempts` op nul en, voor een scanjob, ook `probe_attempts` van die bibliotheek. Een bestand waarvan de probe faalde wacht `min(2^(pogingen-1), 24)` uur voordat een volgende ronde het opnieuw analyseert, tenzij het bestand zelf veranderde. `current_path` is afgekort tot de bestandsnaam met een ellipsis ervoor en is nooit het volledige pad.
 
+**Bibliotheekonderhoud (DEC-XXX).** Onder `capabilities.library_maintenance`, klasse `admin`.
+`POST /libraries/{id}/empty-trash` is de prullenbak legen: een scan markeert een verdwenen bestand
+met `missing_since` en ruimt na een volledige ronde zelf op, maar slaat dat opruimen over zodra één
+root onvolledig was. Het endpoint zet een job van soort `empty_library_trash` in de wachtrij met
+dezelfde dedupe key als de scan, dus het botst met een wachtende of lopende scan van die bibliotheek
+(`409` `library.scan_in_progress`). Andersom slaat een geplande scan van die bibliotheek zijn beurt
+over zolang de job wacht of loopt, en komt hij pas na het volgende interval terug. De job toetst eerst
+elke root waaronder de catalogus bestanden kent: is er één niet te lezen of een lege map, dan
+verwijdert hij niets en mislukt hij met die reden, want zo ziet een share eruit die niet gemount is.
+Daarna verwijdert hij alleen versies waarvan elk mediabestand gemarkeerd is én op schijf ontbreekt.
+Een bestand telt alleen als weg wanneer de dichtstbijzijnde map erboven die nog bestaat de root is of
+een map met inhoud; is die map leeg, dan kan het een genest koppelpunt zijn en telt het bestand als
+aanwezig. Een film waarvan alleen het bestand weg is en de lege map nog staat, blijft daardoor tot de
+volgende volledige scan hem opruimt. Een film of aflevering zonder versie verdwijnt daarna, met
+kijkstatus, geschiedenis, favorieten, waarderingen, downloads en lijstregels, net als na het opruimen
+van een scan, en een seizoen of serie die zo leeg raakt ook. `items` in het antwoord is het aantal
+kandidaten: titels waarvan bij de aanvraag elk bestand als verdwenen gemarkeerd stond. De job kan er
+minder verwijderen. `job_id` is de job.
+`POST /libraries/{id}/refresh-metadata` zet elke film en serie van de bibliotheek meteen aan de beurt
+voor de metadataronde en wekt die; afgewezen en onbesliste titels blijven buiten, handmatige velden,
+locks en pins blijven staan. `items` is het aantal titels dat aan de beurt staat. Er is geen
+"analyseren": de scan analyseert elk nieuw of gewijzigd bestand al, en ffprobe op ongewijzigde bytes
+met dezelfde gepinde ffmpeg geeft hetzelfde antwoord.
+
 ### 17g. Back-up, restore en faalpaden
 
 Onder `capabilities.backups`, alles klasse `admin` (venster 7, S25, RB-26). Een back-up is één tar in
@@ -2531,6 +2564,8 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/storage/roots` | `admin` | nee |
 | `POST /pleya/v1/storage/roots/recheck` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/scan` | `admin` | nee |
+| `POST /pleya/v1/libraries/{id}/empty-trash` | `admin` | nee |
+| `POST /pleya/v1/libraries/{id}/refresh-metadata` | `admin` | nee |
 | `GET /pleya/v1/scans` | `admin` | ja |
 | `GET /pleya/v1/scans/{id}` | `admin` | nee |
 | `GET /pleya/v1/jobs` | `admin` | ja |
@@ -2623,8 +2658,9 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/items/{id}/activity` | `authenticated` | nee |
 | `GET /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
 | `PUT /pleya/v1/users/me/activity-sharing` | `authenticated` | nee |
+| `POST /pleya/v1/companion/ticket` | `authenticated`, altijd zichzelf | nee |
 
-Honderdvier operaties. De drie laatste zijn de activiteit van het huishouden uit hoofdstuk 14b
+Honderdvijf operaties. De laatste is het companion-ticket voor Pleya Fly (DEC-XXX). De drie daarvoor zijn de activiteit van het huishouden uit hoofdstuk 14b
 (DEC-169), de achttien daarvoor verzamelingen en afspeellijsten uit hoofdstuk 14c (venster 6 deel 1, S19), de vijf daarvoor back-up en restore uit hoofdstuk 17g (venster 7, S25). De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek

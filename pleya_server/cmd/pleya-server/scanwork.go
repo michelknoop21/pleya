@@ -69,6 +69,27 @@ func scanHandler(store *catalog.Store, sc *scanner.Scanner, runner *jobs.Runner,
 	}
 }
 
+// emptyTrashHandler voert POST /libraries/{id}/empty-trash uit. De job deelt de
+// dedupe key van de scan, dus er loopt geen scan van dezelfde bibliotheek naast.
+func emptyTrashHandler(store *catalog.Store, log *slog.Logger) jobs.Handler {
+	return func(ctx context.Context, job jobs.Job) error {
+		var args api.ScanJobArgs
+		if err := json.Unmarshal(job.Args, &args); err != nil {
+			return fmt.Errorf("jobargumenten onleesbaar: %w", err)
+		}
+		libraryID, err := id.Parse(args.LibraryID)
+		if err != nil {
+			return fmt.Errorf("bibliotheek-id onleesbaar: %w", err)
+		}
+		removed, err := store.EmptyTrash(ctx, libraryID, catalog.FileGone)
+		if err != nil {
+			return err
+		}
+		log.Info("prullenbak geleegd", slog.String("library", args.LibraryID), slog.Int64("items", removed))
+		return nil
+	}
+}
+
 // enqueueScans zet één ronde per bibliotheek in de wachtrij.
 //
 // De dedupe key houdt een tweede verzoek voor dezelfde bibliotheek eruit zolang
