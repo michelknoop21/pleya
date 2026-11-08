@@ -3309,7 +3309,8 @@
     "moveSubtitle": "Verder op de $device, de Apple TV stopt",
     "followSubtitle": "De Apple TV speelt door, de $device kijkt synchroon mee",
     "followingOn": "Meenemen naar $name…",
-    "side": "Meenemen start op de $device zonder geluid. Pauzeren en spoelen werkt op beide schermen. Gaat de $device op slot of sluit je hem, dan speelt de Apple TV door."
+    "side": "Meenemen start op de $device zonder geluid. Pauzeren en spoelen werkt op beide schermen. Gaat de $device op slot of sluit je hem, dan speelt de Apple TV door.",
+    "busyPhone": "Samen kijken loopt al op deze telefoon"
   },
   "localLibrary": {
     "playbackUnavailable": "Maak verbinding met de server of download deze video om af te spelen.",

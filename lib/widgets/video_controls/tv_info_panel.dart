@@ -18,6 +18,7 @@ import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
 import '../../media/media_source_info.dart';
 import '../../mpv/mpv.dart';
+import '../../services/companion_remote/playback_handoff.dart';
 import '../../services/companion_remote/playback_handoff_sender.dart';
 import '../../services/companion_remote/companion_remote_receiver.dart';
 import '../../watch_together/providers/watch_together_provider.dart';
@@ -700,15 +701,22 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
       onFollowHost: (host) {
         final serverId = state.serverId;
         if (serverId == null) return;
+        // Read now: the panel may be gone when the outcome arrives.
+        final watchTogether = context.read<WatchTogetherProvider?>();
         unawaited(
-          sender.handOff(
-            host,
-            serverId: serverId,
-            itemId: state.ratingKey,
-            positionMs: widget.player.state.position.inMilliseconds,
-            title: title,
-            follow: () async => (await CompanionRemoteReceiver.instance.onFlyFollow?.call(peek: false))?.offer,
-          ),
+          sender
+              .handOff(
+                host,
+                serverId: serverId,
+                itemId: state.ratingKey,
+                positionMs: widget.player.state.position.inMilliseconds,
+                title: title,
+                follow: () async => (await CompanionRemoteReceiver.instance.onFlyFollow?.call(peek: false))?.offer,
+              )
+              .then((outcome) {
+                // The phone did not join: no empty fly room stays open (M4).
+                if (outcome != PlaybackHandoffOutcome.playing) return watchTogether?.leaveFlySessionIfAlone();
+              }),
         );
       },
       followUnavailable:

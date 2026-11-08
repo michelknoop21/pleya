@@ -22,6 +22,10 @@ class DiscoveredHost {
   /// only a hint: the phone asks over the authenticated session before it
   /// shows anything, and a forged flag costs one question.
   final bool playing;
+
+  /// The host's build takes Meenemen (A-23e). Also outside the HMAC: a forged
+  /// flag only shows a row that then fails.
+  final bool follow;
   DateTime lastSeen;
 
   DiscoveredHost({
@@ -32,6 +36,7 @@ class DiscoveredHost {
     required this.port,
     required this.ips,
     this.playing = false,
+    this.follow = false,
     DateTime? lastSeen,
   }) : lastSeen = lastSeen ?? DateTime.now();
 
@@ -48,8 +53,10 @@ class LanDiscoveryService {
   static const int _staleTimeoutSeconds = 10;
   static const int _beaconVersion = 1;
 
-  /// Whether this host's beacons say a player is open (A-23e); read at each send.
-  bool nowPlaying = false;
+  /// Whether this host's beacons say a player is open (A-23e); asked at each
+  /// send, so the hint follows the host's state without a restart.
+  bool Function() nowPlaying = _never;
+  static bool _never() => false;
 
   // Broadcaster state (host)
   UdpBroadcastSocketSet? _broadcastSockets;
@@ -174,7 +181,9 @@ class LanDiscoveryService {
         'port': wsPort,
         'ips': ips,
         'hmac': beaconHmac,
-        if (nowPlaying) 'playing': true,
+        if (nowPlaying()) 'playing': true,
+        // This build takes Meenemen (A-23e): the Apple TV offers it only to such phones.
+        'follow': true,
       }),
     );
   }
@@ -393,6 +402,7 @@ class LanDiscoveryService {
       final port = json['port'] as int? ?? 0;
       final ips = (json['ips'] as List<dynamic>?)?.cast<String>() ?? [];
       final playing = json['playing'] == true;
+      final follow = json['follow'] == true;
 
       final matchedContext = _matchContext(json, contexts);
       if (matchedContext == null) {
@@ -410,7 +420,10 @@ class LanDiscoveryService {
         final existing = _discoveredHosts[hostKey]!;
         existing.lastSeen = DateTime.now();
         // Only emit if fields actually changed
-        if (existing.name != name || existing.port != port || existing.playing != playing) {
+        if (existing.name != name ||
+            existing.port != port ||
+            existing.playing != playing ||
+            existing.follow != follow) {
           _discoveredHosts[hostKey] = DiscoveredHost(
             authContextId: existing.authContextId,
             clientId: clientId,
@@ -419,6 +432,7 @@ class LanDiscoveryService {
             port: port,
             ips: ips,
             playing: playing,
+            follow: follow,
           );
           _emitHosts();
         }
@@ -431,6 +445,7 @@ class LanDiscoveryService {
           port: port,
           ips: ips,
           playing: playing,
+          follow: follow,
         );
         appLogger.d('LanDiscovery: Discovered host: $name ($platform) at ${ips.join(", ")}:$port');
         _emitHosts();

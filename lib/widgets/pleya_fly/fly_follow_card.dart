@@ -60,12 +60,18 @@ class _FlyFollowHomeCardState extends State<FlyFollowHomeCard> {
         final client = id == null ? null : multiServer.getClientForServer(id);
         return client?.fetchItem(itemId);
       },
-      join: (offer) => watchTogether.joinSession(
-        offer.sessionId!,
-        displayName: companion.deviceName,
-        flySession: true,
-        relayUrl: offer.relayUrl,
-      ),
+      join: (offer) {
+        // Never leave the user's own Samen kijken session behind their back.
+        if (watchTogether.isInSession && !watchTogether.isFlySession) {
+          throw StateError('Watch Together runs on this phone');
+        }
+        return watchTogether.joinSession(
+          offer.sessionId!,
+          displayName: companion.deviceName,
+          flySession: true,
+          relayUrl: offer.relayUrl,
+        );
+      },
     );
     unawaited(_puller!.start());
   }
@@ -80,6 +86,19 @@ class _FlyFollowHomeCardState extends State<FlyFollowHomeCard> {
     final puller = _puller;
     final card = puller?.card;
     if (puller == null || card == null) return;
+    final watchTogether = context.read<WatchTogetherProvider>();
+    if (watchTogether.isInSession && !watchTogether.isFlySession) {
+      // Busy with a code session here: say so instead of leaving it (M5).
+      noticeController.show(
+        Notice(
+          level: NoticeLevel.info,
+          title: t.flyFollow.failedTitle,
+          body: t.flyFollow.busyPhone,
+          groupKey: 'pleya-fly-follow-busy',
+        ),
+      );
+      return;
+    }
     Haptics.light();
     if (await puller.take()) return;
     noticeController.show(

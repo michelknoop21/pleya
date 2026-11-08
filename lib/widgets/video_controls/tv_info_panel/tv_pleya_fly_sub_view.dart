@@ -273,7 +273,8 @@ class _TvPleyaFlySubViewState extends State<TvPleyaFlySubView> {
                 'refused': sender.refusalFor(host)?.name,
               },
             ),
-            if (follow != null)
+            // Only a phone whose build takes Meenemen gets the row (its beacon says so).
+            if (follow != null && host.follow)
               TvPanelRow(
                 key: ValueKey('pleya-fly-follow:${host.clientId}'),
                 leading: const TvPleyaFlyGlyph(),

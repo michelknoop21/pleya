@@ -2795,6 +2795,7 @@ class _TranslationsFlyFollowNl extends TranslationsFlyFollowEn {
 	@override String followSubtitle({required Object device}) => 'De Apple TV speelt door, de ${device} kijkt synchroon mee';
 	@override String followingOn({required Object name}) => 'Meenemen naar ${name}…';
 	@override String side({required Object device}) => 'Meenemen start op de ${device} zonder geluid. Pauzeren en spoelen werkt op beide schermen. Gaat de ${device} op slot of sluit je hem, dan speelt de Apple TV door.';
+	@override String get busyPhone => 'Samen kijken loopt al op deze telefoon';
 }
 
 // Path: localLibrary
@@ -7589,6 +7590,7 @@ extension on TranslationsNl {
 			'flyFollow.followSubtitle' => ({required Object device}) => 'De Apple TV speelt door, de ${device} kijkt synchroon mee',
 			'flyFollow.followingOn' => ({required Object name}) => 'Meenemen naar ${name}…',
 			'flyFollow.side' => ({required Object device}) => 'Meenemen start op de ${device} zonder geluid. Pauzeren en spoelen werkt op beide schermen. Gaat de ${device} op slot of sluit je hem, dan speelt de Apple TV door.',
+			'flyFollow.busyPhone' => 'Samen kijken loopt al op deze telefoon',
 			'localLibrary.playbackUnavailable' => 'Maak verbinding met de server of download deze video om af te spelen.',
 			'localLibrary.title' => 'Lokale bibliotheek',
 			'localLibrary.enable' => 'Offline index inschakelen',

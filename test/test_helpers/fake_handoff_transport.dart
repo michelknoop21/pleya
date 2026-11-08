@@ -5,13 +5,14 @@ import 'package:pleya/services/companion_remote/playback_handoff.dart';
 import 'package:pleya/services/companion_remote/playback_handoff_sender.dart';
 
 /// A beacon as the LAN discovery would report it.
-DiscoveredHost fakeHost(String name, {String platform = 'iOS', String? clientId}) => DiscoveredHost(
+DiscoveredHost fakeHost(String name, {String platform = 'iOS', String? clientId, bool follow = true}) => DiscoveredHost(
   authContextId: 'ctx',
   clientId: clientId ?? name,
   name: name,
   platform: platform,
   port: 48632,
   ips: const ['192.168.1.20'],
+  follow: follow,
 );
 
 /// A transport that records every call in [log] and answers a handoff with

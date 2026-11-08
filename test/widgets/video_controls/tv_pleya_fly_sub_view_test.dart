@@ -235,6 +235,17 @@ void main() {
       await finish(tester);
     });
 
+    testWidgets('a phone whose build has no Meenemen gets only Move', (tester) async {
+      await pumpView(tester, followHost: (_) {});
+      transport.beacons.add([fakeHost('iPhone van Michel'), fakeHost('Oude iPad', clientId: 'old', follow: false)]);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.widgetWithText(TvPanelRow, 'Move'), findsNWidgets(2));
+      expect(find.widgetWithText(TvPanelRow, 'Take along'), findsOneWidget);
+      await finish(tester);
+    });
+
     testWidgets('while Watch Together with a code runs, Take along is dimmed with the reason', (tester) async {
       await pumpView(tester, followHost: (_) {}, followUnavailable: 'Watch Together is already running');
       transport.beacons.add([fakeHost('iPhone van Michel')]);

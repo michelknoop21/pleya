@@ -3309,7 +3309,8 @@
     "moveSubtitle": "Continue on the $device, the Apple TV stops",
     "followSubtitle": "The Apple TV plays on, the $device watches along in sync",
     "followingOn": "Taking along to $name…",
-    "side": "Take along starts on the $device without sound. Pausing and seeking work on both screens. If the $device locks or you close it, the Apple TV plays on."
+    "side": "Take along starts on the $device without sound. Pausing and seeking work on both screens. If the $device locks or you close it, the Apple TV plays on.",
+    "busyPhone": "Watch Together is already running on this phone"
   },
   "localLibrary": {
     "playbackUnavailable": "Connect to the server or download this video to play.",

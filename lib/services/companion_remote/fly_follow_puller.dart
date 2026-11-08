@@ -104,7 +104,15 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
     required this.resolveItem,
     required this.join,
     this.relistenEvery = const Duration(seconds: 15),
-  });
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
+
+  final DateTime Function() _clock;
+
+  /// First wait before an Apple TV that did not answer is asked again; it
+  /// doubles per failure up to [maxRetryWait].
+  static const firstRetryWait = Duration(seconds: 10);
+  static const maxRetryWait = Duration(minutes: 5);
 
   final FlyFollowTransport transport;
 
@@ -123,6 +131,7 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
   Timer? _relisten;
   FlyFollowCard? _card;
   String? _askedFor;
+  final Map<String, ({DateTime at, Duration wait})> _retry = {};
   bool _linkBusy = false;
   bool _taking = false;
   bool _running = false;
@@ -134,6 +143,7 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
     if (_running || isDisposed) return;
     _running = true;
     await _listen();
+    if (!_running || isDisposed) return;
     _relisten = Timer.periodic(relistenEvery, (_) {
       if (_running && !transport.listening && !_linkBusy) unawaited(_listen());
     });
@@ -158,7 +168,12 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
     } catch (e) {
       appLogger.w('Meenemen: discovery failed (${e.runtimeType})');
     }
-    if (stream == null || !_running || isDisposed) return;
+    if (stream == null) return;
+    // Stopped while discovery started: that listener belongs to nobody now.
+    if (!_running || isDisposed) {
+      if (!_linkBusy) transport.stopDiscovery();
+      return;
+    }
     _subscription = stream.listen(_onHosts);
   }
 
@@ -174,8 +189,20 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
       return;
     }
     if (_askedFor == tv.clientId) return;
+    // An Apple TV that did not answer is asked again only after its wait (M6).
+    final retry = _retry[tv.clientId];
+    if (retry != null && _clock().isBefore(retry.at)) return;
     _askedFor = tv.clientId;
     unawaited(_peek(tv));
+  }
+
+  /// No answer (another link ran, or the Apple TV failed): ask again later,
+  /// each time waiting twice as long.
+  void _backOff(String clientId) {
+    _askedFor = null;
+    final previous = _retry[clientId]?.wait;
+    final wait = previous == null ? firstRetryWait : (previous * 2 > maxRetryWait ? maxRetryWait : previous * 2);
+    _retry[clientId] = (at: _clock().add(wait), wait: wait);
   }
 
   /// Asks [tv] over one short Companion Remote link; null when another link runs.
@@ -202,11 +229,11 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
   Future<void> _peek(DiscoveredHost tv) async {
     final answer = await _overLink(tv, peek: true);
     if (isDisposed || _askedFor != tv.clientId) return;
-    if (answer == null) {
-      // Another link ran; ask again on the next beacon.
-      _askedFor = null;
+    if (answer == null || answer.refusal == FlyFollowRefusal.failed) {
+      _backOff(tv.clientId);
       return;
     }
+    _retry.remove(tv.clientId);
     _card = await _cardFor(tv, answer);
     safeNotifyListeners();
   }

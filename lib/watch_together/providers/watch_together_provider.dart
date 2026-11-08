@@ -304,11 +304,28 @@ class WatchTogetherProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// The relay this device uses: its own setting, unless a Pleya Fly host
-  /// named one inside an authenticated Companion Remote session (A-23e).
-  static WatchTogetherPeerService _newPeerService({String? relayUrl}) => WatchTogetherPeerService(
-    customBaseUrl: relayUrl ?? SettingsService.instanceOrNull?.read(SettingsService.customRelayUrl),
-  );
+  static WatchTogetherPeerService _newPeerService({bool joiningFly = false, String? relayUrl}) =>
+      WatchTogetherPeerService(
+        customBaseUrl: relayBaseFor(
+          joiningFly: joiningFly,
+          payloadRelay: relayUrl,
+          ownRelay: SettingsService.instanceOrNull?.read(SettingsService.customRelayUrl),
+        ),
+      );
+
+  /// The relay a session uses. A phone that joins a Pleya Fly session uses
+  /// the relay the Apple TV named, or the built-in one; never its own custom
+  /// relay, which the Apple TV does not use (A-23e). Everything else uses this
+  /// device's setting (null: the built-in relay).
+  @visibleForTesting
+  static String? relayBaseFor({required bool joiningFly, String? payloadRelay, String? ownRelay}) =>
+      joiningFly ? payloadRelay : ownRelay;
+
+  /// The Apple TV's fly session lost its last phone, or none came: end it,
+  /// so no empty room stays open on the relay (A-23e).
+  Future<void> leaveFlySessionIfAlone() async {
+    if (isFlySession && isHost && flyFollowerNames.isEmpty) await leaveSession();
+  }
 
   /// Create a new watch together session as host. [flySession] makes every
   /// guest a follower that never holds the room (A-23e).
@@ -375,7 +392,7 @@ class WatchTogetherProvider with ChangeNotifier {
     if (flySession) LogRedactionManager.registerCustomValue(sessionId);
     appLogger.d('WatchTogether: Joining session${flySession ? ' (Pleya Fly)' : ': $sessionId'}');
 
-    _peerService = _newPeerService(relayUrl: relayUrl);
+    _peerService = _newPeerService(joiningFly: flySession, relayUrl: relayUrl);
     _setupPeerServiceListeners();
     _flySession = flySession;
 

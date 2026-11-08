@@ -248,12 +248,13 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     if (!busy) transport.stopDiscovery();
   }
 
-  /// Hands the playback to [host]. Returns once the phone answered or the
-  /// wait ended; this device keeps playing unless the phone plays.
+  /// Hands the playback to [host]. Returns the outcome once the phone answered
+  /// or the wait ended (null when no fly started); this device keeps playing
+  /// unless the phone plays.
   ///
   /// With [follow] it is a Meenemen (A-23e): [follow] opens the Watch
   /// Together session first, the phone joins it, and this device plays on.
-  Future<void> handOff(
+  Future<PlaybackHandoffOutcome?> handOff(
     DiscoveredHost host, {
     required String serverId,
     required String itemId,
@@ -261,10 +262,10 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
     required String title,
     Future<FlyFollowOffer?> Function()? follow,
   }) async {
-    if (_handingTo != null) return;
+    if (_handingTo != null) return null;
     if (!transport.beginFly()) {
       appLogger.w('Pleya Fly: another fly is under way');
-      return;
+      return null;
     }
     _handingTo = host;
     _follow = follow != null;
@@ -342,14 +343,14 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
       safeNotifyListeners();
       onFollowing?.call(host);
       _disposeIfReleased();
-      return;
+      return outcome;
     }
     if (outcome == PlaybackHandoffOutcome.playing) {
       if (currentStop() == stopThisPlayer) stopThisPlayer?.call();
       safeNotifyListeners();
       onPlaying?.call(host);
       _disposeIfReleased();
-      return;
+      return outcome;
     }
     final refusal = switch (outcome) {
       PlaybackHandoffOutcome.wrongProfile => PlaybackHandoffRefusal.wrongProfile,
@@ -361,12 +362,13 @@ class PlaybackHandoffSender with ChangeNotifier, DisposableChangeNotifierMixin {
       // The user can fix it on the phone and try again, so the list stays.
       _refusal = (clientId: host.clientId, reason: refusal);
       safeNotifyListeners();
-      return;
+      return outcome;
     }
     safeNotifyListeners();
     onFailed?.call(host, refusal);
     onViewFailed?.call();
     _disposeIfReleased();
+    return outcome;
   }
 
   /// A view shows this sender again: a fly under way keeps its sender, so the

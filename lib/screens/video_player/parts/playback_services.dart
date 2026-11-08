@@ -246,10 +246,12 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     // Scrobblers — Discord RPC, Trakt, unified tracker. All accept the
     // neutral [MediaServerClient]; null short-circuits cleanly. A phone that
     // follows an Apple TV scrobbles nothing: the Apple TV does (A-23e).
-    if (mediaClient != null && _playbackReportsAllowed) {
-      unawaited(DiscordRPCService.instance.startPlayback(metadata, mediaClient));
-      unawaited(TraktScrobbleService.instance.startPlayback(metadata, mediaClient, isLive: widget.isLive));
-      unawaited(TrackerCoordinator.instance.startPlayback(metadata, mediaClient, isLive: widget.isLive));
+    if (mediaClient != null) {
+      startWatchStateWriter(_watchTogetherOrNull, 'scrobblers', () {
+        unawaited(DiscordRPCService.instance.startPlayback(metadata, mediaClient));
+        unawaited(TraktScrobbleService.instance.startPlayback(metadata, mediaClient, isLive: widget.isLive));
+        unawaited(TrackerCoordinator.instance.startPlayback(metadata, mediaClient, isLive: widget.isLive));
+      });
     }
   }
 
@@ -268,12 +270,32 @@ extension _VideoPlayerPlaybackServiceMethods on VideoPlayerScreenState {
     if (currentPlayer == null) return;
 
     // A phone that follows an Apple TV writes no watch state (A-23e).
-    if (!_playbackReportsAllowed) {
+    final started = startWatchStateWriter(_watchTogetherOrNull, 'progress tracker', () {
+      _startProgressTracker(
+        currentPlayer,
+        metadata: metadata,
+        mediaClient: mediaClient,
+        offlineWatchService: offlineWatchService,
+        playSessionId: playSessionId,
+        playMethod: playMethod,
+        mediaInfo: mediaInfo,
+      );
+    });
+    if (!started) {
       _progressTracker = null;
       _playbackWriteAuthority = null;
-      return;
     }
+  }
 
+  void _startProgressTracker(
+    Player currentPlayer, {
+    required MediaItem metadata,
+    required MediaServerClient? mediaClient,
+    required OfflineWatchSyncService? offlineWatchService,
+    String? playSessionId,
+    String? playMethod,
+    MediaSourceInfo? mediaInfo,
+  }) {
     // Local media still reports live when its server is online; only queue
     // locally when no reporting client is reachable.
     if (mediaClient != null) {

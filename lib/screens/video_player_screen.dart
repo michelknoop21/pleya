@@ -640,6 +640,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   /// A phone that follows an Apple TV plays muted until "Geluid aan" (A-23e).
   final FlyFollowMute _flyMute = FlyFollowMute();
 
+  /// A fly session that opens now; a second phone that asks meanwhile waits for it.
+  Future<bool>? _flySessionOpening;
+
   /// Backend-neutral lookup. Returns whichever client (Plex or Jellyfin)
   /// owns this item. Used by the playback-init path in [_initializePlayer].
   MediaServerClient? _getMediaServerClient(BuildContext context) {
@@ -1339,7 +1342,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         // A phone that follows an Apple TV just stops following (A-23e): no
         // question, and leaving first keeps the exit's pause off the Apple TV.
         final confirmed =
-            _watchTogetherProvider!.isFlyFollower ||
+            leavesWithoutConfirm(_watchTogetherProvider!) ||
             await showConfirmDialog(
               context,
               title: t.watchTogether.leaveSessionQuestion,

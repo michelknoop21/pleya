@@ -209,6 +209,13 @@ Future<void> _follow(
   final watchTogether = context.read<WatchTogetherProvider>();
   attempt.opened = true;
   release();
+  // Samen kijken with a code is this phone's own session: Meenemen refuses
+  // instead of leaving it behind the user's back.
+  if (watchTogether.isInSession && !watchTogether.isFlySession) {
+    appLogger.w('Playback handoff ${request.id} refused: Watch Together runs on this phone');
+    reportPlaybackHandoff(provider, request.id, PlaybackHandoffOutcome.failed);
+    return;
+  }
   try {
     await watchTogether.joinSession(
       request.followSessionId!,

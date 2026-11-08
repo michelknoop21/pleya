@@ -572,7 +572,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
       // Start LAN discovery broadcasting
       _discoveryService ??= LanDiscoveryService();
-      _discoveryService!.nowPlaying = _nowPlaying;
+      _discoveryService!.nowPlaying = () =>
+          advertisesPlaying(playerOpen: _nowPlaying, clientConnected: _clientConnected);
       final localIps = result.addresses.map((a) => a.split(':').first).toList();
       await _discoveryService!.startBroadcastingForContexts(
         contexts: contexts,
@@ -884,10 +885,15 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
 
   /// Host side: beacons say whether a player is open, so a phone in the Home
   /// knows when to ask what plays (A-23e).
-  void setNowPlayingBeacon(bool playing) {
-    _nowPlaying = playing;
-    _discoveryService?.nowPlaying = playing;
-  }
+  void setNowPlayingBeacon(bool playing) => _nowPlaying = playing;
+
+  /// A host with a connected client hides the hint: a phone that peeks would
+  /// connect, and a new connection replaces the client (another phone's
+  /// remote session). The hint returns when that client leaves (A-23e).
+  static bool advertisesPlaying({required bool playerOpen, required bool clientConnected}) =>
+      playerOpen && !clientConnected;
+
+  bool get _clientConnected => isHost && _session?.connectedDevice != null;
 
   /// Phone side: asks the connected Apple TV what it plays (A-23e). With
   /// [peek] only that; without, the Apple TV also opens the session to follow.

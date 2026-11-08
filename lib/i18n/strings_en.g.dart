@@ -6803,6 +6803,9 @@ class TranslationsFlyFollowEn {
 
 	/// en: 'Take along starts on the $device without sound. Pausing and seeking work on both screens. If the $device locks or you close it, the Apple TV plays on.'
 	String side({required Object device}) => 'Take along starts on the ${device} without sound. Pausing and seeking work on both screens. If the ${device} locks or you close it, the Apple TV plays on.';
+
+	/// en: 'Watch Together is already running on this phone'
+	String get busyPhone => 'Watch Together is already running on this phone';
 }
 
 // Path: localLibrary
@@ -13518,6 +13521,7 @@ extension on Translations {
 			'flyFollow.followSubtitle' => ({required Object device}) => 'The Apple TV plays on, the ${device} watches along in sync',
 			'flyFollow.followingOn' => ({required Object name}) => 'Taking along to ${name}…',
 			'flyFollow.side' => ({required Object device}) => 'Take along starts on the ${device} without sound. Pausing and seeking work on both screens. If the ${device} locks or you close it, the Apple TV plays on.',
+			'flyFollow.busyPhone' => 'Watch Together is already running on this phone',
 			'localLibrary.playbackUnavailable' => 'Connect to the server or download this video to play.',
 			'localLibrary.title' => 'Local library',
 			'localLibrary.enable' => 'Store library in advance',

@@ -1,8 +1,10 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/providers/companion_remote_provider.dart';
 import 'package:pleya/services/companion_remote/playback_handoff.dart';
 import 'package:pleya/services/companion_remote/pleya_fly_follow.dart';
+import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 
 const _session = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -17,6 +19,42 @@ FlyFollowOffer _offer({String? sessionId = _session, String? relayUrl}) => FlyFo
 );
 
 void main() {
+  group('beacon hint', () {
+    test('an Apple TV with a connected client does not say it plays', () {
+      // A phone that peeks would connect and replace that client (another phone's remote).
+      expect(CompanionRemoteProvider.advertisesPlaying(playerOpen: true, clientConnected: true), isFalse);
+    });
+
+    test('negative control: an open player without a client says it plays', () {
+      expect(CompanionRemoteProvider.advertisesPlaying(playerOpen: true, clientConnected: false), isTrue);
+      expect(CompanionRemoteProvider.advertisesPlaying(playerOpen: false, clientConnected: false), isFalse);
+    });
+  });
+
+  group('relay of a fly join', () {
+    test('a phone joining a fly session uses the relay the Apple TV named, or the built-in one', () {
+      expect(
+        WatchTogetherProvider.relayBaseFor(joiningFly: true, payloadRelay: null, ownRelay: 'https://mine.example'),
+        isNull,
+      );
+      expect(
+        WatchTogetherProvider.relayBaseFor(
+          joiningFly: true,
+          payloadRelay: 'https://tv.example',
+          ownRelay: 'https://mine.example',
+        ),
+        'https://tv.example',
+      );
+    });
+
+    test('negative control: a code session keeps this device\'s own relay', () {
+      expect(
+        WatchTogetherProvider.relayBaseFor(joiningFly: false, ownRelay: 'https://mine.example'),
+        'https://mine.example',
+      );
+    });
+  });
+
   group('fly session id', () {
     test('is 26 characters of the upper-case alphabet, about 130 bits', () {
       final id = generateFlySessionId(Random(7));

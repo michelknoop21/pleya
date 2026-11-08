@@ -39,27 +39,16 @@ extension _VideoPlayerFlyFollowMethods on VideoPlayerScreenState {
     if (peek) return FlyFollowAnswer.offer(offer);
 
     if (!watchTogether.isFlySession) {
-      try {
-        await watchTogether.createSession(
-          controlMode: ControlMode.anyone,
-          displayName: companion.deviceName,
-          sessionId: generateFlySessionId(),
-          mediaRatingKey: _currentMetadata.id,
-          mediaServerId: _currentMetadata.serverId,
-          mediaTitle: title,
-          flySession: true,
-        );
-      } catch (e) {
-        appLogger.w('Meenemen: could not open the session (${e.runtimeType})');
-        return FlyFollowAnswer.refused(FlyFollowRefusal.failed, title: title);
-      }
+      // Two phones that ask at once share one session: the second waits for
+      // the first opening instead of tearing it down with a second one.
+      final opening = _flySessionOpening ??= _openFlySession(
+        watchTogether,
+        companion.deviceName,
+        title,
+      ).whenComplete(() => _flySessionOpening = null);
+      if (!await opening) return FlyFollowAnswer.refused(FlyFollowRefusal.failed, title: title);
       // The player closed while the relay answered: nothing to follow.
-      if (!mounted || player != currentPlayer) {
-        unawaited(watchTogether.leaveSession());
-        return const FlyFollowAnswer.refused(FlyFollowRefusal.nothing);
-      }
-      // Mid-play attach: the room takes over what this screen does right now.
-      _attachToWatchTogetherSession(adoptPlayback: true);
+      if (!mounted || player != currentPlayer) return const FlyFollowAnswer.refused(FlyFollowRefusal.nothing);
     }
     final sessionId = watchTogether.sessionId;
     if (sessionId == null) return FlyFollowAnswer.refused(FlyFollowRefusal.failed, title: title);
@@ -76,25 +65,54 @@ extension _VideoPlayerFlyFollowMethods on VideoPlayerScreenState {
     );
   }
 
-  /// Read at wiring time: a following phone joined before its player opened.
-  bool get _playbackReportsAllowed {
+  /// Opens the fly session around this player and attaches it mid-play; false
+  /// when the relay did not answer or the player went meanwhile.
+  Future<bool> _openFlySession(WatchTogetherProvider watchTogether, String deviceName, String title) async {
+    final currentPlayer = player;
     try {
-      return playbackReportsAllowed(context.read<WatchTogetherProvider>());
+      await watchTogether.createSession(
+        controlMode: ControlMode.anyone,
+        displayName: deviceName,
+        sessionId: generateFlySessionId(),
+        mediaRatingKey: _currentMetadata.id,
+        mediaServerId: _currentMetadata.serverId,
+        mediaTitle: title,
+        flySession: true,
+      );
+    } catch (e) {
+      appLogger.w('Meenemen: could not open the session (${e.runtimeType})');
+      return false;
+    }
+    if (!mounted || currentPlayer == null || player != currentPlayer) {
+      unawaited(watchTogether.leaveSession());
+      return false;
+    }
+    // Mid-play attach: the room takes over what this screen does right now.
+    _attachToWatchTogetherSession(adoptPlayback: true);
+    return true;
+  }
+
+  /// Read at wiring time: a following phone joined before its player opened.
+  WatchTogetherProvider? get _watchTogetherOrNull {
+    try {
+      return _watchTogetherProvider ?? context.read<WatchTogetherProvider>();
     } catch (_) {
-      return true;
+      return null;
     }
   }
 
   /// "Geluid aan" (45-i): back to the volume this device uses.
   Future<void> _unmuteFlyFollow() async {
     final settings = await SettingsService.getInstance();
+    // The player may have closed while the setting was read.
+    if (!mounted) return;
     await _flyMute.release(player, settings.read(SettingsService.volume));
   }
 
   /// The player of a Meenemen session closes: a phone leaves the session, and
   /// the Apple TV ends it, which stops every phone with it (DEC points 6 and 7).
   void _leaveFlySessionOnExit(WatchTogetherProvider watchTogether) {
-    if (!watchTogether.isFlySession || _isReplacingWithVideo) return;
+    if (!leavesFlySessionOnExit(watchTogether, replacingWithVideo: _isReplacingWithVideo)) return;
     unawaited(watchTogether.leaveSession());
   }
 }

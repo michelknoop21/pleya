@@ -20,9 +20,11 @@ class _FakeTransport implements FlyFollowTransport {
   FlyFollowAnswer Function(bool peek) answer = (peek) => FlyFollowAnswer.offer(_offer(session: !peek));
   bool free = true;
   bool _listening = false;
+  Completer<void>? discoverGate;
 
   @override
   Future<Stream<List<DiscoveredHost>>?> discover() async {
+    await discoverGate?.future;
     _listening = true;
     return hosts.stream;
   }
@@ -77,16 +79,19 @@ void main() {
   late _FakeTransport transport;
   late List<FlyFollowOffer> joined;
   late FlyFollowPuller puller;
+  late DateTime now;
   MediaItem? reachable;
 
   setUp(() {
     transport = _FakeTransport();
     joined = [];
     reachable = _movie;
+    now = DateTime(2026, 11, 8, 20);
     puller = FlyFollowPuller(
       transport: transport,
       resolveItem: (serverId, itemId) async => reachable,
       join: (offer) async => joined.add(offer),
+      clock: () => now,
     );
   });
 
@@ -176,7 +181,7 @@ void main() {
     expect(puller.card, isNull);
   });
 
-  test('a remote session in use is not taken over: asked again later', () async {
+  test('a remote session in use is not taken over: asked again after the wait', () async {
     transport.free = false;
     await puller.start();
     await beacon([_tv()]);
@@ -184,6 +189,44 @@ void main() {
 
     transport.free = true;
     await beacon([_tv()]);
+    expect(transport.asks, isEmpty, reason: 'not before the first wait');
+    now = now.add(FlyFollowPuller.firstRetryWait);
+    await beacon([_tv()]);
     expect(transport.asks, [true]);
+  });
+
+  test('an Apple TV that fails to answer is asked again, each time after a longer wait', () async {
+    transport.answer = (peek) => const FlyFollowAnswer.refused(FlyFollowRefusal.failed);
+    await puller.start();
+    await beacon([_tv()]);
+    expect(transport.asks, [true]);
+    expect(puller.card, isNull);
+
+    // Negative control: within the wait the beacon does not trigger a new connection.
+    await beacon([_tv()]);
+    expect(transport.asks, [true]);
+
+    now = now.add(FlyFollowPuller.firstRetryWait);
+    await beacon([_tv()]);
+    expect(transport.asks, [true, true], reason: 'a failed answer is retried');
+
+    // The second wait is twice as long.
+    now = now.add(FlyFollowPuller.firstRetryWait);
+    await beacon([_tv()]);
+    expect(transport.asks, [true, true]);
+    now = now.add(FlyFollowPuller.firstRetryWait);
+    transport.answer = (peek) => FlyFollowAnswer.offer(_offer(session: !peek));
+    await beacon([_tv()]);
+    expect(transport.asks, [true, true, true]);
+    expect(puller.card, isNotNull);
+  });
+
+  test('a stop while discovery starts leaves no listener behind', () async {
+    transport.discoverGate = Completer<void>();
+    final starting = puller.start();
+    puller.stop();
+    transport.discoverGate!.complete();
+    await starting;
+    expect(transport.listening, isFalse);
   });
 }
