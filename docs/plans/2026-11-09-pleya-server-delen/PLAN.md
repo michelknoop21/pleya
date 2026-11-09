@@ -204,3 +204,21 @@ Het werkpakket is af als deze scenario's aantoonbaar werken, met echte apparaten
 - Metingen op de NAS tonen acceptabele starttijd, seekgedrag, buffering en belasting.
 
 Testaanpak: het daadwerkelijke verificatiegedrag per spelerstack, sleutelgrenzen (welke sleutel waar leeft) en weerstand tegen manipulatie. Geen testclaims die niet kunnen: de server kan bij gewone TLS niet zien of een client pint, en één test bewijst niet algemeen dat ontsleutelen onmogelijk is. Elke fix met negatieve controle; `scripts/ci_checks.sh` groen; UI-stappen met Pleya Verify en screenshotmanifest.
+
+## Vervolg 9 november: besluiten tweede ronde, proef en acties
+
+Michel besloot op 9 november in een tweede ronde over hosting, domein en certificaten (DEC-XXX, besluit 12): eerst alles op de NAS en later een VPS, een apart nieuw domein voor servernamen, en Let's Encrypt met een aanvraag voor de Public Suffix List. Het [vertrouwensmodel](VERTROUWENSMODEL.md) legt per sleutel vast waar hij leeft en wat hij bewijst. De [cloudproef](../../qa/2026-11-09-s26-stap2-cloudproef.md) bewees de certificaatroute, frp als relay, en het gedrag van ffmpeg en mpv. Het [toesteldraaiboek](PROEF-TOESTELLEN.md) beschrijft wat nog op echte toestellen moet.
+
+Gevolgen voor de stappen:
+- **Stap 5 (directe routes):** de app zet certificaatcontrole expliciet aan in elke speler. Spelers krijgen geen bearer-header waar een redirect naar een andere host kan volgen. De lokale route gebruikt de adressen uit de routegegevens via een CONNECT-proxy op het toestel, zodat DNS-rebindingbescherming in routers haar niet breekt.
+- **Stap 6 (relay):** frp met de centrale dienst als serverplugin, tenzij het toestelbewijs of het TLS-control-kanaal een tekort laat zien. De eigen dunne relay uit de proef is de terugval.
+
+### Acties voor Michel
+
+| Actie | Waarom | Wanneer |
+| --- | --- | --- |
+| Domeinnaam kiezen en minstens twee jaar vooruit registreren, bij een DNS-provider met API | Servernamen en DNS-01; de Public Suffix List eist twee jaar registratie | Vóór stap 3 |
+| Aanvraag bij de Public Suffix List indienen (met `_psl`-TXT-record) | Zonder opname maximaal 50 nieuwe servers per week | Zodra het domein staat |
+| Een poort op de router doorzetten naar de relay op de NAS | De Cloudflare Tunnel kan TLS niet doorgeven | Vóór stap 6 |
+| Toesteldraaiboek uitvoeren op Mac, iPhone, Apple TV en Android | Certificaatroute pas definitief na toestelbewijs | Na het bouwen van het startcommando |
+| Besluiten over een losse beveiligingshotfix voor `tls-verify` in mpv | Raakt vandaag alle backends, buiten S26 | Na bevestiging op een MPVKit-toestel |

@@ -41,6 +41,7 @@ Eén samenhangend werkpakket, **C-06 / S26 "Pleya Server delen: uitnodigingen, v
 5. **Relay zonder routerwerk.** Als rechtstreeks verbinden niet lukt, werkt de standaardmodus via een relay die de versleutelde verbinding doorgeeft en de privésleutel van de media-TLS niet heeft. Eerst een bestaande tunnelcomponent met TLS-passthrough beoordelen; eigen transport alleen bij aantoonbaar tekort. Pleya draait een relay; dezelfde component is zelf te hosten zonder account.
 6. **Kwaliteit** blijft bij de kijker: originele kwaliteit als fabrieksinstelling, databesparing met plafond, of automatisch; het PlaybackPlan noemt de reden en onderscheidt kwaliteit van compatibiliteit.
 7. **Uitval en herstel** krijgen expliciet gedrag: welke toegang bij uitval van de centrale dienst blijft werken, hoe lang, en hoe intrekking daartegen weegt.
+8. **Hosting in fases.** Eerst op de NAS, later op een VPS, met eigen containers en DNS-namen zodat de verhuizing geen herbouw vraagt. Servernamen onder een apart nieuw domein; certificaten van Let's Encrypt met een aanvraag voor de Public Suffix List (DEC-XXX, besluit 12).
 
 De acht uitvoeringsstappen, de acceptatiescenario's en de inventarisatie staan in het [uitvoeringsplan](plans/2026-11-09-pleya-server-delen/PLAN.md).
 
@@ -77,6 +78,8 @@ Wat er al is en hergebruikt wordt, met bewijsplek:
 | TV-aanmelding | alleen Plex en Jellyfin; herbruikbaar: `device_code_dialog.dart` (RFC 8628) en de QR/poll-schil van `PlexPinAuthFlow` | `lib/screens/tv/tv_auth_view.dart`, `lib/screens/auth/plex_pin_auth_flow.dart` |
 | Deep links | geen universal links of App Links; alleen `pleya://play` en `pleya-share://pair` als QR-inhoud | `tvos/Runner/Info.plist`, `lib/services/pleya_share/pleya_share_uri.dart` |
 | Centrale backend | pleya.app is een statische SvelteKit-site met een downloadteller; `ice.pleya.app` is een Go-relay voor logs, Watch Together, posters en OAuth-proxy | `website/`, `server/` |
+
+**Aanvulling 9 november, tweede ronde.** Alle publieke Pleya-diensten draaien op de Synology DS920+ thuis: pleya.app (statische site in nginx plus een SQLite-downloadteller), `ice.pleya.app` (`server/`, één platte Go-binary met alleen `gorilla/websocket` en opslag in bestanden) en `web.pleya.app` (Pleya Server). Ze lopen via één Cloudflare Tunnel; poort 443 op de NAS is van DSM. Er is geen VPS, geen accountdatabase en geen e-mailverzending. Universal links en App Links ontbreken; het team-id is `XL9KN38ATX`, de bundel `nl.michelknoop.pleya`. Gevolg: de centrale dienst wordt een eigen kleine dienst met eigen database, naast de relay-stack en met hetzelfde deploypatroon. `server/` zelf is daar geen basis voor. De relay kan niet achter de tunnel.
 
 Drie gevolgen voor het ontwerp: de server krijgt een eigen, niet-roterend identiteitssleutelpaar; "server verschijnt op alle apparaten" komt uit het serveroverzicht van de centrale dienst en niet uit toestelsync; een uitnodigingslink vraagt universal links en App Links op een pleya.app-domein met een webfallback. De centrale dienst is nieuw; de Go-relaystack is de dichtstbijzijnde plek om hem te hosten, en dat is een keuze voor stap 3.
 
