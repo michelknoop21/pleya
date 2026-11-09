@@ -30,6 +30,26 @@ void main() {
     expect(cachedProvider.maxWidth, isNull);
   });
 
+  testWidgets('a local poster removed from disk falls back to the network image, not the error tile', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SizedBox(
+          width: 160,
+          height: 90,
+          child: OptimizedMediaImage.thumb(
+            imagePath: 'https://example.invalid/episode-thumb.jpg',
+            localFilePath: '/nonexistent/pleya-local-library/posters/gone.image',
+            width: 160,
+            height: 90,
+          ),
+        ),
+      ),
+    );
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect((image.image as ResizeImage).imageProvider, isA<CachedNetworkImageProvider>());
+  });
+
   testWidgets('failed image placeholders keep explicit dimensions in loose layouts', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

@@ -135,6 +135,29 @@ void main() {
     expect(store.posterPath('one', '/shared-poster'), isNull);
   });
 
+  test('a poster lookup hashes its key once, however often a card asks', () async {
+    final store = _CountingStore(root);
+    await store.load();
+    await store.saveLibrary(library, [film('a')], complete: true);
+    await store.savePoster('one', '/shared-poster', Uint8List.fromList([1, 2, 3]));
+    for (var i = 0; i < 1000; i++) {
+      // What the provider's posterPath asks of the store per card.
+      store.prioritizePoster('one', '/shared-poster');
+      expect(store.knownPosterPath('one', '/shared-poster'), isNotNull);
+    }
+    expect(store.keyDigests, 1, reason: 'one sha256 per poster reference, the first time it is seen');
+  });
+
+  test('a known poster path is read from memory: a file removed from disk is still named', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    await store.savePoster('one', '/poster', Uint8List.fromList([1, 2, 3]));
+    final path = store.knownPosterPath('one', '/poster');
+    await File(path!).delete();
+    expect(store.knownPosterPath('one', '/poster'), path, reason: 'the image widget checks the file itself');
+    expect(store.posterPath('one', '/poster'), isNull, reason: 'sync and revalidation still check the disk');
+  });
+
   test('missing poster file is repaired even when replacement bytes are identical', () async {
     final store = LocalLibraryStore(root);
     await store.load();
@@ -239,4 +262,16 @@ void main() {
     expect(reopened.items, isEmpty);
     expect(reopened.enabled, isFalse);
   });
+}
+
+/// Counts the sha256 poster keys the store computes.
+class _CountingStore extends LocalLibraryStore {
+  _CountingStore(super.directory);
+  int keyDigests = 0;
+
+  @override
+  String posterKeyDigest(String reference) {
+    keyDigests++;
+    return super.posterKeyDigest(reference);
+  }
 }

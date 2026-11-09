@@ -4,11 +4,15 @@ part of '../local_library_provider.dart';
 extension LocalLibraryReads on LocalLibraryProvider {
   String? posterPath(String? serverId, String? path) {
     ScanDiagnostics.posterPathCalls++;
-    if (isDisposed || serverId == null || path == null || !mayReadServer(serverId)) return null;
+    if (isDisposed || serverId == null || path == null || !(_readableServers[serverId] ??= mayReadServer(serverId))) {
+      return null;
+    }
     // Image reads obey the same library boundary as metadata reads.
     if (!_posterReferences.contains('$serverId|${artworkStorageKey(path)}')) return null;
     _store?.prioritizePoster(serverId, path);
-    return _store?.posterPath(serverId, path);
+    // No file check here: this runs for every card on every notification, and
+    // the image widget falls back to the network when the file is gone.
+    return _store?.knownPosterPath(serverId, path);
   }
 
   MediaItem? item(String serverId, String id) {

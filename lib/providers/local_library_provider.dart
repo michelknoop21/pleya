@@ -146,6 +146,10 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   List<MediaLibrary> _visibleLibraries = [];
   List<MediaItem> _visibleItems = [];
   final Set<String> _posterReferences = {};
+
+  /// [mayReadServer] per server for [posterPath], emptied on every dependency
+  /// change and read invalidation before listeners hear of it.
+  final Map<String, bool> _readableServers = {};
   List<MediaLibrary> get libraries => _visibleLibraries;
   List<MediaItem> get items => _visibleItems;
 
@@ -295,6 +299,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   // Fail closed during persistence: a restarted catalog cannot read the
   // just-cleared/deleted cache or fall back to an old in-flight response.
   void _beginReadInvalidation() {
+    _readableServers.clear();
     _pendingReadInvalidations++;
     _readBoundaryRevision++;
     revision++;
@@ -348,6 +353,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   }
 
   void _changed() {
+    _readableServers.clear();
     // Update the in-memory access boundary synchronously before notifying reads.
     unawaited(_updateAccess());
     final readSignature = _readSignature;

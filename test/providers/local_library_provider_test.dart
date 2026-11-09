@@ -382,6 +382,58 @@ void main() {
     expect(provider.page('one:films', const LibraryQuery()), isNull);
   });
 
+  group('poster lookup', () {
+    var policyCalls = 0;
+    var allowed = true;
+
+    Future<void> open() async {
+      provider.dispose();
+      final seeded = LocalLibraryStore(root);
+      await seeded.load();
+      await seeded.saveLibrary(library, client.rows, complete: true);
+      await seeded.savePoster('one', '/shared-poster', Uint8List.fromList([1, 2, 3]));
+      allowed = true;
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) {
+          policyCalls++;
+          return allowed;
+        },
+        mayReadLibrary: (_) => true,
+        networkConnected: () => true,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+      );
+      await provider.ready;
+      await Future<void>.delayed(Duration.zero); // the startup sync, off here
+    }
+
+    test('posterPath asks the server policy once per server until a change', () async {
+      await open();
+      policyCalls = 0;
+      for (var i = 0; i < 1000; i++) {
+        expect(provider.posterPath('one', '/shared-poster'), isNotNull);
+      }
+      expect(policyCalls, 1);
+      changes.notifyListeners();
+      policyCalls = 0; // the change reads the policy for its own signatures
+      expect(provider.posterPath('one', '/shared-poster'), isNotNull);
+      expect(policyCalls, 1, reason: 'a change empties the cached answer');
+    });
+
+    test('a server revoked while the grid is mounted hides its posters at once', () async {
+      await open();
+      expect(provider.posterPath('one', '/shared-poster'), isNotNull);
+      allowed = false;
+      changes.notifyListeners();
+      expect(provider.posterPath('one', '/shared-poster'), isNull);
+    });
+  });
+
   test('confirmed source deletion also cleans local data with prefetch disabled', () async {
     wifi = true;
     await provider.setEnabled(true);
