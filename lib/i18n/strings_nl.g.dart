@@ -3421,6 +3421,7 @@ class _TranslationsSeerrCockpitNl extends TranslationsSeerrCockpitEn {
 	@override String get inPleyaNo => 'Nog niet';
 	@override String get inPleyaPartly => 'Deels';
 	@override String get inPleyaYes => 'Ja';
+	@override String get toCheck => 'Nog na te gaan';
 }
 
 // Path: unifiedCatalog.sort
@@ -6730,6 +6731,7 @@ extension on TranslationsNl {
 			'seerr.cockpit.inPleyaNo' => 'Nog niet',
 			'seerr.cockpit.inPleyaPartly' => 'Deels',
 			'seerr.cockpit.inPleyaYes' => 'Ja',
+			'seerr.cockpit.toCheck' => 'Nog na te gaan',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
 			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
@@ -6782,9 +6784,9 @@ extension on TranslationsNl {
 			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
-			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
 			_ => null,
 		} ?? switch (path) {
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
 			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
 			'sourcePicker.lastUsed' => 'Laatst gebruikt',
 			'sourcePicker.currentSource' => 'Huidige bron',
@@ -7296,9 +7298,9 @@ extension on TranslationsNl {
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
 			'assistant.mobile.setup' => 'Model instellen',
-			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
 			'assistant.mobile.listening' => 'Ik luister…',
 			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
 			'assistant.mobile.askFurther' => 'Vraag verder',

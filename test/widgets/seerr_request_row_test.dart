@@ -73,9 +73,9 @@ void main() {
 
     expect(find.text('The Gray Man'), findsOneWidget);
     // The media type belongs on the secondary line, together with the year.
-    expect(find.text('${t.discover.movie} · 2022'), findsOneWidget);
+    expect(find.textContaining('${t.discover.movie} · 2022', findRichText: true), findsOneWidget);
     // The Regiekamer line names the requester bare: "rapmadri · Film · 2022".
-    expect(find.text('rapmadri'), findsOneWidget);
+    expect(find.textContaining('rapmadri', findRichText: true), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -83,15 +83,19 @@ void main() {
     await pumpRow(tester, request(title: 'Andor', year: '2022', type: 'tv'));
 
     expect(find.text('Andor'), findsOneWidget);
-    expect(find.text('${t.discover.tvShow} · 2022'), findsOneWidget);
+    expect(find.textContaining('${t.discover.tvShow} · 2022', findRichText: true), findsOneWidget);
   });
 
   testWidgets('a row without a resolved title shows no stand-in heading', (tester) async {
     await pumpRow(tester, request(title: null, year: null));
 
     // Neither the old fallback nor an empty heading pretending to be one.
-    expect(find.text(t.discover.movie), findsOneWidget, reason: 'only on the secondary line');
-    expect(find.text('${t.discover.movie} · 2022'), findsNothing);
+    expect(
+      find.textContaining(t.discover.movie, findRichText: true),
+      findsOneWidget,
+      reason: 'only on the secondary line',
+    );
+    expect(find.textContaining('${t.discover.movie} · 2022', findRichText: true), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -123,32 +127,32 @@ void main() {
     testWidgets('4K is its own pill, not glued to the seasons', (tester) async {
       await pumpRow(tester, request(type: 'tv', is4k: true, seasons: const [1]));
 
-      expect(find.text(t.seerr.fourKBadge), findsOneWidget);
-      expect(find.text(t.seerr.season(number: 1)), findsOneWidget);
+      expect(find.textContaining(t.seerr.fourKBadge, findRichText: true), findsOneWidget);
+      expect(find.textContaining(t.seerr.season(number: 1), findRichText: true), findsOneWidget);
     });
   });
 
   group('seasons', () {
     testWidgets('one season is named in the singular', (tester) async {
       await pumpRow(tester, request(type: 'tv', seasons: const [3]));
-      expect(find.text(t.seerr.season(number: 3)), findsOneWidget);
+      expect(find.textContaining(t.seerr.season(number: 3), findRichText: true), findsOneWidget);
     });
 
     testWidgets('a consecutive run collapses instead of taking over the card', (tester) async {
       await pumpRow(tester, request(type: 'tv', seasons: const [18, 19, 20, 21, 22]));
 
-      expect(find.text(t.seerr.seasonsRange(range: '18-22')), findsOneWidget);
-      expect(find.text(t.seerr.season(number: 19)), findsNothing);
+      expect(find.textContaining(t.seerr.seasonsRange(range: '18-22'), findRichText: true), findsOneWidget);
+      expect(find.textContaining(t.seerr.season(number: 19), findRichText: true), findsNothing);
     });
 
     testWidgets('a gap is kept, because the range would otherwise be a lie', (tester) async {
       await pumpRow(tester, request(type: 'tv', seasons: const [1, 2, 3, 7]));
-      expect(find.text(t.seerr.seasonsRange(range: '1-3, 7')), findsOneWidget);
+      expect(find.textContaining(t.seerr.seasonsRange(range: '1-3, 7'), findRichText: true), findsOneWidget);
     });
 
     testWidgets('too many separate runs fall back to a count', (tester) async {
       await pumpRow(tester, request(type: 'tv', seasons: const [1, 3, 5, 7]));
-      expect(find.text(t.seerr.seasonsCount(count: 4)), findsOneWidget);
+      expect(find.textContaining(t.seerr.seasonsCount(count: 4), findRichText: true), findsOneWidget);
     });
   });
 

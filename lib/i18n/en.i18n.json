@@ -2011,7 +2011,8 @@
       "qualityStandard": "Standard",
       "inPleyaNo": "Not yet",
       "inPleyaPartly": "Partly",
-      "inPleyaYes": "Yes"
+      "inPleyaYes": "Yes",
+      "toCheck": "To check"
     }
   },
   "tautulli": {

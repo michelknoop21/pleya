@@ -131,23 +131,27 @@ class SeerrRequestRow extends StatelessWidget {
     final age = seerrRequestAge(request.createdAt, now: now);
     final radius = Radius.circular(tk.radiusMd);
 
-    final facts = <Widget>[
-      if (request.requestedByName case final name? when name.isNotEmpty)
-        Flexible(
-          child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
-        ),
-      // Shrinks too: a long name or a long run of seasons ends in an ellipsis
-      // instead of pushing the row past its edge.
-      Flexible(
-        flex: 2,
-        child: Text(_kindOrSeasons, maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+    // One line, one text: the name first (who asked is what a manager reads
+    // first), then the kind or seasons, then 4K. Separate shrinking boxes each
+    // kept a share of the width they did not use and cut the name short next
+    // to a short "Film".
+    final name = request.requestedByName;
+    final facts = Text.rich(
+      TextSpan(
+        style: muted,
+        children: [
+          if (name != null && name.isNotEmpty) TextSpan(text: '$name · '),
+          TextSpan(text: _kindOrSeasons),
+          if (request.is4k)
+            TextSpan(
+              text: ' · ${t.seerr.fourKBadge}',
+              style: TextStyle(color: tk.text, fontWeight: FontWeight.w700),
+            ),
+        ],
       ),
-      if (request.is4k)
-        Text(
-          t.seerr.fourKBadge,
-          style: muted?.copyWith(color: tk.text, fontWeight: FontWeight.w700),
-        ),
-    ];
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
 
     final body = Row(
       children: [
@@ -184,7 +188,7 @@ class SeerrRequestRow extends StatelessWidget {
                   style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 14.5),
                 ),
               const SizedBox(height: 2),
-              Row(children: _dotted(facts, muted)),
+              facts,
               if (locked || !decides) ...[const SizedBox(height: 4), _statusLine(theme, tk)],
             ],
           ),
@@ -212,25 +216,32 @@ class SeerrRequestRow extends StatelessWidget {
 
     // Vegen: rechts keurt goed, links wijst af (na een vraag, zie onSwipeDecline).
     // Nothing moves away: the row stays where it is and says Bezig like a tap.
-    if (!locked && (onApprove != null || onSwipeDecline != null)) {
-      row = Dismissible(
-        key: ValueKey('seerr-swipe-${request.id}'),
-        direction: onApprove != null && onSwipeDecline != null
-            ? DismissDirection.horizontal
-            : (onApprove != null ? DismissDirection.startToEnd : DismissDirection.endToStart),
-        background: _swipeBackground(tk, approve: true),
-        secondaryBackground: _swipeBackground(tk, approve: false),
-        confirmDismiss: (direction) async {
-          if (direction == DismissDirection.startToEnd) {
-            onApprove?.call();
-          } else {
-            onSwipeDecline?.call();
-          }
-          return false;
-        },
-        child: row,
-      );
-    }
+    // Always the same wrapper, with the swipe switched off while the row is
+    // busy: a wrapper that came and went with busy rebuilt the whole row, and
+    // the focused Goedkeuren with it, the moment it was pressed.
+    final canApprove = !locked && onApprove != null;
+    final canDecline = !locked && onSwipeDecline != null;
+    row = Dismissible(
+      key: ValueKey('seerr-swipe-${request.id}'),
+      direction: canApprove && canDecline
+          ? DismissDirection.horizontal
+          : canApprove
+          ? DismissDirection.startToEnd
+          : canDecline
+          ? DismissDirection.endToStart
+          : DismissDirection.none,
+      background: _swipeBackground(tk, approve: true),
+      secondaryBackground: _swipeBackground(tk, approve: false),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          if (canApprove) onApprove?.call();
+        } else if (canDecline) {
+          onSwipeDecline?.call();
+        }
+        return false;
+      },
+      child: row,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -319,15 +330,6 @@ class SeerrRequestRow extends StatelessWidget {
     if (seasons.length == 1) return t.seerr.season(number: seasons.first);
     final range = seerrSeasonRanges(seasons);
     return range == null ? t.seerr.seasonsCount(count: seasons.length) : t.seerr.seasonsRange(range: range);
-  }
-
-  static List<Widget> _dotted(List<Widget> parts, TextStyle? style) {
-    final out = <Widget>[];
-    for (var i = 0; i < parts.length; i++) {
-      if (i > 0) out.add(Text(' · ', style: style));
-      out.add(parts[i]);
-    }
-    return out;
   }
 
   Widget _swipeBackground(MonoTokens tk, {required bool approve}) {

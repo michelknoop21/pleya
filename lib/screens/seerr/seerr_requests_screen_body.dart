@@ -89,7 +89,6 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
             instance: 'all',
             count: known(counts?.total),
             label: t.seerr.allRequests,
-            selected: _filter == TvSeerrRequestFilter.all,
             onTap: () => _onFilter(TvSeerrRequestFilter.all),
           ),
       ],
@@ -268,6 +267,27 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
   ///
   /// The request the page was opened for stays first, as before.
   List<_RequestGroup> _groups(bool manages) {
+    // Oldest first only once every page is here. The list comes newest first,
+    // so with pages still to come the oldest request may not be loaded yet,
+    // and every page that arrived would push older rows in above the reader.
+    final complete = !_hasMore;
+    final waitingTitle = manages ? t.seerr.cockpit.waitingOnYou : t.seerr.cockpit.waitingForApproval;
+    bool decides(List<SeerrRequest> rows) => manages && rows.any((r) => _rightsFor(r).canApprove);
+    if (_filter == TvSeerrRequestFilter.pending) {
+      // The decision list on its own: it keeps its heading, and with it the
+      // one Goedkeuren for what is ticked.
+      final rows = complete ? ([..._items]..sort(_oldestFirst)) : _items;
+      final bulk = decides(rows);
+      return [
+        _RequestGroup(
+          waitingTitle,
+          rows,
+          note: complete ? t.seerr.cockpit.oldestFirst : null,
+          bulk: bulk,
+          hint: bulk ? t.seerr.cockpit.swipeHint : null,
+        ),
+      ];
+    }
     if (_filter != TvSeerrRequestFilter.all) return [_RequestGroup(null, _items)];
     final chosen = [
       for (final r in _items)
@@ -277,31 +297,39 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
       for (final r in _items)
         if (r.id != _chosenId) r,
     ];
+    // A row whose status was not readable is said to be unknown, never filed
+    // under Afgehandeld.
+    final unknown = [
+      for (final r in rest)
+        if (!r.statusKnown) r,
+    ];
     final waiting = [
       for (final r in rest)
         if (r.statusKnown && r.isPending) r,
-    ]..sort(_oldestFirst);
+    ];
+    if (complete) waiting.sort(_oldestFirst);
     final moving = [
       for (final r in rest)
         if (r.statusKnown && r.status == SeerrRequestStatus.approved && !r.isFulfilled) r,
     ];
     final done = [
       for (final r in rest)
-        if (!waiting.contains(r) && !moving.contains(r)) r,
+        if (r.statusKnown && !waiting.contains(r) && !moving.contains(r)) r,
     ];
-    final canDecide = manages && waiting.any((r) => _rightsFor(r).canApprove);
+    final bulk = decides(waiting);
     return [
       if (chosen.isNotEmpty) _RequestGroup(null, chosen),
       if (waiting.isNotEmpty)
         _RequestGroup(
-          manages ? t.seerr.cockpit.waitingOnYou : t.seerr.cockpit.waitingForApproval,
+          waitingTitle,
           waiting,
-          note: t.seerr.cockpit.oldestFirst,
-          bulk: canDecide,
-          hint: canDecide ? t.seerr.cockpit.swipeHint : null,
+          note: complete ? t.seerr.cockpit.oldestFirst : null,
+          bulk: bulk,
+          hint: bulk ? t.seerr.cockpit.swipeHint : null,
         ),
       if (moving.isNotEmpty) _RequestGroup(t.seerr.cockpit.inProgress, moving),
       if (done.isNotEmpty) _RequestGroup(t.seerr.cockpit.handled, done),
+      if (unknown.isNotEmpty) _RequestGroup(t.seerr.cockpit.toCheck, unknown),
     ];
   }
 
@@ -324,28 +352,25 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
         height: 36,
         child: Row(
           children: [
-            // The heading keeps its words; the note beside it gives way first.
-            Flexible(
-              flex: 3,
-              child: Text(
-                group.title!,
+            // One text: the heading, then the note in the muted style. It takes
+            // the width the button leaves, so nothing is cut while there is room.
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  text: group.title!,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
+                  children: [
+                    if (group.note != null)
+                      TextSpan(
+                        text: '  ${group.note!}',
+                        style: theme.textTheme.bodySmall?.copyWith(color: tk.textMuted, fontWeight: FontWeight.w400),
+                      ),
+                  ],
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
               ),
             ),
-            if (group.note != null) ...[
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  group.note!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(color: tk.textMuted),
-                ),
-              ),
-            ],
-            const Spacer(),
             if (ticked > 0)
               AutomationNode(
                 id: AutomationIds.requestsListBulkApprove,

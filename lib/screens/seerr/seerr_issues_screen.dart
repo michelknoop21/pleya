@@ -281,7 +281,9 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
     final visible = _issues.where((issue) => _client.canViewAllIssues || issue.creatorId == _user).toList();
     final counts = _counts;
     return [
-      if (_client.canViewAllIssues)
+      // The counts are the whole server's: next to the own list they would be
+      // numbers about reports that are not on it.
+      if (_client.canViewAllIssues && !_own)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
@@ -445,9 +447,13 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
                     label: text,
                     onPressed: () {
                       if (_busy || _failed) return;
+                      // Never over a draft: an empty field gets the text, a
+                      // field with words in it gets it added.
+                      final draft = _reply.text.trimRight();
+                      final next = draft.isEmpty ? text : '$draft $text';
                       _reply.value = TextEditingValue(
-                        text: text,
-                        selection: TextSelection.collapsed(offset: text.length),
+                        text: next,
+                        selection: TextSelection.collapsed(offset: next.length),
                       );
                     },
                   ),
@@ -569,8 +575,11 @@ class _Bubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Align(
         alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
+        // Never the full width: the side a message sits on is what tells the
+        // viewer's own from everyone else's.
+        child: FractionallySizedBox(
+          widthFactor: 0.82,
+          alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
             decoration: BoxDecoration(

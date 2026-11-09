@@ -723,6 +723,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     });
     var ok = 0;
     var failed = 0;
+    var forbidden = false;
     final uncertain = <SeerrRequest>[];
     for (final request in batch) {
       if (!_owns(client)) return;
@@ -734,6 +735,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           uncertain.add(request);
         } else {
           failed++;
+          forbidden = forbidden || e.isForbidden || e.isAuth;
         }
       } catch (_) {
         uncertain.add(request);
@@ -758,6 +760,8 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     });
     if (uncertain.isNotEmpty) {
       showErrorSnackBar(context, t.seerr.actionUncertain);
+    } else if (failed > 0 && ok == 0 && forbidden) {
+      showErrorSnackBar(context, t.seerr.errorForbidden);
     } else if (failed > 0) {
       showErrorSnackBar(context, t.seerr.cockpit.approvedSome(ok: ok, failed: failed));
     } else {

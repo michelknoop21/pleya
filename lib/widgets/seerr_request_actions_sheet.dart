@@ -381,7 +381,10 @@ class _SeerrRequestFacts extends StatelessWidget {
     );
   }
 
-  String? get _inPleya => switch (request.mediaStatus) {
+  /// A 4K request is about the 4K copy: the HD one being there says nothing
+  /// about it.
+  String? get _inPleya => switch (request.is4k ? request.mediaStatus4k : request.mediaStatus) {
+    null => null,
     SeerrMediaStatus.available => t.seerr.cockpit.inPleyaYes,
     SeerrMediaStatus.partiallyAvailable => t.seerr.cockpit.inPleyaPartly,
     SeerrMediaStatus.pending || SeerrMediaStatus.processing => t.seerr.cockpit.inPleyaNo,

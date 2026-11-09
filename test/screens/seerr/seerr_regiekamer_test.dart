@@ -3,7 +3,9 @@
 // the menu behind a row.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/focus/focusable_button.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/screens/seerr/seerr_requests_screen.dart';
@@ -105,25 +107,67 @@ void main() {
       await open(tester);
 
       expect(rowIds(tester), [3, 2, 1, 4]);
-      expect(find.text(t.seerr.cockpit.waitingOnYou), findsOneWidget);
-      expect(find.text(t.seerr.cockpit.inProgress), findsOneWidget);
-      expect(find.text(t.seerr.cockpit.handled), findsOneWidget);
+      expect(find.textContaining(t.seerr.cockpit.waitingOnYou, findRichText: true), findsOneWidget);
+      expect(find.textContaining(t.seerr.cockpit.inProgress, findRichText: true), findsOneWidget);
+      expect(find.textContaining(t.seerr.cockpit.handled, findRichText: true), findsOneWidget);
     });
 
-    testWidgets('a chosen filter is one list in server order, without headings', (tester) async {
+    testWidgets('a chosen filter other than In afwachting is one list in server order, without headings', (
+      tester,
+    ) async {
       fake.on(
         'GET /request',
         seerrPage([
-          _at(seerrRequestJson(2, requestedBy: 9), '2026-10-08T00:00:00.000Z'),
-          _at(seerrRequestJson(3, requestedBy: 9), '2026-10-02T00:00:00.000Z'),
+          _at(seerrRequestJson(2, status: 2, requestedBy: 9), '2026-10-08T00:00:00.000Z'),
+          _at(seerrRequestJson(3, status: 2, requestedBy: 9), '2026-10-02T00:00:00.000Z'),
         ]),
       );
+      await open(tester);
+      await tester.tap(seerrNode(AutomationIds.requestsListTile, 'approved'));
+      await seerrSettle(tester);
+
+      expect(rowIds(tester), [2, 3]);
+      expect(find.text(t.seerr.cockpit.inProgress), findsNothing);
+      expect(
+        tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).every((r) => r.selected == null),
+        isTrue,
+        reason: 'no box to tick where there is no Goedkeuren for the batch',
+      );
+    });
+
+    testWidgets('under In afwachting the decisions keep their heading and the one Goedkeuren', (tester) async {
+      fake.on('GET /request', seerrPage([seerrRequestJson(2, requestedBy: 9), seerrRequestJson(3, requestedBy: 9)]));
       await open(tester);
       await tester.tap(seerrNode(AutomationIds.requestsListTile, 'pending'));
       await seerrSettle(tester);
 
-      expect(rowIds(tester), [2, 3]);
-      expect(find.text(t.seerr.cockpit.waitingOnYou), findsNothing);
+      expect(find.textContaining(t.seerr.cockpit.waitingOnYou, findRichText: true), findsOneWidget);
+      tester.widget<SeerrRequestRow>(find.byType(SeerrRequestRow).first).onSelectedChanged!(true);
+      await tester.pump();
+      expect(seerrNode(AutomationIds.requestsListBulkApprove), findsOneWidget);
+    });
+
+    testWidgets('with pages still to come the list keeps server order and makes no oldest-first claim', (tester) async {
+      final page = seerrPage([
+        _at(seerrRequestJson(2, requestedBy: 9), '2026-10-08T00:00:00.000Z'),
+        _at(seerrRequestJson(3, requestedBy: 9), '2026-10-02T00:00:00.000Z'),
+      ], pages: 3);
+      // Page one arrives; the next one does not, so the list is not complete.
+      fake.routes['GET /request'] = (request) => request.url.queryParameters['skip'] == '0'
+          ? FakeSeerr.json(page)
+          : throw http.ClientException('connection lost');
+      await open(tester, size: const Size(430, 700));
+
+      expect(rowIds(tester).take(2), [2, 3]);
+      expect(find.textContaining(t.seerr.cockpit.oldestFirst, findRichText: true), findsNothing);
+    });
+
+    testWidgets('a row whose status could not be read is said to be unknown, not handled', (tester) async {
+      fake.on('GET /request', seerrPage([seerrRequestJson(4, requestedBy: 9)..remove('status')]));
+      await open(tester);
+
+      expect(find.textContaining(t.seerr.cockpit.handled, findRichText: true), findsNothing);
+      expect(find.textContaining(t.seerr.cockpit.toCheck, findRichText: true), findsOneWidget);
     });
   });
 
@@ -169,6 +213,23 @@ void main() {
   });
 
   group('swipes', () {
+    testWidgets('pressing Goedkeuren keeps the same button, so the focus on it has somewhere to stay', (tester) async {
+      fake.on('GET /request', seerrPage([seerrRequestJson(1, requestedBy: 9)]));
+      await open(tester);
+      final answer = fake.hold('POST /request/1/approve');
+      final approve = find.byTooltip(t.seerr.approve);
+      final before = tester.element(find.ancestor(of: approve, matching: find.byType(FocusableButton)).first);
+
+      await tester.tap(approve);
+      await tester.pump();
+      expect(tester.widget<SeerrRequestRow>(find.byType(SeerrRequestRow)).busy, isTrue);
+      final after = tester.element(find.ancestor(of: approve, matching: find.byType(FocusableButton)).first);
+      expect(identical(before, after), isTrue, reason: 'a rebuilt button drops the focus it had');
+
+      answer.complete(FakeSeerr.json({'id': 1}));
+      await seerrSettle(tester);
+    });
+
     testWidgets('right approves at once; left asks first and only then declines', (tester) async {
       fake
         ..on('GET /request', seerrPage([seerrRequestJson(1, requestedBy: 9), seerrRequestJson(2, requestedBy: 9)]))
@@ -197,7 +258,9 @@ void main() {
       fake.on(
         'GET /request',
         seerrPage([
-          seerrRequestJson(1, type: 'tv', seasons: [3, 4, 5], is4k: true, requestedBy: 9, mediaStatus: 4),
+          // In 4K: the 4K copy is partly there; the HD status says nothing about it.
+          seerrRequestJson(1, type: 'tv', seasons: [3, 4, 5], is4k: true, requestedBy: 9, mediaStatus: 5)
+            ..update('media', (m) => {...(m as Map), 'status4k': 4}),
         ]),
       );
       await open(tester);

@@ -8048,6 +8048,9 @@ class TranslationsSeerrCockpitEn {
 
 	/// en: 'Yes'
 	String get inPleyaYes => 'Yes';
+
+	/// en: 'To check'
+	String get toCheck => 'To check';
 }
 
 // Path: trackers.services
@@ -12629,6 +12632,7 @@ extension on Translations {
 			'seerr.cockpit.inPleyaNo' => 'Not yet',
 			'seerr.cockpit.inPleyaPartly' => 'Partly',
 			'seerr.cockpit.inPleyaYes' => 'Yes',
+			'seerr.cockpit.toCheck' => 'To check',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
@@ -12826,9 +12830,9 @@ extension on Translations {
 			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
-			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
 			_ => null,
 		} ?? switch (path) {
+			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
 			'sourcePicker.checkingMoreSources' => 'Checking more sources…',
 			'sourcePicker.lastUsed' => 'Last used',
 			'sourcePicker.currentSource' => 'Current source',
@@ -13340,9 +13344,9 @@ extension on Translations {
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
 			'assistant.mobile.setup' => 'Set up model',
-			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
 			'assistant.mobile.listening' => 'Listening…',
 			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
 			'assistant.mobile.askFurther' => 'Ask more',
