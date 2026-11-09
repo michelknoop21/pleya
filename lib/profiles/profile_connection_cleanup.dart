@@ -16,16 +16,20 @@ Future<void> removeProfileConnectionAndCleanup({
 }) async {
   final removedServerIds = _serverIdsForConnection(connection);
   // Before the runtime client goes. A profile that is not active has no bound
-  // client, so this goes through a short-lived one for its own connection.
+  // client, so this goes through a short-lived one for its own connection;
+  // a connection the active profile also uses only ever goes through its
+  // bound client, so nothing rotates the token the binding holds.
   if (connection is PleyaServerConnection) {
     final rows = await profileConnections.listForConnection(connection.id);
     // The last profile on this connection also ends the session itself, so
     // nothing on the server (push included) keeps acting for a device that let
     // go. Offline both are skipped; the session then lapses with the sweep.
     final last = rows.every((row) => row.profileId == profileId);
+    final active = storage.getActiveProfileId();
+    final shared = rows.any((row) => row.profileId == active);
     await PleyaPushNotifications.forgetConnection(profileId, connection.id, (installation) async {
       if (serverManager == null || (installation == null && !last)) return;
-      await serverManager.withPleyaServerClient(connection, persist: !last, (client) async {
+      await serverManager.withPleyaServerClient(connection, persist: !last, boundOnly: shared, (client) async {
         if (installation != null) await client.removePushInstallation(installation);
         if (last) await client.logout();
       });
@@ -113,7 +117,7 @@ Future<void> removeConnectionCompletely({
     await removeProfileConnectionAndCleanup(
       profileId: row.profileId,
       // Fresh per row: the previous row may have rotated a Pleya refresh token.
-      connection: await connections.get(connection.id) ?? connection,
+      connection: connection is PleyaServerConnection ? await connections.get(connection.id) ?? connection : connection,
       profileConnections: profileConnections,
       connections: connections,
       storage: storage,

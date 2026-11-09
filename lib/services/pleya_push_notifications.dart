@@ -5,7 +5,6 @@ import 'package:flutter/widgets.dart';
 import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
-import '../exceptions/media_server_exceptions.dart';
 import '../i18n/strings.g.dart';
 import '../media/ids.dart';
 import '../profiles/active_profile_provider.dart';
@@ -21,7 +20,15 @@ typedef PushSource = ({String id, String name});
 class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver {
   /// [releaseElsewhere] withdraws an installation of another profile through
   /// that profile's own connection; the device belongs to the active profile.
-  PleyaPushNotifications(this._profileId, this._profile, this._servers, {this.releaseElsewhere}) {
+  /// [withdrawalWait] caps how long a registration waits for a withdrawal of
+  /// the same opt-in that is still on its way.
+  PleyaPushNotifications(
+    this._profileId,
+    this._profile,
+    this._servers, {
+    this.releaseElsewhere,
+    this.withdrawalWait = const Duration(seconds: 3),
+  }) {
     WidgetsBinding.instance.addObserver(this);
     _servers.addListener(_sync);
     _profile.addListener(_sync);
@@ -35,6 +42,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   final ActiveProfileProvider _profile;
   final MultiServerProvider _servers;
   final Future<void> Function(String connectionId, String installationId)? releaseElsewhere;
+  final Duration withdrawalWait;
   final _saved = <String, List<String>>{};
   final _synced = <String, PleyaServerClient>{};
   final _pending = <String>{};
@@ -92,15 +100,22 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
 
   /// The [releaseElsewhere] the app uses: through the other profile's own
   /// stored connection, and not at all while the app knows it is offline,
-  /// where a short-lived client only spends time before failing.
+  /// where a short-lived client only spends time before failing. A connection
+  /// the active profile also uses only goes through its bound client, so no
+  /// second client rotates the refresh token the binding holds.
   static Future<void> Function(String connectionId, String installationId) releaseThrough({
     required Future<Connection?> Function(String id) connection,
     required MultiServerManager servers,
     required bool Function() offline,
+    required Future<bool> Function(String connectionId) sharedWithActive,
   }) => (connectionId, installation) async {
     if (offline()) throw StateError('Offline: withdrawal waits for the network');
     if (await connection(connectionId) case final PleyaServerConnection stored) {
-      await servers.withPleyaServerClient(stored, (client) => client.removePushInstallation(installation));
+      await servers.withPleyaServerClient(
+        stored,
+        (client) => client.removePushInstallation(installation),
+        boundOnly: await sharedWithActive(connectionId),
+      );
     }
   };
 
@@ -142,16 +157,14 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     }).ignore();
   }
 
-  /// The server already dropped the installation, or cannot hold one: the
-  /// session is gone (401/403, a revoked refresh chain) or push is unknown
-  /// (404). Retrying those only spends token rotations.
-  static bool _settled(Object error) => switch (error) {
-    PleyaRateLimitedException() => false,
-    PleyaRefreshChainRevokedException() || PleyaAuthRejectedException() => true,
-    MediaServerAuthException(:final statusCode) => statusCode == 401 || statusCode == 403,
-    MediaServerHttpException(:final statusCode) => statusCode == 404,
-    _ => false,
-  };
+  /// Pleya itself said the session is gone: a 401 or 403 with an `auth.*`
+  /// code, or a revoked refresh chain. The server then has dropped the
+  /// installation. A bare status from a proxy or captive portal proves nothing
+  /// and is retried. (A server without push routes answers the DELETE with
+  /// `library.not_found`; [PleyaServerClient.removePushInstallation] treats that
+  /// as done.)
+  static bool _settled(Object error) =>
+      error is PleyaRefreshChainRevokedException || error is PleyaAuthRejectedException;
 
   /// After a confirmed withdrawal: an opt-out is done and goes, an opt-in stays
   /// stored so it returns with its profile, but needs no further withdrawal.
@@ -231,13 +244,24 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final token = device['token'];
       final environment = device['environment'];
       if (token == null || environment == null) throw StateError('Missing push device identity');
+      var installation = stored.first;
       final withdrawing = _inflight[_key(connection)];
       if (withdrawing != null) {
-        await withdrawing;
+        // Briefly, so the switches do not stay locked behind a slow server. A
+        // withdrawal that is still out may land after this PUT, so register
+        // under a fresh id then: the late DELETE only removes the old one.
+        var landed = true;
+        await withdrawing.timeout(
+          withdrawalWait,
+          onTimeout: () {
+            landed = false;
+          },
+        );
         if (!_current || !identical(_online[connection], client)) return;
+        if (!landed) installation = const Uuid().v4();
       }
       await client.registerPushInstallation(
-        stored.first,
+        installation,
         token: token,
         environment: environment,
         locale: LocaleSettings.currentLocale.languageCode == 'nl' ? 'nl' : 'en',
@@ -248,7 +272,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         // The profile changed while this PUT was in flight: the device now
         // belongs to another profile, so withdraw it again right away.
         final key = _key(connection);
-        _track(key, client.removePushInstallation(stored.first).then((_) => _markReleased(key, stored.first)));
+        _track(key, client.removePushInstallation(installation).then((_) => _markReleased(key, installation)));
         return;
       }
       if (!_current) return;
@@ -257,8 +281,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final prefs = await BaseSharedPreferencesService.sharedCache();
       if (!_current) return;
       final latest = prefs.getStringList(_key(connection)) ?? stored;
-      if (latest.first == stored.first && (latest.contains('pending') || latest.contains(_released))) {
-        final confirmed = latest.where((value) => value != 'pending' && value != _released).toList();
+      if (latest.first == stored.first &&
+          (installation != stored.first || latest.contains('pending') || latest.contains(_released))) {
+        final confirmed = [installation, ...latest.skip(1).where((value) => value != 'pending' && value != _released)];
         await prefs.setStringList(_key(connection), confirmed);
         _saved[connection] = confirmed;
       }
@@ -308,7 +333,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       // reach the server. A passing failure stays unmarked and is retried on
       // the next reconcile (resume, a server coming online); success or a
       // settled answer marks it so the next start does not withdraw it again.
-      final release = releaseElsewhere;
+      // Only once the binder has settled on this profile: binding the active
+      // servers comes first and never waits on this.
+      final release = releaseElsewhere != null && _profile.settledProfileId == _profileId ? releaseElsewhere : null;
       for (final key in prefs.keys.where((key) => key.startsWith('pleya.push/') && !key.startsWith(_prefix))) {
         final stored = prefs.getStringList(key);
         if (release == null || stored == null || stored.length < 2 || stored.contains(_released)) continue;

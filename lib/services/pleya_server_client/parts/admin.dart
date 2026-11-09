@@ -314,6 +314,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     Map<String, dynamic>? body,
     Map<String, dynamic>? queryParameters,
     bool followRedirects = true,
+    bool absentIsDone = false,
   }) async {
     Future<MediaServerResponse> send() async {
       final headers = await _session.authHeaders();
@@ -338,7 +339,16 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     if (status < 200 || status >= 300) {
       final code = PleyaError.tryParse(response.data)?.code;
       appLogger.d('PleyaServerClient: $method $path -> $status ${code ?? ''}');
+      // Only this request's own answer: a refresh that fails above throws
+      // before it gets here, whatever its status.
+      if (absentIsDone && status == 404 && code == 'library.not_found') return null;
       if (status == 401 || status == 403) {
+        // Pleya's own verdict carries an `auth.*` code; a proxy or captive
+        // portal in front of the server answers with a bare status. Both stay
+        // a [MediaServerAuthException] for every existing caller.
+        if (code != null && code.startsWith('auth.')) {
+          throw PleyaAuthRejectedException(code, code, statusCode: status);
+        }
         throw MediaServerAuthException(code ?? 'HTTP $status', statusCode: status);
       }
       throw MediaServerHttpException(

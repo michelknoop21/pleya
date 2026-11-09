@@ -257,7 +257,9 @@ class PleyaServerClient
 
   Future<void> removePushInstallation(String id) async {
     if (_offlineMode || _closed) throw StateError('Push registration unavailable');
-    await _adminSend('DELETE', '/users/me/push-installations/${Uri.encodeComponent(id)}');
+    // A server without push routes answers `library.not_found`: there is no
+    // installation to withdraw, which is what the caller wanted.
+    await _adminSend('DELETE', '/users/me/push-installations/${Uri.encodeComponent(id)}', absentIsDone: true);
   }
 
   /// Ends this session on the server (`POST /auth/logout`); its push

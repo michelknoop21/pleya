@@ -33,8 +33,13 @@ class _Profile extends ChangeNotifier implements ActiveProfileProvider {
     notifyListeners();
   }
 
+  bool settled = true;
+
   @override
   bool get isBinding => false;
+
+  @override
+  String? get settledProfileId => settled ? _activeId : null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -106,10 +111,20 @@ void main() {
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
   });
 
-  Future<(PleyaPushNotifications, _Profile)> start({Future<void> Function(String, String)? releaseElsewhere}) async {
-    final profile = _Profile();
+  Future<(PleyaPushNotifications, _Profile)> start({
+    Future<void> Function(String, String)? releaseElsewhere,
+    Duration withdrawalWait = const Duration(seconds: 3),
+    bool settled = true,
+  }) async {
+    final profile = _Profile()..settled = settled;
     final servers = _Servers(await client());
-    final push = PleyaPushNotifications('alice', profile, servers, releaseElsewhere: releaseElsewhere);
+    final push = PleyaPushNotifications(
+      'alice',
+      profile,
+      servers,
+      releaseElsewhere: releaseElsewhere,
+      withdrawalWait: withdrawalWait,
+    );
     addTearDown(profile.dispose);
     addTearDown(servers.dispose);
     addTearDown(push.dispose);
@@ -193,28 +208,70 @@ void main() {
     expect(push.sharedWith(alice), isNull);
   });
 
-  test('a settled answer marks the withdrawal and stops the retries', () async {
+  test("Pleya's own verdict settles a withdrawal; a bare 403 from a proxy is retried", () async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
-    final gone = 'pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}';
-    final revoked = 'pleya.push/carol/${Uri.encodeComponent('pleyaServer.srv-3.carol')}';
-    await prefs.setStringList(gone, ['install-bob', 'bob · Kelder', 'movies']);
-    await prefs.setStringList(revoked, ['install-carol', 'carol · Zolder', 'episodes']);
-    var attempts = 0;
+    String key(String profile, String connection) => 'pleya.push/$profile/${Uri.encodeComponent(connection)}';
+    await prefs.setStringList(key('bob', 'pleyaServer.srv-2.bob'), ['install-bob', 'bob · Kelder', 'movies']);
+    await prefs.setStringList(key('carol', 'pleyaServer.srv-3.carol'), ['install-carol', 'carol · Zolder', 'episodes']);
+    await prefs.setStringList(key('dave', 'pleyaServer.srv-4.dave'), ['install-dave', 'dave · Schuur', 'movies']);
+    final attempts = <String>[];
     final (push, _) = await start(
       releaseElsewhere: (connection, _) async {
-        attempts++;
-        throw connection.endsWith('bob')
-            ? MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 404)
-            : const PleyaRefreshChainRevokedException('auth.refresh_token_reused');
+        attempts.add(connection);
+        if (connection.endsWith('bob'))
+          throw const PleyaAuthRejectedException('auth.session_revoked', 'gone', statusCode: 401);
+        if (connection.endsWith('carol')) throw const PleyaRefreshChainRevokedException('auth.refresh_token_reused');
+        throw const MediaServerAuthException('HTTP 403', statusCode: 403);
       },
     );
     await pumpEventQueue();
-    expect(prefs.getStringList(gone), contains('released'));
-    expect(prefs.getStringList(revoked), contains('released'));
+    expect(prefs.getStringList(key('bob', 'pleyaServer.srv-2.bob')), contains('released'));
+    expect(prefs.getStringList(key('carol', 'pleyaServer.srv-3.carol')), contains('released'));
+    expect(prefs.getStringList(key('dave', 'pleyaServer.srv-4.dave')), isNot(contains('released')));
 
     push.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await pumpEventQueue();
-    expect(attempts, 2, reason: 'no retry after a settled answer');
+    expect(attempts.where((c) => c.endsWith('dave')), hasLength(2), reason: 'a bare 403 is retried');
+    expect(attempts, hasLength(4), reason: 'settled ones are not');
+  });
+
+  test('withdrawals for other profiles wait until the binder settled on this one', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    await prefs.setStringList('pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}', [
+      'install-bob',
+      'bob · Kelder',
+      'movies',
+    ]);
+    var attempts = 0;
+    final (_, profile) = await start(releaseElsewhere: (_, _) async => attempts++, settled: false);
+    await pumpEventQueue();
+    expect(attempts, 0);
+    profile
+      ..settled = true
+      ..notifyListeners();
+    await pumpEventQueue();
+    expect(attempts, 1);
+  });
+
+  test('a withdrawal that does not land in time: the PUT goes ahead under a fresh id', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final (push, profile) = await start(withdrawalWait: const Duration(milliseconds: 50));
+    await push.setChoices(push.sources.single, (movies: true, episodes: false));
+    final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
+    final first = requests.single.url;
+    holdDelete = Completer<void>();
+    profile.switchTo('bob');
+    await pumpEventQueue();
+    profile.switchTo('alice');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(requests.map((r) => r.method), ['PUT', 'DELETE', 'PUT'], reason: 'the switches are not held for long');
+    expect(requests.last.url, isNot(first), reason: 'a late DELETE must not hit the new registration');
+
+    holdDelete!.complete();
+    await pumpEventQueue();
+    final stored = prefs.getStringList(key)!;
+    expect(stored.first, requests.last.url.pathSegments.last);
+    expect(stored, isNot(contains('released')));
   });
 
   test('switching away and straight back: the old DELETE lands before the new PUT', () async {
@@ -244,8 +301,34 @@ void main() {
       },
       servers: MultiServerManager(),
       offline: () => true,
+      sharedWithActive: (_) async => false,
     );
     await expectLater(release('pleyaServer.srv-2.bob', 'install-bob'), throwsStateError);
     expect(looked, isFalse);
+  });
+
+  test('a connection the active profile also uses is only withdrawn through its bound client', () async {
+    final manager = MultiServerManager();
+    var created = 0;
+    manager.debugPleyaServerHttpClientFactory = () {
+      created++;
+      return MockClient((_) async => http.Response('', 204));
+    };
+    final release = PleyaPushNotifications.releaseThrough(
+      connection: (_) async => PleyaServerConnection(
+        id: connectionId,
+        baseUrl: 'https://nas.example.org',
+        serverId: 'srv-1',
+        serverName: 'Zolder',
+        userName: 'alice',
+        refreshToken: 'rt-1',
+        createdAt: DateTime.utc(2026, 8, 19),
+      ),
+      servers: manager,
+      offline: () => false,
+      sharedWithActive: (_) async => true,
+    );
+    await expectLater(release(connectionId, 'install-bob'), throwsStateError);
+    expect(created, 0, reason: 'no short-lived client next to the binding');
   });
 }

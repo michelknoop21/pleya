@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/profiles/profile_connection.dart';
 import 'package:pleya/profiles/profile_connection_cleanup.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
@@ -213,20 +214,86 @@ void main() {
       expect(calls, ['DELETE /pleya/v1/users/me/push-installations/install-1', 'POST /pleya/v1/auth/logout']);
     });
 
-    test('binding waits for a short-lived turn and starts from the token it rotated to', () async {
+    test('a short-lived withdrawal that hangs does not delay binding the active connection', () async {
+      // Cold start: a withdrawal for another profile on this same connection
+      // is stuck on a slow server while the binder binds it for the active one.
       holdDelete = Completer<void>();
-      final oneOff = manager.withPleyaServerClient(connection, (client) => client.removePushInstallation('a'));
+      final hanging = manager.withPleyaServerClient(connection, (client) => client.removePushInstallation('a'));
       await pumpEventQueue();
-      expect(presented, ['rt-1']);
 
-      final binding = manager.addPleyaServerConnection(connection);
-      await pumpEventQueue();
-      expect(presented, ['rt-1'], reason: 'the binding may not refresh while the turn holds the token');
+      final bound = await manager
+          .addPleyaServerConnection(connection)
+          .then((_) => true)
+          .timeout(const Duration(seconds: 2), onTimeout: () => false);
+      expect(bound, isTrue, reason: 'binding must not wait for a short-lived turn');
+      expect(manager.getClient(ServerId(connection.serverId)), isA<PleyaServerClient>());
+
       holdDelete!.complete();
-      await oneOff;
-      await binding;
+      await hanging;
+    });
 
-      expect(presented, ['rt-1', 'rt-2']);
+    test('a connection shared with the active profile never gets a short-lived client', () async {
+      await profileConnections.upsert(
+        ProfileConnection(profileId: 'p2', connectionId: connection.id, userIdentifier: connection.userName),
+      );
+      await storage.setActiveProfileId('p2');
+
+      await removeProfileConnectionAndCleanup(
+        profileId: 'p1',
+        connection: connection,
+        profileConnections: profileConnections,
+        connections: connections,
+        storage: storage,
+        serverManager: manager,
+      );
+
+      expect(presented, isEmpty, reason: 'only the bound client may present this token, and there is none');
+      expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
     });
   });
+
+  test('only a Pleya Server connection is read again per profile row', () async {
+    final spy = _CountingRegistry(db);
+    final jellyfin = JellyfinConnection(
+      id: 'jf-machine/user-a',
+      baseUrl: 'https://jellyfin.local',
+      serverName: 'Jellyfin',
+      serverMachineId: 'jf-machine',
+      userId: 'user-a',
+      userName: 'user-a',
+      accessToken: 'token-a',
+      deviceId: 'device-1',
+      createdAt: DateTime.utc(2026, 8, 19),
+      lastAuthenticatedAt: DateTime.utc(2026, 8, 19),
+    );
+    await spy.upsert(jellyfin);
+    for (final profile in ['p1', 'p2']) {
+      await profileConnections.upsert(
+        ProfileConnection(profileId: profile, connectionId: jellyfin.id, userIdentifier: 'user-a'),
+      );
+    }
+    spy.gets = 0;
+
+    await removeConnectionCompletely(
+      connection: jellyfin,
+      profileConnections: profileConnections,
+      connections: spy,
+      storage: storage,
+      serverManager: manager,
+    );
+
+    expect(spy.gets, 1, reason: 'only the orphan check after the rows');
+  });
+}
+
+class _CountingRegistry extends ConnectionRegistry {
+  _CountingRegistry(AppDatabase db) : super(db);
+
+  int gets = 0;
+
+  @override
+  Future<Connection?> get(String id) {
+    gets++;
+    return super.get(id);
+  }
 }

@@ -642,6 +642,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   create: (context) {
                     final servers = context.read<MultiServerProvider>();
                     final network = context.read<OfflineModeProvider?>();
+                    final profileConnections = context.read<ProfileConnectionRegistry>();
                     return PleyaPushNotifications(
                       activeId,
                       activeProfile,
@@ -650,6 +651,9 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                         connection: context.read<ConnectionRegistry>().get,
                         servers: servers.serverManager,
                         offline: () => network?.isOffline ?? false,
+                        sharedWithActive: (connectionId) async => (await profileConnections.listForProfile(
+                          activeId,
+                        )).any((row) => row.connectionId == connectionId),
                       ),
                     );
                   },
