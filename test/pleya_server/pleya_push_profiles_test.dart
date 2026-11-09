@@ -219,7 +219,7 @@ void main() {
       releaseElsewhere: (connection, _) async {
         attempts.add(connection);
         if (connection.endsWith('bob'))
-          throw const PleyaAuthRejectedException('auth.session_revoked', 'gone', statusCode: 401);
+          throw const PleyaAuthRejectedException('auth.session_not_found', 'gone', statusCode: 401);
         if (connection.endsWith('carol')) throw const PleyaRefreshChainRevokedException('auth.refresh_token_reused');
         throw const MediaServerAuthException('HTTP 403', statusCode: 403);
       },
@@ -328,7 +328,53 @@ void main() {
       offline: () => false,
       sharedWithActive: (_) async => true,
     );
-    await expectLater(release(connectionId, 'install-bob'), throwsStateError);
+    await expectLater(release(connectionId, 'install-bob'), throwsA(isA<PleyaClientNotBoundException>()));
     expect(created, 0, reason: 'no short-lived client next to the binding');
+  });
+
+  test('a fresh id is stored before its PUT, and the old one stays known until the PUT lands', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final (push, profile) = await start(withdrawalWait: const Duration(milliseconds: 50));
+    await push.setChoices(push.sources.single, (movies: true, episodes: false));
+    final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
+    final old = prefs.getStringList(key)!.first;
+    holdDelete = Completer<void>();
+    profile.switchTo('bob');
+    await pumpEventQueue();
+    holdPut = Completer<void>();
+    profile.switchTo('alice');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(requests.map((r) => r.method), ['PUT', 'DELETE', 'PUT']);
+    final fresh = requests.last.url.pathSegments.last;
+    expect(fresh, isNot(old));
+    // While the PUT is out, every withdrawal path must already see both ids.
+    expect(prefs.getStringList(key), [fresh, 'alice · Zolder', 'movies', 'pending', 'replaces:$old']);
+
+    holdPut!.complete();
+    holdDelete!.complete();
+    await pumpEventQueue();
+    expect(prefs.getStringList(key), [fresh, 'alice · Zolder', 'movies'], reason: 'the PUT replaced the old id');
+  });
+
+  test('withdrawing for another profile covers an id it was replacing', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final key = 'pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}';
+    await prefs.setStringList(key, ['id-1', 'bob · Kelder', 'movies', 'pending', 'replaces:id-0']);
+    final released = <String>[];
+    await start(releaseElsewhere: (_, installation) async => released.add(installation));
+    await pumpEventQueue();
+    expect(released, ['id-1', 'id-0']);
+    expect(prefs.getStringList(key), ['id-1', 'bob · Kelder', 'movies', 'pending', 'released']);
+  });
+
+  test('an own opt-out left for a connection without a bound client is withdrawn later', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final key = 'pleya.push/alice/${Uri.encodeComponent('pleyaServer.srv-2.alice')}';
+    await prefs.setStringList(key, ['install-old', 'alice · Kelder']);
+    final released = <(String, String)>[];
+    await start(releaseElsewhere: (connection, installation) async => released.add((connection, installation)));
+    await pumpEventQueue();
+    expect(released, [('pleyaServer.srv-2.alice', 'install-old')]);
+    expect(prefs.containsKey(key), isFalse);
   });
 }

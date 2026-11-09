@@ -80,11 +80,14 @@ class ActiveProfileProvider extends ChangeNotifier with DisposableChangeNotifier
   /// means the active profile was applied successfully. A local profile with
   /// no connections is successful and intentionally exposes no servers; false
   /// covers the "user cancelled the PIN" path and real binding errors.
-  void markBindingFinished({required bool success}) {
+  ///
+  /// [profileId] is the profile this bind applied, which is not necessarily
+  /// the active one by the time it settles; null when it applied none.
+  void markBindingFinished({required bool success, String? profileId}) {
     if (!_isBinding && _lastBindingSucceeded == success) return;
     _isBinding = false;
     _lastBindingSucceeded = success;
-    _settledProfileId = success ? activeId : null;
+    _settledProfileId = success ? profileId : null;
     safeNotifyListeners();
   }
 

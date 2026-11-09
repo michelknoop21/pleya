@@ -27,10 +27,14 @@ Future<void> removeProfileConnectionAndCleanup({
     final last = rows.every((row) => row.profileId == profileId);
     final active = storage.getActiveProfileId();
     final shared = rows.any((row) => row.profileId == active);
-    await PleyaPushNotifications.forgetConnection(profileId, connection.id, (installation) async {
-      if (serverManager == null || (installation == null && !last)) return;
-      await serverManager.withPleyaServerClient(connection, persist: !last, boundOnly: shared, (client) async {
-        if (installation != null) await client.removePushInstallation(installation);
+    await PleyaPushNotifications.forgetConnection(profileId, connection.id, (installations) async {
+      if (serverManager == null || (installations.isEmpty && !last)) return;
+      // The last reference is logged out anyway, so it may use a short-lived
+      // client; a shared connection waits for its bound client.
+      await serverManager.withPleyaServerClient(connection, persist: !last, boundOnly: shared && !last, (client) async {
+        for (final installation in installations) {
+          await client.removePushInstallation(installation);
+        }
         if (last) await client.logout();
       });
     });

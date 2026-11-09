@@ -51,7 +51,9 @@ void main() {
   );
 
   test('a 403 with an auth.* envelope is Pleya rejecting the session', () async {
-    final pleya = client((r) => r.url.path.endsWith('/auth/refresh') ? refreshed(r) : envelope(403, 'auth.forbidden'));
+    final pleya = client(
+      (r) => r.url.path.endsWith('/auth/refresh') ? refreshed(r) : envelope(403, 'auth.token_invalid'),
+    );
     await expectLater(pleya.removePushInstallation('x'), throwsA(isA<PleyaAuthRejectedException>()));
   });
 

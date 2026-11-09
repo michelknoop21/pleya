@@ -130,12 +130,21 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   static Future<void> forgetConnection(
     String profileId,
     String connectionId,
-    Future<void> Function(String? installation) withdraw,
+    Future<void> Function(List<String> installations) withdraw,
   ) async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     final key = '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
+    final stored = prefs.getStringList(key);
     try {
-      await withdraw(prefs.getStringList(key)?.firstOrNull).timeout(const Duration(seconds: 5));
+      await withdraw(stored == null ? const [] : _installationsOf(stored)).timeout(const Duration(seconds: 5));
+    } on PleyaClientNotBoundException {
+      // Only the bound client may withdraw here, and it is not there yet (just
+      // after a cold start). Keep it as a pending opt-out so a later reconcile
+      // withdraws it, instead of forgetting an installation the server keeps.
+      if (stored != null) {
+        await prefs.setStringList(key, _asOptOut(stored));
+        return;
+      }
     } catch (_) {
       // Offline or already closed: the local opt-in still goes.
     }
@@ -143,6 +152,27 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   }
 
   static const _released = 'released';
+
+  /// Marks an earlier installation id this opt-in replaced and that the server
+  /// may still hold: written before a PUT under a fresh id, dropped once that
+  /// PUT lands (the server keeps one installation per token).
+  static const _replaces = 'replaces:';
+
+  /// Every installation id the stored opt-in may still have on the server.
+  static List<String> _installationsOf(List<String> stored) => [
+    stored.first,
+    for (final value in stored.skip(2))
+      if (value.startsWith(_replaces)) value.substring(_replaces.length),
+  ];
+
+  /// No category left: what remains is a withdrawal still to make.
+  static bool _isOptOut(List<String> stored) =>
+      !stored.skip(2).contains('movies') && !stored.skip(2).contains('episodes');
+
+  static List<String> _asOptOut(List<String> stored) => [
+    ...stored.take(2),
+    ...stored.skip(2).where((value) => value.startsWith(_replaces)),
+  ];
 
   /// Withdrawals still on their way, per stored opt-in. A registration for the
   /// same key waits for them, so an older DELETE can neither remove nor mark as
@@ -172,8 +202,8 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     final prefs = await BaseSharedPreferencesService.sharedCache();
     final stored = prefs.getStringList(key);
     if (stored == null || stored.first != installation || stored.contains(_released)) return;
-    if (stored.length == 2) return prefs.remove(key);
-    await prefs.setStringList(key, [...stored, _released]);
+    if (_isOptOut(stored)) return prefs.remove(key);
+    await prefs.setStringList(key, [...stored.where((value) => !value.startsWith(_replaces)), _released]);
   }
 
   Future<Map<String, String>?> _token({required bool prompt}) =>
@@ -195,7 +225,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       if (!_current) return;
       if (enabling && token == null) throw StateError('Push permission denied');
       final client = _online[connection];
-      if (enabling && existing != null && (existing.length == 2 || existing.contains('pending'))) {
+      if (enabling && existing != null && (_isOptOut(existing) || existing.contains('pending'))) {
         if (client == null) throw StateError('Pending opt-out requires connection');
         await _applyStored(client, existing, token: token);
         if (!_current || !identical(_online[connection], client)) return;
@@ -233,10 +263,12 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     if (device == null) {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       if (!_current || !identical(_online[connection], client)) return;
-      final removal = stored.take(2).toList();
+      final removal = _asOptOut(stored);
       await prefs.setStringList(_key(connection), removal);
       _saved[connection] = removal;
-      await client.removePushInstallation(stored.first);
+      for (final id in _installationsOf(stored)) {
+        await client.removePushInstallation(id);
+      }
       if (!_current) return;
       await prefs.remove(_key(connection));
       _saved.remove(connection);
@@ -258,7 +290,22 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
           },
         );
         if (!_current || !identical(_online[connection], client)) return;
-        if (!landed) installation = const Uuid().v4();
+        if (!landed) {
+          // Stored before the PUT, so every withdrawal path knows the new id
+          // and still knows the old one until the PUT replaces it.
+          installation = const Uuid().v4();
+          final prefs = await BaseSharedPreferencesService.sharedCache();
+          final now = prefs.getStringList(_key(connection)) ?? stored;
+          final next = [
+            installation,
+            ...now.skip(1).where((value) => value != 'pending' && value != _released),
+            'pending',
+            if (!now.contains('$_replaces${now.first}')) '$_replaces${now.first}',
+          ];
+          await prefs.setStringList(_key(connection), next);
+          _saved[connection] = next;
+          if (!_current || !identical(_online[connection], client)) return;
+        }
       }
       await client.registerPushInstallation(
         installation,
@@ -281,9 +328,13 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final prefs = await BaseSharedPreferencesService.sharedCache();
       if (!_current) return;
       final latest = prefs.getStringList(_key(connection)) ?? stored;
-      if (latest.first == stored.first &&
-          (installation != stored.first || latest.contains('pending') || latest.contains(_released))) {
-        final confirmed = [installation, ...latest.skip(1).where((value) => value != 'pending' && value != _released)];
+      // The PUT replaced any older id for this token on the server.
+      if (latest.first == installation &&
+          latest.any((value) => value == 'pending' || value == _released || value.startsWith(_replaces))) {
+        final confirmed = [
+          installation,
+          ...latest.skip(1).where((value) => value != 'pending' && value != _released && !value.startsWith(_replaces)),
+        ];
         await prefs.setStringList(_key(connection), confirmed);
         _saved[connection] = confirmed;
       }
@@ -308,10 +359,15 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   /// stored choices stay and are registered again when this profile returns.
   void _release() {
     for (final MapEntry(key: connection, value: client) in _synced.entries) {
-      final installation = _saved[connection]?.firstOrNull;
-      if (installation == null) continue;
+      final stored = _saved[connection];
+      if (stored == null) continue;
       final key = _key(connection);
-      _track(key, client.removePushInstallation(installation).then((_) => _markReleased(key, installation)));
+      _track(
+        key,
+        Future.wait(
+          _installationsOf(stored).map(client.removePushInstallation),
+        ).then((_) => _markReleased(key, stored.first)),
+      );
     }
     _synced.clear();
   }
@@ -336,16 +392,22 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       // Only once the binder has settled on this profile: binding the active
       // servers comes first and never waits on this.
       final release = releaseElsewhere != null && _profile.settledProfileId == _profileId ? releaseElsewhere : null;
-      for (final key in prefs.keys.where((key) => key.startsWith('pleya.push/') && !key.startsWith(_prefix))) {
+      // This profile's own pending opt-outs for a connection it can no longer
+      // reach through a bound client (it was removed before the binding
+      // came up) go the same way.
+      for (final key in prefs.keys.where((key) => key.startsWith('pleya.push/'))) {
         final stored = prefs.getStringList(key);
         if (release == null || stored == null || stored.length < 2 || stored.contains(_released)) continue;
-        if (!_releasing.add(key)) continue;
         final connection = Uri.decodeComponent(key.substring(key.lastIndexOf('/') + 1));
+        if (key.startsWith(_prefix) && (!_isOptOut(stored) || _online.containsKey(connection))) continue;
+        if (!_releasing.add(key)) continue;
         Future<void> attempt() async {
-          try {
-            await release(connection, stored.first);
-          } catch (error) {
-            if (!_settled(error)) return;
+          for (final installation in _installationsOf(stored)) {
+            try {
+              await release(connection, installation);
+            } catch (error) {
+              if (!_settled(error)) return;
+            }
           }
           await _markReleased(key, stored.first);
         }
@@ -359,7 +421,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         _saved[connection] = stored;
         final client = _online[connection];
         if (client == null) {
-          if (stored.length == 2 || stored.contains('pending')) _pending.add(connection);
+          if (_isOptOut(stored) || stored.contains('pending')) _pending.add(connection);
           continue;
         }
         if (identical(_synced[connection], client)) continue;

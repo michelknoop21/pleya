@@ -342,7 +342,7 @@ class ActiveProfileBinder {
         'ActiveProfileBinder: rebind settled',
         error: {'profileId': attemptedProfileId, 'success': success, 'elapsedMs': stopwatch.elapsedMilliseconds},
       );
-      activeProfile.markBindingFinished(success: success);
+      activeProfile.markBindingFinished(success: success, profileId: attemptedProfileId);
       _bindingProfileId = null;
     }
   }

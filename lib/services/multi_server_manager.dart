@@ -1008,7 +1008,7 @@ class MultiServerManager {
     bool boundOnly = false,
   }) async {
     if (_boundPleyaClient(connection) case final bound?) return action(bound);
-    if (boundOnly) throw StateError('No bound client for ${connection.id}');
+    if (boundOnly) throw PleyaClientNotBoundException(connection.id);
     final (turn, inherited) = await _takePleyaTurn(connection.id);
     var handOn = inherited;
     try {
@@ -1931,4 +1931,16 @@ class MultiServerManager {
       _connectProgressController.close();
     }
   }
+}
+
+/// [MultiServerManager.withPleyaServerClient] with `boundOnly` found no bound
+/// client: the request may only go through the binding's own client, and the
+/// binding has not happened (yet).
+class PleyaClientNotBoundException implements Exception {
+  const PleyaClientNotBoundException(this.connectionId);
+
+  final String connectionId;
+
+  @override
+  String toString() => 'No bound Pleya client for $connectionId';
 }

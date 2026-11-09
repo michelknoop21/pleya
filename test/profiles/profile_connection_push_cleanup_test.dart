@@ -248,7 +248,11 @@ void main() {
       );
 
       expect(presented, isEmpty, reason: 'only the bound client may present this token, and there is none');
-      expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
+      expect(
+        (await BaseSharedPreferencesService.sharedCache()).getStringList(prefKey),
+        ['install-1', 'Zolder'],
+        reason: 'kept as a pending opt-out until the bound client can withdraw it',
+      );
     });
   });
 

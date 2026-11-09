@@ -208,4 +208,17 @@ void main() {
       expect(provider.hasMultipleProfiles, isTrue);
     });
   });
+
+  test('settledProfileId is the profile the binder finished, not whoever is active by then', () {
+    expect(provider.settledProfileId, isNull, reason: 'nothing bound yet');
+    provider.markBindingStarted();
+    expect(provider.settledProfileId, isNull);
+    provider.markBindingFinished(success: true, profileId: 'bound');
+    expect(provider.settledProfileId, 'bound');
+
+    provider.markBindingStarted();
+    expect(provider.settledProfileId, isNull, reason: 'not while a bind runs');
+    provider.markBindingFinished(success: false, profileId: 'bound');
+    expect(provider.settledProfileId, isNull, reason: 'a failed bind settles nothing');
+  });
 }
