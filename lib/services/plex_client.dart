@@ -53,6 +53,7 @@ import '../models/plex/plex_match_result.dart';
 import '../utils/codec_utils.dart';
 import '../utils/content_utils.dart';
 import '../media/media_sort.dart';
+import '../media/watchlist_key.dart' show externalIdsFromLegacyAgentGuid;
 import '../models/plex/plex_video_playback_data.dart';
 import '../models/transcode_quality_preset.dart';
 import '../utils/failover_http_client.dart';
@@ -1719,22 +1720,28 @@ class PlexClient
   /// Same lookup, but a transport or server failure throws. A 404 (the item is
   /// gone) is an answer and yields an empty list.
   Future<List<dynamic>> _fetchExternalGuidsOrThrow(String ratingKey) async {
+    final guids = (await _fetchMetadataWithGuidsOrThrow(ratingKey))?['Guid'];
+    return guids is List ? guids : const [];
+  }
+
+  /// The item's first metadata entry from `includeGuids=1`, or null when the
+  /// item is gone (404) or the answer has none. Throws like
+  /// [_fetchExternalGuidsOrThrow].
+  Future<Map<dynamic, dynamic>?> _fetchMetadataWithGuidsOrThrow(String ratingKey) async {
     final MediaServerResponse response;
     try {
       response = await _getWithFailover('/library/metadata/$ratingKey', queryParameters: {'includeGuids': 1});
     } on MediaServerHttpException catch (e) {
-      if (e.statusCode == 404) return const [];
+      if (e.statusCode == 404) return null;
       rethrow;
     }
     final data = response.data;
-    if (data is! Map) return const [];
+    if (data is! Map) return null;
     final container = data['MediaContainer'] as Map?;
     final metadata = container?['Metadata'];
-    if (metadata is! List || metadata.isEmpty) return const [];
+    if (metadata is! List || metadata.isEmpty) return null;
     final first = metadata.first;
-    if (first is! Map) return const [];
-    final guids = first['Guid'];
-    return guids is List ? guids : const [];
+    return first is Map ? first : null;
   }
 
   /// Mark media as watched (transport only — see [MediaServerClient.markWatched]).
@@ -4548,8 +4555,16 @@ class PlexClient
   Future<ExternalIds> fetchExternalIds(String itemId) async {
     // Throws on a transport failure: a cached empty answer would pin the item
     // without identity evidence for the rest of a catalog merge.
-    final guids = await _fetchExternalGuidsOrThrow(itemId);
-    return ExternalIds.fromGuids(guids);
+    final metadata = await _fetchMetadataWithGuidsOrThrow(itemId);
+    final guids = metadata?['Guid'];
+    if (guids is List && guids.isNotEmpty) return ExternalIds.fromGuids(guids);
+    // A library on a legacy agent sends no `Guid` array; the number is in the
+    // item's own guid. Films and shows only: an episode's legacy guid starts
+    // with its series number.
+    final type = metadata?['type'];
+    if (type != 'movie' && type != 'show') return const ExternalIds();
+    final guid = metadata?['guid'];
+    return externalIdsFromLegacyAgentGuid(guid is String ? guid : null);
   }
 
   @override

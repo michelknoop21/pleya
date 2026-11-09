@@ -137,6 +137,42 @@ void plexExternalIdsTests() {
     expect((await gone.fetchExternalIds('1')).hasAny, isFalse);
   });
 
+  // A library on a legacy agent answers `includeGuids=1` without a `Guid`
+  // array; its number sits in the item's own guid.
+  test('fetchExternalIds reads a legacy agent guid for a film or a show', () async {
+    final film = clientAnsweringIds(
+      200,
+      '{"MediaContainer":{"Metadata":[{"ratingKey":"1","type":"movie","title":"Brothers",'
+      '"guid":"com.plexapp.agents.imdb://tt1817232?lang=en"}]}}',
+    );
+    expect((await film.fetchExternalIds('1')).imdb, 'tt1817232');
+
+    final show = clientAnsweringIds(
+      200,
+      '{"MediaContainer":{"Metadata":[{"ratingKey":"2","type":"show","title":"Severance",'
+      '"guid":"com.plexapp.agents.thetvdb://371980?lang=en"}]}}',
+    );
+    expect((await show.fetchExternalIds('2')).tvdb, 371980);
+  });
+
+  test('fetchExternalIds finds no number in an unmatched item or a legacy episode guid', () async {
+    final unmatched = clientAnsweringIds(
+      200,
+      '{"MediaContainer":{"Metadata":[{"ratingKey":"1","type":"movie",'
+      '"guid":"com.plexapp.agents.none://5d1f0c2a?lang=xn"}]}}',
+    );
+    expect((await unmatched.fetchExternalIds('1')).hasAny, isFalse);
+
+    // An episode guid starts with its series number; taking it would hand the
+    // episode the identity of the whole series.
+    final episode = clientAnsweringIds(
+      200,
+      '{"MediaContainer":{"Metadata":[{"ratingKey":"3","type":"episode",'
+      '"guid":"com.plexapp.agents.thetvdb://73141/1/2?lang=en"}]}}',
+    );
+    expect((await episode.fetchExternalIds('3')).hasAny, isFalse);
+  });
+
   test('the Trakt-facing fetchExternalGuids stays tolerant', () async {
     final client = clientAnsweringIds(502, '{}');
 

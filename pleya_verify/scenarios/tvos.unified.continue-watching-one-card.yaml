@@ -1,0 +1,56 @@
+name: tvos.unified.continue-watching-one-card
+target: tvos-sim
+# One film started on two servers is one card in Verder kijken, on Apple TV.
+# The same two Pleya-protocol fixture servers as `tvos.unified.source-switch`:
+# A and B both hold Tidewater under TMDB 1100099, started on both and in their
+# `continue_watching` hub.
+#
+# What this proves:
+#   1. the Verder kijken rail holds one card for the film, not one per server;
+#   2. the metadata line under the rail describes that card;
+#   3. Select on it opens the detail of that film, ready to resume.
+# The card itself holds one source: `DataAggregationService` hands the row one
+# representative item per proven title, so Select asks no server and the
+# detail draws no source line. That is the existing row contract, not this
+# change; the detail's title is read from the screenshot, there is no
+# automation state for it.
+# What it does not prove: the Plex guid case behind the change. The fixture
+# server speaks the Pleya protocol only, so a legacy and a current Plex agent
+# guid cannot be staged here. That cause is proven in
+# `unified_grouping_service_test`, `home_projection_service_test` and
+# `plex_item_gone_test`; this run is the chain from identity to the rail.
+setup:
+  - reset_app
+  - seed: unified.pair.a.v1
+  - seed_second: unified.pair.b.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - connections_seed: {base_url: "{{fixture_second}}", server_id: srv-2, server_name: "NAS B", user_name: verify-owner, refresh_token: rt-seeded}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  # The row is the film and the "Alle N" tile behind it. Two cards for the
+  # film would put the second at 0.1 and push "Alle N" to 0.2, so 0.2 being
+  # absent is the one-card claim; 0.0 standing first is its positive anchor.
+  - wait_until: {id: "discover.rail.item[0.0]", state: {title: Tidewater}, timeout: 30000}
+  - assert: {id: "discover.rail.item[0.2]", present: false}
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - settle: 1000
+  - snapshot: 00-home
+
+  # Down out of the bar lands on the hero's Afspelen, down again on the card,
+  # and the block under the rail describes the card the ring is on.
+  - press: down
+  - wait_until: {focused: discover.hero.play, timeout: 5000}
+  - settle: 1000
+  - press: down
+  - wait_until: {focused: "discover.rail.item[0.0]", timeout: 5000}
+  - settle: 1200
+  - assert: {id: "discover.rail[0]", state: {describes: Tidewater}}
+  - snapshot: 01-card-focused
+
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - wait_until: {id: media-detail.play, state: {resumable: true}, timeout: 10000}
+  - settle: 1500
+  - snapshot: 02-detail
