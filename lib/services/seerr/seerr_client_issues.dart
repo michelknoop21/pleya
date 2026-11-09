@@ -13,6 +13,24 @@ extension SeerrClientIssues on SeerrClient {
           issue.creatorId == session.userId &&
           SeerrPermission.has(session.permissions, SeerrPermission.createIssues));
 
+  bool canChangeIssueStatus(SeerrIssue issue) => canReplyToIssue(issue);
+
+  /// Overseerr before 1.27 has no issue routes. `GET /status` cannot tell that
+  /// apart from Jellyseerr (its 1.x versions have them), so probe the route.
+  /// Only a 404 means unsupported; any other failure keeps the entry visible.
+  Future<bool> supportsIssues() => _issuesSupported ??= _probeIssues();
+
+  Future<bool> _probeIssues() async {
+    try {
+      await _send(() => _http.get('/issue', headers: _authHeaders(), queryParameters: {'take': 1}));
+      return true;
+    } on SeerrException catch (e) {
+      if (e.statusCode == 404) return false;
+      _issuesSupported = null;
+      return true;
+    }
+  }
+
   Future<({List<SeerrIssue> items, bool hasMore})> getIssues({
     SeerrIssueStatus? status,
     bool ownOnly = true,
@@ -87,7 +105,7 @@ extension SeerrClientIssues on SeerrClient {
   }
 
   Future<void> setIssueStatus(SeerrIssue issue, SeerrIssueStatus status) async {
-    if (!canManageIssues) throw SeerrException.forbidden();
+    if (!canChangeIssueStatus(issue)) throw SeerrException.forbidden();
     final response = await _rawSend(() => _http.post('/issue/${issue.id}/${status.name}', headers: _authHeaders()));
     _throwIfError(response);
   }

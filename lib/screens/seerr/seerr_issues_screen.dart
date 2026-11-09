@@ -44,6 +44,7 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
   bool _busy = false;
   bool _hasMore = false;
   bool _failed = false;
+  bool _unsupported = false;
   bool _mutationFailed = false;
   ({String message, int lastId})? _unconfirmedReply;
   int _page = 0;
@@ -110,6 +111,8 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
       if (mounted && _isCurrent()) {
         setState(() {
           _failed = true;
+          // A 404 on the list route means this server has no issues at all.
+          _unsupported = widget.issueId == null && error is SeerrException && error.statusCode == 404;
           if (error is SeerrException && (error.isAuth || error.isForbidden)) {
             _issue = null;
             _issues.clear();
@@ -296,7 +299,7 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
         child: Text(t.seerrIssues.sendReply),
       ),
     ],
-    if (_client.canManageIssues)
+    if (_client.canChangeIssueStatus(issue))
       AutomationNode(
         id: AutomationIds.seerrIssueStatusAction,
         role: 'button',
@@ -332,7 +335,9 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
             sliver: SliverList.list(
               children: [
                 if (_busy) const LinearProgressIndicator(),
-                if (_failed) ...[
+                if (_failed && _unsupported)
+                  Text(t.seerrIssues.unavailable)
+                else if (_failed) ...[
                   Text(t.seerrIssues.loadFailed),
                   TextButton(onPressed: _busy ? null : _load, child: Text(t.common.retry)),
                 ],

@@ -99,4 +99,27 @@ void main() {
     final result = await seerr.getIssues();
     expect(result.items.map((row) => row.id), [1, 3]);
   });
+
+  test('the creator may resolve their own report, but not someone else\'s', () async {
+    final calls = <String>[];
+    final seerr = client(SeerrPermission.createIssues, (request) async {
+      calls.add('${request.method} ${request.url.path}');
+      return json(issue(1, 7));
+    });
+    await seerr.setIssueStatus(SeerrIssue.fromJson(issue(1, 7)), SeerrIssueStatus.resolved);
+    expect(calls, ['POST /api/v1/issue/1/resolved']);
+    await expectLater(
+      seerr.setIssueStatus(SeerrIssue.fromJson(issue(2, 8)), SeerrIssueStatus.resolved),
+      throwsA(isA<SeerrException>().having((e) => e.isForbidden, 'isForbidden', true)),
+    );
+    expect(calls, hasLength(1));
+  });
+
+  test('issue support: a 404 on the list route means unsupported, other failures keep the entry', () async {
+    Future<bool> probe(int code) =>
+        client(SeerrPermission.manageIssues, (_) async => http.Response('{}', code)).supportsIssues();
+    expect(await probe(404), isFalse);
+    expect(await probe(200), isTrue);
+    expect(await probe(500), isTrue);
+  });
 }

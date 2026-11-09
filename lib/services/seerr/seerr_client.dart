@@ -44,6 +44,7 @@ class SeerrClient {
 
   Map<String, dynamic>? _cachedStatus;
   DateTime? _statusFetchedAt;
+  Future<bool>? _issuesSupported;
 
   /// Title/year/artwork per `mediaType:tmdbId`, so paging through the request
   /// list and switching filters never refetches the same title. Bounded by the

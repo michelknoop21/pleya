@@ -35,7 +35,42 @@ class _Seerr extends SeerrProvider {
   SeerrClient? get client => _client;
 }
 
+Future<void> _pump(WidgetTester tester, SeerrClient client) async {
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        theme: monoTheme(dark: true),
+        home: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _Profile()),
+            ChangeNotifierProvider<SeerrProvider>(create: (_) => _Seerr(client)),
+          ],
+          child: SeerrIssuesScreen(client: client, profileId: 'p1'),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  testWidgets('a 404 on the list route says reports are unavailable and offers no retry', (tester) async {
+    final client = SeerrClient(
+      SeerrSession(
+        baseUrl: 'https://seerr.example',
+        authMode: SeerrAuthMode.local,
+        cookie: 'connect.sid=fixture',
+        userId: 7,
+        permissions: SeerrPermission.manageIssues,
+      ),
+      httpClient: MockClient((_) async => http.Response('{}', 404)),
+    );
+    addTearDown(client.dispose);
+    await _pump(tester, client);
+    expect(find.text(t.seerrIssues.unavailable), findsOneWidget);
+    expect(find.text(t.common.retry), findsNothing);
+  });
+
   testWidgets('the own-reports filter is a FocusableFilterChip, so monoTheme shows its selection', (tester) async {
     final client = SeerrClient(
       SeerrSession(

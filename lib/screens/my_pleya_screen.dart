@@ -78,6 +78,22 @@ class MyPleyaScreen extends StatefulWidget {
 }
 
 class _MyPleyaScreenState extends State<MyPleyaScreen> {
+  SeerrClient? _probedClient;
+  bool _issuesSupported = false;
+
+  /// Overseerr before 1.27 has no issue routes: only offer the row once the
+  /// server has answered the list route.
+  void _probeIssues(SeerrClient client) {
+    if (identical(_probedClient, client)) return;
+    _probedClient = client;
+    _issuesSupported = false;
+    unawaited(
+      client.supportsIssues().then((ok) {
+        if (mounted && identical(_probedClient, client)) setState(() => _issuesSupported = ok);
+      }),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -139,6 +155,10 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       );
     }
 
+    final showIssueRow =
+        showIssues && !isOffline && active?.isBinding == false && profile != null && issueClient?.canViewIssues == true;
+    if (showIssueRow) _probeIssues(issueClient!);
+
     final contentRows = [
       row(
         TvMyPleyaSection.libraries,
@@ -147,11 +167,7 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       ),
       row(TvMyPleyaSection.downloads, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
       row(TvMyPleyaSection.requests, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
-      if (showIssues &&
-          !isOffline &&
-          active?.isBinding == false &&
-          profile != null &&
-          issueClient?.canViewIssues == true)
+      if (showIssueRow && _issuesSupported)
         _MyPleyaRow(
           instance: 'seerrIssues',
           icon: Symbols.chat_bubble_outline_rounded,

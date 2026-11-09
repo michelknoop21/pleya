@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_node.dart';
@@ -71,7 +73,7 @@ class _RouteRecorder extends NavigatorObserver {
 Profile _profile(String name) => Profile.local(id: name, displayName: name, createdAt: DateTime.utc(2026, 8, 17));
 
 class _IssueSeerr extends ConfiguredSeerrDouble {
-  _IssueSeerr()
+  _IssueSeerr({int issueStatus = 200})
     : _client = SeerrClient(
         SeerrSession(
           baseUrl: 'https://seerr.example',
@@ -80,6 +82,7 @@ class _IssueSeerr extends ConfiguredSeerrDouble {
           userId: 7,
           permissions: SeerrPermission.manageIssues,
         ),
+        httpClient: MockClient((_) async => http.Response('{"results":[]}', issueStatus)),
       );
 
   final SeerrClient _client;
@@ -230,12 +233,20 @@ void main() {
 
     testWidgets('shows on iOS handhelds', (tester) async {
       await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      await tester.pumpAndSettle();
       expect(find.text(t.seerrIssues.title), findsOneWidget);
+    });
+
+    testWidgets('is hidden when the server has no issue routes (Overseerr < 1.27)', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(issueStatus: 404), theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsNothing);
     });
 
     testWidgets('is absent in the iOS-app-on-Mac container', (tester) async {
       TvDetectionService.debugSetIOSAppOnMacOverride(true);
       await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      await tester.pumpAndSettle();
       expect(find.text(t.seerrIssues.title), findsNothing);
     });
   });
