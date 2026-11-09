@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
+import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../models/seerr/seerr_issue.dart';
 import '../../profiles/active_profile_provider.dart';
@@ -283,7 +284,7 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
         ),
       ),
     if (_client.canReplyToIssue(issue)) ...[
-      TextField(
+      FocusableTextField(
         controller: _reply,
         enabled: !_busy && !_failed,
         maxLines: 4,
