@@ -9,11 +9,10 @@ import '../../focus/input_mode_tracker.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../navigation/tv/tv_nested_back_owner.dart';
-import '../../utils/layout_constants.dart';
+import '../../theme/mono_tokens.dart';
 import '../../widgets/app_icon.dart';
-import '../../widgets/tv/tv_unified_layout.dart';
 
-/// The search field and the inbox button above Aanvragen on TV.
+/// The search field and the inbox button in the Aanvragen sidebar.
 ///
 /// REQ-SEARCH-ROUTE: this row used to get the desktop callbacks. DOWN asked
 /// for the first search result and the first filter tab, neither of which is
@@ -35,6 +34,8 @@ class SeerrTvSearchRow extends StatelessWidget {
     required this.onFocusContent,
     required this.onExitUp,
     required this.onOpenRequests,
+    required this.onFocusFilters,
+    this.onLeaveGrid,
   });
 
   final TextEditingController controller;
@@ -51,66 +52,62 @@ class SeerrTvSearchRow extends StatelessWidget {
   /// UP out of the row, and LEFT off the field: the top navigation.
   final VoidCallback onExitUp;
   final VoidCallback onOpenRequests;
+  final VoidCallback onFocusFilters;
+  final VoidCallback? onLeaveGrid;
 
   @override
   Widget build(BuildContext context) {
-    // The page title's x (VIS-0925 review D2): the catalog grid's inset plus
-    // the card content inset, the same line `TvCatalogHeaderBar` and the main
-    // search pill start on.
-    final scale = TvLayoutConstants.scaleOf(context);
-    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
-    final inset = grid.inset + TvCatalogLayout.cardContentInset(scale);
+    final tk = tokens(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(inset, 8, inset, 8),
-      child: Row(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: AutomationNode(
-              id: AutomationIds.seerrSearchField,
-              role: 'field',
-              focusNode: fieldFocusNode,
-              // Rebuilt per keystroke so Menu knows whether there is text to
-              // clear, the one case the field still answers Back itself.
-              // The white ring of every other TV control, round the pill, while
-              // the field holds the focus (review FIX 3). Without it the only
-              // sign of focus was the text cursor.
-              child: ListenableBuilder(
-                listenable: Listenable.merge([controller, fieldFocusNode]),
-                builder: (context, _) => AnimatedContainer(
-                  key: const ValueKey('seerrSearchField.ring'),
-                  duration: FocusTheme.getAnimationDuration(context),
-                  curve: Curves.easeOutCubic,
-                  foregroundDecoration: FocusTheme.shapeFocusRing(
-                    context,
-                    isFocused: fieldFocusNode.hasFocus && InputModeTracker.isKeyboardMode(context),
-                    shape: const StadiumBorder(),
-                  ),
-                  child: FocusableTextField(
-                    controller: controller,
-                    focusNode: fieldFocusNode,
-                    onChanged: onChanged,
-                    textInputAction: TextInputAction.search,
-                    // The field is a stop on the route between the top navigation
-                    // and the content, so arriving on it must not open the
-                    // keyboard over the page; Select opens it.
-                    tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.never,
-                    // Submitting goes to the results, never a bare unfocus that
-                    // strands the D-pad; with nothing to land on it stays put.
-                    onEditingComplete: () => onFocusContent(),
-                    onNavigateUp: onExitUp,
-                    onNavigateLeft: onExitUp,
-                    // Text is entered through the system keyboard on TV, so RIGHT
-                    // is free to be a move: the inbox button beside the field.
-                    onNavigateRight: inboxFocusNode.requestFocus,
-                    onNavigateDown: () => onFocusContent(),
-                    onBack: _backFor(context),
-                    decoration: decoration,
-                  ),
+          AutomationNode(
+            id: AutomationIds.seerrSearchField,
+            role: 'field',
+            focusNode: fieldFocusNode,
+            // Rebuilt per keystroke so Menu knows whether there is text to
+            // clear, the one case the field still answers Back itself.
+            // The white ring of every other TV control, round the pill, while
+            // the field holds the focus (review FIX 3). Without it the only
+            // sign of focus was the text cursor.
+            child: ListenableBuilder(
+              listenable: Listenable.merge([controller, fieldFocusNode]),
+              builder: (context, _) => AnimatedContainer(
+                key: const ValueKey('seerrSearchField.ring'),
+                duration: FocusTheme.getAnimationDuration(context),
+                curve: Curves.easeOutCubic,
+                foregroundDecoration: FocusTheme.shapeFocusRing(
+                  context,
+                  isFocused: fieldFocusNode.hasFocus && InputModeTracker.isKeyboardMode(context),
+                  shape: const StadiumBorder(),
+                ),
+                child: FocusableTextField(
+                  controller: controller,
+                  focusNode: fieldFocusNode,
+                  onChanged: onChanged,
+                  textInputAction: TextInputAction.search,
+                  // The field is a stop on the route between the top navigation
+                  // and the content, so arriving on it must not open the
+                  // keyboard over the page; Select opens it.
+                  tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.never,
+                  // Submitting goes to the results, never a bare unfocus that
+                  // strands the D-pad; with nothing to land on it stays put.
+                  onEditingComplete: () => onFocusContent(),
+                  onNavigateUp: onExitUp,
+                  onNavigateLeft: onExitUp,
+                  // Text is entered through the system keyboard on TV, so RIGHT
+                  // is free to be a move: the inbox button below the field.
+                  onNavigateRight: inboxFocusNode.requestFocus,
+                  onNavigateDown: () => onFocusContent(),
+                  onBack: _backFor(context),
+                  decoration: decoration,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(height: 6),
           AutomationNode(
             id: AutomationIds.seerrSearchInbox,
             role: 'button',
@@ -118,14 +115,21 @@ class SeerrTvSearchRow extends StatelessWidget {
             child: FocusableButton(
               focusNode: inboxFocusNode,
               onPressed: onOpenRequests,
-              onNavigateUp: onExitUp,
-              onNavigateDown: () => onFocusContent(),
+              onBack: onLeaveGrid,
+              onNavigateUp: fieldFocusNode.requestFocus,
+              onNavigateDown: onFocusFilters,
+              onNavigateRight: () => onFocusContent(),
               onNavigateLeft: fieldFocusNode.requestFocus,
-              shape: const CircleBorder(),
+              shape: const StadiumBorder(),
               dimWhenUnfocused: false,
-              child: IconButton.filledTonal(
-                tooltip: t.seerr.myRequests,
+              child: FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: tk.surface,
+                  foregroundColor: tk.text,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                ),
                 icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
+                label: Text(t.seerr.myRequests, maxLines: 1, overflow: TextOverflow.ellipsis),
                 onPressed: onOpenRequests,
               ),
             ),
@@ -140,6 +144,7 @@ class SeerrTvSearchRow extends StatelessWidget {
   /// Aanvragen; outside one it steps up to the top navigation as before.
   VoidCallback? _backFor(BuildContext context) {
     if (controller.text.isNotEmpty) return onClear;
+    if (onLeaveGrid != null) return onLeaveGrid;
     if (TvNestedBackOwner.of(context)) return null;
     return onExitUp;
   }
