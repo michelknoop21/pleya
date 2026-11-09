@@ -5739,7 +5739,7 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 
 **Gevolgen:** Legen verwijdert met dezelfde cascade als het opruimen na een volledige scan: kijkstatus, geschiedenis, favorieten, waarderingen, downloads en lijstregels van een verwijderde titel gaan mee. Een bestand dat later terugkomt wordt een nieuw item. Geen migratie, geen nieuwe tabel. Het takenpaneel in de app toont naast Plex-activiteiten de lopende jobs van een server die het profiel beheert.
 
-## DEC-XXX: De offline index slaat seizoenen en afleveringen op als lijstregel
+## DEC-196: De offline index slaat seizoenen en afleveringen op als lijstregel
 
 **Date:** 2026-11-09
 **Status:** besloten (Michel, 9 november 2026, antwoord "Yes, go ahead" op: "Offline index: seasons and episodes stored without cast, versions and their own still; offline episode lists show the season or show poster. Movies and shows unchanged."). Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit besluit DEC-XXX (offline index als lijstregel).

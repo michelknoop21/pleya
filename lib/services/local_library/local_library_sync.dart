@@ -139,7 +139,7 @@ class LocalLibrarySync {
           candidate.year == old.year) {
         detail = retained!;
       } else if (candidate.kind == MediaKind.season || candidate.kind == MediaKind.episode) {
-        // The index keeps a season or episode as a list row (DEC-XXX), so the
+        // The index keeps a season or episode as a list row (DEC-196), so the
         // list answer is all it needs: a detail read per episode was most of
         // the requests of a series scan.
         detail = candidate;
@@ -417,7 +417,7 @@ class LocalLibrarySync {
     // 5000 titles.
     final eligible = <String, (MediaItem, DateTime)>{};
     for (final item in items) {
-      // The index keeps no episode stills (DEC-XXX).
+      // The index keeps no episode stills (DEC-196).
       if (item.kind == MediaKind.episode) continue;
       if (item.serverId == null || item.thumbPath == null || item.thumbPath!.isEmpty) continue;
       final k = key(item);

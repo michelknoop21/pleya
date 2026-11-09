@@ -24,7 +24,7 @@ extension LocalLibraryReads on LocalLibraryProvider {
       items.where((i) => i.serverId == parent.serverId && i.parentId == parent.id).toList()
         ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
 
-  /// The index keeps no episode stills (DEC-XXX), so an offline episode list
+  /// The index keeps no episode stills (DEC-196), so an offline episode list
   /// draws the season or show poster it does keep: the stored row's own path
   /// first, because an episode's parent path can differ from it (Jellyfin
   /// leaves the tag off when the season has no image of its own).
