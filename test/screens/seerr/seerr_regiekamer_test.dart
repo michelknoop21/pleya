@@ -1,6 +1,8 @@
 // Regiekamer (DEC-XXX, mockups C1 and C2): count tiles, sections in decision
 // order, ticking several requests for one Goedkeuren, swipes, and the facts in
 // the menu behind a row.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -160,6 +162,27 @@ void main() {
 
       expect(rowIds(tester).take(2), [2, 3]);
       expect(find.textContaining(t.seerr.cockpit.oldestFirst, findRichText: true), findsNothing);
+    });
+
+    testWidgets('when the last page sorts the decisions, every row stays with its request', (tester) async {
+      final first = seerrPage([
+        _at(seerrRequestJson(2, requestedBy: 9), '2026-10-08T00:00:00.000Z'),
+        _at(seerrRequestJson(3, requestedBy: 9), '2026-10-02T00:00:00.000Z'),
+      ], pages: 2);
+      final last = Completer<http.Response>();
+      fake.routes['GET /request'] = (request) =>
+          request.url.queryParameters['skip'] == '0' ? FakeSeerr.json(first) : last.future;
+      await open(tester, size: const Size(430, 700));
+      expect(rowIds(tester).take(2), [2, 3], reason: 'server order while a page is still out');
+      Element rowOf(int id) =>
+          tester.element(find.byWidgetPredicate((w) => w is SeerrRequestRow && w.request.id == id));
+      final two = rowOf(2);
+
+      last.complete(FakeSeerr.json(seerrPage([], pages: 2)));
+      await seerrSettle(tester);
+
+      expect(rowIds(tester).take(2), [3, 2], reason: 'complete now, so oldest first');
+      expect(identical(rowOf(2), two), isTrue, reason: 'the row moved with its request instead of being reused');
     });
 
     testWidgets('a row whose status could not be read is said to be unknown, not handled', (tester) async {

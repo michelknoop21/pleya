@@ -577,42 +577,45 @@ class _Bubble extends StatelessWidget {
         alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
         // Never the full width: the side a message sits on is what tells the
         // viewer's own from everyone else's.
-        child: FractionallySizedBox(
-          widthFactor: 0.82,
-          alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-            decoration: BoxDecoration(
-              color: mine ? tk.surfaceElevated : tk.surface,
-              borderRadius: BorderRadius.only(
-                topLeft: mine ? big : small,
-                topRight: mine ? small : big,
-                bottomLeft: big,
-                bottomRight: big,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: author,
-                        style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: tk.text),
-                      ),
-                      if (date != null)
-                        TextSpan(
-                          text: '  $date',
-                          style: theme.textTheme.labelSmall?.copyWith(color: tk.textMuted),
-                        ),
-                    ],
-                  ),
+        child: LayoutBuilder(
+          builder: (context, box) => ConstrainedBox(
+            // At most 82% of the column and never wider than 520: a short
+            // answer stays a short bubble, a long one stays readable on TV.
+            constraints: BoxConstraints(maxWidth: box.maxWidth * 0.82 > 520 ? 520 : box.maxWidth * 0.82),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+              decoration: BoxDecoration(
+                color: mine ? tk.surfaceElevated : tk.surface,
+                borderRadius: BorderRadius.only(
+                  topLeft: mine ? big : small,
+                  topRight: mine ? small : big,
+                  bottomLeft: big,
+                  bottomRight: big,
                 ),
-                const SizedBox(height: 4),
-                SelectableText(message, style: theme.textTheme.bodyMedium?.copyWith(height: 1.35)),
-              ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: author,
+                          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: tk.text),
+                        ),
+                        if (date != null)
+                          TextSpan(
+                            text: '  $date',
+                            style: theme.textTheme.labelSmall?.copyWith(color: tk.textMuted),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(message, style: theme.textTheme.bodyMedium?.copyWith(height: 1.35)),
+                ],
+              ),
             ),
           ),
         ),

@@ -131,8 +131,8 @@ class SeerrRequestRow extends StatelessWidget {
     final age = seerrRequestAge(request.createdAt, now: now);
     final radius = Radius.circular(tk.radiusMd);
 
-    // One line, one text: the name first (who asked is what a manager reads
-    // first), then the kind or seasons, then 4K. Separate shrinking boxes each
+    // One line, one text: 4K, then the name (who asked is what a manager
+    // reads first), then the kind or seasons. Separate shrinking boxes each
     // kept a share of the width they did not use and cut the name short next
     // to a short "Film".
     final name = request.requestedByName;
@@ -140,13 +140,15 @@ class SeerrRequestRow extends StatelessWidget {
       TextSpan(
         style: muted,
         children: [
-          if (name != null && name.isNotEmpty) TextSpan(text: '$name · '),
-          TextSpan(text: _kindOrSeasons),
+          // 4K first: it is short and it changes the decision, so it is never
+          // the part an ellipsis takes away.
           if (request.is4k)
             TextSpan(
-              text: ' · ${t.seerr.fourKBadge}',
+              text: '${t.seerr.fourKBadge} · ',
               style: TextStyle(color: tk.text, fontWeight: FontWeight.w700),
             ),
+          if (name != null && name.isNotEmpty) TextSpan(text: '$name · '),
+          TextSpan(text: _kindOrSeasons),
         ],
       ),
       maxLines: 1,

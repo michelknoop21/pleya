@@ -234,6 +234,14 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
       final tail = showLoadMore && g == groups.length - 1;
       slivers.add(
         SliverList.builder(
+          // Rows are found by request, not by place: when the order changes
+          // (the last page arrives and the decisions sort oldest first) the
+          // focused row stays on the request it was on.
+          findChildIndexCallback: (key) {
+            if (key is! ValueKey<String>) return null;
+            final i = rows.indexWhere((r) => key.value == 'seerr-request-${r.id}');
+            return i < 0 ? null : i;
+          },
           itemCount: rows.length + (tail ? 1 : 0),
           itemBuilder: (context, i) {
             if (i == rows.length) {
@@ -247,6 +255,7 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
               );
             }
             return Padding(
+              key: ValueKey('seerr-request-${rows[i].id}'),
               padding: EdgeInsets.only(top: i == 0 && group.title == null ? 8 : 0),
               child: _row(rows[i], first + i, first: i == 0, last: i == rows.length - 1),
             );
@@ -276,7 +285,13 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
     if (_filter == TvSeerrRequestFilter.pending) {
       // The decision list on its own: it keeps its heading, and with it the
       // one Goedkeuren for what is ticked.
-      final rows = complete ? ([..._items]..sort(_oldestFirst)) : _items;
+      // Only rows that say they are pending: until the answer for this filter
+      // is in, the list on screen is still the previous filter's.
+      final pending = [
+        for (final r in _items)
+          if (r.statusKnown && r.isPending) r,
+      ];
+      final rows = complete ? (pending..sort(_oldestFirst)) : pending;
       final bulk = decides(rows);
       return [
         _RequestGroup(
