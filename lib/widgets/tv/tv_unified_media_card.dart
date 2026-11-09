@@ -49,6 +49,7 @@ import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../services/local_library/scan_diagnostics.dart';
 import '../../services/settings_service.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../utils/layout_constants.dart';
@@ -154,6 +155,7 @@ class TvUnifiedMediaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ScanDiagnostics.cardBuilds++;
     final scale = TvLayoutConstants.scaleOf(context);
     final item = group.representativeSource.item;
     final serverId = group.representativeSource.serverId.value;

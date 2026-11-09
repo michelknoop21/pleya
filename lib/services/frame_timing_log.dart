@@ -86,6 +86,20 @@ class FrameTimingSummary {
       'pacing=${_ms(pacingP50)}/${_ms(pacingMax)}';
 }
 
+/// The FrameTiming log line for [summary], and the start of the next count.
+///
+/// scan= is the state when the batch arrives, about once a second; posterPath
+/// counts the local poster lookups the cards made since the previous line, and
+/// cards the catalog cards that were built in that time.
+String frameTimingLine(FrameTimingSummary summary) {
+  final line =
+      'FrameTiming: $summary scan=${ScanDiagnostics.scanning ? 'on' : 'off'} '
+      'posterPath=${ScanDiagnostics.posterPathCalls} cards=${ScanDiagnostics.cardBuilds}';
+  ScanDiagnostics.posterPathCalls = 0;
+  ScanDiagnostics.cardBuilds = 0;
+  return line;
+}
+
 /// Writes frame cost to the diagnostic log on Apple TV.
 ///
 /// A Release build cannot be attached to from Instruments or DevTools, so this
@@ -101,12 +115,6 @@ void startFrameTimingLog() {
       [for (final t in timings) t.rasterDuration.inMicroseconds],
       starts: [for (final t in timings) t.timestampInMicroseconds(FramePhase.vsyncStart)],
     );
-    // scan= is the state when the batch arrives, about once a second; posterPath
-    // counts the local poster lookups the cards made since the previous line.
-    appLogger.d(
-      'FrameTiming: $summary scan=${ScanDiagnostics.scanning ? 'on' : 'off'} '
-      'posterPath=${ScanDiagnostics.posterPathCalls}',
-    );
-    ScanDiagnostics.posterPathCalls = 0;
+    appLogger.d(frameTimingLine(summary));
   });
 }

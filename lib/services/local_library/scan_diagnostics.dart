@@ -28,4 +28,8 @@ abstract final class ScanDiagnostics {
 
   /// Calls to `LocalLibraryProvider.posterPath`, reset by each frame log line.
   static int posterPathCalls = 0;
+
+  /// Builds of a TV catalog card, reset by each frame log line. Grows with the
+  /// number of cards a frame rebuilds, not with the number on screen.
+  static int cardBuilds = 0;
 }
