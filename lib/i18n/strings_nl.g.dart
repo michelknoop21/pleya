@@ -109,6 +109,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsFlyFollowNl flyFollow = _TranslationsFlyFollowNl._(_root);
 	@override late final _TranslationsLocalLibraryNl localLibrary = _TranslationsLocalLibraryNl._(_root);
 	@override late final _TranslationsSettingsStudioNl settingsStudio = _TranslationsSettingsStudioNl._(_root);
+	@override late final _TranslationsSeerrIssuesNl seerrIssues = _TranslationsSeerrIssuesNl._(_root);
 }
 
 // Path: states
@@ -2893,6 +2894,37 @@ class _TranslationsSettingsStudioNl extends TranslationsSettingsStudioEn {
 	@override String get controls => 'Besturing';
 	@override String get diagnostics => 'Diagnose';
 	@override String get activeProfile => 'Actief profiel';
+}
+
+// Path: seerrIssues
+class _TranslationsSeerrIssuesNl extends TranslationsSeerrIssuesEn {
+	_TranslationsSeerrIssuesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Meldingen';
+	@override String get subtitle => 'Gemelde problemen met films en series';
+	@override String get open => 'Open';
+	@override String get resolved => 'Opgelost';
+	@override String get mine => 'Mijn meldingen';
+	@override String get empty => 'Geen meldingen in dit overzicht.';
+	@override String get loadMore => 'Meer laden';
+	@override String get video => 'Beeld';
+	@override String get audio => 'Geluid';
+	@override String get subtitles => 'Ondertiteling';
+	@override String get other => 'Overig';
+	@override String seasonNumber({required Object number}) => 'Seizoen ${number}';
+	@override String episodeNumber({required Object number}) => 'Aflevering ${number}';
+	@override String number({required Object number}) => 'Melding #${number}';
+	@override String get unknownAuthor => 'Onbekende gebruiker';
+	@override String get reply => 'Schrijf een reactie';
+	@override String get sendReply => 'Reactie plaatsen';
+	@override String get resolve => 'Markeren als opgelost';
+	@override String get reopen => 'Melding heropenen';
+	@override String get unavailable => 'Meldingen zijn niet beschikbaar voor dit account.';
+	@override String get loadFailed => 'Meldingen ophalen uit Seerr is mislukt.';
+	@override String get changeUnconfirmed => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7670,6 +7702,28 @@ extension on TranslationsNl {
 			'settingsStudio.controls' => 'Besturing',
 			'settingsStudio.diagnostics' => 'Diagnose',
 			'settingsStudio.activeProfile' => 'Actief profiel',
+			'seerrIssues.title' => 'Meldingen',
+			'seerrIssues.subtitle' => 'Gemelde problemen met films en series',
+			'seerrIssues.open' => 'Open',
+			'seerrIssues.resolved' => 'Opgelost',
+			'seerrIssues.mine' => 'Mijn meldingen',
+			'seerrIssues.empty' => 'Geen meldingen in dit overzicht.',
+			'seerrIssues.loadMore' => 'Meer laden',
+			'seerrIssues.video' => 'Beeld',
+			'seerrIssues.audio' => 'Geluid',
+			'seerrIssues.subtitles' => 'Ondertiteling',
+			'seerrIssues.other' => 'Overig',
+			'seerrIssues.seasonNumber' => ({required Object number}) => 'Seizoen ${number}',
+			'seerrIssues.episodeNumber' => ({required Object number}) => 'Aflevering ${number}',
+			'seerrIssues.number' => ({required Object number}) => 'Melding #${number}',
+			'seerrIssues.unknownAuthor' => 'Onbekende gebruiker',
+			'seerrIssues.reply' => 'Schrijf een reactie',
+			'seerrIssues.sendReply' => 'Reactie plaatsen',
+			'seerrIssues.resolve' => 'Markeren als opgelost',
+			'seerrIssues.reopen' => 'Melding heropenen',
+			'seerrIssues.unavailable' => 'Meldingen zijn niet beschikbaar voor dit account.',
+			'seerrIssues.loadFailed' => 'Meldingen ophalen uit Seerr is mislukt.',
+			'seerrIssues.changeUnconfirmed' => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.',
 			_ => null,
 		};
 	}

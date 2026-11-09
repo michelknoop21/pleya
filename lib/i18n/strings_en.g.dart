@@ -110,6 +110,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsFlyFollowEn flyFollow = TranslationsFlyFollowEn.internal(_root);
 	late final TranslationsLocalLibraryEn localLibrary = TranslationsLocalLibraryEn.internal(_root);
 	late final TranslationsSettingsStudioEn settingsStudio = TranslationsSettingsStudioEn.internal(_root);
+	late final TranslationsSeerrIssuesEn seerrIssues = TranslationsSeerrIssuesEn.internal(_root);
 }
 
 // Path: states
@@ -7063,6 +7064,81 @@ class TranslationsSettingsStudioEn {
 	String get activeProfile => 'Active profile';
 }
 
+// Path: seerrIssues
+class TranslationsSeerrIssuesEn {
+	TranslationsSeerrIssuesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Reports'
+	String get title => 'Reports';
+
+	/// en: 'Problems reported with films and series'
+	String get subtitle => 'Problems reported with films and series';
+
+	/// en: 'Open'
+	String get open => 'Open';
+
+	/// en: 'Resolved'
+	String get resolved => 'Resolved';
+
+	/// en: 'My reports'
+	String get mine => 'My reports';
+
+	/// en: 'No reports in this view.'
+	String get empty => 'No reports in this view.';
+
+	/// en: 'Load more'
+	String get loadMore => 'Load more';
+
+	/// en: 'Video'
+	String get video => 'Video';
+
+	/// en: 'Audio'
+	String get audio => 'Audio';
+
+	/// en: 'Subtitles'
+	String get subtitles => 'Subtitles';
+
+	/// en: 'Other'
+	String get other => 'Other';
+
+	/// en: 'Season $number'
+	String seasonNumber({required Object number}) => 'Season ${number}';
+
+	/// en: 'Episode $number'
+	String episodeNumber({required Object number}) => 'Episode ${number}';
+
+	/// en: 'Report #$number'
+	String number({required Object number}) => 'Report #${number}';
+
+	/// en: 'Unknown user'
+	String get unknownAuthor => 'Unknown user';
+
+	/// en: 'Write a reply'
+	String get reply => 'Write a reply';
+
+	/// en: 'Post reply'
+	String get sendReply => 'Post reply';
+
+	/// en: 'Mark as resolved'
+	String get resolve => 'Mark as resolved';
+
+	/// en: 'Reopen report'
+	String get reopen => 'Reopen report';
+
+	/// en: 'Reports are unavailable for this account.'
+	String get unavailable => 'Reports are unavailable for this account.';
+
+	/// en: 'Could not load reports from Seerr.'
+	String get loadFailed => 'Could not load reports from Seerr.';
+
+	/// en: 'Seerr did not confirm your change. Check the conversation before trying again.'
+	String get changeUnconfirmed => 'Seerr did not confirm your change. Check the conversation before trying again.';
+}
+
 // Path: settings.displayMaxResolutionOptions
 class TranslationsSettingsDisplayMaxResolutionOptionsEn {
 	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
@@ -13601,6 +13677,28 @@ extension on Translations {
 			'settingsStudio.controls' => 'Controls',
 			'settingsStudio.diagnostics' => 'Diagnostics',
 			'settingsStudio.activeProfile' => 'Active profile',
+			'seerrIssues.title' => 'Reports',
+			'seerrIssues.subtitle' => 'Problems reported with films and series',
+			'seerrIssues.open' => 'Open',
+			'seerrIssues.resolved' => 'Resolved',
+			'seerrIssues.mine' => 'My reports',
+			'seerrIssues.empty' => 'No reports in this view.',
+			'seerrIssues.loadMore' => 'Load more',
+			'seerrIssues.video' => 'Video',
+			'seerrIssues.audio' => 'Audio',
+			'seerrIssues.subtitles' => 'Subtitles',
+			'seerrIssues.other' => 'Other',
+			'seerrIssues.seasonNumber' => ({required Object number}) => 'Season ${number}',
+			'seerrIssues.episodeNumber' => ({required Object number}) => 'Episode ${number}',
+			'seerrIssues.number' => ({required Object number}) => 'Report #${number}',
+			'seerrIssues.unknownAuthor' => 'Unknown user',
+			'seerrIssues.reply' => 'Write a reply',
+			'seerrIssues.sendReply' => 'Post reply',
+			'seerrIssues.resolve' => 'Mark as resolved',
+			'seerrIssues.reopen' => 'Reopen report',
+			'seerrIssues.unavailable' => 'Reports are unavailable for this account.',
+			'seerrIssues.loadFailed' => 'Could not load reports from Seerr.',
+			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
 			_ => null,
 		};
 	}

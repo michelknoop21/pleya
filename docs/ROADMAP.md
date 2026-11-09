@@ -24,6 +24,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Roadmap deviation, approved by Michel on 31 October 2026:** add one shared local queue for heavy Pleya builds, tests and code generation across sessions/worktrees. This tooling task does not change product priorities, functional gates or publication authority. Implementation and measurement contract: [heavy-work queue](agents/heavy-work.md).
 
+**Roadmap deviation, Michel 7 november 2026:** akkoord op het voorstel voor consistente aanvraag- en beheerpagina’s (A-20/A-21), een iOS-ingang voor Seerr-meldingen en opt-in notificaties. Eerst de bestaande aanvraagflow, daarna issueafhandeling op basis van Seerr-rechten. Notificaties worden per categorie gekozen, met afzonderlijke toestemming voor iOS-push.
+
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.

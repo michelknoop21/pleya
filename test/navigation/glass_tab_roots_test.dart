@@ -45,6 +45,9 @@ import '../test_helpers/prefs.dart';
 
 class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider {
   @override
+  bool get isBinding => false;
+
+  @override
   Profile? get active => null;
 
   @override

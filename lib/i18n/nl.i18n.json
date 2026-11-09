@@ -3394,5 +3394,29 @@
     "controls": "Besturing",
     "diagnostics": "Diagnose",
     "activeProfile": "Actief profiel"
+  },
+  "seerrIssues": {
+    "title": "Meldingen",
+    "subtitle": "Gemelde problemen met films en series",
+    "open": "Open",
+    "resolved": "Opgelost",
+    "mine": "Mijn meldingen",
+    "empty": "Geen meldingen in dit overzicht.",
+    "loadMore": "Meer laden",
+    "video": "Beeld",
+    "audio": "Geluid",
+    "subtitles": "Ondertiteling",
+    "other": "Overig",
+    "seasonNumber": "Seizoen $number",
+    "episodeNumber": "Aflevering $number",
+    "number": "Melding #$number",
+    "unknownAuthor": "Onbekende gebruiker",
+    "reply": "Schrijf een reactie",
+    "sendReply": "Reactie plaatsen",
+    "resolve": "Markeren als opgelost",
+    "reopen": "Melding heropenen",
+    "unavailable": "Meldingen zijn niet beschikbaar voor dit account.",
+    "loadFailed": "Meldingen ophalen uit Seerr is mislukt.",
+    "changeUnconfirmed": "Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert."
   }
 }

@@ -714,6 +714,8 @@ class AutomationIds {
   /// `requests.detail.action[request]`, `[mine]`, `[refresh]`, `[library]`,
   /// `[search]`.
   static const String requestsDetailAction = 'requests.detail.action';
+  static const String seerrIssueItem = 'seerr.issues.item';
+  static const String seerrIssueStatusAction = 'seerr.issues.status_action';
 
   /// A landing's header, title line, "Alle series"/"Alle films" action and one
   /// of its rails. All four are instanceable and all four carry the landing's
@@ -914,6 +916,7 @@ class AutomationIds {
     requestsListMore,
     requestsListState,
     requestsDetailAction,
+    seerrIssueItem,
     homeRail,
     homeRailItem,
     homeRailHeader,
@@ -1155,6 +1158,8 @@ class AutomationIds {
     {'id': requestsListState, 'role': 'region', 'instanceable': true},
     {'id': requestsListScope, 'role': 'button', 'instanceable': true},
     {'id': requestsDetailAction, 'role': 'button', 'instanceable': true},
+    {'id': seerrIssueItem, 'role': 'list.item', 'instanceable': true},
+    {'id': seerrIssueStatusAction, 'role': 'button', 'instanceable': false},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
     {'id': landingHeaderAvatar, 'role': 'button', 'instanceable': true},
