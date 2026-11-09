@@ -57,6 +57,10 @@ steps:
   - settle: 500
   - assert: {id: player.play_pause, state: {playing: false}}
   - assert: {id: player.play_pause, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: player.settings_button, above: player.play_pause, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: player.tracks_button, sameRow: player.settings_button, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: player.timeline, below: player.play_pause, insideViewport: true}
+  - assert: {id: player.handoff_button, below: player.timeline, insideViewport: true, minimumTapTarget: 44}
   - snapshot: glass-paused
   # Settings first, the picker last. The reverse order (a sheet after the
   # picker) is covered by `ios.player.sheets-after-handoff`.

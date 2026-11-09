@@ -28,6 +28,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Uitvoeringskeuze Michel, 8 november 2026 (A-06).** A-06 krijgt de compacte kop op de tvOS-landingen Series en Films.
 
+**Roadmap deviation, approved by Michel on 8 November 2026 (A-11):** A-11 staat sinds 9 oktober op uitgesteld; uit dat pakket wordt nu alleen het volgende gebouwd. De dubbele schuifjesknop op Apple TV vervalt (PLR-PANEL-ENTRY-1108). Michel kiest Filmbeeld voor alle Pleya-spelers met behoud van de huidige functies, en voor iPhone en iPad de mobiele mockup A, met centraal transport en de acties verdeeld over kop en tijdlijn. De toaststijl is uitgewerkt voor speler en app. De rest van A-11/A-12 blijft uitgesteld. De iPhone/iPad-mockup valt binnen deze deviation omdat Michel die op 8 november zelf koos; de rest van A-11 niet.
+
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.

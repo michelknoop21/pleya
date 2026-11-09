@@ -121,9 +121,10 @@
     /* De onderbalk staat al op de inset; het menu lijnt rechts uit op die balk. */
     position: absolute;
     right: 0;
-    bottom: calc(100% + var(--space));
+    bottom: var(--space);
     width: min(340px, 100%);
-    max-height: min(60vh, 460px);
+    max-height: min(calc(100% - var(--space)), 60vh, 460px);
+    pointer-events: auto;
     overflow-y: auto;
     padding: var(--space) var(--space-1-5) var(--space-1-5);
     border-radius: var(--radius-card);

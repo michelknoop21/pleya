@@ -87,7 +87,7 @@
   }
 
   .seek__played {
-    background: var(--accent);
+    background: var(--player-progress);
   }
 
   .seek__thumb {
@@ -116,7 +116,7 @@
 
   /* De echte input is onzichtbaar; zijn focus komt op de knop terecht. */
   .seek:has(.seek__input:focus-visible) .seek__thumb {
-    outline: var(--ring) solid #fff;
+    outline: var(--ring) solid var(--player-focus);
     outline-offset: 3px;
     transform: scale(1.15);
   }

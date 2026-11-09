@@ -38,7 +38,7 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
   /// What the subtitles must clear: the share of the player height the
   /// bottom block (controls, or the content strip that replaces them) took at
   /// its last measurement while the chrome is up, nothing once it hides
-  /// (PLR-SUBS1). Only the TV controls report the block.
+  /// (PLR-SUBS1). Filmbeeld reports the block after layout.
   double get subtitleLift => _controlsVisible ? _bottomChromeFraction : 0;
 
   void setBottomChromeFraction(double fraction) {

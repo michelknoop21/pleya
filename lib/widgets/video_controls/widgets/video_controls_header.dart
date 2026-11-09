@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:pleya/utils/formatters.dart';
 
 import '../../../media/media_item.dart';
+import '../../../utils/layout_constants.dart';
+import '../../../utils/platform_detector.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../watch_together/widgets/watch_together_overlay.dart';
 import '../../../watch_together/providers/watch_together_provider.dart';
@@ -16,6 +18,9 @@ enum VideoHeaderStyle {
 
   /// Single-line: All info combined with separators (for macOS)
   singleLine,
+
+  /// The large title immediately above the Apple TV timeline.
+  filmFrame,
 }
 
 /// Shared header widget for video controls with back button and title.
@@ -25,6 +30,8 @@ enum VideoHeaderStyle {
 class VideoControlsHeader extends StatelessWidget {
   final MediaItem metadata;
   final VideoHeaderStyle style;
+  final bool showTitle;
+  final bool showBack;
 
   /// Optional trailing widget (e.g., track/chapter controls)
   final Widget? trailing;
@@ -36,6 +43,8 @@ class VideoControlsHeader extends StatelessWidget {
     super.key,
     required this.metadata,
     this.style = VideoHeaderStyle.multiLine,
+    this.showTitle = true,
+    this.showBack = true,
     this.trailing,
     this.onBack,
   });
@@ -48,7 +57,7 @@ class VideoControlsHeader extends StatelessWidget {
     // `video_controls/parts/key_events.dart`, on both the focused and the
     // global key path. The spacer goes with the button so the title does not
     // start behind a gap nothing fills.
-    final showsBack = showsVisibleBackAffordance();
+    final showsBack = showBack && showsVisibleBackAffordance();
 
     return Row(
       children: [
@@ -60,16 +69,22 @@ class VideoControlsHeader extends StatelessWidget {
           ),
           const SizedBox(width: 16),
         ],
-        Expanded(child: style == VideoHeaderStyle.singleLine ? _buildSingleLineTitle() : _buildMultiLineTitle()),
+        if (showTitle)
+          Expanded(
+            child: style == VideoHeaderStyle.singleLine ? _buildSingleLineTitle() : _buildMultiLineTitle(context),
+          )
+        else
+          const Spacer(),
         // A Meenemen session shows itself in the title line (45-i) and the
         // Apple TV's info line (45-t5), not as a Samen kijken pill.
-        Selector<WatchTogetherProvider, bool>(
-          selector: (_, p) => p.isInSession && !p.isFlySession,
-          builder: (context, inSession, child) {
-            if (!inSession) return const SizedBox.shrink();
-            return const Padding(padding: .only(right: 8), child: WatchTogetherSessionIndicator());
-          },
-        ),
+        if (showTitle)
+          Selector<WatchTogetherProvider, bool>(
+            selector: (_, p) => p.isInSession && !p.isFlySession,
+            builder: (context, inSession, child) {
+              if (!inSession) return const SizedBox.shrink();
+              return const Padding(padding: .only(right: 8), child: WatchTogetherSessionIndicator());
+            },
+          ),
         ?trailing,
       ],
     );
@@ -94,7 +109,12 @@ class VideoControlsHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildMultiLineTitle() {
+  Widget _buildMultiLineTitle(BuildContext context) {
+    final titleSize = switch (style) {
+      VideoHeaderStyle.filmFrame when PlatformDetector.isTV() => 30 * TvLayoutConstants.scaleOf(context),
+      VideoHeaderStyle.filmFrame => 24.0,
+      _ => 16.0,
+    };
     final List<String> secondLineParts = [];
 
     if (metadata.parentIndex != null && metadata.index != null) {
@@ -112,7 +132,7 @@ class VideoControlsHeader extends StatelessWidget {
       children: [
         Text(
           metadata.grandparentTitle ?? metadata.title!,
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: .bold),
+          style: TextStyle(color: Colors.white, fontSize: titleSize, fontWeight: .bold),
           maxLines: 1,
           overflow: .ellipsis,
         ),

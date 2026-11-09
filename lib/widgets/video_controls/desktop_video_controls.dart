@@ -25,6 +25,7 @@ import '../../utils/formatters.dart';
 import '../../i18n/strings.g.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../models/livetv_capture_buffer.dart';
+import 'film_frame_palette.dart';
 import 'helpers/apple_tv_scrub_pan.dart';
 import 'models/track_controls_state.dart';
 import 'tv_info_panel/tv_panel_types.dart';
@@ -819,6 +820,16 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       // Ignore seeking if user cannot control
       if (!_canControl) return KeyEventResult.handled;
 
+      // Apple TV: a touch-surface swipe must not seek or scrub while playing.
+      // Swipe-scrubbing is for a paused video; ring clicks still step.
+      if (!_timelineScrubMode &&
+          widget.player.state.playing &&
+          PlatformDetector.isAppleTV() &&
+          AppleTvRemoteTouchService.instance.isSwipeDirectional(key)) {
+        widget.onFocusActivity?.call();
+        return KeyEventResult.handled;
+      }
+
       // Implicit entry on a remote: LEFT/RIGHT on a paused video starts the
       // preview instead of seeking straight away, so the user can pick a spot
       // and confirm it. Playing video keeps the direct per-press seek.
@@ -883,7 +894,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   /// Both the controls and the content strip sit in that slot; with neither
   /// laid out (no first frame yet) the share is 0.
   void _reportBottomChromeFraction() {
-    if (widget.onBottomChromeFractionChanged == null || !PlatformDetector.isTV()) return;
+    if (widget.onBottomChromeFractionChanged == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final report = widget.onBottomChromeFractionChanged;
       if (!mounted || report == null) return;
@@ -895,11 +906,19 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
   @override
   Widget build(BuildContext context) {
-    _reportBottomChromeFraction();
+    Widget header(bool ready) {
+      _reportBottomChromeFraction();
+      final showTitle = !ready || _contentStripVisible;
+      if (PlatformDetector.isTV() && !showTitle) return const SizedBox.shrink();
+      return _buildTopBar(showTitle: showTitle);
+    }
+
     return Column(
       children: [
-        // Top bar with back button and title (always visible)
-        _buildTopBar(context),
+        if (widget.hasFirstFrame case final frame?)
+          ValueListenableBuilder<bool>(valueListenable: frame, builder: (_, ready, _) => header(ready))
+        else
+          header(true),
         FirstFrameGuard(
           hasFirstFrame: widget.hasFirstFrame,
           placeholder: const Expanded(child: SizedBox.shrink()),
@@ -926,6 +945,21 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
                             Stack(
                               clipBehavior: Clip.none,
                               children: [
+                                Positioned.fill(
+                                  top: -40 * TvLayoutConstants.scaleOf(context),
+                                  child: const IgnorePointer(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [Colors.transparent, kTvTitleScrimColor],
+                                          stops: [0, 0.23],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                                 _buildBottomControlsContent(context, hasFrame: true),
                                 // Down arrow hint when strip content is available
                                 if (widget.useDpadNavigation && _hasStripContent)
@@ -994,7 +1028,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     );
   }
 
-  Widget _buildTopBar(BuildContext _) {
+  Widget _buildTopBar({required bool showTitle}) {
     // Use global fullscreen state for padding
     return ListenableBuilder(
       listenable: FullscreenStateManager(),
@@ -1009,12 +1043,12 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
           leftPadding = DesktopWindowPadding.macOSLeftFullscreen;
         }
 
-        return _buildTopBarContent(context, leftPadding);
+        return _buildTopBarContent(leftPadding, showTitle: showTitle);
       },
     );
   }
 
-  Widget _buildTopBarContent(BuildContext _, double leftPadding) {
+  Widget _buildTopBarContent(double leftPadding, {required bool showTitle}) {
     // On TV the overlay pays the same title-safe inset as every other TV
     // surface. `main.dart` zeroes tvOS's own overscan insets app-wide, so
     // `SafeArea` gives nothing here and the macOS branch above resolved to 0:
@@ -1031,56 +1065,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
         right: tvInset ?? 16,
         top: isTv ? TvCatalogLayout.topSafeInset * TvLayoutConstants.scaleOf(context) : 0,
       ),
-      child: Column(
-        crossAxisAlignment: .start,
-        mainAxisSize: .min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: AutomationNode(
-                  id: AutomationIds.playerTitle,
-                  role: 'region',
-                  child: VideoControlsHeader(
-                    metadata: widget.metadata,
-                    style: Platform.isMacOS ? VideoHeaderStyle.singleLine : VideoHeaderStyle.multiLine,
-                    onBack: widget.onBack,
-                  ),
-                ),
-              ),
-              if (_isLive && (widget.captureBuffer == null || widget.isAtLiveEdge)) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.all(Radius.circular(4)),
-                  ),
-                  child: Text(
-                    t.liveTv.live,
-                    style: const TextStyle(color: Colors.white, fontWeight: .bold, fontSize: 12),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          // Quality/source line (mockup 18): TV only, source data does not
-          // apply to a live channel.
-          if (PlatformDetector.isTV() && !_isLive) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: .min,
-              children: [
-                Flexible(
-                  child: TvQualitySummaryLine(player: widget.player, isTranscoding: _trackControlsState.isTranscoding),
-                ),
-                // A phone follows this Apple TV (Meenemen, 45-t5).
-                const Padding(padding: EdgeInsets.only(left: 10), child: FlyFollowersLabel()),
-              ],
-            ),
-          ],
-        ],
-      ),
+      child: _buildTitleBlock(showTitle: showTitle),
     );
 
     final bar = DesktopAppBarHelper.wrapWithGestureDetector(topBar, opaque: true);
@@ -1092,6 +1077,55 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     return TvTitleScrim(fade: TvCatalogLayout.topSafeInset * TvLayoutConstants.scaleOf(context), child: bar);
   }
 
+  Widget _buildTitleBlock({bool filmFrame = false, bool showTitle = true}) {
+    final header = VideoControlsHeader(
+      metadata: widget.metadata,
+      style: filmFrame ? VideoHeaderStyle.filmFrame : VideoHeaderStyle.multiLine,
+      showTitle: showTitle,
+      showBack: !filmFrame,
+      onBack: widget.onBack,
+    );
+    return Column(
+      crossAxisAlignment: .start,
+      mainAxisSize: .min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: showTitle ? AutomationNode(id: AutomationIds.playerTitle, role: 'region', child: header) : header,
+            ),
+            if (showTitle && _isLive && (widget.captureBuffer == null || widget.isAtLiveEdge)) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: const BoxDecoration(color: Colors.red, borderRadius: BorderRadius.all(Radius.circular(4))),
+                child: Text(
+                  t.liveTv.live,
+                  style: const TextStyle(color: Colors.white, fontWeight: .bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
+        // Quality/source line (mockup 18): TV only, source data does not
+        // apply to a live channel.
+        if (showTitle && PlatformDetector.isTV() && !_isLive) ...[
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: .min,
+            children: [
+              Flexible(
+                child: TvQualitySummaryLine(player: widget.player, isTranscoding: _trackControlsState.isTranscoding),
+              ),
+              // A phone follows this Apple TV (Meenemen, 45-t5).
+              const Padding(padding: EdgeInsets.only(left: 10), child: FlyFollowersLabel()),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildBottomControlsContent(BuildContext _, {required bool hasFrame}) {
     final canInteract = _canControl && hasFrame;
     return Padding(
@@ -1100,6 +1134,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       padding: EdgeInsets.symmetric(horizontal: PlatformDetector.isTV() ? tvPageInset(context) : 24, vertical: 16),
       child: Column(
         children: [
+          Padding(padding: const EdgeInsets.only(bottom: 10), child: _buildTitleBlock(filmFrame: true)),
           // Row 1: Timeline (LiveTimelineBar for time-shifted live, VideoTimelineBar for VOD)
           if (_isLive && widget.captureBuffer != null) ...[
             LiveTimelineBar(
@@ -1401,22 +1436,30 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     double iconSize = 24,
     String? tooltip,
   }) {
+    final primary = focusNode == _playPauseFocusNode && onPressed != null;
     return FocusableWrapper(
       focusNode: focusNode,
       canRequestFocus: onPressed != null,
       onSelect: onPressed,
       onKeyEvent: (node, event) => _handleButtonKeyEvent(node, event, index),
       onFocusChange: _onFocusChange,
-      borderRadius: 20,
+      borderRadius: primary ? 12 : 20,
       autoScroll: false,
-      mode: FocusIndicatorMode.fill,
+      mode: primary ? FocusIndicatorMode.ring : FocusIndicatorMode.fill,
+      focusColor: primary ? kFilmFocus : null,
       semanticLabel: semanticLabel,
       child: Semantics(
         label: semanticLabel,
         button: true,
         excludeSemantics: true,
         child: IconButton(
-          icon: AppIcon(icon, fill: 1, color: color, size: iconSize),
+          style: primary
+              ? IconButton.styleFrom(
+                  backgroundColor: kFilmPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                )
+              : null,
+          icon: AppIcon(icon, fill: 1, color: primary ? kFilmInk : color, size: iconSize),
           iconSize: iconSize,
           tooltip: tooltip,
           onPressed: onPressed,

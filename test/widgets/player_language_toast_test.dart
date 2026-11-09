@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/widgets/video_controls/widgets/player_toast_indicator.dart';
+import 'package:pleya/widgets/app_icon.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) => tester.pumpWidget(
   MaterialApp(
@@ -34,7 +35,7 @@ void main() {
     expect(find.text('The next episodes start this way. Your global preference stays Dutch.'), findsOneWidget);
   });
 
-  testWidgets('CONTROL S — de terugvalmelding vervangt het glyph door de amberstip', (tester) async {
+  testWidgets('CONTROL S — de terugvalmelding toont een amberkleurige waarschuwing', (tester) async {
     await _pump(
       tester,
       const PlayerToastIndicator(
@@ -46,10 +47,9 @@ void main() {
     );
 
     expect(find.byIcon(Symbols.closed_caption_rounded), findsNothing);
-    final dot = tester.widget<Container>(
-      find.descendant(of: find.byType(PlayerToastIndicator), matching: find.byType(Container)).last,
-    );
-    expect((dot.decoration! as BoxDecoration).color, const Color(0xFFF5A623));
+    final icon = tester.widget<AppIcon>(find.byType(AppIcon));
+    expect(icon.icon, Symbols.warning_rounded);
+    expect(icon.color, const Color(0xFFFFD18C));
   });
 
   testWidgets('CONTROL S — één regel blijft één regel', (tester) async {

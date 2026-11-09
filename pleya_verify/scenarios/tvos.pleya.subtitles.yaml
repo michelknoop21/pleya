@@ -24,13 +24,7 @@ steps:
   - press: select
   - settle: 400
   - assert: {id: player.play_pause, state: {playing: false}}
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - assert: {id: player.settings_button, focused: true}
-  - press: right
-  - settle: 250
+  - walk: {direction: right, steps: 4, stopAt: player.tracks_button, timeout: 20000, settle: 250}
   - assert: {id: player.tracks_button, focused: true}
   - press: select
   - wait_until: {id: player.panel, state: {tab: subtitles, subView: none}, timeout: 10000}

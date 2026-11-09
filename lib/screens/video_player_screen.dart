@@ -762,7 +762,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _screenFocusNode = FocusNode(debugLabel: 'VideoPlayerScreen');
     _screenFocusNode.addListener(_onScreenFocusChanged);
     _chromeController.addListener(() {
-      _syncTvSubtitleLift();
+      _syncSubtitleLift();
       _playNextFocusGate.retry();
     });
 
