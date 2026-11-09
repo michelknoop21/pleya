@@ -1,5 +1,6 @@
-/// Runs [task] for every index below [count], at most [width] at a time and
-/// started in index order. After a failure no new index starts; the running
+/// Runs [task] for every index below [count], at most [width] at a time (at
+/// least one, so a width of zero cannot skip the work) and started in index
+/// order. After a failure no new index starts; the running
 /// tasks finish and the first error is rethrown, so nothing keeps running
 /// once this returns.
 Future<void> bounded(int width, int count, Future<void> Function(int index) task) async {
@@ -16,5 +17,5 @@ Future<void> bounded(int width, int count, Future<void> Function(int index) task
     }
   }
 
-  await Future.wait([for (var w = 0; w < width && w < count; w++) worker()]);
+  await Future.wait([for (var w = 0; w < count && (w < width || w == 0); w++) worker()]);
 }

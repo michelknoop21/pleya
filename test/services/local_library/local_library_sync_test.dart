@@ -728,6 +728,14 @@ void main() {
       expect(store.items.map((i) => i.id).toList(), sequential);
     });
 
+    test('a root concurrency of zero still scans every title', () async {
+      addShows(3, seasons: 1, episodes: 2);
+
+      await LocalLibrarySync(store: store, rootConcurrency: 0).syncLibrary(shows, client);
+
+      expect(store.items, hasLength(3 * 4));
+    });
+
     test('never has more than four root tasks in flight', () async {
       addShows(12, seasons: 1, episodes: 3);
 
