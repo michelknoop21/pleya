@@ -16,6 +16,7 @@ import '../jellyfin_client.dart';
 import '../plex_client.dart';
 import '../pleya_server_client.dart';
 import '../local_folder_client.dart';
+import 'index_row.dart';
 import 'local_library_store.dart';
 import 'scan_diagnostics.dart';
 import '../download_artwork_helpers.dart';
@@ -137,13 +138,19 @@ class LocalLibrarySync {
           candidate.title == old.title &&
           candidate.year == old.year) {
         detail = retained!;
-      } else if (old != null && client is PleyaServerClient) {
+      } else if (candidate.kind == MediaKind.season || candidate.kind == MediaKind.episode) {
+        // The index keeps a season or episode as a list row (DEC-196), so the
+        // list answer is all it needs: a detail read per episode was most of
+        // the requests of a series scan.
+        detail = candidate;
+      } else if (client is PleyaServerClient) {
         // Pleya Server sends no updatedAt, and needs none here: a list row
         // carries the same fields as a detail row (hydrateRead in
         // store_read.go) except auxiliary-only versions, which the list leaves
         // out, and the client adds the ancestor names per page, so the
-        // candidate is fresh. Asking anyway cost one request per title on
-        // every scan.
+        // candidate is fresh. That holds for a title new on this scan as much
+        // as for a stored one: asking anyway cost one request per title, 6698
+        // on a first Series scan.
         detail = candidate;
       } else {
         try {
@@ -246,19 +253,21 @@ class LocalLibrarySync {
         identityRaw?.remove(pleyaExternalIdsRawKey);
         if (fresh != null) identityRaw?[pleyaExternalIdsRawKey] = fresh.toJson();
       }
-      next[item.globalKey] = ids == null
-          ? item.copyWith(raw: identityRaw)
-          : item.copyWith(
-              raw: {
-                ...?identityRaw,
-                'pleyaLocalExternalIds': ids.toJson(),
-                if (client is PleyaServerClient) ...{
-                  'pleyaLocalExternalIdsFinal': authoritative,
-                  pleyaExternalIdsSourceKey: identitySource ?? 'unknown',
-                  if (authoritative) pleyaExternalIdsRawKey: ids.toJson(),
+      next[item.globalKey] = indexRow(
+        ids == null
+            ? item.copyWith(raw: identityRaw)
+            : item.copyWith(
+                raw: {
+                  ...?identityRaw,
+                  'pleyaLocalExternalIds': ids.toJson(),
+                  if (client is PleyaServerClient) ...{
+                    'pleyaLocalExternalIdsFinal': authoritative,
+                    pleyaExternalIdsSourceKey: identitySource ?? 'unknown',
+                    if (authoritative) pleyaExternalIdsRawKey: ids.toJson(),
+                  },
                 },
-              },
-            );
+              ),
+      );
       done++;
       onProgress?.call(done, item.displayTitle);
       return true;
@@ -401,31 +410,34 @@ class LocalLibrarySync {
     const interval = Duration(minutes: 10);
     final budget = store.posterBudget(now);
     if (budget.total >= 60) return;
-    final priority = <MediaItem>[];
-    final oldest = <MediaItem>[];
     String key(MediaItem i) => '${i.serverId}|${artworkStorageKey(i.thumbPath!)}';
-    DateTime attempted(MediaItem i) =>
-        DateTime.tryParse(store.posterFreshness(i.serverId!, i.thumbPath!)['attempted'] as String? ?? '') ??
-        DateTime.utc(1970);
-    void insert(List<MediaItem> list, MediaItem item, int cap) {
-      if (list.any((i) => key(i) == key(item))) return;
-      list.add(item);
-      list.sort((a, b) {
-        final order = attempted(a).compareTo(attempted(b));
-        return order == 0 ? key(a).compareTo(key(b)) : order;
-      });
-      if (list.length > cap) list.removeLast();
-    }
-
+    // One pass reads each title's freshness once, then the eligible titles are
+    // sorted once, oldest attempt first. Inserting into a sorted list per title
+    // read the freshness again for every comparison: 1.4 million reads for
+    // 5000 titles.
+    final eligible = <String, (MediaItem, DateTime)>{};
     for (final item in items) {
+      // The index keeps no episode stills (DEC-196).
+      if (item.kind == MediaKind.episode) continue;
       if (item.serverId == null || item.thumbPath == null || item.thumbPath!.isEmpty) continue;
-      final state = store.posterFreshness(item.serverId!, item.thumbPath!);
-      final last = attempted(item);
-      final retry = DateTime.tryParse(state['retry'] as String? ?? '');
-      if (now.difference(last) < interval || (retry != null && now.isBefore(retry))) continue;
-      insert(oldest, item, 60);
-      if (store.posterIsPriority(item.serverId!, item.thumbPath!)) insert(priority, item, 20);
+      final k = key(item);
+      if (eligible.containsKey(k)) continue;
+      final last = store.posterAttempted(item.serverId!, item.thumbPath!) ?? DateTime.utc(1970);
+      if (now.difference(last) < interval) continue;
+      final retry = DateTime.tryParse(store.posterFreshness(item.serverId!, item.thumbPath!)['retry'] as String? ?? '');
+      if (retry != null && now.isBefore(retry)) continue;
+      eligible[k] = (item, last);
     }
+    final ordered = eligible.entries.toList()
+      ..sort((a, b) {
+        final order = a.value.$2.compareTo(b.value.$2);
+        return order == 0 ? a.key.compareTo(b.key) : order;
+      });
+    final oldest = [for (final e in ordered.take(60)) e.value.$1];
+    final priority = [
+      for (final e in ordered)
+        if (store.posterIsPriority(e.value.$1.serverId!, e.value.$1.thumbPath!)) e.value.$1,
+    ];
     final selected = <MediaItem>[...priority.take(20 - budget.priority)];
     final priorityKeys = selected.map(key).toSet();
     selected.addAll(oldest.where((i) => !priorityKeys.contains(key(i))).take(40 - (budget.total - budget.priority)));

@@ -18,6 +18,7 @@ import '../media/media_server_client.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/image_cache_service.dart';
 import '../services/download_artwork_helpers.dart';
+import '../services/local_library/index_row.dart';
 import '../services/local_library/local_library_query.dart';
 import '../services/local_library/local_library_store.dart';
 import '../services/pleya_server_client.dart';
@@ -188,8 +189,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
         [];
     _posterReferences.clear();
     for (final item in _visibleItems) {
-      for (final path in [item.thumbPath, item.parentThumbPath, item.grandparentThumbPath]) {
-        if (path != null) _posterReferences.add('${item.serverId}|${artworkStorageKey(path)}');
+      for (final path in indexedPosterPaths(item)) {
+        _posterReferences.add('${item.serverId}|${artworkStorageKey(path)}');
       }
     }
     _scanStats

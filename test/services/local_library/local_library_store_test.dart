@@ -135,6 +135,42 @@ void main() {
     expect(store.posterPath('one', '/shared-poster'), isNull);
   });
 
+  test('a complete scan prunes stored episode stills and keeps show and season posters', () async {
+    final store = LocalLibraryStore(root);
+    await store.load();
+    final shows = library.copyWith(kind: MediaKind.show);
+    final rows = [
+      film('show').copyWith(kind: MediaKind.show, thumbPath: '/poster/show'),
+      film('season').copyWith(
+        kind: MediaKind.season,
+        parentId: 'show',
+        thumbPath: '/poster/season',
+        parentThumbPath: '/poster/show',
+      ),
+      film('ep').copyWith(
+        kind: MediaKind.episode,
+        parentId: 'season',
+        grandparentId: 'show',
+        thumbPath: '/still/ep',
+        parentThumbPath: '/poster/season',
+        grandparentThumbPath: '/poster/show',
+      ),
+    ];
+    await store.saveLibrary(shows, rows, complete: false);
+    for (final path in ['/poster/show', '/poster/season', '/still/ep']) {
+      await store.savePoster('one', path, Uint8List.fromList([1, 2, 3]));
+    }
+    final showPoster = store.posterPath('one', '/poster/show')!;
+    final seasonPoster = store.posterPath('one', '/poster/season')!;
+    final episodeStill = store.posterPath('one', '/still/ep')!;
+
+    await store.saveLibrary(shows, rows, complete: true);
+
+    expect(File(episodeStill).existsSync(), isFalse);
+    expect(File(showPoster).existsSync(), isTrue);
+    expect(File(seasonPoster).existsSync(), isTrue);
+  });
+
   test('a poster lookup hashes its key once, however often a card asks', () async {
     final store = _CountingStore(root);
     await store.load();
