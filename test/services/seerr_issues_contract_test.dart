@@ -19,7 +19,11 @@ void main() {
     ],
   };
 
-  SeerrClient client(int permissions, Future<http.Response> Function(http.Request) handler) {
+  SeerrClient client(
+    int permissions,
+    Future<http.Response> Function(http.Request) handler, {
+    Duration issueProbeTtl = const Duration(minutes: 3),
+  }) {
     final result = SeerrClient(
       SeerrSession(
         baseUrl: 'https://seerr.example',
@@ -29,6 +33,7 @@ void main() {
         permissions: permissions,
       ),
       httpClient: MockClient(handler),
+      issueProbeTtl: issueProbeTtl,
     );
     addTearDown(result.dispose);
     return result;
@@ -129,7 +134,7 @@ void main() {
     final seerr = client(SeerrPermission.manageIssues, (_) async {
       calls++;
       return http.Response('{}', code);
-    });
+    }, issueProbeTtl: const Duration(minutes: 3));
     expect(await seerr.supportsIssues(), isTrue);
     expect(await seerr.supportsIssues(), isTrue);
     expect(calls, 2);
@@ -139,11 +144,14 @@ void main() {
     expect(await seerr.supportsIssues(), isFalse);
     expect(calls, 3);
 
-    final ttl = SeerrConstants.issueProbeTtl;
-    addTearDown(() => SeerrConstants.issueProbeTtl = ttl);
-    SeerrConstants.issueProbeTtl = Duration.zero;
+    final expiring = client(SeerrPermission.manageIssues, (_) async {
+      calls++;
+      return http.Response('{}', code);
+    }, issueProbeTtl: Duration.zero);
+    code = 404;
+    expect(await expiring.supportsIssues(), isFalse);
     code = 200;
-    expect(await seerr.supportsIssues(), isTrue);
-    expect(calls, 4);
+    expect(await expiring.supportsIssues(), isTrue);
+    expect(calls, 5);
   });
 }

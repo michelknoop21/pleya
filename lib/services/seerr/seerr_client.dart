@@ -22,13 +22,18 @@ part 'seerr_client_issues.dart';
 /// http` has no cookie jar, so we track it ourselves; on a 401 we silently
 /// re-authenticate (Plex token or stored local credentials) and retry once.
 class SeerrClient {
-  SeerrClient(this._session, {this.onSessionUpdated, this.plexTokenProvider, http.Client? httpClient})
-    : _http = MediaServerHttpClient(
-        client: httpClient,
-        baseUrl: '${SeerrConstants.normalizeBaseUrl(_session.baseUrl)}${SeerrConstants.apiPrefix}',
-        connectTimeout: SeerrConstants.requestTimeout,
-        receiveTimeout: SeerrConstants.requestTimeout,
-      );
+  SeerrClient(
+    this._session, {
+    this.onSessionUpdated,
+    this.plexTokenProvider,
+    http.Client? httpClient,
+    this.issueProbeTtl = SeerrConstants.issueProbeTtl,
+  }) : _http = MediaServerHttpClient(
+         client: httpClient,
+         baseUrl: '${SeerrConstants.normalizeBaseUrl(_session.baseUrl)}${SeerrConstants.apiPrefix}',
+         connectTimeout: SeerrConstants.requestTimeout,
+         receiveTimeout: SeerrConstants.requestTimeout,
+       );
 
   SeerrSession _session;
   final MediaServerHttpClient _http;
@@ -39,6 +44,9 @@ class SeerrClient {
 
   /// Supplies the current Plex token for silent re-auth in plex mode.
   final Future<String?> Function()? plexTokenProvider;
+
+  /// How long a 404 on the issue route is remembered; see [supportsIssues].
+  final Duration issueProbeTtl;
 
   SeerrSession get session => _session;
 

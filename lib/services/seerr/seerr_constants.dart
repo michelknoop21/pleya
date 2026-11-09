@@ -18,8 +18,7 @@ class SeerrConstants {
   static const Duration statusCacheTtl = Duration(seconds: 60);
 
   /// How long a 404 on the issue route counts as "this server has no issues".
-  /// Not const so a test can shorten it.
-  static Duration issueProbeTtl = const Duration(minutes: 3);
+  static const Duration issueProbeTtl = Duration(minutes: 3);
 
   /// TMDB poster size used across request/discover surfaces.
   static const String tmdbImageBase = 'https://image.tmdb.org/t/p/w342';

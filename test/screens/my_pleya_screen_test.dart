@@ -72,8 +72,15 @@ class _RouteRecorder extends NavigatorObserver {
 
 Profile _profile(String name) => Profile.local(id: name, displayName: name, createdAt: DateTime.utc(2026, 8, 17));
 
+class _Status {
+  _Status(this.code);
+  int code;
+}
+
 class _IssueSeerr extends ConfiguredSeerrDouble {
-  _IssueSeerr({int issueStatus = 200, bool throwOnProbe = false})
+  _IssueSeerr({int issueStatus = 200, bool throwOnProbe = false}) : this._(_Status(issueStatus), throwOnProbe);
+
+  _IssueSeerr._(this.status, bool throwOnProbe)
     : _client = SeerrClient(
         SeerrSession(
           baseUrl: 'https://seerr.example',
@@ -82,13 +89,15 @@ class _IssueSeerr extends ConfiguredSeerrDouble {
           userId: 7,
           permissions: SeerrPermission.manageIssues,
         ),
+        issueProbeTtl: Duration.zero,
         httpClient: MockClient((_) async {
           if (throwOnProbe) throw StateError('probe failed');
-          return http.Response('{"results":[]}', issueStatus);
+          return http.Response('{"results":[]}', status.code);
         }),
       );
 
   final SeerrClient _client;
+  final _Status status;
 
   @override
   SeerrClient? get client => _client;
@@ -259,6 +268,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(t.seerrIssues.title), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('resuming the app probes again, so a server that gained issue routes gets its row', (tester) async {
+      final seerr = _IssueSeerr(issueStatus: 404);
+      await pumpScreen(tester, seerr: seerr, theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsNothing);
+
+      seerr.status.code = 200;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
     });
 
     testWidgets('is absent in the iOS-app-on-Mac container', (tester) async {

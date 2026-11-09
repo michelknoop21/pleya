@@ -86,18 +86,17 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> with WidgetsBindingObserv
   ///
   /// The row is the last of the content rows, so showing it late only appends:
   /// the rows above keep their place and focus. The client caches the answer
-  /// (a 404 for a few minutes), so asking again on resume is cheap.
+  /// (a 404 for a few minutes), so asking again on resume is cheap. Someone who
+  /// stays on this page past that TTL gets the row back on the next resume.
   void _probeIssues(SeerrClient client) {
     if (identical(_probedClient, client)) return;
     if (_probedClient != null) _issuesSupported = false;
     _probedClient = client;
+    // supportsIssues maps every failure to an answer, so there is nothing to catch.
     unawaited(
-      client
-          .supportsIssues()
-          .then((ok) {
-            if (mounted && identical(_probedClient, client)) setState(() => _issuesSupported = ok);
-          })
-          .catchError((Object _) {}),
+      client.supportsIssues().then((ok) {
+        if (mounted && identical(_probedClient, client)) setState(() => _issuesSupported = ok);
+      }),
     );
   }
 

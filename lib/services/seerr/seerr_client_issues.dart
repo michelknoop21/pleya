@@ -18,11 +18,11 @@ extension SeerrClientIssues on SeerrClient {
   /// Overseerr before 1.27 has no issue routes. `GET /status` cannot tell that
   /// apart from Jellyseerr (its 1.x versions have them), so probe the route.
   /// Only a 404 means unsupported; any other failure keeps the entry visible
-  /// and is not cached. A 404 is remembered for [SeerrConstants.issueProbeTtl]
+  /// and is not cached. A 404 is remembered for [issueProbeTtl]
   /// only, so a server upgrade or a proxy hiccup heals without a restart.
   Future<bool> supportsIssues() {
     final at = _issuesUnsupportedAt;
-    if (at != null && DateTime.now().difference(at) >= SeerrConstants.issueProbeTtl) {
+    if (at != null && DateTime.now().difference(at) >= issueProbeTtl) {
       _issuesSupported = null;
       _issuesUnsupportedAt = null;
     }
