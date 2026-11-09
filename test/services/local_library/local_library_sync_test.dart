@@ -801,7 +801,7 @@ void main() {
 
       // No root page finished, so every stored row came from a buffer in flight.
       final ids = store.items.map((i) => i.id).toSet();
-      expect(ids.where((id) => ids.containsAll(['$id-e0', '$id-e3'])), isNotEmpty, reason: 'stored: $ids');
+      expect(ids.where((id) => ids.contains('$id-e0') && ids.contains('$id-e3')), isNotEmpty, reason: 'stored: $ids');
     });
   });
 }
