@@ -112,7 +112,8 @@ Future<void> removeConnectionCompletely({
   for (final row in await profileConnections.listForConnection(connection.id)) {
     await removeProfileConnectionAndCleanup(
       profileId: row.profileId,
-      connection: connection,
+      // Fresh per row: the previous row may have rotated a Pleya refresh token.
+      connection: await connections.get(connection.id) ?? connection,
       profileConnections: profileConnections,
       connections: connections,
       storage: storage,

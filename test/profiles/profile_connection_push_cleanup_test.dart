@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -123,12 +124,17 @@ void main() {
     late String current;
     late List<String> presented;
     late List<String> calls;
+    late PleyaFakeServer fake;
+    Completer<void>? holdDelete;
 
     setUp(() {
       current = 'rt-1';
       presented = [];
       calls = [];
+      fake = PleyaFakeServer();
+      holdDelete = null;
       manager.debugPleyaServerHttpClientFactory = () => MockClient((request) async {
+        if (request.url.path.endsWith('/info')) return fake.handle(request);
         if (request.url.path.endsWith('/auth/refresh')) {
           final token = (jsonDecode(request.body) as Map<String, dynamic>)['refresh_token'] as String;
           presented.add(token);
@@ -154,6 +160,7 @@ void main() {
           );
         }
         calls.add('${request.method} ${request.url.path}');
+        if (request.method == 'DELETE') await holdDelete?.future;
         return http.Response('', 204);
       });
     });
@@ -185,6 +192,41 @@ void main() {
       expect(presented, ['rt-1', 'rt-2'], reason: 'the second turn starts from the rotated token');
       expect(persisted.last, 'rt-3');
       expect(calls, hasLength(2));
+    });
+
+    test('removing the connection from every profile reads it again per profile', () async {
+      manager.onPleyaServerConnectionUpdated = connections.upsert;
+      await profileConnections.upsert(
+        ProfileConnection(profileId: 'p2', connectionId: connection.id, userIdentifier: connection.userName),
+      );
+      await storage.setActiveProfileId('p3');
+
+      await removeConnectionCompletely(
+        connection: connection,
+        profileConnections: profileConnections,
+        connections: connections,
+        storage: storage,
+        serverManager: manager,
+      );
+
+      expect(presented, ['rt-1', 'rt-2'], reason: 'the second profile must not present the token the first rotated');
+      expect(calls, ['DELETE /pleya/v1/users/me/push-installations/install-1', 'POST /pleya/v1/auth/logout']);
+    });
+
+    test('binding waits for a short-lived turn and starts from the token it rotated to', () async {
+      holdDelete = Completer<void>();
+      final oneOff = manager.withPleyaServerClient(connection, (client) => client.removePushInstallation('a'));
+      await pumpEventQueue();
+      expect(presented, ['rt-1']);
+
+      final binding = manager.addPleyaServerConnection(connection);
+      await pumpEventQueue();
+      expect(presented, ['rt-1'], reason: 'the binding may not refresh while the turn holds the token');
+      holdDelete!.complete();
+      await oneOff;
+      await binding;
+
+      expect(presented, ['rt-1', 'rt-2']);
     });
   });
 }

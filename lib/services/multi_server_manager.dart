@@ -964,34 +964,55 @@ class MultiServerManager {
     },
   );
 
-  final _pleyaOneOffTurns = <String, Future<void>>{};
-  final _pleyaOneOffRotated = <String, PleyaServerConnection>{};
+  /// One queue per Pleya connection for everything that may present its
+  /// refresh token: short-lived clients and the binding of the bound client.
+  /// Each turn hands on the connection it rotated to, or the one it inherited.
+  final _pleyaTurns = <String, Future<PleyaServerConnection?>>{};
+
+  PleyaServerClient? _boundPleyaClient(PleyaServerConnection connection) {
+    final bound = _clients[connection.serverId];
+    return bound is PleyaServerClient && bound.connection.id == connection.id ? bound : null;
+  }
+
+  /// Joins the queue for [id]: returns the turn to complete and what the
+  /// previous turn handed on.
+  Future<(Completer<PleyaServerConnection?>, PleyaServerConnection?)> _takePleyaTurn(String id) async {
+    final previous = _pleyaTurns[id];
+    final turn = Completer<PleyaServerConnection?>();
+    _pleyaTurns[id] = turn.future;
+    return (turn, previous == null ? null : await previous);
+  }
+
+  void _endPleyaTurn(String id, Completer<PleyaServerConnection?> turn, PleyaServerConnection? handOn) {
+    if (turn.isCompleted) return;
+    turn.complete(handOn);
+    if (identical(_pleyaTurns[id], turn.future)) _pleyaTurns.remove(id);
+  }
 
   /// Runs [action] with a client for [connection]: the bound one when there is
   /// one, otherwise a short-lived client that writes a rotated refresh token
   /// back like a bound client does and is closed afterwards. For one-off
   /// requests on behalf of a profile that is not active.
   ///
-  /// Short-lived clients for one connection take turns, and a later turn starts
-  /// from the token the previous one rotated to: two clients presenting the
-  /// same refresh token would count as reuse. [persist] false skips the write
-  /// for a connection that is being removed, so it cannot come back.
+  /// Short-lived clients and the binding of the bound client take turns per
+  /// connection, and a later turn starts from the token an earlier one rotated
+  /// to: two clients presenting the same refresh token count as reuse, and a
+  /// second collision revokes the session. [persist] false skips the write for
+  /// a connection that is being removed, so it cannot come back.
   Future<T> withPleyaServerClient<T>(
     PleyaServerConnection connection,
     Future<T> Function(PleyaServerClient client) action, {
     bool persist = true,
   }) async {
-    final bound = _clients[connection.serverId];
-    if (bound is PleyaServerClient && bound.connection.id == connection.id) return action(bound);
-    final id = connection.id;
-    final previous = _pleyaOneOffTurns[id];
-    final turn = Completer<void>();
-    _pleyaOneOffTurns[id] = turn.future;
+    if (_boundPleyaClient(connection) case final bound?) return action(bound);
+    final (turn, inherited) = await _takePleyaTurn(connection.id);
+    var handOn = inherited;
     try {
-      if (previous != null) await previous;
+      // A binding may have finished while this call waited for its turn.
+      if (_boundPleyaClient(connection) case final bound?) return await action(bound);
       final client = _createPleyaServerClient(
-        _pleyaOneOffRotated[id] ?? connection,
-        onRotated: (updated) => _pleyaOneOffRotated[id] = updated,
+        inherited ?? connection,
+        onRotated: (updated) => handOn = updated,
         persist: persist,
       );
       try {
@@ -1000,11 +1021,7 @@ class MultiServerManager {
         client.close();
       }
     } finally {
-      turn.complete();
-      if (identical(_pleyaOneOffTurns[id], turn.future)) {
-        _pleyaOneOffTurns.remove(id);
-        _pleyaOneOffRotated.remove(id);
-      }
+      _endPleyaTurn(connection.id, turn, handOn);
     }
   }
 
@@ -1018,6 +1035,10 @@ class MultiServerManager {
   /// is up with a dead session lands on [HealthStatus.authError] and gets the
   /// re-auth banner rather than being hidden as offline.
   Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
+    // A short-lived client may be presenting this connection's refresh token
+    // right now: bind after it, from the token it rotated to.
+    final (turn, inherited) = await _takePleyaTurn(connection.id);
+    if (inherited != null) connection = inherited;
     try {
       final client = _createPleyaServerClient(connection);
       final serverId = connection.serverId;
@@ -1031,6 +1052,8 @@ class MultiServerManager {
       final oldClient = _clients[serverId];
       if (oldClient != null) _closeClient(oldClient);
       _clients[serverId] = client;
+      // Bound now: later turns use this client instead of a short-lived one.
+      _endPleyaTurn(connection.id, turn, inherited);
 
       final health = await client.checkHealth();
       _applyHealth(ServerId(serverId), health);
@@ -1043,6 +1066,8 @@ class MultiServerManager {
     } catch (e, stackTrace) {
       appLogger.e('Failed to add Pleya Server ${connection.serverName}', error: e, stackTrace: stackTrace);
       return false;
+    } finally {
+      _endPleyaTurn(connection.id, turn, inherited);
     }
   }
 

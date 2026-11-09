@@ -35,7 +35,6 @@ import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../profiles/plex_home_service.dart';
 import '../profiles/plex_self_account.dart';
-import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
 import '../profiles/profile_connection_registry.dart';
 import '../providers/now_watching_provider.dart';
@@ -642,19 +641,16 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   lazy: false,
                   create: (context) {
                     final servers = context.read<MultiServerProvider>();
-                    final connections = context.read<ConnectionRegistry>();
+                    final network = context.read<OfflineModeProvider?>();
                     return PleyaPushNotifications(
                       activeId,
                       activeProfile,
                       servers,
-                      releaseElsewhere: (connectionId, installation) async {
-                        if (await connections.get(connectionId) case final PleyaServerConnection connection) {
-                          await servers.serverManager.withPleyaServerClient(
-                            connection,
-                            (client) => client.removePushInstallation(installation),
-                          );
-                        }
-                      },
+                      releaseElsewhere: PleyaPushNotifications.releaseThrough(
+                        connection: context.read<ConnectionRegistry>().get,
+                        servers: servers.serverManager,
+                        offline: () => network?.isOffline ?? false,
+                      ),
                     );
                   },
                 ),

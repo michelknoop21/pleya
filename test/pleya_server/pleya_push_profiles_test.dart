@@ -8,11 +8,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/connection/connection.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/pleya_server_auth_service.dart';
 import 'package:pleya/services/pleya_push_notifications.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 
@@ -59,6 +62,7 @@ void main() {
   const connectionId = 'pleyaServer.srv-1.alice';
   late List<http.Request> requests;
   late Completer<void>? holdPut;
+  late Completer<void>? holdDelete;
 
   Future<PleyaServerClient> client() async {
     final fake = PleyaFakeServer();
@@ -76,6 +80,7 @@ void main() {
         if (request.url.path.contains('/push-installations/')) {
           requests.add(request);
           if (request.method == 'PUT') await holdPut?.future;
+          if (request.method == 'DELETE') await holdDelete?.future;
           return http.Response('', 204);
         }
         final response = await fake.handle(request);
@@ -94,6 +99,7 @@ void main() {
     resetSharedPreferencesForTest();
     requests = [];
     holdPut = null;
+    holdDelete = null;
     const channel = MethodChannel('com.pleya/push');
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(channel, (_) async => {'token': 'aabb', 'environment': 'sandbox'});
@@ -185,5 +191,61 @@ void main() {
     expect(push.sources.map((source) => source.id), [connectionId]);
     expect(prefs.containsKey('pleya.push/alice/${Uri.encodeComponent(other)}'), isFalse);
     expect(push.sharedWith(alice), isNull);
+  });
+
+  test('a settled answer marks the withdrawal and stops the retries', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final gone = 'pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}';
+    final revoked = 'pleya.push/carol/${Uri.encodeComponent('pleyaServer.srv-3.carol')}';
+    await prefs.setStringList(gone, ['install-bob', 'bob · Kelder', 'movies']);
+    await prefs.setStringList(revoked, ['install-carol', 'carol · Zolder', 'episodes']);
+    var attempts = 0;
+    final (push, _) = await start(
+      releaseElsewhere: (connection, _) async {
+        attempts++;
+        throw connection.endsWith('bob')
+            ? MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 404)
+            : const PleyaRefreshChainRevokedException('auth.refresh_token_reused');
+      },
+    );
+    await pumpEventQueue();
+    expect(prefs.getStringList(gone), contains('released'));
+    expect(prefs.getStringList(revoked), contains('released'));
+
+    push.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    expect(attempts, 2, reason: 'no retry after a settled answer');
+  });
+
+  test('switching away and straight back: the old DELETE lands before the new PUT', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final (push, profile) = await start();
+    await push.setChoices(push.sources.single, (movies: true, episodes: false));
+    final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
+    holdDelete = Completer<void>();
+    profile.switchTo('bob');
+    await pumpEventQueue();
+    profile.switchTo('alice');
+    await pumpEventQueue();
+    expect(requests.map((r) => r.method), ['PUT', 'DELETE'], reason: 'the new PUT waits for the old DELETE');
+
+    holdDelete!.complete();
+    await pumpEventQueue();
+    expect(requests.map((r) => r.method), ['PUT', 'DELETE', 'PUT']);
+    expect(prefs.getStringList(key), isNot(contains('released')));
+  });
+
+  test('the app does not start a short-lived client while it knows it is offline', () async {
+    var looked = false;
+    final release = PleyaPushNotifications.releaseThrough(
+      connection: (_) async {
+        looked = true;
+        return null;
+      },
+      servers: MultiServerManager(),
+      offline: () => true,
+    );
+    await expectLater(release('pleyaServer.srv-2.bob', 'install-bob'), throwsStateError);
+    expect(looked, isFalse);
   });
 }
