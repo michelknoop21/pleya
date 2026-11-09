@@ -137,13 +137,14 @@ class LocalLibrarySync {
           candidate.title == old.title &&
           candidate.year == old.year) {
         detail = retained!;
-      } else if (old != null && client is PleyaServerClient) {
+      } else if (client is PleyaServerClient) {
         // Pleya Server sends no updatedAt, and needs none here: a list row
         // carries the same fields as a detail row (hydrateRead in
         // store_read.go) except auxiliary-only versions, which the list leaves
         // out, and the client adds the ancestor names per page, so the
-        // candidate is fresh. Asking anyway cost one request per title on
-        // every scan.
+        // candidate is fresh. That holds for a title new on this scan as much
+        // as for a stored one: asking anyway cost one request per title, 6698
+        // on a first Series scan.
         detail = candidate;
       } else {
         try {

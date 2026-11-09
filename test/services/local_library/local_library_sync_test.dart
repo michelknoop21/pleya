@@ -307,19 +307,6 @@ void main() {
       },
     );
 
-    test('one title whose detail call fails does not fail the scan (Pleya answers such a call with null)', () async {
-      final (fake, rescan) = await live(reportsExternalIds: true);
-      fake.addItem(id: 'other', kind: 'show', title: 'D', libraryId: 'lib-series', year: 2023);
-      fake.queueFailure(pathPrefix: '/items/later', status: 500, errorCode: 'server.internal');
-
-      await expectLater(rescan(), throwsA(isA<LocalLibraryPartialScan>()));
-
-      expect(store.items.map((i) => i.id), ['other']);
-      expect(fake.requests.where((r) => r.contains('/items/later/children')), isEmpty);
-      expect(store.isComplete(store.libraries.single.globalKey), isFalse);
-      expect((await rescan()).keys.toSet(), {'later', 'other'});
-    });
-
     test('a Pleya rescan asks no detail per title: the list row is the detail row', () async {
       final fake = PleyaFakeServer();
       fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');
@@ -356,6 +343,40 @@ void main() {
       expect(rows['episode']?.title, 'Pilot, renamed', reason: 'the fresh list row wins over the stored one');
       expect(rows['episode']?.grandparentTitle, 'Show');
       expect(rows['episode']?.parentTitle, 'Season 1');
+    });
+
+    test('a first Pleya scan asks no detail per title: the list row is the detail row', () async {
+      final fake = PleyaFakeServer();
+      fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');
+      fake.addItem(id: 'show', kind: 'show', title: 'Show', libraryId: 'lib-series', year: 2020);
+      fake.addItem(id: 'season', kind: 'season', title: 'Season 1', parentId: 'show', index: 1);
+      fake.addItem(id: 'episode', kind: 'episode', title: 'Pilot', parentId: 'season', index: 1);
+      final pleya = fake.client();
+      addTearDown(pleya.close);
+      await pleya.refreshCapabilities();
+      const pleyaLibrary = MediaLibrary(
+        id: 'lib-series',
+        backend: MediaBackend.pleyaServer,
+        title: 'Series',
+        kind: MediaKind.show,
+        serverId: 'srv-1',
+      );
+      fake.requests.clear();
+
+      // Empty store: every title is new on this scan.
+      await LocalLibrarySync(store: store).syncLibrary(pleyaLibrary, pleya);
+
+      final detailIds = [
+        for (final r in fake.requests)
+          if (RegExp(r'/items/([^/?]+)$').firstMatch(r.split('?').first) case final m?) m.group(1),
+      ];
+      expect(detailIds, unorderedEquals(['show', 'season']), reason: 'ancestor names once per parent');
+      final rows = {for (final i in store.items) i.id: i};
+      expect(rows.keys.toSet(), {'show', 'season', 'episode'});
+      expect(rows['episode']?.grandparentTitle, 'Show');
+      expect(rows['episode']?.parentTitle, 'Season 1');
+      expect(rows['show']?.raw?['pleyaLocalExternalIds'], isNotNull);
+      expect(store.isComplete(pleyaLibrary.globalKey), isTrue);
     });
 
     test('a server that predates the field stores nothing final', () async {
