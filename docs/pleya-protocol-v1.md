@@ -2834,3 +2834,14 @@ bibliotheeknaam. Een intrekking verwijdert wachtende afleveringen bij Pleya.
 De server vraagt APNs om niet-bezorgde alerts direct te laten verlopen.
 Nieuwe titels die tegelijk klaarstaan gaan per registratie als één alert, en
 een latere alert vervangt de vorige op het toestel.
+Een opt-out of rechtenwijziging die binnenkomt terwijl de server een alert aan
+APNs aanbiedt, houdt die ene alert niet meer tegen; dat venster duurt hoogstens
+8 seconden, de time-out van de APNs-aanvraag. Daarna verstuurt de server niets
+meer op basis van de oude stand.
+
+Verwijdert de app de laatste verwijzing naar een verbinding, dan trekt zij de
+registratie in en sluit zij de sessie af met `POST /auth/logout`. Kan het toestel
+de server op dat moment niet bereiken, dan blijven sessie en registratie op de
+server staan tot de gebruiker of een beheerder de sessie intrekt, of tot de
+sessieronde haar opruimt nadat de refreshlevensduur verstreken is. Tot dan kan
+het toestel nog alerts van die server krijgen.

@@ -15,7 +15,9 @@ typedef PushChoices = ({bool movies, bool episodes});
 typedef PushSource = ({String id, String name});
 
 class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver {
-  PleyaPushNotifications(this._profileId, this._profile, this._servers) {
+  /// [releaseElsewhere] withdraws an installation of another profile through
+  /// that profile's own connection; the device belongs to the active profile.
+  PleyaPushNotifications(this._profileId, this._profile, this._servers, {this.releaseElsewhere}) {
     WidgetsBinding.instance.addObserver(this);
     _servers.addListener(_sync);
     _profile.addListener(_sync);
@@ -28,12 +30,14 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   final String _profileId;
   final ActiveProfileProvider _profile;
   final MultiServerProvider _servers;
+  final Future<void> Function(String connectionId, String installationId)? releaseElsewhere;
   final _saved = <String, List<String>>{};
   final _synced = <String, PleyaServerClient>{};
   final _pending = <String>{};
   bool _disposed = false;
   bool _busy = false;
   bool _reconcileRequested = false;
+  bool _releasedOthers = false;
 
   bool get busy => _busy;
 
@@ -65,6 +69,23 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
 
   bool canRetry(PushSource source) => _online.containsKey(source.id) && _saved.containsKey(source.id);
 
+  /// The server registers one installation per device token, so on one server
+  /// only one account of this profile can get push. Returns the name of the
+  /// other account that gets it now, which turning [source] on switches off.
+  String? sharedWith(PushSource source) {
+    if (choices(source) != off) return null;
+    final server = _serverOf(source.id);
+    for (final other in sources) {
+      if (other.id != source.id && _serverOf(other.id) == server && choices(other) != off) return other.name;
+    }
+    return null;
+  }
+
+  /// Connection ids are `pleyaServer.<serverId>.<account>`; push only runs on
+  /// connections with an account part, so dropping that part names the server.
+  static String _serverOf(String connectionId) =>
+      connectionId.substring(0, connectionId.lastIndexOf('.').clamp(0, connectionId.length));
+
   static String _prefixFor(String profileId) => 'pleya.push/${Uri.encodeComponent(profileId)}/';
   String get _prefix => _prefixFor(_profileId);
   String _key(String id) => '$_prefix${Uri.encodeComponent(id)}';
@@ -78,7 +99,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     final key = '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
     final installation = prefs.getStringList(key)?.firstOrNull;
     if (installation == null) return;
-    if (client != null && client.connection.id == connectionId) {
+    if (client != null) {
       try {
         await client.removePushInstallation(installation).timeout(const Duration(seconds: 5));
       } catch (_) {
@@ -119,6 +140,16 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       _pending.add(connection);
       final connected = _online[connection];
       if (connected != null) await _applyStored(connected, stored, token: token);
+      if (enabling && !_pending.contains(connection) && _current) {
+        // The server already moved the token here; the other account's opt-in
+        // on this server is gone, so the screen must not show it as on.
+        for (final other in _saved.keys.toList()) {
+          if (other == connection || _serverOf(other) != _serverOf(connection)) continue;
+          _saved.remove(other);
+          _pending.remove(other);
+          await prefs.remove(_key(other));
+        }
+      }
     } catch (_) {
       _pending.add(connection);
     } finally {
@@ -154,6 +185,12 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         movies: selected.movies,
         episodes: selected.episodes,
       );
+      if (_profile.activeId != _profileId) {
+        // The profile changed while this PUT was in flight: the device now
+        // belongs to another profile, so withdraw it again right away.
+        client.removePushInstallation(stored.first).ignore();
+        return;
+      }
       if (!_current) return;
       if (stored.contains('pending')) {
         final confirmed = stored.where((value) => value != 'pending').toList();
@@ -201,6 +238,18 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       if (!_current) return;
       // A removed connection takes its stored opt-in with it.
       _saved.removeWhere((connection, _) => !prefs.containsKey(_key(connection)));
+      if (!_releasedOthers) {
+        // Covers a cold start in this profile after another one was active, and
+        // a release on switch that did not reach the server.
+        _releasedOthers = true;
+        final release = releaseElsewhere;
+        for (final key in prefs.keys.where((key) => key.startsWith('pleya.push/') && !key.startsWith(_prefix))) {
+          final installation = prefs.getStringList(key)?.firstOrNull;
+          if (release == null || installation == null) continue;
+          final connection = Uri.decodeComponent(key.substring(key.lastIndexOf('/') + 1));
+          release(connection, installation).ignore();
+        }
+      }
       for (final key in prefs.keys.where((key) => key.startsWith(_prefix))) {
         final stored = prefs.getStringList(key);
         if (stored == null || stored.length < 2) continue;

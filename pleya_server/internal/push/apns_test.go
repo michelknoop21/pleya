@@ -82,7 +82,8 @@ func TestProviderTokenRejectionRetriesWithAFreshToken(t *testing.T) {
 	a := &APNs{key: key, topic: bundleID, environment: "sandbox", host: apns.URL, client: apns.Client()}
 	ctx := context.Background()
 	for i, want := range []outcome{retry, retry, accepted} {
-		if got, _ := a.send(ctx, "aabb", "en", "n", "c"); got != want {
+		a.resigned = false // every send in its own queue tick
+		if got, _, _ := a.send(ctx, "aabb", "en", "n", "c"); got != want {
 			t.Fatalf("send %d: outcome %d, want %d", i, got, want)
 		}
 	}
@@ -104,7 +105,35 @@ func TestDeviceTokenNotForTopicDropsTheInstallation(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := &APNs{key: key, topic: bundleID, environment: "sandbox", host: apns.URL, client: apns.Client()}
-	if got, _ := a.send(context.Background(), "aabb", "en", "n", "c"); got != invalidDevice {
+	if got, _, _ := a.send(context.Background(), "aabb", "en", "n", "c"); got != invalidDevice {
 		t.Fatalf("outcome %d, want invalidDevice", got)
+	}
+}
+
+func TestAnInvalidProviderTokenIsResignedOncePerTick(t *testing.T) {
+	var auths []string
+	apns := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auths = append(auths, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = io.WriteString(w, `{"reason":"InvalidProviderToken"}`)
+	}))
+	apns.EnableHTTP2 = true
+	apns.StartTLS()
+	defer apns.Close()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &APNs{key: key, topic: bundleID, environment: "sandbox", host: apns.URL, client: apns.Client()}
+	for range 4 {
+		if got, status, reason := a.send(context.Background(), "aabb", "en", "n", "c"); got != retry || status != http.StatusForbidden || reason != "InvalidProviderToken" {
+			t.Fatalf("outcome %d, status %d, reason %q", got, status, reason)
+		}
+	}
+	if auths[0] == auths[1] {
+		t.Fatal("first rejection did not re-sign")
+	}
+	if auths[1] != auths[2] || auths[2] != auths[3] {
+		t.Fatal("re-signed more than once in one tick")
 	}
 }

@@ -7157,6 +7157,9 @@ class TranslationsPleyaNotificationsEn {
 	/// en: 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.'
 	String get pushExplanation => 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.';
 
+	/// en: 'On this device, push from this server goes to one account. It now goes to $name; turning it on here turns it off there.'
+	String pushOneAccount({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.';
+
 	/// en: 'Changes will take effect when this device can reach the server again.'
 	String get pushOffline => 'Changes will take effect when this device can reach the server again.';
 
@@ -13784,6 +13787,7 @@ extension on Translations {
 			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
 			'pleyaNotifications.pushTitle' => 'Push on this device',
 			'pleyaNotifications.pushExplanation' => 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.',
+			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.',
 			'pleyaNotifications.pushOffline' => 'Changes will take effect when this device can reach the server again.',
 			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
 			'pleyaNotifications.title' => 'Notifications',

@@ -448,6 +448,8 @@ class _PleyaNotificationsScreenState extends State<PleyaNotificationsScreen> {
                   Text(t.pleyaNotifications.pushExplanation),
                   for (final source in push.sources) ...[
                     Text(source.name, style: Theme.of(context).textTheme.titleSmall),
+                    if (push.sharedWith(source) case final other?)
+                      Text(t.pleyaNotifications.pushOneAccount(name: other)),
                     SwitchListTile(
                       title: Text(t.pleyaNotifications.movies),
                       value: push.choices(source).movies,

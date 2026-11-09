@@ -32,6 +32,10 @@ type APNs struct {
 	client               *http.Client
 	token                string
 	signedAt             time.Time
+	// resigned limits re-signing after a rejected provider token to once per
+	// queue tick; Service.Run clears it. A key that stays invalid would
+	// otherwise sign a new JWT for every delivery.
+	resigned bool
 }
 
 // OpenAPNs reads the configuration and key from an operator-owned read-only mount.
@@ -139,10 +143,11 @@ const (
 	rejected
 )
 
-func (a *APNs) send(ctx context.Context, device, locale, notificationID, collapseID string) (outcome, int) {
+// send returns the outcome plus the HTTP status and Apple's reason for the log.
+func (a *APNs) send(ctx context.Context, device, locale, notificationID, collapseID string) (outcome, int, string) {
 	token, err := a.providerToken(time.Now())
 	if err != nil {
-		return retry, 0
+		return retry, 0, ""
 	}
 	body := "There’s something new in your library."
 	if locale == "nl" {
@@ -151,7 +156,7 @@ func (a *APNs) send(ctx context.Context, device, locale, notificationID, collaps
 	payload := fmt.Sprintf(`{"aps":{"alert":{"title":"Pleya","body":%q}},"notification_id":%q}`, body, notificationID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.host+"/3/device/"+device, strings.NewReader(payload))
 	if err != nil {
-		return rejected, 0
+		return rejected, 0, ""
 	}
 	req.Header.Set("Authorization", "bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
@@ -164,23 +169,26 @@ func (a *APNs) send(ctx context.Context, device, locale, notificationID, collaps
 	req.Header.Set("apns-expiration", "0")
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return retry, 0
+		return retry, 0, ""
 	}
 	defer resp.Body.Close()
 	var failure struct{ Reason string }
 	_ = json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&failure)
 	switch {
 	case resp.StatusCode == http.StatusOK:
-		return accepted, resp.StatusCode
+		return accepted, resp.StatusCode, failure.Reason
 	case failure.Reason == "BadDeviceToken", failure.Reason == "Unregistered", failure.Reason == "DeviceTokenNotForTopic":
-		return invalidDevice, resp.StatusCode
+		return invalidDevice, resp.StatusCode, failure.Reason
 	case failure.Reason == "ExpiredProviderToken", failure.Reason == "InvalidProviderToken":
 		// The provider token is at fault, not this delivery: sign a new one and retry.
-		a.token = ""
-		return retry, resp.StatusCode
+		if !a.resigned {
+			a.token = ""
+			a.resigned = true
+		}
+		return retry, resp.StatusCode, failure.Reason
 	case resp.StatusCode >= 500, resp.StatusCode == http.StatusTooManyRequests:
-		return retry, resp.StatusCode
+		return retry, resp.StatusCode, failure.Reason
 	default:
-		return rejected, resp.StatusCode
+		return rejected, resp.StatusCode, failure.Reason
 	}
 }

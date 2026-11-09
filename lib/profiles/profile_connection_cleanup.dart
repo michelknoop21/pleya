@@ -20,11 +20,17 @@ Future<void> removeProfileConnectionAndCleanup({
   // stop pushing to this device for this profile.
   if (connection is PleyaServerConnection) {
     final client = serverManager?.getClient(ServerId(connection.serverId));
-    await PleyaPushNotifications.forgetConnection(
-      profileId,
-      connection.id,
-      client is PleyaServerClient ? client : null,
-    );
+    final live = client is PleyaServerClient && client.connection.id == connection.id ? client : null;
+    await PleyaPushNotifications.forgetConnection(profileId, connection.id, live);
+    // The last profile on this connection: end the session itself, so nothing
+    // on the server (push included) keeps acting for a device that let go.
+    // Offline this is skipped; the session then lapses with the session sweep.
+    final rows = await profileConnections.listForConnection(connection.id);
+    if (live != null && rows.every((row) => row.profileId == profileId)) {
+      try {
+        await live.logout().timeout(const Duration(seconds: 5));
+      } catch (_) {}
+    }
   }
   await profileConnections.remove(profileId, connection.id);
   await _tearDownRuntimeServersForActiveProfile(

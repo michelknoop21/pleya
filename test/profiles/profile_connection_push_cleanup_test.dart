@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -65,26 +67,49 @@ void main() {
     serverManager: manager,
   );
 
-  test('removing the connection withdraws the push installation and the opt-in', () async {
+  Future<List<http.Request>> bindClient() async {
     final fake = PleyaFakeServer();
-    final deletes = <Uri>[];
+    final requests = <http.Request>[];
     final client = PleyaServerClient.create(
       connection,
       httpClientFactory: () => MockClient((request) async {
-        if (request.url.path.contains('/push-installations/')) {
-          if (request.method == 'DELETE') deletes.add(request.url);
+        if (request.url.path.contains('/push-installations/') || request.url.path.endsWith('/auth/logout')) {
+          requests.add(request);
           return http.Response('', 204);
         }
-        return fake.handle(request);
+        final response = await fake.handle(request);
+        if (!request.url.path.endsWith('/info')) return response;
+        final info = jsonDecode(response.body) as Map<String, dynamic>;
+        (info['capabilities'] as Map<String, dynamic>)['sessions'] = true;
+        return http.Response(jsonEncode(info), 200, headers: {'content-type': 'application/json'});
       }),
     );
     await client.refreshCapabilities();
     manager.debugRegisterClientForTesting(client);
+    return requests;
+  }
+
+  test('removing the last reference withdraws the installation, the opt-in and the session', () async {
+    final requests = await bindClient();
 
     await remove();
 
-    expect(deletes.single.path, endsWith('/users/me/push-installations/install-1'));
+    expect(requests.map((r) => '${r.method} ${r.url.path}'), [
+      'DELETE /pleya/v1/users/me/push-installations/install-1',
+      'POST /pleya/v1/auth/logout',
+    ]);
     expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
+  });
+
+  test('another profile on the same connection keeps the session', () async {
+    await profileConnections.upsert(
+      ProfileConnection(profileId: 'p2', connectionId: connection.id, userIdentifier: connection.userName),
+    );
+    final requests = await bindClient();
+
+    await remove();
+
+    expect(requests.map((r) => r.method), ['DELETE']);
   });
 
   test('offline, the connection still goes and so does the local opt-in', () async {

@@ -2938,6 +2938,7 @@ class _TranslationsPleyaNotificationsNl extends TranslationsPleyaNotificationsEn
 	// Translations
 	@override String get pushTitle => 'Push op dit toestel';
 	@override String get pushExplanation => 'Ontvang nieuwe aanwinsten van je eigen Pleya Server, ook als Pleya gesloten is. iOS vraagt toestemming zodra je een categorie aanzet.';
+	@override String pushOneAccount({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.';
 	@override String get pushOffline => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.';
 	@override String get pushPending => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.';
 	@override String get title => 'Notificaties';
@@ -7761,6 +7762,7 @@ extension on TranslationsNl {
 			'seerrIssues.changeUnconfirmed' => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.',
 			'pleyaNotifications.pushTitle' => 'Push op dit toestel',
 			'pleyaNotifications.pushExplanation' => 'Ontvang nieuwe aanwinsten van je eigen Pleya Server, ook als Pleya gesloten is. iOS vraagt toestemming zodra je een categorie aanzet.',
+			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.',
 			'pleyaNotifications.pushOffline' => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.',
 			'pleyaNotifications.pushPending' => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.',
 			'pleyaNotifications.title' => 'Notificaties',

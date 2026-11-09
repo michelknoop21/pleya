@@ -260,6 +260,13 @@ class PleyaServerClient
     await _adminSend('DELETE', '/users/me/push-installations/${Uri.encodeComponent(id)}');
   }
 
+  /// Ends this session on the server (`POST /auth/logout`); its push
+  /// installations go with it. Only where the server negotiated sessions.
+  Future<void> logout() async {
+    if (!wireCapabilities.sessions || _offlineMode || _closed) throw StateError('Logout unavailable');
+    await _adminSend('POST', '/auth/logout');
+  }
+
   bool _offlineMode = false;
   bool _identityCapabilitiesKnown = false;
   @override

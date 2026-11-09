@@ -945,6 +945,38 @@ class MultiServerManager {
   @visibleForTesting
   http.Client Function()? debugPleyaServerHttpClientFactory;
 
+  PleyaServerClient _createPleyaServerClient(PleyaServerConnection connection) => PleyaServerClient.create(
+    connection,
+    httpClientFactory: debugPleyaServerHttpClientFactory,
+    onConnectionUpdated: (updated) async {
+      final persist = onPleyaServerConnectionUpdated;
+      if (persist == null) return;
+      try {
+        await Future.sync(() => persist(updated));
+      } catch (e, st) {
+        appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
+      }
+    },
+  );
+
+  /// Runs [action] with a client for [connection]: the bound one when there is
+  /// one, otherwise a short-lived client that persists a rotated refresh token
+  /// like a bound client does and is closed afterwards. For one-off requests on
+  /// behalf of a profile that is not active.
+  Future<T> withPleyaServerClient<T>(
+    PleyaServerConnection connection,
+    Future<T> Function(PleyaServerClient client) action,
+  ) async {
+    final bound = _clients[connection.serverId];
+    if (bound is PleyaServerClient && bound.connection.id == connection.id) return action(bound);
+    final client = _createPleyaServerClient(connection);
+    try {
+      return await action(client);
+    } finally {
+      client.close();
+    }
+  }
+
   /// Add a Pleya Server connection as a media source.
   ///
   /// One endpoint, one identity, so this is closer to the Jellyfin path than to
@@ -956,19 +988,7 @@ class MultiServerManager {
   /// re-auth banner rather than being hidden as offline.
   Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
     try {
-      final client = PleyaServerClient.create(
-        connection,
-        httpClientFactory: debugPleyaServerHttpClientFactory,
-        onConnectionUpdated: (updated) async {
-          final persist = onPleyaServerConnectionUpdated;
-          if (persist == null) return;
-          try {
-            await Future.sync(() => persist(updated));
-          } catch (e, st) {
-            appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
-          }
-        },
-      );
+      final client = _createPleyaServerClient(connection);
       final serverId = connection.serverId;
       _wireServerAuthority(client, ServerId(serverId));
       // A role change moves what the profile may administer without any

@@ -133,6 +133,9 @@ func (s *Service) materialize(ctx context.Context) error {
 	return err
 }
 
+// The queue assumes one server instance per database (DEC-120): deliver takes
+// no row locks, so a second instance on the same database would send twice.
+//
 // deliver sends one alert for all due items of one installation, so a season
 // of new episodes is one notification. Nothing stays locked during the APNs
 // call: a revocation that commits meanwhile lets at most this alert through,
@@ -192,11 +195,12 @@ func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
 	result := rejected
 	if len(eligible) > 0 {
 		var status int
+		var reason string
 		// The first delivery id stays stable across retries, so APNs drops a
 		// duplicate after a lost ack; the collapse id replaces an older alert.
-		result, status = s.apns.send(ctx, token, locale, eligible[0].String(), installation.String())
+		result, status, reason = s.apns.send(ctx, token, locale, eligible[0].String(), installation.String())
 		if result != accepted && result != invalidDevice {
-			log.Warn("APNs delivery unsuccessful", "status", status)
+			log.Warn("APNs delivery unsuccessful", "status", status, "reason", reason)
 		}
 	}
 	tx, err := s.pool.Begin(ctx)
@@ -235,6 +239,7 @@ func (s *Service) Run(ctx context.Context, log *slog.Logger) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for ctx.Err() == nil {
+		s.apns.resigned = false
 		if err := s.materialize(ctx); err != nil {
 			log.Warn("push queue unavailable")
 		} else {

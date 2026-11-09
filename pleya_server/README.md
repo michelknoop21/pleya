@@ -761,7 +761,11 @@ scanronde binnenkomen, zoals een heel seizoen, worden één melding per toestel.
 Een APNs-token hoort bij één account: meldt een ander account op een gedeelde
 iPad zich met hetzelfde toestel aan, dan vervalt de oude registratie.
 Registraties van ingetrokken sessies ruimt de dagelijkse sessieronde op, ook
-als push uit staat. Offline uitschakelen wordt
+als push uit staat. Een opt-out of rechtenwijziging tijdens het aanbieden aan
+APNs houdt die ene alert niet meer tegen; dat venster duurt hoogstens 8 seconden.
+De pushwachtrij gaat uit van één serverinstantie per database (DEC-120): zij
+neemt geen rijvergrendeling, dus een tweede instantie op dezelfde database
+verstuurt dubbel. Offline uitschakelen wordt
 bij de eerstvolgende verbinding met de server verwerkt.
 Toestelregistraties en afleveringen staan buiten de databaseback-up. Seerr-
 en release-updates zijn in de app beschikbaar als in-appmeldingen.
