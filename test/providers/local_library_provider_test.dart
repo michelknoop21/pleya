@@ -629,7 +629,11 @@ void main() {
 
     final lines = MemoryLogOutput.getLogs().map((e) => e.message).toList();
     expect(
-      lines.where((l) => l.startsWith('scanstats lib=${library.title} backend=plex result=complete ')),
+      lines.where(
+        (l) =>
+            l.startsWith('scanstats lib=${library.title} backend=plex result=complete ') &&
+            RegExp(r' rss=\d+/\d+MB$').hasMatch(l),
+      ),
       hasLength(1),
     );
     expect(
