@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 
@@ -266,6 +267,60 @@ void main() {
           .where((r) => RegExp(r'/items/[^/]+$').hasMatch(r.split('?').first))
           .length;
       expect(itemReads, lessThanOrEqualTo(2), reason: 'three episodes share one season and one show');
+    });
+
+    test('a scan walk reads no ancestor: the list pages already carried the show and season', () async {
+      server.addItem(
+        id: 'show-art',
+        kind: 'show',
+        title: 'Met artwork',
+        libraryId: 'lib-series',
+        posterId: 'poster-show',
+        backdropId: 'backdrop-show',
+      );
+      server.addItem(
+        id: 'season-art',
+        kind: 'season',
+        title: 'Season 4',
+        parentId: 'show-art',
+        index: 4,
+        posterId: 'poster-season',
+      );
+      server.addItem(id: 'ep-art', kind: 'episode', title: 'Pilot', parentId: 'season-art', index: 1);
+      bool isItemRead(String r) => RegExp(r'/items/[^/]+$').hasMatch(r.split('?').first);
+      List<Object?> ancestorColumns(MediaItem e) => [
+        e.parentId,
+        e.parentTitle,
+        e.parentIndex,
+        e.parentThumbPath,
+        e.grandparentId,
+        e.grandparentTitle,
+        e.grandparentThumbPath,
+        e.grandparentArtPath,
+      ];
+
+      // The rows as the detail reads fill them, from a client that never
+      // listed the library.
+      final cold = await connected(server);
+      final viaDetail = (await cold.fetchChildrenPage('season-art', start: 0, size: 100, strictSnapshot: true)).items;
+      cold.close();
+
+      client = await connected(server);
+      final before = server.requests.length;
+      await client.fetchLibraryPagedContent('lib-series', query: const LibraryQuery(), strictSnapshot: true);
+      await client.fetchChildrenPage('show-art', start: 0, size: 100, strictSnapshot: true);
+      final page = await client.fetchChildrenPage('season-art', start: 0, size: 100, strictSnapshot: true);
+
+      expect(server.requests.skip(before).where(isItemRead), isEmpty, reason: 'no GET /items/<id> during the walk');
+      final episode = page.items.single;
+      expect(episode.parentTitle, 'Season 4');
+      expect(episode.parentIndex, 4);
+      expect(episode.parentThumbPath, isNotNull);
+      expect(episode.grandparentId, 'show-art');
+      expect(episode.grandparentTitle, 'Met artwork');
+      expect(episode.grandparentThumbPath, isNotNull);
+      expect(episode.grandparentArtPath, isNotNull);
+      expect(ancestorColumns(episode), ancestorColumns(viaDetail.single));
     });
 
     test('playable descendants of a show are its episodes across seasons', () async {

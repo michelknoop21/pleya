@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show VoidCallback;
 
 import 'dart:async' show TimeoutException;
@@ -20,30 +19,10 @@ import 'index_row.dart';
 import 'local_library_store.dart';
 import 'scan_diagnostics.dart';
 import '../download_artwork_helpers.dart';
+import 'bounded.dart';
+import 'local_library_sync_types.dart';
 
-class LocalLibraryPaused implements Exception {}
-
-/// The scan enumerated the whole library and saved it, but [skipped] titles
-/// without a stored row got no detail answer and are not in the snapshot.
-class LocalLibraryPartialScan implements Exception {
-  const LocalLibraryPartialScan(this.skipped);
-  final int skipped;
-  @override
-  String toString() => 'LocalLibraryPartialScan: $skipped titles left for the next scan';
-}
-
-class LocalPosterResult {
-  const LocalPosterResult({this.bytes, this.etag, this.lastModified, required this.variant});
-  final Uint8List? bytes; // null means a successful conditional 304.
-  final String? etag;
-  final String? lastModified;
-  final String variant;
-}
-
-typedef LocalPosterRevalidator =
-    Future<LocalPosterResult> Function(MediaServerClient client, MediaItem item, Map<String, dynamic> validators);
-
-typedef LocalPosterLoader = Future<Uint8List> Function(MediaServerClient client, MediaItem item);
+export 'local_library_sync_types.dart';
 
 /// One bounded, resumable scan. It never treats failure as an empty library.
 /// Partial checkpoints merge; only a fully enumerated hierarchy can replace.
@@ -52,6 +31,7 @@ class LocalLibrarySync {
     required this.store,
     this.pageSize = 100,
     this.checkpointEvery = const Duration(seconds: 30),
+    this.rootConcurrency = 4,
     this.mayContinue,
     this.posterLoader,
     this.posterRevalidator,
@@ -72,6 +52,9 @@ class LocalLibrarySync {
   /// a second, and on a 34 MB library the scan spent 57% of its time rewriting.
   /// A scan that stops loses at most this much progress.
   final Duration checkpointEvery;
+
+  /// Root titles scanned at once, each with its subtree in order; lower it on slow hardware.
+  final int rootConcurrency;
   final Future<bool> Function()? mayContinue;
   final LocalPosterLoader? posterLoader;
   final void Function(int done, String title)? onProgress;
@@ -119,8 +102,8 @@ class LocalLibrarySync {
     // Titles left out of `next` with no stored row to keep in their place.
     var skipped = 0;
 
-    /// Whether the title has a row in `next` afterwards.
-    Future<bool> keep(MediaItem candidate) async {
+    /// Whether the title has a row in [out] afterwards.
+    Future<bool> keep(MediaItem candidate, Map<String, MediaItem> out) async {
       await check();
       final old = previous[candidate.globalKey];
       // Retain full descriptive fields, but use fresh per-user watch state.
@@ -170,7 +153,7 @@ class LocalLibrarySync {
           // then also leaves the library incomplete.
           await check();
           if (retained != null) {
-            next[retained.globalKey] = retained;
+            out[retained.globalKey] = retained;
           } else {
             skipped++;
           }
@@ -253,7 +236,7 @@ class LocalLibrarySync {
         identityRaw?.remove(pleyaExternalIdsRawKey);
         if (fresh != null) identityRaw?[pleyaExternalIdsRawKey] = fresh.toJson();
       }
-      next[item.globalKey] = indexRow(
+      out[item.globalKey] = indexRow(
         ids == null
             ? item.copyWith(raw: identityRaw)
             : item.copyWith(
@@ -273,8 +256,15 @@ class LocalLibrarySync {
       return true;
     }
 
-    late Future<void> Function(MediaItem) scanChildren;
-    Future<void> scan(Future<LibraryPage<MediaItem>> Function(int, int) fetch, {MediaKind? kind}) async {
+    late Future<void> Function(MediaItem, Map<String, MediaItem>, Set<String>) scanChildren;
+    // Each root task fills its own buffer, merged into `next` in page order, so rows keep
+    // the order of a sequential scan. A checkpoint also saves the buffers in flight.
+    final inFlight = <Map<String, MediaItem>>[];
+    Future<void> scan(
+      Future<LibraryPage<MediaItem>> Function(int, int) fetch, {
+      MediaKind? kind,
+      (Map<String, MediaItem>, Set<String>)? task,
+    }) async {
       var offset = 0;
       int? total;
       final seen = <String>{};
@@ -289,29 +279,49 @@ class LocalLibrarySync {
         if (page.totalCount != total || page.totalCount < 0 || page.items.length > pageSize) {
           throw StateError('Library changed or returned an unverified page; keep previous snapshot');
         }
+        final bound = <MediaItem>[];
         for (final item in page.items) {
           if (!seen.add(item.globalKey)) throw StateError('Library pagination did not advance');
           if (kind != null && item.kind != kind) throw StateError('Library returned a different media kind');
           first ??= item.globalKey;
-          final bound = item.copyWith(
-            serverId: library.serverId,
-            serverName: library.serverName,
-            libraryId: library.id,
-            libraryTitle: library.title,
+          bound.add(
+            item.copyWith(
+              serverId: library.serverId,
+              serverName: library.serverName,
+              libraryId: library.id,
+              libraryTitle: library.title,
+            ),
           );
+        }
+        Future<void> run(int i, Map<String, MediaItem> out, Set<String> ancestors) async {
           // Children of a dropped show or season would be rows without a parent.
-          if (await keep(bound) && (item.kind == MediaKind.show || item.kind == MediaKind.season)) {
-            await scanChildren(item);
+          if (await keep(bound[i], out) && (bound[i].kind == MediaKind.show || bound[i].kind == MediaKind.season)) {
+            await scanChildren(page.items[i], out, ancestors);
           }
         }
+
+        if (task != null) {
+          for (var i = 0; i < bound.length; i++) {
+            await run(i, task.$1, task.$2);
+          }
+        } else {
+          final buffers = [for (final _ in bound) <String, MediaItem>{}];
+          inFlight.addAll(buffers);
+          await bounded(rootConcurrency, bound.length, (i) => run(i, buffers[i], <String>{}));
+          inFlight.clear();
+          buffers.forEach(next.addAll);
+        }
         if (done - checkpointDone >= pageSize && sinceCheckpoint.elapsed >= checkpointEvery) {
+          // Claim the window before the save: nested scans of several root
+          // tasks reach this line together, and only the first may save.
+          checkpointDone = done;
+          sinceCheckpoint.reset();
           final watch = Stopwatch()..start();
-          await store.saveLibrary(library, next.values.toList(), complete: false, isCurrent: valid);
+          final rows = {...next, for (final buffer in inFlight) ...buffer};
+          await store.saveLibrary(library, rows.values.toList(), complete: false, isCurrent: valid);
           stats
             ..checkpoints += 1
             ..checkpointMs += watch.elapsedMilliseconds;
-          checkpointDone = done;
-          sinceCheckpoint.reset();
           if (valid()) onCheckpoint?.call();
         }
         offset += page.items.length;
@@ -331,8 +341,7 @@ class LocalLibrarySync {
 
     // Local mutually-recursive functions use this closure so every parent is
     // paged and verified independently, including empty seasons.
-    final ancestors = <String>{};
-    scanChildren = (MediaItem parent) async {
+    scanChildren = (MediaItem parent, Map<String, MediaItem> out, Set<String> ancestors) async {
       if (!ancestors.add(parent.globalKey)) throw StateError('Cyclic library hierarchy');
       try {
         await scan((offset, size) async {
@@ -353,7 +362,7 @@ class LocalLibrarySync {
                 ),
             ],
           );
-        });
+        }, task: (out, ancestors));
       } finally {
         ancestors.remove(parent.globalKey);
       }
