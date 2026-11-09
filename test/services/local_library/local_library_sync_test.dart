@@ -31,6 +31,22 @@ class Client implements MediaServerClient {
   Object? idsError;
   int idLookups = 0;
   int rootPages = 0;
+
+  /// What a detail or children call waits for before it answers, and the most
+  /// of those calls ever open at once. A root task has at most one call open.
+  Future<void> Function(String id)? pacer;
+  int open = 0;
+  int maxOpen = 0;
+  final Set<String> childrenFailFor = {};
+  Future<void> pace(String id) async {
+    final wait = pacer?.call(id);
+    if (wait == null) return;
+    open++;
+    if (open > maxOpen) maxOpen = open;
+    await wait;
+    open--;
+  }
+
   @override
   Future<LibraryPage<MediaItem>> fetchChildrenPage(
     String parentId, {
@@ -38,7 +54,8 @@ class Client implements MediaServerClient {
     int? size,
     AbortController? abort,
   }) async {
-    if (childrenFail) throw StateError('Unverified child page');
+    await pace(parentId);
+    if (childrenFail || childrenFailFor.contains(parentId)) throw StateError('Unverified child page');
     childrenAsked.add(parentId);
     final rows = childRows[parentId] ?? const <MediaItem>[];
     return LibraryPage(
@@ -69,6 +86,7 @@ class Client implements MediaServerClient {
   final List<String> itemsAsked = [];
   @override
   Future<MediaItem?> fetchItem(String id) async {
+    await pace(id);
     itemsAsked.add(id);
     final error = itemErrors[id];
     if (error != null) throw error;
@@ -667,4 +685,131 @@ void main() {
     );
     expect(store.items.single.id, 'old');
   });
+
+  group('root titles scanned in parallel', () {
+    final shows = library.copyWith(kind: MediaKind.show);
+    MediaItem show(int i) => film('s$i').copyWith(kind: MediaKind.show);
+
+    /// [count] shows of [seasons] seasons of [episodes] episodes each; show i
+    /// answers slower the lower its number, so later shows finish first.
+    void addShows(int count, {int seasons = 1, int episodes = 4}) {
+      client.rows = [for (var i = 0; i < count; i++) show(i)];
+      for (var i = 0; i < count; i++) {
+        final seasonRows = [
+          for (var j = 0; j < seasons; j++) film('s$i-x$j').copyWith(kind: MediaKind.season, parentId: 's$i'),
+        ];
+        if (seasons == 0) {
+          client.childRows['s$i'] = [
+            for (var k = 0; k < episodes; k++) film('s$i-e$k').copyWith(kind: MediaKind.episode, parentId: 's$i'),
+          ];
+          continue;
+        }
+        client.childRows['s$i'] = seasonRows;
+        for (final season in seasonRows) {
+          client.childRows[season.id] = [
+            for (var k = 0; k < episodes; k++)
+              film('${season.id}-e$k').copyWith(kind: MediaKind.episode, parentId: season.id, grandparentId: 's$i'),
+          ];
+        }
+      }
+      int number(String id) => int.parse(RegExp(r'^s(\d+)').firstMatch(id)!.group(1)!);
+      client.pacer = (id) => Future<void>.delayed(Duration(milliseconds: (count - number(id)) % 4));
+    }
+
+    test('stores the rows in the same order with one task as with four', () async {
+      addShows(7, seasons: 2, episodes: 4);
+      await LocalLibrarySync(store: store, pageSize: 3, rootConcurrency: 1).syncLibrary(shows, client);
+      final sequential = store.items.map((i) => i.id).toList();
+      await store.clear();
+
+      await LocalLibrarySync(store: store, pageSize: 3, rootConcurrency: 4).syncLibrary(shows, client);
+
+      expect(sequential, hasLength(7 + 14 + 56));
+      expect(store.items.map((i) => i.id).toList(), sequential);
+    });
+
+    test('never has more than four root tasks in flight', () async {
+      addShows(12, seasons: 1, episodes: 3);
+
+      await LocalLibrarySync(store: store).syncLibrary(shows, client);
+
+      expect(client.maxOpen, 4, reason: 'four at once, and the pool is actually used');
+      expect(store.items, hasLength(12 * 5));
+    });
+
+    test('nested scans of four root tasks save one checkpoint per window', () async {
+      addShows(4, seasons: 0, episodes: 4);
+      client.pacer = null;
+      final saved = <int>[];
+      final counting = _CountingStore(root, saved);
+      await counting.load();
+
+      await LocalLibrarySync(store: counting, pageSize: 4, checkpointEvery: Duration.zero).syncLibrary(shows, client);
+
+      expect(saved, isNotEmpty);
+      for (var i = 1; i < saved.length; i++) {
+        expect(saved[i] - saved[i - 1], greaterThanOrEqualTo(4), reason: 'checkpoints $saved');
+      }
+    });
+
+    test('a failing task fails the scan, keeps the previous snapshot and leaves nothing running', () async {
+      await store.saveLibrary(shows, [film('old')], complete: true);
+      addShows(8, seasons: 1, episodes: 2);
+      client.childrenFailFor.add('s0');
+      // s1 to s3 wait until a timer runs, which is after the failure of s0 has
+      // reached the pool through microtasks.
+      final hold = Completer<void>();
+      client.pacer = (id) {
+        if (id.startsWith('s0')) return Future.value();
+        Timer.run(() => hold.isCompleted ? null : hold.complete());
+        return hold.future;
+      };
+
+      await expectLater(LocalLibrarySync(store: store).syncLibrary(shows, client), throwsStateError);
+      final asked = [...client.itemsAsked, ...client.childrenAsked];
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(store.items.map((i) => i.id), ['old']);
+      expect(store.isComplete(shows.globalKey), isTrue);
+      expect(client.childrenAsked, containsAll(['s1-x0', 's2-x0', 's3-x0']), reason: 'running tasks finish their show');
+      expect(asked, isNot(contains('s4')), reason: 'no new title starts after the failure');
+      expect([...client.itemsAsked, ...client.childrenAsked], asked, reason: 'no task outlives the scan');
+    });
+
+    test('a pause after a checkpoint keeps the rows of the tasks still in flight', () async {
+      addShows(4, seasons: 0, episodes: 4);
+      var allowed = true;
+
+      await expectLater(
+        LocalLibrarySync(
+          store: store,
+          pageSize: 4,
+          checkpointEvery: Duration.zero,
+          mayContinue: () async => allowed,
+          onCheckpoint: () => allowed = false,
+        ).syncLibrary(shows, client),
+        throwsA(isA<LocalLibraryPaused>()),
+      );
+
+      // No root page finished, so every stored row came from a buffer in flight.
+      final ids = store.items.map((i) => i.id).toSet();
+      expect(ids.where((id) => ids.containsAll(['$id-e0', '$id-e3'])), isNotEmpty, reason: 'stored: $ids');
+    });
+  });
+}
+
+class _CountingStore extends LocalLibraryStore {
+  _CountingStore(super.directory, this.saved);
+  final List<int> saved;
+  @override
+  Future<void> saveLibrary(
+    MediaLibrary library,
+    List<MediaItem> items, {
+    required bool complete,
+    bool partial = false,
+    bool Function()? isCurrent,
+  }) {
+    if (!complete && !partial) saved.add(items.length);
+    return super.saveLibrary(library, items, complete: complete, partial: partial, isCurrent: isCurrent);
+  }
 }
