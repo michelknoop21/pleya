@@ -50,6 +50,25 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 452 · 9 November 2026 · Apple TV
+
+<!-- commit: a05d9ca99d1aeab170afec687548b1a09144de64 -->
+
+### Improved
+
+- **A failed log upload no longer leaves an error standing.** The notice goes away after eight
+  seconds, and a later upload that works clears it straight away.
+
+### Notes
+
+- This build is for measuring. With debug logging on, the log now records what a library sync
+  costs (requests per kind, disk writes, rebuilds of the read index) and how many frames run
+  late while you scroll, with and without a sync running. The log change does not change how
+  the app behaves.
+- Worth checking on the older Apple TV: Instellingen > Lokale bibliotheek > Nu synchroniseren,
+  then scroll Alle films and Alle series for a minute during the sync and a minute after it, and
+  send the log.
+
 ## 2.8.1 · build 451 · 8 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: b4e898c274d3bf5c19fbde5e1f8d5f9881bdc9ac -->
