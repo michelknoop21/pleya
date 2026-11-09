@@ -28,6 +28,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Roadmap deviation, approved by Michel on 8 November 2026 (A-11):** A-11 staat sinds 9 oktober op uitgesteld; uit dat pakket wordt nu alleen het volgende gebouwd. De dubbele schuifjesknop op Apple TV vervalt (PLR-PANEL-ENTRY-1108). Michel kiest Filmbeeld voor alle Pleya-spelers met behoud van de huidige functies, en voor iPhone en iPad de mobiele mockup A, met centraal transport en de acties verdeeld over kop en tijdlijn. De toaststijl is uitgewerkt voor speler en app. De rest van A-11/A-12 blijft uitgesteld. De iPhone/iPad-mockup valt binnen deze deviation omdat Michel die op 8 november zelf koos; de rest van A-11 niet.
 
+**Open beslispunt A-20/A-21, 9 november 2026 (voorstel, niet goedgekeurd):** de voorstelset [meldingen en notificaties](assets/requests-2.1-meldingen/README.md) (families 9 tot en met 12) vult de goedgekeurde Requests 2.0-set aan. Familie 10, Probleem melden (`POST /issue` vanaf de titelpagina en de speler), is nieuwe scope en daarmee een roadmapafwijking die op een besluit van Michel wacht. Waar het bestaande werk staat en wat de app nu anders doet dan Requests 2.0 staat in [AFWIJKINGEN.md](assets/requests-2.1-meldingen/AFWIJKINGEN.md). Geen wijziging van prioriteit, WIP-limiet of review- en releasegate.
+
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.
