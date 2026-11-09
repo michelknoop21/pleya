@@ -261,9 +261,10 @@ class PleyaServerClient
   }
 
   /// Ends this session on the server (`POST /auth/logout`); its push
-  /// installations go with it. Only where the server negotiated sessions.
+  /// installations go with it. A server without sessions answers 404, which
+  /// the caller treats like any other failure.
   Future<void> logout() async {
-    if (!wireCapabilities.sessions || _offlineMode || _closed) throw StateError('Logout unavailable');
+    if (_offlineMode || _closed) throw StateError('Logout unavailable');
     await _adminSend('POST', '/auth/logout');
   }
 

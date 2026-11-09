@@ -118,4 +118,73 @@ void main() {
     expect(await connections.get(connection.id), isNull);
     expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
   });
+
+  group('a profile that is not active', () {
+    late String current;
+    late List<String> presented;
+    late List<String> calls;
+
+    setUp(() {
+      current = 'rt-1';
+      presented = [];
+      calls = [];
+      manager.debugPleyaServerHttpClientFactory = () => MockClient((request) async {
+        if (request.url.path.endsWith('/auth/refresh')) {
+          final token = (jsonDecode(request.body) as Map<String, dynamic>)['refresh_token'] as String;
+          presented.add(token);
+          if (token != current) {
+            return http.Response(
+              jsonEncode({
+                'error': {'code': 'auth.refresh_token_reused', 'message': 'seen before', 'retryable': false},
+              }),
+              401,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          current = 'rt-${presented.length + 1}';
+          return http.Response(
+            jsonEncode({
+              'access_token': 'at-${presented.length}',
+              'refresh_token': current,
+              'token_type': 'bearer',
+              'expires_in_ms': 900000,
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        calls.add('${request.method} ${request.url.path}');
+        return http.Response('', 204);
+      });
+    });
+
+    test('deleting it still withdraws the installation and ends the session', () async {
+      await storage.setActiveProfileId('p2');
+
+      await removeAllProfileConnectionsAndCleanup(
+        profileId: 'p1',
+        profileConnections: profileConnections,
+        connections: connections,
+        storage: storage,
+        serverManager: manager,
+      );
+
+      expect(calls, ['DELETE /pleya/v1/users/me/push-installations/install-1', 'POST /pleya/v1/auth/logout']);
+      expect(await connections.get(connection.id), isNull);
+    });
+
+    test('short-lived clients take turns and write the rotated refresh token back', () async {
+      final persisted = <String>[];
+      manager.onPleyaServerConnectionUpdated = (updated) => persisted.add(updated.refreshToken);
+
+      await Future.wait([
+        manager.withPleyaServerClient(connection, (client) => client.removePushInstallation('a')),
+        manager.withPleyaServerClient(connection, (client) => client.removePushInstallation('b')),
+      ]);
+
+      expect(presented, ['rt-1', 'rt-2'], reason: 'the second turn starts from the rotated token');
+      expect(persisted.last, 'rt-3');
+      expect(calls, hasLength(2));
+    });
+  });
 }

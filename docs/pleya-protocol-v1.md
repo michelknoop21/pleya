@@ -2840,7 +2840,9 @@ APNs aanbiedt, houdt die ene alert niet meer tegen; dat venster duurt hoogstens
 meer op basis van de oude stand.
 
 Verwijdert de app de laatste verwijzing naar een verbinding, dan trekt zij de
-registratie in en sluit zij de sessie af met `POST /auth/logout`. Kan het toestel
+registratie in en sluit zij de sessie af met `POST /auth/logout`. Dat geldt ook
+voor een profiel dat niet actief is, zoals bij het verwijderen van een heel
+profiel: de app gebruikt dan kort de opgeslagen verbinding van dat profiel. Kan het toestel
 de server op dat moment niet bereiken, dan blijven sessie en registratie op de
 server staan tot de gebruiker of een beheerder de sessie intrekt, of tot de
 sessieronde haar opruimt nadat de refreshlevensduur verstreken is. Tot dan kan

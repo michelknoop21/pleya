@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -125,16 +126,45 @@ void main() {
     expect(requests.last.url, requests.first.url);
   });
 
-  test('starting a profile withdraws the installations other profiles left behind', () async {
+  test('starting a profile withdraws the installations other profiles left behind, once', () async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.setStringList('pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}', [
-      'install-bob',
-      'bob · Kelder',
-      'movies',
-    ]);
+    final bobKey = 'pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}';
+    await prefs.setStringList(bobKey, ['install-bob', 'bob · Kelder', 'movies']);
     final released = <(String, String)>[];
-    await start(releaseElsewhere: (connection, installation) async => released.add((connection, installation)));
+    Future<void> record(String connection, String installation) async => released.add((connection, installation));
+    await start(releaseElsewhere: record);
+    await Future<void>.delayed(Duration.zero);
     expect(released, [('pleyaServer.srv-2.bob', 'install-bob')]);
+    // Bob's choice stays for his return; only the withdrawal is recorded.
+    expect(prefs.getStringList(bobKey), ['install-bob', 'bob · Kelder', 'movies', 'released']);
+
+    await start(releaseElsewhere: record);
+    await Future<void>.delayed(Duration.zero);
+    expect(released, hasLength(1), reason: 'a withdrawn installation costs no further token rotation');
+  });
+
+  test('a withdrawal that fails offline is retried on resume', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final bobKey = 'pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}';
+    await prefs.setStringList(bobKey, ['install-bob', 'bob · Kelder', 'movies']);
+    var online = false;
+    var attempts = 0;
+    final (push, _) = await start(
+      releaseElsewhere: (_, _) async {
+        attempts++;
+        if (!online) throw StateError('offline');
+      },
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(attempts, 1);
+    expect(prefs.getStringList(bobKey), isNot(contains('released')));
+
+    online = true;
+    push.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(attempts, 2);
+    expect(prefs.getStringList(bobKey), contains('released'));
   });
 
   test('one account per server: the screen says who gets push, and turning it on here drops the other', () async {

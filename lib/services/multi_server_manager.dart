@@ -945,35 +945,66 @@ class MultiServerManager {
   @visibleForTesting
   http.Client Function()? debugPleyaServerHttpClientFactory;
 
-  PleyaServerClient _createPleyaServerClient(PleyaServerConnection connection) => PleyaServerClient.create(
+  PleyaServerClient _createPleyaServerClient(
+    PleyaServerConnection connection, {
+    void Function(PleyaServerConnection updated)? onRotated,
+    bool persist = true,
+  }) => PleyaServerClient.create(
     connection,
     httpClientFactory: debugPleyaServerHttpClientFactory,
     onConnectionUpdated: (updated) async {
-      final persist = onPleyaServerConnectionUpdated;
-      if (persist == null) return;
+      onRotated?.call(updated);
+      final save = onPleyaServerConnectionUpdated;
+      if (!persist || save == null) return;
       try {
-        await Future.sync(() => persist(updated));
+        await Future.sync(() => save(updated));
       } catch (e, st) {
         appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
       }
     },
   );
 
+  final _pleyaOneOffTurns = <String, Future<void>>{};
+  final _pleyaOneOffRotated = <String, PleyaServerConnection>{};
+
   /// Runs [action] with a client for [connection]: the bound one when there is
-  /// one, otherwise a short-lived client that persists a rotated refresh token
-  /// like a bound client does and is closed afterwards. For one-off requests on
-  /// behalf of a profile that is not active.
+  /// one, otherwise a short-lived client that writes a rotated refresh token
+  /// back like a bound client does and is closed afterwards. For one-off
+  /// requests on behalf of a profile that is not active.
+  ///
+  /// Short-lived clients for one connection take turns, and a later turn starts
+  /// from the token the previous one rotated to: two clients presenting the
+  /// same refresh token would count as reuse. [persist] false skips the write
+  /// for a connection that is being removed, so it cannot come back.
   Future<T> withPleyaServerClient<T>(
     PleyaServerConnection connection,
-    Future<T> Function(PleyaServerClient client) action,
-  ) async {
+    Future<T> Function(PleyaServerClient client) action, {
+    bool persist = true,
+  }) async {
     final bound = _clients[connection.serverId];
     if (bound is PleyaServerClient && bound.connection.id == connection.id) return action(bound);
-    final client = _createPleyaServerClient(connection);
+    final id = connection.id;
+    final previous = _pleyaOneOffTurns[id];
+    final turn = Completer<void>();
+    _pleyaOneOffTurns[id] = turn.future;
     try {
-      return await action(client);
+      if (previous != null) await previous;
+      final client = _createPleyaServerClient(
+        _pleyaOneOffRotated[id] ?? connection,
+        onRotated: (updated) => _pleyaOneOffRotated[id] = updated,
+        persist: persist,
+      );
+      try {
+        return await action(client);
+      } finally {
+        client.close();
+      }
     } finally {
-      client.close();
+      turn.complete();
+      if (identical(_pleyaOneOffTurns[id], turn.future)) {
+        _pleyaOneOffTurns.remove(id);
+        _pleyaOneOffRotated.remove(id);
+      }
     }
   }
 

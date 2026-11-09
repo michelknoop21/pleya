@@ -193,16 +193,9 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> with WidgetsBindingObserv
       ),
       row(TvMyPleyaSection.downloads, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
       row(TvMyPleyaSection.requests, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
-      // Above the Seerr-meldingen row: that one arrives after a probe, and a
-      // late row may only append, so nothing above it moves under focus.
-      if (handheldIOS && !isOffline && active?.isBinding == false && seerr?.canManageRequests == true)
-        _MyPleyaRow(
-          instance: 'manageRequests',
-          icon: Symbols.rule_rounded,
-          title: t.pleyaNotifications.manageRequestsTitle,
-          subtitle: t.pleyaNotifications.manageRequests,
-          onTap: () => _push(const SeerrRequestsScreen(reviewPending: true)),
-        ),
+      // In arrival order, so a late row only appends and nothing above it
+      // moves under focus: Notificaties needs only the profile, Aanvragen
+      // beheren the Seerr session, Seerr-meldingen that session plus a probe.
       if (showNotifications && active?.isBinding == false && profile != null)
         _MyPleyaRow(
           instance: 'notifications',
@@ -210,6 +203,14 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> with WidgetsBindingObserv
           title: t.pleyaNotifications.title,
           subtitle: t.pleyaNotifications.subtitle,
           onTap: () => _push(PleyaNotificationsScreen(profileId: profile.id)),
+        ),
+      if (handheldIOS && !isOffline && active?.isBinding == false && seerr?.canManageRequests == true)
+        _MyPleyaRow(
+          instance: 'manageRequests',
+          icon: Symbols.rule_rounded,
+          title: t.pleyaNotifications.manageRequestsTitle,
+          subtitle: t.pleyaNotifications.manageRequests,
+          onTap: () => _push(const SeerrRequestsScreen(reviewPending: true)),
         ),
       if (showIssueRow && _issuesSupported)
         _MyPleyaRow(

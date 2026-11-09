@@ -72,6 +72,18 @@ class _RouteRecorder extends NavigatorObserver {
 
 Profile _profile(String name) => Profile.local(id: name, displayName: name, createdAt: DateTime.utc(2026, 8, 17));
 
+class _ManagerSeerr extends _IssueSeerr {
+  bool manage = false;
+
+  @override
+  bool get canManageRequests => manage;
+
+  void grant() {
+    manage = true;
+    notifyListeners();
+  }
+}
+
 class _Status {
   _Status(this.code);
   int code;
@@ -307,6 +319,25 @@ void main() {
         tester.getTopLeft(find.text(t.pleyaNotifications.title)).dy,
         lessThan(tester.getTopLeft(find.text(t.seerrIssues.title)).dy),
       );
+    });
+
+    testWidgets('a late Aanvragen beheren row appends below Notificaties', (tester) async {
+      tester.view.physicalSize = const Size(390, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final seerr = _ManagerSeerr();
+      await pumpScreen(tester, seerr: seerr, theme: ios);
+      await tester.pumpAndSettle();
+      final notifications = tester.element(find.text(t.pleyaNotifications.title));
+      final notificationsTop = tester.getTopLeft(find.text(t.pleyaNotifications.title)).dy;
+      seerr.grant();
+      await tester.pumpAndSettle();
+      final manage = find.text(t.pleyaNotifications.manageRequestsTitle);
+      expect(manage, findsOneWidget);
+      expect(identical(tester.element(find.text(t.pleyaNotifications.title)), notifications), isTrue);
+      expect(tester.getTopLeft(find.text(t.pleyaNotifications.title)).dy, notificationsTop);
+      expect(tester.getTopLeft(manage).dy, greaterThan(notificationsTop));
+      expect(tester.getTopLeft(find.text(t.seerrIssues.title)).dy, greaterThan(tester.getTopLeft(manage).dy));
     });
 
     testWidgets('is absent in the iOS-app-on-Mac container, where push does not run', (tester) async {

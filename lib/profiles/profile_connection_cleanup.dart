@@ -3,7 +3,6 @@ import '../connection/connection_registry.dart';
 import '../media/ids.dart';
 import '../services/multi_server_manager.dart';
 import '../services/pleya_push_notifications.dart';
-import '../services/pleya_server_client.dart';
 import '../services/storage_service.dart';
 import 'profile_connection_registry.dart';
 
@@ -16,21 +15,21 @@ Future<void> removeProfileConnectionAndCleanup({
   MultiServerManager? serverManager,
 }) async {
   final removedServerIds = _serverIdsForConnection(connection);
-  // Before the runtime client goes: it is the only way to tell the server to
-  // stop pushing to this device for this profile.
+  // Before the runtime client goes. A profile that is not active has no bound
+  // client, so this goes through a short-lived one for its own connection.
   if (connection is PleyaServerConnection) {
-    final client = serverManager?.getClient(ServerId(connection.serverId));
-    final live = client is PleyaServerClient && client.connection.id == connection.id ? client : null;
-    await PleyaPushNotifications.forgetConnection(profileId, connection.id, live);
-    // The last profile on this connection: end the session itself, so nothing
-    // on the server (push included) keeps acting for a device that let go.
-    // Offline this is skipped; the session then lapses with the session sweep.
     final rows = await profileConnections.listForConnection(connection.id);
-    if (live != null && rows.every((row) => row.profileId == profileId)) {
-      try {
-        await live.logout().timeout(const Duration(seconds: 5));
-      } catch (_) {}
-    }
+    // The last profile on this connection also ends the session itself, so
+    // nothing on the server (push included) keeps acting for a device that let
+    // go. Offline both are skipped; the session then lapses with the sweep.
+    final last = rows.every((row) => row.profileId == profileId);
+    await PleyaPushNotifications.forgetConnection(profileId, connection.id, (installation) async {
+      if (serverManager == null || (installation == null && !last)) return;
+      await serverManager.withPleyaServerClient(connection, persist: !last, (client) async {
+        if (installation != null) await client.removePushInstallation(installation);
+        if (last) await client.logout();
+      });
+    });
   }
   await profileConnections.remove(profileId, connection.id);
   await _tearDownRuntimeServersForActiveProfile(

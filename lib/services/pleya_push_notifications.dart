@@ -37,7 +37,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   bool _disposed = false;
   bool _busy = false;
   bool _reconcileRequested = false;
-  bool _releasedOthers = false;
+  final _releasing = <String>{};
 
   bool get busy => _busy;
 
@@ -91,22 +91,34 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   String _key(String id) => '$_prefix${Uri.encodeComponent(id)}';
 
   /// Withdraws [profileId]'s push opt-in for a connection that is being
-  /// removed. Best effort: with [client] still open the server forgets the
-  /// installation; offline it stays there until that session is revoked, but
-  /// removing the connection never waits on the network for long.
-  static Future<void> forgetConnection(String profileId, String connectionId, PleyaServerClient? client) async {
+  /// removed. [withdraw] gets the stored installation (null when there is
+  /// none) and talks to the server; it is best effort and capped, so removing
+  /// the connection never waits on the network for long. The opt-in goes either way.
+  static Future<void> forgetConnection(
+    String profileId,
+    String connectionId,
+    Future<void> Function(String? installation) withdraw,
+  ) async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     final key = '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
-    final installation = prefs.getStringList(key)?.firstOrNull;
-    if (installation == null) return;
-    if (client != null) {
-      try {
-        await client.removePushInstallation(installation).timeout(const Duration(seconds: 5));
-      } catch (_) {
-        // Offline or already closed: the local opt-in still goes.
-      }
+    try {
+      await withdraw(prefs.getStringList(key)?.firstOrNull).timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Offline or already closed: the local opt-in still goes.
     }
     await prefs.remove(key);
+  }
+
+  static const _released = 'released';
+
+  /// After a confirmed withdrawal: an opt-out is done and goes, an opt-in stays
+  /// stored so it returns with its profile, but needs no further withdrawal.
+  static Future<void> _markReleased(String key, String installation) async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final stored = prefs.getStringList(key);
+    if (stored == null || stored.first != installation || stored.contains(_released)) return;
+    if (stored.length == 2) return prefs.remove(key);
+    await prefs.setStringList(key, [...stored, _released]);
   }
 
   Future<Map<String, String>?> _token({required bool prompt}) =>
@@ -188,12 +200,12 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       if (_profile.activeId != _profileId) {
         // The profile changed while this PUT was in flight: the device now
         // belongs to another profile, so withdraw it again right away.
-        client.removePushInstallation(stored.first).ignore();
+        client.removePushInstallation(stored.first).then((_) => _markReleased(_key(connection), stored.first)).ignore();
         return;
       }
       if (!_current) return;
-      if (stored.contains('pending')) {
-        final confirmed = stored.where((value) => value != 'pending').toList();
+      if (stored.contains('pending') || stored.contains(_released)) {
+        final confirmed = stored.where((value) => value != 'pending' && value != _released).toList();
         final prefs = await BaseSharedPreferencesService.sharedCache();
         if (!_current) return;
         await prefs.setStringList(_key(connection), confirmed);
@@ -221,7 +233,8 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   void _release() {
     for (final MapEntry(key: connection, value: client) in _synced.entries) {
       final installation = _saved[connection]?.firstOrNull;
-      if (installation != null) client.removePushInstallation(installation).ignore();
+      if (installation == null) continue;
+      client.removePushInstallation(installation).then((_) => _markReleased(_key(connection), installation)).ignore();
     }
     _synced.clear();
   }
@@ -238,17 +251,22 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       if (!_current) return;
       // A removed connection takes its stored opt-in with it.
       _saved.removeWhere((connection, _) => !prefs.containsKey(_key(connection)));
-      if (!_releasedOthers) {
-        // Covers a cold start in this profile after another one was active, and
-        // a release on switch that did not reach the server.
-        _releasedOthers = true;
-        final release = releaseElsewhere;
-        for (final key in prefs.keys.where((key) => key.startsWith('pleya.push/') && !key.startsWith(_prefix))) {
-          final installation = prefs.getStringList(key)?.firstOrNull;
-          if (release == null || installation == null) continue;
-          final connection = Uri.decodeComponent(key.substring(key.lastIndexOf('/') + 1));
-          release(connection, installation).ignore();
-        }
+      // Other profiles' installations on this device: covers a cold start here
+      // after another profile was active and a release on switch that did not
+      // reach the server. A failure stays unmarked and is retried on the next
+      // reconcile (resume, a server coming online); success marks it so the
+      // next start does not withdraw it again.
+      final release = releaseElsewhere;
+      for (final key in prefs.keys.where((key) => key.startsWith('pleya.push/') && !key.startsWith(_prefix))) {
+        final stored = prefs.getStringList(key);
+        if (release == null || stored == null || stored.length < 2 || stored.contains(_released)) continue;
+        if (!_releasing.add(key)) continue;
+        final connection = Uri.decodeComponent(key.substring(key.lastIndexOf('/') + 1));
+        release(connection, stored.first)
+            .then((_) => _markReleased(key, stored.first))
+            .catchError((Object _) {})
+            .whenComplete(() => _releasing.remove(key))
+            .ignore();
       }
       for (final key in prefs.keys.where((key) => key.startsWith(_prefix))) {
         final stored = prefs.getStringList(key);
