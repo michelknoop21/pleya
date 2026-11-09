@@ -2820,8 +2820,10 @@ zijn eigen APNs-omgeving en ten minste één gekozen categorie.
 PUT en DELETE vereisen een eigen sessiebearer. PUT is vervangend en behoudt
 de oorspronkelijke toestemmingstijd van categorieën die aan blijven.
 Een nieuwere sessie van hetzelfde account kan de registratie overnemen als
-zij hetzelfde toestel of APNs-token draagt. Maximaal acht registraties per
-sessie. DELETE is idempotent en geeft bij een onbekende of andere registratie
+zij hetzelfde toestel of APNs-token draagt. Een APNs-token hoort bij één
+registratie: een geslaagde PUT met hetzelfde token laat elke andere registratie
+met dat token vervallen, ook van een ander account op een gedeeld toestel.
+Maximaal acht registraties per sessie. DELETE is idempotent en geeft bij een onbekende of andere registratie
 ook 204. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
 registraties geven 400 `session.invalid`. API-tokens geven 403
 `auth.scope_insufficient`. Alle antwoorden dragen `Cache-Control: no-store`.
@@ -2830,3 +2832,5 @@ De server verstuurt alleen na controle van toestemming, sessie en bibliotheek.
 De alerttekst en de willekeurige aflever-ID bevatten geen titel of
 bibliotheeknaam. Een intrekking verwijdert wachtende afleveringen bij Pleya.
 De server vraagt APNs om niet-bezorgde alerts direct te laten verlopen.
+Nieuwe titels die tegelijk klaarstaan gaan per registratie als één alert, en
+een latere alert vervangt de vorige op het toestel.

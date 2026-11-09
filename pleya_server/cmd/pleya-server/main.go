@@ -259,7 +259,7 @@ func run() int {
 
 	workers := &sync.WaitGroup{}
 	workers.Add(5)
-	apns, err := push.OpenAPNs(cfg.APNsConfig)
+	apns, err := push.OpenAPNs(cfg.APNsConfig, cfg.ConfigDir)
 	if err != nil {
 		startup.Warn("push uitgeschakeld", "error", err.Error())
 	}
@@ -326,7 +326,7 @@ func run() int {
 		defer workers.Done()
 		scheduleSessionSweep(workCtx, authStore, revocations,
 			func() time.Duration { return settingsCache.Current().RefreshTokenTTL() },
-			logging.Component(log, "housekeeping"))
+			pushService, logging.Component(log, "housekeeping"))
 	}()
 
 	transcoder := startTranscoder(ctx, cfg, pool, logging.Component(log, "transcode"), startup)

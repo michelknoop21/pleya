@@ -742,12 +742,26 @@ service `pleya-server` een read-only bindmount toe van je secretmap naar
 Zonder geldige configuratie blijft push uit en de server schrijft een korte
 opstartmelding bij een configuratiefout.
 
+De server zet push ook uit als `AuthKey.p8` onder `PLEYA_SERVER_CONFIG_DIR`
+(standaard `/config`) staat, of als groep of anderen het bestand mogen lezen.
+Alles in `/config` gaat mee in elke back-up, en daar blijven alleen `.key`-bestanden
+en bestanden met rechten 0600 geheim. Geef de sleutel dus rechten 0600 voor de
+gebruiker uit `PLEYA_UID` (`chmod 600 AuthKey.p8`). De opstartmelding noemt welke van
+de twee regels de sleutel brak.
+
 De eerste succesvolle scan per bibliotheek bepaalt de uitgangsstand. Uit
 latere voltooide scans komen alleen nieuwe, afspeelbare films en afleveringen
 van na de toestemming in de wachtrij. De server controleert sessie,
 categorie en bibliotheekrechten vóór verzending. De tekst op het vergrendelde
-scherm bevat geen titel of bibliotheeknaam. De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw. Apple
-bewaart de alert niet voor een onbereikbaar toestel. Offline uitschakelen wordt
+scherm bevat geen titel of bibliotheeknaam. De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw; een door
+Apple geweigerd of verlopen providertoken telt als tijdelijk en wordt opnieuw
+ondertekend. Apple
+bewaart de alert niet voor een onbereikbaar toestel. Titels die in dezelfde
+scanronde binnenkomen, zoals een heel seizoen, worden één melding per toestel.
+Een APNs-token hoort bij één account: meldt een ander account op een gedeelde
+iPad zich met hetzelfde toestel aan, dan vervalt de oude registratie.
+Registraties van ingetrokken sessies ruimt de dagelijkse sessieronde op, ook
+als push uit staat. Offline uitschakelen wordt
 bij de eerstvolgende verbinding met de server verwerkt.
 Toestelregistraties en afleveringen staan buiten de databaseback-up. Seerr-
 en release-updates zijn in de app beschikbaar als in-appmeldingen.

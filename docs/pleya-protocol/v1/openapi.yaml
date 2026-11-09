@@ -510,7 +510,9 @@ paths:
         sessiebearer. De server accepteert zijn geconfigureerde APNs-omgeving.
         Elke PUT vervangt het token en de gekozen categorieën. Een bestaande
         registratie blijft gebonden aan het account. Alleen een nieuwere sessie van
-        hetzelfde account en toestel kan de registratie overnemen. Geen categorie staat
+        hetzelfde account en toestel kan de registratie overnemen. Een APNs-token hoort
+        bij één registratie: een geslaagde PUT met hetzelfde token laat elke andere
+        registratie met dat token vervallen, ook van een ander account. Geen categorie staat
         standaard aan. Gebruik DELETE om alle push voor dit toestel uit te zetten.
       requestBody:
         required: true

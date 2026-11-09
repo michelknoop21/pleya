@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/id"
@@ -33,6 +34,9 @@ func (s *Service) Register(ctx context.Context, installation, user, session id.I
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, token); err != nil {
+		return err
+	}
 	var active bool
 	err = tx.QueryRow(ctx, `SELECT true FROM sessions
 		WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL FOR UPDATE`, session, user).Scan(&active)
@@ -68,9 +72,22 @@ func (s *Service) Register(ctx context.Context, installation, user, session id.I
 		return err
 	case result.RowsAffected() == 0:
 		return ErrConflict
-	default:
-		return tx.Commit(ctx)
 	}
+	// One device token, one installation: when another account or profile on a
+	// shared device registers the token, the previous opt-in lapses.
+	if _, err := tx.Exec(ctx, `DELETE FROM push_installations
+		WHERE device_token=$1 AND environment=$2 AND id<>$3`, token, environment, installation); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// PurgeRevoked drops the installations of revoked sessions. It needs no APNs
+// configuration, so a server with push switched off still forgets them.
+func (s *Service) PurgeRevoked(ctx context.Context) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM push_installations p USING sessions s
+		WHERE p.session_id=s.id AND s.revoked_at IS NOT NULL`)
+	return tag.RowsAffected(), err
 }
 
 func (s *Service) Remove(ctx context.Context, installation, user, session id.ID) error {
@@ -86,11 +103,10 @@ func (s *Service) Remove(ctx context.Context, installation, user, session id.ID)
 // materialize recovers queued additions from completed, durable scan records.
 // The first successful scan establishes the baseline for each library.
 func (s *Service) materialize(ctx context.Context) error {
-	if _, err := s.pool.Exec(ctx, `
-		DELETE FROM push_installations p USING sessions s
-		WHERE p.session_id=s.id AND s.revoked_at IS NOT NULL;
-		DELETE FROM push_deliveries WHERE expires_at <= now();
-	`); err != nil {
+	if _, err := s.PurgeRevoked(ctx); err != nil {
+		return err
+	}
+	if _, err := s.pool.Exec(ctx, `DELETE FROM push_deliveries WHERE expires_at <= now()`); err != nil {
 		return err
 	}
 	_, err := s.pool.Exec(ctx, `
@@ -117,66 +133,99 @@ func (s *Service) materialize(ctx context.Context) error {
 	return err
 }
 
-// deliver serializes sending against changes to the installation and its
-// session. The stable delivery UUID lets APNs collapse a retry after a lost ack.
+// deliver sends one alert for all due items of one installation, so a season
+// of new episodes is one notification. Nothing stays locked during the APNs
+// call: a revocation that commits meanwhile lets at most this alert through,
+// and the bookkeeping rechecks the session so no retry follows it.
 func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return false, err
-	}
-	defer tx.Rollback(ctx)
-	var delivery, installation, item, user, library id.ID
-	var token, locale, role string
-	var eligible bool
-	err = tx.QueryRow(ctx, `
-		SELECT d.id,p.id,m.id,u.id,m.library_id,p.device_token,p.locale,u.role,
-		  coalesce(m.added_at > CASE m.kind WHEN 'movie' THEN p.movies_since WHEN 'episode' THEN p.episodes_since END,false)
-		  AND EXISTS (SELECT 1 FROM media_versions v JOIN media_files f ON f.version_id=v.id
-			WHERE v.item_id=m.id AND f.role='media' AND f.missing_since IS NULL)
-		FROM sessions s
-		JOIN push_installations p ON p.session_id=s.id
-		JOIN push_deliveries d ON d.installation_id=p.id
-		JOIN media_items m ON m.id=d.item_id
-		JOIN users u ON u.id=s.user_id
+	var installation id.ID
+	var token, locale string
+	err := s.pool.QueryRow(ctx, `
+		SELECT p.id,p.device_token,p.locale
+		FROM push_deliveries d
+		JOIN push_installations p ON p.id=d.installation_id
+		JOIN sessions s ON s.id=p.session_id
 		WHERE s.revoked_at IS NULL AND NOT d.finished AND p.environment=$1 AND d.next_attempt_at <= now() AND d.expires_at > now()
-		ORDER BY d.next_attempt_at,d.id LIMIT 1 FOR UPDATE OF s,p,d SKIP LOCKED FOR SHARE OF u SKIP LOCKED
-	`, s.apns.environment).Scan(&delivery, &installation, &item, &user, &library, &token, &locale, &role, &eligible)
+		ORDER BY d.next_attempt_at,d.id LIMIT 1
+	`, s.apns.environment).Scan(&installation, &token, &locale)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	if eligible && role != "owner" && role != "admin" {
-		err := tx.QueryRow(ctx, `SELECT true FROM library_permissions
-			WHERE user_id=$1 AND library_id=$2 FOR SHARE`, user, library).Scan(&eligible)
-		if errors.Is(err, pgx.ErrNoRows) {
-			eligible = false
-		} else if err != nil {
+	rows, err := s.pool.Query(ctx, `
+		SELECT d.id,
+		  coalesce(m.added_at > CASE m.kind WHEN 'movie' THEN p.movies_since WHEN 'episode' THEN p.episodes_since END,false)
+		  AND EXISTS (SELECT 1 FROM media_versions v JOIN media_files f ON f.version_id=v.id
+			WHERE v.item_id=m.id AND f.role='media' AND f.missing_since IS NULL)
+		  AND (u.role IN ('owner','admin') OR EXISTS (SELECT 1 FROM library_permissions l
+			WHERE l.user_id=u.id AND l.library_id=m.library_id))
+		FROM push_deliveries d
+		JOIN push_installations p ON p.id=d.installation_id
+		JOIN sessions s ON s.id=p.session_id AND s.revoked_at IS NULL
+		JOIN users u ON u.id=s.user_id
+		JOIN media_items m ON m.id=d.item_id
+		WHERE p.id=$1 AND NOT d.finished AND d.next_attempt_at <= now() AND d.expires_at > now()
+		ORDER BY d.id
+	`, installation)
+	if err != nil {
+		return false, err
+	}
+	var due, eligible []id.ID
+	for rows.Next() {
+		var delivery id.ID
+		var ok bool
+		if err := rows.Scan(&delivery, &ok); err != nil {
+			rows.Close()
 			return false, err
 		}
+		due = append(due, delivery)
+		if ok {
+			eligible = append(eligible, delivery)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return false, err
 	}
 	result := rejected
-	if eligible {
+	if len(eligible) > 0 {
 		var status int
-		result, status = s.apns.send(ctx, token, locale, delivery.String(), item.String())
+		// The first delivery id stays stable across retries, so APNs drops a
+		// duplicate after a lost ack; the collapse id replaces an older alert.
+		result, status = s.apns.send(ctx, token, locale, eligible[0].String(), installation.String())
 		if result != accepted && result != invalidDevice {
 			log.Warn("APNs delivery unsuccessful", "status", status)
 		}
 	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+	// Recheck: a session revoked during the call takes its installation and
+	// queue with it, so nothing below can schedule another attempt.
+	if _, err := tx.Exec(ctx, `DELETE FROM push_installations p USING sessions s
+		WHERE p.id=$1 AND s.id=p.session_id AND s.revoked_at IS NOT NULL`, installation); err != nil {
+		return false, err
+	}
+	finished := due
 	switch result {
 	case invalidDevice:
 		_, err = tx.Exec(ctx, `DELETE FROM push_installations WHERE id=$1`, installation)
 	case retry:
+		finished = slices.DeleteFunc(slices.Clone(due), func(d id.ID) bool { return slices.Contains(eligible, d) })
 		_, err = tx.Exec(ctx, `
 			UPDATE push_deliveries
 			SET attempts=attempts+1, next_attempt_at=now()+interval '1 minute' * (1 << least(attempts,5))
-			WHERE id=$1
-		`, delivery)
-	default:
-		_, err = tx.Exec(ctx, `UPDATE push_deliveries SET finished=true WHERE id=$1`, delivery)
+			WHERE id=ANY($1)
+		`, eligible)
 	}
 	if err != nil {
+		return false, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE push_deliveries SET finished=true WHERE id=ANY($1)`, finished); err != nil {
 		return false, err
 	}
 	return true, tx.Commit(ctx)

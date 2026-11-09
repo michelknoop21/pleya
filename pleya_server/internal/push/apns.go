@@ -35,7 +35,9 @@ type APNs struct {
 }
 
 // OpenAPNs reads the configuration and key from an operator-owned read-only mount.
-func OpenAPNs(path string) (*APNs, error) {
+// configDir is the server's /config: everything in it goes into each backup,
+// and the backup only keeps .key and owner-only files secret.
+func OpenAPNs(path, configDir string) (*APNs, error) {
 	if path == "" {
 		return nil, nil
 	}
@@ -59,7 +61,11 @@ func OpenAPNs(path string) (*APNs, error) {
 	default:
 		return nil, errors.New("invalid APNs environment")
 	}
-	data, err = os.ReadFile(filepath.Join(filepath.Dir(path), "AuthKey.p8"))
+	keyPath := filepath.Join(filepath.Dir(path), "AuthKey.p8")
+	if err := checkKeyFile(keyPath, configDir); err != nil {
+		return nil, err
+	}
+	data, err = os.ReadFile(keyPath)
 	if err != nil {
 		return nil, errors.New("cannot read APNs key")
 	}
@@ -77,6 +83,30 @@ func OpenAPNs(path string) (*APNs, error) {
 			Timeout:       8 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		}}, nil
+}
+
+func checkKeyFile(keyPath, configDir string) error {
+	info, err := os.Stat(keyPath)
+	if err != nil {
+		return errors.New("cannot read APNs key")
+	}
+	if info.Mode().Perm()&0o077 != 0 {
+		return fmt.Errorf("APNs key %s is readable by group or others; restrict it to the server user (chmod 600)", keyPath)
+	}
+	if configDir != "" {
+		if rel, err := filepath.Rel(resolvePath(configDir), resolvePath(keyPath)); err == nil && filepath.IsLocal(rel) {
+			return fmt.Errorf("APNs key %s is inside the config directory %s and would end up in backups; mount it elsewhere", keyPath, configDir)
+		}
+	}
+	return nil
+}
+
+func resolvePath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	abs, _ := filepath.Abs(path)
+	return abs
 }
 
 func (a *APNs) providerToken(now time.Time) (string, error) {
@@ -142,8 +172,12 @@ func (a *APNs) send(ctx context.Context, device, locale, notificationID, collaps
 	switch {
 	case resp.StatusCode == http.StatusOK:
 		return accepted, resp.StatusCode
-	case failure.Reason == "BadDeviceToken", failure.Reason == "Unregistered":
+	case failure.Reason == "BadDeviceToken", failure.Reason == "Unregistered", failure.Reason == "DeviceTokenNotForTopic":
 		return invalidDevice, resp.StatusCode
+	case failure.Reason == "ExpiredProviderToken", failure.Reason == "InvalidProviderToken":
+		// The provider token is at fault, not this delivery: sign a new one and retry.
+		a.token = ""
+		return retry, resp.StatusCode
 	case resp.StatusCode >= 500, resp.StatusCode == http.StatusTooManyRequests:
 		return retry, resp.StatusCode
 	default:

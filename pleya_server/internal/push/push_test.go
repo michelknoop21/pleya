@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -164,12 +165,12 @@ func TestDeliveryRequiresOptInAnActiveSessionAndLibraryAccess(t *testing.T) {
 	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false); !errors.Is(err, ErrConflict) {
 		t.Fatalf("old session reclaimed installation: %v", err)
 	}
-	for range 7 {
-		if err := s.Register(ctx, id.New(), user, nextSession, "aabb", "sandbox", "nl", true, false); err != nil {
+	for i := range 7 {
+		if err := s.Register(ctx, id.New(), user, nextSession, fmt.Sprintf("%04x", i), "sandbox", "nl", true, false); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := s.Register(ctx, id.New(), user, nextSession, "aabb", "sandbox", "nl", true, false); !errors.Is(err, ErrConflict) {
+	if err := s.Register(ctx, id.New(), user, nextSession, "ffff", "sandbox", "nl", true, false); !errors.Is(err, ErrConflict) {
 		t.Fatalf("session exceeded installation quota: %v", err)
 	}
 }
