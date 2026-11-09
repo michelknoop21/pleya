@@ -43,7 +43,10 @@ services:
     mem_limit: 128m
     depends_on:
       - relay
-    command: tunnel --no-autoupdate run
+    # http2 over TCP in plaats van QUIC over UDP. Met QUIC liet de NAS-lijn
+    # meerdere keren per dag verbindingen vallen ("timeout: no recent network
+    # activity"), en een upload die daarop liep kreeg een 502 (9 nov 2026).
+    command: tunnel --no-autoupdate --protocol http2 run
     networks:
       - default
       - pleya-server
