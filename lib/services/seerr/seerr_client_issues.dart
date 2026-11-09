@@ -45,11 +45,21 @@ extension SeerrClientIssues on SeerrClient {
     final pages = info is Map ? SeerrClient._int(info['pages']) : null;
     return (
       items: [
-        for (final row in results)
-          if (row is Map) SeerrIssue.fromJson(row.cast<String, dynamic>()),
+        for (final row in results) ?_parseRow(row),
       ].where((issue) => (!scoped || issue.creatorId == user) && (status == null || issue.status == status)).toList(),
       hasMore: pages == null ? results.length == take : page < pages,
     );
+  }
+
+  /// One malformed row (unknown status, bad id) must not take the page down.
+  SeerrIssue? _parseRow(Object? row) {
+    if (row is! Map) return null;
+    try {
+      return SeerrIssue.fromJson(row.cast<String, dynamic>());
+    } on FormatException catch (e) {
+      appLogger.w('seerr: skipping an unreadable issue row: ${e.message}');
+      return null;
+    }
   }
 
   Future<SeerrIssue> getIssue(int id) async {

@@ -16,7 +16,11 @@ import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/screens/my_pleya_screen.dart';
 import 'package:pleya/screens/profile/profile_switch_screen.dart';
+import 'package:pleya/services/seerr/seerr_client.dart';
+import 'package:pleya/services/seerr/seerr_constants.dart';
+import 'package:pleya/services/seerr/seerr_session.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
 import '../test_helpers/prefs.dart';
@@ -65,6 +69,24 @@ class _RouteRecorder extends NavigatorObserver {
 }
 
 Profile _profile(String name) => Profile.local(id: name, displayName: name, createdAt: DateTime.utc(2026, 8, 17));
+
+class _IssueSeerr extends ConfiguredSeerrDouble {
+  _IssueSeerr()
+    : _client = SeerrClient(
+        SeerrSession(
+          baseUrl: 'https://seerr.example',
+          authMode: SeerrAuthMode.local,
+          cookie: 'connect.sid=fixture',
+          userId: 7,
+          permissions: SeerrPermission.manageIssues,
+        ),
+      );
+
+  final SeerrClient _client;
+
+  @override
+  SeerrClient? get client => _client;
+}
 
 const bool _verifyOn = bool.fromEnvironment('PLEYA_VERIFY');
 const String _skipReason = 'run with --dart-define=PLEYA_VERIFY=true';
@@ -200,6 +222,22 @@ void main() {
     expect(find.byType(ProfileAvatar), findsWidgets);
     expect(find.text('Zonder foto'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group('Seerr-meldingen entry', () {
+    final ios = monoTheme(dark: true).copyWith(platform: TargetPlatform.iOS);
+    tearDown(() => TvDetectionService.debugSetIOSAppOnMacOverride(null));
+
+    testWidgets('shows on iOS handhelds', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+    });
+
+    testWidgets('is absent in the iOS-app-on-Mac container', (tester) async {
+      TvDetectionService.debugSetIOSAppOnMacOverride(true);
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      expect(find.text(t.seerrIssues.title), findsNothing);
+    });
   });
 
   double topOf(WidgetTester tester, String text) => tester.getTopLeft(find.text(text)).dy;

@@ -94,7 +94,7 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
     final profile = active?.active;
     final seerr = context.watch<SeerrProvider?>();
     final issueClient = seerr?.client;
-    final phone = PlatformDetector.isHandheldIOS(context);
+    final showIssues = PlatformDetector.isHandheldIOS(context) && !TvDetectionService.isIOSAppOnMacSync();
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
     final watchlist = context.watch<WatchlistProvider?>();
     final downloads = context.watch<DownloadProvider?>();
@@ -147,7 +147,11 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       ),
       row(TvMyPleyaSection.downloads, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
       row(TvMyPleyaSection.requests, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
-      if (phone && !isOffline && active?.isBinding == false && profile != null && issueClient?.canViewIssues == true)
+      if (showIssues &&
+          !isOffline &&
+          active?.isBinding == false &&
+          profile != null &&
+          issueClient?.canViewIssues == true)
         _MyPleyaRow(
           instance: 'seerrIssues',
           icon: Symbols.chat_bubble_outline_rounded,

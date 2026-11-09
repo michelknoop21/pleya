@@ -14,6 +14,7 @@ import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/platform_detector.dart';
+import '../../widgets/focusable_filter_chip.dart';
 import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/mobile/mobile_dense_title_row.dart';
@@ -225,10 +226,12 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
             ],
           ),
           if (_client.canViewAllIssues && _user != null)
-            FilterChip(
+            FocusableFilterChip(
               selected: _own,
-              label: Text(t.seerrIssues.mine),
-              onSelected: _busy ? null : (value) => _filter(own: value),
+              label: t.seerrIssues.mine,
+              onPressed: () {
+                if (!_busy) _filter(own: !_own);
+              },
             ),
         ],
       ),

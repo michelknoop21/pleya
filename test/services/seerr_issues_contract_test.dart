@@ -88,4 +88,15 @@ void main() {
       'POST /api/v1/issue/1/open',
     ]);
   });
+
+  test('a row with an unknown status or a bad id is skipped, the rest of the page stays', () async {
+    final seerr = client(SeerrPermission.manageIssues, (_) async {
+      return json({
+        'results': [issue(1, 7), issue(2, 7, status: 9), issue(0, 7), issue(3, 7)],
+        'pageInfo': {'pages': 1},
+      });
+    });
+    final result = await seerr.getIssues();
+    expect(result.items.map((row) => row.id), [1, 3]);
+  });
 }
