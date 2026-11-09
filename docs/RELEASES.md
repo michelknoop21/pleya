@@ -18,8 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### Fixed
-- macOS-pkg leesbaar voor iedereen, ook bij umask 077
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -48,8 +47,38 @@ under `Notes`.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+
+## 2.8.1 · build 456 · 9 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 031401ee51b5351e78594aeea4d4b05369f73416 -->
+
+### New
+
+- **Seerr reports on iPhone.** When your Seerr account may see reports, My Pleya shows a
+  Meldingen row. It lists open, resolved and your own reports, opens one with its conversation,
+  and lets you reply. An account that may manage reports can resolve or reopen one. A change
+  Seerr does not confirm is shown as unconfirmed.
+
+### Improved
+
+- **New player controls.** The title and quality line sit in the bottom block next to the
+  timeline, with one set of colours for the play button, timeline and buffer. On iPhone and
+  iPad play and skip sit in the middle, settings and tracks in the row above them.
+- **Requests on Apple TV has a new overview** with a smaller header on its landing page.
+- **The offline index loads with less memory.** The index file is now read and decoded in the
+  background instead of first being copied into the app's main memory.
+
 ### Fixed
 
+- **One card per title in Continue Watching.** Two servers that hold the same film could show it
+  as two cards when one Plex library names it differently from the other, or when a library
+  still uses the old Plex agent. A title is now one card when its IMDb, TMDB or TVDB number
+  proves it is the same film or series. Titles without such a number stay apart: a matching
+  name, poster or year is not proof.
+- **On Apple TV the line under Continue Watching describes the card the remote is on**, also
+  after Home reloads in the background, and stays empty while "Alle" has focus.
+- **A swipe on the Siri Remote no longer jumps through a playing film.** While a film plays, a
+  horizontal swipe shows the controls. Swipe scrubbing still works when the film is paused.
 - **The Meenemen card now shows up on the iPhone.** The Apple TV announces a player from the
   moment it opens, before it can say what plays. A phone that asked in those first seconds got
   no answer and never asked that Apple TV again, so the card on Home stayed away for the whole
@@ -58,9 +87,14 @@ under `Notes`.
 
 ### Notes
 
+- Worth checking: Continue Watching on the Apple TV. If one title still shows twice, turn on
+  debug logging in the settings, open Home, and upload a log. The log now says why two cards
+  stayed apart, without naming the title.
 - Worth checking: start a film on the Apple TV with Pleya open on Home on the iPhone. The
   "Speelt op" card should appear within about fifteen seconds once the film plays, or half a
   minute later if the Apple TV took long to start it; then tap Meenemen.
+- Worth checking: swipe left and right on the remote during playback, then pause and swipe.
+- Not on Mac in this build.
 
 ## 2.8.1 · build 455 · 9 November 2026 · Apple TV
 
