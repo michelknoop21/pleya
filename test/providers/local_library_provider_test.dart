@@ -382,6 +382,58 @@ void main() {
     expect(provider.page('one:films', const LibraryQuery()), isNull);
   });
 
+  group('poster lookup', () {
+    var policyCalls = 0;
+    var allowed = true;
+
+    Future<void> open() async {
+      provider.dispose();
+      final seeded = LocalLibraryStore(root);
+      await seeded.load();
+      await seeded.saveLibrary(library, client.rows, complete: true);
+      await seeded.savePoster('one', '/shared-poster', Uint8List.fromList([1, 2, 3]));
+      allowed = true;
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) {
+          policyCalls++;
+          return allowed;
+        },
+        mayReadLibrary: (_) => true,
+        networkConnected: () => true,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+      );
+      await provider.ready;
+      await Future<void>.delayed(Duration.zero); // the startup sync, off here
+    }
+
+    test('posterPath asks the server policy once per server until a change', () async {
+      await open();
+      policyCalls = 0;
+      for (var i = 0; i < 1000; i++) {
+        expect(provider.posterPath('one', '/shared-poster'), isNotNull);
+      }
+      expect(policyCalls, 1);
+      changes.notifyListeners();
+      policyCalls = 0; // the change reads the policy for its own signatures
+      expect(provider.posterPath('one', '/shared-poster'), isNotNull);
+      expect(policyCalls, 1, reason: 'a change empties the cached answer');
+    });
+
+    test('a server revoked while the grid is mounted hides its posters at once', () async {
+      await open();
+      expect(provider.posterPath('one', '/shared-poster'), isNotNull);
+      allowed = false;
+      changes.notifyListeners();
+      expect(provider.posterPath('one', '/shared-poster'), isNull);
+    });
+  });
+
   test('confirmed source deletion also cleans local data with prefetch disabled', () async {
     wifi = true;
     await provider.setEnabled(true);
@@ -618,6 +670,47 @@ void main() {
       await provider.synchronize();
       expect(total(library), 3);
       expect(provider.state, LocalLibraryState.ready);
+    });
+
+    test('a library that is no longer synced does not hold back the last sync', () async {
+      await open(); // library completed at the first clock reading
+      expect(provider.lastSync, now);
+      libraries = [second];
+      now = now.add(const Duration(days: 3));
+      await provider.synchronize(force: true);
+      expect(provider.lastSync, now, reason: 'the stored library outside the synced set is ignored');
+    });
+
+    test('offline, the last sync is read from the libraries the index shows', () async {
+      provider.dispose();
+      final scanned = DateTime.utc(2026, 2, 1, 21, 7);
+      final seeded = LocalLibraryStore(root, clock: () => scanned);
+      await seeded.load();
+      await seeded.saveLibrary(library, client.rows, complete: true);
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [], // no server online, so nothing to sync
+        clientFor: (_) => null,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+      );
+      await provider.ready;
+      expect(provider.items, isNotEmpty);
+      expect(provider.lastSync, scanned);
+    });
+
+    test('a scan that left titles out still moves the last sync', () async {
+      await open();
+      client.itemErrors['c'] = TimeoutException('slow');
+      now = now.add(const Duration(days: 3));
+      await provider.synchronize(force: true);
+      expect(provider.lastSync, now);
+      expect(provider.state, LocalLibraryState.error);
     });
 
     test('a tap on sync now while another sync runs is not dropped', () async {

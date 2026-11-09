@@ -30,26 +30,9 @@ import '../utils/stored_identity_trust.dart';
 import '../media/unified/carried_external_ids.dart';
 import '../utils/media_image_helper.dart';
 
-int _nextArtworkWriter = 0;
-
-class VisibleArtworkRequest {
-  VisibleArtworkRequest({
-    required this.client,
-    required this.path,
-    required this.url,
-    required this.baseKey,
-    this.permanent = false,
-  });
-  final MediaServerClient client;
-  final String path;
-  final String url;
-  final String baseKey;
-  final bool permanent;
-  String get serverId => client.serverId;
-  String get identity => LocalLibraryStore.digest(
-    permanent ? '$serverId|permanent|${artworkStorageKey(path)}' : '$serverId|${artworkStorageKey(url)}|$baseKey',
-  );
-}
+part 'local_library_provider/visible_artwork.dart';
+part 'local_library_provider/reads.dart';
+part 'local_library_provider/sync_run.dart';
 
 enum LocalLibraryState { disabled, syncing, ready, wifi, offline, storage, storageUnavailable, paused, error }
 
@@ -130,232 +113,6 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   @visibleForTesting
   Future<void> get pendingStoreWrites => _store?.pendingWrites ?? Future.value();
 
-  String artworkCacheKey(String serverId, String url, String baseKey) {
-    if (isDisposed || !mayReadServer(serverId) || _pendingReadInvalidations != 0) return baseKey;
-    final identity = LocalLibraryStore.digest('$serverId|${artworkStorageKey(url)}|$baseKey');
-    return _store?.artworkVariant(identity)['key'] as String? ?? baseKey;
-  }
-
-  bool hasVisibleArtworkLease(Object lease) => _visibleArtwork.containsKey(lease);
-
-  bool _mayMaintainArtwork(VisibleArtworkRequest request) {
-    if (isDisposed ||
-        _pendingReadInvalidations != 0 ||
-        !mayReadServer(request.serverId) ||
-        _store?.serverAccess[request.serverId] == false ||
-        !identical(clientFor(ServerId(request.serverId)), request.client))
-      return false;
-    final reference = '${request.serverId}|${artworkStorageKey(request.path)}';
-    if (_posterReferences.contains(reference)) return true;
-    // A known revoked library cannot borrow another library's permission.
-    final known =
-        _store?.artworkItems.any(
-          (i) =>
-              i.serverId == request.serverId &&
-              [
-                i.thumbPath,
-                i.parentThumbPath,
-                i.grandparentThumbPath,
-              ].whereType<String>().any((path) => artworkStorageKey(path) == artworkStorageKey(request.path)),
-        ) ??
-        false;
-    if (known) return false;
-    return librariesForSync().any((l) => l.serverId == request.serverId && _allowedLibrary(l));
-  }
-
-  void registerVisibleArtwork(Object lease, VisibleArtworkRequest request) {
-    if (!_mayMaintainArtwork(request)) return;
-    _visibleArtwork.remove(lease);
-    _visibleArtwork[lease] = request;
-    if (_visibleArtwork.length > 60) _visibleArtwork.remove(_visibleArtwork.keys.first);
-    _visibleDirty = true;
-    scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));
-  }
-
-  void unregisterVisibleArtwork(Object lease) => _visibleArtwork.remove(lease);
-
-  Future<void> revalidateVisibleArtwork() async {
-    if (_running || _store == null || isDisposed || !_foreground || !_allowedNetwork) return;
-    _running = true;
-    final generation = _generation;
-    bool valid() => !isDisposed && generation == _generation && _foreground && _allowedNetwork;
-    try {
-      await _syncVisibleArtwork(valid);
-    } on LocalLibraryPaused {
-      // Lifecycle/access changes revoke pending publication immediately.
-    } finally {
-      _running = false;
-      if (valid()) safeNotifyListeners();
-      if (_visibleDirty && valid()) scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));
-      // A tap on "sync now" while this ran.
-      if (_forcePending && !isDisposed) scheduleMicrotask(() => unawaited(synchronize(trigger: 'pending')));
-    }
-  }
-
-  Future<void> _syncVisibleArtwork(bool Function() current) async {
-    final store = _store!;
-    _visibleDirty = false;
-    final unique = {for (final r in _visibleArtwork.values) r.identity: r};
-    final requests = unique.values.toList()
-      ..sort((a, b) {
-        final x =
-            (a.permanent ? store.posterFreshness(a.serverId, a.path) : store.artworkVariant(a.identity))['attempted']
-                as String? ??
-            '';
-        final y =
-            (b.permanent ? store.posterFreshness(b.serverId, b.path) : store.artworkVariant(b.identity))['attempted']
-                as String? ??
-            '';
-        return x.compareTo(y);
-      });
-    for (final request in requests) {
-      bool valid() =>
-          current() &&
-          _pendingReadInvalidations == 0 &&
-          mayReadServer(request.serverId) &&
-          !request.client.isOfflineMode &&
-          identical(clientFor(ServerId(request.serverId)), request.client) &&
-          _visibleArtwork.values.any((r) => r.identity == request.identity);
-      void check() {
-        if (!valid()) throw LocalLibraryPaused();
-      }
-
-      check();
-      final now = _artworkClock().toUtc();
-      final budget = store.posterBudget(now);
-      if (budget.total >= 60 || budget.priority >= 20) break;
-      final item = request.permanent
-          ? store.artworkItems
-                .where(
-                  (i) =>
-                      i.serverId == request.serverId &&
-                      i.thumbPath != null &&
-                      artworkStorageKey(i.thumbPath!) == artworkStorageKey(request.path) &&
-                      _allowedItem(i),
-                )
-                .firstOrNull
-          : null;
-      if (request.permanent && item == null) continue;
-      final state = request.permanent
-          ? store.posterFreshness(request.serverId, request.path)
-          : store.artworkVariant(request.identity);
-      Future<void> persist(Map<String, dynamic> state) => request.permanent
-          ? store.savePosterFreshness(request.serverId, request.path, state, isCurrent: valid)
-          : store.saveArtworkVariant(request.identity, state, isCurrent: valid);
-      final attempted = DateTime.tryParse(state['attempted'] as String? ?? '');
-      final retry = DateTime.tryParse(state['retry'] as String? ?? '');
-      if ((attempted != null && now.difference(attempted) < const Duration(minutes: 10)) ||
-          (retry != null && now.isBefore(retry)))
-        continue;
-      final free = await _availableBytes();
-      check();
-      if (free == null || free < 256 * 1024 * 1024) return;
-      state['attempted'] = now.toIso8601String();
-      store.reservePosterAttempt(now, priority: true);
-      await persist(state);
-      check();
-      String? staged;
-      try {
-        if (request.permanent) {
-          final before = store.posterPath(request.serverId, request.path);
-          final result = await _posterRevalidator(request.client, item!, before == null ? {} : state);
-          check();
-          if (result.bytes == null && store.posterPath(request.serverId, request.path) == null) {
-            throw StateError('304 without local poster');
-          }
-          if (result.bytes != null) {
-            await store.savePoster(
-              request.serverId,
-              request.path,
-              result.bytes!,
-              isCurrent: valid,
-              retirePrevious: true,
-            );
-            check();
-          }
-          state.addAll({
-            'variant': result.variant,
-            'etag': result.etag,
-            'lastModified': result.lastModified,
-            'validated': now.toIso8601String(),
-            'failures': 0,
-            'retry': null,
-          });
-          await persist(state);
-          check();
-          if (before != store.posterPath(request.serverId, request.path)) artworkRevision++;
-          safeNotifyListeners();
-        } else {
-          final oldKey = state['key'] as String? ?? request.baseKey;
-          final old = await _artworkCache.getFileFromCache(oldKey);
-          check();
-          final result = await _artworkRevalidator(request.url, old == null ? {} : state);
-          check();
-          if (result.bytes == null && old == null) throw StateError('304 without cached artwork');
-          var nextKey = oldKey;
-          if (result.bytes != null) {
-            final content = sha256.convert(result.bytes!).toString();
-            nextKey = state['content'] == content && old != null
-                ? oldKey
-                : 'artwork_${LocalLibraryStore.digest('$profileId|${request.identity}|$_artworkOwner')}.$content';
-            state['content'] = content;
-            final existing = await _artworkCache.getFileFromCache(nextKey);
-            check();
-            if (existing == null) {
-              staged = nextKey;
-              await _artworkCache.putFile(
-                request.url,
-                result.bytes!,
-                key: nextKey,
-                eTag: result.etag,
-                maxAge: const Duration(days: 14),
-              );
-              check();
-            }
-          }
-          state.addAll({
-            'key': nextKey,
-            'variant': result.variant,
-            'etag': result.etag,
-            'lastModified': result.lastModified,
-            'validated': now.toIso8601String(),
-            'failures': 0,
-            'retry': null,
-          });
-          await store.saveArtworkVariant(request.identity, state, isCurrent: valid);
-          check();
-          staged = null; // Published only after successful cache IO and guards.
-          if (nextKey != oldKey) artworkRevision++;
-          safeNotifyListeners();
-        }
-      } on LocalLibraryPaused {
-        rethrow;
-      } catch (_) {
-        check();
-        final failures = ((state['failures'] as int? ?? 0) + 1).clamp(1, 5);
-        final old = request.permanent
-            ? store.posterFreshness(request.serverId, request.path)
-            : store.artworkVariant(request.identity);
-        old.addAll({
-          'attempted': now.toIso8601String(),
-          'failures': failures,
-          'retry': now.add(Duration(minutes: 10 * (1 << (failures - 1)))).toIso8601String(),
-        });
-        await persist(old);
-      } finally {
-        if (staged != null) {
-          // Failed/late new versions are not active. The prior key was never
-          // overwritten, and normal CE GC continues to own published versions.
-          try {
-            await _artworkCache.removeFile(staged);
-          } catch (_) {
-            /* Best-effort cleanup of an unpublished CE candidate. */
-          }
-        }
-      }
-    }
-  }
-
   LocalLibraryStore? _store;
   Timer? _timer;
   StreamSubscription<DeletionEvent>? _deletions;
@@ -385,10 +142,28 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
 
   bool get enabled => _store?.enabled ?? false;
   bool get wifiOnly => _store?.wifiOnly ?? true;
-  DateTime? get lastSync => _store?.lastSync;
+
+  /// The oldest last scan, complete or with titles left out, over the
+  /// libraries synced now. A stored library outside that set (hidden, server
+  /// gone or in auth error) is never scanned again and would pin it forever.
+  /// Offline nothing is synced, so the libraries the index shows stand in.
+  DateTime? get lastSync {
+    final synced = librariesForSync().where(_allowedLibrary).toList();
+    DateTime? oldest;
+    for (final library in synced.isEmpty ? _visibleLibraries : synced) {
+      final at = _store?.lastScan(library.globalKey)?.at;
+      if (at != null && (oldest == null || at.isBefore(oldest))) oldest = at;
+    }
+    return oldest;
+  }
+
   List<MediaLibrary> _visibleLibraries = [];
   List<MediaItem> _visibleItems = [];
   final Set<String> _posterReferences = {};
+
+  /// [mayReadServer] per server for [posterPath], emptied on every dependency
+  /// change and read invalidation before listeners hear of it.
+  final Map<String, bool> _readableServers = {};
   List<MediaLibrary> get libraries => _visibleLibraries;
   List<MediaItem> get items => _visibleItems;
 
@@ -538,6 +313,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   // Fail closed during persistence: a restarted catalog cannot read the
   // just-cleared/deleted cache or fall back to an old in-flight response.
   void _beginReadInvalidation() {
+    _readableServers.clear();
     _pendingReadInvalidations++;
     _readBoundaryRevision++;
     revision++;
@@ -591,6 +367,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   }
 
   void _changed() {
+    _readableServers.clear();
     // Update the in-memory access boundary synchronously before notifying reads.
     unawaited(_updateAccess());
     final readSignature = _readSignature;
@@ -643,271 +420,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   }
 
   /// [trigger] only labels the `syncstats` log line.
-  Future<void> synchronize({bool force = false, String trigger = 'other'}) async {
-    final store = _store;
-    if (force) _forcePending = true;
-    if (_running || store == null || isDisposed) return;
-    if (!enabled) {
-      // Nothing to force while off; a kept flag would rerun this from
-      // revalidateVisibleArtwork without end.
-      _forcePending = false;
-      await revalidateVisibleArtwork();
-      state = LocalLibraryState.disabled;
-      safeNotifyListeners();
-      return;
-    }
-    if (!_foreground || !_allowedNetwork) {
-      state = !_foreground
-          ? LocalLibraryState.paused
-          : !networkConnected()
-          ? LocalLibraryState.offline
-          : LocalLibraryState.wifi;
-      safeNotifyListeners();
-      return;
-    }
-    _running = true;
-    ScanDiagnostics.scanning = true;
-    final watch = Stopwatch()..start();
-    final notifiesBefore = _notifies;
-    // RSS as dart:io sees it sits below the tvOS phys_footprint, so it only
-    // compares one sync with another, never with the system memory limit.
-    final rssStart = ProcessInfo.currentRss;
-    var scanned = 0;
-    var skipped = 0;
-    final forced = _forcePending;
-    _forcePending = false;
-    final generation = _generation;
-    bool valid() => !isDisposed && generation == _generation && enabled && _foreground && _allowedNetwork;
-    state = LocalLibraryState.syncing;
-    done = 0;
-    safeNotifyListeners();
-    var failed = false;
-    var paused = false;
-    var checked = DateTime.fromMillisecondsSinceEpoch(0);
-    Future<bool> space() async {
-      if (!valid()) return false;
-      if (DateTime.now().difference(checked) < const Duration(seconds: 2)) return true;
-      final free = await _availableBytes();
-      if (!valid()) return false;
-      checked = DateTime.now();
-      if (free == null || free < 256 * 1024 * 1024) {
-        state = free == null ? LocalLibraryState.storageUnavailable : LocalLibraryState.storage;
-        return false;
-      }
-      return true;
-    }
-
-    // Libraries this sync is for, against `libs=` stored ones: a stored library
-    // that is no longer synced keeps its completion date (lastSync).
-    var synced = 0;
-    try {
-      for (final library in librariesForSync().where(_allowedLibrary)) {
-        synced++;
-        if (!valid()) throw LocalLibraryPaused();
-        if (!forced && _recentlyScanned(store, library)) {
-          skipped++;
-          continue;
-        }
-        final client = clientFor(ServerId(library.serverId!));
-        if (client == null || client.isOfflineMode) {
-          failed = true;
-          continue;
-        }
-        scanned++;
-        final stats = _scanStats = ScanStats();
-        var result = 'error';
-        try {
-          final priorDone = done;
-          final priorKeys = store.libraryItems(library.globalKey).map((item) => item.globalKey).toSet();
-          LocalLibraryPartialScan? partial;
-          try {
-            await LocalLibrarySync(
-              store: store,
-              stats: stats,
-              mayContinue: space,
-              onCheckpoint: () {
-                if (!valid()) return;
-                _refreshReadIndex();
-                safeNotifyListeners();
-              },
-              onProgress: (count, title) {
-                done = priorDone + count;
-                currentTitle = title;
-                // Update progress at most every ten items, not every IO/gesture.
-                if (count % 10 == 0) safeNotifyListeners();
-              },
-            ).syncLibrary(library, client, isCurrent: () => valid() && _allowedLibrary(library));
-          } on LocalLibraryPartialScan catch (error) {
-            // Saved, so published below like a full scan, but not healthy.
-            partial = error;
-          }
-          if (!valid()) throw LocalLibraryPaused();
-          result = partial == null ? 'complete' : 'partial';
-          revision++;
-          _refreshReadIndex();
-          // A completed scan may prove removals as well as append content.
-          // Such membership loss is a hard boundary, never a retained row.
-          if (!store.libraryItems(library.globalKey).map((item) => item.globalKey).toSet().containsAll(priorKeys)) {
-            _readBoundaryRevision++;
-          }
-          _lastReadSignature = _readSignature;
-          _queryCache.clear();
-          safeNotifyListeners();
-          if (partial != null) {
-            failed = true;
-            appLogger.w('Local library scan saved without some titles', error: partial);
-          }
-        } on LocalLibraryPaused {
-          result = 'paused';
-          rethrow;
-        } catch (error, stack) {
-          failed = true;
-          appLogger.w('Local library scan incomplete; retaining previous snapshot', error: error, stackTrace: stack);
-        } finally {
-          _scanStats = null;
-          appLogger.i(
-            stats.line(
-              library: library.title,
-              backend: library.backend.name,
-              result: result,
-              items: store.libraryItems(library.globalKey).length,
-            ),
-          );
-        }
-      }
-      await _syncVisibleArtwork(valid);
-      await LocalLibrarySync(
-        store: store,
-        mayContinue: space,
-        clock: _artworkClock,
-        posterRevalidator: _posterRevalidator,
-      ).syncPosters(store.artworkItems.where(_allowedItem), (id) => clientFor(ServerId(id)), isCurrent: valid);
-      if (valid()) safeNotifyListeners();
-    } on LocalLibraryPaused {
-      paused = true;
-    } finally {
-      if (!isDisposed) {
-        try {
-          bytes = await store.storageBytes();
-        } catch (_) {
-          failed = true;
-        }
-      }
-      _running = false;
-      ScanDiagnostics.scanning = false;
-      appLogger.i(
-        'syncstats trigger=$trigger ms=${watch.elapsedMilliseconds} scanned=$scanned skipped=$skipped '
-        'notifies=${_notifies - notifiesBefore} libs=${store.libraries.length}/$synced '
-        'rows=${store.artworkItems.length} '
-        'rss=${rssStart >> 20}/${ProcessInfo.currentRss >> 20}/${ProcessInfo.maxRss >> 20}MB',
-      );
-      if (_visibleDirty && !isDisposed) scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));
-      if (forced && (paused || generation != _generation)) _forcePending = true;
-      if (!isDisposed) {
-        if (generation != _generation) {
-          state = enabled ? LocalLibraryState.paused : LocalLibraryState.disabled;
-          if (enabled && _foreground && _allowedNetwork)
-            scheduleMicrotask(() => unawaited(synchronize(trigger: 'retry')));
-        } else if (!paused) {
-          state = failed ? LocalLibraryState.error : LocalLibraryState.ready;
-          // A tap on "sync now" while this sync ran.
-          if (_forcePending) scheduleMicrotask(() => unawaited(synchronize(trigger: 'pending')));
-        }
-        safeNotifyListeners();
-      }
-    }
-  }
-
-  String? posterPath(String? serverId, String? path) {
-    ScanDiagnostics.posterPathCalls++;
-    if (isDisposed || serverId == null || path == null || !mayReadServer(serverId)) return null;
-    // Image reads obey the same library boundary as metadata reads.
-    if (!_posterReferences.contains('$serverId|${artworkStorageKey(path)}')) return null;
-    _store?.prioritizePoster(serverId, path);
-    return _store?.posterPath(serverId, path);
-  }
-
-  MediaItem? item(String serverId, String id) {
-    final item = _store?.item(serverId, id);
-    return item != null && _allowedItem(item) ? item : null;
-  }
-
-  List<MediaItem> children(MediaItem parent) =>
-      items.where((i) => i.serverId == parent.serverId && i.parentId == parent.id).toList()
-        ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
-  List<MediaItem> episodes(MediaItem parent) =>
-      items
-          .where(
-            (i) =>
-                i.serverId == parent.serverId &&
-                (i.parentId == parent.id || i.grandparentId == parent.id) &&
-                i.kind.id == 'episode',
-          )
-          .toList()
-        ..sort((a, b) {
-          final season = (a.parentIndex ?? 0).compareTo(b.parentIndex ?? 0);
-          return season != 0 ? season : (a.index ?? 0).compareTo(b.index ?? 0);
-        });
-  List<MediaItem> search(String query) {
-    final needle = query.trim().toLowerCase();
-    if (needle.isEmpty) return const [];
-    return items
-        .where(
-          (i) =>
-              i.displayTitle.toLowerCase().contains(needle) ||
-              (i.summary?.toLowerCase().contains(needle) ?? false) ||
-              (i.roles?.any((r) => r.tag.toLowerCase().contains(needle)) ?? false),
-        )
-        .toList();
-  }
-
-  LibraryPage<MediaItem>? page(String libraryKey, LibraryQuery query) {
-    final store = _store;
-    if (store == null || !store.isComplete(libraryKey) || !libraries.any((l) => l.globalKey == libraryKey)) return null;
-    final key = (library: libraryKey, query: query.copyWith(offset: 0, limit: 0));
-    // Dart maps preserve insertion order: removing a hit promotes it on reinsertion.
-    var result = _queryCache.remove(key);
-    if (result == null) {
-      result = queryLocalLibrary(store.libraryItems(libraryKey), query);
-      if (result == null) return null;
-    }
-    _queryCache[key] = result;
-    if (_queryCache.length > _maxCachedQueries) {
-      _queryCache.remove(_queryCache.keys.first);
-    }
-    return LibraryPage(
-      items: result.skip(query.offset).take(query.limit).toList(),
-      totalCount: result.length,
-      offset: query.offset,
-    );
-  }
-
-  ExternalIds? externalIds(String serverId, String targetId) {
-    final cached = item(serverId, targetId);
-    if (cached == null) return null;
-    if (!canTrustStoredIdentity(cached, clientFor(ServerId(serverId)))) return null;
-    if (hasAppliedExternalIds(cached)) return externalIdsCarriedBy(cached);
-    final raw = cached.raw;
-    final local = raw?['pleyaLocalExternalIds'];
-    if (local is Map<String, Object?>) {
-      final ids = ExternalIds.fromJson(local);
-      // A Pleya Server answer is final only when the scan marked it so: the
-      // server knew the field and said what it has, numbers or none. A snapshot
-      // from before that, or from a server that predates the field, may be empty
-      // for the wrong reason, so null sends the caller to the server. A final
-      // empty answer is kept: no network on every screen build for unmatched
-      // titles.
-      if (cached.backend == MediaBackend.pleyaServer && raw?['pleyaLocalExternalIdsFinal'] != true) return null;
-      return ids;
-    }
-    // A Pleya Server snapshot without a stored answer (the lookup failed during
-    // the scan) is unknown, not empty.
-    if (cached.backend == MediaBackend.pleyaServer) return null;
-    final ids = raw?['ProviderIds'];
-    if (ids is Map<String, Object?>) return ExternalIds.fromJellyfinProviderIds(ids);
-    final guids = raw?['Guid'];
-    return guids is List ? ExternalIds.fromGuids(guids) : const ExternalIds();
-  }
+  Future<void> synchronize({bool force = false, String trigger = 'other'}) => _runSync(force: force, trigger: trigger);
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

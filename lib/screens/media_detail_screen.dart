@@ -1,9 +1,9 @@
 import '../utils/offline_playback_target.dart';
 import '../providers/local_library_provider.dart';
+import 'media_detail/offline_artwork_file.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 import '../media/ids.dart';
-import 'dart:io';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../automation/automation_event_log.dart';
@@ -1400,11 +1400,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   String? _offlineArtworkLocalPath(BuildContext context, String? artworkPath) {
     if (!widget.isOffline || _metadata.serverId == null) return null;
-    final localPath =
-        context.read<LocalLibraryProvider?>()?.posterPath(_metadata.serverId, artworkPath) ??
-        context.read<DownloadProvider>().getArtworkLocalPath(ServerId(_metadata.serverId!), artworkPath);
-    if (localPath == null || !File(localPath).existsSync()) return null;
-    return localPath;
+    return offlineArtworkFile(
+      context.read<LocalLibraryProvider?>()?.posterPath(_metadata.serverId, artworkPath),
+      () => context.read<DownloadProvider>().getArtworkLocalPath(ServerId(_metadata.serverId!), artworkPath),
+    );
   }
 
   Widget _buildHeroNetworkArtwork(

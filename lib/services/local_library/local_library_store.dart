@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
@@ -86,17 +87,26 @@ class LocalLibraryStore {
   Future<void> get pendingWrites => _pending;
 
   static String digest(String value) => sha256.convert(utf8.encode(value)).toString();
-  static String _posterKey(String serverId, String path) => digest('$serverId|${artworkStorageKey(path)}');
+  // Poster keys by reference: a card asks for its poster on every provider
+  // notification, so each key is hashed once. Bounded by the poster references
+  // seen since load; [clear] empties it.
+  final Map<String, String> _posterKeyMemo = {};
+  String _posterKey(String serverId, String path) {
+    final reference = '$serverId|${artworkStorageKey(path)}';
+    return _posterKeyMemo[reference] ??= posterKeyDigest(reference);
+  }
+
+  /// The sha256 behind a poster key; a test overrides it to count.
+  @visibleForTesting
+  String posterKeyDigest(String reference) => digest(reference);
   static Set<String> _posterKeys(Set<(String, String)> posters) => {
-    for (final (serverId, path) in posters) _posterKey(serverId, path),
+    for (final (serverId, path) in posters) digest('$serverId|${artworkStorageKey(path)}'),
   };
   List<MediaItem> get items => _items.values.expand((v) => v.values).toList(growable: false);
   List<MediaLibrary> get libraries => _libraries.values.toList(growable: false);
   bool isComplete(String key) => _completed.containsKey(key);
   DateTime? completedAt(String key) => _completed[key];
   ({DateTime at, int? updatedAt})? lastScan(String key) => _lastScan[key];
-  DateTime? get lastSync =>
-      _completed.values.isEmpty ? null : _completed.values.reduce((a, b) => a.isBefore(b) ? a : b);
   MediaItem? item(String serverId, String id) {
     for (final rows in _items.values) {
       final hit = rows['$serverId:$id'];
@@ -400,6 +410,10 @@ class LocalLibraryStore {
     }
   });
 
+  /// The stored file for this poster, from memory: no hashing after the first
+  /// call and no file IO. The image widget checks that the file still exists.
+  String? knownPosterPath(String serverId, String path) => _posters[_posterKey(serverId, path)];
+
   String? posterPath(String serverId, String path) {
     final saved = _posters[_posterKey(serverId, path)];
     return saved != null && File(saved).existsSync() ? saved : null;
@@ -465,6 +479,7 @@ class LocalLibraryStore {
     _artworkVariants.clear();
     _posterPriority.clear();
     _posterAttempts.clear();
+    _posterKeyMemo.clear();
     await _removeContent();
     await _atomic(_optionsFile, jsonEncode(_options), () => true);
   });
