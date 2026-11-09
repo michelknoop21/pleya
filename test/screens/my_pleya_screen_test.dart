@@ -290,6 +290,33 @@ void main() {
     });
   });
 
+  group('Notificaties entry', () {
+    final ios = monoTheme(dark: true).copyWith(platform: TargetPlatform.iOS);
+    tearDown(() => TvDetectionService.debugSetIOSAppOnMacOverride(null));
+
+    testWidgets('shows on iOS handhelds, above the late Seerr-meldingen row', (tester) async {
+      tester.view.physicalSize = const Size(390, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      final notifications = tester.element(find.text(t.pleyaNotifications.title));
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+      expect(identical(tester.element(find.text(t.pleyaNotifications.title)), notifications), isTrue);
+      expect(
+        tester.getTopLeft(find.text(t.pleyaNotifications.title)).dy,
+        lessThan(tester.getTopLeft(find.text(t.seerrIssues.title)).dy),
+      );
+    });
+
+    testWidgets('is absent in the iOS-app-on-Mac container, where push does not run', (tester) async {
+      TvDetectionService.debugSetIOSAppOnMacOverride(true);
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.pleyaNotifications.title), findsNothing);
+    });
+  });
+
   double topOf(WidgetTester tester, String text) => tester.getTopLeft(find.text(text)).dy;
 
   testWidgets('A-24b Editorial: title, Jouw content and the Pleya rows in the northstar order', (tester) async {

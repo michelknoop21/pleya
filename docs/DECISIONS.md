@@ -5795,3 +5795,25 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 5. Het metadatablok van de Verder kijken-rail op tvOS leest bij een gelijke groupId de verse groep (poster en Select deden dat al), beschrijft niets zolang de focus op "Alle N" staat, en `focusGroup` meldt geen succes meer voor een tegel die uit de band is geschoven.
 **Afgewezen:** samenvoegen op titel, poster of jaar (geen bewijs); een filter in de interface (lost alleen dit scherm op); een algemene slotpas voor unieke groupIds (breekt het bewuste contract in `unified_catalog_provider.dart`, test "groupId is not unique").
 **Consequences:** Twee bronnen die een nummer delen en alleen in guid verschillen, zijn voortaan één kaart met twee bronnen, op elk scherm dat `groupUnifiedMediaSources` gebruikt. Een titel zonder bewezen nummer blijft apart, net als een mislukte opzoeking en een item met agent `none`. Niet bewezen op hardware; de Verify-run gebruikt de Pleya-protocolfixture en kan het Plex-guidgeval niet nabootsen. **Unified impact:** gedeelde eigenaar is `grouping_service.dart`; geldt voor Plex, Jellyfin, Emby en Pleya Server. De legacy-vertaling raakt alleen Plex. Geen protocolwijziging. Bewijs: `test/services/unified_grouping_service_test.dart`, `test/services/unified_catalog/home_projection_service_test.dart`, `test/services/plex_item_gone_test.dart`, `test/widgets/tv_discovery_rail_test.dart`, scenario `tvos.unified.continue-watching-one-card`.
+
+<a id="pushvenster-2026-11-08"></a>
+## DEC-XXX. Opt-in push via de eigen Pleya Server
+
+Michel koos op 7 november 2026 voor volledige selfhosting en gaf op 8 november
+het afzonderlijke protocolvenster voor A-21 vrij.
+
+1. Aanvankelijk haalden appnotificaties brondata op bij het openen van het overzicht.
+2. Bij gesloten iOS-app moet een actieve server events verzamelen, autoriseren en bezorgen.
+3. De bestaande protocolvensters dekken geen toestelregistratie of opt-in.
+4. Voeg optioneel `capabilities.push_notifications` en de eigen sessieroutes
+   `PUT/DELETE /users/me/push-installations/{installation_id}` toe. De eigen server
+   communiceert rechtstreeks met APNs en bewaart de topicgebonden sleutel lokaal.
+   Begin met films en afleveringen uit de serverbibliotheken en een duurzame wachtrij.
+5. Seerr en releases volgen met een geverifieerde accountkoppeling en releasebron.
+   Voor release volgt een proef met een getekende iOS-build en echte APNs-bezorging.
+6. Een centrale Pleya-relay en distributie van een gedeelde pushsleutel vallen weg.
+
+V1 behoudt de bestaande velden, betekenis, aanvraagbody's en enums. De optionele
+vlag is standaard uit en clients gebruiken de nieuwe gesloten body pas als de vlag
+aan staat. Oudere servers en clients houden de in-appmeldingen. Uitrol staat los van
+dit besluit.
