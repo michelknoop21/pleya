@@ -860,6 +860,10 @@ lane :macos_beta do
     .compact.first
   UI.user_error!("Geen Mac Installer Distribution cert in keychain") unless installer_identity
 
+  # Met umask 077 schrijft codesign CodeResources en het profiel als 0600 weg.
+  # De pkg installeert als root, dus Apple weigert dan met ITMS-90255.
+  sh("chmod -R u+rwX,go+rX #{app}")
+
   signed_pkg = File.join(out_dir, "Pleya-signed.pkg")
   FileUtils.rm_f(signed_pkg)
   sh("productbuild --component #{app} /Applications " \
