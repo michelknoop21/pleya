@@ -75,7 +75,7 @@ void main() {
     final client = PleyaServerClient.create(
       connection,
       httpClientFactory: () => MockClient((request) async {
-        if (request.url.path.contains('/push-installations/') || request.url.path.endsWith('/auth/logout')) {
+        if (request.url.path.contains('/push-installations') || request.url.path.endsWith('/auth/logout')) {
           requests.add(request);
           return http.Response('', 204);
         }
@@ -97,7 +97,7 @@ void main() {
     await remove();
 
     expect(requests.map((r) => '${r.method} ${r.url.path}'), [
-      'DELETE /pleya/v1/users/me/push-installations/install-1',
+      'DELETE /pleya/v1/users/me/push-installations',
       'POST /pleya/v1/auth/logout',
     ]);
     expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
@@ -177,7 +177,7 @@ void main() {
         serverManager: manager,
       );
 
-      expect(calls, ['DELETE /pleya/v1/users/me/push-installations/install-1', 'POST /pleya/v1/auth/logout']);
+      expect(calls, ['DELETE /pleya/v1/users/me/push-installations', 'POST /pleya/v1/auth/logout']);
       expect(await connections.get(connection.id), isNull);
     });
 
@@ -211,7 +211,7 @@ void main() {
       );
 
       expect(presented, ['rt-1', 'rt-2'], reason: 'the second profile must not present the token the first rotated');
-      expect(calls, ['DELETE /pleya/v1/users/me/push-installations/install-1', 'POST /pleya/v1/auth/logout']);
+      expect(calls, ['DELETE /pleya/v1/users/me/push-installations', 'POST /pleya/v1/auth/logout']);
     });
 
     test('a short-lived withdrawal that hangs does not delay binding the active connection', () async {
@@ -238,7 +238,7 @@ void main() {
       await remove();
 
       expect(presented, ['rt-1']);
-      expect(calls, ['DELETE /pleya/v1/users/me/push-installations/install-1', 'POST /pleya/v1/auth/logout']);
+      expect(calls, ['DELETE /pleya/v1/users/me/push-installations', 'POST /pleya/v1/auth/logout']);
       expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
     });
 

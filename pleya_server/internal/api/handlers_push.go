@@ -20,29 +20,53 @@ type pushInstallationRequest struct {
 	Episodes    bool   `json:"episodes"`
 }
 
-func (s *Server) handlePushInstallation(w http.ResponseWriter, r *http.Request) {
+// pushCaller is the shared preamble: push is known on this server, and the
+// caller is a device session (an API token never registers or withdraws).
+func (s *Server) pushCaller(w http.ResponseWriter, r *http.Request) (user, session id.ID, ok bool) {
 	w.Header().Set("Cache-Control", "no-store")
 	if s.opts.Push == nil || (r.Method == http.MethodPut && !s.opts.Push.Enabled()) {
 		writeError(w, s.log, CodeNotFound, "not found", nil)
-		return
+		return user, session, false
 	}
 	if _, viaAPIToken := apiScopeFromContext(r.Context()); viaAPIToken {
 		writeError(w, s.log, CodeScopeInsufficient, "a device session is required", nil)
+		return user, session, false
+	}
+	user, err := s.subjectID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return user, session, false
+	}
+	session, err = s.currentSessionID(r)
+	if err != nil {
+		writeInternal(w, s.log, err)
+		return user, session, false
+	}
+	return user, session, true
+}
+
+// handlePushInstallations withdraws every installation of the calling session,
+// so a client needs no bookkeeping of which ids it ever registered.
+func (s *Server) handlePushInstallations(w http.ResponseWriter, r *http.Request) {
+	user, session, ok := s.pushCaller(w, r)
+	if !ok {
+		return
+	}
+	if err := s.opts.Push.RemoveAll(r.Context(), user, session); err != nil {
+		writeError(w, s.log, CodeInternal, "push storage unavailable", nil)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handlePushInstallation(w http.ResponseWriter, r *http.Request) {
+	user, session, ok := s.pushCaller(w, r)
+	if !ok {
 		return
 	}
 	installation, err := id.Parse(r.PathValue("installation_id"))
 	if err != nil || installation.IsZero() {
 		writeError(w, s.log, CodeSessionInvalid, "invalid push installation", nil)
-		return
-	}
-	user, err := s.subjectID(r)
-	if err != nil {
-		writeInternal(w, s.log, err)
-		return
-	}
-	session, err := s.currentSessionID(r)
-	if err != nil {
-		writeInternal(w, s.log, err)
 		return
 	}
 	if r.Method == http.MethodDelete {

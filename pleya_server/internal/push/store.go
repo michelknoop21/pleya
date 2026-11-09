@@ -82,6 +82,16 @@ func (s *Service) Register(ctx context.Context, installation, user, session id.I
 	return tx.Commit(ctx)
 }
 
+// RemoveAll withdraws every installation of the calling session, and only of
+// that session; idempotent.
+func (s *Service) RemoveAll(ctx context.Context, user, session id.ID) error {
+	_, err := s.pool.Exec(ctx, `
+		DELETE FROM push_installations p USING sessions current
+		WHERE p.session_id=$1 AND current.id=$1 AND current.user_id=$2 AND current.revoked_at IS NULL
+	`, session, user)
+	return err
+}
+
 // PurgeRevoked drops the installations of revoked sessions. It needs no APNs
 // configuration, so a server with push switched off still forgets them.
 func (s *Service) PurgeRevoked(ctx context.Context) (int64, error) {

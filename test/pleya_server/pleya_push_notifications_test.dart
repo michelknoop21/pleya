@@ -75,7 +75,7 @@ void main() {
         createdAt: DateTime.utc(2026, 8, 19),
       ),
       httpClientFactory: () => MockClient((request) async {
-        if (request.url.path.contains('/push-installations/')) {
+        if (request.url.path.contains('/push-installations')) {
           requests.add(request);
           return http.Response('', 204);
         }
@@ -139,7 +139,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);
     expect(requests.map((request) => request.method), ['PUT', 'DELETE']);
-    expect(requests.last.url, registration.url);
+    expect(requests.last.url.path, endsWith('/users/me/push-installations'), reason: 'session-wide withdrawal');
     expect(push.pending(source), isFalse);
     expect(prompts, [true, true]);
 
@@ -161,7 +161,7 @@ void main() {
     profile.switchTo('bob');
     await Future<void>.delayed(Duration.zero);
     expect(requests.last.method, 'DELETE');
-    expect(requests.last.url, installation);
+    expect(requests.last.url.path, endsWith('/users/me/push-installations'));
     profile.switchTo('alice');
     await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);

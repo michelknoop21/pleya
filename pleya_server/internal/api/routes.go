@@ -142,6 +142,7 @@ func (s *Server) routeTable() []route {
 		// BP-08b: alleen het eigen account, uitsluitend een sessiebearer.
 		{"PUT " + p + "/users/me/push-installations/{installation_id}", s.authenticated(s.handlePushInstallation)},
 		{"DELETE " + p + "/users/me/push-installations/{installation_id}", s.authenticated(s.handlePushInstallation)},
+		{"DELETE " + p + "/users/me/push-installations", s.authenticated(s.handlePushInstallations)},
 		{"GET " + p + "/users/me/memory", s.authenticated(s.handleGetMemory)},
 		{"PUT " + p + "/users/me/memory", s.authenticated(s.handlePutMemory)},
 		{"POST " + p + "/users/me/memory/clear", s.authenticated(s.handleClearMemory)},

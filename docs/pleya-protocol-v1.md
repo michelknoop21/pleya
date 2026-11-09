@@ -2824,7 +2824,13 @@ zij hetzelfde toestel of APNs-token draagt. Een APNs-token hoort bij één
 registratie: een geslaagde PUT met hetzelfde token laat elke andere registratie
 met dat token vervallen, ook van een ander account op een gedeeld toestel.
 Maximaal acht registraties per sessie. DELETE is idempotent en geeft bij een onbekende of andere registratie
-ook 204. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
+ook 204. `DELETE /users/me/push-installations` zonder id trekt elke registratie
+van de aanroepende sessie in, en geen van een andere sessie of een ander account;
+ook zonder registraties 204. De app trekt push daarmee in, zodat zij niet hoeft
+bij te houden welke ids een sessie ooit registreerde. Een oudere server zonder
+die route antwoordt 404 of 405; de app trekt dan alleen het id in dat zij voor
+dat profiel bewaart, en een ander id dat die sessie ooit registreerde blijft
+staan tot de sessie eindigt. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
 registraties geven 400 `session.invalid`. API-tokens geven 403
 `auth.scope_insufficient`. Alle antwoorden dragen `Cache-Control: no-store`.
 

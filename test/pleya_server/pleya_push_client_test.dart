@@ -34,7 +34,7 @@ void main() {
         createdAt: DateTime.utc(2026, 8, 19),
       ),
       httpClientFactory: () => MockClient((request) async {
-        if (request.url.path.contains('/push-installations/') || request.url.path.endsWith('/auth/refresh')) {
+        if (request.url.path.contains('/push-installations') || request.url.path.endsWith('/auth/refresh')) {
           return answer(request);
         }
         return fake.handle(request);
@@ -74,5 +74,27 @@ void main() {
   test('a 404 on the refresh is not taken for an absent installation', () async {
     final lost = client((r) => envelope(404, 'library.not_found'));
     await expectLater(lost.removePushInstallation('x'), throwsA(isA<MediaServerException>()));
+  });
+
+  test('withdrawing push is one session-wide DELETE on a server that has it', () async {
+    final paths = <String>[];
+    final current = client((r) {
+      if (r.url.path.endsWith('/auth/refresh')) return refreshed(r);
+      paths.add('${r.method} ${r.url.path}');
+      return http.Response('', 204);
+    });
+    await current.withdrawPush(knownId: 'x');
+    expect(paths, ['DELETE /pleya/v1/users/me/push-installations']);
+  });
+
+  test('an older server without the route gets the known id instead', () async {
+    final paths = <String>[];
+    final older = client((r) {
+      if (r.url.path.endsWith('/auth/refresh')) return refreshed(r);
+      paths.add('${r.method} ${r.url.path}');
+      return r.url.path.endsWith('/push-installations') ? envelope(404, 'library.not_found') : http.Response('', 204);
+    });
+    await older.withdrawPush(knownId: 'x');
+    expect(paths, ['DELETE /pleya/v1/users/me/push-installations', 'DELETE /pleya/v1/users/me/push-installations/x']);
   });
 }

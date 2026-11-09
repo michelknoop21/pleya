@@ -18,20 +18,22 @@ typedef PushChoices = ({bool movies, bool episodes});
 typedef PushSource = ({String id, String name});
 
 class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver {
-  /// [releaseElsewhere] withdraws an installation of another profile through
-  /// that profile's own connection; the device belongs to the active profile.
-  /// [withdrawalWait] caps how long a registration waits for a withdrawal of
-  /// the same opt-in that is still on its way.
+  /// [releaseElsewhere] withdraws another profile's push through that
+  /// profile's own connection; the device belongs to the active profile.
+  /// [retryBackoff] is the first wait before a failed withdrawal is tried
+  /// again without a resume or a server coming online; it doubles up to ten
+  /// minutes.
   PleyaPushNotifications(
     this._profileId,
     this._profile,
     this._servers, {
     this.releaseElsewhere,
-    this.withdrawalWait = const Duration(seconds: 3),
+    this.retryBackoff = const Duration(seconds: 30),
   }) {
     WidgetsBinding.instance.addObserver(this);
     _servers.addListener(_sync);
     _profile.addListener(_sync);
+    _withdrawn = _withdrawals.stream.listen(_afterWithdrawal);
     _sync();
   }
 
@@ -42,7 +44,10 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   final ActiveProfileProvider _profile;
   final MultiServerProvider _servers;
   final Future<void> Function(String connectionId, String installationId)? releaseElsewhere;
-  final Duration withdrawalWait;
+  final Duration retryBackoff;
+  Duration? _nextBackoff;
+  Timer? _retryTimer;
+  late final StreamSubscription<String> _withdrawn;
   final _saved = <String, List<String>>{};
   final _synced = <String, PleyaServerClient>{};
   final _pending = <String>{};
@@ -119,7 +124,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     if (await connection(connectionId) case final PleyaServerConnection stored) {
       await servers.withPleyaServerClient(
         stored,
-        (client) => client.removePushInstallation(installation),
+        (client) => client.withdrawPush(knownId: installation),
         boundOnly: await sharedWithActive(connectionId),
       );
     }
@@ -130,19 +135,22 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   String _key(String id) => '$_prefix${Uri.encodeComponent(id)}';
 
   /// Withdraws [profileId]'s push opt-in for a connection that is being
-  /// removed. [withdraw] gets the stored installation (null when there is
-  /// none) and talks to the server; it is best effort and capped, so removing
-  /// the connection never waits on the network for long. The opt-in goes either way.
+  /// removed. [withdraw] gets the stored installation id (null when there is
+  /// none) as the fallback for an older server, and talks to the server; it is
+  /// best effort and capped, so removing the connection never waits on the
+  /// network for long. The opt-in goes either way.
   static Future<void> forgetConnection(
     String profileId,
     String connectionId,
-    Future<void> Function(List<String> installations) withdraw,
+    Future<void> Function(String? knownId) withdraw,
   ) async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     final key = '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
     final stored = prefs.getStringList(key);
     try {
-      await withdraw(stored == null ? const [] : _installationsOf(stored)).timeout(const Duration(seconds: 5));
+      final withdrawal = withdraw(stored?.first);
+      _track(connectionId, withdrawal);
+      await withdrawal.timeout(const Duration(seconds: 5));
     } on PleyaClientNotBoundException {
       // Only the bound client may withdraw here, and it is not there yet (just
       // after a cold start). Keep it as a pending opt-out so a later reconcile
@@ -159,46 +167,34 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
 
   static const _released = 'released';
 
-  /// Marks an earlier installation id this opt-in replaced and that the server
-  /// may still hold: written before a PUT under a fresh id, dropped once that
-  /// PUT lands (the server keeps one installation per token).
-  static const _replaces = 'replaces:';
-  static const _maxReplaced = 4;
-
-  /// Every installation id the stored opt-in may still have on the server.
-  static List<String> _installationsOf(List<String> stored) => [
-    stored.first,
-    for (final value in stored.skip(2))
-      if (value.startsWith(_replaces)) value.substring(_replaces.length),
-  ];
-
   /// No category left: what remains is a withdrawal still to make.
   static bool _isOptOut(List<String> stored) =>
       !stored.skip(2).contains('movies') && !stored.skip(2).contains('episodes');
 
-  static List<String> _asOptOut(List<String> stored) => [
-    ...stored.take(2),
-    ...stored.skip(2).where((value) => value.startsWith(_replaces)),
-  ];
+  static List<String> _asOptOut(List<String> stored) => stored.take(2).toList();
 
-  /// Withdrawals still on their way, per stored opt-in. A registration for the
-  /// same key waits for them, so an older DELETE can neither remove nor mark as
-  /// released a registration made after it.
-  static final _inflight = <String, Future<void>>{};
+  /// A withdrawal is session-wide: it also removes a registration that was
+  /// made on the same connection while it was on its way (another profile on
+  /// a shared connection, or this one coming back). Every finished withdrawal
+  /// is announced per connection, and a live opt-in there registers again.
+  static final _withdrawals = StreamController<String>.broadcast(sync: true);
 
-  static void _track(String key, Future<void> withdrawal) {
-    final done = withdrawal.catchError((Object _) {});
-    _inflight[key] = done;
-    done.whenComplete(() {
-      if (identical(_inflight[key], done)) _inflight.remove(key);
-    }).ignore();
+  static void _track(String connection, Future<void> withdrawal) {
+    withdrawal.then<void>((_) {}, onError: (Object _) {}).whenComplete(() => _withdrawals.add(connection)).ignore();
+  }
+
+  void _afterWithdrawal(String connection) {
+    final stored = _saved[connection];
+    if (!_current || stored == null || _isOptOut(stored) || !_synced.containsKey(connection)) return;
+    _synced.remove(connection);
+    _sync();
   }
 
   /// Pleya itself said the session is gone: a 401 or 403 with an `auth.*`
   /// code, or a revoked refresh chain. The server then has dropped the
   /// installation. A bare status from a proxy or captive portal proves nothing
   /// and is retried. (A server without push routes answers the DELETE with
-  /// `library.not_found`; [PleyaServerClient.removePushInstallation] treats that
+  /// `library.not_found`; [PleyaServerClient.withdrawPush] treats that
   /// as done.)
   static bool _settled(Object error) =>
       error is PleyaRefreshChainRevokedException || error is PleyaAuthRejectedException;
@@ -210,7 +206,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     final stored = prefs.getStringList(key);
     if (stored == null || stored.first != installation || stored.contains(_released)) return;
     if (_isOptOut(stored)) return prefs.remove(key);
-    await prefs.setStringList(key, [...stored.where((value) => !value.startsWith(_replaces)), _released]);
+    await prefs.setStringList(key, [...stored, _released]);
   }
 
   static Future<void> _unmarkReleased(String key, String installation) async {
@@ -244,12 +240,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         await _applyStored(client, existing, token: token);
         if (!_current || !identical(_online[connection], client)) return;
       }
-      // Carry the ids a failed fresh PUT left behind: an opt-out must withdraw
-      // them too, or the old registration keeps sending.
-      final carried = (_saved[connection] ?? existing ?? const <String>[])
-          .skip(2)
-          .where((value) => value.startsWith(_replaces));
-      final stored = [id, source.name, if (next.movies) 'movies', if (next.episodes) 'episodes', 'pending', ...carried];
+      final stored = [id, source.name, if (next.movies) 'movies', if (next.episodes) 'episodes', 'pending'];
       await prefs.setStringList(_key(connection), stored);
       _saved[connection] = stored;
       _synced.remove(connection);
@@ -285,9 +276,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final removal = _asOptOut(stored);
       await prefs.setStringList(_key(connection), removal);
       _saved[connection] = removal;
-      for (final id in _installationsOf(stored)) {
-        await client.removePushInstallation(id);
-      }
+      final withdrawal = client.withdrawPush(knownId: stored.first);
+      _track(connection, withdrawal);
+      await withdrawal;
       if (!_current) return;
       await prefs.remove(_key(connection));
       _saved.remove(connection);
@@ -295,41 +286,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final token = device['token'];
       final environment = device['environment'];
       if (token == null || environment == null) throw StateError('Missing push device identity');
-      var installation = stored.first;
-      final withdrawing = _inflight[_key(connection)];
-      if (withdrawing != null) {
-        // Briefly, so the switches do not stay locked behind a slow server. A
-        // withdrawal that is still out may land after this PUT, so register
-        // under a fresh id then: the late DELETE only removes the old one.
-        var landed = true;
-        await withdrawing.timeout(
-          withdrawalWait,
-          onTimeout: () {
-            landed = false;
-          },
-        );
-        if (!_current || !identical(_online[connection], client)) return;
-        if (!landed) {
-          // Stored before the PUT, so every withdrawal path knows the new id
-          // and still knows the old one until the PUT replaces it.
-          installation = const Uuid().v4();
-          final prefs = await BaseSharedPreferencesService.sharedCache();
-          final now = prefs.getStringList(_key(connection)) ?? stored;
-          final replaced = {..._installationsOf(now).skip(1), now.first}.toList();
-          final next = [
-            installation,
-            ...now.skip(1).where((value) => value != 'pending' && value != _released && !value.startsWith(_replaces)),
-            'pending',
-            // Only the last few replaced ids are kept; an older one that a
-            // timed-out PUT did register stays until the session ends.
-            for (final id in replaced.skip(replaced.length > _maxReplaced ? replaced.length - _maxReplaced : 0))
-              '$_replaces$id',
-          ];
-          await prefs.setStringList(_key(connection), next);
-          _saved[connection] = next;
-          if (!_current || !identical(_online[connection], client)) return;
-        }
-      }
+      final installation = stored.first;
       await client.registerPushInstallation(
         installation,
         token: token,
@@ -346,11 +303,11 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         // counts now; if it fails, the key stays open for the next attempt.
         final key = _key(connection);
         _track(
-          key,
+          connection,
           _unmarkReleased(
             key,
             installation,
-          ).then((_) => client.removePushInstallation(installation)).then((_) => _markReleased(key, installation)),
+          ).then((_) => client.withdrawPush(knownId: installation)).then((_) => _markReleased(key, installation)),
         );
         return;
       }
@@ -360,13 +317,8 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final prefs = await BaseSharedPreferencesService.sharedCache();
       if (!_current) return;
       final latest = prefs.getStringList(_key(connection)) ?? stored;
-      // The PUT replaced any older id for this token on the server.
-      if (latest.first == installation &&
-          latest.any((value) => value == 'pending' || value == _released || value.startsWith(_replaces))) {
-        final confirmed = [
-          installation,
-          ...latest.skip(1).where((value) => value != 'pending' && value != _released && !value.startsWith(_replaces)),
-        ];
+      if (latest.first == installation && (latest.contains('pending') || latest.contains(_released))) {
+        final confirmed = latest.where((value) => value != 'pending' && value != _released).toList();
         await prefs.setStringList(_key(connection), confirmed);
         _saved[connection] = confirmed;
       }
@@ -397,12 +349,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final stored = _saved[connection];
       if (stored == null) continue;
       final key = _key(connection);
-      _track(
-        key,
-        Future.wait(
-          _installationsOf(stored).map(client.removePushInstallation),
-        ).then((_) => _markReleased(key, stored.first)),
-      );
+      _track(connection, client.withdrawPush(knownId: stored.first).then((_) => _markReleased(key, stored.first)));
     }
     _synced.clear();
   }
@@ -440,17 +387,16 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         if (key.startsWith(_prefix) && (!_isOptOut(stored) || _online.containsKey(connection))) continue;
         if (!_releasing.add(key)) continue;
         Future<void> attempt() async {
-          for (final installation in _installationsOf(stored)) {
-            try {
-              await release(connection, installation);
-            } catch (error) {
-              if (!_settled(error)) return;
-            }
+          try {
+            await release(connection, stored.first);
+          } catch (error) {
+            if (!_settled(error)) return _retryLater();
           }
+          _nextBackoff = null;
           await _markReleased(key, stored.first);
         }
 
-        _track(key, attempt().whenComplete(() => _releasing.remove(key)));
+        _track(connection, attempt().whenComplete(() => _releasing.remove(key)));
       }
       for (final key in prefs.keys.where((key) => key.startsWith(_prefix))) {
         final stored = prefs.getStringList(key);
@@ -476,6 +422,19 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     }
   }
 
+  /// A withdrawal that failed while the servers stayed online is not retried
+  /// on every notification, but after a growing pause, capped at ten minutes.
+  void _retryLater() {
+    if (_disposed || (_retryTimer?.isActive ?? false)) return;
+    final wait = _nextBackoff ?? retryBackoff;
+    final doubled = wait * 2;
+    _nextBackoff = doubled > const Duration(minutes: 10) ? const Duration(minutes: 10) : doubled;
+    _retryTimer = Timer(wait, () {
+      _withdrawalsDue = true;
+      _sync();
+    });
+  }
+
   void _finish() {
     _busy = false;
     if (!_disposed) notifyListeners();
@@ -497,6 +456,8 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   @override
   void dispose() {
     _disposed = true;
+    _retryTimer?.cancel();
+    _withdrawn.cancel().ignore();
     WidgetsBinding.instance.removeObserver(this);
     _servers.removeListener(_sync);
     _profile.removeListener(_sync);

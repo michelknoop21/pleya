@@ -70,6 +70,11 @@ void main() {
   late Completer<void>? holdDelete;
   var failPut = false;
   var failDelete = false;
+  int? failPutsFrom;
+  var putCount = 0;
+  // What the server holds for this one session: PUT adds an id, DELETE with
+  // an id removes it, DELETE without one removes all of them.
+  late Set<String> registered;
 
   Future<PleyaServerClient> client() async {
     final fake = PleyaFakeServer();
@@ -84,12 +89,18 @@ void main() {
         createdAt: DateTime.utc(2026, 8, 19),
       ),
       httpClientFactory: () => MockClient((request) async {
-        if (request.url.path.contains('/push-installations/')) {
+        if (request.url.path.contains('/push-installations')) {
           requests.add(request);
-          if (request.method == 'PUT') await holdPut?.future;
-          if (request.method == 'PUT' && failPut) return http.Response('', 503);
-          if (request.method == 'DELETE') await holdDelete?.future;
-          if (request.method == 'DELETE' && failDelete) return http.Response('', 503);
+          final id = request.url.pathSegments.last;
+          if (request.method == 'PUT') {
+            await holdPut?.future;
+            if (failPut || (failPutsFrom != null && putCount++ >= failPutsFrom!)) return http.Response('', 503);
+            registered.add(id);
+          } else {
+            await holdDelete?.future;
+            if (failDelete) return http.Response('', 503);
+            id == 'push-installations' ? registered.clear() : registered.remove(id);
+          }
           return http.Response('', 204);
         }
         final response = await fake.handle(request);
@@ -111,6 +122,9 @@ void main() {
     holdDelete = null;
     failPut = false;
     failDelete = false;
+    failPutsFrom = null;
+    putCount = 0;
+    registered = {};
     const channel = MethodChannel('com.pleya/push');
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(channel, (_) async => {'token': 'aabb', 'environment': 'sandbox'});
@@ -119,7 +133,7 @@ void main() {
 
   Future<(PleyaPushNotifications, _Profile)> start({
     Future<void> Function(String, String)? releaseElsewhere,
-    Duration withdrawalWait = const Duration(seconds: 3),
+    Duration retryBackoff = const Duration(seconds: 30),
     bool settled = true,
   }) async {
     final profile = _Profile()..settled = settled;
@@ -129,7 +143,7 @@ void main() {
       profile,
       servers,
       releaseElsewhere: releaseElsewhere,
-      withdrawalWait: withdrawalWait,
+      retryBackoff: retryBackoff,
     );
     addTearDown(profile.dispose);
     addTearDown(servers.dispose);
@@ -150,7 +164,7 @@ void main() {
     await enabling;
     await Future<void>.delayed(Duration.zero);
     expect(requests.map((r) => r.method), ['PUT', 'DELETE']);
-    expect(requests.last.url, requests.first.url);
+    expect(registered, isEmpty);
   });
 
   test('starting a profile withdraws the installations other profiles left behind, once', () async {
@@ -259,42 +273,22 @@ void main() {
     expect(attempts, 1);
   });
 
-  test('a withdrawal that does not land in time: the PUT goes ahead under a fresh id', () async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final (push, profile) = await start(withdrawalWait: const Duration(milliseconds: 50));
-    await push.setChoices(push.sources.single, (movies: true, episodes: false));
-    final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
-    final first = requests.single.url;
-    holdDelete = Completer<void>();
-    profile.switchTo('bob');
-    await pumpEventQueue();
-    profile.switchTo('alice');
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(requests.map((r) => r.method), ['PUT', 'DELETE', 'PUT'], reason: 'the switches are not held for long');
-    expect(requests.last.url, isNot(first), reason: 'a late DELETE must not hit the new registration');
-
-    holdDelete!.complete();
-    await pumpEventQueue();
-    final stored = prefs.getStringList(key)!;
-    expect(stored.first, requests.last.url.pathSegments.last);
-    expect(stored, isNot(contains('released')));
-  });
-
-  test('switching away and straight back: the old DELETE lands before the new PUT', () async {
+  test('switching away and straight back: whatever order the DELETE and PUT land in, push stays on', () async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     final (push, profile) = await start();
     await push.setChoices(push.sources.single, (movies: true, episodes: false));
     final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
+    final id = prefs.getStringList(key)!.first;
     holdDelete = Completer<void>();
     profile.switchTo('bob');
     await pumpEventQueue();
     profile.switchTo('alice');
     await pumpEventQueue();
-    expect(requests.map((r) => r.method), ['PUT', 'DELETE'], reason: 'the new PUT waits for the old DELETE');
+    expect(registered, {id}, reason: 'the new PUT went ahead');
 
     holdDelete!.complete();
     await pumpEventQueue();
-    expect(requests.map((r) => r.method), ['PUT', 'DELETE', 'PUT']);
+    expect(registered, {id}, reason: 'the late session-wide DELETE is followed by a fresh PUT');
     expect(prefs.getStringList(key), isNot(contains('released')));
   });
 
@@ -338,41 +332,6 @@ void main() {
     expect(created, 0, reason: 'no short-lived client next to the binding');
   });
 
-  test('a fresh id is stored before its PUT, and the old one stays known until the PUT lands', () async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final (push, profile) = await start(withdrawalWait: const Duration(milliseconds: 50));
-    await push.setChoices(push.sources.single, (movies: true, episodes: false));
-    final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
-    final old = prefs.getStringList(key)!.first;
-    holdDelete = Completer<void>();
-    profile.switchTo('bob');
-    await pumpEventQueue();
-    holdPut = Completer<void>();
-    profile.switchTo('alice');
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(requests.map((r) => r.method), ['PUT', 'DELETE', 'PUT']);
-    final fresh = requests.last.url.pathSegments.last;
-    expect(fresh, isNot(old));
-    // While the PUT is out, every withdrawal path must already see both ids.
-    expect(prefs.getStringList(key), [fresh, 'alice · Zolder', 'movies', 'pending', 'replaces:$old']);
-
-    holdPut!.complete();
-    holdDelete!.complete();
-    await pumpEventQueue();
-    expect(prefs.getStringList(key), [fresh, 'alice · Zolder', 'movies'], reason: 'the PUT replaced the old id');
-  });
-
-  test('withdrawing for another profile covers an id it was replacing', () async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final key = 'pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}';
-    await prefs.setStringList(key, ['id-1', 'bob · Kelder', 'movies', 'pending', 'replaces:id-0']);
-    final released = <String>[];
-    await start(releaseElsewhere: (_, installation) async => released.add(installation));
-    await pumpEventQueue();
-    expect(released, ['id-1', 'id-0']);
-    expect(prefs.getStringList(key), ['id-1', 'bob · Kelder', 'movies', 'pending', 'released']);
-  });
-
   test('an own opt-out left for a connection without a bound client is withdrawn later', () async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     final key = 'pleya.push/alice/${Uri.encodeComponent('pleyaServer.srv-2.alice')}';
@@ -386,49 +345,69 @@ void main() {
 
   // A fresh PUT under a new id failed, so the old registration may still be
   // live; turning push off must withdraw it too (review reproduction).
-  test('opting out after a failed fresh PUT withdraws the replaced id too', () async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final (push, profile) = await start(withdrawalWait: const Duration(milliseconds: 50));
+  test('opting out after a failed PUT leaves nothing on the server', () async {
+    final (push, profile) = await start();
     await push.setChoices(push.sources.single, (movies: true, episodes: false));
-    final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
-    final old = prefs.getStringList(key)!.first;
     holdDelete = Completer<void>();
     profile.switchTo('bob');
     await pumpEventQueue();
     failPut = true;
     profile.switchTo('alice');
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await pumpEventQueue();
     failDelete = true;
     holdDelete!.complete();
     await pumpEventQueue();
     failPut = false;
     failDelete = false;
-    requests.clear();
 
     await push.setChoices(push.sources.single, PleyaPushNotifications.off);
     await pumpEventQueue();
-
-    final deleted = requests.where((r) => r.method == 'DELETE').map((r) => r.url.pathSegments.last);
-    expect(deleted, contains(old));
+    expect(registered, isEmpty);
   });
 
-  test('replaced ids are kept once each, and only the last few', () async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final (push, profile) = await start(withdrawalWait: const Duration(milliseconds: 20));
+  // Review reproduction (round 7): an id registered while a follow-up PUT
+  // fails must still be withdrawn on opt-out.
+  test('a registration made before a failed follow-up PUT is withdrawn on opt-out', () async {
+    final (push, profile) = await start();
     await push.setChoices(push.sources.single, (movies: true, episodes: false));
-    final key = 'pleya.push/alice/${Uri.encodeComponent(connectionId)}';
     holdDelete = Completer<void>();
+    profile.switchTo('bob');
+    await pumpEventQueue();
     failPut = true;
-    for (var round = 0; round < 6; round++) {
-      profile.switchTo('bob');
-      await pumpEventQueue();
-      profile.switchTo('alice');
-      await Future<void>.delayed(const Duration(milliseconds: 80));
-    }
-    final replaced = prefs.getStringList(key)!.where((value) => value.startsWith('replaces:')).toList();
-    expect(replaced.toSet(), hasLength(replaced.length));
-    expect(replaced.length, lessThanOrEqualTo(4));
+    profile.switchTo('alice');
+    await pumpEventQueue();
+    failPut = false;
+    putCount = 0;
+    failPutsFrom = 1; // the first PUT lands, the next one fails
+    await push.setChoices(push.sources.single, (movies: true, episodes: true));
+    failPutsFrom = null;
     holdDelete!.complete();
+    await pumpEventQueue();
+
+    await push.setChoices(push.sources.single, PleyaPushNotifications.off);
+    await pumpEventQueue();
+    expect(registered, isEmpty, reason: 'the registration on the server must be withdrawn on opt-out');
+  });
+
+  test('a withdrawal that fails while the servers stay online is retried after a pause', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    await prefs.setStringList('pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}', [
+      'install-bob',
+      'bob · Kelder',
+      'movies',
+    ]);
+    var attempts = 0;
+    await start(
+      retryBackoff: const Duration(milliseconds: 50),
+      releaseElsewhere: (_, _) async {
+        if (attempts++ == 0) throw MediaServerHttpException(type: MediaServerHttpErrorType.unknown, statusCode: 503);
+      },
+    );
+    await pumpEventQueue();
+    expect(attempts, 1);
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    expect(attempts, 2, reason: 'no resume and no server event, yet tried again');
+    expect(prefs.getStringList('pleya.push/bob/${Uri.encodeComponent('pleyaServer.srv-2.bob')}'), contains('released'));
   });
 
   test('a failed withdrawal waits for resume or a server coming online, not any notification', () async {
