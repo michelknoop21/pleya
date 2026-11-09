@@ -402,31 +402,32 @@ class LocalLibrarySync {
     const interval = Duration(minutes: 10);
     final budget = store.posterBudget(now);
     if (budget.total >= 60) return;
-    final priority = <MediaItem>[];
-    final oldest = <MediaItem>[];
     String key(MediaItem i) => '${i.serverId}|${artworkStorageKey(i.thumbPath!)}';
-    DateTime attempted(MediaItem i) =>
-        DateTime.tryParse(store.posterFreshness(i.serverId!, i.thumbPath!)['attempted'] as String? ?? '') ??
-        DateTime.utc(1970);
-    void insert(List<MediaItem> list, MediaItem item, int cap) {
-      if (list.any((i) => key(i) == key(item))) return;
-      list.add(item);
-      list.sort((a, b) {
-        final order = attempted(a).compareTo(attempted(b));
-        return order == 0 ? key(a).compareTo(key(b)) : order;
-      });
-      if (list.length > cap) list.removeLast();
-    }
-
+    // One pass reads each title's freshness once, then the eligible titles are
+    // sorted once, oldest attempt first. Inserting into a sorted list per title
+    // read the freshness again for every comparison: 1.4 million reads for
+    // 5000 titles.
+    final eligible = <String, (MediaItem, DateTime)>{};
     for (final item in items) {
       if (item.serverId == null || item.thumbPath == null || item.thumbPath!.isEmpty) continue;
-      final state = store.posterFreshness(item.serverId!, item.thumbPath!);
-      final last = attempted(item);
-      final retry = DateTime.tryParse(state['retry'] as String? ?? '');
-      if (now.difference(last) < interval || (retry != null && now.isBefore(retry))) continue;
-      insert(oldest, item, 60);
-      if (store.posterIsPriority(item.serverId!, item.thumbPath!)) insert(priority, item, 20);
+      final k = key(item);
+      if (eligible.containsKey(k)) continue;
+      final last = store.posterAttempted(item.serverId!, item.thumbPath!) ?? DateTime.utc(1970);
+      if (now.difference(last) < interval) continue;
+      final retry = DateTime.tryParse(store.posterFreshness(item.serverId!, item.thumbPath!)['retry'] as String? ?? '');
+      if (retry != null && now.isBefore(retry)) continue;
+      eligible[k] = (item, last);
     }
+    final ordered = eligible.entries.toList()
+      ..sort((a, b) {
+        final order = a.value.$2.compareTo(b.value.$2);
+        return order == 0 ? a.key.compareTo(b.key) : order;
+      });
+    final oldest = [for (final e in ordered.take(60)) e.value.$1];
+    final priority = [
+      for (final e in ordered)
+        if (store.posterIsPriority(e.value.$1.serverId!, e.value.$1.thumbPath!)) e.value.$1,
+    ];
     final selected = <MediaItem>[...priority.take(20 - budget.priority)];
     final priorityKeys = selected.map(key).toSet();
     selected.addAll(oldest.where((i) => !priorityKeys.contains(key(i))).take(40 - (budget.total - budget.priority)));

@@ -65,6 +65,11 @@ class LocalLibraryStore {
   Map<String, dynamic> posterFreshness(String serverId, String path) =>
       Map.of(_posterFreshness[_posterKey(serverId, path)] ?? const {});
 
+  /// When the poster was last tried, read in place: the sweep asks this for
+  /// every stored title, and [posterFreshness] copies the entry.
+  DateTime? posterAttempted(String serverId, String path) =>
+      DateTime.tryParse(_posterFreshness[_posterKey(serverId, path)]?['attempted'] as String? ?? '');
+
   bool posterIsPriority(String serverId, String path) => _posterPriority.contains(_posterKey(serverId, path));
   void prioritizePoster(String serverId, String path) {
     final key = _posterKey(serverId, path);
