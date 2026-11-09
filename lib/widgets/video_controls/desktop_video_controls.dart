@@ -819,6 +819,16 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       // Ignore seeking if user cannot control
       if (!_canControl) return KeyEventResult.handled;
 
+      // Apple TV: a touch-surface swipe must not seek or scrub while playing.
+      // Swipe-scrubbing is for a paused video; ring clicks still step.
+      if (!_timelineScrubMode &&
+          widget.player.state.playing &&
+          PlatformDetector.isAppleTV() &&
+          AppleTvRemoteTouchService.instance.isSwipeDirectional(key)) {
+        widget.onFocusActivity?.call();
+        return KeyEventResult.handled;
+      }
+
       // Implicit entry on a remote: LEFT/RIGHT on a paused video starts the
       // preview instead of seeking straight away, so the user can pick a spot
       // and confirm it. Playing video keeps the direct per-press seek.
