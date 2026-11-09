@@ -5,8 +5,10 @@ import 'package:flutter/widgets.dart';
 import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
+import '../exceptions/media_server_exceptions.dart';
 import '../i18n/strings.g.dart';
 import '../media/ids.dart';
+import '../models/pleya_server/pleya_wire.dart';
 import '../profiles/active_profile_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'base_shared_preferences_service.dart';
@@ -31,6 +33,11 @@ typedef PushReach =
 /// - the session belongs to the active profile and that profile opted in
 ///   there: one registration with its categories;
 /// - anything else: nothing, which the session-wide DELETE achieves.
+///
+/// A session only gets a client for that DELETE while it may hold something:
+/// it is marked before every PUT and unmarked after a confirmed withdrawal.
+/// An empty session of another profile costs no client and no refresh-token
+/// rotation, so it can go idle and its token is never put at risk.
 ///
 /// Reconciling writes that state, one run per session at a time; a request
 /// during a run starts one more run after it. It runs at the start, on
@@ -58,6 +65,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     _failed.clear();
     _onChange();
   }
+
+  @visibleForTesting
+  bool get debugRetryPending => _retryTimer?.isActive ?? false;
 
   @visibleForTesting
   static void resetForTesting() {
@@ -149,6 +159,41 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
   String _key(String connectionId) => _keyFor(_profileId, connectionId);
 
+  static const _markKey = 'pleya.push.registered';
+  static Future<void> _markQueue = Future<void>.value();
+
+  /// Sessions that may hold a registration. Written before every PUT, cleared
+  /// only after a confirmed withdrawal. Before this marker existed, every
+  /// session with a stored choice counts as marked.
+  static Future<Set<String>> _markedSessions() => _serial(() async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final stored = prefs.getStringList(_markKey);
+    if (stored != null) return stored.toSet();
+    final seeded = {
+      for (final key in prefs.keys)
+        if (key.startsWith(_root)) Uri.decodeComponent(key.substring(key.lastIndexOf('/') + 1)),
+    };
+    await prefs.setStringList(_markKey, seeded.toList());
+    return seeded;
+  });
+
+  static Future<void> _mark(String connectionId, {required bool on}) async {
+    final marked = await _markedSessions();
+    await _serial(() async {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      final current = (prefs.getStringList(_markKey) ?? marked.toList()).toSet();
+      on ? current.add(connectionId) : current.remove(connectionId);
+      await prefs.setStringList(_markKey, current.toList());
+    });
+  }
+
+  /// Runs read-modify-writes of the marker one after another.
+  static Future<T> _serial<T>(Future<T> Function() task) {
+    final next = _markQueue.then((_) => task());
+    _markQueue = next.then<void>((_) {}, onError: (Object _) {});
+    return next;
+  }
+
   /// Every installation id any profile stored for [connectionId]: the fallback
   /// for a server without the session-wide DELETE.
   static Future<List<String>> knownIdsFor(String connectionId) async {
@@ -194,6 +239,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     for (final key in prefs.keys.where((key) => key.startsWith(_root)).toList()) {
       await prefs.remove(key);
     }
+    await prefs.remove(_markKey);
     _confirmed.clear();
     _failed.clear();
   }
@@ -248,7 +294,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
 
   void _onChange() {
     if (_disposed) return;
-    if (_owns) {
+    // Without any active profile (the picker), the last instance keeps
+    // driving the reconcile, which then empties every marked session.
+    if (_owns || (_profile.activeId == null && identical(_active, this))) {
       _active = this;
     } else if (identical(_active, this)) {
       _active = null;
@@ -260,25 +308,28 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     final cause = !_onlineSeen.containsAll(online) || profile != _profileSeen;
     _onlineSeen = online;
     _profileSeen = profile;
-    if (cause && _owns) unawaited(Future<void>.microtask(_reconcileAll));
+    if (cause && identical(_active, this)) unawaited(Future<void>.microtask(_reconcileAll));
   }
 
   Future<void> _reconcileAll({Set<String>? only}) async {
-    if (!_owns) return;
+    if (!identical(_active, this)) return;
     try {
       final prefs = await BaseSharedPreferencesService.sharedCache();
-      if (!_owns) return;
-      _saved
-        ..clear()
-        ..addAll({
-          for (final key in prefs.keys.where((key) => key.startsWith(_prefixFor(_profileId))))
-            if (prefs.getStringList(key) case final stored? when stored.length > 2)
-              Uri.decodeComponent(key.substring(_prefixFor(_profileId).length)): stored,
-        });
-      final known = await sessions();
+      if (!identical(_active, this)) return;
+      if (_owns) {
+        _saved
+          ..clear()
+          ..addAll({
+            for (final key in prefs.keys.where((key) => key.startsWith(_prefixFor(_profileId))))
+              if (prefs.getStringList(key) case final stored? when stored.length > 2)
+                Uri.decodeComponent(key.substring(_prefixFor(_profileId).length)): stored,
+          });
+      }
+      // A marked session whose row is gone is visited too, so its mark goes.
+      final ids = {for (final connection in await sessions()) connection.id, ...await _markedSessions()};
       await Future.wait([
-        for (final connection in known)
-          if (only == null || only.contains(connection.id)) _schedule(connection),
+        for (final id in ids)
+          if (only == null || only.contains(id)) _schedule(id),
       ]);
     } catch (_) {
       _retryLater();
@@ -288,8 +339,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   }
 
   /// One run per session at a time; a request during a run starts one more.
-  static Future<void> _schedule(PleyaServerConnection connection) {
-    final id = connection.id;
+  static Future<void> _schedule(String id) {
     final running = _running[id];
     if (running != null) {
       _again.add(id);
@@ -300,7 +350,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       try {
         do {
           _again.remove(id);
-          await _converge(connection);
+          await _converge(id);
         } while (_again.contains(id));
       } finally {
         if (identical(_running[id], run)) _running.remove(id);
@@ -310,43 +360,73 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     return run;
   }
 
-  static Future<void> _converge(PleyaServerConnection connection) async {
+  static Future<void> _converge(String id) async {
     final owner = _active;
     if (owner == null) return;
-    final id = connection.id;
     try {
-      final mine = (await owner.profileSessions(owner._profileId)).contains(id);
+      // Read per run: an earlier run may have rotated this session's token.
+      final connection = (await owner.sessions()).where((known) => known.id == id).firstOrNull;
+      if (connection == null) {
+        // The row went with its credentials: nothing can reach this session.
+        await _mark(id, on: false);
+        _confirmed.remove(id);
+        _failed.remove(id);
+        return;
+      }
+      final mine = owner._owns && (await owner.profileSessions(owner._profileId)).contains(id);
       // The binder holds this session's token right now: its bound client
       // comes, and the end of the bind reconciles again.
       if (mine && owner._profile.isBinding) return;
       final prefs = await BaseSharedPreferencesService.sharedCache();
       final stored = mine ? prefs.getStringList(owner._key(id)) : null;
-      final wanted = stored != null && stored.length > 2 && owner._owns ? stored : null;
+      final wanted = stored != null && stored.length > 2 ? stored : null;
       final device = wanted == null ? null : await owner._token(prompt: false);
-      final put = wanted != null && device != null;
-      final state = put ? 'put:${wanted.join(',')}' : 'clear';
+      final token = device?['token'];
+      final environment = device?['environment'];
+      final put = wanted != null && token != null && environment != null;
+      // The device token is part of the state: a new one registers again.
+      final state = put ? 'put:$token:${wanted.join(',')}' : 'clear';
       if (_confirmed[id] == state) return;
       if (put) {
         final client = owner._online[id];
         if (client == null) {
-          // Offline or not bound: a server coming online reconciles again.
+          // Not bound (yet): the bind, a server coming online or the pause
+          // after this brings it back.
           _failed.add(id);
+          owner._retryLater();
           return;
         }
-        final token = device['token'];
-        final environment = device['environment'];
-        if (token == null || environment == null) throw StateError('Missing push device identity');
-        await client.registerPushInstallation(
-          wanted.first,
+        await _mark(id, on: true);
+        Future<void> register(String installation) => client.registerPushInstallation(
+          installation,
           token: token,
           environment: environment,
           locale: LocaleSettings.currentLocale.languageCode == 'nl' ? 'nl' : 'en',
           movies: wanted.contains('movies'),
           episodes: wanted.contains('episodes'),
         );
+        try {
+          await register(wanted.first);
+        } on MediaServerHttpException catch (error) {
+          // The server will not take this id (it belongs to another account
+          // or session it cannot take over): a fresh id, once.
+          if (error.statusCode != 400 || PleyaError.tryParse(error.responseData)?.code != 'session.invalid') rethrow;
+          final fresh = [const Uuid().v4(), ...wanted.skip(1)];
+          await prefs.setStringList(owner._key(id), fresh);
+          owner._saved[id] = fresh;
+          await register(fresh.first);
+          _confirmed[id] = 'put:$token:${fresh.join(',')}';
+          _failed.remove(id);
+          owner._nextBackoff = null;
+          return;
+        }
       } else {
-        final ids = await knownIdsFor(id);
-        await owner.reach(connection, (client) => client.withdrawPush(knownIds: ids));
+        if ((await _markedSessions()).contains(id)) {
+          final ids = await knownIdsFor(id);
+          await owner.reach(connection, (client) => client.withdrawPush(knownIds: ids));
+          await _mark(id, on: false);
+        }
+        // Unmarked: nothing to withdraw, so no client and no token rotation.
       }
       _confirmed[id] = state;
       _failed.remove(id);
@@ -378,7 +458,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   @override
   void dispose() {
     _disposed = true;
-    if (identical(_active, this)) _active = null;
+    // Without an active profile this instance keeps driving the reconcile it
+    // started; the next profile's instance takes over.
+    if (identical(_active, this) && _profile.activeId != null) _active = null;
     _retryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _servers.removeListener(_onChange);

@@ -10,7 +10,8 @@ import UserNotifications
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var apnsToken: String?
   private var pushAttempt: UUID?
-  private var pendingPushRegistration: FlutterResult?
+  // Every caller waiting for the one registration in flight.
+  private var pendingPushRegistrations: [FlutterResult] = []
   private var deviceAdjustmentChannel: FlutterMethodChannel?
   private var originalBrightness: CGFloat?
   private var volumeView: MPVolumeView?
@@ -132,21 +133,24 @@ import UserNotifications
           result(self.pushDeviceIdentity(token))
           return
         }
-        guard self.pendingPushRegistration == nil else {
-          result(FlutterError(code: "PUSH_BUSY", message: nil, details: nil))
-          return
-        }
-        self.pendingPushRegistration = result
+        // A second caller waits for the registration already in flight.
+        self.pendingPushRegistrations.append(result)
+        guard self.pendingPushRegistrations.count == 1 else { return }
         let attempt = UUID()
         self.pushAttempt = attempt
         DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
-          guard self.pushAttempt == attempt, let pending = self.pendingPushRegistration else { return }
-          self.pendingPushRegistration = nil
-          pending(FlutterError(code: "PUSH_TIMEOUT", message: nil, details: nil))
+          guard self.pushAttempt == attempt, !self.pendingPushRegistrations.isEmpty else { return }
+          self.finishPushRegistration(FlutterError(code: "PUSH_TIMEOUT", message: nil, details: nil))
         }
         UIApplication.shared.registerForRemoteNotifications()
       }
     }
+  }
+
+  private func finishPushRegistration(_ answer: Any?) {
+    let waiting = pendingPushRegistrations
+    pendingPushRegistrations = []
+    waiting.forEach { $0(answer) }
   }
 
   private func pushDeviceIdentity(_ token: String) -> [String: String] {
@@ -160,9 +164,7 @@ import UserNotifications
   ) {
     let token = deviceToken.map { String(format: "%02x", $0) }.joined()
     apnsToken = token
-    let result = pendingPushRegistration
-    pendingPushRegistration = nil
-    result?(pushDeviceIdentity(token))
+    finishPushRegistration(pushDeviceIdentity(token))
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 
@@ -170,9 +172,7 @@ import UserNotifications
     _ application: UIApplication,
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
-    let result = pendingPushRegistration
-    pendingPushRegistration = nil
-    result?(FlutterError(code: "PUSH_REGISTRATION", message: nil, details: nil))
+    finishPushRegistration(FlutterError(code: "PUSH_REGISTRATION", message: nil, details: nil))
     super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
   }
 

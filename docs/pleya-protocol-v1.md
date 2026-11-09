@@ -2840,7 +2840,11 @@ het actieve profiel hoort en dat profiel er push aanzette, en anders niets. De
 app schrijft die stand weg bij het starten, bij hervatten, als een server
 online komt, bij een profielwissel, na een gewijzigde keuze, en met een
 oplopende pauze zolang een poging mislukt; per sessie loopt één poging
-tegelijk. Gebruikt een kinderprofiel dezelfde sessie als een ander profiel, dan
+tegelijk. Een sessie krijgt alleen een intrekking als zij mogelijk iets houdt:
+de app markeert haar vóór elke PUT en wist die markering pas na een bevestigde
+intrekking. Een lege sessie van een ander profiel krijgt zo geen client en
+verbruikt geen refreshtoken, en kan dus idle worden. Zonder actief profiel (de
+profielkiezer) maakt de app de gemarkeerde sessies leeg. Gebruikt een kinderprofiel dezelfde sessie als een ander profiel, dan
 gelden de bibliotheekrechten van dat account: de server kent geen profielen,
 alleen accounts, en de alerttekst is algemeen. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
 registraties geven 400 `session.invalid`. API-tokens geven 403

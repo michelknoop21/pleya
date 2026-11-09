@@ -90,8 +90,13 @@ func TestProviderTokenRejectionRetriesWithAFreshToken(t *testing.T) {
 		}
 		clock = clock.Add(21 * time.Minute)
 	}
-	if auths[0] == auths[1] || auths[1] == auths[2] {
-		t.Fatal("rejected provider token was reused")
+	// A token signed moments ago is not replaced (Apple limits new tokens to
+	// one per 20 minutes); once it is older than that, a rejection re-signs.
+	if auths[0] != auths[1] {
+		t.Fatal("a token signed moments ago was replaced after one rejection")
+	}
+	if auths[1] == auths[2] {
+		t.Fatal("a rejected token older than 20 minutes was reused")
 	}
 }
 
@@ -141,9 +146,9 @@ func TestAnInvalidProviderTokenIsResignedAtMostEveryTwentyMinutes(t *testing.T) 
 	for _, auth := range auths {
 		distinct[auth] = true
 	}
-	// 25 minutes of rejections: the first token, one re-sign at once, and one
-	// more after 20 minutes. Not one per tick.
-	if len(distinct) != 3 {
-		t.Fatalf("%d distinct provider tokens in 25 minutes, want 3", len(distinct))
+	// 25 minutes of rejections: the first token and one re-sign 20 minutes
+	// after it was signed. Not one per tick.
+	if len(distinct) != 2 {
+		t.Fatalf("%d distinct provider tokens in 25 minutes, want 2", len(distinct))
 	}
 }

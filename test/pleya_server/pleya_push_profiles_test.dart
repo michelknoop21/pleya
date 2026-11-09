@@ -34,6 +34,15 @@ class _Session {
   bool failDelete = false;
   Completer<void>? holdPut;
   final requests = <String>[];
+  final rejectIds = <String>{};
+  // Rotation model: a short-lived client spends the refresh token once. A
+  // lost answer leaves the device on the old token, and spending that again
+  // gets the session revoked, as the real server does after its grace.
+  bool mayHold = false;
+  int rotations = 0;
+  bool loseNext = false;
+  bool burned = false;
+  bool revoked = false;
 
   Future<void> start() async {
     final fake = PleyaFakeServer();
@@ -44,12 +53,27 @@ class _Session {
           final id = request.url.pathSegments.last;
           requests.add(request.method);
           if (request.method == 'PUT') {
+            mayHold = true;
             await holdPut?.future;
             if (failPut) return http.Response('', 503);
+            if (rejectIds.contains(id)) {
+              return http.Response(
+                jsonEncode({
+                  'error': {'code': 'session.invalid', 'message': 'invalid push installation', 'retryable': false},
+                }),
+                400,
+                headers: {'content-type': 'application/json'},
+              );
+            }
             registered.add(id);
           } else {
             if (failDelete) return http.Response('', 503);
-            id == 'push-installations' ? registered.clear() : registered.remove(id);
+            if (id == 'push-installations') {
+              registered.clear();
+              mayHold = false;
+            } else {
+              registered.remove(id);
+            }
           }
           return http.Response('', 204);
         }
@@ -140,6 +164,8 @@ void main() {
   late _Profile profile;
   late _Servers servers;
   late Set<String> unbound;
+  late List<String> violations;
+  late Map<String, String> deviceToken;
   PleyaPushNotifications? push;
 
   setUp(() async {
@@ -153,6 +179,8 @@ void main() {
       sessions[connection.id] = session;
     }
     unbound = {};
+    violations = [];
+    deviceToken = {'token': 'aabb', 'environment': 'sandbox'};
     profile = _Profile();
     servers = _Servers(
       () => [
@@ -162,7 +190,7 @@ void main() {
     );
     const channel = MethodChannel('com.pleya/push');
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(channel, (_) async => {'token': 'aabb', 'environment': 'sandbox'});
+    messenger.setMockMethodCallHandler(channel, (_) async => deviceToken);
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
     addTearDown(() {
       push?.dispose();
@@ -182,6 +210,24 @@ void main() {
       reach: (connection, action) async {
         final session = sessions[connection.id]!;
         if (!session.online) throw StateError('offline');
+        final bound = servers.bound().contains(session);
+        if (!bound) {
+          // A short-lived client: it spends the refresh token.
+          if (!session.mayHold && session.registered.isEmpty) {
+            violations.add('${connection.id} got a client while holding nothing');
+          }
+          if (session.revoked || session.burned) {
+            session.revoked = true;
+            throw StateError('session revoked');
+          }
+          session.rotations++;
+          if (session.loseNext) {
+            session
+              ..loseNext = false
+              ..burned = true;
+            throw StateError('answer lost');
+          }
+        }
         await action(session.client);
       },
       retryBackoff: const Duration(milliseconds: 20),
@@ -197,13 +243,27 @@ void main() {
     }
   }
 
+  /// What an earlier PUT leaves: the server holds [id] and the session is marked.
+  Future<void> leftBehind(PleyaServerConnection connection, String id) async {
+    sessions[connection.id]!
+      ..registered.add(id)
+      ..mayHold = true;
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    await prefs.setStringList(
+      'pleya.push.registered',
+      {...?prefs.getStringList('pleya.push.registered'), connection.id}.toList(),
+    );
+  }
+
   PushSource sourceFor(PleyaPushNotifications instance, PleyaServerConnection connection) =>
       instance.sources.firstWhere((source) => source.id == connection.id);
 
   /// What the server must hold: the active profile's opt-ins, nothing else.
-  Future<void> expectDesired(String activeProfile) async {
+  Future<void> expectDesired(String activeProfile, {bool skipRevoked = false}) async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     for (final session in sessions.values) {
+      // A revoked session needs a new sign-in; the server ends what it held.
+      if (skipRevoked && session.revoked) continue;
       final id = session.connection.id;
       final stored = prefs.getStringList('pleya.push/$activeProfile/${Uri.encodeComponent(id)}');
       final wanted = (profileSessions[activeProfile] ?? const {}).contains(id) && stored != null
@@ -214,8 +274,8 @@ void main() {
   }
 
   test('starting a profile empties every session it did not opt in on', () async {
-    sessions[bobOwn.id]!.registered.add('left-behind');
-    sessions[shared.id]!.registered.add('left-behind-too');
+    await leftBehind(bobOwn, 'left-behind');
+    await leftBehind(shared, 'left-behind-too');
     open('alice');
     await settle();
     await expectDesired('alice');
@@ -253,9 +313,8 @@ void main() {
   });
 
   test('a failed withdrawal is retried after a pause while the servers stay online', () async {
-    sessions[bobOwn.id]!
-      ..registered.add('left-behind')
-      ..failDelete = true;
+    await leftBehind(bobOwn, 'left-behind');
+    sessions[bobOwn.id]!.failDelete = true;
     open('alice');
     await settle();
     expect(sessions[bobOwn.id]!.registered, isNotEmpty);
@@ -268,7 +327,7 @@ void main() {
     // The active profile's shared session is not bound (its server was down
     // at bind time), and alice has no opt-in there.
     unbound.add(shared.id);
-    sessions[shared.id]!.registered.add('kid-left-this');
+    await leftBehind(shared, 'kid-left-this');
     open('alice');
     await settle();
     expect(sessions[shared.id]!.registered, isEmpty, reason: 'emptied through a short-lived client');
@@ -276,8 +335,8 @@ void main() {
 
   test('while the binder binds, the active profile\'s sessions wait for it', () async {
     profile.binding = true;
-    sessions[aliceOwn.id]!.registered.add('stale');
-    sessions[bobOwn.id]!.registered.add('other');
+    await leftBehind(aliceOwn, 'stale');
+    await leftBehind(bobOwn, 'other');
     open('alice');
     await settle();
     expect(sessions[aliceOwn.id]!.requests, isEmpty, reason: 'the binder holds this token');
@@ -367,6 +426,75 @@ void main() {
     await expectDesired('kid');
   });
 
+  test('dispose cancels a pending retry', () async {
+    await leftBehind(bobOwn, 'left-behind');
+    sessions[bobOwn.id]!.failDelete = true;
+    final alice = open('alice');
+    await settle();
+    expect(alice.debugRetryPending, isTrue, reason: 'precondition: a failed DELETE waits for a retry');
+    alice.dispose();
+    push = null;
+    expect(alice.debugRetryPending, isFalse);
+  });
+
+  test('resume registers again what the server lost', () async {
+    final alice = open('alice');
+    await settle();
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    sessions[aliceOwn.id]!.registered.clear(); // e.g. a restored server database
+    alice.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await settle();
+    expect(sessions[aliceOwn.id]!.registered, hasLength(1));
+  });
+
+  test('a new APNs token registers again at once', () async {
+    final alice = open('alice');
+    await settle();
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    final puts = sessions[aliceOwn.id]!.requests.where((method) => method == 'PUT').length;
+    deviceToken = {'token': 'ccdd', 'environment': 'sandbox'};
+    servers.changed();
+    alice.retry();
+    await settle();
+    expect(sessions[aliceOwn.id]!.requests.where((method) => method == 'PUT').length, puts + 1);
+  });
+
+  test('a PUT the server refuses as session.invalid is tried once under a fresh id', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final key = 'pleya.push/alice/${Uri.encodeComponent(aliceOwn.id)}';
+    await prefs.setStringList(key, ['taken-id', 'srv-1', 'movies']);
+    sessions[aliceOwn.id]!.rejectIds.add('taken-id');
+    open('alice');
+    await settle();
+    final stored = prefs.getStringList(key)!;
+    expect(stored.first, isNot('taken-id'));
+    expect(sessions[aliceOwn.id]!.registered, {stored.first});
+  });
+
+  test('a PUT without a bound client while the server is online is tried again', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    await prefs.setStringList('pleya.push/alice/${Uri.encodeComponent(aliceOwn.id)}', ['id-a', 'srv-1', 'movies']);
+    unbound.add(aliceOwn.id); // online, but the bind has not produced its client yet
+    open('alice');
+    await settle();
+    expect(sessions[aliceOwn.id]!.registered, isEmpty);
+    unbound.remove(aliceOwn.id); // the client is there now, without any notification
+    await settle();
+    expect(sessions[aliceOwn.id]!.registered, {'id-a'});
+  });
+
+  test('without an active profile every marked session is emptied', () async {
+    final alice = open('alice');
+    await settle();
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    expect(sessions[aliceOwn.id]!.registered, hasLength(1));
+    profile.switchTo(null); // the profile picker
+    alice.dispose();
+    push = null;
+    await settle();
+    expect(sessions[aliceOwn.id]!.registered, isEmpty);
+  });
+
   // Whatever happens in between, once requests succeed again the server holds
   // exactly the active profile's opt-ins.
   test('random switches, choices and failures converge to the desired state', () async {
@@ -376,7 +504,7 @@ void main() {
     var instance = open(current);
     await settle();
     for (var step = 0; step < 300; step++) {
-      switch (random.nextInt(6)) {
+      switch (random.nextInt(7)) {
         case 0:
           current = profiles[random.nextInt(profiles.length)];
           profile.switchTo(current);
@@ -403,6 +531,8 @@ void main() {
           final session = sessions.values.elementAt(random.nextInt(sessions.length));
           session.online = random.nextInt(4) != 0;
           servers.changed();
+        case 5 when random.nextInt(4) == 0:
+          sessions.values.elementAt(random.nextInt(sessions.length)).loseNext = true;
         default:
           await pumpEventQueue();
       }
@@ -412,12 +542,14 @@ void main() {
       session
         ..online = true
         ..failPut = false
-        ..failDelete = false;
+        ..failDelete = false
+        ..loseNext = false;
     }
     servers.changed();
     instance.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await settle();
     await settle();
-    await expectDesired(current);
+    expect(violations, isEmpty, reason: 'a short-lived client only for a session that may hold something');
+    await expectDesired(current, skipRevoked: true);
   });
 }

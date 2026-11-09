@@ -945,10 +945,16 @@ class MultiServerManager {
   @visibleForTesting
   http.Client Function()? debugPleyaServerHttpClientFactory;
 
+  /// Whether a Pleya connection row still exists. A short-lived client only
+  /// writes a rotated token back to a row that is still there, so it cannot
+  /// bring back a connection that was removed while it ran.
+  Future<bool> Function(String connectionId)? pleyaConnectionExists;
+
   PleyaServerClient _createPleyaServerClient(
     PleyaServerConnection connection, {
     void Function(PleyaServerConnection updated)? onRotated,
     bool persist = true,
+    bool onlyExisting = false,
   }) => PleyaServerClient.create(
     connection,
     httpClientFactory: debugPleyaServerHttpClientFactory,
@@ -956,6 +962,8 @@ class MultiServerManager {
       onRotated?.call(updated);
       final save = onPleyaServerConnectionUpdated;
       if (!persist || save == null) return;
+      final exists = pleyaConnectionExists;
+      if (onlyExisting && exists != null && !await exists(updated.id)) return;
       try {
         await Future.sync(() => save(updated));
       } catch (e, st) {
@@ -1015,6 +1023,7 @@ class MultiServerManager {
         inherited ?? connection,
         onRotated: (updated) => handOn = updated,
         persist: persist,
+        onlyExisting: true,
       );
       try {
         return await action(client);

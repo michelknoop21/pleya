@@ -55,7 +55,20 @@ class AccountUiActions {
   /// live socket, and the registries go before storage because clearing a
   /// registry writes to it. Plex is never asked to revoke the token, the same
   /// choice `_signOutPlexAccount` makes in [ProfileSwitchScreen].
+  static bool _loggingOut = false;
+
   static Future<void> logout(BuildContext context) async {
+    // One sign-out at a time: a second tap during it does nothing.
+    if (_loggingOut) return;
+    _loggingOut = true;
+    try {
+      await _logout(context);
+    } finally {
+      _loggingOut = false;
+    }
+  }
+
+  static Future<void> _logout(BuildContext context) async {
     final confirm = await showConfirmDialog(
       context,
       title: t.common.logout,
@@ -77,7 +90,9 @@ class AccountUiActions {
     final companionRemote = context.read<CompanionRemoteProvider>();
 
     // Every Pleya session withdraws its push and ends before its client
-    // and row go; each is capped, so an offline server cannot hold this up.
+    // and row go; each is capped at 5 s, so an offline server cannot hold this
+    // up, and a spinner shows meanwhile. The sign-in route replaces it.
+    showLoadingDialog(context);
     await PleyaPushNotifications.signOut(
       await connectionRegistry.listPleyaServers(),
       multiServerProvider.serverManager,

@@ -234,6 +234,21 @@ void main() {
       await hanging;
     });
 
+    test('an orphan Pleya session (no profile on it) is withdrawn and ended too', () async {
+      await profileConnections.remove('p1', connection.id);
+
+      await removeConnectionCompletely(
+        connection: connection,
+        profileConnections: profileConnections,
+        connections: connections,
+        storage: storage,
+        serverManager: manager,
+      );
+
+      expect(calls, ['DELETE /pleya/v1/users/me/push-installations', 'POST /pleya/v1/auth/logout']);
+      expect(await connections.get(connection.id), isNull);
+    });
+
     test('the last reference of the active profile, not bound: short-lived client plus logout', () async {
       // setUp: p1 is active and the only profile on this connection, and no
       // client is bound (a removal right after a cold start).
