@@ -3,10 +3,10 @@
 ///
 /// Alle films on the Apple TV spent about three times the build time of Alle
 /// series per frame, with raster at 1-3 ms. These tests pin the three costs
-/// that grow with the number of cards: a scroll frame that repaints the cards
-/// (H1), an artwork recenter that rebuilds every card (H2), and a
+/// that grew with the number of cards: a scroll frame that repainted the cards
+/// (H1), an artwork recenter that rebuilt every card (H2), and a
 /// `LocalLibraryProvider` notification that looks up a poster for every card
-/// (H3).
+/// (H3). H1 and H2 are now held at a constant cost; H3 stays as measured.
 library;
 
 import 'package:flutter/material.dart';
@@ -151,21 +151,30 @@ void main() {
     TvDetectionService.debugSetAppleTVOverride(null);
   });
 
-  testWidgets('H1: a scroll-only frame repaints every drawn card', (tester) async {
+  testWidgets('a scroll-only frame repaints no card', (tester) async {
     await pumpGrid(tester, groups: 500);
     final rowPitch = rowPitchOf(tester);
     paintProbe.count = 0;
     controller.jumpTo(controller.offset + rowPitch);
     await tester.pump();
-    expect(paintProbe.count, greaterThan(0));
+    expect(paintProbe.count, 0);
   });
 
-  testWidgets('H2: an artwork recenter rebuilds cards in proportion to the list', (tester) async {
+  testWidgets('an artwork recenter costs the same at 130 and 500 cards', (tester) async {
     final small = await recenterBuilds(tester, groups: 130);
     final large = await recenterBuilds(tester, groups: 500);
-    expect(large, greaterThan(small * 3));
+    expect(large, small);
+    expect(large, lessThanOrEqualTo(36)); // 4 flipped rows of 6 plus the focus pair, with margin
   });
 
+  testWidgets('a jump far past the artwork window draws the target poster', (tester) async {
+    await pumpGrid(tester, groups: 500);
+    gridState.focusItem('g400');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('probe-g400')), findsOneWidget);
+  });
+
+  // Kept: Task 5 makes each lookup cheap, not fewer.
   testWidgets('H3: one LocalLibraryProvider notification looks up a poster for every card', (tester) async {
     await pumpGrid(tester, groups: 500);
     ScanDiagnostics.posterPathCalls = 0;

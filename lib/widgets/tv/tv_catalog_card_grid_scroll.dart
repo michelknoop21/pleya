@@ -21,8 +21,8 @@ extension _GridScroll on TvCatalogCardGridState {
     if (measured == null) return;
     final offset = _controller.offset;
     final wasScrolling = _controller.position.isScrollingNotifier.value;
-    final center = _artworkCenterRow;
-    if (center != null) _artworkCenterRow = math.max(0, center + rowDelta);
+    final center = _artworkCenter;
+    if (center != null) center.value = math.max(0, center.value + rowDelta);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_controller.hasClients || _focusedId != id || !(_nodes[id]?.hasFocus ?? false)) return;
       if (widget.itemIds.indexOf(id) != newIndex || _grid?.columns != grid.columns) return;
@@ -223,6 +223,14 @@ extension _GridScroll on TvCatalogCardGridState {
 
 /// Node bookkeeping and row layout of [TvCatalogCardGridState].
 extension _GridWiring on TvCatalogCardGridState {
+  /// Moves the poster window to [row] once the focus has walked far enough.
+  void _recenterArtwork(int row) {
+    final center = _artworkCenter;
+    if (center != null && tvCatalogArtworkShouldRecenter(focusedRow: row, centerRow: center.value)) {
+      center.value = row;
+    }
+  }
+
   /// Drops nodes for items that are gone, and rescues focus if one of them had
   /// it (hoofdstuk 7.6: "kaart verdwijnt door filter/verwijdering →
   /// eerstvolgende buur").

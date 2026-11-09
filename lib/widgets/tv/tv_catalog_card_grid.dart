@@ -243,7 +243,13 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
 
   /// The row the poster window is centred on (CAT18). Moves with the focus,
   /// but only every few rows; see [tvCatalogArtworkShouldRecenter].
-  int? _artworkCenterRow;
+  ///
+  /// A notifier rather than state: a recenter re-evaluates each row's
+  /// [TvCatalogArtworkScope] and nothing else, so only the rows whose
+  /// `drawArtwork` flips rebuild, not every card of the list. Created on the
+  /// first build, when the column count that turns the focus into a row is
+  /// known.
+  ValueNotifier<int>? _artworkCenter;
 
   /// The card height that went with [_grid], kept beside it for the same
   /// reason: [_keepFocusRingVisible] needs the row pitch and must not re-derive
@@ -320,6 +326,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
   @override
   void dispose() {
     _fallbackController?.dispose();
+    _artworkCenter?.dispose();
     for (final node in _nodes.values) {
       node.dispose();
     }
@@ -353,6 +360,10 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     final node = _nodes[id];
     if (node == null || !node.canRequestFocus) return false;
     _focusedId = id;
+    // Before the focus: a jump far down must find its row drawing a poster on
+    // the first frame it is on screen.
+    final columns = _grid?.columns ?? 0;
+    if (columns > 0) _recenterArtwork(widget.itemIds.indexOf(id) ~/ columns);
     requestFocusClearingDirectionalHistory(node);
     return true;
   }
@@ -374,14 +385,23 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
     _cardHeight = cardHeight;
     final rows = <Widget>[];
     final focusedIndex = _focusedId == null ? -1 : widget.itemIds.indexOf(_focusedId!);
-    final centerRow = _artworkCenterRow ??= focusedIndex < 0 ? 0 : focusedIndex ~/ grid.columns;
+    final artworkCenter = _artworkCenter ??= ValueNotifier(focusedIndex < 0 ? 0 : focusedIndex ~/ grid.columns);
 
     for (var start = 0; start < widget.itemIds.length; start += grid.columns) {
       final end = (start + grid.columns).clamp(0, widget.itemIds.length);
+      final row = start ~/ grid.columns;
       rows.add(
-        TvCatalogArtworkScope(
-          drawArtwork: tvCatalogArtworkRowInWindow(row: start ~/ grid.columns, centerRow: centerRow),
-          child: _buildRow(grid: grid, start: start, end: end, isFirstRow: start == 0),
+        // Its own layer, so a scroll frame or a focus scale repaints one row
+        // at most rather than every card in the column.
+        RepaintBoundary(
+          child: ValueListenableBuilder<int>(
+            valueListenable: artworkCenter,
+            builder: (context, centerRow, child) => TvCatalogArtworkScope(
+              drawArtwork: tvCatalogArtworkRowInWindow(row: row, centerRow: centerRow),
+              child: child!,
+            ),
+            child: _buildRow(grid: grid, start: start, end: end, isFirstRow: start == 0),
+          ),
         ),
       );
     }
@@ -441,11 +461,7 @@ class TvCatalogCardGridState extends State<TvCatalogCardGrid> {
           onFocusChange: (hasFocus) {
             if (!hasFocus) return;
             _focusedId = id;
-            final row = index ~/ grid.columns;
-            final center = _artworkCenterRow;
-            if (center == null || tvCatalogArtworkShouldRecenter(focusedRow: row, centerRow: center)) {
-              setState(() => _artworkCenterRow = row);
-            }
+            _recenterArtwork(index ~/ grid.columns);
             widget.onFocusedIdChanged?.call(id);
             _keepFocusRingVisible(index);
             widget.onFocusedCell?.call(index, grid);
