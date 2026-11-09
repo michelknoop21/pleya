@@ -10,6 +10,7 @@ import 'package:pleya/screens/seerr/seerr_media_detail_screen.dart';
 import 'package:pleya/screens/seerr/seerr_requests_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/desktop_app_bar.dart';
 import 'package:pleya/widgets/seerr_request_row.dart';
 
@@ -80,5 +81,12 @@ void main() {
   testWidgets('the title page has no standard app bar on an iPhone', (tester) async {
     await pump(tester, iphone, detail);
     expect(find.byType(CustomAppBar), findsNothing);
+  });
+
+  testWidgets('the Mac container is no iPhone, also in a phone-sized window', (tester) async {
+    TvDetectionService.debugSetIOSAppOnMacOverride(true);
+    addTearDown(() => TvDetectionService.debugSetIOSAppOnMacOverride(null));
+    await pump(tester, iphone, detail);
+    expect(find.byType(CustomAppBar), findsOneWidget);
   });
 }

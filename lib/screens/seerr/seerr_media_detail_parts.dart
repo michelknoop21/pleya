@@ -28,7 +28,6 @@ class _HeroHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final tk = tokens(context);
     final handheld = seerrIsIPhone(context);
-    final phone = handheld;
     final tv = PlatformDetector.isTV();
     final inset = tv ? TvLayoutConstants.horizontalInset : 16.0;
     final artwork = media.backdropUrl.isEmpty ? media.posterUrl : media.backdropUrl;
@@ -38,8 +37,8 @@ class _HeroHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final height = phone ? (width * 1.15).clamp(300.0, 510.0) : (width * 0.46).clamp(280.0, 590.0);
-        final centered = phone;
+        final height = handheld ? (width * 1.15).clamp(300.0, 510.0) : (width * 0.46).clamp(280.0, 590.0);
+        final centered = handheld;
         final content = Stack(
           children: [
             if (artwork.isNotEmpty)
@@ -51,7 +50,7 @@ class _HeroHeader extends StatelessWidget {
                       CachedNetworkImage(
                         imageUrl: artwork,
                         fit: BoxFit.cover,
-                        alignment: phone ? Alignment.topCenter : Alignment.centerRight,
+                        alignment: handheld ? Alignment.topCenter : Alignment.centerRight,
                         errorBuilder: (_, _, _) => ColoredBox(color: surface),
                       ),
                       DecoratedBox(
@@ -60,7 +59,7 @@ class _HeroHeader extends StatelessWidget {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withValues(alpha: phone ? 0.45 : 0.08),
+                              Colors.black.withValues(alpha: handheld ? 0.45 : 0.08),
                               Colors.transparent,
                               surface,
                               surface,
@@ -85,7 +84,7 @@ class _HeroHeader extends StatelessWidget {
             Padding(
               padding: EdgeInsets.fromLTRB(
                 inset,
-                artwork.isEmpty ? (handheld ? top + 64 : 24) : height * (phone ? 0.78 : 0.55),
+                artwork.isEmpty ? (handheld ? top + 64 : 24) : height * (handheld ? 0.78 : 0.55),
                 inset,
                 12,
               ),
