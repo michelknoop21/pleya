@@ -38,7 +38,8 @@ extension LocalLibraryVisibleArtwork on LocalLibraryProvider {
         _store?.serverAccess[request.serverId] == false ||
         !identical(clientFor(ServerId(request.serverId)), request.client))
       return false;
-    final reference = '${request.serverId}|${artworkStorageKey(request.path)}';
+    final requestKey = artworkStorageKey(request.path);
+    final reference = '${request.serverId}|$requestKey';
     if (_posterReferences.contains(reference)) return true;
     // A known revoked library cannot borrow another library's permission. Every
     // path a row names counts here, also an episode still the index does not
@@ -52,7 +53,7 @@ extension LocalLibraryVisibleArtwork on LocalLibraryProvider {
                     i.thumbPath,
                     i.parentThumbPath,
                     i.grandparentThumbPath,
-                  ].whereType<String>().any((path) => artworkStorageKey(path) == artworkStorageKey(request.path)),
+                  ].whereType<String>().any((path) => artworkStorageKey(path) == requestKey),
             )
             .toList() ??
         const [];
