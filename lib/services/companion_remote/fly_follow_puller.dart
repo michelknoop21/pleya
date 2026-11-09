@@ -129,6 +129,11 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
 
   StreamSubscription<List<DiscoveredHost>>? _subscription;
   Timer? _relisten;
+
+  /// The beacons as last seen. Discovery emits only on a change, so a retry
+  /// after a wait looks at these again instead of waiting for a new emission.
+  List<DiscoveredHost> _lastHosts = const [];
+  Timer? _retryTimer;
   FlyFollowCard? _card;
   String? _askedFor;
   final Map<String, ({DateTime at, Duration wait})> _retry = {};
@@ -153,6 +158,8 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
     _running = false;
     _relisten?.cancel();
     _relisten = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
     unawaited(_subscription?.cancel());
     _subscription = null;
     // Only the listener this puller started; a fly under way keeps its own.
@@ -178,6 +185,7 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
   }
 
   void _onHosts(List<DiscoveredHost> hosts) {
+    _lastHosts = hosts;
     final tv = hosts.where((h) => h.platform == 'tvOS' && h.playing).firstOrNull;
     if (tv == null) {
       // While this phone is connected (a peek or the tap), the Apple TV hides
@@ -199,13 +207,22 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
     unawaited(_peek(tv));
   }
 
-  /// No answer (another link ran, or the Apple TV failed): ask again later,
-  /// each time waiting twice as long.
+  /// No usable answer (another link ran, the Apple TV failed, or its player
+  /// is still opening): ask again later, each time waiting twice as long. A
+  /// steady beacon emits nothing new, so the wait ends in a timer that looks
+  /// at the last beacons again.
   void _backOff(String clientId) {
     _askedFor = null;
+    // Stopped while the ask ran: no timer outlives the puller's run.
+    if (!_running) return;
     final previous = _retry[clientId]?.wait;
     final wait = previous == null ? firstRetryWait : (previous * 2 > maxRetryWait ? maxRetryWait : previous * 2);
     _retry[clientId] = (at: _clock().add(wait), wait: wait);
+    _retryTimer?.cancel();
+    _retryTimer = Timer(wait, () {
+      _retryTimer = null;
+      if (_running && !isDisposed) _onHosts(_lastHosts);
+    });
   }
 
   /// Asks [tv] over one short Companion Remote link; null when another link runs.
@@ -233,6 +250,12 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
     final answer = await _overLink(tv, peek: true);
     if (isDisposed || _askedFor != tv.clientId) return;
     if (answer == null || answer.refusal == FlyFollowRefusal.failed) {
+      _backOff(tv.clientId);
+      return;
+    }
+    if (answer.refusal == FlyFollowRefusal.nothing) {
+      // Its beacon says a player is open, but it has nothing to offer yet: the
+      // player is still opening (the Apple TV advertises from the first frame).
       _backOff(tv.clientId);
       return;
     }
