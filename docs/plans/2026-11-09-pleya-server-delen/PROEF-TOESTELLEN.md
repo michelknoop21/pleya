@@ -14,20 +14,24 @@ Alles draait tegen een testopstelling op de Mac. Geen productie, geen echte gebr
 
 Voer elk scenario uit met **verificatie aan** (verwacht: speelt) en daarna met het **MITM-certificaat** (verwacht: weigert). Noteer per regel: speelt ja of nee, de foutmelding, en een schermafbeelding of log.
 
-| Scenario | MPVKit iOS | MPVKit tvOS | MPVKit macOS | ExoPlayer/Cronet Android | ExoPlayer Android TV | Safari + hls.js | Chrome + hls.js |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Direct play mp4, directe route | | | | | | | |
-| Direct play via relay | | | | | | | |
-| HLS fMP4 via relay | | | | | | | |
-| Seek naar 6 s via relay | | | | | | | |
-| Externe ondertitel via relay | | | | | | | |
-| MITM-certificaat, verificatie aan | | | | | | | |
-| MITM-certificaat, standaardinstelling van de app | | | | | | | |
-| Redirect naar andere host: komt `Authorization` aan? | | | | | | | |
-| Lokale route met DNS-rebindingbescherming, via CONNECT-proxy | | | | | | | |
+Naast de spelers zelf telt ook de HTTP-laag van de app: CupertinoClient op iOS, tvOS en macOS, Cronet of IOClient op Android. Die haalt plannen, ondertitels en afbeeldingen op en hoort dezelfde regels te volgen.
+
+| Scenario | MPVKit iOS | MPVKit tvOS | MPVKit macOS | ExoPlayer/Cronet Android | ExoPlayer Android TV | Safari + hls.js | Chrome + hls.js | App-HTTP (Cupertino, Cronet) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Direct play mp4, directe route | | | | | | | | n.v.t. |
+| Direct play via relay | | | | | | | | n.v.t. |
+| HLS fMP4 via relay | | | | | | | | n.v.t. |
+| Seek naar 6 s via relay | | | | | | | | n.v.t. |
+| Externe ondertitel via relay | | | | | | | | |
+| Zelfondertekend MITM-certificaat, verificatie aan | | | | | | | | |
+| Geldig certificaat van een andere server (`*.H'`), verificatie aan | | | | | | | | |
+| MITM-certificaat, standaardinstelling van de app | | | | | | | | |
+| Redirect naar andere host: komt `Authorization` aan? | | | | | | | | |
+| Lokale route met DNS-rebindingbescherming, via CONNECT-proxy | | | | | | | | |
 
 ## Wat specifiek uitgezocht moet worden
 
+- **Hostnaamcontrole:** elke server-eigenaar kan een geldig certificaat krijgen voor zijn eigen hash. Alleen de hostnaamcontrole houdt hem tegen als hij zich voordoet als een andere server. Op Linux doen ffmpeg en mpv dat goed met `tls-verify` aan. Voor MPVKit is dat onbekend en het belangrijkste punt van deze ronde.
 - **MPVKit:** welke TLS-backend de ffmpeg-build gebruikt (OpenSSL, mbedTLS of Secure Transport). Accepteert `tls-ca-file` daar een bestand? Of gebruikt de backend de systeemtrust van iOS en tvOS? Met een publiek certificaat volstaat `tls-verify=yes` als de backend de systeemtrust leest. Dat is de kernvraag voor de keuze tussen publiek certificaat en pinning.
 - **ExoPlayer met Cronet:** Cronet controleert standaard tegen de systeemtrust. Bevestig dat een MITM-certificaat wordt geweigerd zonder extra instelling. Bevestig ook wat `DefaultHttpDataSource` als terugval doet.
 - **Redirect:** stuurt Cronet of ExoPlayer de request-headers mee naar een andere host?
