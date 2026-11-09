@@ -324,6 +324,34 @@ void main() {
     expect(find.text(t.messages.logsUploadServerError(status: 503)), findsOneWidget);
   });
 
+  testWidgets('an upload error goes away by itself instead of standing on the TV', (tester) async {
+    await pumpAndUpload(tester, _answering(502, 'Bad gateway\n'));
+    expect(find.text(t.messages.logsUploadServerError(status: 502)), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 9));
+    await tester.pumpAndSettle();
+    expect(find.text(t.messages.logsUploadServerError(status: 502)), findsNothing);
+  });
+
+  testWidgets('a successful upload clears an earlier upload error', (tester) async {
+    var calls = 0;
+    await pumpAndUpload(
+      tester,
+      _Relay(
+        (_) async => ++calls == 1
+            ? http.Response('Bad gateway\n', 502, headers: const {'content-type': 'text/plain'})
+            : http.Response('{"id":"abc12345"}', 200, headers: const {'content-type': 'application/json'}),
+      ),
+    );
+    expect(find.text(t.messages.logsUploadServerError(status: 502)), findsOneWidget);
+
+    await tester.tap(find.byTooltip(t.logs.uploadLogs), warnIfMissed: false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('abc12345'), findsOneWidget);
+    expect(find.text(t.messages.logsUploadServerError(status: 502)), findsNothing);
+  });
+
   testWidgets('reports an unreachable server as a network problem', (tester) async {
     await pumpAndUpload(tester, _Relay((_) async => throw http.ClientException('Failed host lookup')));
 

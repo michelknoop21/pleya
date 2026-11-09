@@ -26,6 +26,7 @@ import '../../utils/platform_detector.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/ios_status_bar_tap_scroll_to_top.dart';
+import '../../widgets/notice/notice_controller.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../focus/focus_memory_tracker.dart';
@@ -244,11 +245,7 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     // window the relay named has passed, the press costs nothing.
     final blockedFor = _remainingUploadCooldown();
     if (blockedFor != null) {
-      showErrorSnackBar(
-        context,
-        t.messages.logsUploadRateLimited(seconds: blockedFor),
-        groupKey: _kUploadRateLimitedKey,
-      );
+      _showUploadError(t.messages.logsUploadRateLimited(seconds: blockedFor), _kUploadRateLimitedKey);
       return;
     }
 
@@ -287,6 +284,7 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
       final data = response.data is String ? jsonDecode(response.data) : response.data;
       final id = (data as Map<String, dynamic>)['id'] as String;
       _resetUploadCooldown();
+      noticeController.dismissWhere((notice) => notice.groupKey.startsWith(_kUploadNoticePrefix));
 
       unawaited(
         showScopedDialog<void>(
@@ -329,11 +327,20 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
         retryAfter = _startUploadCooldown(serverRetryAfter);
       }
       if (!mounted) return;
-      showErrorSnackBar(context, _uploadErrorMessage(e, retryAfter), groupKey: _uploadErrorGroupKey(e));
+      _showUploadError(_uploadErrorMessage(e, retryAfter), _uploadErrorGroupKey(e));
     } finally {
       setStateIfMounted(() => _isUploading = false);
     }
   }
+
+  // Een fout blijft normaal staan tot je hem sluit, maar op de Apple TV bleef
+  // een mislukte upload daardoor in beeld hangen. Deze verloopt, en een
+  // geslaagde upload ruimt een eerdere fout op.
+  static const _uploadNoticeDuration = Duration(seconds: 8);
+  static const _kUploadNoticePrefix = 'logs.upload.';
+
+  void _showUploadError(String message, String groupKey) =>
+      showSnackBar(context, message, type: SnackBarType.error, duration: _uploadNoticeDuration, groupKey: groupKey);
 
   /// Hold off until the limit has actually passed, and answer with the wait
   /// the user is looking at.
