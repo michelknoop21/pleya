@@ -74,7 +74,7 @@ void main() {
     profileConnections = ProfileConnectionRegistry(db);
     manager = MultiServerManager();
     manager.onPleyaServerConnectionUpdated = connections.upsert;
-    manager.pleyaConnectionExists = (id) async => await connections.get(id) != null;
+    manager.pleyaConnectionUpdateIfExists = connections.updateIfExists;
     await connections.upsert(kid);
     await profileConnections.upsert(ProfileConnection(profileId: 'kid', connectionId: kid.id, userIdentifier: 'kid'));
     current = 'rt-1';
@@ -167,6 +167,8 @@ void main() {
   // Review reproduction (I1): every start and resume rotated the token of an
   // inactive session that holds nothing.
   test('an empty inactive session costs no client and no rotation, at start and on three resumes', () async {
+    // A device past its first run: the marker exists and the kid is not in it.
+    await (await BaseSharedPreferencesService.sharedCache()).setStringList('pleya.push.registered', const []);
     final instance = open();
     await settle();
     for (var i = 0; i < 3; i++) {
@@ -175,6 +177,17 @@ void main() {
     }
     expect(presented, isEmpty, reason: 'no short-lived client, so no refresh token spent');
     expect(calls, isEmpty);
+  });
+
+  test('the first run after the update empties every known session once, then never again', () async {
+    final instance = open();
+    await settle();
+    for (var i = 0; i < 3; i++) {
+      instance.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await settle();
+    }
+    expect(presented, ['rt-1'], reason: 'one DELETE for the migration, nothing after');
+    expect(calls, ['DELETE /pleya/v1/users/me/push-installations']);
   });
 
   test('a marked session is emptied once, then left alone', () async {

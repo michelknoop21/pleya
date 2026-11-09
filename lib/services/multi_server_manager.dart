@@ -945,10 +945,10 @@ class MultiServerManager {
   @visibleForTesting
   http.Client Function()? debugPleyaServerHttpClientFactory;
 
-  /// Whether a Pleya connection row still exists. A short-lived client only
-  /// writes a rotated token back to a row that is still there, so it cannot
-  /// bring back a connection that was removed while it ran.
-  Future<bool> Function(String connectionId)? pleyaConnectionExists;
+  /// Writes a rotated Pleya token back only while the row is still there, in
+  /// one step. A short-lived client uses this, so it cannot bring back a
+  /// connection that was removed while it ran.
+  FutureOr<void> Function(PleyaServerConnection connection)? pleyaConnectionUpdateIfExists;
 
   PleyaServerClient _createPleyaServerClient(
     PleyaServerConnection connection, {
@@ -960,10 +960,10 @@ class MultiServerManager {
     httpClientFactory: debugPleyaServerHttpClientFactory,
     onConnectionUpdated: (updated) async {
       onRotated?.call(updated);
-      final save = onPleyaServerConnectionUpdated;
+      final save = onlyExisting
+          ? pleyaConnectionUpdateIfExists ?? onPleyaServerConnectionUpdated
+          : onPleyaServerConnectionUpdated;
       if (!persist || save == null) return;
-      final exists = pleyaConnectionExists;
-      if (onlyExisting && exists != null && !await exists(updated.id)) return;
       try {
         await Future.sync(() => save(updated));
       } catch (e, st) {

@@ -39,6 +39,9 @@ class _Session {
   // lost answer leaves the device on the old token, and spending that again
   // gets the session revoked, as the real server does after its grace.
   bool mayHold = false;
+  // A PUT answered without an envelope: the app cannot know it did not
+  // land, so a check DELETE on this session is legitimate.
+  bool uncertainPut = false;
   int rotations = 0;
   bool loseNext = false;
   bool burned = false;
@@ -55,7 +58,10 @@ class _Session {
           if (request.method == 'PUT') {
             mayHold = true;
             await holdPut?.future;
-            if (failPut) return http.Response('', 503);
+            if (failPut) {
+              uncertainPut = true;
+              return http.Response('', 503);
+            }
             if (rejectIds.contains(id)) {
               return http.Response(
                 jsonEncode({
@@ -66,6 +72,7 @@ class _Session {
               );
             }
             registered.add(id);
+            uncertainPut = false;
           } else {
             if (failDelete) return http.Response('', 503);
             if (id == 'push-installations') {
@@ -166,11 +173,16 @@ void main() {
   late Set<String> unbound;
   late List<String> violations;
   late Map<String, String> deviceToken;
+  // Rows that are stored but do not decode: absent from the session list.
+  late Set<String> undecodable;
   PleyaPushNotifications? push;
 
   setUp(() async {
     resetSharedPreferencesForTest();
     PleyaPushNotifications.resetForTesting();
+    // A device past the first run: the marker exists. The first-run test
+    // removes it again.
+    await (await BaseSharedPreferencesService.sharedCache()).setStringList('pleya.push.registered', const []);
     sessions = {};
     for (final connection in [aliceOwn, bobOwn, shared]) {
       final session = _Session(connection);
@@ -181,6 +193,7 @@ void main() {
     unbound = {};
     violations = [];
     deviceToken = {'token': 'aabb', 'environment': 'sandbox'};
+    undecodable = {};
     profile = _Profile();
     servers = _Servers(
       () => [
@@ -198,13 +211,18 @@ void main() {
     });
   });
 
-  PleyaPushNotifications open(String profileId) {
+  PleyaPushNotifications open(String profileId, {Duration putSettleWindow = const Duration(minutes: 2)}) {
     push?.dispose();
     final instance = PleyaPushNotifications(
       profileId,
       profile,
       servers,
-      sessions: () async => [for (final session in sessions.values) session.connection],
+      sessions: () async => [
+        for (final session in sessions.values)
+          if (!undecodable.contains(session.connection.id)) session.connection,
+      ],
+      rowExists: (id) async => sessions.containsKey(id),
+      putSettleWindow: putSettleWindow,
       profileSessions: (id) async => profileSessions[id] ?? const {},
       // Bound client or short-lived: in this fake the same client either way.
       reach: (connection, action) async {
@@ -213,7 +231,7 @@ void main() {
         final bound = servers.bound().contains(session);
         if (!bound) {
           // A short-lived client: it spends the refresh token.
-          if (!session.mayHold && session.registered.isEmpty) {
+          if (!session.mayHold && !session.uncertainPut && session.registered.isEmpty) {
             violations.add('${connection.id} got a client while holding nothing');
           }
           if (session.revoked || session.burned) {
@@ -493,6 +511,96 @@ void main() {
     push = null;
     await settle();
     expect(sessions[aliceOwn.id]!.registered, isEmpty);
+  });
+
+  // Review reproduction R1: a device from before the marker. bob's opt-out
+  // was stored but its DELETE never landed; no choice key is left to say so.
+  test('the first run empties every known session once, also one without a stored choice', () async {
+    await (await BaseSharedPreferencesService.sharedCache()).remove('pleya.push.registered');
+    sessions[bobOwn.id]!
+      ..registered.add('old-bob-id')
+      ..mayHold = true;
+    open('alice');
+    await settle();
+    await expectDesired('alice');
+  });
+
+  // Review reproduction R2: an opt-out while a PUT is in flight that the
+  // server answers with session.invalid must stay an opt-out.
+  test('an opt-out during a session.invalid PUT is not undone by the fresh-id retry', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final key = 'pleya.push/alice/${Uri.encodeComponent(aliceOwn.id)}';
+    final alice = open('alice');
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    await prefs.setStringList(key, ['taken-id', 'srv-1', 'movies']);
+    session.rejectIds.add('taken-id');
+    session.holdPut = Completer<void>();
+    alice.retry();
+    await pumpEventQueue();
+    final optOut = alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await pumpEventQueue();
+    expect(prefs.getStringList(key), isNull, reason: 'precondition: opted out');
+    session.holdPut!.complete();
+    await optOut;
+    await settle();
+    expect(prefs.getStringList(key), isNull, reason: 'the opt-out came back');
+    expect(session.registered, isEmpty);
+  });
+
+  // Review reproduction R3: a PUT whose answer never came, applied by the
+  // server only after the DELETE that followed it.
+  test('a PUT with an unknown outcome keeps the mark until a second DELETE after its window', () async {
+    final alice = open('alice');
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    final late = Completer<void>();
+    session.holdPut = late;
+    final enabling = alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    await pumpEventQueue();
+    session.failPut = true; // no envelope: the app cannot tell whether it landed
+    late.complete();
+    await enabling;
+    await settle();
+    session
+      ..failPut = false
+      ..holdPut = null;
+    await alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await settle();
+    session.registered.add('late'); // the server applies the stale PUT now
+    alice.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await settle();
+    expect(session.registered, isEmpty, reason: 'still marked, so the resume withdrew the late registration');
+  });
+
+  test('the second DELETE after the window runs on its own', () async {
+    final alice = open('alice', putSettleWindow: const Duration(milliseconds: 400));
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    session.failPut = true;
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    session.failPut = false;
+    await alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await pumpEventQueue();
+    session.registered.add('late'); // inside the window, after the first DELETE
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await settle();
+    expect(session.registered, isEmpty);
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    expect(
+      prefs.getStringList('pleya.push.registered'),
+      isNot(contains(aliceOwn.id)),
+      reason: 'unmarked after the window',
+    );
+  });
+
+  test('a row that does not decode keeps its mark', () async {
+    await leftBehind(bobOwn, 'held');
+    undecodable.add(bobOwn.id);
+    open('alice');
+    await settle();
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    expect(prefs.getStringList('pleya.push.registered'), contains(bobOwn.id));
   });
 
   // Whatever happens in between, once requests succeed again the server holds

@@ -93,6 +93,39 @@ class AccountUiActions {
     // and row go; each is capped at 5 s, so an offline server cannot hold this
     // up, and a spinner shows meanwhile. The sign-in route replaces it.
     showLoadingDialog(context);
+    var leaving = false;
+    try {
+      await _clearEverything(
+        navigator: navigator,
+        userProfileProvider: userProfileProvider,
+        multiServerProvider: multiServerProvider,
+        hiddenLibrariesProvider: hiddenLibrariesProvider,
+        playbackStateProvider: playbackStateProvider,
+        connectionRegistry: connectionRegistry,
+        profileRegistry: profileRegistry,
+        profileConnReg: profileConnReg,
+        plexHome: plexHome,
+        companionRemote: companionRemote,
+      );
+      leaving = true;
+    } finally {
+      // A failure on the way leaves the screen usable instead of behind a spinner.
+      if (!leaving && navigator.mounted) navigator.pop();
+    }
+  }
+
+  static Future<void> _clearEverything({
+    required NavigatorState navigator,
+    required UserProfileProvider userProfileProvider,
+    required MultiServerProvider multiServerProvider,
+    required HiddenLibrariesProvider hiddenLibrariesProvider,
+    required PlaybackStateProvider playbackStateProvider,
+    required ConnectionRegistry connectionRegistry,
+    required ProfileRegistry profileRegistry,
+    required ProfileConnectionRegistry profileConnReg,
+    required PlexHomeService plexHome,
+    required CompanionRemoteProvider companionRemote,
+  }) async {
     await PleyaPushNotifications.signOut(
       await connectionRegistry.listPleyaServers(),
       multiServerProvider.serverManager,

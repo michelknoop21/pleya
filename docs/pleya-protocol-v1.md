@@ -2843,8 +2843,13 @@ oplopende pauze zolang een poging mislukt; per sessie loopt één poging
 tegelijk. Een sessie krijgt alleen een intrekking als zij mogelijk iets houdt:
 de app markeert haar vóór elke PUT en wist die markering pas na een bevestigde
 intrekking. Een lege sessie van een ander profiel krijgt zo geen client en
-verbruikt geen refreshtoken, en kan dus idle worden. Zonder actief profiel (de
-profielkiezer) maakt de app de gemarkeerde sessies leeg. Gebruikt een kinderprofiel dezelfde sessie als een ander profiel, dan
+verbruikt geen refreshtoken, en kan dus idle worden. Had de laatste PUT op een
+sessie geen bekende uitkomst (een time-out of een antwoord zonder foutenvelop),
+dan kan hij nog na een intrekking landen; de markering blijft dan staan en de
+app trekt na twee minuten nog één keer in. Bij de eerste run na deze versie
+geldt elke bekende Pleya-sessie als gemarkeerd. Zonder actief profiel (de
+profielkiezer) maakt de app de gemarkeerde sessies één keer leeg, zonder nieuwe
+pogingen; wat dan nog gemarkeerd is, maakt de volgende profielkeuze leeg. Gebruikt een kinderprofiel dezelfde sessie als een ander profiel, dan
 gelden de bibliotheekrechten van dat account: de server kent geen profielen,
 alleen accounts, en de alerttekst is algemeen. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
 registraties geven 400 `session.invalid`. API-tokens geven 403
