@@ -56,7 +56,7 @@ extension _SyncRun on LocalLibraryProvider {
     }
 
     // Libraries this sync is for, against `libs=` stored ones: a stored library
-    // that is no longer synced keeps its completion date (lastSync).
+    // that is no longer synced keeps its rows in memory until it is pruned.
     var synced = 0;
     try {
       for (final library in librariesForSync().where(_allowedLibrary)) {

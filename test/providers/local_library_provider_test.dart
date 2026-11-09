@@ -672,6 +672,24 @@ void main() {
       expect(provider.state, LocalLibraryState.ready);
     });
 
+    test('a library that is no longer synced does not hold back the last sync', () async {
+      await open(); // library completed at the first clock reading
+      expect(provider.lastSync, now);
+      libraries = [second];
+      now = now.add(const Duration(days: 3));
+      await provider.synchronize(force: true);
+      expect(provider.lastSync, now, reason: 'the stored library outside the synced set is ignored');
+    });
+
+    test('a scan that left titles out still moves the last sync', () async {
+      await open();
+      client.itemErrors['c'] = TimeoutException('slow');
+      now = now.add(const Duration(days: 3));
+      await provider.synchronize(force: true);
+      expect(provider.lastSync, now);
+      expect(provider.state, LocalLibraryState.error);
+    });
+
     test('a tap on sync now while another sync runs is not dropped', () async {
       await open();
       client = Client()

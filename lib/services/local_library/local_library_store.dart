@@ -107,8 +107,6 @@ class LocalLibraryStore {
   bool isComplete(String key) => _completed.containsKey(key);
   DateTime? completedAt(String key) => _completed[key];
   ({DateTime at, int? updatedAt})? lastScan(String key) => _lastScan[key];
-  DateTime? get lastSync =>
-      _completed.values.isEmpty ? null : _completed.values.reduce((a, b) => a.isBefore(b) ? a : b);
   MediaItem? item(String serverId, String id) {
     for (final rows in _items.values) {
       final hit = rows['$serverId:$id'];
