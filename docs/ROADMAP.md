@@ -24,6 +24,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Roadmap deviation, approved by Michel on 31 October 2026:** add one shared local queue for heavy Pleya builds, tests and code generation across sessions/worktrees. This tooling task does not change product priorities, functional gates or publication authority. Implementation and measurement contract: [heavy-work queue](agents/heavy-work.md).
 
+**Open beslispunt A-20/A-21, 9 november 2026 (voorstel, niet goedgekeurd):** de voorstelset [meldingen en notificaties](assets/requests-2.1-meldingen/README.md) (families 9 tot en met 12) vult de goedgekeurde Requests 2.0-set aan. Familie 10, Probleem melden (`POST /issue` vanaf de titelpagina en de speler), is nieuwe scope en daarmee een roadmapafwijking die op een besluit van Michel wacht. Waar het bestaande werk staat en wat de app nu anders doet dan Requests 2.0 staat in [AFWIJKINGEN.md](assets/requests-2.1-meldingen/AFWIJKINGEN.md). Geen wijziging van prioriteit, WIP-limiet of review- en releasegate.
+
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.
