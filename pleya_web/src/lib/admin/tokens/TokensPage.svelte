@@ -196,7 +196,7 @@
         <AgentAuditPanel entries={data.audit} {data} />
       </div>
       <div class="col">
-        <McpPanel mcp={data.mcp} />
+        <McpPanel mcp={data.mcp} client={session.client} />
         <div id="tok-new">
           <TokenCreatePanel busy={creating} locked={created !== null} onsubmit={create} />
         </div>

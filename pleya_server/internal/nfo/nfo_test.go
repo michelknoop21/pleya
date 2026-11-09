@@ -78,8 +78,8 @@ func TestNonNumericOrHostileIDsAreDropped(t *testing.T) {
 	}
 }
 
-func TestEpisodeSeasonAndGarbageAreNotNFO(t *testing.T) {
-	for _, in := range []string{`<episodedetails><title>x</title></episodedetails>`, `<season/>`, `niet xml`, ``} {
+func TestUnknownKindsAndGarbageAreNotNFO(t *testing.T) {
+	for _, in := range []string{`<album><title>x</title></album>`, `<unknown/>`, `niet xml`, ``} {
 		if _, err := Parse(strings.NewReader(in)); !errors.Is(err, ErrNotNFO) {
 			t.Errorf("%q gaf %v", in, err)
 		}

@@ -1,4 +1,4 @@
-//go:build unix
+//go:build linux || darwin || freebsd || netbsd || openbsd || dragonfly
 
 package artwork
 
@@ -122,10 +122,6 @@ func (r *Resizer) PurgeContext(ctx context.Context) error {
 	if r.purgeBoundaryErr != nil {
 		return r.purgeBoundaryErr
 	}
-	if err := r.gate.acquire(ctx, true); err != nil {
-		return err
-	}
-	defer r.gate.release(true)
 	dir, err := r.openCache(false)
 	if errors.Is(err, os.ErrNotExist) {
 		return ctx.Err()
@@ -134,6 +130,13 @@ func (r *Resizer) PurgeContext(ctx context.Context) error {
 		return err
 	}
 	defer dir.Close()
+	wait, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+	unlock, err := r.lockCachePurge(wait, dir)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	entries, err := dir.ReadDir(-1)
 	if err != nil {
 		return err
@@ -189,5 +192,11 @@ func (r *Resizer) run(ctx context.Context, src string, dir *cacheDir, name strin
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return unix.Renameat(int(dir.Fd()), tmpName, int(dir.Fd()), name)
+	if err := tmp.Sync(); err != nil {
+		return err
+	}
+	if err := unix.Renameat(int(dir.Fd()), tmpName, int(dir.Fd()), name); err != nil {
+		return err
+	}
+	return dir.Sync()
 }

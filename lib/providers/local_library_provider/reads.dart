@@ -23,6 +23,11 @@ extension LocalLibraryReads on LocalLibraryProvider {
   List<MediaItem> children(MediaItem parent) =>
       items.where((i) => i.serverId == parent.serverId && i.parentId == parent.id).toList()
         ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+
+  /// The index keeps no episode stills (DEC-196), so an offline episode list
+  /// draws the season or show poster it does keep: the stored row's own path
+  /// first, because an episode's parent path can differ from it (Jellyfin
+  /// leaves the tag off when the season has no image of its own).
   List<MediaItem> episodes(MediaItem parent) =>
       items
           .where(
@@ -31,11 +36,25 @@ extension LocalLibraryReads on LocalLibraryProvider {
                 (i.parentId == parent.id || i.grandparentId == parent.id) &&
                 i.kind.id == 'episode',
           )
+          .map((i) => i.copyWith(thumbPath: _offlineEpisodePoster(i)))
           .toList()
         ..sort((a, b) {
           final season = (a.parentIndex ?? 0).compareTo(b.parentIndex ?? 0);
           return season != 0 ? season : (a.index ?? 0).compareTo(b.index ?? 0);
         });
+  String? _offlineEpisodePoster(MediaItem episode) {
+    String? stored(String? id) => id == null ? null : _store?.item(episode.serverId!, id)?.thumbPath;
+    final candidates = [
+      stored(episode.parentId),
+      stored(episode.grandparentId),
+      episode.parentThumbPath,
+      episode.grandparentThumbPath,
+    ].whereType<String>();
+    return candidates.where((p) => _store?.knownPosterPath(episode.serverId!, p) != null).firstOrNull ??
+        candidates.firstOrNull ??
+        episode.thumbPath;
+  }
+
   List<MediaItem> search(String query) {
     final needle = query.trim().toLowerCase();
     if (needle.isEmpty) return const [];

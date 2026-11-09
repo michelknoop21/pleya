@@ -238,7 +238,7 @@ met 26).
 `POST /libraries/{id}/refresh-metadata` bestaan (17f, DEC-XXX). Een client zonder de vlag biedt op
 deze server alleen de scan aan.
 
-`capabilities.mcp` staat aan zodra er een MCP-endpoint is waarmee een agent deze server kan beheren.
+`capabilities.mcp` staat aan zodra het MCP-endpoint beschikbaar is. Het register bepaalt welke gecontroleerde operaties beschikbaar zijn. Transport, toolargumenten en audit staan in [het MCP-hoofdstuk](pleya-protocol-mcp.md).
 Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
 dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
 de vraag niet kent.

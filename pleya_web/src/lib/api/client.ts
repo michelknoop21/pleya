@@ -1,17 +1,18 @@
 /**
  * De enige plek waar Pleya Web met de server praat.
  *
- * Alles loopt over `/pleya/v1`. Er is geen tweede API, geen `/internal/`-route
- * en geen directe database, ook niet nu de bundel in dezelfde binary zit als
- * de server: DEC-046 legt vast dat co-distributie geen extra rechten geeft.
+ * REST loopt over `/pleya/v1`; MCP gebruikt zijn eigen transport op `/mcp`.
+ * Er is geen `/internal/`-route of directe database. DEC-046 geeft de
+ * meegeleverde bundel geen extra rechten.
  *
  * De paden en de typen komen uit `schema.d.ts`, dat gegenereerd is uit
- * `docs/pleya-protocol/v1/openapi.yaml`. Een pad dat het contract niet kent
- * bestaat hier niet, want dan compileert het niet.
+ * `docs/pleya-protocol/v1/openapi.yaml`. Het aparte MCP-HTTP-contract staat
+ * in `mcpHttp.ts` en gebruikt dezelfde authenticatiemiddleware.
  */
 import createClient, { type Client, type Middleware } from 'openapi-fetch';
 
 import type { paths } from './schema';
+import { isMcpToolSummary, type McpHttpPaths, type McpToolSummary } from './mcpHttp';
 import { type ApiError, TransportError, toApiError } from './errors';
 import { browserLocks, REFRESH_TIMEOUT_MS, TokenRefresher, type RefreshLocks } from './tokenRefresher';
 import { TokenStore } from '../auth/tokens';
@@ -71,6 +72,7 @@ export class PleyaClient {
   readonly tokens: TokenStore;
 
   #raw: Client<paths>;
+  #mcpRaw: Client<McpHttpPaths>;
   #fetch: FetchLike;
   #refresher: TokenRefresher;
   #sessionGeneration = 0;
@@ -99,6 +101,11 @@ export class PleyaClient {
       fetch: this.#fetch
     });
     this.#raw.use(this.#authMiddleware());
+    this.#mcpRaw = createClient<McpHttpPaths>({
+      baseUrl: this.baseUrl.replace(/\/pleya\/v1\/?$/, ''),
+      fetch: this.#fetch
+    });
+    this.#mcpRaw.use(this.#authMiddleware());
 
     const client = this;
     this.#refresher = new TokenRefresher({
@@ -306,6 +313,19 @@ export class PleyaClient {
     this.#refresher.followUpgrade();
     if (!this.#cookieAuth && !this.tokens.refreshToken) return null;
     return (await this.#refresher.run()) ? this.tokens.accessToken : null;
+  }
+
+  async mcpTools(signal?: AbortSignal): Promise<McpToolSummary[]> {
+    const response = await this.#unwrap(this.#mcpRaw.POST('/mcp', {
+      body: { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} },
+      headers: { Accept: 'application/json, text/event-stream', 'MCP-Protocol-Version': '2025-06-18' },
+      signal
+    }));
+    const tools = response.result?.tools;
+    if (response.error || !Array.isArray(tools) || !tools.every(isMcpToolSummary) || new Set(tools.map((tool) => tool.name)).size !== tools.length) {
+      throw new TransportError(new Error('MCP tool list unavailable'));
+    }
+    return tools;
   }
 
   server(signal?: AbortSignal): Promise<ServerDetail> {

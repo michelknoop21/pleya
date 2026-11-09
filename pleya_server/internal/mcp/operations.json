@@ -1,0 +1,1552 @@
+[
+  {
+    "name": "getActivitySharing",
+    "method": "GET",
+    "path": "/users/me/activity-sharing",
+    "destructive": false,
+    "description": "Klasse `authenticated`, elke rol, altijd over de aanvrager zelf. Alleen\nonder `capabilities.item_activity`. Staat naast `User` en niet erin: dit\nschema gaat over de aanvrager, en `User` komt ook terug in `GET /users`\nen bij elke beheerhandeling.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getArtworkCacheStats",
+    "method": "GET",
+    "path": "/artwork/cache",
+    "destructive": false,
+    "description": "Klasse admin, capability artwork_cache_admin. Alleen gewone afgeleide\nladderbestanden; geen bron-, pin-, provider-, tijdelijke of andere cachebestanden.\nEen ontbrekende cache is nul; een onleesbare cache is een fout.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getArtworkCandidates",
+    "method": "GET",
+    "path": "/items/{item_id}/artwork-candidates",
+    "destructive": false,
+    "description": "Klasse admin, actuele bibliotheekscope, capability artwork_choices.\nAlleen film/serie. Pins houden bron en SHA duurzaam vast, boven de gewone\nlokale/providerladder. Cache is afgeleid; bronverlies behoudt intentie en\ngeeft een expliciete fout. Geen externe identiteitswijziging of upload.\nKandidaten zijn gebonden aan item, rol en actuele base_token. Alleen\nbeschikbare lokale bronnen en TMDB-beelden van de bewezen applied-identiteit.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getCollection",
+    "method": "GET",
+    "path": "/collections/{collection_id}",
+    "destructive": false,
+    "description": "Buiten zicht is `404`, hetzelfde antwoord als een id dat niet bestaat.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "collection_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "collection_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getCurrentUser",
+    "method": "GET",
+    "path": "/users/me",
+    "destructive": false,
+    "description": "Klasse `authenticated`, en de enige beheerachtige route waar elke rol\n`200` krijgt. Dat is geen uitzondering op de 404-regel maar de\ntoepassing ervan: het doel is de aanvrager zelf, er staat geen id in het\npad en er is geen parameter, dus er valt niets te raden.\n\nBeschikbaar wanneer `capabilities.users` waar is; `administration` is\nhier niet voor nodig. Een oudere server kent de route niet en antwoordt\n`404`; een client valt dan terug op de naam waarmee hij inlogde.\n\n`me` botst niet met een id: er is geen `GET /users/{id}`.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getDownload",
+    "method": "GET",
+    "path": "/downloads/{download_id}",
+    "destructive": false,
+    "description": "Klasse `authenticated`. De download van een ander bestaat niet (`404`).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "download_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "download_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getHistory",
+    "method": "GET",
+    "path": "/history",
+    "destructive": false,
+    "description": "Klasse `authenticated`, alleen onder `capabilities.history` (venster 6\ndeel 2, S20). Eén regel per afspeelsessie (de `session_id` van de client\nuit `POST /watch-state`), die met de meldingen van die sessie meegroeit:\neen film van twee uur met een melding per tien seconden is één regel. Ook\neen offline backlog komt erin, een melding van een toestel zonder\nschrijfrecht niet. Beperkt tot de bibliotheken die de aanvrager mag zien.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/ItemKind"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "$defs": {
+        "ItemKind": {
+          "type": "string",
+          "enum": [
+            "movie",
+            "show",
+            "season",
+            "episode"
+          ],
+          "x-unknown-safe": true,
+          "description": "Er mag binnen v1 een soort bij komen. Een client die de soort niet kent\ntoont het item niet, en faalt niet.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getHub",
+    "method": "GET",
+    "path": "/hubs/{hub_id}",
+    "destructive": false,
+    "description": "De server levert bouwstenen en geen schermindeling; de client bouwt zijn\neigen rijen. Een server zonder kijkstatus levert lege lijsten voor\ncontinue_watching en next_up, en geen fout.\n\nStaat capabilities.watch_state op true, dan geldt hoofdstuk 15 van de\nspecificatie, dat de inhoud van beide hubs normatief vastlegt.\ncontinue_watching bevat films en afleveringen met watched false en\nposition_ms boven nul, aflopend op het moment van de laatste wijziging.\nnext_up bevat per serie precies een aflevering: de laagst genummerde\naflevering vanaf de hoogst genummerde aflevering waar deze identiteit\nkijkstatus op heeft, die ongekeken is en waaraan nog niet begonnen is.\nSpecials (seizoen met item_index 0) en ongenummerde afleveringen tellen\nniet mee, niet als kandidaat en niet als ankerpunt. Een serie zonder\nkijkstatus staat niet in next_up, en een serie die uit is verdwijnt\neruit. De twee hubs leveren nooit hetzelfde item.\n\nEen cursor hoort bij de hub die hem uitgaf; hem op een andere hub\naanbieden levert library.cursor_invalid.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "hub_id": {
+              "type": "string",
+              "enum": [
+                "recently_added",
+                "continue_watching",
+                "next_up"
+              ],
+              "x-unknown-safe": false
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "hub_id"
+          ]
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "library_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getInfo",
+    "method": "GET",
+    "path": "/info",
+    "destructive": false,
+    "description": "Klasse `public`. Bereikbaar zonder authenticatie, want een client moet\nweten wat er staat voordat hij een inlogpoging doet. Draagt daarom\nbewust geen servernaam, versie of buildnummer; die staan in /server.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getItem",
+    "method": "GET",
+    "path": "/items/{item_id}",
+    "destructive": false,
+    "description": "Eén item met zijn versies en kijkstatus.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getItemActivity",
+    "method": "GET",
+    "path": "/items/{item_id}/activity",
+    "destructive": false,
+    "description": "Klasse `authenticated`, alleen onder `capabilities.item_activity`. Een\nitem buiten de bibliotheken van de aanvrager is `404`, hetzelfde antwoord\nals een item dat niet bestaat.\n\nEén regel per gebruiker, de laatste kijker eerst, uit `play_history`: een\nafspeelsessie telt, alleen markeren als gezien niet. Een film of\naflevering telt zichzelf, een seizoen en een serie alles eronder.\n\nDe aanvrager ziet altijd zijn eigen regel. Een andere gebruiker staat\nerbij wanneer hij deelt en de bibliotheek nu nog mag zien. Delen staat\nstandaard aan, behalve voor een `restricted` gebruiker: die deelt pas als\nhij het zelf aanzet. Een `restricted` aanvrager ziet alleen zichzelf.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getLibraryFacets",
+    "method": "GET",
+    "path": "/libraries/{library_id}/facets",
+    "destructive": false,
+    "description": "Klasse `authenticated`, met dezelfde bibliotheekautorisatie als de\nlijst (venster 3, pakket D1). Telt alle films of series van de\nbibliotheek en past de andere filters niet toe; `watch` geldt voor de\naanvrager. Het genrefacet is een lege lijst zolang de dekkingspoort\nvan de bibliotheek dicht staat.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "library_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "library_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getMemory",
+    "method": "GET",
+    "path": "/users/me/memory",
+    "destructive": false,
+    "description": "Alleen onder capabilities.assistant_memory, eigen sessiebearer. API- en streamtokens\ngeven geen toegang. Owner/admin/member zien uitsluitend hun eigen geheugen;\nrestricted krijgt 403. Antwoorden dragen Cache-Control no-store. Geen user_id.\nSnapshot-CAS met epoch en base_revision; wijzigingen zijn atomair. Gewiste ids\nblijven geweigerd. Clear roteert de epoch; ondersteunde restore roteert alle epochs.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getMetadataCandidate",
+    "method": "GET",
+    "path": "/items/{item_id}/metadata-candidates/{external_id}",
+    "destructive": false,
+    "description": "Klasse admin, alleen onder capabilities.metadata_search. Item bepaalt\nmovie/show en actuele libraryscope. Read-only: geen metadata-publicatie,\nkopieclaim of bestandswijziging. Gesloten query, herhaalde parameters ongeldig.\nZelfde ingestelde provider als de achtergrondronde; geen nieuwe keys of URL-input.\nRechten en intrekking worden na de providerawait opnieuw gecontroleerd.\nZoekresultaten maximaal twintig zonder Details-fanout; details alleen op selectie.\nAfbeelding alleen vaste TMDB-host zonder redirects, maximaal 12 MiB,\njpeg/png/webp met overeenkomend inhoudstype; private no-store.\nNetwerkduur maximaal 35 seconden; afbreken beëindigt de read.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "external_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,9}$"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id",
+            "external_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getMetadataCoverage",
+    "method": "GET",
+    "path": "/libraries/{library_id}/metadata-coverage",
+    "destructive": false,
+    "description": "Klasse `admin` (venster 3, pakket B5). Telt films of series van één\nbibliotheek. `ratio` is het aandeel met genres; de poort staat open\n(`gate_met`) vanaf `threshold`. Onder de drempel laat de server `genres`\nop `Item` weg, want genres bij te weinig titels maken een genrefilter\nmisleidend. Samenvatting en kijkwijzer vallen niet onder de poort.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "library_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "library_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getMetadataFields",
+    "method": "GET",
+    "path": "/items/{item_id}/metadata",
+    "destructive": false,
+    "description": "Klasse admin, actuele bibliotheekscope, capability metadata_overrides.\nAlleen film/serie. Geen wijziging van requested/applied-identiteit.\nExplicit leeg blijft handmatig. Ontgrendelen publiceert actuele bewezen bron;\n409 library.override_source_unavailable behoudt lock en waarde bij onzekerheid.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getMetadataMatchStatus",
+    "method": "GET",
+    "path": "/items/{item_id}/metadata-match",
+    "destructive": false,
+    "description": "Klasse `admin`, alleen onder `capabilities.metadata_match_status`.\nAlleen films en series. Zonder kandidaat is de toestand unknown.\nDe monotone updated_at is de kandidaatgeneratie, null zonder kandidaat.\nEen pending/failed nieuwe keuze laat eerdere applied-identiteit intact;\nreject trekt het bewijs in. Geen providerfouttekst of bestandspaden.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getPlaylist",
+    "method": "GET",
+    "path": "/playlists/{playlist_id}",
+    "destructive": false,
+    "description": "Buiten zicht is `404`, hetzelfde antwoord als een id dat niet bestaat.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "playlist_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "playlist_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getScan",
+    "method": "GET",
+    "path": "/scans/{scan_id}",
+    "destructive": false,
+    "description": "Klasse `admin`.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "scan_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "scan_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getServer",
+    "method": "GET",
+    "path": "/server",
+    "destructive": false,
+    "description": "Klasse `authenticated`. Voor klasse `admin` komen er acht velden bij\n(S1.3): `public_url`, `listen`, `behind_proxy`, `trusted_proxies`,\n`build`, `database`, `ffprobe` en `health`. Een lid krijgt hetzelfde\nantwoord als altijd, zonder die velden en zonder een aanwijzing dat ze\nbestaan.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getServerEnvironment",
+    "method": "GET",
+    "path": "/server/environment",
+    "destructive": false,
+    "description": "Klasse `admin`. Alleen `PLEYA_SERVER_*` plus een gemaskeerde\n`DATABASE_URL`; de rest van de procesomgeving hoort bij de container en\nkan credentials van heel andere diensten dragen. Een lid of een\nbeperkte gebruiker krijgt `404`.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getServerLog",
+    "method": "GET",
+    "path": "/server/log",
+    "destructive": false,
+    "description": "Klasse `admin`. De regels komen uit een ringbuffer in het geheugen en\nnooit uit een bestand, en ze zijn geredigeerd op de weg de buffer in.\nNieuwste eerst.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "$ref": "#/$defs/LogLevel"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "$defs": {
+        "LogLevel": {
+          "type": "string",
+          "description": "Het niveau van een logregel, en de ondergrens van `?level=`.",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "x-unknown-safe": true
+        }
+      }
+    }
+  },
+  {
+    "name": "getSettings",
+    "method": "GET",
+    "path": "/settings",
+    "destructive": false,
+    "description": "Klasse `admin`. Per sleutel de waarde die nu geldt plus de laag die hem\nlevert: `env` is de omgeving waarmee de server startte, `db` een waarde\ndie een beheerder heeft opgeslagen. Een lid of een beperkte gebruiker\nkrijgt `404`, dezelfde weigering als overal (hoofdstuk 7.1).\n\nWat hier niet in staat is een keuze en geen omissie: bindadres,\nvertrouwde proxy's, paden en de ondertekensleutel horen bij het draaien\nvan de container en niet bij beheer in de app.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "getTrackPreference",
+    "method": "GET",
+    "path": "/track-preferences/{item_id}",
+    "destructive": false,
+    "description": "Alleen onder `capabilities.track_preferences`. De voorkeur van het item\nzelf, anders die van het seizoen of de serie erboven (`source_item_id`\nzegt waar hij aan hangt). Zonder voorkeur zijn alle velden null. Hij reist\nmet de gebruiker mee naar elk toestel.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "getWatchHistory",
+    "method": "GET",
+    "path": "/watch-history",
+    "destructive": false,
+    "description": "Klasse `admin` (DEC-143, hoofdstuk 17b.7). Per gebruiker de films en\nafleveringen met een opgeslagen telling boven nul die in de laatste\n`days` dagen echt zijn bekeken. Geen afspeellog: een regel is het\nlaatste echte moment van een gebruiker op een item. Een event met\n`copy: true` is dat moment niet en telt niet; een gewone `mark_watched`\nwel, ook als die naar een andere bron van de titel waaiert.\n\nNieuwste eerst, ten hoogste 1000 regels; `truncated` zegt dat er meer\nwaren.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 31,
+              "default": 7
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listApiTokens",
+    "method": "GET",
+    "path": "/auth/api-tokens",
+    "destructive": false,
+    "description": "Klasse `authenticated` op zichzelf, `admin` met `?user_id=`. Zonder\ngeheimen: die bestaan na het aanmaken alleen nog bij de aanvrager.\n\nIngetrokken en verlopen tokens staan er niet in, om dezelfde reden als\nbij `GET /sessions`: de lijst beantwoordt wat er nú met dit account kan\npraten.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "listAudit",
+    "method": "GET",
+    "path": "/audit",
+    "destructive": false,
+    "description": "Klasse `admin`. Eén regel per beherende handeling, nieuwste eerst.\n\nHet bereik is ruimer dan alleen mutaties op beheerendpoints: geslaagde\nen mislukte logins, het aanmaken en intrekken van tokens en sessies,\nrol- en rechtenwijzigingen, en de configuratie die de beveiliging raakt.\nWat er niet in staat is even bewust: catalogusreads, playbackticks en\nleesvoortgang zijn volume zonder beveiligingsbetekenis.\n\nRegels worden negentig dagen bewaard en daarna door de opruimronde\nverwijderd. Die termijn is geen instelling: een bewaartermijn die een\nbeheerder kan verlagen, kan een aanvaller met beheerrechten verlagen.\n\n`detail` uit de tabel staat niet in het antwoord. Het is vrije vorm, en\nvrije vorm in een antwoord is de weg waarlangs er ooit iets in belandt\ndat er niet in hoort.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listBackups",
+    "method": "GET",
+    "path": "/backups",
+    "destructive": false,
+    "description": "Klasse `admin`, `404` voor de rest, alleen onder `capabilities.backups`\n(venster 7, S25). `dir`, `schedule` en `retention_days` komen uit de\nomgeving en zijn geen instelling. `same_failure_domain` waarschuwt dat de\nback-upmap op hetzelfde bestandssysteem staat als `/config`;\n`secrets_key_configured` onwaar betekent dat de geheimen uit `/config`\nniet in een back-up meegaan.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listCollectionItems",
+    "method": "GET",
+    "path": "/collections/{collection_id}/items",
+    "destructive": false,
+    "description": "Een item buiten de bibliotheken van de aanvrager staat er niet in en telt\nniet mee in `total_estimate`.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "collection_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "collection_id"
+          ]
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "listCollections",
+    "method": "GET",
+    "path": "/collections",
+    "destructive": false,
+    "description": "Klasse `authenticated`, alleen onder `capabilities.collections`. `item_count`\nen `artwork` tellen per kijker alleen items die hij mag zien.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "sort": {
+              "type": "string",
+              "enum": [
+                "-updated_at",
+                "title"
+              ],
+              "x-unknown-safe": false
+            },
+            "owned": {
+              "type": "boolean",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listDownloads",
+    "method": "GET",
+    "path": "/downloads",
+    "destructive": false,
+    "description": "Klasse `authenticated`, alleen onder `capabilities.downloads`. Alleen de eigen downloads.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listFavorites",
+    "method": "GET",
+    "path": "/favorites",
+    "destructive": false,
+    "description": "Klasse `authenticated`, alleen onder `capabilities.favorites`. Beperkt tot de bibliotheken die de aanvrager mag zien.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listItemChildren",
+    "method": "GET",
+    "path": "/items/{item_id}/children",
+    "destructive": false,
+    "description": "Voor een film is het antwoord een lege lijst en geen fout.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "listJobs",
+    "method": "GET",
+    "path": "/jobs",
+    "destructive": false,
+    "description": "Klasse `admin`.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listLibraries",
+    "method": "GET",
+    "path": "/libraries",
+    "destructive": false,
+    "description": "Niet gepagineerd; een huishouden heeft er een handvol.\n\n`managed`, `scan_interval_seconds` en `scan_on_start` gaan alleen mee\nvoor klasse `admin` (S2.2, J.3); voor de rest ziet dit endpoint er\nprecies zo uit als vóór S2.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listLibraryItems",
+    "method": "GET",
+    "path": "/libraries/{library_id}/items",
+    "destructive": false,
+    "description": "Een bibliotheek van soort `shows` levert uitsluitend items met\nkind `show`. Seizoenen en afleveringen bereikt u via /items/{id}/children.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "library_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "library_id"
+          ]
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "sort": {
+              "type": "string",
+              "enum": [
+                "title",
+                "added_at",
+                "year",
+                "last_played_at",
+                "duration",
+                "-title",
+                "-added_at",
+                "-year",
+                "-last_played_at",
+                "-duration"
+              ],
+              "default": "title",
+              "x-unknown-safe": false
+            },
+            "genre": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50
+            },
+            "year": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9]{4}$"
+              },
+              "maxItems": 50
+            },
+            "year_from": {
+              "type": "string",
+              "pattern": "^[0-9]{4}$"
+            },
+            "year_to": {
+              "type": "string",
+              "pattern": "^[0-9]{4}$"
+            },
+            "external_id": {
+              "type": "string",
+              "pattern": "^tmdb:[1-9][0-9]*$"
+            },
+            "applied_external_id": {
+              "type": "string",
+              "pattern": "^tmdb:[1-9][0-9]*$"
+            },
+            "watch": {
+              "type": "string",
+              "enum": [
+                "unwatched",
+                "in_progress",
+                "watched"
+              ],
+              "x-unknown-safe": false
+            },
+            "content_rating": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50
+            },
+            "audio_language": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2,3}$"
+              },
+              "maxItems": 50
+            },
+            "resolution": {
+              "type": "array",
+              "maxItems": 50,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "sd",
+                  "hd",
+                  "fhd",
+                  "uhd"
+                ],
+                "x-unknown-safe": true
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "listMetadataAttention",
+    "method": "GET",
+    "path": "/metadata/attention",
+    "destructive": false,
+    "description": "Klasse `admin` (S22.5). Titels die niet vanzelf een providermatch kregen\n(`ambiguous`, `unmatched`), waarvan het ophalen faalde (`failed`), of die\neen beheerder afwees (`rejected`). Bij `ambiguous` en `unmatched` staan de\nbeste zoektreffers als `alternatives`, in de volgorde van de provider.\nAfgekapt op `limit`; `total` is het werkelijke aantal.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listPlaylistItems",
+    "method": "GET",
+    "path": "/playlists/{playlist_id}/items",
+    "destructive": false,
+    "description": "Een item buiten de bibliotheken van de aanvrager staat er niet in en telt\nniet mee in `total_estimate`.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "playlist_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "playlist_id"
+          ]
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "listPlaylists",
+    "method": "GET",
+    "path": "/playlists",
+    "destructive": false,
+    "description": "Klasse `authenticated`, alleen onder `capabilities.playlists`. `item_count`\nen `artwork` tellen per kijker alleen items die hij mag zien.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "sort": {
+              "type": "string",
+              "enum": [
+                "-updated_at",
+                "title"
+              ],
+              "x-unknown-safe": false
+            },
+            "owned": {
+              "type": "boolean",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listRatings",
+    "method": "GET",
+    "path": "/ratings",
+    "destructive": false,
+    "description": "Klasse `authenticated`, alleen onder `capabilities.personal_data`. Beperkt tot de bibliotheken die de aanvrager mag zien. Elk item draagt `rating`.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listScans",
+    "method": "GET",
+    "path": "/scans",
+    "destructive": false,
+    "description": "Klasse `admin`.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "library_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "listSessions",
+    "method": "GET",
+    "path": "/sessions",
+    "destructive": false,
+    "description": "Klasse `owner` op de eigen sessies. Met `?user_id=` kunnen `owner` en\n`admin` de sessies van een ander opvragen.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "user_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "listStorageRoots",
+    "method": "GET",
+    "path": "/storage/roots",
+    "destructive": false,
+    "description": "Klasse `admin`. De lijst is de opsomming uit `PLEYA_SERVER_MEDIA_DIRS`\n(S2.3), aangevuld met elke root die al aan een bibliotheek hangt: een\nroot die uit die instelling is verdwenen blijft zichtbaar met\n`mounted: false` in plaats van stilzwijgend te verdwijnen.\n\n`root_paths` op `POST`/`PATCH /libraries` moeten letterlijk onder een\nvan deze mounts vallen (hoofdstuk 17e.4 van de specificatie).\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listStreamSessions",
+    "method": "GET",
+    "path": "/stream-sessions",
+    "destructive": false,
+    "description": "Klasse `admin`. De browser-streamsessies (6.4a) die op dit moment nog\nbytes kunnen ophalen: niet ingetrokken, niet verlopen, en de auth-sessie\nwaaruit ze zijn uitgegeven evenmin ingetrokken. Een sessie die aan een\nvan die drie voorwaarden niet voldoet staat er niet in, want een\noverzicht dat iemand toont die op zijn eerstvolgende aanvraag geweigerd\nwordt is misleidend.\n\nOngepagineerd. Het aantal is per gebruiker begrensd door\n`max_stream_sessions` (1 tot 32), dus de lijst groeit met het\nhuishouden en niet met de bibliotheek.\n\nEr staat geen geheim in. Het geheim van een streamsessie leeft\nuitsluitend in de cookie `pleya_ss_<id>`; de id zelf is niet geheim en\nreist als `ss` in de media-URL.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listTranscodeSessions",
+    "method": "GET",
+    "path": "/transcode-sessions",
+    "destructive": false,
+    "description": "Klasse `admin`, `404` voor de rest (venster 5 deel 2, S18.5). Zonder\nomzetter (`capabilities.transcode` onwaar) is de lijst leeg met\n`max_sessions` nul. `hardware.accel` is `none` wanneer opstarten geen\nwerkende versnelling vond, met de reden in `hardware.reason`; wie\nversnelling verwacht ziet hier waarom hij ontbreekt. Een sessie die na\neen mislukte hardwarestart in software draait, meldt `hw_accel` null.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listUsers",
+    "method": "GET",
+    "path": "/users",
+    "destructive": false,
+    "description": "Klasse `authenticated`. `owner` en `admin` zien iedereen; `member` en\n`restricted` zien in dit antwoord uitsluitend zichzelf.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "listWatchState",
+    "method": "GET",
+    "path": "/watch-state",
+    "destructive": false,
+    "description": "Gesorteerd op updated_at aflopend. updated_since is wat de offline-laag\ngebruikt om na een periode zonder netwerk bij te trekken zonder de hele\ncatalogus op te halen.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "updated_since": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "search",
+    "method": "GET",
+    "path": "/search",
+    "destructive": false,
+    "description": "Resultaten zijn gewone itemobjecten. Er is geen apart resultaattype en\ngeen groepering per soort; de client groepeert zelf en hoeft daarvoor\ngeen tweede vorm te kennen.\n\nZonder kind levert een zoekopdracht items van soort movie, show en\nepisode. Seizoenen blijven eruit: hun titel is \"Season 3\" en draagt\nniets van wat een gebruiker intypt, dus ze voegen alleen ruis toe aan\nkorte zoektermen. Een seizoen is met kind=season wel op te vragen en\nstaat verder in de kinderen van zijn serie.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "q": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "$ref": "#/$defs/ItemKind"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "q"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "query"
+      ],
+      "$defs": {
+        "ItemKind": {
+          "type": "string",
+          "enum": [
+            "movie",
+            "show",
+            "season",
+            "episode"
+          ],
+          "x-unknown-safe": true,
+          "description": "Er mag binnen v1 een soort bij komen. Een client die de soort niet kent\ntoont het item niet, en faalt niet.\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "searchMetadataCandidates",
+    "method": "GET",
+    "path": "/items/{item_id}/metadata-search",
+    "destructive": false,
+    "description": "Klasse admin, alleen onder capabilities.metadata_search. Item bepaalt\nmovie/show en actuele libraryscope. Read-only: geen metadata-publicatie,\nkopieclaim of bestandswijziging. Gesloten query, herhaalde parameters ongeldig.\nZelfde ingestelde provider als de achtergrondronde; geen nieuwe keys of URL-input.\nRechten en intrekking worden na de providerawait opnieuw gecontroleerd.\nZoekresultaten maximaal twintig zonder Details-fanout; details alleen op selectie.\nAfbeelding alleen vaste TMDB-host zonder redirects, maximaal 12 MiB,\njpeg/png/webp met overeenkomend inhoudstype; private no-store.\nNetwerkduur maximaal 35 seconden; afbreken beëindigt de read.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "object",
+          "properties": {
+            "item_id": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "item_id"
+          ]
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "year": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "title"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "query"
+      ],
+      "$defs": {
+        "Id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ondoorzichtig voor de client. Er mag niets uit worden afgeleid, ook niet\nwanneer het op iets herkenbaars lijkt. Een pad is nooit een id.\n"
+        }
+      }
+    }
+  }
+]

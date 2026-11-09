@@ -287,6 +287,23 @@ void main() {
     }
   });
 
+  test('the poster sweep reads each title\'s freshness once', () async {
+    final counting = _CountingStore(root);
+    await counting.load();
+    final items = [for (var i = 0; i < 5000; i++) film('$i').copyWith(thumbPath: '/poster/$i')];
+    await counting.saveLibrary(library, items, complete: true);
+    final sync = LocalLibrarySync(
+      store: counting,
+      clock: () => now,
+      posterLoader: (_, _) async => Uint8List.fromList([1]),
+    );
+
+    await sync.syncPosters(counting.artworkItems, (_) => Client(), isCurrent: () => true);
+
+    expect(counting.attemptedReads, lessThanOrEqualTo(5000 + 60));
+    expect(sync.stats.posters, 40, reason: 'without priority titles the sweep fetches its 40 oldest, as before');
+  });
+
   test('policy denial starts no artwork request', () async {
     var calls = 0;
     await expectLater(
@@ -302,4 +319,14 @@ void main() {
     );
     expect(calls, 0);
   });
+}
+
+class _CountingStore extends LocalLibraryStore {
+  _CountingStore(super.directory);
+  int attemptedReads = 0;
+  @override
+  DateTime? posterAttempted(String serverId, String path) {
+    attemptedReads++;
+    return super.posterAttempted(serverId, path);
+  }
 }

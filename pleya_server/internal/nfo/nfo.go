@@ -28,7 +28,7 @@ type Person struct {
 
 // Result is wat een .nfo over één titel zegt.
 type Result struct {
-	Kind          string // movie of tvshow
+	Kind          string // movie, tvshow, season of episodedetails
 	Title         string
 	Year          int
 	Summary       string
@@ -61,9 +61,8 @@ type xmlNFO struct {
 	Credits   []string `xml:"credits"`
 }
 
-// ErrNotNFO meldt een bestand dat geen film of serie beschrijft (een
-// seizoens- of afleveringsbestand, of iets dat geen XML is).
-var ErrNotNFO = errors.New("geen film- of serie-nfo")
+// ErrNotNFO meldt onleesbare XML of een niet ondersteund soort NFO.
+var ErrNotNFO = errors.New("geen ondersteunde nfo")
 
 // Parse leest één .nfo.
 func Parse(r io.Reader) (Result, error) {
@@ -82,6 +81,8 @@ func Parse(r io.Reader) (Result, error) {
 		kind = "movie"
 	case "tvshow":
 		kind = "tvshow"
+	case "season", "episodedetails":
+		kind = strings.ToLower(raw.XMLName.Local)
 	default:
 		return Result{}, ErrNotNFO
 	}

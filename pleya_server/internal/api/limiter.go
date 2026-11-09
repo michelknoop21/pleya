@@ -34,7 +34,8 @@ type limiter struct {
 	burst     float64
 	refill    float64 // tokens per seconde
 	// writes staat alleen op de refresh-limiter, zie refreshWriteBurst.
-	writes *limiter
+	writes          *limiter
+	preserveBuckets bool
 }
 
 type bucket struct {
@@ -133,6 +134,9 @@ func (l *limiter) allow(key string) (bool, time.Duration) {
 	b, ok := l.buckets[key]
 	if !ok {
 		if len(l.buckets) >= limiterMaxBuckets {
+			if l.preserveBuckets {
+				return false, limiterIdleTTL
+			}
 			var oldestKey string
 			var oldestAt time.Time
 			first := true

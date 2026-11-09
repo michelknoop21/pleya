@@ -47,6 +47,12 @@ under `Notes`.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+- **The offline index fills much faster from Pleya Server.** A first sync asked the server about
+  every episode separately: 6,698 requests and 13 minutes for one series library. It now uses
+  the list it already has.
+- **The offline index is smaller.** Seasons and episodes are stored without cast, versions and
+  their own still. Offline, an episode list shows the season or show poster. Films and series
+  keep everything.
 
 ## 2.8.1 · build 454 · 9 November 2026 · iPhone, iPad and Apple TV
 
@@ -54,23 +60,30 @@ under `Notes`.
 
 ### Improved
 
-- **Alle films on Apple TV scrolls more smoothly.** Moving through the grid no longer redraws
-  every card on screen at each step.
-- **Posters in a large library cost less to look up.** On the bedroom Apple TV the film grid
-  asked for a poster about 1,400 times a second; each lookup now reads two values from memory
-  instead of hashing file names and checking the disk.
+- **Scrolling Alle films does far less work.** On the Apple TV 4K (2nd generation), build 452
+  dropped 29 percent of the frames while you scrolled Alle films, against 2 percent for Alle
+  series. A scroll step used to repaint every film card in the grid; now no card repaints, and
+  the cost no longer grows with the number of films. How much smoother it is on the Apple TV
+  itself is what this build is meant to show.
+- **Posters on a card are found without disk reads.** The grid looked up a poster about 1,400
+  times a second, and each lookup hashed the path twice and checked the file on disk. A lookup
+  is now two reads from memory.
 
 ### Fixed
 
-- **Last sync shows the real date again.** After a complete sync, Settings > Local library kept
-  showing an older date, taken from a library that is no longer synced.
+- **"Laatste synchronisatie" moves again.** It stayed on an old date when a library that is no
+  longer synced was still in the index. It now follows the libraries that are synced, and the
+  ones the index shows when you are offline.
 - **A film's page keeps its artwork when the cached poster file is gone.** It falls back to the
   artwork that was downloaded with the title.
 
 ### Notes
 
-- Worth checking on the older Apple TV: scroll Alle films for a minute with and without a sync
-  running, and send the log if it still stutters.
+- Worth checking on the older Apple TV: scroll Alle films and Alle series for a minute during a
+  library sync and a minute after it, and send the log.
+- Build 453 was announced for Apple TV, but that number went to the Mac build. This build carries
+  the Apple TV changes it described, apart from the offline index changes, which come in the next
+  build.
 
 ## 2.8.1 · build 453 · 9 November 2026 · Mac
 

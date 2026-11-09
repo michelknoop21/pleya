@@ -129,6 +129,9 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 func (s *Server) bodyLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		limit := int64(maxRequestBodyBytes)
+		if r.URL.Path == "/mcp" {
+			limit = (256 << 10) + maxRequestBodyBytes
+		}
 		if r.URL.Path == "/pleya/v1/users/me/memory" || r.URL.Path == "/pleya/v1/users/me/memory/clear" {
 			limit = 256 << 10
 			w.Header().Set("Cache-Control", "no-store")

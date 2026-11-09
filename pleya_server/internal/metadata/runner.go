@@ -99,6 +99,10 @@ type RoundStats struct {
 func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 	var st RoundStats
 	var seen []id.ID
+	var cursor *catalog.MetadataCursor
+	paged, hasCursor := r.store.(interface {
+		MetadataDueAfter(context.Context, string, int, []id.ID, int, *catalog.MetadataCursor) ([]catalog.MetadataTarget, error)
+	})
 	consecutive := 0
 
 	if r.provider != nil {
@@ -108,7 +112,13 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 	}
 
 	for {
-		targets, err := r.store.MetadataDue(ctx, r.name, currentPass, seen, r.batch)
+		var targets []catalog.MetadataTarget
+		var err error
+		if hasCursor {
+			targets, err = paged.MetadataDueAfter(ctx, r.name, currentPass, nil, r.batch, cursor)
+		} else {
+			targets, err = r.store.MetadataDue(ctx, r.name, currentPass, seen, r.batch)
+		}
 		if err != nil {
 			return st, err
 		}
@@ -119,10 +129,18 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 			if err := ctx.Err(); err != nil {
 				return st, err
 			}
-			seen = append(seen, t.ID)
+			if hasCursor {
+				cursor = &catalog.MetadataCursor{AddedAt: t.AddedAt, ID: t.ID}
+			}
 			if err := r.one(ctx, t, &st); errors.Is(err, catalog.ErrMetadataSuperseded) {
+				if !hasCursor {
+					seen = append(seen, t.ID)
+				}
 				continue
 			} else if err != nil {
+				if !hasCursor {
+					seen = append(seen, t.ID)
+				}
 				st.Failed++
 				if errors.Is(err, catalog.ErrMetadataFallbackUnavailable) {
 					// Details slaagde: deze lokale bronfout onderbreekt een reeks
@@ -133,7 +151,7 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 				}
 				r.log.Warn("metadata ophalen mislukt",
 					slog.String("title", t.Title), slog.String("error", err.Error()))
-				if ctx.Err() == nil && r.provider != nil {
+				if ctx.Err() == nil && r.provider != nil && t.Kind != "season" && t.Kind != "episode" {
 					r.recordFailure(ctx, t)
 				}
 				if consecutive >= r.failuresLimit {
@@ -141,7 +159,9 @@ func (r *Runner) Round(ctx context.Context) (RoundStats, error) {
 				}
 				continue
 			}
-			consecutive = 0
+			if t.Kind != "season" && t.Kind != "episode" {
+				consecutive = 0
+			}
 		}
 	}
 }
@@ -185,7 +205,7 @@ func (r *Runner) one(ctx context.Context, t catalog.MetadataTarget, st *RoundSta
 
 	// Een sleutelvrije ronde publiceert bronbewijs en checked-at atomair. Ook
 	// ontbreken/onleesbaarheid moet een oude verborgen NFO ongeldig maken.
-	if r.provider == nil {
+	if r.provider == nil || t.Kind == "season" || t.Kind == "episode" {
 		var details *catalog.MetadataDetails
 		if side != nil {
 			d := sidecarDetails(side)
