@@ -5781,10 +5781,10 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Decision:** Op Apple TV verdwijnt het tandwiel uit de spelerbalk (`track_chapter_controls.dart`, `!PlatformDetector.isAppleTV()`). Video blijft bereikbaar via de veeg omlaag en via het tabblad Video naast Geluid en Ondertitels. De sporenknop (Geluid of Ondertitels) en de hoofdstukknop (Video met de hoofdstukkenlijst) blijven open zoals DEC-101 (1) ze beschrijft. Op alle andere platforms blijft het tandwiel.
 **Consequences:** DEC-101 punt (1) geldt voor Apple TV zonder de tandwielzin; de rest van DEC-101 blijft staan. De PB-9-aanvulling in `docs/tvos-redesign-implementatiecontract.md` is aangepast. Bewijs: `tvos.player.osd` PASS op de tvOS 27-simulator (9 november, bundel `.build/pleya-verify/tvos-player-osd-1794251348774`) asserteert dat het tandwiel ontbreekt; hardware niet gedraaid. Het nummer volgt bij de merge (AGENTS.md).
 
-## DEC-XXX: Eén kaart per bewezen titel, de guid is geen conflictbron
+## DEC-198: Eén kaart per bewezen titel, de guid is geen conflictbron
 
 **Date:** 2026-11-09
-**Status:** accepted (plan goedgekeurd door Michel, 9 november 2026). Het nummer volgt bij de merge (AGENTS.md).
+**Status:** accepted (plan goedgekeurd door Michel, 9 november 2026).
 **Roadmap:** A-07
 **Context:** Op de Apple TV stond Brothers twee keer naast elkaar in Verder kijken. De code liet twee oorzaken zien die een bewezen film in twee kaarten splitsen. `_componentHasNamespaceConflict` in `grouping_service.dart` telde de guid als namespace: twee bronnen met hetzelfde imdb- of tmdb-nummer en een andere Plex-guid vielen uiteen. En `PlexClient.fetchExternalIds` las alleen de `Guid`-array, die een bibliotheek op een oude agent (`com.plexapp.agents.imdb://tt…`) niet meestuurt, dus zo'n titel kreeg geen nummer. Welke van de twee de foto verklaart, staat niet vast: de app logde geen identiteitsbeslissingen.
 **Besluit:**

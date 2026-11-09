@@ -913,7 +913,7 @@ identity graph of union-find gebruiken: alle sterke tokens verzamelen; component
 gedeeld sterk bewijs; voor merge controleren of geen namespaceconflict ontstaat; conflicts als
 ambiguous registreren; ambigu component niet samenvoegen.
 
-Een conflict is een verschil in een providernummer: IMDb, TMDB of TVDB. De guid telt sinds DEC-XXX
+Een conflict is een verschil in een providernummer: IMDb, TMDB of TVDB. De guid telt sinds DEC-198
 (één kaart per bewezen titel) bij een film of serie niet als conflictbron; bij een aflevering wel,
 omdat twee afleveringsvolgordes één `s1e2` aan twee afleveringen kunnen geven. Hij verbindt nog
 wel, maar een andere guid splitst geen film of serie: twee Plex-bibliotheken noemen dezelfde film met `plex://movie/…` en met
