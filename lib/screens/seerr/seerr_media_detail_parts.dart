@@ -26,135 +26,131 @@ class _HeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    // Melt the backdrop into the actual page background (like TvSpotlightBackground),
-    // not a hardcoded black — correct in light, dark and OLED themes.
+    final tk = tokens(context);
+    final handheld = seerrIsIPhone(context);
+    final tv = PlatformDetector.isTV();
+    final inset = tv ? TvLayoutConstants.horizontalInset : 16.0;
+    final artwork = media.backdropUrl.isEmpty ? media.posterUrl : media.backdropUrl;
+    final top = handheld ? MediaQuery.paddingOf(context).top : 0.0;
     final surface = theme.scaffoldBackgroundColor;
-    final inset = PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : 12.0;
-    final backdropHeight = MediaQuery.sizeOf(context).width * 9 / 16;
-    final maxBackdrop = PlatformDetector.isTV() ? 520.0 : 320.0;
-    final height = backdropHeight.clamp(200.0, maxBackdrop);
-    // How far the content overlaps up into the backdrop. The content still takes
-    // real layout space below, so nothing clips or overlaps the next sliver.
-    const overlap = 56.0;
 
-    final Widget backdrop = media.backdropUrl.isEmpty
-        ? ColoredBox(color: scheme.surfaceContainerHighest)
-        : CachedNetworkImage(
-            imageUrl: media.backdropUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => ColoredBox(color: scheme.surfaceContainerHighest),
-          );
-
-    // Stack sizes to the non-positioned child (the padded content), so the total
-    // height accounts for the poster/title/action — the request button is always
-    // fully on screen.
-    return Stack(
-      children: [
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: SizedBox(
-            height: height,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                backdrop,
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      // Using the page background is right, but the alphas are
-                      // not mode-neutral: in light mode this wash is white, so
-                      // it brightens the backdrop while the title overlapping
-                      // it stays near-black. Light holds the wash longer.
-                      colors: [
-                        Colors.transparent,
-                        surface.withValues(alpha: tokens(context).artworkScrimAlpha(dark: 0.6, light: 0.85)),
-                        surface,
-                      ],
-                      stops: tokens(context).isLight ? const [0.0, 0.55, 1.0] : const [0.0, 0.7, 1.0],
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = handheld ? (width * 1.15).clamp(300.0, 510.0) : (width * 0.46).clamp(280.0, 590.0);
+        final centered = handheld;
+        final content = Stack(
+          children: [
+            if (artwork.isNotEmpty)
+              Positioned.fill(
+                child: ExcludeSemantics(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: artwork,
+                        fit: BoxFit.cover,
+                        alignment: handheld ? Alignment.topCenter : Alignment.centerRight,
+                        errorBuilder: (_, _, _) => ColoredBox(color: surface),
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: handheld ? 0.45 : 0.08),
+                              Colors.transparent,
+                              surface,
+                              surface,
+                            ],
+                            stops: const [0, 0.28, 0.91, 1],
+                          ),
+                        ),
+                      ),
+                      if (!centered)
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [surface, surface.withValues(alpha: 0.76), surface.withValues(alpha: 0)],
+                              stops: const [0, 0.38, 1],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.only(top: height - overlap, left: inset, right: inset),
-          child: _HeroContent(media: media, detail: detail, actions: actions, note: note, busy: busy),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroContent extends StatelessWidget {
-  const _HeroContent({
-    required this.media,
-    required this.detail,
-    required this.actions,
-    required this.note,
-    required this.busy,
-  });
-
-  final SeerrMedia media;
-  final SeerrMediaDetail? detail;
-  final List<_DetailAction> actions;
-  final String? note;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(tokens(context).radiusMd),
-          child: SizedBox(width: 110, height: 165, child: SeerrPosterImage(url: media.posterUrl)),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                media.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 6),
-              _MetaChips(media: media, detail: detail),
-              if (media.status != SeerrMediaStatus.unknown) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: SeerrStatusBadge(status: media.status),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                inset,
+                artwork.isEmpty ? (handheld ? top + 64 : 24) : height * (handheld ? 0.78 : 0.55),
+                inset,
+                12,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: tv ? double.infinity : 560),
+                child: Column(
+                  crossAxisAlignment: centered ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      media.title,
+                      textAlign: centered ? TextAlign.center : TextAlign.start,
+                      style: theme.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    _MetaChips(media: media, detail: detail, centered: centered),
+                    if (media.status != SeerrMediaStatus.unknown) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: centered ? Alignment.center : Alignment.centerLeft,
+                        child: SeerrStatusBadge(status: media.status),
+                      ),
+                    ],
+                    if (note case final note?) ...[
+                      const SizedBox(height: 8),
+                      Text(note, style: theme.textTheme.bodySmall?.copyWith(color: tk.textMuted)),
+                    ],
+                    if (actions.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      if (centered)
+                        for (var i = 0; i < actions.length; i++)
+                          Padding(
+                            padding: EdgeInsets.only(top: i == 0 ? 0 : 8),
+                            child: _ActionButton(action: actions[i], primary: i == 0, busy: busy),
+                          )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (var i = 0; i < actions.length; i++)
+                              _ActionButton(action: actions[i], primary: i == 0, busy: busy),
+                          ],
+                        ),
+                    ],
+                  ],
                 ),
-              ],
-              if (note case final note?) ...[
-                const SizedBox(height: 8),
-                Text(note, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (var i = 0; i < actions.length; i++)
-                    _ActionButton(action: actions[i], primary: i == 0, busy: busy),
-                ],
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+            if (handheld)
+              PositionedDirectional(
+                top: top + 6,
+                start: 12,
+                child: BackButton(
+                  style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white),
+                ),
+              ),
+          ],
+        );
+        return handheld
+            ? AnnotatedRegion(
+                value: artwork.isEmpty && tk.isLight ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
+                child: content,
+              )
+            : content;
+      },
     );
   }
 }
@@ -162,8 +158,9 @@ class _HeroContent extends StatelessWidget {
 /// Hero metadata as one flat text line (match · year · runtime · genres),
 /// matching the app-wide "meta is text, not chips" rule.
 class _MetaChips extends StatelessWidget {
-  const _MetaChips({required this.media, required this.detail});
+  const _MetaChips({required this.media, required this.detail, required this.centered});
 
+  final bool centered;
   final SeerrMedia media;
   final SeerrMediaDetail? detail;
 
@@ -181,6 +178,7 @@ class _MetaChips extends StatelessWidget {
     if (parts.isEmpty) return const SizedBox.shrink();
     return Text(
       parts.join(' · '),
+      textAlign: centered ? TextAlign.center : TextAlign.start,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.bodySmall?.copyWith(
@@ -218,7 +216,6 @@ class _ActionButton extends StatelessWidget {
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
     final onPressed = busy ? () {} : action.onPressed;
-    // App action-button styling: default Material radius, bold label, TV-scaled.
     final textStyle = TextStyle(fontSize: isTv ? 17 * tvScale : 16, fontWeight: FontWeight.w700);
     final padding = EdgeInsets.symmetric(horizontal: isTv ? 20 * tvScale : 20, vertical: isTv ? 12 * tvScale : 12);
     final icon = AppIcon(action.icon, fill: 1, size: isTv ? 22 * tvScale : 20);

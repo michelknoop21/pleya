@@ -48,6 +48,20 @@ under `Notes`.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+### Fixed
+
+- **The Meenemen card now shows up on the iPhone.** The Apple TV announces a player from the
+  moment it opens, before it can say what plays. A phone that asked in those first seconds got
+  no answer and never asked that Apple TV again, so the card on Home stayed away for the whole
+  film. The phone now asks again after a short wait, and keeps asking on its own instead of
+  waiting for the Apple TV's announcement to change, which it never does while a title plays.
+
+### Notes
+
+- Worth checking: start a film on the Apple TV with Pleya open on Home on the iPhone. The
+  "Speelt op" card should appear within about fifteen seconds once the film plays, or half a
+  minute later if the Apple TV took long to start it; then tap Meenemen.
+
 ## 2.8.1 · build 455 · 9 November 2026 · Apple TV
 
 <!-- commit: b29f1fd82f38f33650c06a6ffe34668fd4aa9516 -->

@@ -96,9 +96,12 @@ void main() {
   });
   tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
-  test('Instellingen opens under the collapsible bar; the other Mijn Pleya sections keep theirs', () {
+  test('Instellingen and Aanvragen open under the collapsible bar; the other Mijn Pleya sections keep theirs', () {
     expect(tvMyPleyaNestedRoute(TvMyPleyaSection.settings).topNav, TvTopNavPresentation.collapsible);
-    for (final section in TvMyPleyaSection.values.where((s) => s != TvMyPleyaSection.settings)) {
+    // A-21 direction B (Michel, 8 November 2026): the request overview collapses the bar.
+    expect(tvMyPleyaNestedRoute(TvMyPleyaSection.requests).topNav, TvTopNavPresentation.collapsible);
+    final collapsing = {TvMyPleyaSection.settings, TvMyPleyaSection.requests};
+    for (final section in TvMyPleyaSection.values.where((s) => !collapsing.contains(s))) {
       expect(tvMyPleyaNestedRoute(section).topNav, TvTopNavPresentation.persistent, reason: section.name);
     }
   });

@@ -33,14 +33,14 @@ import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 SeerrMedia _media(int id, {String title = 'Gladiator II', SeerrMediaStatus status = SeerrMediaStatus.unknown}) =>
     SeerrMedia(tmdbId: id, mediaType: 'movie', title: title, year: '2024', status: status);
 
-TvSeerrShelf _shelf(String id, {int count = 6, String? title}) => TvSeerrShelf(
+TvSeerrShelf _shelf(String id, {int count = 6, String? title, VoidCallback? onShowAll}) => TvSeerrShelf(
   id: id,
   title: title ?? id,
   items: [for (var i = 0; i < count; i++) _media(id.hashCode.abs() + i, title: '$id $i')],
   hasMore: false,
   isLoadingMore: false,
   onLoadMore: () {},
-  onShowAll: () {},
+  onShowAll: onShowAll ?? () {},
 );
 
 void main() {
@@ -107,13 +107,17 @@ void main() {
     );
   });
 
-  testWidgets('and its cards are the width Alle films uses', (tester) async {
+  testWidgets('uses catalog card sizing in the space beside the sidebar', (tester) async {
     tester.view.physicalSize = const Size(1038, 584);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await pumpView(tester, shelves: [_shelf('Populaire films')]);
 
-    final grid = TvCatalogGrid.forWidth(1038, scale: 0.85);
+    final grid = TvCatalogGrid.forWidth(
+      1038,
+      scale: 0.85,
+      reservedLeading: TvCatalogRailScaffold.leadingFor(1038, expanded: true),
+    );
     expect(
       tester.widgetList<TvSeerrMediaCard>(find.byType(TvSeerrMediaCard)).first.width,
       closeTo(grid.cardWidth, 0.01),
@@ -146,11 +150,39 @@ void main() {
     expect(badges.map((badge) => badge.label), [t.seerr.requested, t.seerr.available]);
   });
 
+  testWidgets('first poster on either shelf reaches its own Alles tonen in two presses', (tester) async {
+    String? opened;
+    await pumpView(
+      tester,
+      shelves: [
+        _shelf('films', onShowAll: () => opened = 'films'),
+        _shelf('series', onShowAll: () => opened = 'series'),
+      ],
+    );
+    final rails = tester.stateList<TvCatalogCardRailState>(find.byType(TvCatalogCardRail)).toList();
+    for (final (index, category) in ['films', 'series'].indexed) {
+      rails[index].focusColumn(0);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrCategory($category)');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrShowAll');
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      expect(opened, category);
+    }
+  });
+
   group('the rail', () {
     Future<void> openRail(WidgetTester tester) async {
       tester.widgetList<TvSeerrMediaCard>(find.byType(TvSeerrMediaCard)).first.focusNode!.requestFocus();
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pumpAndSettle();
     }
 
@@ -160,6 +192,8 @@ void main() {
 
       var rows = tester.widget<TvCatalogFilterRailPanel>(find.byKey(tvCatalogFilterRailKey)).rows;
       expect(rows.map((row) => row.label), [t.seerr.railKind]);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
 
       await pumpView(
         tester,
@@ -236,14 +270,6 @@ void main() {
   });
 
   group('the heading', () {
-    testWidgets('rests on "Populair nu", muted, because that is not a narrowing', (tester) async {
-      await pumpView(tester, shelves: [_shelf('films')]);
-
-      final strip = tester.widget<TvCatalogSelectionTagStrip>(find.byType(TvCatalogSelectionTagStrip));
-      expect(strip.tags.map((tag) => tag.label), [t.seerr.discoverNow]);
-      expect(strip.tags.single.muted, isTrue);
-    });
-
     testWidgets('and names the type and the genre once they are chosen', (tester) async {
       await pumpView(
         tester,
@@ -388,55 +414,18 @@ void main() {
   // SEARCH2, and the same defect. See tv_search_view_test.dart's SEARCH2 group.
   // ---------------------------------------------------------------------------
 
-  group('SEARCH2b, the shelf viewport', () {
-    testWidgets('clips at its own top edge', (tester) async {
-      tester.view.physicalSize = const Size(1280, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+  testWidgets('shelves clip vertically and start to the right of the search field', (tester) async {
+    await pumpView(tester, shelves: [_shelf('films', count: 12), _shelf('series', count: 12)]);
 
-      await pumpView(tester, shelves: [_shelf('films', count: 12), _shelf('series', count: 12)]);
-
-      final viewport = tester.widget<SingleChildScrollView>(
-        find.descendant(of: find.byType(TvCatalogRailScaffold), matching: find.byType(SingleChildScrollView)),
-      );
-
-      // Clip.none switches clipping off on every edge, not just the two the
-      // focus ring needs. The header bar and search field sit above this
-      // viewport in the same Column and paint first, so a shelf scrolled past
-      // the top edge paints over them.
-      expect(viewport.clipBehavior, isNot(Clip.none));
-    });
-
-    testWidgets('the clip starts exactly where the search field ends, leaving no seam to scroll through', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1280, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      await pumpView(tester, shelves: [_shelf('films', count: 12), _shelf('series', count: 12)]);
-
-      final scrollViewFinder = find.descendant(
-        of: find.byType(TvCatalogRailScaffold),
-        matching: find.byType(SingleChildScrollView),
-      );
-      final field = tester.getRect(find.byKey(const ValueKey('searchField')));
-      final viewport = tester.getRect(scrollViewFinder);
-
-      // A card's own position does not move when clipBehavior changes:
-      // clipping is a paint-time effect, not a layout one. The actual
-      // guarantee is structural: the viewport that owns the clip has to start
-      // exactly where the search field ends, with no gap a scrolled shelf
-      // could paint through.
-      expect(viewport.top, field.bottom);
-
-      // The interaction itself still has to hold up: scrolling a shelf list
-      // long enough to run its first shelf clean off the top must not throw
-      // or leave the tree broken.
-      expect(find.byType(TvCatalogCard), findsWidgets);
-      await tester.drag(scrollViewFinder, const Offset(0, -600));
-      await tester.pumpAndSettle();
-    });
+    final viewport = find
+        .ancestor(of: find.byType(TvCatalogCardRail).first, matching: find.byType(SingleChildScrollView))
+        .first;
+    final field = tester.getRect(find.byKey(const ValueKey('searchField')));
+    final poster = tester.getRect(find.byType(TvSeerrMediaCard).first);
+    expect(poster.left, greaterThan(field.right));
+    expect(tester.widget<SingleChildScrollView>(viewport).clipBehavior, isNot(Clip.none));
+    await tester.drag(viewport, const Offset(0, -600));
+    await tester.pumpAndSettle();
   });
 
   // REQ-SEARCH-ROUTE: the field and the inbox button, wired the way
@@ -505,6 +494,7 @@ void main() {
                               onFocusContent: () => viewKey.currentState?.focusFirstContent() ?? false,
                               onExitUp: topnav.requestFocus,
                               onOpenRequests: () => requestsOpened++,
+                              onFocusFilters: () => viewKey.currentState?.focusFilters(),
                             ),
                             shelves: [_shelf('films'), _shelf('series')],
                             type: SeerrDiscoverType.all,
@@ -549,11 +539,6 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(onFirstCard(tester), isTrue, reason: 'DOWN from the field lands on the first card');
 
-      // The first shelf's heading carries "Alles tonen", one stop above its
-      // cards; UP from there leaves the content for the field.
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrShowAll(films)');
-
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(field.hasFocus, isTrue, reason: 'UP from the first shelf returns to the field, not the top navigation');
 
@@ -583,7 +568,7 @@ void main() {
         expect(pill.left, closeTo(title.left, 0.5));
       });
 
-    testWidgets('RIGHT to the inbox button, which has the same UP and DOWN, and LEFT back', (tester) async {
+    testWidgets('RIGHT to the inbox button, and UP or LEFT back to search', (tester) async {
       await pumpRoute(tester);
       field.requestFocus();
       await tester.pumpAndSettle();
@@ -597,12 +582,20 @@ void main() {
       inbox.requestFocus();
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(onFirstCard(tester), isTrue);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrFilters');
+
+      await press(tester, LogicalKeyboardKey.select);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrDiscoverRailKind');
+      field.requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrDiscoverRailKind');
 
       inbox.requestFocus();
       await tester.pumpAndSettle();
       await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(topnav.hasFocus, isTrue);
+      expect(field.hasFocus, isTrue);
 
       inbox.requestFocus();
       await tester.pumpAndSettle();

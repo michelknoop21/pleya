@@ -58,8 +58,10 @@ Instellingen en elke pagina die vanuit Instellingen in de TV-shell opent, gebrui
 geeft die mee aan `openTvContentRoute`. De pagina neemt zelf de bovenmarge (`TvPageSurface`), UP
 vanaf de bovenste focusstop haalt de balk terug. Een pagina zonder eigen weg omhoog krijgt die via
 `tvExitUpToBar(context)` (`lib/navigation/tv/tv_nested_surface.dart`): `TvMenuGrid` valt erop terug
-als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. Andere TV-routes houden hun eigen presentatie
-(DEC-166, besluit Michel 26 oktober 2026).
+als `onExitUp` leeg is, Logboeken gebruikt hem zodra de lezer bovenaan staat. Aanvragen (Mijn Pleya en
+`SeerrDiscoverScreen.open`) gebruikt eveneens de inklapbare balk (DEC-XXX, besluit Michel 8 november 2026;
+wijzigt DEC-166 punt 1). Andere TV-routes houden hun eigen presentatie (DEC-166, besluit Michel
+26 oktober 2026).
 
 ## Topmenu op tvOS
 

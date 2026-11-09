@@ -3,6 +3,7 @@
 // session and joins it.
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -244,6 +245,67 @@ void main() {
     await beacon([_tv()]);
     expect(transport.asks, [true, true, true]);
     expect(puller.card, isNotNull);
+  });
+
+  // The Apple TV advertises a player from its first frame, before the player
+  // exists, so an early peek gets `nothing`. Discovery emits only when a beacon
+  // changes, so the retry has to come from the puller itself.
+  test('an Apple TV whose player is still opening is asked again after the wait, without a new beacon', () {
+    fakeAsync((async) {
+      final transport = _FakeTransport();
+      var now = DateTime(2026, 11, 8, 20);
+      final puller = FlyFollowPuller(
+        transport: transport,
+        resolveItem: (serverId, itemId) async => _movie,
+        join: (offer) async {},
+        clock: () => now,
+      );
+      transport.answer = (peek) => const FlyFollowAnswer.refused(FlyFollowRefusal.nothing);
+      unawaited(puller.start());
+      async.flushMicrotasks();
+      transport.hosts.add([_tv()]);
+      async.flushMicrotasks();
+      expect(transport.asks, [true]);
+      expect(puller.card, isNull);
+
+      // The player is open now; the beacon itself does not change.
+      transport.answer = (peek) => FlyFollowAnswer.offer(_offer(session: !peek));
+      now = now.add(FlyFollowPuller.firstRetryWait);
+      async.elapse(FlyFollowPuller.firstRetryWait);
+      expect(transport.asks, [true, true], reason: 'asked again from the timer');
+      expect(puller.card, isNotNull);
+      expect(puller.card!.canFollow, isTrue);
+      puller.dispose();
+    });
+  });
+
+  test('a failed answer is retried from the timer when the beacon stays the same', () {
+    fakeAsync((async) {
+      final transport = _FakeTransport();
+      var now = DateTime(2026, 11, 8, 20);
+      final puller = FlyFollowPuller(
+        transport: transport,
+        resolveItem: (serverId, itemId) async => _movie,
+        join: (offer) async {},
+        clock: () => now,
+      );
+      transport.answer = (peek) => const FlyFollowAnswer.refused(FlyFollowRefusal.failed);
+      unawaited(puller.start());
+      async.flushMicrotasks();
+      transport.hosts.add([_tv()]);
+      async.flushMicrotasks();
+      expect(transport.asks, [true]);
+
+      // Negative control: not before the wait ends.
+      now = now.add(FlyFollowPuller.firstRetryWait - const Duration(seconds: 1));
+      async.elapse(FlyFollowPuller.firstRetryWait - const Duration(seconds: 1));
+      expect(transport.asks, [true]);
+
+      now = now.add(const Duration(seconds: 1));
+      async.elapse(const Duration(seconds: 1));
+      expect(transport.asks, [true, true]);
+      puller.dispose();
+    });
   });
 
   test('a stop while discovery starts leaves no listener behind', () async {

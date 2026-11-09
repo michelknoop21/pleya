@@ -21,6 +21,8 @@
 /// CAT3 and CAT4 were both about does not apply to it any more.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../theme/mono_tokens.dart';
@@ -30,7 +32,13 @@ import 'tv_catalog_selection_tags.dart';
 import 'tv_unified_layout.dart';
 
 class TvCatalogHeaderBar extends StatelessWidget {
-  const TvCatalogHeaderBar({super.key, required this.title, this.tags = const [], this.maxCardWidth});
+  const TvCatalogHeaderBar({
+    super.key,
+    required this.title,
+    this.tags = const [],
+    this.maxCardWidth,
+    this.reservedLeading = 0,
+  });
 
   final String title;
 
@@ -42,6 +50,7 @@ class TvCatalogHeaderBar extends StatelessWidget {
   /// The card width cap of the grid under this heading, so the heading lines
   /// up with a grid that narrowed its cards ([TvCatalogGrid.forWidth]).
   final double? maxCardWidth;
+  final double reservedLeading;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +81,7 @@ class TvCatalogHeaderBar extends StatelessWidget {
       // band of dead space the north star does not have. Standalone — a golden,
       // a focus test — this page still owns its own top margin.
       padding: EdgeInsets.fromLTRB(
-        horizontalInset,
+        horizontalInset + reservedLeading,
         TvShellSurface.isPresent(context)
             ? 0
             : MediaQuery.sizeOf(context).height * (TvCatalogLayout.topSafeInset / 1080),
@@ -123,7 +132,12 @@ class TvCatalogHeaderBar extends StatelessWidget {
             // collapses a long selection into `+N`, and this is the backstop for the case that
             // cannot cover: a single very long genre name.
             ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: width - horizontalInset * 2),
+              constraints: BoxConstraints(
+                maxWidth: math.max(
+                  0,
+                  width - horizontalInset * 2 - reservedLeading - TvCatalogLayout.titleActionGap * scale,
+                ),
+              ),
               // Anchored to its right edge, so a row that does not fit loses
               // its *leading* tags. The sort tag is last and always present,
               // and it is the one that would otherwise disappear first, which

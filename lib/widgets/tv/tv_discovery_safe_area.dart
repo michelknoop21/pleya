@@ -30,9 +30,9 @@ class TvDiscoverySafeArea {
   /// null outside a Pleya Verify build.
   ///
   /// The insets mirror what the page itself pays: [TvDiscoveryLayout.pageInset]
-  /// on the sides, [TvCatalogLayout.topSafeInset] above and
+  /// on the sides, [topInset] above and
   /// [TvCatalogLayout.bottomSafeInset] below — the wider bottom band of P12.
-  static Widget? maybe(BuildContext context) {
+  static Widget? maybe(BuildContext context, {required double topInset}) {
     if (!kPleyaVerify) return null;
     final scale = TvLayoutConstants.scaleOf(context);
     return Positioned.fill(
@@ -41,7 +41,7 @@ class TvDiscoverySafeArea {
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               TvDiscoveryLayout.pageInset * scale,
-              TvCatalogLayout.topSafeInset * scale,
+              topInset,
               TvDiscoveryLayout.pageInset * scale,
               TvCatalogLayout.bottomSafeInset * scale,
             ),

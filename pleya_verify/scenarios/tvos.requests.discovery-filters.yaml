@@ -14,6 +14,9 @@ steps:
   - settle: 2000
   - press: down
   - press: left
+  - press: up
+  - wait_until: {focused: "tv.catalog.rail.row[discover.filters]", timeout: 5000}
+  - press: select
   - wait_until: {focused: "tv.catalog.rail.row[discover.kind]", timeout: 5000}
   - walk: {direction: down, steps: 6, stopAt: "tv.catalog.rail.row[discover.discovery]", timeout: 15000, settle: 300}
   - press: select

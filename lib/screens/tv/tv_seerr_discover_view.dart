@@ -33,6 +33,8 @@
 /// catalog language has no room for.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -40,11 +42,16 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../models/seerr/seerr_media.dart';
+import '../../navigation/main_screen_scope.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart';
+import '../../navigation/tv/tv_nested_surface.dart';
+import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_catalog_card_grid.dart';
 import '../../widgets/tv/tv_catalog_card_rail.dart';
 import '../../widgets/tv/tv_catalog_empty_state.dart';
 import '../../widgets/tv/tv_catalog_filter_rail.dart';
+import '../../widgets/tv/tv_catalog_filter_rail_rows.dart';
 import '../../widgets/tv/tv_catalog_header_bar.dart';
 import '../../widgets/tv/tv_catalog_rail_scaffold.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
@@ -54,6 +61,7 @@ import '../../widgets/tv/tv_seerr_card.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_view_all_action.dart';
 import '../seerr/seerr_discover_filter_bar.dart';
+import 'tv_shell_frame.dart';
 
 /// What this page is called in `tv.catalog.*` automation ids (REQ1).
 const String tvSeerrDiscoverSurface = 'discover';
@@ -165,15 +173,7 @@ class TvSeerrDiscoverView extends StatefulWidget {
   /// requested.
   final ValueChanged<SeerrMedia> onActivate;
 
-  /// The search pill and the inbox button, built by the screen.
-  ///
-  /// Mockup 35 A draws neither, and they are kept anyway: on TV this is the only
-  /// way into the Seerr search and into Alle aanvragen, and a screenshot is not
-  /// a functional specification (the manifest says as much). Removing the only
-  /// route to two screens is not something an image can authorise, and the
-  /// alternative — inventing a way to reach them — would be a component family
-  /// the approved set does not contain either. It is recorded as a deviation
-  /// rather than resolved silently.
+  /// The search field and inbox entry in the sidebar.
   final Widget searchField;
 
   final VoidCallback? onExitTop;
@@ -202,7 +202,11 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
   final _clearFocus = FocusNode(debugLabel: 'TvSeerrDiscoverRailClear');
   final _stateActionFocus = FocusNode(debugLabel: 'TvSeerrDiscoverStateAction');
   final _loadMoreRetryFocus = FocusNode(debugLabel: 'TvSeerrDiscoverLoadMoreRetry');
-  final _viewAllFocus = <String, FocusNode>{};
+  final _categories = <String, FocusNode>{};
+  final _filtersFocus = FocusNode(debugLabel: 'TvSeerrFilters');
+  final _viewAllFocus = FocusNode(debugLabel: 'TvSeerrShowAll');
+
+  String? _activeShelf;
 
   bool _railExpanded = false;
   TvSeerrDiscoverSubview? _subview;
@@ -216,7 +220,9 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     _clearFocus.dispose();
     _stateActionFocus.dispose();
     _loadMoreRetryFocus.dispose();
-    for (final node in _viewAllFocus.values) {
+    _filtersFocus.dispose();
+    _viewAllFocus.dispose();
+    for (final node in _categories.values) {
       node.dispose();
     }
     super.dispose();
@@ -225,8 +231,25 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
   GlobalKey<TvCatalogCardRailState> _railKeyFor(String id) =>
       _railKeys.putIfAbsent(id, () => GlobalKey<TvCatalogCardRailState>(debugLabel: 'TvSeerrShelf($id)'));
 
-  FocusNode _viewAllFocusFor(String id) =>
-      _viewAllFocus.putIfAbsent(id, () => FocusNode(debugLabel: 'TvSeerrShowAll($id)'));
+  FocusNode _categoryFocus(String id) =>
+      _categories.putIfAbsent(id, () => FocusNode(debugLabel: 'TvSeerrCategory($id)'));
+
+  void focusFilters() {
+    if (_railExpanded) {
+      _openRail();
+    } else {
+      _filtersFocus.requestFocus();
+    }
+  }
+
+  void restoreExpandedShelf() {
+    final index = _visibleShelves().indexWhere((shelf) => shelf.id == _activeShelf);
+    if (index < 0 || _railExpanded) {
+      focusFirstContent();
+      return;
+    }
+    _viewAllFocus.requestFocus();
+  }
 
   // ---------------------------------------------------------------------------
   // Focus traversal
@@ -234,13 +257,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
 
   /// The first card under the search pill, or nothing when the page has none.
   ///
-  /// There is deliberately no entry-focus method beside this one. Ontdekken is
-  /// a section of the Mijn Pleya surface, and `TvNestedSurface` already places
-  /// the focus on the first thing in traversal order when it opens — the search
-  /// pill, which is the one element this page has in every state, including
-  /// while it is still a skeleton. Alle aanvragen is a pushed route with no
-  /// such fallback and does need its own; see
-  /// `TvSeerrRequestsView.focusContent`.
+  /// Entry focus is owned by the screen that builds the search field.
   bool focusFirstContent() {
     final grid = _gridKey.currentState;
     if (grid != null && grid.hasFocusableCard) {
@@ -250,7 +267,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     for (final shelf in widget.shelves) {
       if (_railKeyFor(shelf.id).currentState?.focusRail() ?? false) return true;
     }
-    if (_stateActionFocus.canRequestFocus) {
+    if (_stateActionFocus.context != null && _stateActionFocus.canRequestFocus) {
       _stateActionFocus.requestFocus();
       return true;
     }
@@ -376,24 +393,157 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
-    final grid = widget.grid;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TvCatalogHeaderBar(title: grid?.title ?? t.seerr.title, tags: _railExpanded ? const [] : _tags()),
-        widget.searchField,
-        Expanded(
-          child: TvCatalogRailScaffold(
-            cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
-            rail: _railExpanded ? _buildRail(scale) : null,
-            body: _buildBody(scale),
+    final safeTop = MediaQuery.paddingOf(context).top;
+    final navOpen =
+        TvNestedRouteScope.of(context)?.topNav == TvTopNavPresentation.collapsible &&
+        MainScreenFocusScope.isSidebarFocusedOf(context);
+    return AnimatedPadding(
+      duration: TvTopNavLayout.focusDuration,
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(top: navOpen ? math.max(safeTop, TvShellSurface.topBandHeightOf(context)) : safeTop),
+      child: TvCatalogRailScaffold(
+        cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
+        rail: SizedBox.expand(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: tokens(context).outline)),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(right: 12 * scale),
+              child: _buildSidebar(scale),
+            ),
           ),
         ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.grid case final grid?)
+              TvCatalogHeaderBar(
+                title: grid.title,
+                tags: _railExpanded ? const [] : _tags(),
+                reservedLeading: _railLeading(),
+              )
+            else if (_hasFilters && !_railExpanded)
+              TvCatalogHeaderBar(title: '', tags: _tags(), reservedLeading: _railLeading()),
+            Expanded(child: _buildBody(scale)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _railLeading() => TvCatalogRailScaffold.leadingFor(MediaQuery.sizeOf(context).width, expanded: true);
+
+  Widget _buildSidebar(double scale) {
+    final shelves = widget.grid == null ? _visibleShelves() : const <TvSeerrShelf>[];
+    final selected = shelves.any((shelf) => shelf.id == _activeShelf) ? _activeShelf : shelves.firstOrNull?.id;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          alignment: Alignment.centerLeft,
+          fit: BoxFit.scaleDown,
+          child: Text(
+            t.seerr.title,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontSize: 40 * scale, fontWeight: FontWeight.w700),
+          ),
+        ),
+        widget.searchField,
+        if (_railExpanded)
+          Flexible(child: _buildRail(scale))
+        else
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _sidebarRow(
+                    scale,
+                    label: t.unifiedCatalog.filters.title,
+                    id: 'filters',
+                    node: _filtersFocus,
+                    onPressed: _openRail,
+                    onUp: widget.onExitTop,
+                    onDown: shelves.isEmpty ? _railEdge : _categoryFocus(shelves.first.id).requestFocus,
+                    onRight: focusFirstContent,
+                  ),
+                  for (var i = 0; i < shelves.length; i++) ...[
+                    _sidebarRow(
+                      scale,
+                      label: shelves[i].title,
+                      id: 'category.$i',
+                      rowKey: ValueKey(shelves[i].id),
+                      node: _categoryFocus(shelves[i].id),
+                      selected: shelves[i].id == selected,
+                      onFocused: () {
+                        if (_activeShelf != shelves[i].id) setState(() => _activeShelf = shelves[i].id);
+                      },
+                      onPressed: () => _restoreShelf(i),
+                      onUp: i == 0 ? focusFilters : _categoryFocus(shelves[i - 1].id).requestFocus,
+                      onDown: _viewAllFocus.requestFocus,
+                      onRight: () => _restoreShelf(i),
+                    ),
+                    if (shelves[i].id == selected)
+                      _sidebarRow(
+                        scale,
+                        label: t.seerr.showAll,
+                        id: 'show_all',
+                        node: _viewAllFocus,
+                        onPressed: () {
+                          _activeShelf = shelves[i].id;
+                          shelves[i].onShowAll();
+                        },
+                        onUp: _categoryFocus(shelves[i].id).requestFocus,
+                        onDown: i == shelves.length - 1 ? _railEdge : _categoryFocus(shelves[i + 1].id).requestFocus,
+                        onRight: () => _restoreShelf(i),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  double _railLeading() => TvCatalogRailScaffold.leadingFor(MediaQuery.sizeOf(context).width, expanded: _railExpanded);
+  Widget _sidebarRow(
+    double scale, {
+    required String label,
+    required String id,
+    required FocusNode node,
+    required VoidCallback onPressed,
+    required VoidCallback? onUp,
+    required VoidCallback onDown,
+    required VoidCallback onRight,
+    bool selected = false,
+    Key? rowKey,
+    VoidCallback? onFocused,
+  }) => AutomationNode(
+    key: rowKey ?? ValueKey(id),
+    id: AutomationIds.tvCatalogRailRow,
+    instance: '$tvSeerrDiscoverSurface.$id',
+    role: 'list.item',
+    label: label,
+    focusNode: node,
+    child: TvCatalogRailOptionRow(
+      scale: scale,
+      focusNode: node,
+      option: TvCatalogRailOption(label: label, isSelected: selected, onPressed: onPressed),
+      onFocusChange: onFocused == null
+          ? null
+          : (focused) {
+              if (focused) onFocused();
+            },
+      onBack: widget.onLeaveGrid,
+      onNavigateUp: onUp,
+      onNavigateDown: onDown,
+      onNavigateLeft: _railEdge,
+      onNavigateRight: onRight,
+    ),
+  );
 
   /// What the page is narrowed to.
   ///
@@ -674,19 +824,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
           for (var i = 0; i < shelves.length; i++) ...[
             Padding(
               padding: EdgeInsets.fromLTRB(headingInset, TvCatalogLayout.headerContentGap * scale, headingInset, 0),
-              child: Row(
-                children: [
-                  Expanded(child: TvSectionHeader(title: shelves[i].title)),
-                  TvViewAllAction(
-                    label: t.seerr.showAll,
-                    semanticLabel: t.seerr.showAll,
-                    focusNode: _viewAllFocusFor(shelves[i].id),
-                    onSelect: shelves[i].onShowAll,
-                    onNavigateUp: i == 0 ? widget.onExitTop : () => _restoreShelf(i - 1),
-                    onNavigateDown: () => _restoreShelf(i),
-                  ),
-                ],
-              ),
+              child: TvSectionHeader(title: shelves[i].title),
             ),
             _buildShelf(scale, shelves, i),
           ],
@@ -710,9 +848,15 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
         onLoadMore: shelf.onLoadMore,
         reservedLeading: _railLeading(),
         nodeDebugLabel: 'TvSeerrShelfCard',
-        onExitUp: (_) => _viewAllFocusFor(shelf.id).requestFocus(),
+        onExitUp: index == 0 ? (_) => widget.onExitTop?.call() : (column) => _focusShelf(index - 1, column: column),
         onExitDown: index == shelves.length - 1 ? null : (column) => _focusShelf(index + 1, column: column),
-        onExitLeft: _openRail,
+        onExitLeft: () {
+          if (_railExpanded) {
+            _openRail();
+          } else {
+            _categoryFocus(shelf.id).requestFocus();
+          }
+        },
         itemBuilder: (context, cell) {
           final media = shelf.items[cell.index];
           return _card(media, cell, instance: '$tvSeerrDiscoverSurface.${shelf.id}.${cell.index}');

@@ -25,6 +25,7 @@ import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../focus/focusable_button.dart';
 import '../../widgets/seerr_cockpit_tiles.dart';
+import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/segmented_tab_group.dart';
 import '../../widgets/seerr_request_actions_sheet.dart';
 import '../../widgets/seerr_request_edit_sheet.dart';
@@ -34,6 +35,7 @@ import '../tv/tv_seerr_requests_view.dart';
 import 'seerr_discover_screen.dart';
 import 'seerr_issues_screen.dart';
 import 'seerr_media_detail_screen.dart';
+import 'seerr_phone.dart';
 import 'seerr_requests_list_parts.dart';
 
 export 'seerr_requests_list_parts.dart' show SeerrAutoLoadMoreListTile;
@@ -806,7 +808,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     final client = origin ?? _boundClient;
     if (!_owns(client) || _busy.contains(request.id)) return;
     final saved = await SeerrRequestEditSheet.show(context, request: request);
-    if (!_owns(client)) return;
+    if (!mounted || !_owns(client)) return;
     // Also after a close without a save: the sheet read the request back, and
     // what it found (approved meanwhile, refused) is news for the list too.
     unawaited(_loadCounts());
@@ -871,6 +873,12 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           ? _buildTv(title, ownOnly)
           : FocusedScrollScaffold(
               title: Text(title),
+              sliverAppBar: seerrIsIPhone(context)
+                  ? MobileDenseSliverAppBar(
+                      pinned: true,
+                      row: MobileDenseTitleRow(title: title, onBack: () => Navigator.of(context).maybePop()),
+                    )
+                  : null,
               slivers: [
                 if (provider.canManageRequests) SliverToBoxAdapter(child: _scopeRow(ownOnly)),
                 if (!ownOnly) SliverToBoxAdapter(child: _tilesRow()),
