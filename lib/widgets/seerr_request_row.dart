@@ -99,6 +99,7 @@ class SeerrRequestRow extends StatelessWidget {
     final thumbW = 44 + f * 28; // 44→72
     final thumbH = thumbW * 1.5;
 
+    final onlyMore = onMore != null && onApprove == null && onDecline == null && onCancel == null && onEdit == null;
     final hasActions = onApprove != null || onDecline != null || onCancel != null || onEdit != null || onMore != null;
     Widget content({required bool actionsBeside}) => Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +192,9 @@ class SeerrRequestRow extends StatelessWidget {
       // the buttons ran off the screen. Under the facts they can wrap.
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (!hasActions || constraints.maxWidth >= _besideMinWidth) return content(actionsBeside: true);
+          if (!hasActions || (onlyMore && constraints.maxWidth >= 260) || constraints.maxWidth >= _besideMinWidth) {
+            return content(actionsBeside: true);
+          }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,

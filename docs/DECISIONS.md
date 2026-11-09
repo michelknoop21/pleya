@@ -5112,7 +5112,7 @@ of externe/publicatie naar App Review.
 ## DEC-166: Instellingen op Apple TV zonder vaste bovenbalk, en de rail past in het venster
 
 **Date:** 2026-10-26
-**Status:** accepted (Michel, 26 oktober 2026)
+**Status:** accepted (Michel, 26 oktober 2026); gewijzigd door DEC-XXX (Aanvragen inklapbare balk) voor punt 1
 **Roadmap:** A-24 (vervolg op A-24b).
 **Context:** De density-audit van 26 oktober 2026 mat Instellingen op een Apple TV-canvas van 1920x1080 pt: bovenbalk 144 pt, vaste kop 175 pt en hintregel 70 pt, samen 36% van de hoogte. De rail van acht categorieën liep 876 pt (pitch 108 pt) in een kolom van 691 pt, waardoor Big P en Geavanceerd deels buiten beeld vielen tot ze gekozen waren. De tekst zelf staat op de tvOS-maten (minimum 23 pt, standaard 29 pt, Apple HIG, Typography); kleiner maken was geen optie.
 **Decision:**
@@ -5760,6 +5760,17 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 ## DEC-197: begrensd venster voor de MCP-instelling
 
 Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-setting-window.md), Roadmap C-05/S16. Alleen `mcp_enabled`, types/fixtures en de bestaande MCP-status; standaard uit. Dit gaf geen vrijgave voor G1, credentialuitgifte, productie of publicatie. De onafhankelijke review van 9 november wees op ontbrekende menselijke goedkeuring en te ruime toolblootstelling. Het lokale pakket blijft een leesproef; beheertools wachten op G1. Het oorspronkelijke lokale bewijs geldt niet als integratie- of releasebewijs.
+
+## DEC-XXX: Aanvragen op Apple TV krijgt de inklapbare bovenbalk
+
+**Date:** 2026-11-09
+**Status:** besloten (Michel, 8 november 2026, ontwerpkeuze richting B voor het tvOS-aanvraagoverzicht); het nummer volgt bij de merge (AGENTS.md); tot dan heet dit besluit in verwijzingen DEC-XXX (Aanvragen inklapbare balk).
+**Roadmap:** A-21. Geen volgordewijziging.
+**Context:** [DEC-166](#dec-166-instellingen-op-apple-tv-zonder-vaste-bovenbalk-en-de-rail-past-in-het-venster) punt 1 liet alleen Instellingen en de pagina's daaronder de inklapbare balk houden; de andere Mijn Pleya-secties kregen de vaste balk. Richting B voor Aanvragen (zijpaneel met Alles tonen direct onder de actieve categorie) heeft de hoogte van het overzicht nodig die de vaste balk opeet.
+**Besluit:**
+1. Aanvragen op tvOS gebruikt `TvTopNavPresentation.collapsible`, zowel via Mijn Pleya (`tvMyPleyaNestedRoute` voor `TvMyPleyaSection.requests`) als via `SeerrDiscoverScreen.open`. Dit wijzigt DEC-166 punt 1 alleen voor Aanvragen.
+2. De overige Mijn Pleya-secties, collectie en persoon houden de vaste balk. De rest van DEC-166 (punt 2 tot en met 4) blijft ongewijzigd.
+**Gevolgen:** `docs/agents/ui-and-tv.md` noemt Aanvragen als tweede uitzondering. `settings_tv_no_top_bar_test` verwacht voor Aanvragen en Instellingen de inklapbare balk. Simulatorbewijs is geen hardware-acceptatie. Unified impact: alleen tvOS-presentatie, geen backend, protocol of datamodel.
 
 ## DEC-XXX: Apple TV heeft geen tandwiel meer in de spelerbalk
 

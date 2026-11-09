@@ -198,6 +198,7 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
           final rights = _rightsFor(req);
           final busy = _busy.contains(req.id);
           final unresolved = _unresolved.contains(req.id);
+          final compact = seerrIsIPhone(context);
           return AutomationNode(
             id: AutomationIds.requestsListItem,
             instance: '$index',
@@ -215,11 +216,11 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
               automationInstance: '$index',
               busy: busy,
               statusUnknown: unresolved,
-              onOpen: () => _openDetail(req),
-              onApprove: rights.canApprove ? () => _approve(req) : null,
-              onDecline: rights.canDecline ? () => _decline(req) : null,
-              onEdit: rights.canEdit ? () => unawaited(_edit(req)) : null,
-              onCancel: rights.canCancel ? () => unawaited(_cancel(req)) : null,
+              onOpen: compact ? () => unawaited(_openActions(req)) : () => _openDetail(req),
+              onApprove: !compact && rights.canApprove ? () => _approve(req) : null,
+              onDecline: !compact && rights.canDecline ? () => _decline(req) : null,
+              onEdit: !compact && rights.canEdit ? () => unawaited(_edit(req)) : null,
+              onCancel: !compact && rights.canCancel ? () => unawaited(_cancel(req)) : null,
               onMore: () => unawaited(_openActions(req)),
             ),
           );

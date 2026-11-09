@@ -26,6 +26,10 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Roadmap deviation, Michel 7 november 2026:** akkoord op het voorstel voor consistente aanvraag- en beheerpagina’s (A-20/A-21), een iOS-ingang voor Seerr-meldingen en opt-in notificaties. Eerst de bestaande aanvraagflow, daarna issueafhandeling op basis van Seerr-rechten. Notificaties worden per categorie gekozen, met afzonderlijke toestemming voor iOS-push.
 
+**Ontwerpkeuze Michel, 8 november 2026 (A-21):** richting B voor het tvOS-aanvraagoverzicht. De bovenbalk klapt in op het overzicht. Het zijpaneel plaatst Alles tonen direct onder de actieve categorie. Vanaf de eerste poster voert links en daarna omlaag naar die actie. Native verificatie en release volgen de bestaande gates.
+
+**Uitvoeringskeuze Michel, 8 november 2026 (A-06).** A-06 krijgt de compacte kop op de tvOS-landingen Series en Films.
+
 **Roadmap deviation, approved by Michel on 8 November 2026 (A-11):** A-11 staat sinds 9 oktober op uitgesteld; uit dat pakket wordt nu alleen het volgende gebouwd. De dubbele schuifjesknop op Apple TV vervalt (PLR-PANEL-ENTRY-1108). Michel kiest Filmbeeld voor alle Pleya-spelers met behoud van de huidige functies, en voor iPhone en iPad de mobiele mockup A, met centraal transport en de acties verdeeld over kop en tijdlijn. De toaststijl is uitgewerkt voor speler en app. De rest van A-11/A-12 blijft uitgesteld. De iPhone/iPad-mockup valt binnen deze deviation omdat Michel die op 8 november zelf koos; de rest van A-11 niet.
 
 ## Roadmap rules
