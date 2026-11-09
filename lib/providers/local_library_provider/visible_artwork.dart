@@ -40,15 +40,23 @@ extension LocalLibraryVisibleArtwork on LocalLibraryProvider {
       return false;
     final reference = '${request.serverId}|${artworkStorageKey(request.path)}';
     if (_posterReferences.contains(reference)) return true;
-    // A known revoked library cannot borrow another library's permission.
-    final known =
-        _store?.artworkItems.any(
-          (i) =>
-              i.serverId == request.serverId &&
-              indexedPosterPaths(i).any((path) => artworkStorageKey(path) == artworkStorageKey(request.path)),
-        ) ??
-        false;
-    if (known) return false;
+    // A known revoked library cannot borrow another library's permission. Every
+    // path a row names counts here, also an episode still the index does not
+    // keep: such a still is maintained only for a row the reader may see.
+    final owners =
+        _store?.artworkItems
+            .where(
+              (i) =>
+                  i.serverId == request.serverId &&
+                  [
+                    i.thumbPath,
+                    i.parentThumbPath,
+                    i.grandparentThumbPath,
+                  ].whereType<String>().any((path) => artworkStorageKey(path) == artworkStorageKey(request.path)),
+            )
+            .toList() ??
+        const [];
+    if (owners.isNotEmpty) return owners.any(_allowedItem);
     return librariesForSync().any((l) => l.serverId == request.serverId && _allowedLibrary(l));
   }
 

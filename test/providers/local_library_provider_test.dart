@@ -465,6 +465,84 @@ void main() {
       expect(provider.posterPath('one', '/still/ep'), isNull, reason: 'the index keeps no episode still');
     });
 
+    Future<void> openWith(List<(MediaLibrary, List<MediaItem>)> libraries, List<String> posters) async {
+      provider.dispose();
+      final seeded = LocalLibraryStore(root);
+      await seeded.load();
+      for (final (l, rows) in libraries) {
+        await seeded.saveLibrary(l, rows, complete: true);
+      }
+      for (final path in posters) {
+        await seeded.savePoster('one', path, Uint8List.fromList([1, 2, 3]));
+      }
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) => true,
+        // A library the reader may not see, as a revoked or hidden one.
+        mayReadLibrary: (l) => l.id != 'revoked',
+        networkConnected: () => false,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+      );
+      await provider.ready;
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    VisibleArtworkRequest still(String path) =>
+        VisibleArtworkRequest(client: client, path: path, url: 'https://fixture.invalid$path', baseKey: path);
+
+    test('an episode still of a revoked library cannot borrow the permission of an allowed one', () async {
+      MediaItem episode(String id, String libraryId) => film(id).copyWith(
+        kind: MediaKind.episode,
+        libraryId: libraryId,
+        thumbPath: '/still/$id',
+        parentThumbPath: '/poster/$libraryId-season',
+      );
+      await openWith([
+        (library, [film('a'), episode('open', 'films')]),
+        (library.copyWith(id: 'revoked'), [episode('secret', 'revoked')]),
+      ], []);
+
+      provider.registerVisibleArtwork(Object(), still('/still/secret'));
+      expect(provider.visibleArtworkCount, 0, reason: 'only the revoked library names this still');
+      provider.registerVisibleArtwork(Object(), still('/still/open'));
+      expect(provider.visibleArtworkCount, 1, reason: 'an allowed episode still is still revalidated');
+    });
+
+    test('an offline Jellyfin episode list finds the poster the index stored, not a tagless parent path', () async {
+      final show = film('show').copyWith(kind: MediaKind.show, thumbPath: '/Items/show/Images/Primary?tag=s');
+      final tagged = film(
+        's1',
+      ).copyWith(kind: MediaKind.season, parentId: 'show', thumbPath: '/Items/s1/Images/Primary?tag=a');
+      // A season without SeasonPrimaryImageTag: the mapper gives the episode a
+      // tagless parent path that no stored row names.
+      final untagged = film('s2').copyWith(kind: MediaKind.season, parentId: 'show');
+      MediaItem episode(String id, String season) => film(id).copyWith(
+        kind: MediaKind.episode,
+        parentId: season,
+        grandparentId: 'show',
+        thumbPath: '/Items/$id/Images/Primary?tag=e',
+        parentThumbPath: '/Items/$season/Images/Primary',
+        grandparentThumbPath: '/Items/show/Images/Primary?tag=s',
+      );
+      await openWith(
+        [
+          (library, [show, tagged, untagged, episode('e1', 's1'), episode('e2', 's2')]),
+        ],
+        ['/Items/show/Images/Primary?tag=s', '/Items/s1/Images/Primary?tag=a'],
+      );
+
+      final paths = {for (final e in provider.episodes(show)) e.id: e.thumbPath};
+      expect(paths, {'e1': '/Items/s1/Images/Primary?tag=a', 'e2': '/Items/show/Images/Primary?tag=s'});
+      for (final path in paths.values) {
+        expect(provider.posterPath('one', path), isNotNull);
+      }
+    });
+
     test('a server revoked while the grid is mounted hides its posters at once', () async {
       await open();
       expect(provider.posterPath('one', '/shared-poster'), isNotNull);
