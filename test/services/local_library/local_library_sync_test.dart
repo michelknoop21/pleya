@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
@@ -27,6 +28,7 @@ class Client implements MediaServerClient {
   bool childrenFail = false;
   Object? idsError;
   int idLookups = 0;
+  int rootPages = 0;
   @override
   Future<LibraryPage<MediaItem>> fetchChildrenPage(
     String parentId, {
@@ -80,6 +82,7 @@ class Client implements MediaServerClient {
     AbortController? abort,
   }) async {
     if (!entered.isCompleted) entered.complete();
+    rootPages++;
     await gate?.future;
     if (query.offset == failOffset) throw const SocketException('fixture offline');
     final start = repeat ? 0 : query.offset;
@@ -134,6 +137,35 @@ void main() {
 
     expect(client.childrenAsked, ['show', 'season']);
     expect(store.items.map((i) => i.id).toSet(), {'show', 'season', 'ep'});
+  });
+
+  test('scanstats count exactly the requests the server answered', () async {
+    final shows = library.copyWith(kind: MediaKind.show);
+    MediaItem row(String id, MediaKind kind, [String? parent]) =>
+        film(id).copyWith(kind: kind, parentId: parent, thumbPath: '/poster/$id');
+    client.rows = [row('s1', MediaKind.show), row('s2', MediaKind.show)];
+    client.childRows['s1'] = [row('season', MediaKind.season, 's1')];
+    client.childRows['season'] = [row('e1', MediaKind.episode, 'season'), row('e2', MediaKind.episode, 'season')];
+    var posters = 0;
+    final sync = LocalLibrarySync(
+      store: store,
+      pageSize: 1,
+      posterLoader: (_, _) async {
+        posters++;
+        return Uint8List(1);
+      },
+    );
+
+    await sync.syncLibrary(shows, client);
+
+    final stats = sync.stats;
+    expect(
+      [stats.root, stats.children, stats.detail, stats.extIds, stats.posters],
+      [client.rootPages, client.childrenAsked.length, client.itemsAsked.length, client.idLookups, posters],
+    );
+    // Root and the season: two pages plus the head recheck each; s1 and s2 one
+    // page each; five titles.
+    expect([stats.root, stats.children, stats.detail, stats.posters], [3, 5, 5, 5]);
   });
 
   test('a failed Plex id lookup does not fail the scan: the row is kept without ids', () async {

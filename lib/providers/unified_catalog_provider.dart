@@ -407,6 +407,10 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
       _lastLocalRevision = revision;
       if (_service != null) {
         final sameLibraries = setEquals(_libraryKeys(_eligibleLibraries()), _lastSeenLibraryKeys);
+        appLogger.d(
+          'catalog restart reason=${hardBoundary ? 'boundary' : 'revision'} '
+          'retainVisible=${!hardBoundary && sameLibraries && _snapshot.groups.isNotEmpty} groups=${_snapshot.groups.length}',
+        );
         unawaited(_restart(retainVisible: !hardBoundary && sameLibraries && _snapshot.groups.isNotEmpty));
         return;
       }
@@ -421,6 +425,7 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
     final eligible = _eligibleLibraries();
     final keys = _libraryKeys(eligible);
     if (setEquals(keys, _lastSeenLibraryKeys)) return;
+    appLogger.d('catalog restart reason=libraries retainVisible=false groups=${_snapshot.groups.length}');
     unawaited(_restart());
   }
 
