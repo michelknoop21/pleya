@@ -131,7 +131,7 @@ describe('scherm 34, de lijst', () => {
   it('zegt dat MCP uit staat en toont het auditlog leeg', async () => {
     setup();
     render(TokensPage);
-    expect(await screen.findByText(/MCP staat uit/)).toBeInTheDocument();
+    expect(await screen.findByText(/MCP-leesproef staat uit/)).toBeInTheDocument();
     expect(screen.getByText(/Nog niets vastgelegd/)).toBeInTheDocument();
   });
 
@@ -414,4 +414,47 @@ describe('scherm 34, rolgate', () => {
     for (const path of ['/auth/api-tokens', '/audit']) expect(server.seen).not.toContain(path);
     expect(server.adminCalls()).toEqual([]);
   });
+});
+
+it('schakelt MCP via de bestaande instellingen in en uit zonder een token in de configuratie', async () => {
+  const server = setup({ mcpSetting: false });
+  const user = userEvent.setup();
+  render(TokensPage);
+  expect(await screen.findByText(/Lokale leesproef/)).toBeInTheDocument();
+  await user.click(await screen.findByRole('button', { name: 'MCP inschakelen' }));
+  expect(await screen.findByText('49 tools')).toBeInTheDocument();
+  expect(server.seen.some((r) => r.method === 'PATCH' && r.path === '/settings' && (r.body as { mcp_enabled?: boolean } | undefined)?.mcp_enabled === true)).toBe(true);
+  await user.click(screen.getByRole('button', { name: 'MCP uitschakelen' }));
+  expect(await screen.findByRole('button', { name: 'MCP inschakelen' })).toBeEnabled();
+});
+
+it('behoudt de MCP-status als de server het wijzigen weigert', async () => {
+  setup({ mcpSetting: false, fail: { 'PATCH /settings': apiError('auth.user_not_found', 404) } });
+  const user = userEvent.setup();
+  render(TokensPage);
+  await user.click(await screen.findByRole('button', { name: 'MCP inschakelen' }));
+  expect(await screen.findByRole('alert')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'MCP inschakelen' })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'MCP uitschakelen' })).not.toBeInTheDocument();
+});
+
+it('kopieert een configuratie met een placeholder en zonder bestaand sessiegeheim', async () => {
+  setup({ mcpSetting: true });
+  const user = userEvent.setup();
+  const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  render(TokensPage);
+  await user.click(await screen.findByRole('button', { name: 'Configuratie kopiëren' }));
+  expect(write).toHaveBeenCalledOnce();
+  const configuration = String(write.mock.calls[0]?.[0]);
+  expect(JSON.parse(configuration).mcpServers.pleya.headers.Authorization).toBe('Bearer <API_TOKEN>');
+  expect(configuration).not.toContain(FAKE_SECRET);
+});
+
+it('toont het actuele MCP-register met uitsluitend leesroutes', async () => {
+  setup({ mcpSetting: true });
+  render(TokensPage);
+  await userEvent.setup().click(await screen.findByText('Beschikbare tools bekijken'));
+  expect(await screen.findByText('listLibraries')).toBeVisible();
+  expect(screen.getByText('getItem')).toBeVisible();
+  expect(screen.queryByText('kan gegevens wijzigen')).not.toBeInTheDocument();
 });

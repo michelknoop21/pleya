@@ -753,6 +753,16 @@
       "file": "companion_ticket.json",
       "schema": "CompanionTicket",
       "note": "DEC-XXX: ticket over de aanvrager"
+    },
+    {
+      "file": "info_mcp.json",
+      "schema": "Info",
+      "note": "MCP actief via de bestaande capability"
+    },
+    {
+      "file": "server_detail_mcp.json",
+      "schema": "ServerDetail",
+      "note": "MCP actief met de gegenereerde toollijst"
     }
   ]
 }

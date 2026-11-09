@@ -36,5 +36,9 @@
       "http://localhost:5173"
     ],
     "source": "db"
+  },
+  "mcp_enabled": {
+    "value": false,
+    "source": "env"
   }
 }

@@ -32,10 +32,11 @@ const GenreCoverageThreshold = 0.8
 
 // MetadataTarget is een item waar een provider nog naar moet kijken.
 type MetadataTarget struct {
-	ID    id.ID
-	Kind  string
-	Title string
-	Year  *int
+	AddedAt time.Time
+	ID      id.ID
+	Kind    string
+	Title   string
+	Year    *int
 
 	// MediaRoot en MediaPath wijzen naar één mediabestand van het item (bij een
 	// serie: van een aflevering), voor het vinden van een .nfo ernaast. Leeg
@@ -116,6 +117,21 @@ type MetadataCandidate struct {
 // kandidaten. Eens per sidecarRecheck komt een item terug, zodat een bijgewerkte .nfo
 // binnen een week doorkomt.
 func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, exclude []id.ID, limit int) ([]MetadataTarget, error) {
+	return s.MetadataDueAfter(ctx, provider, pass, exclude, limit, nil)
+}
+
+type MetadataCursor struct {
+	AddedAt time.Time
+	ID      id.ID
+}
+
+func (s *Store) MetadataDueAfter(ctx context.Context, provider string, pass int, exclude []id.ID, limit int, after *MetadataCursor) ([]MetadataTarget, error) {
+	var afterTime *time.Time
+	afterID := id.Nil
+	if after != nil {
+		afterTime = &after.AddedAt
+		afterID = after.ID
+	}
 	if exclude == nil {
 		// Een NULL-array maakt van NOT (id = ANY(NULL)) een NULL en daarmee een lege pagina.
 		exclude = []id.ID{}
@@ -126,7 +142,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		       coalesce(mp.relative_path, sp.relative_path, ''),
 		       CASE WHEN c.manual THEN coalesce(c.external_id, '') ELSE '' END,
 		       CASE WHEN c.state = 'matched' AND c.applied_provider = $1 THEN coalesce(c.applied_external_id, '') ELSE '' END,
-		       c.updated_at
+		       c.updated_at, i.added_at
 		FROM media_items i
 		LEFT JOIN metadata_candidates c ON c.item_id = i.id
 		LEFT JOIN LATERAL (
@@ -134,7 +150,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		    FROM media_versions v
 		    JOIN media_files f ON f.version_id = v.id AND f.role = 'media' AND f.missing_since IS NULL
 		    JOIN storage_locations sl ON sl.id = f.storage_location_id
-		    WHERE v.item_id = i.id AND i.kind = 'movie'
+		    WHERE v.item_id = i.id AND i.kind IN ('movie', 'episode')
 		    ORDER BY f.relative_path LIMIT 1) mp ON true
 		LEFT JOIN LATERAL (
 		    SELECT sl.root_path, f.relative_path
@@ -143,10 +159,10 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		    JOIN media_versions v ON v.item_id = e.id
 		    JOIN media_files f ON f.version_id = v.id AND f.role = 'media' AND f.missing_since IS NULL
 		    JOIN storage_locations sl ON sl.id = f.storage_location_id
-		    WHERE s.parent_id = i.id AND i.kind = 'show'
+		    WHERE (s.parent_id = i.id AND i.kind = 'show') OR (s.id = i.id AND i.kind = 'season')
 		    ORDER BY f.relative_path LIMIT 1) sp ON true
-		WHERE i.kind IN ('movie', 'show')
-		  AND CASE WHEN $1 = 'nfo'
+		WHERE (i.kind IN ('movie', 'show') OR (i.kind IN ('season', 'episode') AND coalesce(mp.relative_path, sp.relative_path, '') <> ''))
+		  AND CASE WHEN $1 = 'nfo' OR i.kind IN ('season', 'episode')
 		      THEN i.sidecar_checked_at IS NULL OR i.sidecar_checked_at <= now() - $5::interval
 		      ELSE c.item_id IS NULL
 		           OR (c.state <> 'rejected'
@@ -164,8 +180,9 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 		               WHERE se.parent_id = i.id AND e.kind = 'episode' AND e.added_at > c.last_attempt_at))
 		      END
 		  AND NOT (i.id = ANY($3))
+		  AND ($6::timestamptz IS NULL OR (i.added_at,i.id)>($6,$7::uuid))
 		ORDER BY i.added_at, i.id
-		LIMIT $2`, provider, limit, exclude, pass, sidecarRecheck)
+		LIMIT $2`, provider, limit, exclude, pass, sidecarRecheck, afterTime, afterID)
 	if err != nil {
 		return nil, fmt.Errorf("metadata-werk lezen: %w", err)
 	}
@@ -174,7 +191,7 @@ func (s *Store) MetadataDue(ctx context.Context, provider string, pass int, excl
 	var out []MetadataTarget
 	for rows.Next() {
 		var t MetadataTarget
-		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.AppliedExternalID, &t.CandidateUpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Kind, &t.Title, &t.Year, &t.MediaRoot, &t.MediaPath, &t.ManualExternalID, &t.AppliedExternalID, &t.CandidateUpdatedAt, &t.AddedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

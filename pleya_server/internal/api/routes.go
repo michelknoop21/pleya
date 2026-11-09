@@ -63,6 +63,7 @@ func (s *Server) routeTable() []route {
 	const p = "/pleya/v1"
 
 	table := []route{
+		{"/mcp", s.authenticated(s.handleMCP)},
 		// Operationeel, buiten het protocol. /healthz zegt of het proces leeft en
 		// wordt niet rood van een database die even weg is; /readyz wordt pas groen
 		// als de migraties gedraaid zijn.

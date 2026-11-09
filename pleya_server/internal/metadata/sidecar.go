@@ -20,29 +20,10 @@ type Sidecar interface {
 // bestand is geen fout: dan is er geen sidecar, en de provider doet het werk.
 type FSSidecar struct{}
 
-// Read zoekt de .nfo van een film naast het bestand, en die van een serie in de
-// seriemap (boven de seizoensmappen).
-func (FSSidecar) Read(t catalog.MetadataTarget) *nfo.Result {
-	if t.MediaPath == "" || t.MediaRoot == "" {
-		return nil
-	}
-	abs := filepath.Join(t.MediaRoot, t.MediaPath)
-
-	switch t.Kind {
-	case "movie":
-		for _, p := range nfo.MoviePath(abs) {
-			if r, err := nfo.ParseFile(p); err == nil && r.Kind == "movie" {
-				return &r
-			}
-		}
-	case "show":
-		if p, ok := nfo.ShowPath(abs, t.MediaRoot); ok {
-			if r, err := nfo.ParseFile(p); err == nil && r.Kind == "tvshow" {
-				return &r
-			}
-		}
-	}
-	return nil
+// Read zoekt uitsluitend het bijbehorende soort sidecar naast de media.
+func (f FSSidecar) Read(t catalog.MetadataTarget) *nfo.Result {
+	result, _ := f.ReadChecked(t)
+	return result
 }
 
 // ReadChecked onderscheidt echt ontbreken van een onzekere actuele fallback.
@@ -58,6 +39,12 @@ func (FSSidecar) ReadChecked(t catalog.MetadataTarget) (*nfo.Result, error) {
 	switch t.Kind {
 	case "movie":
 		paths = nfo.MoviePath(abs)
+	case "season":
+		wantKind = "season"
+		paths = []string{filepath.Join(filepath.Dir(abs), "season.nfo")}
+	case "episode":
+		wantKind = "episodedetails"
+		paths = []string{strings.TrimSuffix(abs, filepath.Ext(abs)) + ".nfo"}
 	case "show":
 		wantKind = "tvshow"
 		root, dir := filepath.Clean(t.MediaRoot), filepath.Dir(abs)

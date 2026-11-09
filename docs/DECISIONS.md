@@ -5754,3 +5754,9 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 4. Films en series blijven ongewijzigd: films houden hun versies voor de sortering op resolutie en de groepering, films en series houden hun cast voor offline zoeken en detail.
 
 **Gevolgen:** Offline zoeken op een acteur vindt films en series, geen afleveringen meer. Een offline geopende aflevering toont geen cast en geen versies. Afspelen zonder verbinding loopt via downloads en verandert niet. Het effect op opslag en scanduur is nog niet op hardware gemeten; dat gebeurt bij de hermeting na de TestFlight-build van deze bundel, op de Apple TV in de slaapkamer.
+
+<a id="mcp-setting-window-2026-11-05"></a>
+
+## DEC-197: begrensd venster voor de MCP-instelling
+
+Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-setting-window.md), Roadmap C-05/S16. Alleen `mcp_enabled`, types/fixtures en de bestaande MCP-status; standaard uit. Dit gaf geen vrijgave voor G1, credentialuitgifte, productie of publicatie. De onafhankelijke review van 9 november wees op ontbrekende menselijke goedkeuring en te ruime toolblootstelling. Het lokale pakket blijft een leesproef; beheertools wachten op G1. Het oorspronkelijke lokale bewijs geldt niet als integratie- of releasebewijs.

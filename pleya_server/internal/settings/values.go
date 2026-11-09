@@ -53,6 +53,11 @@ func (v Values) ServerName() string {
 	return s
 }
 
+func (v Values) MCPEnabled() bool {
+	enabled, _ := v.values[KeyMCPEnabled].(bool)
+	return enabled
+}
+
 func (v Values) AccessTokenTTL() time.Duration   { return v.duration(KeyAccessTokenTTL) }
 func (v Values) RefreshTokenTTL() time.Duration  { return v.duration(KeyRefreshTokenTTL) }
 func (v Values) StreamTokenTTL() time.Duration   { return v.duration(KeyStreamTokenTTL) }
@@ -92,6 +97,7 @@ func (v Values) MaxStreamSessions() int {
 func newValues(base Base, stored map[string]any) Values {
 	v := Values{
 		values: map[string]any{
+			KeyMCPEnabled:        false,
 			KeyServerName:        base.ServerName,
 			KeyAccessTokenTTL:    base.AccessTokenTTL,
 			KeyRefreshTokenTTL:   base.RefreshTokenTTL,
