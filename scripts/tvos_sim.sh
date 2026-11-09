@@ -583,9 +583,11 @@ case "${1:-}" in
     # kent Xcode dezelfde map onder twee spellingen, dan wist het zijn eigen
     # net gekopieerde XCFrameworks als "stale file" en faalt de link op
     # "framework 'Libssl' not found". Zelfde valkuil als in pleya-tvbuild (#597).
-    local_dd="$(mkdir -p tvos/build && cd tvos/build && pwd -P)/dd"
+    mkdir -p tvos/build 2>/dev/null \
+      || die "tvos/build wijst naar een map die niet bestaat; draai scripts/link_build_dirs.sh"
+    DD_REAL="$(cd tvos/build && pwd -P)/dd"
     xcodebuild -workspace tvos/Runner.xcworkspace -scheme Runner -configuration Debug \
-      -destination 'generic/platform=tvOS Simulator' -derivedDataPath "$local_dd" \
+      -destination 'generic/platform=tvOS Simulator' -derivedDataPath "$DD_REAL" \
       build CODE_SIGNING_ALLOWED=NO
     ;;
   run)
