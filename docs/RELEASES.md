@@ -47,12 +47,29 @@ under `Notes`.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+
+## 2.8.1 · build 455 · 9 November 2026 · Apple TV
+
+<!-- commit: b29f1fd82f38f33650c06a6ffe34668fd4aa9516 -->
+
+### Improved
+
 - **The offline index fills much faster from Pleya Server.** A first sync asked the server about
   every episode separately: 6,698 requests and 13 minutes for one series library. It now uses
   the list it already has.
 - **The offline index is smaller.** Seasons and episodes are stored without cast, versions and
   their own still. Offline, an episode list shows the season or show poster. Films and series
   keep everything.
+- **Choosing which posters to refresh sorts once.** On build 452 a sync that skipped every
+  library still took 40 seconds, and the poster choice re-sorted its list for every title. It
+  now sorts once; the re-measurement on this build shows how much of the 40 seconds that was.
+
+### Notes
+
+- These are the offline index changes that build 454 left for the next build. The grid and
+  poster lookup changes are in 454.
+- Worth checking on the older Apple TV: Instellingen > Bibliotheken > Offline index inschakelen,
+  then scroll Alle films and Alle series for a minute during the sync and a minute after it.
 
 ## 2.8.1 · build 454 · 9 November 2026 · iPhone, iPad and Apple TV
 
