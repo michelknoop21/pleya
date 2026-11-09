@@ -17,6 +17,7 @@ import '../plex_client.dart';
 import '../pleya_server_client.dart';
 import '../local_folder_client.dart';
 import 'local_library_store.dart';
+import 'scan_diagnostics.dart';
 import '../download_artwork_helpers.dart';
 
 class LocalLibraryPaused implements Exception {}
@@ -56,7 +57,10 @@ class LocalLibrarySync {
     DateTime Function()? clock,
     this.onProgress,
     this.onCheckpoint,
-  }) : clock = clock ?? DateTime.now;
+    ScanStats? stats,
+  }) : clock = clock ?? DateTime.now,
+       stats = stats ?? ScanStats();
+  final ScanStats stats;
   final DateTime Function() clock;
   final LocalPosterRevalidator? posterRevalidator;
   final LocalLibraryStore store;
@@ -92,6 +96,7 @@ class LocalLibrarySync {
         limit: limit,
         sort: const LibrarySort(field: 'title', direction: LibrarySortDirection.ascending),
       );
+      stats.root++;
       return switch (client) {
         PlexClient() => client.fetchLibraryContent(library.id, query, requireTotalCount: true),
         JellyfinClient() => client.fetchLibraryPagedContent(
@@ -142,6 +147,7 @@ class LocalLibrarySync {
         detail = candidate;
       } else {
         try {
+          stats.detail++;
           detail = await client.fetchItem(candidate.id).timeout(const Duration(seconds: 20));
         } on TimeoutException {
           detail = null;
@@ -209,6 +215,7 @@ class LocalLibrarySync {
           authoritative = true;
         } else {
           try {
+            stats.extIds++;
             if (client is PleyaServerClient) {
               final answer = await client.fetchExternalIdsDetailed(item.id).timeout(const Duration(seconds: 20));
               ids = answer.ids;
@@ -289,7 +296,11 @@ class LocalLibrarySync {
           }
         }
         if (done - checkpointDone >= pageSize && sinceCheckpoint.elapsed >= checkpointEvery) {
+          final watch = Stopwatch()..start();
           await store.saveLibrary(library, next.values.toList(), complete: false, isCurrent: valid);
+          stats
+            ..checkpoints += 1
+            ..checkpointMs += watch.elapsedMilliseconds;
           checkpointDone = done;
           sinceCheckpoint.reset();
           if (valid()) onCheckpoint?.call();
@@ -316,6 +327,7 @@ class LocalLibrarySync {
       if (!ancestors.add(parent.globalKey)) throw StateError('Cyclic library hierarchy');
       try {
         await scan((offset, size) async {
+          stats.children++;
           final page = await switch (client) {
             PleyaServerClient() => client.fetchChildrenPage(parent.id, start: offset, size: size, strictSnapshot: true),
             PlexClient() => client.fetchChildrenPage(parent.id, start: offset, size: size, requireTotalCount: true),
@@ -355,6 +367,7 @@ class LocalLibrarySync {
       // incomplete, so the catalog keeps reading the server. A library that
       // was complete stays complete without the new title until a later scan
       // gets its detail.
+      final watch = Stopwatch()..start();
       await store.saveLibrary(
         library,
         next.values.toList(),
@@ -362,6 +375,7 @@ class LocalLibrarySync {
         partial: skipped > 0,
         isCurrent: valid,
       );
+      stats.saveMs += watch.elapsedMilliseconds;
       if (posterLoader != null || posterRevalidator != null) {
         await syncPosters(next.values, (_) => client, isCurrent: valid);
       }
@@ -428,6 +442,7 @@ class LocalLibrarySync {
       await check();
       try {
         final hasFile = store.posterPath(item.serverId!, path) != null;
+        stats.posters++;
         final result = posterRevalidator != null
             ? await posterRevalidator!(client, item, hasFile ? state : {})
             : LocalPosterResult(

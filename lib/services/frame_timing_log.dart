@@ -3,6 +3,7 @@ import 'dart:ui' show FramePhase;
 import 'package:flutter/scheduler.dart';
 
 import '../utils/app_logger.dart';
+import 'local_library/scan_diagnostics.dart';
 import '../utils/platform_detector.dart';
 
 /// Frame cost at one moment of use, in microseconds.
@@ -16,12 +17,13 @@ class FrameTimingSummary {
     required this.rasterP95,
     required this.rasterMax,
     required this.missed,
+    required this.missed32,
     required this.pacingP50,
     required this.pacingMax,
   });
 
   /// [missed] counts frames whose build or raster alone took longer than
-  /// [budgetMicros]; a pipeline that only just fits keeps up, so the two
+  /// [budgetMicros], [missed32] those over twice that, a stutter the eye sees; a pipeline that only just fits keeps up, so the two
   /// durations are not added. [starts] are the vsync times of the frames in
   /// order; the gaps between them show dropped frames the two threads cannot,
   /// because GPU time counts towards neither. A gap over 100 ms is the app being
@@ -35,8 +37,11 @@ class FrameTimingSummary {
     final sortedBuild = [...build]..sort();
     final sortedRaster = [...raster]..sort();
     var missed = 0;
+    var missed32 = 0;
     for (var i = 0; i < build.length; i++) {
-      if (build[i] > budgetMicros || raster[i] > budgetMicros) missed++;
+      final worst = build[i] > raster[i] ? build[i] : raster[i];
+      if (worst > budgetMicros) missed++;
+      if (worst > 2 * budgetMicros) missed32++;
     }
     final gaps = [
       for (var i = 1; i < starts.length; i++)
@@ -51,6 +56,7 @@ class FrameTimingSummary {
       rasterP95: _percentile(sortedRaster, 95),
       rasterMax: sortedRaster.last,
       missed: missed,
+      missed32: missed32,
       pacingP50: gaps.isEmpty ? 0 : _percentile(gaps, 50),
       pacingMax: gaps.isEmpty ? 0 : gaps.last,
     );
@@ -64,6 +70,7 @@ class FrameTimingSummary {
   final int rasterP95;
   final int rasterMax;
   final int missed;
+  final int missed32;
   final int pacingP50;
   final int pacingMax;
 
@@ -73,7 +80,7 @@ class FrameTimingSummary {
 
   @override
   String toString() =>
-      'frames=$frames missed=$missed '
+      'frames=$frames missed=$missed missed32=$missed32 '
       'build=${_ms(buildP50)}/${_ms(buildP95)}/${_ms(buildMax)} '
       'raster=${_ms(rasterP50)}/${_ms(rasterP95)}/${_ms(rasterMax)} '
       'pacing=${_ms(pacingP50)}/${_ms(pacingMax)}';
@@ -94,6 +101,12 @@ void startFrameTimingLog() {
       [for (final t in timings) t.rasterDuration.inMicroseconds],
       starts: [for (final t in timings) t.timestampInMicroseconds(FramePhase.vsyncStart)],
     );
-    appLogger.d('FrameTiming: $summary');
+    // scan= is the state when the batch arrives, about once a second; posterPath
+    // counts the local poster lookups the cards made since the previous line.
+    appLogger.d(
+      'FrameTiming: $summary scan=${ScanDiagnostics.scanning ? 'on' : 'off'} '
+      'posterPath=${ScanDiagnostics.posterPathCalls}',
+    );
+    ScanDiagnostics.posterPathCalls = 0;
   });
 }

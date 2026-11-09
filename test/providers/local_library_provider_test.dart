@@ -13,6 +13,7 @@ import 'package:pleya/providers/local_library_provider.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
 import 'package:pleya/services/local_library/local_library_sync.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/deletion_notifier.dart';
 import '../services/local_library/local_library_store_test.dart' show library, film;
 import '../services/local_library/local_library_sync_test.dart' show Client;
@@ -448,6 +449,25 @@ void main() {
     await until(provider, () => provider.revision > before && provider.items.any((i) => i.id == 'b'));
   });
 
+  test('a sync logs one scanstats line per scanned library and one syncstats line with its trigger', () async {
+    wifi = true;
+    await provider.setEnabled(true);
+    await until(provider, () => provider.state == LocalLibraryState.ready);
+    MemoryLogOutput.clearLogs();
+
+    await provider.synchronize(force: true, trigger: 'manual');
+
+    final lines = MemoryLogOutput.getLogs().map((e) => e.message).toList();
+    expect(
+      lines.where((l) => l.startsWith('scanstats lib=${library.title} backend=plex result=complete ')),
+      hasLength(1),
+    );
+    expect(
+      lines.where((l) => l.startsWith('syncstats trigger=manual ') && l.contains(' scanned=1 skipped=0 ')),
+      hasLength(1),
+    );
+  });
+
   test('content sync and network changes keep the read boundary; access loss advances it', () async {
     wifi = true;
     await provider.setEnabled(true);
@@ -639,8 +659,8 @@ class _SpinGuard extends LocalLibraryProvider {
   int calls = 0;
 
   @override
-  Future<void> synchronize({bool force = false}) {
+  Future<void> synchronize({bool force = false, String trigger = 'other'}) {
     if (++calls > 200) throw StateError('synchronize keeps rescheduling itself');
-    return super.synchronize(force: force);
+    return super.synchronize(force: force, trigger: trigger);
   }
 }

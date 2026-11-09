@@ -17,6 +17,13 @@ void main() {
     expect(summary.missed, 3);
   });
 
+  test('only a frame over twice the budget on either thread counts as missed32', () {
+    final summary = FrameTimingSummary.of([34000, 1000, 20000, 33000], [1000, 40000, 1000, 33334]);
+
+    expect(summary.missed, 4);
+    expect(summary.missed32, 2);
+  });
+
   test('a frame inside the budget on both threads is not missed', () {
     expect(FrameTimingSummary.of([16000], [16000]).missed, 0);
   });
@@ -24,7 +31,7 @@ void main() {
   test('the log line reads p50, p95 and max in milliseconds', () {
     final line = FrameTimingSummary.of([2000], [24000]).toString();
 
-    expect(line, 'frames=1 missed=1 build=2.0/2.0/2.0 raster=24.0/24.0/24.0 pacing=0.0/0.0');
+    expect(line, 'frames=1 missed=1 missed32=0 build=2.0/2.0/2.0 raster=24.0/24.0/24.0 pacing=0.0/0.0');
   });
 
   test('pacing shows a dropped frame and leaves idle time out', () {

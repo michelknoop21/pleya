@@ -22,6 +22,7 @@ import '../services/local_library/local_library_query.dart';
 import '../services/local_library/local_library_store.dart';
 import '../services/pleya_server_client.dart';
 import '../services/local_library/local_library_sync.dart';
+import '../services/local_library/scan_diagnostics.dart';
 import '../utils/app_logger.dart';
 import '../utils/deletion_notifier.dart';
 import '../utils/external_ids.dart';
@@ -187,7 +188,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       if (valid()) safeNotifyListeners();
       if (_visibleDirty && valid()) scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));
       // A tap on "sync now" while this ran.
-      if (_forcePending && !isDisposed) scheduleMicrotask(() => unawaited(synchronize()));
+      if (_forcePending && !isDisposed) scheduleMicrotask(() => unawaited(synchronize(trigger: 'pending')));
     }
   }
 
@@ -390,7 +391,19 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   final Set<String> _posterReferences = {};
   List<MediaLibrary> get libraries => _visibleLibraries;
   List<MediaItem> get items => _visibleItems;
+
+  /// The scan in progress, for the read-index counters in its log line.
+  ScanStats? _scanStats;
+  int _notifies = 0;
+
+  @override
+  void notifyListeners() {
+    _notifies++;
+    super.notifyListeners();
+  }
+
   void _refreshReadIndex() {
+    final watch = Stopwatch()..start();
     _visibleLibraries = _store?.libraries.where(_allowedLibrary).toList() ?? [];
     final keys = _visibleLibraries.map((l) => l.globalKey).toSet();
     _visibleItems =
@@ -404,6 +417,9 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
         if (path != null) _posterReferences.add('${item.serverId}|${artworkStorageKey(path)}');
       }
     }
+    _scanStats
+      ?..readIndex += 1
+      ..readIndexMs += watch.elapsedMilliseconds;
   }
 
   bool get hasContent => items.isNotEmpty;
@@ -447,9 +463,9 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       _lastDependencySignature = _dependencySignature;
       _lastReadSignature = _readSignature;
       revision++;
-      _timer = Timer.periodic(const Duration(minutes: 10), (_) => unawaited(synchronize()));
+      _timer = Timer.periodic(const Duration(minutes: 10), (_) => unawaited(synchronize(trigger: 'timer')));
       safeNotifyListeners();
-      unawaited(synchronize());
+      unawaited(synchronize(trigger: 'startup'));
     } catch (error, stack) {
       state = LocalLibraryState.error;
       initialized = true;
@@ -464,7 +480,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     _lastDependencySignature = _dependencySignature;
     state = value ? LocalLibraryState.paused : LocalLibraryState.disabled;
     safeNotifyListeners();
-    if (value) unawaited(synchronize());
+    if (value) unawaited(synchronize(trigger: 'settings'));
   }
 
   Future<void> setWifiOnly(bool value) async {
@@ -472,7 +488,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     await _store?.setOptions(wifiOnly: value);
     _lastDependencySignature = _dependencySignature;
     safeNotifyListeners();
-    unawaited(synchronize());
+    unawaited(synchronize(trigger: 'settings'));
   }
 
   /// Confirmation is owned by the UI. Afterwards prefetch stays off until the
@@ -600,7 +616,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     _queryCache.clear();
     _refreshReadIndex();
     safeNotifyListeners(); // immediately hides revoked/hidden sources
-    if (!_running) unawaited(synchronize());
+    if (!_running) unawaited(synchronize(trigger: 'change'));
   }
 
   /// A library whose last full scan is younger than this, and whose server
@@ -626,7 +642,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     return !age.isNegative && age < unchangedRescanAfter;
   }
 
-  Future<void> synchronize({bool force = false}) async {
+  /// [trigger] only labels the `syncstats` log line.
+  Future<void> synchronize({bool force = false, String trigger = 'other'}) async {
     final store = _store;
     if (force) _forcePending = true;
     if (_running || store == null || isDisposed) return;
@@ -649,6 +666,14 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       return;
     }
     _running = true;
+    ScanDiagnostics.scanning = true;
+    final watch = Stopwatch()..start();
+    final notifiesBefore = _notifies;
+    // RSS as dart:io sees it sits below the tvOS phys_footprint, so it only
+    // compares one sync with another, never with the system memory limit.
+    final rssStart = ProcessInfo.currentRss;
+    var scanned = 0;
+    var skipped = 0;
     final forced = _forcePending;
     _forcePending = false;
     final generation = _generation;
@@ -675,12 +700,18 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
     try {
       for (final library in librariesForSync().where(_allowedLibrary)) {
         if (!valid()) throw LocalLibraryPaused();
-        if (!forced && _recentlyScanned(store, library)) continue;
+        if (!forced && _recentlyScanned(store, library)) {
+          skipped++;
+          continue;
+        }
         final client = clientFor(ServerId(library.serverId!));
         if (client == null || client.isOfflineMode) {
           failed = true;
           continue;
         }
+        scanned++;
+        final stats = _scanStats = ScanStats();
+        var result = 'error';
         try {
           final priorDone = done;
           final priorKeys = store.libraryItems(library.globalKey).map((item) => item.globalKey).toSet();
@@ -688,6 +719,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
           try {
             await LocalLibrarySync(
               store: store,
+              stats: stats,
               mayContinue: space,
               onCheckpoint: () {
                 if (!valid()) return;
@@ -706,6 +738,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
             partial = error;
           }
           if (!valid()) throw LocalLibraryPaused();
+          result = partial == null ? 'complete' : 'partial';
           revision++;
           _refreshReadIndex();
           // A completed scan may prove removals as well as append content.
@@ -721,10 +754,21 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
             appLogger.w('Local library scan saved without some titles', error: partial);
           }
         } on LocalLibraryPaused {
+          result = 'paused';
           rethrow;
         } catch (error, stack) {
           failed = true;
           appLogger.w('Local library scan incomplete; retaining previous snapshot', error: error, stackTrace: stack);
+        } finally {
+          _scanStats = null;
+          appLogger.i(
+            stats.line(
+              library: library.title,
+              backend: library.backend.name,
+              result: result,
+              items: store.libraryItems(library.globalKey).length,
+            ),
+          );
         }
       }
       await _syncVisibleArtwork(valid);
@@ -746,16 +790,23 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
         }
       }
       _running = false;
+      ScanDiagnostics.scanning = false;
+      appLogger.i(
+        'syncstats trigger=$trigger ms=${watch.elapsedMilliseconds} scanned=$scanned skipped=$skipped '
+        'notifies=${_notifies - notifiesBefore} '
+        'rss=${rssStart >> 20}/${ProcessInfo.currentRss >> 20}/${ProcessInfo.maxRss >> 20}MB',
+      );
       if (_visibleDirty && !isDisposed) scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));
       if (forced && (paused || generation != _generation)) _forcePending = true;
       if (!isDisposed) {
         if (generation != _generation) {
           state = enabled ? LocalLibraryState.paused : LocalLibraryState.disabled;
-          if (enabled && _foreground && _allowedNetwork) scheduleMicrotask(() => unawaited(synchronize()));
+          if (enabled && _foreground && _allowedNetwork)
+            scheduleMicrotask(() => unawaited(synchronize(trigger: 'retry')));
         } else if (!paused) {
           state = failed ? LocalLibraryState.error : LocalLibraryState.ready;
           // A tap on "sync now" while this sync ran.
-          if (_forcePending) scheduleMicrotask(() => unawaited(synchronize()));
+          if (_forcePending) scheduleMicrotask(() => unawaited(synchronize(trigger: 'pending')));
         }
         safeNotifyListeners();
       }
@@ -763,6 +814,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   }
 
   String? posterPath(String? serverId, String? path) {
+    ScanDiagnostics.posterPathCalls++;
     if (isDisposed || serverId == null || path == null || !mayReadServer(serverId)) return null;
     // Image reads obey the same library boundary as metadata reads.
     if (!_posterReferences.contains('$serverId|${artworkStorageKey(path)}')) return null;
@@ -856,7 +908,7 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _foreground = state == AppLifecycleState.resumed;
     if (!_foreground) _generation++;
-    if (_foreground) unawaited(synchronize());
+    if (_foreground) unawaited(synchronize(trigger: 'resume'));
   }
 
   @override
