@@ -64,7 +64,7 @@ Michel opende expliciet het [begrensde MCP-instellingenvenster](pleya-server-mcp
 
 De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
 
-Per taak, en dat is de maat die telt: **172 taken, 92 gereed, 39 bezig, 41 open.** PS-12.0 is de afzonderlijke keuzefase: binnen de afrondingsscope zonder die regel zijn het **171 taken, 92 gereed, 39 bezig, 40 open**. De acht S26-taken (delen via uitnodigingen) zijn op 9 november 2026 toegevoegd en tellen hier mee. Hercontrole op 5 november 2026 met `scripts/masterlist_counts.sh --check`: de taakregel klopt; dit is geen voltooiingspercentage. Zie de [reconciliatie per restregel](qa/2026-11-05-server-completion-reconciliation.md). S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **172 taken, 92 gereed, 39 bezig, 41 open.** PS-12.0 is de afzonderlijke keuzefase: binnen de afrondingsscope zonder die regel zijn het **171 taken, 92 gereed, 39 bezig, 40 open**. De acht S26-taken (delen via uitnodigingen) zijn op 9 november 2026 toegevoegd en tellen hier mee. Hercontrole op 9 november 2026 met `scripts/masterlist_counts.sh --check` (na het toevoegen van S26): de taakregel klopt; dit is geen voltooiingspercentage. Zie de [reconciliatie per restregel](qa/2026-11-05-server-completion-reconciliation.md). S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).

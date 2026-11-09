@@ -92,3 +92,7 @@ S26 raakt het bevroren contract. Dit hoofdstuk vraagt een venster aan en opent h
 - Kwaliteitsstand in `POST /playback/plan` met reden "kwaliteit" of "compatibiliteit".
 
 De precieze schema's, fixtures en matrixregels volgen uit stap 1 en 2 en komen in een eigen venstervoorstel, zoals bij S19/S23. Tot dat venster opent blijft `scripts/check_protocol.sh` de poortwachter.
+
+## 9. Bij de merge: het nummer van DEC-XXX
+
+Het nummer wordt bij de merge toegekend (AGENTS.md). Dezelfde commit die de kop in `docs/DECISIONS.md` hernummert, vervangt ook de tekst "DEC-XXX (Pleya Server delen)" en de anchor `#dec-xxx-pleya-server-delen-...` in: dit voorstel (kop en hoofdstuk 1), `docs/plans/2026-11-09-pleya-server-delen/PLAN.md`, `docs/ROADMAP.md` (rij C-06, Server/Web-volgorde, sectie C-06), `docs/PLEYA-SERVER-MASTERLIST.md` (kopregel, scopezin, S26), `docs/pleya-server-architecture.md` (noot bij hoofdstuk 15) en de statusnoot bij DEC-037. Een `rg "DEC-XXX (Pleya Server delen)"` moet daarna leeg zijn.
