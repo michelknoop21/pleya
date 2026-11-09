@@ -5757,6 +5757,6 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 
 <a id="mcp-setting-window-2026-11-05"></a>
 
-## DEC-XXX: begrensd venster voor de MCP-instelling
+## DEC-197: begrensd venster voor de MCP-instelling
 
 Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-setting-window.md), Roadmap C-05/S16. Alleen `mcp_enabled`, types/fixtures en de bestaande MCP-status; standaard uit. Dit gaf geen vrijgave voor G1, credentialuitgifte, productie of publicatie. De onafhankelijke review van 9 november wees op ontbrekende menselijke goedkeuring en te ruime toolblootstelling. Het lokale pakket blijft een leesproef; beheertools wachten op G1. Het oorspronkelijke lokale bewijs geldt niet als integratie- of releasebewijs.

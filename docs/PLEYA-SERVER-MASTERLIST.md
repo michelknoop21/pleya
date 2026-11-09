@@ -48,7 +48,7 @@ Michel opende expliciet het [begrensde cachebeheer-venster](plans/2026-11-01-ser
 
 ## Scoped MCP-instellingenvenster, besluit 5 november 2026
 
-Michel opende expliciet het [begrensde MCP-instellingenvenster](pleya-server-mcp-setting-window.md), [besluit](DECISIONS.md#mcp-setting-window-2026-11-05), C-05/S16. Alleen `mcp_enabled`, types/fixtures en bestaande MCP-status; standaard uit. Geen wijziging van rechten, bevestigingen of releasebevoegdheid. Venster lokaal gesloten op schema-/generatorchecks, gerichte tests, browseracceptatie en onafhankelijke review; [bewijs](qa/2026-11-05-server-mcp.md).
+Michel opende expliciet het [begrensde MCP-instellingenvenster](pleya-server-mcp-setting-window.md), [DEC-197](DECISIONS.md#mcp-setting-window-2026-11-05), C-05/S16. Alleen `mcp_enabled`, types/fixtures en bestaande MCP-status; standaard uit. Geen wijziging van rechten, bevestigingen of releasebevoegdheid. Venster lokaal gesloten op schema-/generatorchecks, gerichte tests, browseracceptatie en onafhankelijke review; [bewijs](qa/2026-11-05-server-mcp.md).
 
 ## 1. Stand in één blik
 

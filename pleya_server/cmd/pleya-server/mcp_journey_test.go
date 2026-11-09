@@ -132,10 +132,10 @@ func TestMCPGoldenJourneyUsesProductionScanHandler(t *testing.T) {
 		}
 		return out
 	}
-	library := rest("POST","/libraries",map[string]any{"title":"MCP films","kind":"movies","root_paths":[]string{root},"scan_on_start":false},access)
+	library := rest("POST", "/libraries", map[string]any{"title": "MCP films", "kind": "movies", "root_paths": []string{root}, "scan_on_start": false}, access)
 	libraryID := library["id"].(string)
-	rest("POST","/libraries",map[string]any{"title":"Private films","kind":"movies","root_paths":[]string{privateRoot},"scan_on_start":false},access)
-	scan := rest("POST","/libraries/"+libraryID+"/scan",nil,access)
+	rest("POST", "/libraries", map[string]any{"title": "Private films", "kind": "movies", "root_paths": []string{privateRoot}, "scan_on_start": false}, access)
+	scan := rest("POST", "/libraries/"+libraryID+"/scan", nil, access)
 	for {
 		state := call(adminSession, "getScan", map[string]any{"path": map[string]any{"scan_id": scan["id"]}})
 		if state["state"] == "done" {
@@ -153,10 +153,10 @@ func TestMCPGoldenJourneyUsesProductionScanHandler(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-	user := rest("POST","/users",map[string]any{"username":"reader","password":"synthetic-only-reader","role":"member"},access)
-	rest("PUT","/users/"+user["id"].(string)+"/permissions",map[string]any{"permissions":[]any{map[string]any{"library_id":libraryID,"permission":"view"}}},access)
-	reader := rest("POST","/auth/api-tokens",map[string]any{"user_id":user["id"],"name":"MCP reader","scope":"read"},access)["secret"].(string)
-	rest("PATCH","/settings",map[string]any{"server_name":"MCP journey accepted"},access)
+	user := rest("POST", "/users", map[string]any{"username": "reader", "password": "synthetic-only-reader", "role": "member"}, access)
+	rest("PUT", "/users/"+user["id"].(string)+"/permissions", map[string]any{"permissions": []any{map[string]any{"library_id": libraryID, "permission": "view"}}}, access)
+	reader := rest("POST", "/auth/api-tokens", map[string]any{"user_id": user["id"], "name": "MCP reader", "scope": "read"}, access)["secret"].(string)
+	rest("PATCH", "/settings", map[string]any{"server_name": "MCP journey accepted"}, access)
 	readerSession := connect(reader)
 	defer readerSession.Close()
 	visible := call(readerSession, "listLibraries", map[string]any{})["items"].([]any)
