@@ -7,6 +7,7 @@ import '../../../focus/focusable_wrapper.dart';
 import '../../../utils/formatters.dart';
 import '../../clickable_cursor.dart';
 import '../helpers/eager_horizontal_drag_recognizer.dart';
+import '../film_frame_palette.dart';
 
 /// Timeline bar for live TV time-shift.
 ///
@@ -222,7 +223,7 @@ class _LiveTimelinePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final trackY = size.height / 2;
-    const trackHeight = 8.0;
+    const trackHeight = kFilmTrackHeight;
     final trackRadius = Radius.circular(trackHeight / 2);
     final posX = positionFraction * w;
 
@@ -240,7 +241,7 @@ class _LiveTimelinePainter extends CustomPainter {
           Rect.fromLTRB(0, trackY - trackHeight / 2, posX, trackY + trackHeight / 2),
           trackRadius,
         ),
-        Paint()..color = Colors.red,
+        Paint()..color = kFilmProgress,
       );
     }
 

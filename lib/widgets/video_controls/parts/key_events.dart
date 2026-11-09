@@ -23,6 +23,9 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
       PlatformDetector.isAppleTV() &&
       AppleTvRemoteTouchService.instance.isSwipeDirectional(LogicalKeyboardKey.arrowDown);
 
+  bool _isAppleTvSwipe(LogicalKeyboardKey key) =>
+      PlatformDetector.isAppleTV() && AppleTvRemoteTouchService.instance.isSwipeDirectional(key);
+
   bool _isSelectKey(LogicalKeyboardKey key) {
     return key == LogicalKeyboardKey.select ||
         key == LogicalKeyboardKey.enter ||
@@ -348,7 +351,8 @@ extension _PlexVideoControlsKeyEventMethods on _PlexVideoControlsState {
         final isHorizontal = key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight;
         if (isHorizontal) {
           _showControlsWithTimelineFocus();
-          if (widget.canControl) {
+          // A swipe never seeks while playing; it only reveals the controls.
+          if (widget.canControl && !(widget.player.state.playing && _isAppleTvSwipe(key))) {
             final forward = key == LogicalKeyboardKey.arrowRight;
             unawaited(_seekByTime(forward: forward));
           }

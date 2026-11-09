@@ -80,7 +80,14 @@ class VideoControlButton extends StatelessWidget {
     );
 
     Widget result = semanticLabel != null
-        ? Semantics(label: semanticLabel, button: true, excludeSemantics: true, child: button)
+        ? Semantics(
+            label: semanticLabel,
+            button: true,
+            enabled: onPressed != null,
+            onTap: onPressed,
+            excludeSemantics: true,
+            child: button,
+          )
         : button;
 
     if (focusNode != null) {

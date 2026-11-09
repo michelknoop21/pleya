@@ -21,7 +21,7 @@ steps:
   - press: select
   - wait_until: {id: player.surface, state: {first_frame: true, external_subtitle_count: 2}, timeout: 25000}
 
-  # Pause first, then over to the tune button.
+  # Pause first, then over to the tracks button.
   # No wait for the ring first: an idb press takes one to two seconds to land,
   # and the clip was two seconds long, so a press sent after polling for the
   # focus arrived when mpv had already ended (run of 23 September). The clip
@@ -31,14 +31,17 @@ steps:
   - press: select
   - settle: 400
   - assert: {id: player.play_pause, state: {playing: false}}
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - assert: {id: player.settings_button, focused: true}
+  - walk: {direction: right, steps: 4, stopAt: player.tracks_button, timeout: 20000, settle: 250}
+  - assert: {id: player.tracks_button, focused: true}
   - press: select
   - wait_until: {id: player.panel, timeout: 5000}
   - settle: 400
+  - press: up
+  - settle: 250
+  - walk: {direction: left, steps: 2, stopAt: "player.panel.tab[video]", timeout: 5000, settle: 250}
+  - assert: {id: "player.panel.tab[video]", focused: true}
+  - press: down
+  - settle: 250
   - snapshot: 01-panel-video
 
   - assert: {id: player.panel, state: {tab: video, subView: none}}
