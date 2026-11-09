@@ -31,9 +31,9 @@ Alle tests draaien lokaal tegen Pebble 2.10.1 (de test-CA van Let's Encrypt), `p
 | `frpeval` `TestFRPHTTPSPassthroughAndNameEnforcement` | Met de plugin houdt de NAS de route, ook als de dief eerst registreert; de client ziet het NAS-certificaat; beide dieven worden geweigerd | `TestFRPWithoutPluginGivesTheRouteToTheFirstClaimant` |
 | `frpeval` `TestFRPWithoutPluginGivesTheRouteToTheFirstClaimant` | Zonder plugin krijgt de dief de route; alleen de certificaatcontrole van de client weigert hem | Dit is de negatieve controle |
 | `frpeval` `TestPluginRefusesOtherProxyTypes` | De plugin staat alleen `https` toe, niet `http` of `tcpmux` voor dezelfde naam | Ingebouwd |
-| `players` `TestFFmpegRoutesAndVerification` | Met verificatie aan spelen direct, relay, HLS en seek; een zelfondertekend en een geldig maar ander serverscertificaat worden geweigerd | Met de standaardinstelling speelt het valse certificaat af |
-| `players` `TestMPVRoutesAndVerification` | Idem voor mpv, plus een externe ondertitel via de relay | Met de standaardinstelling speelt het valse certificaat af |
-| `players` `TestAuthorizationHeaderOnCrossHostRedirect` | ffmpeg en mpv sturen `Authorization` mee naar de andere host; `dart:io` en de Go-client niet | Ingebouwd: vier clients naast elkaar |
+| `players` `TestFFmpegRoutesAndVerification` | Met verificatie aan spelen direct, relay, HLS en seek; een zelfondertekend en een geldig maar ander serverscertificaat worden geweigerd | Zonder verificatie spelen beide valse certificaten af, dus de route zelf werkt |
+| `players` `TestMPVRoutesAndVerification` | Idem voor mpv, plus een externe ondertitel via de relay | Zonder verificatie spelen beide valse certificaten af |
+| `players` `TestAuthorizationHeaderOnCrossHostRedirect` | ffmpeg en mpv sturen `Authorization` mee naar de andere host; `dart:io` en de Go-client niet. Alle vier worden geasserteerd, dus een verandering maakt de test rood | Ingebouwd: vier clients naast elkaar |
 | `players` `TestLocalRouteSurvivesRebindingProtection` | Een resolver die privé-antwoorden weigert, breekt DNS voor de lokale route; via een CONNECT-proxy met de routeadressen speelt ffmpeg met verificatie aan | Positieve controle: dezelfde resolver beantwoordt een publiek adres wel |
 
 ## Metingen
@@ -54,6 +54,8 @@ Een onafhankelijke reviewer las de documenten en de proefcode en draaide de test
 - **Important, verwerkt:** thuisadressen niet in publieke DNS (I1); de proef met een geldig certificaat van een andere server (I2); frp met eigen backends, controle op `proxy_type` en een negatieve controle zonder plugin (I3); besluit 12 scheidt Michels besluiten van de gevolgen en voorstellen (I4); registratie met bewijs van bezit en één eigenaar (I6); `dart:io` in de redirecttest en de app-HTTP-kolom in het toesteldraaiboek (I7).
 - **Important, voorgelegd aan Michel:** de Public Suffix List weigert aanvragen die alleen limieten omzeilen, en kleine projecten worden waarschijnlijk afgewezen (I5). De richtlijnen zijn gecontroleerd. Het risico staat in besluit 12; het besluit zelf is niet gewijzigd.
 - **Minors, verwerkt:** een strengere SNI-droptest, een positieve DNS-controle, de formulering van de typecontrole, een kanttekening over het control-kanaal, geen claim over doorvoerverhouding, het voorbehoud over de back-upsleutel, de woordkeus in de roadmap, uitgelekte uitnodigingslinks, `go mod download` voor frp, `go mod tidy`, en de dubbele DEC-117 en DEC-120 bij naam genoemd.
+
+Een verse reviewer controleerde daarna alle fixes in één keer. Uitkomst: de Critical en zes Important zijn hersteld en I7 was half. Hij vond één nieuwe Important: de browser kan de proxy op het toestel niet gebruiken, en valt daardoor buiten de lokale en directe route. Daarnaast vond hij vijf Minors. Alles is verwerkt: de browserroute staat in het vertrouwensmodel en het toesteldraaiboek; de redirectbevinding en `dart:io` worden nu geasserteerd; het geval met een ander serverscertificaat heeft een controle zonder verificatie; overdracht van een server staat als nog niet gebouwd; de hostingindeling heet een voorstel; en de afweging vóór stap 3 ligt bij Michel.
 
 ## Losse beveiligingsbevinding buiten S26
 

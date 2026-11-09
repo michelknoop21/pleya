@@ -50,11 +50,13 @@ Wie de centrale dienst, de DNS-API-sleutel of het ACME-account in handen krijgt,
 
 **Geen publieke DNS-records met IP-adressen.** Elke hash staat in de openbare CT-logs. Stond `direct.H` met het thuisadres in publieke DNS, dan kan iedereen een lijst van thuis-IP's met een mediaserver maken. Daarom levert de centrale dienst het directe en het lokale adres alleen in de routegegevens aan een aangemeld account. De app verbindt via de CONNECT-proxy op het toestel, zoals bij de lokale route (proef: `TestLocalRouteSurvivesRebindingProtection`). Alleen de relaynamen (`r1.H`) staan in publieke DNS, en die wijzen naar de relay, niet naar een huis.
 
+**De browser kan de proxy op het toestel niet gebruiken.** Pleya Web in Safari of Chrome heeft alleen DNS. Voor de browser blijven daarom twee routes over: de relay, en de lokale naam als een DNS-dienst namen als `192-168-1-10.H` uit het label zelf beantwoordt, zoals plex.direct. Zo'n antwoord bevat alleen een privé-adres dat al in de naam staat, en verraadt dus geen thuisadres. Het loopt wel tegen DNS-rebindingbescherming in routers aan, en valt dan terug op de relay. De directe route met het publieke thuisadres is voor de browser niet beschikbaar. Een kijker in de browser thuis gaat dus via de lokale naam of via de relay; buitenshuis altijd via de relay. Dat kost relaybandbreedte, en het toesteldraaiboek moet het meten.
+
 ## De drie stromen
 
 **1. Server koppelen en certificaat krijgen** (stap 3, bewezen in `certflow`)
 1. De eigenaar meldt zich in de wizard aan bij zijn Pleya-account. De centrale dienst geeft een eenmalige uitdaging.
-2. De server tekent uitdaging plus account-id met zijn identiteitssleutel. Wie alleen de publieke sleutel kent, kan niet registreren. Een handtekening werkt niet voor een ander account. Een server hoort bij één account; overdracht vraagt een nieuwe handtekening van de identiteit (proef: `TestRegistrationNeedsPossessionAndOneOwner`).
+2. De server tekent uitdaging plus account-id met zijn identiteitssleutel. Wie alleen de publieke sleutel kent, kan niet registreren. Een handtekening werkt niet voor een ander account. Een server hoort bij één account (proef: `TestRegistrationNeedsPossessionAndOneOwner`). Overdracht naar een ander account is nog niet ontworpen of gebouwd; het voorstel is dat ook die een nieuwe handtekening van de identiteit vraagt.
 3. De server stuurt een CSR voor precies `*.H.<serverdomein>`, ondertekend met de identiteitssleutel. De centrale dienst weigert een andere naam, een andere handtekening en een niet-geregistreerde identiteit (`TestIssueRefusesWhatIsNotTheCallersName`).
 4. De centrale dienst doet DNS-01 en geeft de keten terug. De TLS-sleutel blijft op de NAS (`TestIssueKeepsKeyOnNASAndCoversRouteNames`).
 
@@ -88,7 +90,9 @@ Wie de centrale dienst, de DNS-API-sleutel of het ACME-account in handen krijgt,
 | Uitval van de centrale dienst | Bestaande sessies op de server werken door tot hun refresh verloopt; nieuwe accounts en uitnodigingen wachten | Ontwerp, besluit 10; te bewijzen in stap 8 |
 | Uitval thuis in de NAS-fase | Aanmelden en relay vallen weg voor alle gebruikers; directe en lokale routes van andere servers werken door met gecachte routes | Ontwerp; reden voor de verhuizing naar de VPS |
 
-## Hosting in fases (besluit 12)
+## Hosting in fases
+
+Besluit 12 legt vast: eerst de NAS, later een VPS. De invulling hieronder is een voorstel, geen besluit van Michel.
 
 - **NAS-fase:** de centrale dienst draait als eigen container met eigen database achter de bestaande Cloudflare Tunnel. Daar gaat alleen coördinatieverkeer over, maar Cloudflare kan dat verkeer lezen, en dus ook accountsessies. De relay kan niet achter de tunnel, want die termineert TLS. De relay krijgt een eigen inkomende poort; die poort op de router doorzetten is een actie die Michel zelf moet goedkeuren.
 - **VPS-fase:** dezelfde containers met dezelfde DNS-namen op een VPS. De verhuizing is een DNS- en deploywijziging. De DNS-API-sleutel en het ACME-account worden dan vervangen.

@@ -36,6 +36,7 @@ Naast de spelers zelf telt ook de HTTP-laag van de app: CupertinoClient op iOS, 
 - **ExoPlayer met Cronet:** Cronet controleert standaard tegen de systeemtrust. Bevestig dat een MITM-certificaat wordt geweigerd zonder extra instelling. Bevestig ook wat `DefaultHttpDataSource` als terugval doet.
 - **Redirect:** stuurt Cronet of ExoPlayer de request-headers mee naar een andere host?
 - **hls.js:** de `xhrSetup`-bearer uit S18.3 gaat bij een redirect via XHR. Browsers sturen een eigen `Authorization`-header niet automatisch mee over origins, maar dit moet bevestigd worden.
+- **Browser thuis:** Pleya Web kan de proxy op het toestel niet gebruiken. Meet of de lokale naam via DNS werkt achter Michels router, of dat de browser op de relay uitkomt.
 - **CONNECT-proxy:** respecteren MPVKit en ExoPlayer een proxy op loopback voor HTTPS? Als ExoPlayer dat niet doet, wordt de terugval op Android een `Dns`-override in Cronet of OkHttp.
 
 ## Bekende bevinding om mee te nemen
