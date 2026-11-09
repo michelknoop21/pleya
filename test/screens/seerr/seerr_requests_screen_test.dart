@@ -13,6 +13,7 @@ import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/screens/seerr/seerr_requests_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/focusable_tab_chip.dart';
 import 'package:pleya/widgets/seerr_request_row.dart';
 import 'package:pleya/widgets/tv/tv_seerr_card.dart';
 
@@ -23,6 +24,18 @@ Finder _state(String which) => seerrNode(AutomationIds.requestsListState, which)
 Finder _tvState(String which) => seerrNode(AutomationIds.tvCatalogState, 'requests.$which');
 
 void main() {
+  /// The row whose last action has no known outcome. Tapping it is the one
+  /// thing it still offers: reading the list back.
+  /// The status chip with [label]. The words also appear on rows ("Goedgekeurd"),
+  /// so the chip is found as a chip.
+  Finder chip(String label) => find.widgetWithText(FocusableTabChip, label);
+
+  /// [text] inside the Regiekamer tile [instance]: where the counts live now.
+  Finder tileText(String instance, String text) =>
+      find.descendant(of: seerrNode(AutomationIds.requestsListTile, instance), matching: find.text(text));
+
+  Finder unknownRow() => find.byWidgetPredicate((w) => w is SeerrRequestRow && w.statusUnknown);
+
   late FakeSeerr fake;
   late SeerrProvider provider;
 
@@ -87,8 +100,8 @@ void main() {
       await open(tester, permissions: seerrPermManage);
 
       expect(fake.sent('GET', '/request').single.query.containsKey('requestedBy'), isFalse);
-      expect(find.text('${t.seerr.filterAll}  2'), findsOneWidget);
-      expect(find.text('${t.seerr.filterApproved}  0'), findsOneWidget, reason: 'a counted zero is a count');
+      expect(tileText('all', '2'), findsOneWidget);
+      expect(tileText('approved', '0'), findsOneWidget, reason: 'a counted zero is a count');
       expect(
         find.text(t.seerr.filterAvailable),
         findsOneWidget,
@@ -100,7 +113,7 @@ void main() {
       fake.on('GET /request/count', {'message': 'boom'}, 500);
       await open(tester, permissions: seerrPermManage);
 
-      expect(find.text('${t.seerr.filterAll}  –'), findsOneWidget);
+      expect(tileText('all', '–'), findsOneWidget);
       expect(find.textContaining('  0'), findsNothing);
       expect(find.byType(SeerrRequestRow), findsNWidgets(2), reason: 'the list does not depend on the counts');
     });
@@ -120,7 +133,7 @@ void main() {
     testWidgets('a filter with nothing in it offers clearing the filter', (tester) async {
       await open(tester, permissions: seerrPermManage);
       fake.on('GET /request', seerrPage(const []));
-      await tester.tap(find.text('${t.seerr.filterApproved}  0'));
+      await tester.tap(chip(t.seerr.filterApproved));
       await seerrSettle(tester);
 
       expect(_state('filtered'), findsOneWidget);
@@ -140,10 +153,10 @@ void main() {
     testWidgets('an answer for the previous filter never lands under the new one', (tester) async {
       await open(tester, permissions: seerrPermManage);
       final slow = fake.hold('GET /request');
-      await tester.tap(find.text('${t.seerr.filterPending}  2'));
+      await tester.tap(chip(t.seerr.filterPending));
       await tester.pump();
       fake.on('GET /request', seerrPage([seerrRequestJson(5, status: 2)]));
-      await tester.tap(find.text('${t.seerr.filterApproved}  0'));
+      await tester.tap(chip(t.seerr.filterApproved));
       await seerrSettle(tester);
 
       slow.complete(FakeSeerr.json(seerrPage([seerrRequestJson(1), seerrRequestJson(2)])));
@@ -186,10 +199,10 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       final answer = fake.hold('POST /request/2/approve');
 
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await tester.pump();
       expect(tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last.busy, isTrue);
-      await tester.tap(find.text(t.seerr.approve).last, warnIfMissed: false);
+      await tester.tap(find.byTooltip(t.seerr.approve).last, warnIfMissed: false);
       await tester.pump();
       expect(fake.sent('POST', '/request/2/approve'), hasLength(1));
 
@@ -225,7 +238,7 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       final listsBefore = fake.sent('GET', '/request').length;
 
-      await tester.tap(find.text(t.seerr.decline).last);
+      await tester.tap(find.byTooltip(t.seerr.decline).last);
       await seerrSettle(tester);
 
       expect(find.text(t.seerr.actionFailed), findsOneWidget);
@@ -237,7 +250,7 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       final listsBefore = fake.sent('GET', '/request').length;
 
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await seerrSettle(tester);
 
       expect(find.text(t.seerr.actionUncertain), findsOneWidget);
@@ -248,7 +261,7 @@ void main() {
       fake.on('DELETE /request/1', null, 204);
       await open(tester);
 
-      await tester.tap(find.text(t.seerr.cancelRequest));
+      await tester.tap(find.byTooltip(t.seerr.cancelRequest));
       await tester.pumpAndSettle();
       expect(find.text(t.seerr.cancelRequestConfirm), findsOneWidget);
       expect(fake.sent('DELETE', '/request/1'), isEmpty);
@@ -257,7 +270,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(fake.sent('DELETE', '/request/1'), isEmpty);
 
-      await tester.tap(find.text(t.seerr.cancelRequest));
+      await tester.tap(find.byTooltip(t.seerr.cancelRequest));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, t.seerr.cancelRequest));
       await seerrSettle(tester);
@@ -281,7 +294,7 @@ void main() {
       expect(find.byType(SeerrRequestRow), findsNWidgets(30), reason: 'page two loaded by itself');
 
       fake.on('POST /request/25/approve', {'id': 25});
-      await tester.tap(find.text(t.seerr.approve).at(24));
+      await tester.tap(find.byTooltip(t.seerr.approve).at(24));
       await seerrSettle(tester);
 
       final reload = fake.sent('GET', '/request').last.query;
@@ -351,7 +364,7 @@ void main() {
 
     testWidgets('a cancel confirmed after a profile switch deletes nothing', (tester) async {
       await openAsA(tester);
-      await tester.tap(find.text(t.seerr.cancelRequest));
+      await tester.tap(find.byTooltip(t.seerr.cancelRequest));
       await tester.pumpAndSettle();
       expect(find.text(t.seerr.cancelRequestConfirm), findsOneWidget);
 
@@ -366,7 +379,7 @@ void main() {
 
     testWidgets('a choice made in a menu that was opened before a profile switch sends nothing', (tester) async {
       await openAsA(tester, permissions: seerrPermManage);
-      await tester.tap(find.byTooltip(t.seerr.moreActions));
+      await tester.tap(find.byType(SeerrRequestRow).first);
       await tester.pumpAndSettle();
       expect(seerrNode(AutomationIds.requestsActions), findsOneWidget);
 
@@ -391,7 +404,7 @@ void main() {
 
       // Someone else approved it meanwhile, and the list has since learned so.
       fake.on('GET /request', seerrPage([seerrRequestJson(1), seerrRequestJson(2, status: 2, requestedBy: 9)]));
-      await tester.tap(find.text('${t.seerr.filterPending}  2'));
+      await tester.tap(chip(t.seerr.filterPending));
       await seerrSettle(tester);
       await tester.tap(find.textContaining(t.seerr.filterAll).first);
       await seerrSettle(tester);
@@ -408,7 +421,7 @@ void main() {
       fake.fail('POST /request/2/approve');
       fake.fail('GET /request');
 
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await seerrSettle(tester);
 
       final row = tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last;
@@ -416,8 +429,8 @@ void main() {
       expect(row.statusUnknown, isTrue);
       expect(find.text(t.seerr.statusUnknownBadge), findsOneWidget);
 
-      await tester.tap(find.text(t.seerr.approve).last, warnIfMissed: false);
-      await tester.tap(find.text(t.seerr.decline).last, warnIfMissed: false);
+      await tester.tap(find.byTooltip(t.seerr.approve).last, warnIfMissed: false);
+      await tester.tap(find.byTooltip(t.seerr.decline).last, warnIfMissed: false);
       await seerrSettle(tester);
       expect(fake.sent('POST', '/request/2/approve'), hasLength(1));
       expect(fake.sent('POST', '/request/2/decline'), isEmpty);
@@ -427,11 +440,11 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       fake.fail('POST /request/2/approve');
       fake.fail('GET /request');
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await seerrSettle(tester);
 
       fake.on('GET /request', seerrPage([seerrRequestJson(1), seerrRequestJson(2, status: 2, requestedBy: 9)]));
-      await tester.tap(find.byTooltip(t.seerr.checkStatus));
+      await tester.tap(unknownRow());
       await seerrSettle(tester);
 
       final row = tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last;
@@ -448,7 +461,7 @@ void main() {
     testWidgets('when the list can be read after a lost answer, the request is unlocked by that read', (tester) async {
       await open(tester, permissions: seerrPermManage);
       fake.fail('POST /request/2/approve');
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await seerrSettle(tester);
 
       expect(tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last.busy, isFalse);
@@ -495,7 +508,7 @@ void main() {
       await tester.tap(scopeChip(t.seerr.allRequests));
       await seerrSettle(tester);
       expect(fake.sent('GET', '/request').last.query.containsKey('requestedBy'), isFalse);
-      expect(find.text('${t.seerr.filterAll}  2'), findsOneWidget);
+      expect(tileText('all', '2'), findsOneWidget);
     });
 
     testWidgets('a requester has no scope to choose and never reaches the unscoped list', (tester) async {
@@ -510,7 +523,7 @@ void main() {
     testWidgets('an answer for the scope that was left does not land in the scope that was chosen', (tester) async {
       await open(tester, permissions: seerrPermManage);
       final slow = fake.hold('GET /request');
-      await tester.tap(find.text('${t.seerr.filterPending}  2'));
+      await tester.tap(chip(t.seerr.filterPending));
       await tester.pump();
 
       fake.on('GET /request', seerrPage([seerrRequestJson(7)]));
@@ -539,8 +552,10 @@ void main() {
       await open(tester, permissions: seerrPermAdmin, size: const Size(390, 844));
 
       expect(tester.takeException(), isNull, reason: 'no overflow at phone width');
-      for (final label in [t.seerr.approve, t.seerr.decline, t.seerr.edit, t.seerr.cancelRequest]) {
-        final rect = tester.getRect(find.text(label));
+      // The row carries the decision (Afwijzen, Goedkeuren); Bewerken and
+      // Annuleren are in the menu behind the row, checked below.
+      for (final label in [t.seerr.approve, t.seerr.decline]) {
+        final rect = tester.getRect(find.byTooltip(label));
         expect(rect.left >= 0 && rect.right <= 390, isTrue, reason: '$label is inside the screen');
       }
       expect(tester.getRect(find.text('Title 1')).width, greaterThan(80));
@@ -548,7 +563,7 @@ void main() {
       // starts on screen, so it can be seen and dragged into full view.
       expect(tester.getRect(scopeChip(t.seerr.myRequests)).left, lessThan(330));
 
-      await tester.tap(find.byTooltip(t.seerr.moreActions));
+      await tester.tap(find.byType(SeerrRequestRow).first);
       await tester.pumpAndSettle();
       for (final action in ['open', 'approve', 'decline', 'edit', 'cancel']) {
         final item = seerrNode(AutomationIds.requestsActionsItem, action);
@@ -597,7 +612,7 @@ void main() {
       final node = FocusManager.instance.primaryFocus;
 
       // An action on it ends in an in-place reload, which rebuilds every row.
-      await tester.tap(find.text(t.seerr.cancelRequest).first);
+      await tester.tap(find.byTooltip(t.seerr.cancelRequest).first);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, t.seerr.cancelRequest));
       await seerrSettle(tester);
@@ -677,7 +692,7 @@ void main() {
       fake.on('GET /request', seerrPage([seerrRequestJson(1)]));
       await open(tester, permissions: seerrPermManage);
       final answer = fake.hold('POST /request/1/approve');
-      await tester.tap(find.text(t.seerr.approve));
+      await tester.tap(find.byTooltip(t.seerr.approve));
       await tester.pump();
       expect(fake.sent('POST', '/request/1/approve'), hasLength(1));
 
@@ -687,7 +702,7 @@ void main() {
       expect(row.request.id, 1, reason: 'the same request, seen through the other scope');
       expect(row.busy, isTrue, reason: 'its approve has not been answered yet');
 
-      await tester.tap(find.text(t.seerr.approve), warnIfMissed: false);
+      await tester.tap(find.byTooltip(t.seerr.approve), warnIfMissed: false);
       row.onApprove?.call();
       await tester.pump();
       expect(
@@ -706,7 +721,7 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       fake.fail('POST /request/1/approve');
       fake.fail('GET /request');
-      await tester.tap(find.text(t.seerr.approve));
+      await tester.tap(find.byTooltip(t.seerr.approve));
       await seerrSettle(tester);
       expect(tester.widget<SeerrRequestRow>(find.byType(SeerrRequestRow)).statusUnknown, isTrue);
 
@@ -726,20 +741,29 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       fake.fail('POST /request/2/approve');
       fake.fail('GET /request');
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await seerrSettle(tester);
 
       fake.on('GET /request', seerrPage([seerrRequestJson(1), seerrRequestJson(2, requestedBy: 9)..remove('status')]));
-      await tester.tap(find.byTooltip(t.seerr.checkStatus));
+      await tester.tap(unknownRow());
       await seerrSettle(tester);
 
       var row = tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last;
       expect(row.statusUnknown, isTrue, reason: 'the read did not say where the request stands');
       expect(row.busy, isTrue);
-      expect(find.text(t.seerr.pending), findsOneWidget, reason: 'only request 1 says it is pending');
+      // In the Regiekamer a pending request shows its decision (Goedkeuren)
+      // rather than the word: only request 1 may be treated as pending.
+      expect(
+        [
+          for (final r in tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)))
+            if (r.onApprove != null) r.request.id,
+        ],
+        [1],
+        reason: 'only request 1 says it is pending',
+      );
 
       fake.on('GET /request', seerrPage([seerrRequestJson(1), seerrRequestJson(2, status: 2, requestedBy: 9)]));
-      await tester.tap(find.byTooltip(t.seerr.checkStatus));
+      await tester.tap(unknownRow());
       await seerrSettle(tester);
       row = tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last;
       expect(row.statusUnknown, isFalse);
@@ -764,7 +788,7 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       fake.fail('POST /request/2/approve');
       fake.on('GET /request', seerrPage([seerrRequestJson(1)], pages: 2));
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await seerrSettle(tester);
       fake.on('GET /request', seerrPage(const [], pages: 2));
       await tester.tap(scopeChip(t.seerr.myRequests));
@@ -782,7 +806,7 @@ void main() {
         await open(tester, permissions: seerrPermManage);
         fake.fail('POST /request/$id/approve');
         fake.fail('GET /request');
-        await tester.tap(own ? find.text(t.seerr.approve).first : find.text(t.seerr.approve).last);
+        await tester.tap(own ? find.byTooltip(t.seerr.approve).first : find.byTooltip(t.seerr.approve).last);
         await seerrSettle(tester);
         fake.on('GET /request', seerrPage(const []));
         await tester.tap(scopeChip(t.seerr.myRequests));
@@ -801,7 +825,7 @@ void main() {
       await open(tester, permissions: seerrPermManage);
       fake.fail('POST /request/2/approve');
       fake.on('GET /request', seerrPage([seerrRequestJson(1), seerrRequestJson(2, requestedBy: 9)..remove('status')]));
-      await tester.tap(find.text(t.seerr.approve).last);
+      await tester.tap(find.byTooltip(t.seerr.approve).last);
       await seerrSettle(tester);
       final row = tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last;
       expect(row.busy, isTrue);
@@ -831,10 +855,10 @@ void main() {
         await open(tester, permissions: seerrPermManage);
         fake.fail('POST /request/2/approve');
         fake.fail('GET /request');
-        await tester.tap(find.text(t.seerr.approve).last);
+        await tester.tap(find.byTooltip(t.seerr.approve).last);
         await seerrSettle(tester);
         fake.on('GET /request', answer);
-        await tester.tap(find.byTooltip(t.seerr.checkStatus));
+        await tester.tap(unknownRow());
         await seerrSettle(tester);
         expect(find.byType(SeerrRequestRow), findsNWidgets(2), reason: 'an unreadable read retains prior rows');
         final row = tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).last;

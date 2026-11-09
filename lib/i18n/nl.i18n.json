@@ -2146,7 +2146,36 @@
     "storedTargetUnlisted": "Het opgeslagen doel wordt niet meer door de server aangeboden. Het blijft zoals het is, tenzij je een ander kiest.",
     "filterUnsupportedBySource": "Aanvragen kan niet op deze status filteren. Daarom staat er geen lijst onder die naam.",
     "railScope": "Bereik",
-    "requestNotInOwnList": "Die aanvraag staat niet meer in je eigen lijst. Hij is mogelijk afgehandeld of verwijderd."
+    "requestNotInOwnList": "Die aanvraag staat niet meer in je eigen lijst. Hij is mogelijk afgehandeld of verwijderd.",
+    "cockpit": {
+      "waitingOnYou": "Wacht op jou",
+      "waitingForApproval": "Wacht op goedkeuring",
+      "inProgress": "Onderweg",
+      "handled": "Afgehandeld",
+      "oldestFirst": "oudste eerst",
+      "tilePending": "wachten op jou",
+      "tileInProgress": "onderweg",
+      "tileIssues": "meldingen open",
+      "approveSelected": "${n} goedkeuren",
+      "approvedMany": "${n} goedgekeurd",
+      "approvedSome": "${ok} goedgekeurd, ${failed} niet",
+      "swipeHint": "Veeg rechts om goed te keuren, links om af te wijzen",
+      "declineConfirm": "Deze aanvraag afwijzen?",
+      "select": "${title} selecteren",
+      "ageDays": "${n} d",
+      "ageHours": "${n} u",
+      "ageMinutes": "${n} m",
+      "factSeasons": "Seizoenen",
+      "factQuality": "Kwaliteit",
+      "factRequested": "Aangevraagd",
+      "factInPleya": "Al in Pleya",
+      "factLimit": "Limiet ${name}",
+      "limitUsed": "${used} van ${limit} gebruikt",
+      "qualityStandard": "Standaard",
+      "inPleyaNo": "Nog niet",
+      "inPleyaPartly": "Deels",
+      "inPleyaYes": "Ja"
+    }
   },
   "tautulli": {
     "title": "Tautulli",
@@ -3418,6 +3447,12 @@
     "unavailable": "Meldingen zijn niet beschikbaar voor dit account.",
     "serverUnsupported": "Deze server ondersteunt geen meldingen.",
     "loadFailed": "Meldingen ophalen uit Seerr is mislukt.",
-    "changeUnconfirmed": "Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert."
+    "changeUnconfirmed": "Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.",
+    "quickReplies": "Snel antwoorden",
+    "quickLooking": "Ik kijk ernaar",
+    "quickNewVersion": "Ik heb een nieuwe versie gevraagd",
+    "quickFixed": "Opgelost, probeer het opnieuw",
+    "tileOpen": "open",
+    "tileResolved": "opgelost"
   }
 }

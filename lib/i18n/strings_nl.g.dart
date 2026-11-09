@@ -2392,6 +2392,7 @@ class _TranslationsSeerrNl extends TranslationsSeerrEn {
 	@override String get filterUnsupportedBySource => 'Aanvragen kan niet op deze status filteren. Daarom staat er geen lijst onder die naam.';
 	@override String get railScope => 'Bereik';
 	@override String get requestNotInOwnList => 'Die aanvraag staat niet meer in je eigen lijst. Hij is mogelijk afgehandeld of verwijderd.';
+	@override late final _TranslationsSeerrCockpitNl cockpit = _TranslationsSeerrCockpitNl._(_root);
 }
 
 // Path: tautulli
@@ -2926,6 +2927,12 @@ class _TranslationsSeerrIssuesNl extends TranslationsSeerrIssuesEn {
 	@override String get serverUnsupported => 'Deze server ondersteunt geen meldingen.';
 	@override String get loadFailed => 'Meldingen ophalen uit Seerr is mislukt.';
 	@override String get changeUnconfirmed => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.';
+	@override String get quickReplies => 'Snel antwoorden';
+	@override String get quickLooking => 'Ik kijk ernaar';
+	@override String get quickNewVersion => 'Ik heb een nieuwe versie gevraagd';
+	@override String get quickFixed => 'Opgelost, probeer het opnieuw';
+	@override String get tileOpen => 'open';
+	@override String get tileResolved => 'opgelost';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -3378,6 +3385,42 @@ class _TranslationsTrackersLibraryFilterNl extends TranslationsTrackersLibraryFi
 	@override String get modeHintWhitelist => 'Synchroniseer alleen de hieronder aangevinkte bibliotheken.';
 	@override String get libraries => 'Bibliotheken';
 	@override String get noLibraries => 'Geen bibliotheken beschikbaar';
+}
+
+// Path: seerr.cockpit
+class _TranslationsSeerrCockpitNl extends TranslationsSeerrCockpitEn {
+	_TranslationsSeerrCockpitNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get waitingOnYou => 'Wacht op jou';
+	@override String get waitingForApproval => 'Wacht op goedkeuring';
+	@override String get inProgress => 'Onderweg';
+	@override String get handled => 'Afgehandeld';
+	@override String get oldestFirst => 'oudste eerst';
+	@override String get tilePending => 'wachten op jou';
+	@override String get tileInProgress => 'onderweg';
+	@override String get tileIssues => 'meldingen open';
+	@override String approveSelected({required Object n}) => '${n} goedkeuren';
+	@override String approvedMany({required Object n}) => '${n} goedgekeurd';
+	@override String approvedSome({required Object ok, required Object failed}) => '${ok} goedgekeurd, ${failed} niet';
+	@override String get swipeHint => 'Veeg rechts om goed te keuren, links om af te wijzen';
+	@override String get declineConfirm => 'Deze aanvraag afwijzen?';
+	@override String select({required Object title}) => '${title} selecteren';
+	@override String ageDays({required Object n}) => '${n} d';
+	@override String ageHours({required Object n}) => '${n} u';
+	@override String ageMinutes({required Object n}) => '${n} m';
+	@override String get factSeasons => 'Seizoenen';
+	@override String get factQuality => 'Kwaliteit';
+	@override String get factRequested => 'Aangevraagd';
+	@override String get factInPleya => 'Al in Pleya';
+	@override String factLimit({required Object name}) => 'Limiet ${name}';
+	@override String limitUsed({required Object used, required Object limit}) => '${used} van ${limit} gebruikt';
+	@override String get qualityStandard => 'Standaard';
+	@override String get inPleyaNo => 'Nog niet';
+	@override String get inPleyaPartly => 'Deels';
+	@override String get inPleyaYes => 'Ja';
 }
 
 // Path: unifiedCatalog.sort
@@ -6660,6 +6703,33 @@ extension on TranslationsNl {
 			'seerr.filterUnsupportedBySource' => 'Aanvragen kan niet op deze status filteren. Daarom staat er geen lijst onder die naam.',
 			'seerr.railScope' => 'Bereik',
 			'seerr.requestNotInOwnList' => 'Die aanvraag staat niet meer in je eigen lijst. Hij is mogelijk afgehandeld of verwijderd.',
+			'seerr.cockpit.waitingOnYou' => 'Wacht op jou',
+			'seerr.cockpit.waitingForApproval' => 'Wacht op goedkeuring',
+			'seerr.cockpit.inProgress' => 'Onderweg',
+			'seerr.cockpit.handled' => 'Afgehandeld',
+			'seerr.cockpit.oldestFirst' => 'oudste eerst',
+			'seerr.cockpit.tilePending' => 'wachten op jou',
+			'seerr.cockpit.tileInProgress' => 'onderweg',
+			'seerr.cockpit.tileIssues' => 'meldingen open',
+			'seerr.cockpit.approveSelected' => ({required Object n}) => '${n} goedkeuren',
+			'seerr.cockpit.approvedMany' => ({required Object n}) => '${n} goedgekeurd',
+			'seerr.cockpit.approvedSome' => ({required Object ok, required Object failed}) => '${ok} goedgekeurd, ${failed} niet',
+			'seerr.cockpit.swipeHint' => 'Veeg rechts om goed te keuren, links om af te wijzen',
+			'seerr.cockpit.declineConfirm' => 'Deze aanvraag afwijzen?',
+			'seerr.cockpit.select' => ({required Object title}) => '${title} selecteren',
+			'seerr.cockpit.ageDays' => ({required Object n}) => '${n} d',
+			'seerr.cockpit.ageHours' => ({required Object n}) => '${n} u',
+			'seerr.cockpit.ageMinutes' => ({required Object n}) => '${n} m',
+			'seerr.cockpit.factSeasons' => 'Seizoenen',
+			'seerr.cockpit.factQuality' => 'Kwaliteit',
+			'seerr.cockpit.factRequested' => 'Aangevraagd',
+			'seerr.cockpit.factInPleya' => 'Al in Pleya',
+			'seerr.cockpit.factLimit' => ({required Object name}) => 'Limiet ${name}',
+			'seerr.cockpit.limitUsed' => ({required Object used, required Object limit}) => '${used} van ${limit} gebruikt',
+			'seerr.cockpit.qualityStandard' => 'Standaard',
+			'seerr.cockpit.inPleyaNo' => 'Nog niet',
+			'seerr.cockpit.inPleyaPartly' => 'Deels',
+			'seerr.cockpit.inPleyaYes' => 'Ja',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
 			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
@@ -6713,6 +6783,8 @@ extension on TranslationsNl {
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
+			_ => null,
+		} ?? switch (path) {
 			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
 			'sourcePicker.lastUsed' => 'Laatst gebruikt',
 			'sourcePicker.currentSource' => 'Huidige bron',
@@ -6740,8 +6812,6 @@ extension on TranslationsNl {
 			'unifiedCatalog.oneSource' => '1 bron',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
 			'unifiedCatalog.oneSeason' => '1 seizoen',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
@@ -7227,6 +7297,8 @@ extension on TranslationsNl {
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
 			'assistant.mobile.setup' => 'Model instellen',
 			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.mobile.listening' => 'Ik luister…',
 			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
 			'assistant.mobile.askFurther' => 'Vraag verder',
@@ -7254,8 +7326,6 @@ extension on TranslationsNl {
 			'assistant.examples.tonight.1' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
 			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
@@ -7726,6 +7796,12 @@ extension on TranslationsNl {
 			'seerrIssues.serverUnsupported' => 'Deze server ondersteunt geen meldingen.',
 			'seerrIssues.loadFailed' => 'Meldingen ophalen uit Seerr is mislukt.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.',
+			'seerrIssues.quickReplies' => 'Snel antwoorden',
+			'seerrIssues.quickLooking' => 'Ik kijk ernaar',
+			'seerrIssues.quickNewVersion' => 'Ik heb een nieuwe versie gevraagd',
+			'seerrIssues.quickFixed' => 'Opgelost, probeer het opnieuw',
+			'seerrIssues.tileOpen' => 'open',
+			'seerrIssues.tileResolved' => 'opgelost',
 			_ => null,
 		};
 	}

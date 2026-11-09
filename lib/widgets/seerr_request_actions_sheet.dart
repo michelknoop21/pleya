@@ -164,6 +164,7 @@ class SeerrRequestActionsSheet extends StatelessWidget {
                   shrinkWrap: true,
                   padding: EdgeInsets.zero,
                   children: [
+                    _SeerrRequestFacts(request: request),
                     if (canOpen)
                       _row(
                         context,
@@ -305,4 +306,85 @@ class SeerrRequestActionsSheet extends StatelessWidget {
         : (range == null ? t.seerr.seasonsCount(count: seasons.length) : t.seerr.seasonsRange(range: range));
     return '$kind · $label';
   }
+}
+
+/// What a decision needs at a glance (Regiekamer, mockup C2): which seasons,
+/// in what quality, since when, and what of it Pleya already has. Only facts
+/// the request carries; nothing the server did not say is filled in.
+class _SeerrRequestFacts extends StatelessWidget {
+  const _SeerrRequestFacts({required this.request});
+
+  final SeerrRequest request;
+
+  @override
+  Widget build(BuildContext context) {
+    final seasons = request.seasons;
+    final range = seasons.length > 1 ? seerrSeasonRanges(seasons) : null;
+    final facts = <(String, String)>[
+      if (request.mediaType == 'tv' && request.seasonsKnown && seasons.isNotEmpty)
+        (
+          t.seerr.cockpit.factSeasons,
+          seasons.length == 1 ? '${seasons.first}' : (range ?? t.seerr.seasonsCount(count: seasons.length)),
+        ),
+      if (request.qualityKnown)
+        (t.seerr.cockpit.factQuality, request.is4k ? t.seerr.fourKBadge : t.seerr.cockpit.qualityStandard),
+      if (request.createdAt case final created? when DateTime.tryParse(created) != null)
+        (
+          t.seerr.cockpit.factRequested,
+          MaterialLocalizations.of(context).formatShortDate(DateTime.parse(created).toLocal()),
+        ),
+      if (_inPleya case final have?) (t.seerr.cockpit.factInPleya, have),
+    ];
+    if (facts.isEmpty) return const SizedBox.shrink();
+    final tk = tokens(context);
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cell = (constraints.maxWidth - 8) / 2;
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (label, value) in facts)
+                Container(
+                  width: cell,
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  decoration: BoxDecoration(
+                    color: tk.text.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(tk.radiusSm + 2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(color: tk.textMuted, fontSize: 12),
+                      ),
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String? get _inPleya => switch (request.mediaStatus) {
+    SeerrMediaStatus.available => t.seerr.cockpit.inPleyaYes,
+    SeerrMediaStatus.partiallyAvailable => t.seerr.cockpit.inPleyaPartly,
+    SeerrMediaStatus.pending || SeerrMediaStatus.processing => t.seerr.cockpit.inPleyaNo,
+    SeerrMediaStatus.unknown => null,
+  };
 }

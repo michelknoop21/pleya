@@ -22,6 +22,11 @@ import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/segmented_tab_group.dart';
 import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/state_view.dart';
+import '../../focus/focusable_wrapper.dart';
+import '../../theme/mono_theme.dart';
+import '../../widgets/pressable.dart';
+import '../../widgets/seerr_cockpit_tiles.dart';
+import '../../widgets/seerr_request_row.dart' show seerrRequestAge;
 
 class SeerrIssuesScreen extends StatefulWidget {
   const SeerrIssuesScreen({super.key, required this.client, required this.profileId, this.issueId});
@@ -49,6 +54,7 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
   bool _mutationFailed = false;
   ({String message, int lastId})? _unconfirmedReply;
   int _page = 0;
+  ({int open, int resolved})? _counts;
 
   SeerrClient get _client => widget.client;
 
@@ -70,6 +76,7 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
     super.initState();
     _own = !_client.canViewAllIssues;
     unawaited(_load());
+    if (widget.issueId == null) unawaited(_loadCounts());
   }
 
   @override
@@ -173,6 +180,7 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
         builder: (_) => SeerrIssuesScreen(client: _client, profileId: widget.profileId, issueId: issue.id),
       ),
     );
+    unawaited(_loadCounts());
     await _load();
   }
 
@@ -183,40 +191,125 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
     _ => t.seerrIssues.other,
   };
 
-  Widget _tile(SeerrIssue issue, {VoidCallback? onTap}) => FutureBuilder(
-    future: _titles.putIfAbsent(issue.id, () => _client.issueMedia(issue)),
-    builder: (context, snapshot) {
-      final data = snapshot.data;
-      final description = [
-        _kind(issue),
-        if (issue.season case final season?) t.seerrIssues.seasonNumber(number: season),
-        if (issue.episode case final episode?) t.seerrIssues.episodeNumber(number: episode),
-        ?issue.creator,
-      ].join(' · ');
-      final poster = data?.posterUrl;
-      return ListTile(
-        leading: poster == null || poster.isEmpty
-            ? const Icon(Symbols.chat_bubble_outline_rounded)
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(tokens(context).radiusSm),
-                child: SizedBox(width: 36, height: 54, child: SeerrPosterImage(url: poster)),
+  IconData _kindIcon(SeerrIssue issue) => switch (issue.type) {
+    1 => Symbols.image_rounded,
+    2 => Symbols.volume_up_rounded,
+    3 => Symbols.closed_caption_rounded,
+    _ => Symbols.help_rounded,
+  };
+
+  /// "Ravi · S1 A3": who reported it and where, in the Regiekamer's short form.
+  String _where(SeerrIssue issue) => [
+    ?issue.creator,
+    if (issue.season case final season?) t.seerrIssues.seasonNumber(number: season),
+    if (issue.episode case final episode?) t.seerrIssues.episodeNumber(number: episode),
+  ].join(' · ');
+
+  Future<({String? title, String? posterUrl})> _media(SeerrIssue issue) =>
+      _titles.putIfAbsent(issue.id, () => _client.issueMedia(issue));
+
+  Future<void> _loadCounts() async {
+    if (!_client.canViewAllIssues) return;
+    final counts = await _client.getIssueCounts();
+    if (!mounted || !_isCurrent()) return;
+    setState(() => _counts = counts);
+  }
+
+  /// One report in the Regiekamer queue (mockup C3): the kind as a round
+  /// icon, "Title · Kind", who and where, and how long ago it was reported.
+  Widget _issueRow(SeerrIssue issue, {required bool first, required bool last}) {
+    final tk = tokens(context);
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: tk.textMuted, fontSize: 12.5);
+    final radius = Radius.circular(tk.radiusMd);
+    final age = seerrRequestAge(issue.createdAt?.toIso8601String());
+    return FutureBuilder(
+      future: _media(issue),
+      builder: (context, snapshot) {
+        final title = snapshot.data?.title ?? t.seerrIssues.number(number: issue.id);
+        void open() => unawaited(_open(issue));
+        return FocusableWrapper(
+          onSelect: open,
+          disableScale: true,
+          borderRadius: tk.radiusMd,
+          child: Pressable(
+            onTap: open,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: tk.surface,
+                borderRadius: BorderRadius.vertical(
+                  top: first ? radius : Radius.zero,
+                  bottom: last ? radius : Radius.zero,
+                ),
+                border: last ? null : Border(bottom: BorderSide(color: tk.outline.withValues(alpha: 0.6))),
               ),
-        title: Text(data?.title ?? t.seerrIssues.number(number: issue.id)),
-        subtitle: Text(description),
-        trailing: onTap == null ? null : const Icon(Symbols.chevron_right_rounded),
-        onTap: onTap,
-      );
-    },
-  );
+              child: Row(
+                children: [
+                  _KindIcon(icon: _kindIcon(issue)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$title · ${_kind(issue)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 14.5),
+                        ),
+                        if (_where(issue) case final where when where.isNotEmpty)
+                          Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+                      ],
+                    ),
+                  ),
+                  if (age != null) ...[
+                    const SizedBox(width: 8),
+                    Text(age, style: muted?.copyWith(fontSize: 12, color: tk.textMuted.withValues(alpha: 0.6))),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   List<Widget> _list() {
     final visible = _issues.where((issue) => _client.canViewAllIssues || issue.creatorId == _user).toList();
+    final counts = _counts;
     return [
+      if (_client.canViewAllIssues)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              for (final status in SeerrIssueStatus.values) ...[
+                if (status != SeerrIssueStatus.values.first) const SizedBox(width: 8),
+                Expanded(
+                  child: SeerrCockpitTile(
+                    instance: 'issues-${status.name}',
+                    count: counts == null ? null : (status == SeerrIssueStatus.open ? counts.open : counts.resolved),
+                    label: status == SeerrIssueStatus.open ? t.seerrIssues.tileOpen : t.seerrIssues.tileResolved,
+                    tone: status == SeerrIssueStatus.open ? SeerrCockpitTone.waiting : SeerrCockpitTone.neutral,
+                    selected: _status == status,
+                    onTap: () {
+                      if (!_busy && _status != status) _filter(status: status);
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
           SegmentedTabGroup(
+            outlined: false,
             children: [
               for (final status in SeerrIssueStatus.values)
                 FocusableTabChip(
@@ -241,77 +334,161 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
       ),
       const SizedBox(height: 12),
       if (visible.isEmpty && !_failed && !_busy) Text(t.seerrIssues.empty),
-      for (final issue in visible)
+      for (final (index, issue) in visible.indexed)
         AutomationNode(
           id: AutomationIds.seerrIssueItem,
           instance: '${issue.id}',
           role: 'list.item',
-          child: _tile(issue, onTap: () => unawaited(_open(issue))),
+          child: _issueRow(issue, first: index == 0, last: index == visible.length - 1),
         ),
       if (_hasMore && !_failed)
         TextButton(onPressed: _busy ? null : () => _load(append: true), child: Text(t.seerrIssues.loadMore)),
     ];
   }
 
-  List<Widget> _detail(SeerrIssue issue) => [
-    _tile(issue),
-    const Divider(),
-    Text(issue.status == SeerrIssueStatus.open ? t.seerrIssues.open : t.seerrIssues.resolved),
-    for (final (index, comment) in issue.comments.indexed)
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+  /// The report itself: what and where on top, then the conversation as
+  /// messages (the viewer's own on the right), then the way to answer.
+  List<Widget> _detail(SeerrIssue issue) {
+    final tk = tokens(context);
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: tk.textMuted);
+    final open = issue.status == SeerrIssueStatus.open;
+    return [
+      FutureBuilder(
+        future: _media(issue),
+        builder: (context, snapshot) {
+          final poster = snapshot.data?.posterUrl;
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(tk.radiusMd)),
+            child: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    comment.author ?? (index == 0 ? issue.creator : null) ?? t.seerrIssues.unknownAuthor,
-                    style: Theme.of(context).textTheme.titleSmall,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    width: 46,
+                    height: 69,
+                    child: poster == null || poster.isEmpty
+                        ? const SeerrPosterPlaceholder()
+                        : SeerrPosterImage(url: poster),
                   ),
                 ),
-                if (comment.createdAt case final created?)
-                  Text(
-                    MaterialLocalizations.of(context).formatShortDate(created.toLocal()),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        snapshot.data?.title ?? t.seerrIssues.number(number: issue.id),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      if (_where(issue) case final where when where.isNotEmpty)
+                        Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _KindIcon(icon: _kindIcon(issue), size: 24),
+                          const SizedBox(width: 6),
+                          Text(_kind(issue), style: muted?.copyWith(color: tk.text)),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(color: open ? kAccentAlt : kSuccess, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            open ? t.seerrIssues.open : t.seerrIssues.resolved,
+                            style: muted?.copyWith(color: tk.text),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      const SizedBox(height: 16),
+      for (final (index, comment) in issue.comments.indexed)
+        _Bubble(
+          author: comment.author ?? (index == 0 ? issue.creator : null) ?? t.seerrIssues.unknownAuthor,
+          date: comment.createdAt == null
+              ? null
+              : MaterialLocalizations.of(context).formatShortDate(comment.createdAt!.toLocal()),
+          message: comment.message,
+          mine: comment.userId != null && comment.userId == _user,
+        ),
+      const SizedBox(height: 8),
+      if (_client.canReplyToIssue(issue)) ...[
+        if (open)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final text in [
+                  t.seerrIssues.quickLooking,
+                  t.seerrIssues.quickNewVersion,
+                  t.seerrIssues.quickFixed,
+                ])
+                  // Fills the answer, never sends it: a tap on a chip is easy to
+                  // make by accident, and the answer can still be changed.
+                  FocusableFilterChip(
+                    selected: false,
+                    label: text,
+                    onPressed: () {
+                      if (_busy || _failed) return;
+                      _reply.value = TextEditingValue(
+                        text: text,
+                        selection: TextSelection.collapsed(offset: text.length),
+                      );
+                    },
                   ),
               ],
             ),
-            const SizedBox(height: 4),
-            SelectableText(comment.message),
-          ],
+          ),
+        FocusableTextField(
+          controller: _reply,
+          enabled: !_busy && !_failed,
+          maxLines: 4,
+          minLines: 1,
+          decoration: InputDecoration(labelText: t.seerrIssues.reply),
         ),
-      ),
-    if (_client.canReplyToIssue(issue)) ...[
-      FocusableTextField(
-        controller: _reply,
-        enabled: !_busy && !_failed,
-        maxLines: 4,
-        decoration: InputDecoration(labelText: t.seerrIssues.reply),
-      ),
-      const SizedBox(height: 8),
-      ValueListenableBuilder(
-        valueListenable: _reply,
-        builder: (context, value, label) => FilledButton(
-          onPressed: _busy || _failed || value.text.trim().isEmpty ? null : () => _mutate(issue, reply: true),
-          child: label,
+        const SizedBox(height: 8),
+        ValueListenableBuilder(
+          valueListenable: _reply,
+          builder: (context, value, label) => FilledButton.icon(
+            onPressed: _busy || _failed || value.text.trim().isEmpty ? null : () => _mutate(issue, reply: true),
+            icon: const Icon(Symbols.send_rounded, size: 18),
+            label: label!,
+            style: FilledButton.styleFrom(backgroundColor: tk.text, foregroundColor: tk.bg),
+          ),
+          child: Text(t.seerrIssues.sendReply),
         ),
-        child: Text(t.seerrIssues.sendReply),
-      ),
-    ],
-    if (_client.canChangeIssueStatus(issue))
-      AutomationNode(
-        id: AutomationIds.seerrIssueStatusAction,
-        role: 'button',
-        state: () => {'status': issue.status.name, 'busy': _busy},
-        child: OutlinedButton(
-          style: OutlinedButton.styleFrom(foregroundColor: tokens(context).text),
-          onPressed: _busy || _failed ? null : () => _mutate(issue, reply: false),
-          child: Text(issue.status == SeerrIssueStatus.open ? t.seerrIssues.resolve : t.seerrIssues.reopen),
+      ],
+      if (_client.canChangeIssueStatus(issue)) ...[
+        const SizedBox(height: 8),
+        AutomationNode(
+          id: AutomationIds.seerrIssueStatusAction,
+          role: 'button',
+          state: () => {'status': issue.status.name, 'busy': _busy},
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(foregroundColor: tk.text),
+            onPressed: _busy || _failed ? null : () => _mutate(issue, reply: false),
+            icon: Icon(open ? Symbols.check_rounded : Symbols.refresh_rounded, size: 18),
+            label: Text(open ? t.seerrIssues.resolve : t.seerrIssues.reopen),
+          ),
         ),
-      ),
-  ];
+      ],
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -348,6 +525,89 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The kind of a report as a round icon, the Regiekamer's way of telling
+/// Beeld, Geluid, Ondertiteling and Overig apart at a glance.
+class _KindIcon extends StatelessWidget {
+  const _KindIcon({required this.icon, this.size = 32});
+
+  final IconData icon;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: tk.text.withValues(alpha: 0.12), shape: BoxShape.circle),
+      child: Icon(icon, size: size / 2, color: tk.text),
+    );
+  }
+}
+
+/// One message of the conversation. The viewer's own sits on the right on the
+/// raised surface, everyone else's on the left.
+class _Bubble extends StatelessWidget {
+  const _Bubble({required this.author, required this.date, required this.message, required this.mine});
+
+  final String author;
+  final String? date;
+  final String message;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    final theme = Theme.of(context);
+    const small = Radius.circular(4);
+    const big = Radius.circular(14);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            decoration: BoxDecoration(
+              color: mine ? tk.surfaceElevated : tk.surface,
+              borderRadius: BorderRadius.only(
+                topLeft: mine ? big : small,
+                topRight: mine ? small : big,
+                bottomLeft: big,
+                bottomRight: big,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: author,
+                        style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: tk.text),
+                      ),
+                      if (date != null)
+                        TextSpan(
+                          text: '  $date',
+                          style: theme.textTheme.labelSmall?.copyWith(color: tk.textMuted),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SelectableText(message, style: theme.textTheme.bodyMedium?.copyWith(height: 1.35)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

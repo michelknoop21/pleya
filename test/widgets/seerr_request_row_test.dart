@@ -74,7 +74,8 @@ void main() {
     expect(find.text('The Gray Man'), findsOneWidget);
     // The media type belongs on the secondary line, together with the year.
     expect(find.text('${t.discover.movie} · 2022'), findsOneWidget);
-    expect(find.text(t.seerr.requestedBy(name: 'rapmadri')), findsOneWidget);
+    // The Regiekamer line names the requester bare: "rapmadri · Film · 2022".
+    expect(find.text('rapmadri'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

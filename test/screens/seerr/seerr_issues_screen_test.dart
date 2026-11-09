@@ -146,4 +146,63 @@ void main() {
     await tester.pumpAndSettle();
     expect(queries.last.containsKey('createdBy'), isFalse);
   });
+
+  testWidgets('a quick reply fills the answer and sends nothing until Reactie plaatsen', (tester) async {
+    final posts = <String>[];
+    final client = SeerrClient(
+      SeerrSession(
+        baseUrl: 'https://seerr.example',
+        authMode: SeerrAuthMode.local,
+        cookie: 'connect.sid=fixture',
+        userId: 7,
+        permissions: SeerrPermission.manageIssues,
+      ),
+      httpClient: MockClient((request) async {
+        if (request.method == 'POST') posts.add(request.url.path);
+        return http.Response(
+          jsonEncode({
+            'id': 42,
+            'status': 1,
+            'issueType': 2,
+            'createdBy': {'id': 9, 'displayName': 'Ravi'},
+            'media': {'tmdbId': 5, 'mediaType': 'movie'},
+            'comments': [
+              {
+                'id': 1,
+                'message': 'Het geluid loopt achter',
+                'user': {'id': 9},
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    addTearDown(client.dispose);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _Profile()),
+              ChangeNotifierProvider<SeerrProvider>(create: (_) => _Seerr(client)),
+            ],
+            child: SeerrIssuesScreen(client: client, profileId: 'p1', issueId: 42),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(t.seerrIssues.quickLooking));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, t.seerrIssues.quickLooking), findsOneWidget);
+    expect(posts, isEmpty, reason: 'a chip is easy to tap by accident, so it never sends');
+
+    await tester.tap(find.text(t.seerrIssues.sendReply));
+    await tester.pumpAndSettle();
+    expect(posts, ['/api/v1/issue/42/comment']);
+  });
 }

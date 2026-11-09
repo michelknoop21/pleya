@@ -5474,6 +5474,8 @@ class TranslationsSeerrEn {
 
 	/// en: 'That request is no longer in your own list. It may have been handled or removed.'
 	String get requestNotInOwnList => 'That request is no longer in your own list. It may have been handled or removed.';
+
+	late final TranslationsSeerrCockpitEn cockpit = TranslationsSeerrCockpitEn.internal(_root);
 }
 
 // Path: tautulli
@@ -7140,6 +7142,24 @@ class TranslationsSeerrIssuesEn {
 
 	/// en: 'Seerr did not confirm your change. Check the conversation before trying again.'
 	String get changeUnconfirmed => 'Seerr did not confirm your change. Check the conversation before trying again.';
+
+	/// en: 'Quick replies'
+	String get quickReplies => 'Quick replies';
+
+	/// en: 'Looking into it'
+	String get quickLooking => 'Looking into it';
+
+	/// en: 'I've requested a new version'
+	String get quickNewVersion => 'I\'ve requested a new version';
+
+	/// en: 'Fixed, please try again'
+	String get quickFixed => 'Fixed, please try again';
+
+	/// en: 'open'
+	String get tileOpen => 'open';
+
+	/// en: 'resolved'
+	String get tileResolved => 'resolved';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7938,6 +7958,96 @@ class TranslationsVideoSettingsAudioPrioritiesEn {
 
 	/// en: 'Original Dolby Atmos'
 	String get originalDolby => 'Original Dolby Atmos';
+}
+
+// Path: seerr.cockpit
+class TranslationsSeerrCockpitEn {
+	TranslationsSeerrCockpitEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Waiting on you'
+	String get waitingOnYou => 'Waiting on you';
+
+	/// en: 'Waiting for approval'
+	String get waitingForApproval => 'Waiting for approval';
+
+	/// en: 'On the way'
+	String get inProgress => 'On the way';
+
+	/// en: 'Handled'
+	String get handled => 'Handled';
+
+	/// en: 'oldest first'
+	String get oldestFirst => 'oldest first';
+
+	/// en: 'waiting on you'
+	String get tilePending => 'waiting on you';
+
+	/// en: 'on the way'
+	String get tileInProgress => 'on the way';
+
+	/// en: 'open reports'
+	String get tileIssues => 'open reports';
+
+	/// en: 'Approve ${n}'
+	String approveSelected({required Object n}) => 'Approve ${n}';
+
+	/// en: '${n} approved'
+	String approvedMany({required Object n}) => '${n} approved';
+
+	/// en: '${ok} approved, ${failed} not'
+	String approvedSome({required Object ok, required Object failed}) => '${ok} approved, ${failed} not';
+
+	/// en: 'Swipe right to approve, left to decline'
+	String get swipeHint => 'Swipe right to approve, left to decline';
+
+	/// en: 'Decline this request?'
+	String get declineConfirm => 'Decline this request?';
+
+	/// en: 'Select ${title}'
+	String select({required Object title}) => 'Select ${title}';
+
+	/// en: '${n}d'
+	String ageDays({required Object n}) => '${n}d';
+
+	/// en: '${n}h'
+	String ageHours({required Object n}) => '${n}h';
+
+	/// en: '${n}m'
+	String ageMinutes({required Object n}) => '${n}m';
+
+	/// en: 'Seasons'
+	String get factSeasons => 'Seasons';
+
+	/// en: 'Quality'
+	String get factQuality => 'Quality';
+
+	/// en: 'Requested'
+	String get factRequested => 'Requested';
+
+	/// en: 'Already in Pleya'
+	String get factInPleya => 'Already in Pleya';
+
+	/// en: '${name}'s limit'
+	String factLimit({required Object name}) => '${name}\'s limit';
+
+	/// en: '${used} of ${limit} used'
+	String limitUsed({required Object used, required Object limit}) => '${used} of ${limit} used';
+
+	/// en: 'Standard'
+	String get qualityStandard => 'Standard';
+
+	/// en: 'Not yet'
+	String get inPleyaNo => 'Not yet';
+
+	/// en: 'Partly'
+	String get inPleyaPartly => 'Partly';
+
+	/// en: 'Yes'
+	String get inPleyaYes => 'Yes';
 }
 
 // Path: trackers.services
@@ -12492,6 +12602,33 @@ extension on Translations {
 			'seerr.filterUnsupportedBySource' => 'Requests cannot filter on this status, so no list is shown under that name.',
 			'seerr.railScope' => 'Scope',
 			'seerr.requestNotInOwnList' => 'That request is no longer in your own list. It may have been handled or removed.',
+			'seerr.cockpit.waitingOnYou' => 'Waiting on you',
+			'seerr.cockpit.waitingForApproval' => 'Waiting for approval',
+			'seerr.cockpit.inProgress' => 'On the way',
+			'seerr.cockpit.handled' => 'Handled',
+			'seerr.cockpit.oldestFirst' => 'oldest first',
+			'seerr.cockpit.tilePending' => 'waiting on you',
+			'seerr.cockpit.tileInProgress' => 'on the way',
+			'seerr.cockpit.tileIssues' => 'open reports',
+			'seerr.cockpit.approveSelected' => ({required Object n}) => 'Approve ${n}',
+			'seerr.cockpit.approvedMany' => ({required Object n}) => '${n} approved',
+			'seerr.cockpit.approvedSome' => ({required Object ok, required Object failed}) => '${ok} approved, ${failed} not',
+			'seerr.cockpit.swipeHint' => 'Swipe right to approve, left to decline',
+			'seerr.cockpit.declineConfirm' => 'Decline this request?',
+			'seerr.cockpit.select' => ({required Object title}) => 'Select ${title}',
+			'seerr.cockpit.ageDays' => ({required Object n}) => '${n}d',
+			'seerr.cockpit.ageHours' => ({required Object n}) => '${n}h',
+			'seerr.cockpit.ageMinutes' => ({required Object n}) => '${n}m',
+			'seerr.cockpit.factSeasons' => 'Seasons',
+			'seerr.cockpit.factQuality' => 'Quality',
+			'seerr.cockpit.factRequested' => 'Requested',
+			'seerr.cockpit.factInPleya' => 'Already in Pleya',
+			'seerr.cockpit.factLimit' => ({required Object name}) => '${name}\'s limit',
+			'seerr.cockpit.limitUsed' => ({required Object used, required Object limit}) => '${used} of ${limit} used',
+			'seerr.cockpit.qualityStandard' => 'Standard',
+			'seerr.cockpit.inPleyaNo' => 'Not yet',
+			'seerr.cockpit.inPleyaPartly' => 'Partly',
+			'seerr.cockpit.inPleyaYes' => 'Yes',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
@@ -12690,6 +12827,8 @@ extension on Translations {
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
+			_ => null,
+		} ?? switch (path) {
 			'sourcePicker.checkingMoreSources' => 'Checking more sources…',
 			'sourcePicker.lastUsed' => 'Last used',
 			'sourcePicker.currentSource' => 'Current source',
@@ -12717,8 +12856,6 @@ extension on Translations {
 			'unifiedCatalog.oneSource' => '1 source',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
 			'unifiedCatalog.oneSeason' => '1 season',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
@@ -13204,6 +13341,8 @@ extension on Translations {
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
 			'assistant.mobile.setup' => 'Set up model',
 			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.mobile.listening' => 'Listening…',
 			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
 			'assistant.mobile.askFurther' => 'Ask more',
@@ -13231,8 +13370,6 @@ extension on Translations {
 			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
 			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
 			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
@@ -13703,6 +13840,12 @@ extension on Translations {
 			'seerrIssues.serverUnsupported' => 'This server does not support reports.',
 			'seerrIssues.loadFailed' => 'Could not load reports from Seerr.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
+			'seerrIssues.quickReplies' => 'Quick replies',
+			'seerrIssues.quickLooking' => 'Looking into it',
+			'seerrIssues.quickNewVersion' => 'I\'ve requested a new version',
+			'seerrIssues.quickFixed' => 'Fixed, please try again',
+			'seerrIssues.tileOpen' => 'open',
+			'seerrIssues.tileResolved' => 'resolved',
 			_ => null,
 		};
 	}

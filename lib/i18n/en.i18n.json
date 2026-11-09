@@ -1983,7 +1983,36 @@
     "storedTargetUnlisted": "The stored target is no longer offered by the server. It stays as it is unless you choose another.",
     "filterUnsupportedBySource": "Requests cannot filter on this status, so no list is shown under that name.",
     "railScope": "Scope",
-    "requestNotInOwnList": "That request is no longer in your own list. It may have been handled or removed."
+    "requestNotInOwnList": "That request is no longer in your own list. It may have been handled or removed.",
+    "cockpit": {
+      "waitingOnYou": "Waiting on you",
+      "waitingForApproval": "Waiting for approval",
+      "inProgress": "On the way",
+      "handled": "Handled",
+      "oldestFirst": "oldest first",
+      "tilePending": "waiting on you",
+      "tileInProgress": "on the way",
+      "tileIssues": "open reports",
+      "approveSelected": "Approve ${n}",
+      "approvedMany": "${n} approved",
+      "approvedSome": "${ok} approved, ${failed} not",
+      "swipeHint": "Swipe right to approve, left to decline",
+      "declineConfirm": "Decline this request?",
+      "select": "Select ${title}",
+      "ageDays": "${n}d",
+      "ageHours": "${n}h",
+      "ageMinutes": "${n}m",
+      "factSeasons": "Seasons",
+      "factQuality": "Quality",
+      "factRequested": "Requested",
+      "factInPleya": "Already in Pleya",
+      "factLimit": "${name}'s limit",
+      "limitUsed": "${used} of ${limit} used",
+      "qualityStandard": "Standard",
+      "inPleyaNo": "Not yet",
+      "inPleyaPartly": "Partly",
+      "inPleyaYes": "Yes"
+    }
   },
   "tautulli": {
     "title": "Tautulli",
@@ -3418,6 +3447,12 @@
     "unavailable": "Reports are unavailable for this account.",
     "serverUnsupported": "This server does not support reports.",
     "loadFailed": "Could not load reports from Seerr.",
-    "changeUnconfirmed": "Seerr did not confirm your change. Check the conversation before trying again."
+    "changeUnconfirmed": "Seerr did not confirm your change. Check the conversation before trying again.",
+    "quickReplies": "Quick replies",
+    "quickLooking": "Looking into it",
+    "quickNewVersion": "I've requested a new version",
+    "quickFixed": "Fixed, please try again",
+    "tileOpen": "open",
+    "tileResolved": "resolved"
   }
 }

@@ -606,6 +606,12 @@ ids:
   - id: requests.list.more
     role: button
     instanceable: true
+  - id: requests.list.tile
+    role: button
+    instanceable: true
+  - id: requests.list.bulk_approve
+    role: button
+    instanceable: false
   - id: requests.list.state
     role: region
     instanceable: true

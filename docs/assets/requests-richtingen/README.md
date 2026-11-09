@@ -1,6 +1,6 @@
 # Aanvragen, meldingen en notificaties: drie richtingen
 
-**Status: KEUZERONDE, 9 november 2026.** Niets hiervan is goedgekeurd.
+**Status: GEKOZEN, 9 november 2026.** Michel koos richting C, Regiekamer ([DEC-XXX](../../DECISIONS.md)). A en B zijn niet gekozen en blijven alleen als referentie staan.
 
 Roadmap: A-20.
 

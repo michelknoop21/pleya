@@ -11,6 +11,7 @@ import '../../i18n/strings.g.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../models/seerr/seerr_request.dart';
 import '../../navigation/main_screen_scope.dart';
+import '../../profiles/active_profile_provider.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
@@ -22,6 +23,8 @@ import '../../utils/snackbar_helper.dart';
 import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../focus/focusable_button.dart';
+import '../../widgets/seerr_cockpit_tiles.dart';
 import '../../widgets/segmented_tab_group.dart';
 import '../../widgets/seerr_request_actions_sheet.dart';
 import '../../widgets/seerr_request_edit_sheet.dart';
@@ -29,6 +32,7 @@ import '../../widgets/seerr_request_row.dart';
 import '../../widgets/state_view.dart';
 import '../tv/tv_seerr_requests_view.dart';
 import 'seerr_discover_screen.dart';
+import 'seerr_issues_screen.dart';
 import 'seerr_media_detail_screen.dart';
 import 'seerr_requests_list_parts.dart';
 
@@ -138,6 +142,16 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   SeerrRequestCounts? _counts;
   bool _countsFailed = false;
 
+  /// Pending requests a manager has ticked for one Goedkeuren (Regiekamer).
+  /// Only ids of rows that may be approved get in; a reload drops the rest.
+  final Set<int> _selected = {};
+
+  /// Open and resolved reports on the server for the Meldingen tile. Null
+  /// while unknown, and always null where that page cannot be opened.
+  ({int open, int resolved})? _issueCounts;
+  bool _issuesReachable = false;
+  int _issueGen = 0;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -157,10 +171,14 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     _busy.clear();
     _unresolved.clear();
     _unresolvedOwners.clear();
+    _selected.clear();
+    _issueCounts = null;
+    _issuesReachable = false;
     _page = 1;
     _hasMore = false;
     unawaited(_load(reset: true));
     unawaited(_loadCounts());
+    unawaited(_loadIssueCounts());
     if (first) {
       _revealSelectedFilter();
       _requestTvEntryFocus();
@@ -215,6 +233,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     if (!context.read<SeerrProvider>().canManageRequests || mine == _mine) return;
     setState(() {
       _mine = mine;
+      _selected.clear();
       _items = const [];
       _counts = null;
       _countsFailed = false;
@@ -485,6 +504,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     setState(() {
       _filter = filter;
       _filterUnsupported = false;
+      _selected.clear();
     });
     _revealSelectedFilter();
     unawaited(_load(reset: true));
@@ -492,8 +512,65 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
 
   void _reload() {
     unawaited(_loadCounts());
+    unawaited(_loadIssueCounts());
     unawaited(_load(reset: true));
   }
+
+  /// The Meldingen tile, for a manager on a device where the Meldingen page
+  /// exists (the same gate as its row in Mijn Pleya) and a server that has the
+  /// routes. Anywhere else there is no tile, not a tile that leads nowhere.
+  Future<void> _loadIssueCounts() async {
+    final client = context.read<SeerrProvider>().client;
+    final gen = ++_issueGen;
+    final reachable =
+        client != null &&
+        client.canViewAllIssues &&
+        PlatformDetector.isHandheldIOS(context) &&
+        !TvDetectionService.isIOSAppOnMacSync();
+    if (!reachable) {
+      if (mounted && (_issuesReachable || _issueCounts != null)) {
+        setState(() {
+          _issuesReachable = false;
+          _issueCounts = null;
+        });
+      }
+      return;
+    }
+    final supported = await client.supportsIssues();
+    if (!mounted || gen != _issueGen || !identical(context.read<SeerrProvider>().client, client)) return;
+    if (!supported) {
+      setState(() {
+        _issuesReachable = false;
+        _issueCounts = null;
+      });
+      return;
+    }
+    setState(() => _issuesReachable = true);
+    final counts = await client.getIssueCounts();
+    if (!mounted || gen != _issueGen || !identical(context.read<SeerrProvider>().client, client)) return;
+    setState(() => _issueCounts = counts);
+  }
+
+  void _openIssues() {
+    final client = _boundClient;
+    final profile = context.read<ActiveProfileProvider?>()?.active;
+    if (client == null || profile == null || !_issuesReachable) return;
+    unawaited(
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute<void>(
+              builder: (_) => SeerrIssuesScreen(client: client, profileId: profile.id),
+            ),
+          )
+          .then((_) {
+            if (mounted) unawaited(_loadIssueCounts());
+          }),
+    );
+  }
+
+  /// A tile is a shortcut to its filter, and tapping the chosen one again goes
+  /// back to everything.
+  void _onTile(TvSeerrRequestFilter filter) => _onFilter(_filter == filter ? TvSeerrRequestFilter.all : filter);
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -594,6 +671,99 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       success: t.seerr.approved,
     ),
   );
+
+  /// A swipe to the left is easier to make by accident than a tap on
+  /// Afwijzen, and a decline is not undone from here: ask first.
+  Future<void> _swipeDecline(SeerrRequest request) async {
+    final client = _boundClient;
+    if (!_owns(client) || _busy.contains(request.id)) return;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: t.seerr.decline,
+      message: t.seerr.cockpit.declineConfirm,
+      confirmText: t.seerr.decline,
+      cancelText: t.common.cancel,
+      isDestructive: true,
+    );
+    if (!confirmed || !_owns(client)) return;
+    await _runAction(
+      request,
+      client,
+      (rights) => rights.canDecline,
+      (c) => c.declineRequest(request.id),
+      success: t.seerr.declined,
+    );
+  }
+
+  void _toggleSelected(SeerrRequest request, bool on) {
+    if (!_rightsFor(request).canApprove) return;
+    setState(() => on ? _selected.add(request.id) : _selected.remove(request.id));
+  }
+
+  /// The ticked requests that may still be approved, as the list holds them
+  /// now. A row that left the list or lost its right since it was ticked is
+  /// not sent.
+  List<SeerrRequest> get _selectedApprovable => [
+    for (final r in _items)
+      if (_selected.contains(r.id) && !_busy.contains(r.id) && _rightsFor(r).canApprove) r,
+  ];
+
+  /// Goedkeuren for every ticked request: one approve per request (Seerr has
+  /// no batch route), one reload and one message afterwards. Each request
+  /// follows the same rules as a single approve: busy while on the wire, and
+  /// locked as unknown when its answer was lost.
+  Future<void> _approveSelected() async {
+    final client = _boundClient;
+    if (!_owns(client)) return;
+    final batch = _selectedApprovable;
+    if (batch.isEmpty) return;
+    setState(() {
+      _busy.addAll(batch.map((r) => r.id));
+      _selected.clear();
+    });
+    var ok = 0;
+    var failed = 0;
+    final uncertain = <SeerrRequest>[];
+    for (final request in batch) {
+      if (!_owns(client)) return;
+      try {
+        await client!.approveRequest(request.id);
+        ok++;
+      } on SeerrException catch (e) {
+        if (e.outcomeUnknown) {
+          uncertain.add(request);
+        } else {
+          failed++;
+        }
+      } catch (_) {
+        uncertain.add(request);
+      }
+    }
+    if (!mounted || !_owns(client)) return;
+    if (uncertain.isNotEmpty) {
+      setState(() {
+        for (final r in uncertain) {
+          _unresolved.add(r.id);
+          _unresolvedOwners[r.id] = r.requestedById;
+        }
+      });
+    }
+    unawaited(_loadCounts());
+    await _load(inPlace: true);
+    if (!mounted || !_owns(client)) return;
+    setState(() {
+      for (final r in batch) {
+        if (!uncertain.contains(r)) _busy.remove(r.id);
+      }
+    });
+    if (uncertain.isNotEmpty) {
+      showErrorSnackBar(context, t.seerr.actionUncertain);
+    } else if (failed > 0) {
+      showErrorSnackBar(context, t.seerr.cockpit.approvedSome(ok: ok, failed: failed));
+    } else {
+      showSuccessSnackBar(context, t.seerr.cockpit.approvedMany(n: ok));
+    }
+  }
 
   void _decline(SeerrRequest request) => unawaited(
     _runAction(
@@ -699,6 +869,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
               title: Text(title),
               slivers: [
                 if (provider.canManageRequests) SliverToBoxAdapter(child: _scopeRow(ownOnly)),
+                if (!ownOnly) SliverToBoxAdapter(child: _tilesRow()),
                 SliverToBoxAdapter(child: _filterRow(ownOnly)),
                 SliverToBoxAdapter(child: SeerrRequestsDiscoverBar(onOpen: _openDiscover)),
                 ..._contentSlivers(),

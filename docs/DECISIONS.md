@@ -5769,3 +5769,20 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Context:** [DEC-101](#dec-101) punt (1) laat het tandwiel het spelerpaneel op Video openen. Op Apple TV opende die knop hetzelfde paneel dat een veeg omlaag al opent, dus twee ingangen voor een scherm. Register: PLR-PANEL-ENTRY-1108 in `docs/tvos-fysieke-correctieronde.md`.
 **Decision:** Op Apple TV verdwijnt het tandwiel uit de spelerbalk (`track_chapter_controls.dart`, `!PlatformDetector.isAppleTV()`). Video blijft bereikbaar via de veeg omlaag en via het tabblad Video naast Geluid en Ondertitels. De sporenknop (Geluid of Ondertitels) en de hoofdstukknop (Video met de hoofdstukkenlijst) blijven open zoals DEC-101 (1) ze beschrijft. Op alle andere platforms blijft het tandwiel.
 **Consequences:** DEC-101 punt (1) geldt voor Apple TV zonder de tandwielzin; de rest van DEC-101 blijft staan. De PB-9-aanvulling in `docs/tvos-redesign-implementatiecontract.md` is aangepast. Bewijs: `tvos.player.osd` PASS op de tvOS 27-simulator (9 november, bundel `.build/pleya-verify/tvos-player-osd-1794251348774`) asserteert dat het tandwiel ontbreekt; hardware niet gedraaid. Het nummer volgt bij de merge (AGENTS.md).
+
+## DEC-XXX: Regiekamer is de vorm van Aanvragen en Meldingen
+
+**Date:** 2026-11-09
+**Status:** accepted (Michel, 9 november 2026: "Ik ga voor regiekamer als je het nagekeken hebt akkoord, bouwen en door tot en met testflight"). Het nummer volgt bij de merge (AGENTS.md).
+**Roadmap:** A-20/A-21. Vervangt voor de lijst, het menu achter een aanvraag en Meldingen de vorm uit de goedgekeurde set [Requests 2.0](assets/requests-2.0/README.md); het gedrag uit die set (rechten, foutstaten, onbekende uitkomsten) blijft gelden.
+**Context:** De lijst Alle aanvragen zag er in de app niet uit als Pleya ([afwijkingen](assets/requests-2.1-meldingen/AFWIJKINGEN.md)). Michel koos uit [drie richtingen](assets/requests-richtingen/README.md) richting C, Regiekamer: compact, beheer eerst.
+**Decision:**
+
+1. Boven de lijst van een beheerder staan teltegels: wachten op jou, onderweg, en meldingen open (waar de pagina Meldingen bestaat, anders alle aanvragen). Een tegel is een snelkoppeling naar zijn filter; de getallen staan alleen in de tegels, de statuschips zijn kale filters.
+2. Onder Alle staat de lijst in beslisvolgorde: Wacht op jou (oudste eerst), Onderweg, Afgehandeld. Een gekozen filter is één lijst zonder koppen.
+3. Een aanvraag is een compacte rij in één kaart: poster, titel, één feitenregel, wachttijd, en voor een open beslissing ronde knoppen Afwijzen en Goedkeuren. De rij zelf opent het menu; daarin staan de feiten (seizoenen, kwaliteit, aangevraagd, al in Pleya) en alle acties.
+4. Een beheerder kan aanvragen aanvinken en ze met één Goedkeuren tegelijk goedkeuren (één verzoek per aanvraag, één herlaadactie). Vegen naar rechts keurt goed; vegen naar links vraagt eerst om bevestiging.
+5. Meldingen volgen dezelfde vorm: tegels Open en Opgelost, compacte rijen met het type als icoon, het gesprek als berichten. Snelle antwoorden vullen het antwoordveld en versturen niets.
+
+**Not in this decision:** de limiet van een aanvrager in het menu (vraagt beheerrecht op gebruikers), notificaties met samenvatting (C4, serverwerk), de Apple TV-vorm (C5) en Probleem melden (open beslispunt in `docs/ROADMAP.md`).
+**Consequences:** De goldens `test/goldens/seerr_regiekamer_*` bewaken de compositie op iPhone-breedte. De simulatorrun met Pleya Verify (`ios.requests.manage`, `ios.seerr.issues`) en de visuele review staan nog open.

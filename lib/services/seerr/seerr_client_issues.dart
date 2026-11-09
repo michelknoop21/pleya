@@ -43,6 +43,28 @@ extension SeerrClientIssues on SeerrClient {
     }
   }
 
+  /// Open and resolved reports on the whole server, from `/issue/count`, for
+  /// the Regiekamer tiles. Only for an account that may see every report: the
+  /// route has no creator filter, so anyone else would be shown numbers about
+  /// reports they cannot open. Null when not allowed, not answered or unreadable;
+  /// a tile then says it does not know rather than showing a zero.
+  Future<({int open, int resolved})?> getIssueCounts() async {
+    if (!canViewAllIssues) return null;
+    final user = session.userId;
+    try {
+      final response = await _send(() => _http.get('/issue/count', headers: _authHeaders()));
+      final data = response.data;
+      if (data is! Map || session.userId != user || !canViewAllIssues) return null;
+      final open = SeerrClient._int(data['open']);
+      final closed = SeerrClient._int(data['closed']);
+      if (open == null || closed == null || open < 0 || closed < 0) return null;
+      return (open: open, resolved: closed);
+    } catch (e) {
+      appLogger.d('seerr: issue counts not read: $e');
+      return null;
+    }
+  }
+
   Future<({List<SeerrIssue> items, bool hasMore})> getIssues({
     SeerrIssueStatus? status,
     bool ownOnly = true,
