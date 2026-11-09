@@ -20,13 +20,18 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/models/livetv_capture_buffer.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/glass/glass_text.dart';
 import 'package:pleya/watch_together/providers/watch_together_provider.dart';
+import 'package:pleya/widgets/video_controls/film_frame_palette.dart';
+import 'package:pleya/widgets/video_controls/widgets/content_strip.dart';
 import 'package:pleya/widgets/video_controls/mobile_video_controls.dart';
 import 'package:pleya/widgets/video_controls/mobile_video_controls_glass.dart';
+import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
+import 'package:pleya/widgets/video_controls/widgets/video_timeline_bar.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/video_controls/widgets/live_timeline_bar.dart';
 import 'package:pleya/widgets/video_controls/widgets/timeline_slider.dart';
@@ -59,8 +64,20 @@ Future<void> _phoneLandscape(WidgetTester tester, {required bool glass}) async {
 /// paints under them.
 ///
 /// [live]: live TV with a time-shift buffer, the `LiveTimelineBar` path.
-Future<void> _pumpControls(WidgetTester tester, {required bool glass, Widget? background, bool live = false}) async {
+Future<void> _pumpControls(
+  WidgetTester tester, {
+  required bool glass,
+  Widget? background,
+  bool live = false,
+  Widget? footer,
+  PlayerChromeController? chrome,
+  Size? physicalSize,
+  FakeViewPadding? padding,
+  List<MediaChapter> chapters = const [],
+}) async {
   await _phoneLandscape(tester, glass: glass);
+  if (physicalSize != null) tester.view.physicalSize = physicalSize;
+  if (padding != null) tester.view.padding = padding;
   final player = FakeSyncPlayer(
     position: const Duration(minutes: 2, seconds: 18),
     duration: const Duration(minutes: 9),
@@ -87,7 +104,7 @@ Future<void> _pumpControls(WidgetTester tester, {required bool glass, Widget? ba
                     child: MobileVideoControls(
                       player: player,
                       metadata: MediaItem(id: '1', backend: MediaBackend.plex, kind: MediaKind.movie, title: _kTitle),
-                      chapters: const [],
+                      chapters: chapters,
                       chaptersLoaded: true,
                       seekTimeSmall: 10,
                       trackChapterControls: Row(
@@ -98,6 +115,8 @@ Future<void> _pumpControls(WidgetTester tester, {required bool glass, Widget? ba
                           IconButton(onPressed: () {}, icon: const Icon(Icons.tune)),
                         ],
                       ),
+                      footerControls: footer,
+                      chromeController: chrome,
                       onSeek: (_) {},
                       onSeekEnd: (_) {},
                       onPlayPause: () {},
@@ -150,7 +169,65 @@ void main() {
     SettingsService.resetForTesting();
   });
 
-  testWidgets('(a) glas uit: de bediening van vandaag, geen blur, zwarte cirkels', (tester) async {
+  testWidgets('Filmbeeld holds a safe footer below the timeline and lifts subtitles above it', (tester) async {
+    final chrome = PlayerChromeController();
+    addTearDown(chrome.dispose);
+    const footer = SizedBox(key: Key('film-frame-footer'), height: 44, width: 100);
+    await _pumpControls(
+      tester,
+      glass: false,
+      footer: footer,
+      chrome: chrome,
+      physicalSize: const Size(960, 2040),
+      padding: const FakeViewPadding(top: 150, bottom: 102),
+      chapters: [MediaChapter(id: 1, startTimeOffset: 0, title: 'The beginning')],
+    );
+    final title = tester.getRect(find.text(_kTitle));
+    final play = tester.getRect(find.bySemanticsLabel(t.videoControls.playButton));
+    final timeline = tester.getRect(find.byType(VideoTimelineBar));
+    final actions = tester.getRect(find.byKey(footer.key!));
+    expect(title.top, greaterThanOrEqualTo(50));
+    expect(play.bottom, lessThan(timeline.top));
+    expect(actions.top, greaterThanOrEqualTo(timeline.bottom));
+    expect(actions.bottom, lessThanOrEqualTo(680 - 34));
+    expect(680 * (1 - chrome.subtitleLift), lessThanOrEqualTo(timeline.top));
+    expect(
+      tester
+          .getSemantics(find.bySemanticsLabel(t.videoControls.playButton))
+          .getSemanticsData()
+          .hasAction(ui.SemanticsAction.tap),
+      isTrue,
+    );
+
+    await tester.dragFrom(const Offset(160, 420), const Offset(0, -175));
+    await tester.pumpAndSettle();
+    final strip = tester.getRect(find.byType(ContentStrip));
+    expect(strip.bottom, closeTo(680, 1));
+    expect(680 * (1 - chrome.subtitleLift), lessThan(strip.top));
+  });
+
+  testWidgets('Filmbeeld fits short landscape with large text and usable transport', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    const footer = SizedBox(key: Key('film-frame-footer'), height: 44, width: 100);
+    await _pumpControls(
+      tester,
+      glass: false,
+      footer: footer,
+      physicalSize: const Size(1704, 960),
+      padding: const FakeViewPadding(right: 132, bottom: 63),
+      chapters: [MediaChapter(id: 1, startTimeOffset: 0)],
+    );
+    final play = tester.getRect(find.bySemanticsLabel(t.videoControls.playButton));
+    expect(play.height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(find.bySemanticsLabel(t.videoControls.previousButton)).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(find.bySemanticsLabel(t.videoControls.nextButton)).height, greaterThanOrEqualTo(44));
+    expect(play.bottom, lessThan(tester.getTopLeft(find.byType(VideoTimelineBar)).dy));
+    expect(tester.getBottomRight(find.byKey(footer.key!)).dy, lessThanOrEqualTo(299));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('(a) glas uit: crèmekleurige afspeelknop en twee donkere cirkels', (tester) async {
     await _pumpControls(tester, glass: false);
 
     expect(find.byType(BackdropFilter), findsNothing);
@@ -159,7 +236,16 @@ void main() {
         .where(
           (c) => c.decoration == BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
         );
-    expect(circles, hasLength(3));
+    expect(circles, hasLength(2));
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is DecoratedBox &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration as BoxDecoration).color == kFilmPrimary,
+      ),
+      findsOneWidget,
+    );
     expect(tester.widget<Text>(find.text(_kTitle)).style?.shadows, isNull);
     expect(DefaultTextStyle.of(tester.element(find.text(_kTitle))).style.shadows, isNull);
   });

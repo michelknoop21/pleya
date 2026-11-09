@@ -37,22 +37,21 @@ steps:
   - assert: {id: player.surface, state: {loudness: "off", af: "", loudness_suspended: false}}
   - snapshot: 01-paused-loudness-off
 
-  # Over to the tune button: RIGHT walks every mounted transport button
+  # Over to the tracks button: RIGHT walks every mounted transport button
   # (skip forward, next chapter, next item; `_buttonFocusNodes` in
   # `desktop_video_controls.dart`) before it falls through to the first track
   # control. Then into the panel and across to the Audio tab.
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 300
-  - assert: {id: player.settings_button, focused: true}
+  - walk: {direction: right, steps: 4, stopAt: player.tracks_button, timeout: 20000, settle: 250}
+  - assert: {id: player.tracks_button, focused: true}
   - press: select
   - wait_until: {id: player.panel, timeout: 5000}
   - settle: 400
+  - press: up
+  - settle: 250
+  - walk: {direction: left, steps: 2, stopAt: "player.panel.tab[video]", timeout: 5000, settle: 250}
+  - assert: {id: "player.panel.tab[video]", focused: true}
+  - press: down
+  - settle: 250
   - press: up
   - settle: 300
   - press: right

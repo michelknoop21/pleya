@@ -24,6 +24,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Roadmap deviation, approved by Michel on 31 October 2026:** add one shared local queue for heavy Pleya builds, tests and code generation across sessions/worktrees. This tooling task does not change product priorities, functional gates or publication authority. Implementation and measurement contract: [heavy-work queue](agents/heavy-work.md).
 
+**Uitvoeringskeuze Michel, 8 november 2026 (A-11).** Binnen A-11 vervalt de dubbele schuifjesknop op Apple TV (PLR-PANEL-ENTRY-1108). Michel kiest Filmbeeld voor alle Pleya-spelers met behoud van de huidige functies. De toaststijl is uitgewerkt voor speler en app. Voor iPhone en iPad kiest Michel op 8 november ook de mobiele mockup A, met centraal transport en de acties verdeeld over kop en tijdlijn.
+
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.

@@ -8,6 +8,10 @@
  */
 .player {
   --player-inset: 26px;
+  --player-progress: #ff7968;
+  --player-primary: #f0f7f6;
+  --player-primary-ink: #132229;
+  --player-focus: #b5f3eb;
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -21,7 +25,7 @@
 }
 
 .player :focus-visible {
-  outline-color: #fff;
+  outline-color: var(--player-focus);
 }
 
 .player__video {
@@ -47,21 +51,16 @@
   background: linear-gradient(rgba(0, 0, 0, 0.62), transparent);
 }
 
-.player .scrim--bottom {
-  bottom: 0;
-  height: 220px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
-}
-
 .player .top,
-.player .bottom,
+.player .bottom__controls,
 .player .center--controls {
   transition: opacity var(--dur-slow) var(--ease);
 }
 
 .player--idle .top,
-.player--idle .bottom,
+.player--idle .bottom__controls,
 .player--idle .center--controls,
+.player--idle .center--controls > *,
 .player--idle .scrim {
   opacity: 0;
   pointer-events: none;
@@ -69,12 +68,11 @@
 
 /* --- Ondertitel: zelf getekend boven de onderbalk, lager als die weg is. */
 .player .caption {
-  position: absolute;
-  left: var(--player-inset);
-  right: var(--player-inset);
-  bottom: 120px;
-  margin: 0 auto;
-  max-width: 900px;
+  grid-area: 2 / 1;
+  justify-self: center;
+  margin: 0 0 14px;
+  width: min(900px, 100%);
+  overflow-wrap: anywhere;
   text-align: center;
   white-space: pre-line;
   font-size: clamp(16px, 2.4vw, 30px);
@@ -84,14 +82,16 @@
     0 0 4px #000,
     0 2px 6px #000;
   pointer-events: none;
-  transition: bottom var(--dur-slow) var(--ease);
 }
 
 .player .caption--low {
-  bottom: 40px;
+  position: absolute;
+  grid-area: 1 / 1 / -1 / 2;
+  inset: auto 0 26px;
+  margin: 0 auto;
 }
 
-/* --- Kop: terug, titel en regel, rechts wat er speelt. ------------------ */
+/* Terug blijft los van de titel en bedieningsband. */
 .player .top {
   position: absolute;
   top: 0;
@@ -103,22 +103,31 @@
   padding: 22px var(--player-inset) 0;
 }
 
-.player .top__text {
+.player .film {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space);
+  margin-bottom: 8px;
+}
+
+.player .film__text {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.player .top__title {
+.player .film__title {
   margin: 0;
-  font-size: 18px;
+  font-size: clamp(20px, 2.7vw, 38px);
   font-weight: 700;
+  letter-spacing: -0.035em;
   line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.player .top__meta {
+.player .film__meta {
   margin: 2px 0 0;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.72);
@@ -191,8 +200,9 @@
 .player .round--main {
   width: 74px;
   height: 74px;
-  background: #fff;
-  color: #000;
+  background: var(--player-primary);
+  color: var(--player-primary-ink);
+  border-radius: 16px;
 }
 
 .player .center__text {
@@ -256,11 +266,40 @@
 }
 
 /* --- Onderbalk. --------------------------------------------------------- */
-.player .bottom {
+.player .bottom:not([hidden]) {
+  display: grid;
+  grid-template: minmax(0, 1fr) auto auto / minmax(0, 1fr);
   position: absolute;
+  top: env(safe-area-inset-top, 0px);
+  pointer-events: none;
   left: var(--player-inset);
   right: var(--player-inset);
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+.player .bottom__menu {
+  grid-area: 1 / 1 / 2 / 2;
+  position: relative;
+  z-index: 1;
+}
+
+.player:not(.player--idle) .bottom__controls {
+  pointer-events: auto;
+}
+
+.player .bottom__controls {
+  grid-area: 3 / 1;
+  position: relative;
+  isolation: isolate;
+}
+
+.player .bottom__controls::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: -42px calc(-1 * var(--player-inset)) calc(-14px - env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72) 38px);
 }
 
 /* Smal: inset 16, kop zonder chips, een kleinere middenrij (mockup 50 op 393). */
@@ -288,4 +327,65 @@
     width: 64px;
     height: 64px;
   }
+}
+
+@media (max-height: 440px) {
+  .player .center--controls {
+    grid-area: 1 / 1 / 2 / 2;
+  }
+}
+
+.player .player-toast {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0 8px;
+  width: max-content;
+  max-width: calc(100% - 124px);
+  padding: 8px 12px;
+  border: 1px solid #6c8c928a;
+  border-radius: 12px;
+  background: #16242bf7;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.38);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.player .player-toast__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: #ffd18c;
+  background: #ffd18c24;
+}
+
+.player .player-toast--wait .player-toast__icon {
+  color: var(--player-focus);
+  background: #b5f3eb24;
+}
+
+.player .player-toast button {
+  grid-column: 2;
+  justify-self: start;
+  min-height: var(--touch-target);
+  color: inherit;
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .player .player-toast--wait {
+    animation: player-toast-in 0.2s ease-out 0.4s backwards;
+  }
+}
+
+@keyframes player-toast-in {
+  from { opacity: 0; }
 }

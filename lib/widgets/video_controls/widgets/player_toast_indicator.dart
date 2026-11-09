@@ -2,8 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
-/// VLC-style dark pill shown at top-center of the video player.
+import '../../../utils/layout_constants.dart';
+import '../../../utils/platform_detector.dart';
+import '../../tv/tv_unified_layout.dart';
+import '../film_frame_palette.dart';
+
+/// Filmbeeld notice shown at the top of the video player.
 /// Used for rate changes and other transient in-player notifications.
 ///
 /// The zone is the one the presentation contract of DEC-109 lid 10 points at
@@ -22,64 +28,69 @@ class PlayerToastIndicator extends StatelessWidget {
   /// shows.
   final String? detail;
 
-  /// An amber dot instead of the glyph, for a notice about something the
-  /// viewer did not ask for — the missing-language toast of 31 D. Deliberately
-  /// a dot and not a colour on the text: the pill sits over a picture, and a
-  /// tinted sentence is the first thing to lose against a bright frame.
+  /// Warning tone for a playback change the viewer did not request.
   final bool accent;
 
   @override
   Widget build(BuildContext context) {
-    final detailLine = detail;
+    final isTv = PlatformDetector.isTV();
+    final scale = isTv ? TvLayoutConstants.scaleOf(context) : 1.0;
+    final tone = accent ? const Color(0xFFFFD18C) : kFilmFocus;
     return Align(
       alignment: .topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.8),
-        child: Container(
-          margin: const EdgeInsets.only(top: 20),
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: detailLine == null ? 6 : 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.7),
-            borderRadius: const BorderRadius.all(Radius.circular(20)),
-          ),
-          child: Row(
-            mainAxisSize: .min,
-            crossAxisAlignment: detailLine == null ? .center : .start,
-            children: [
-              if (accent)
+        child: Semantics(
+          liveRegion: true,
+          child: Container(
+            margin: EdgeInsets.only(
+              top: isTv ? TvCatalogLayout.topSafeInset * scale : MediaQuery.paddingOf(context).top + 14,
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 12 * scale, vertical: 8 * scale),
+            decoration: BoxDecoration(
+              color: const Color(0xF716242B),
+              border: Border.all(color: const Color(0x8A6C8C92)),
+              borderRadius: BorderRadius.circular(12 * scale),
+              boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 16, offset: Offset(0, 6))],
+            ),
+            child: Row(
+              mainAxisSize: .min,
+              crossAxisAlignment: .center,
+              children: [
                 Container(
-                  // Margin rather than a Padding wrapper; a Container lays the
-                  // margin outside its own box, which is what the wrapper did.
-                  margin: const EdgeInsets.only(top: 5, right: 2),
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(color: Color(0xFFF5A623), shape: BoxShape.circle),
-                )
-              else
-                AppIcon(icon, fill: 1, color: Colors.white, size: 16),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Column(
-                  mainAxisSize: .min,
-                  crossAxisAlignment: .start,
-                  children: [
-                    Text(
-                      text,
-                      maxLines: 1,
-                      overflow: .ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: .bold),
-                    ),
-                    if (detailLine != null)
+                  width: 30 * scale,
+                  height: 30 * scale,
+                  alignment: .center,
+                  decoration: BoxDecoration(
+                    color: tone.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(7 * scale),
+                  ),
+                  child: AppIcon(accent ? Symbols.warning_rounded : icon, fill: 1, color: tone, size: 17 * scale),
+                ),
+                SizedBox(width: 8 * scale),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: .min,
+                    crossAxisAlignment: .start,
+                    children: [
                       Text(
-                        detailLine,
+                        text,
                         maxLines: 2,
                         overflow: .ellipsis,
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12.5),
+                        style: TextStyle(color: Colors.white, fontSize: 14 * scale, fontWeight: .bold),
                       ),
-                  ],
+                      if (detail case final detail?)
+                        Text(
+                          detail,
+                          maxLines: 2,
+                          overflow: .ellipsis,
+                          style: TextStyle(color: const Color(0xFFC9D7DB), fontSize: 12.5 * scale),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

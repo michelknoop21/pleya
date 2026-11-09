@@ -174,7 +174,10 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
     }
   }
 
-  Widget _buildTrackChapterControlsWidget({bool hideChaptersAndQueue = false}) {
+  Widget _buildTrackChapterControlsWidget({
+    bool hideChaptersAndQueue = false,
+    FilmFrameControlsLayout? filmFrameLayout,
+  }) {
     final playbackState = context.watch<PlaybackStateProvider>();
     final trackControlsState = _buildTrackControlsState(
       playbackState: playbackState,
@@ -189,6 +192,7 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
       onSeekRequested: widget.onSeekRequested,
       onSeekCompleted: widget.onSeekCompleted,
       hideChaptersAndQueue: hideChaptersAndQueue,
+      filmFrameLayout: filmFrameLayout,
     );
   }
 }

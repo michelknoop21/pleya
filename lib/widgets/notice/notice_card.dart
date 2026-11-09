@@ -94,7 +94,8 @@ class NoticeCard extends StatelessWidget {
         padding: EdgeInsets.all(t.space * scale),
         decoration: BoxDecoration(
           color: t.surfaceElevated,
-          borderRadius: BorderRadius.circular(t.radiusSm),
+          borderRadius: BorderRadius.circular(t.radiusMd),
+          border: Border.all(color: t.outline),
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.28), blurRadius: 16, offset: Offset(0, 4 * scale)),
           ],
@@ -111,7 +112,16 @@ class NoticeCard extends StatelessWidget {
                 ),
               )
             else
-              AppIcon(icon, color: levelColor, size: 22 * scale, fill: 1, weight: 700),
+              Container(
+                width: 34 * scale,
+                height: 34 * scale,
+                alignment: .center,
+                decoration: BoxDecoration(
+                  color: levelColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(t.radiusSm),
+                ),
+                child: AppIcon(icon, color: levelColor, size: 21 * scale, fill: 1, weight: 700),
+              ),
             SizedBox(width: t.space * scale),
             Expanded(
               child: Column(

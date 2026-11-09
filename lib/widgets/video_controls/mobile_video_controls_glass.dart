@@ -67,10 +67,17 @@ const double _kPlateRadius = 22;
 /// the plate, never through it. [childPadded]: [child] brings its own 16 pt
 /// inset (`LiveTimelineBar`'s vertical layout), so glass off returns it bare
 /// and the plate adds no inner padding.
-Widget playerGlassPlate(BuildContext context, Widget child, {bool childPadded = false}) {
-  if (!playerGlassOn(context)) return childPadded ? child : Padding(padding: const EdgeInsets.all(16), child: child);
+Widget playerGlassPlate(BuildContext context, Widget child, {bool childPadded = false, double verticalInset = 16}) {
+  if (!playerGlassOn(context)) {
+    return childPadded
+        ? child
+        : Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: verticalInset),
+            child: child,
+          );
+  }
   return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16 - _kPlateInnerV),
+    padding: EdgeInsets.symmetric(horizontal: 16, vertical: verticalInset - _kPlateInnerV),
     child: playerGlassSurface(
       const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(_kPlateRadius))),
       childPadded
@@ -93,7 +100,13 @@ Widget playerGlassPlate(BuildContext context, Widget child, {bool childPadded = 
 /// [topFade] false drops the top band: the TV title block paints its own
 /// scrim sized to the block (`DesktopVideoControls`, PLR-SCRIM1), and a
 /// second fade on top of it would only darken the frame further.
-BoxDecoration playerOverlayScrim({required bool hasFrame, required bool glass, bool topFade = true}) {
+/// [bottomFade] is off where Filmbeeld paints the scrim with the measured band.
+BoxDecoration playerOverlayScrim({
+  required bool hasFrame,
+  required bool glass,
+  bool topFade = true,
+  bool bottomFade = true,
+}) {
   if (!hasFrame) return const BoxDecoration(color: Colors.black);
   if (glass) {
     return BoxDecoration(
@@ -113,7 +126,7 @@ BoxDecoration playerOverlayScrim({required bool hasFrame, required bool glass, b
         topFade ? Colors.black.withValues(alpha: 0.7) : Colors.transparent,
         Colors.transparent,
         Colors.transparent,
-        Colors.black.withValues(alpha: 0.7),
+        bottomFade ? Colors.black.withValues(alpha: 0.7) : Colors.transparent,
       ],
       stops: const [0.0, 0.2, 0.8, 1.0],
     ),

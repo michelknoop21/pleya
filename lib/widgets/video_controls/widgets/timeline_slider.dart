@@ -7,8 +7,8 @@ import '../../../i18n/strings.g.dart';
 import '../../../focus/focusable_wrapper.dart';
 import '../../../focus/input_mode_tracker.dart';
 import '../../../services/scrub_preview_source.dart';
-import '../../../theme/mono_theme.dart' show kAccent;
 import '../../../utils/formatters.dart';
+import '../film_frame_palette.dart';
 import '../helpers/eager_horizontal_drag_recognizer.dart';
 import '../painters/buffer_range_painter.dart';
 
@@ -410,7 +410,7 @@ class _TimelineSliderState extends State<TimelineSlider> {
                 child: IgnorePointer(
                   child: SliderTheme(
                     data: SliderTheme.of(context).copyWith(
-                      trackHeight: 8,
+                      trackHeight: kFilmTrackHeight,
                       trackGap: 0,
                       padding: .zero,
                       overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
@@ -424,7 +424,7 @@ class _TimelineSliderState extends State<TimelineSlider> {
                       min: 0.0,
                       max: max,
                       onChanged: _noopSliderChanged,
-                      activeColor: kAccent,
+                      activeColor: kFilmProgress,
                       inactiveColor: Colors.transparent,
                     ),
                   ),

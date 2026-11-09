@@ -377,7 +377,9 @@ void main() {
     );
   });
 
-  testWidgets('on TV the tune button asks for the panel instead of a sheet (PLR3)', (tester) async {
+  testWidgets('other TV platforms keep their tune button (PLR3)', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(false);
+    addTearDown(() => TvDetectionService.debugSetAppleTVOverride(true));
     final player = _PanelPlayer();
     addTearDown(player.dispose);
     TvInfoPanelRequest? requested;
@@ -398,6 +400,35 @@ void main() {
     await tester.tap(find.byTooltip(t.videoControls.settingsButton));
     await tester.pumpAndSettle();
     expect(requested, TvInfoPanelRequest.video);
+    expect(
+      find.text(t.videoControls.settingsButton),
+      findsNothing,
+      reason: 'no sheet title: nothing opened but the panel',
+    );
+  });
+
+  testWidgets('Apple TV hides the tune shortcut and tracks still open the panel', (tester) async {
+    final player = _PanelPlayer();
+    addTearDown(player.dispose);
+    TvInfoPanelRequest? requested;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TrackChapterControls(
+            player: player,
+            chapters: const [],
+            chaptersLoaded: true,
+            trackControlsState: const TrackControlsState(),
+            onOpenTvPanel: (request) => requested = request,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byTooltip(t.videoControls.settingsButton), findsNothing);
+    await tester.tap(find.byTooltip(t.videoControls.tracksButton));
+    await tester.pumpAndSettle();
+    expect(requested, TvInfoPanelRequest.audio);
     expect(
       find.text(t.videoControls.settingsButton),
       findsNothing,
