@@ -22,6 +22,7 @@ import '../../utils/snackbar_helper.dart';
 import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/segmented_tab_group.dart';
 import '../../widgets/seerr_request_actions_sheet.dart';
 import '../../widgets/seerr_request_edit_sheet.dart';
@@ -632,7 +633,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     final client = origin ?? _boundClient;
     if (!_owns(client) || _busy.contains(request.id)) return;
     final saved = await SeerrRequestEditSheet.show(context, request: request);
-    if (!_owns(client)) return;
+    if (!mounted || !_owns(client)) return;
     // Also after a close without a save: the sheet read the request back, and
     // what it found (approved meanwhile, refused) is news for the list too.
     unawaited(_loadCounts());
@@ -697,6 +698,12 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           ? _buildTv(title, ownOnly)
           : FocusedScrollScaffold(
               title: Text(title),
+              sliverAppBar: PlatformDetector.isHandheldIOS(context)
+                  ? MobileDenseSliverAppBar(
+                      pinned: true,
+                      row: MobileDenseTitleRow(title: title, onBack: () => Navigator.of(context).maybePop()),
+                    )
+                  : null,
               slivers: [
                 if (provider.canManageRequests) SliverToBoxAdapter(child: _scopeRow(ownOnly)),
                 SliverToBoxAdapter(child: _filterRow(ownOnly)),

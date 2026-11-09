@@ -11,6 +11,7 @@ import '../../automation/automation_screen.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
+import '../../mixins/refreshable.dart' show FocusableTab;
 import '../../models/seerr/seerr_media.dart';
 import '../../models/seerr/seerr_discovery_filters.dart';
 import 'mobile_seerr_discover_view.dart';
@@ -18,6 +19,7 @@ import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
+import '../../navigation/tv/tv_navigation_coordinator.dart' show TvTopNavPresentation;
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
 import '../../services/seerr/seerr_constants.dart';
@@ -102,9 +104,12 @@ class SeerrDiscoverScreen extends StatefulWidget {
   /// a bare route over the shell (the DEC-091 trap that stranded 36 C's own
   /// button in a modal only Menu-then-app-quit could leave) or an ordinary one.
   static Future<void> open(BuildContext context, {String? initialQuery}) async {
+    final screenKey = GlobalKey();
     final nested = openTvContentRoute(
       id: 'tvSeerrDiscover',
-      builder: (_) => SeerrDiscoverScreen(initialQuery: initialQuery),
+      screenKey: screenKey,
+      topNav: TvTopNavPresentation.collapsible,
+      builder: (_) => SeerrDiscoverScreen(key: screenKey, initialQuery: initialQuery),
     );
     if (nested != null) {
       await nested;
@@ -119,7 +124,7 @@ class SeerrDiscoverScreen extends StatefulWidget {
   State<SeerrDiscoverScreen> createState() => _SeerrDiscoverScreenState();
 }
 
-class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with ControllerDisposerMixin {
+class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with ControllerDisposerMixin, FocusableTab {
   SeerrClient? _client;
 
   late final List<_SeerrRow> _rows;
@@ -1251,18 +1256,17 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     ];
   }
 
-  /// Ontdekken on TV (DEC-108, mockup 35 A and 35 B).
-  ///
-  /// The type tabs and the genre picker move into the rail, and the streaming
-  /// chips with them; what is left above the content is the search field, which
-  /// this screen still builds itself. The three grid modes — a search, a genre,
-  /// an expanded shelf — are one `grid` here, because to the viewer they are the
-  /// same page showing one list instead of several.
+  @override
+  void focusActiveTabIfReady() {
+    if (PlatformDetector.isTV() && _searchFocusNode.context != null) _searchFocusNode.requestFocus();
+  }
+
   Widget _buildTv() {
     final grid = _tvGridPage();
+    final onLeaveGrid = grid == null ? null : _leaveTvGrid;
     return TvSeerrDiscoverView(
       key: _tvKey,
-      searchField: _buildSearchField(),
+      searchField: _buildSearchField(onLeaveGrid: onLeaveGrid),
       shelves: grid != null ? const [] : _tvShelves(),
       grid: grid,
       type: _type,
@@ -1299,7 +1303,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         }
       },
       onActivate: _openDetail,
-      onLeaveGrid: _tvGridPage() == null ? null : _leaveTvGrid,
+      onLeaveGrid: onLeaveGrid,
       // REQ-SEARCH-ROUTE: UP out of the first shelf, the grid or the rail
       // returns to the search field; only UP from the field reaches the top
       // navigation.
@@ -1313,7 +1317,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   /// unset. In every case the page returns to its shelves rather than leaving
   /// the section, which is what a viewer means by Menu one level in.
   void _leaveTvGrid() {
-    if (_collapseRowGrid()) return;
+    if (_collapseRowGrid(restoreAction: true)) return;
     if (_query.isNotEmpty) {
       _clearSearch();
       return;
@@ -1496,10 +1500,10 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
   }
 
-  Widget _buildSearchField() {
+  Widget _buildSearchField({VoidCallback? onLeaveGrid}) {
     final decoration = pillInputDecoration(
       context,
-      hintText: t.seerr.searchOnSeerrShort,
+      hintText: PlatformDetector.isTV() ? t.common.search : t.seerr.searchOnSeerrShort,
       prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
       suffixIcon: _query.isEmpty
           ? null
@@ -1518,6 +1522,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         onFocusContent: () => _tvKey.currentState?.focusFirstContent() ?? false,
         onExitUp: _navigateToSidebar,
         onOpenRequests: _openRequests,
+        onFocusFilters: () => _tvKey.currentState?.focusFilters(),
+        onLeaveGrid: onLeaveGrid,
       );
     }
     return Padding(
@@ -1683,12 +1689,14 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   }
 
   /// Menu out of the expanded row, back to the shelves.
-  bool _collapseRowGrid() {
+  bool _collapseRowGrid({bool restoreAction = false}) {
     if (_expandedRow == null) return false;
     setState(() => _expandedRow = null);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _tvKey.currentState?.focusFirstContent();
-    });
+    if (restoreAction) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tvKey.currentState?.restoreExpandedShelf();
+      });
+    }
     return true;
   }
 
