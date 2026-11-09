@@ -122,4 +122,28 @@ void main() {
     expect(await probe(200), isTrue);
     expect(await probe(500), isTrue);
   });
+
+  test('a 500 is not cached, a 404 is remembered only until the probe TTL ends', () async {
+    var calls = 0;
+    var code = 500;
+    final seerr = client(SeerrPermission.manageIssues, (_) async {
+      calls++;
+      return http.Response('{}', code);
+    });
+    expect(await seerr.supportsIssues(), isTrue);
+    expect(await seerr.supportsIssues(), isTrue);
+    expect(calls, 2);
+
+    code = 404;
+    expect(await seerr.supportsIssues(), isFalse);
+    expect(await seerr.supportsIssues(), isFalse);
+    expect(calls, 3);
+
+    final ttl = SeerrConstants.issueProbeTtl;
+    addTearDown(() => SeerrConstants.issueProbeTtl = ttl);
+    SeerrConstants.issueProbeTtl = Duration.zero;
+    code = 200;
+    expect(await seerr.supportsIssues(), isTrue);
+    expect(calls, 4);
+  });
 }

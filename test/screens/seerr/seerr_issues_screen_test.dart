@@ -67,7 +67,7 @@ void main() {
     );
     addTearDown(client.dispose);
     await _pump(tester, client);
-    expect(find.text(t.seerrIssues.unavailable), findsOneWidget);
+    expect(find.text(t.seerrIssues.serverUnsupported), findsOneWidget);
     expect(find.text(t.common.retry), findsNothing);
   });
 
@@ -112,5 +112,38 @@ void main() {
     final chip = tester.widget<FocusableFilterChip>(find.byType(FocusableFilterChip));
     expect(chip.label, t.seerrIssues.mine);
     expect(chip.selected, isFalse);
+  });
+
+  testWidgets('tapping the own-reports chip toggles the createdBy filter', (tester) async {
+    final queries = <Map<String, String>>[];
+    final client = SeerrClient(
+      SeerrSession(
+        baseUrl: 'https://seerr.example',
+        authMode: SeerrAuthMode.local,
+        cookie: 'connect.sid=fixture',
+        userId: 7,
+        permissions: SeerrPermission.manageIssues,
+      ),
+      httpClient: MockClient((request) async {
+        queries.add(request.url.queryParameters);
+        return http.Response(
+          '{"results":[],"pageInfo":{"pages":1}}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    addTearDown(client.dispose);
+    await _pump(tester, client);
+    expect(queries.last.containsKey('createdBy'), isFalse);
+
+    await tester.tap(find.byType(FocusableFilterChip));
+    await tester.pumpAndSettle();
+    expect(queries.last['createdBy'], '7');
+    expect(tester.widget<FocusableFilterChip>(find.byType(FocusableFilterChip)).selected, isTrue);
+
+    await tester.tap(find.byType(FocusableFilterChip));
+    await tester.pumpAndSettle();
+    expect(queries.last.containsKey('createdBy'), isFalse);
   });
 }

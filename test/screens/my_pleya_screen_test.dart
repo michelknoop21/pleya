@@ -73,7 +73,7 @@ class _RouteRecorder extends NavigatorObserver {
 Profile _profile(String name) => Profile.local(id: name, displayName: name, createdAt: DateTime.utc(2026, 8, 17));
 
 class _IssueSeerr extends ConfiguredSeerrDouble {
-  _IssueSeerr({int issueStatus = 200})
+  _IssueSeerr({int issueStatus = 200, bool throwOnProbe = false})
     : _client = SeerrClient(
         SeerrSession(
           baseUrl: 'https://seerr.example',
@@ -82,7 +82,10 @@ class _IssueSeerr extends ConfiguredSeerrDouble {
           userId: 7,
           permissions: SeerrPermission.manageIssues,
         ),
-        httpClient: MockClient((_) async => http.Response('{"results":[]}', issueStatus)),
+        httpClient: MockClient((_) async {
+          if (throwOnProbe) throw StateError('probe failed');
+          return http.Response('{"results":[]}', issueStatus);
+        }),
       );
 
   final SeerrClient _client;
@@ -241,6 +244,21 @@ void main() {
       await pumpScreen(tester, seerr: _IssueSeerr(issueStatus: 404), theme: ios);
       await tester.pumpAndSettle();
       expect(find.text(t.seerrIssues.title), findsNothing);
+    });
+
+    testWidgets('a late row only appends: the rows above keep their element', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      final before = tester.element(find.text(t.seerr.title));
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+      expect(identical(tester.element(find.text(t.seerr.title)), before), isTrue);
+    });
+
+    testWidgets('a transport failure on the probe keeps the row and the screen working', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(throwOnProbe: true), theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('is absent in the iOS-app-on-Mac container', (tester) async {

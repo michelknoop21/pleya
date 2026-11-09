@@ -2923,6 +2923,7 @@ class _TranslationsSeerrIssuesNl extends TranslationsSeerrIssuesEn {
 	@override String get resolve => 'Markeren als opgelost';
 	@override String get reopen => 'Melding heropenen';
 	@override String get unavailable => 'Meldingen zijn niet beschikbaar voor dit account.';
+	@override String get serverUnsupported => 'Deze server ondersteunt geen meldingen.';
 	@override String get loadFailed => 'Meldingen ophalen uit Seerr is mislukt.';
 	@override String get changeUnconfirmed => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.';
 }
@@ -7722,6 +7723,7 @@ extension on TranslationsNl {
 			'seerrIssues.resolve' => 'Markeren als opgelost',
 			'seerrIssues.reopen' => 'Melding heropenen',
 			'seerrIssues.unavailable' => 'Meldingen zijn niet beschikbaar voor dit account.',
+			'seerrIssues.serverUnsupported' => 'Deze server ondersteunt geen meldingen.',
 			'seerrIssues.loadFailed' => 'Meldingen ophalen uit Seerr is mislukt.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.',
 			_ => null,

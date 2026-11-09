@@ -3416,6 +3416,7 @@
     "resolve": "Mark as resolved",
     "reopen": "Reopen report",
     "unavailable": "Reports are unavailable for this account.",
+    "serverUnsupported": "This server does not support reports.",
     "loadFailed": "Could not load reports from Seerr.",
     "changeUnconfirmed": "Seerr did not confirm your change. Check the conversation before trying again."
   }

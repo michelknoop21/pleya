@@ -336,7 +336,7 @@ class _SeerrIssuesScreenState extends State<SeerrIssuesScreen> {
               children: [
                 if (_busy) const LinearProgressIndicator(),
                 if (_failed && _unsupported)
-                  Text(t.seerrIssues.unavailable)
+                  Text(t.seerrIssues.serverUnsupported)
                 else if (_failed) ...[
                   Text(t.seerrIssues.loadFailed),
                   TextButton(onPressed: _busy ? null : _load, child: Text(t.common.retry)),

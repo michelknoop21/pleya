@@ -7132,6 +7132,9 @@ class TranslationsSeerrIssuesEn {
 	/// en: 'Reports are unavailable for this account.'
 	String get unavailable => 'Reports are unavailable for this account.';
 
+	/// en: 'This server does not support reports.'
+	String get serverUnsupported => 'This server does not support reports.';
+
 	/// en: 'Could not load reports from Seerr.'
 	String get loadFailed => 'Could not load reports from Seerr.';
 
@@ -13697,6 +13700,7 @@ extension on Translations {
 			'seerrIssues.resolve' => 'Mark as resolved',
 			'seerrIssues.reopen' => 'Reopen report',
 			'seerrIssues.unavailable' => 'Reports are unavailable for this account.',
+			'seerrIssues.serverUnsupported' => 'This server does not support reports.',
 			'seerrIssues.loadFailed' => 'Could not load reports from Seerr.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
 			_ => null,

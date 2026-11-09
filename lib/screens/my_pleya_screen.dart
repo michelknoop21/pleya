@@ -77,26 +77,48 @@ class MyPleyaScreen extends StatefulWidget {
   State<MyPleyaScreen> createState() => _MyPleyaScreenState();
 }
 
-class _MyPleyaScreenState extends State<MyPleyaScreen> {
+class _MyPleyaScreenState extends State<MyPleyaScreen> with WidgetsBindingObserver {
   SeerrClient? _probedClient;
   bool _issuesSupported = false;
 
   /// Overseerr before 1.27 has no issue routes: only offer the row once the
   /// server has answered the list route.
+  ///
+  /// The row is the last of the content rows, so showing it late only appends:
+  /// the rows above keep their place and focus. The client caches the answer
+  /// (a 404 for a few minutes), so asking again on resume is cheap.
   void _probeIssues(SeerrClient client) {
     if (identical(_probedClient, client)) return;
+    if (_probedClient != null) _issuesSupported = false;
     _probedClient = client;
-    _issuesSupported = false;
     unawaited(
-      client.supportsIssues().then((ok) {
-        if (mounted && identical(_probedClient, client)) setState(() => _issuesSupported = ok);
-      }),
+      client
+          .supportsIssues()
+          .then((ok) {
+            if (mounted && identical(_probedClient, client)) setState(() => _issuesSupported = ok);
+          })
+          .catchError((Object _) {}),
     );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    final client = _probedClient;
+    _probedClient = null;
+    if (client != null) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Big P's card depends on entitlement, servers and the model config,
     // which the controller works out only when asked.
     unawaited(context.read<BigPMobileSession?>()?.controller.refreshAvailability());

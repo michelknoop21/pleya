@@ -3416,6 +3416,7 @@
     "resolve": "Markeren als opgelost",
     "reopen": "Melding heropenen",
     "unavailable": "Meldingen zijn niet beschikbaar voor dit account.",
+    "serverUnsupported": "Deze server ondersteunt geen meldingen.",
     "loadFailed": "Meldingen ophalen uit Seerr is mislukt.",
     "changeUnconfirmed": "Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert."
   }
