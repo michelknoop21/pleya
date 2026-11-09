@@ -15,6 +15,9 @@ import '../profiles/active_profile_provider.dart';
 import '../profiles/profile.dart';
 import '../profiles/profile_avatar.dart';
 import '../services/account_ui_actions.dart';
+import '../services/seerr/seerr_client.dart';
+import '../utils/platform_detector.dart';
+import 'seerr/seerr_issues_screen.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/offline_mode_provider.dart';
@@ -74,10 +77,47 @@ class MyPleyaScreen extends StatefulWidget {
   State<MyPleyaScreen> createState() => _MyPleyaScreenState();
 }
 
-class _MyPleyaScreenState extends State<MyPleyaScreen> {
+class _MyPleyaScreenState extends State<MyPleyaScreen> with WidgetsBindingObserver {
+  SeerrClient? _probedClient;
+  bool _issuesSupported = false;
+
+  /// Overseerr before 1.27 has no issue routes: only offer the row once the
+  /// server has answered the list route.
+  ///
+  /// The row is the last of the content rows, so showing it late only appends:
+  /// the rows above keep their place and focus. The client caches the answer
+  /// (a 404 for a few minutes), so asking again on resume is cheap. Someone who
+  /// stays on this page past that TTL gets the row back on the next resume.
+  void _probeIssues(SeerrClient client) {
+    if (identical(_probedClient, client)) return;
+    if (_probedClient != null) _issuesSupported = false;
+    _probedClient = client;
+    // supportsIssues maps every failure to an answer, so there is nothing to catch.
+    unawaited(
+      client.supportsIssues().then((ok) {
+        if (mounted && identical(_probedClient, client)) setState(() => _issuesSupported = ok);
+      }),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    final client = _probedClient;
+    _probedClient = null;
+    if (client != null) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Big P's card depends on entitlement, servers and the model config,
     // which the controller works out only when asked.
     unawaited(context.read<BigPMobileSession?>()?.controller.refreshAvailability());
@@ -87,11 +127,15 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = context.watch<ActiveProfileProvider?>()?.active;
+    final active = context.watch<ActiveProfileProvider?>();
+    final profile = active?.active;
+    final seerr = context.watch<SeerrProvider?>();
+    final issueClient = seerr?.client;
+    final showIssues = PlatformDetector.isHandheldIOS(context) && !TvDetectionService.isIOSAppOnMacSync();
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
     final watchlist = context.watch<WatchlistProvider?>();
     final downloads = context.watch<DownloadProvider?>();
-    final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
+    final hasSeerr = seerr?.isConfigured ?? false;
     final servers = context.watch<MultiServerProvider?>();
     final bigP = summonableBigP(context);
 
@@ -132,6 +176,10 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       );
     }
 
+    final showIssueRow =
+        showIssues && !isOffline && active?.isBinding == false && profile != null && issueClient?.canViewIssues == true;
+    if (showIssueRow) _probeIssues(issueClient!);
+
     final contentRows = [
       row(
         TvMyPleyaSection.libraries,
@@ -140,6 +188,14 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       ),
       row(TvMyPleyaSection.downloads, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
       row(TvMyPleyaSection.requests, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
+      if (showIssueRow && _issuesSupported)
+        _MyPleyaRow(
+          instance: 'seerrIssues',
+          icon: Symbols.chat_bubble_outline_rounded,
+          title: t.seerrIssues.title,
+          subtitle: t.seerrIssues.subtitle,
+          onTap: () => _push(SeerrIssuesScreen(client: issueClient!, profileId: profile.id)),
+        ),
     ].nonNulls.toList();
 
     final pleyaRows = [

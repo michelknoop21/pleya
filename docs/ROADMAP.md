@@ -24,6 +24,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 
 **Roadmap deviation, approved by Michel on 31 October 2026:** add one shared local queue for heavy Pleya builds, tests and code generation across sessions/worktrees. This tooling task does not change product priorities, functional gates or publication authority. Implementation and measurement contract: [heavy-work queue](agents/heavy-work.md).
 
+**Roadmap deviation, Michel 7 november 2026:** akkoord op het voorstel voor consistente aanvraag- en beheerpagina’s (A-20/A-21), een iOS-ingang voor Seerr-meldingen en opt-in notificaties. Eerst de bestaande aanvraagflow, daarna issueafhandeling op basis van Seerr-rechten. Notificaties worden per categorie gekozen, met afzonderlijke toestemming voor iOS-push.
+
 **Ontwerpkeuze Michel, 8 november 2026 (A-21):** richting B voor het tvOS-aanvraagoverzicht. De bovenbalk klapt in op het overzicht. Het zijpaneel plaatst Alles tonen direct onder de actieve categorie. Vanaf de eerste poster voert links en daarna omlaag naar die actie. Native verificatie en release volgen de bestaande gates.
 
 **Uitvoeringskeuze Michel, 8 november 2026 (A-06).** A-06 krijgt de compacte kop op de tvOS-landingen Series en Films.
