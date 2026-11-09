@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../focus/card_focus_scope.dart';
 import '../../../focus/focus_theme.dart';
+import '../../../focus/focusable_wrapper.dart';
 import '../../../media/external_rating.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
@@ -34,12 +36,15 @@ class TvDetailPlayPill extends StatelessWidget {
     final height = TvDetailLayout.actionSize * pt;
     const ink = Color(0xFF101010);
     final fraction = progress;
+    // Grown from its left edge: 06 keeps the focused pill on the page margin,
+    // where a scale from the centre pushed it 8 points past it.
     return AnimatedScale(
       scale: focused ? FocusTheme.focusScale : 1,
+      alignment: Alignment.centerLeft,
       duration: FocusTheme.getAnimationDuration(context),
       child: Container(
         height: height,
-        padding: EdgeInsets.symmetric(horizontal: 24 * pt),
+        padding: EdgeInsets.only(left: TvDetailLayout.pillPaddingStart * pt, right: TvDetailLayout.pillPaddingEnd * pt),
         foregroundDecoration: FocusTheme.focusDecoration(context, isFocused: focused, borderRadius: height / 2),
         decoration: BoxDecoration(
           color: enabled ? Colors.white : Colors.white.withValues(alpha: 0.5),
@@ -49,10 +54,10 @@ class TvDetailPlayPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (fraction == null)
-              AppIcon(icon, fill: 1, size: TvHig.body * pt, color: ink)
+              AppIcon(icon, fill: 1, size: TvDetailLayout.pillRingSize * pt, color: ink)
             else
               SizedBox.square(
-                dimension: TvDetailLayout.progressRingSize * pt,
+                dimension: TvDetailLayout.pillRingSize * pt,
                 child: CircularProgressIndicator(
                   value: fraction,
                   strokeWidth: 4 * pt,
@@ -60,11 +65,11 @@ class TvDetailPlayPill extends StatelessWidget {
                   backgroundColor: ink.withValues(alpha: 0.18),
                 ),
               ),
-            SizedBox(width: 16 * pt),
+            SizedBox(width: 14 * pt),
             Text(
               label,
               maxLines: 1,
-              style: TextStyle(color: ink, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w600),
+              style: TextStyle(color: ink, fontSize: TvHig.caption2 * pt, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -157,6 +162,78 @@ class TvDetailScoreRow extends StatelessWidget {
             ],
           ),
       ],
+    );
+  }
+}
+
+/// The synopsis. When it runs past its lines the text itself is the way to the
+/// rest: UP from the actions lands on it and Select opens the whole of it. 03
+/// and 06 have no control beside the text, so nothing marks it until the
+/// focus does, with a soft platter around the lines that leaves them in place.
+class TvDetailSynopsis extends StatelessWidget {
+  const TvDetailSynopsis({
+    super.key,
+    required this.text,
+    required this.style,
+    required this.width,
+    required this.maxLines,
+    this.focusNode,
+    this.semanticLabel,
+    this.onSelect,
+    this.onNavigateUp,
+    this.onNavigateDown,
+  });
+
+  final String text;
+  final TextStyle style;
+  final double width;
+  final int maxLines;
+
+  /// Without [onSelect] the synopsis is plain text, not a focus stop.
+  final FocusNode? focusNode;
+  final String? semanticLabel;
+  final VoidCallback? onSelect;
+  final VoidCallback? onNavigateUp;
+  final VoidCallback? onNavigateDown;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = SizedBox(
+      width: width,
+      child: Text(text, maxLines: maxLines, overflow: TextOverflow.ellipsis, style: style),
+    );
+    final select = onSelect;
+    if (select == null) return lines;
+    return FocusableWrapper(
+      focusNode: focusNode,
+      onSelect: select,
+      onNavigateUp: onNavigateUp,
+      onNavigateDown: onNavigateDown,
+      semanticLabel: semanticLabel,
+      disableScale: true,
+      mode: FocusIndicatorMode.delegated,
+      child: Builder(
+        builder: (context) {
+          final pt = TvHig.of(context);
+          final focused = CardFocusScope.maybeOf(context) ?? false;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: -16 * pt,
+                top: -10 * pt,
+                right: -16 * pt,
+                bottom: -10 * pt,
+                child: AnimatedContainer(
+                  duration: FocusTheme.getAnimationDuration(context),
+                  decoration: FocusTheme.focusBackgroundDecoration(isFocused: focused, borderRadius: 16 * pt),
+                ),
+              ),
+              lines,
+            ],
+          );
+        },
+      ),
     );
   }
 }

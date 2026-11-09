@@ -14,9 +14,11 @@ import '../test_helpers/notice_layer.dart';
 import '../test_helpers/prefs.dart';
 import '../test_helpers/profile_navigation.dart';
 
-/// DEC-109: the "Meer lezen" action only exists on real synopsis overflow,
-/// opens a scrollable panel with the untruncated text, and gives back the
-/// focus contract UP (action row) → read more → UP (topnav), DOWN reverses.
+/// DEC-109: the full synopsis is one press away only on real overflow, opens a
+/// scrollable panel with the untruncated text, and gives back the focus
+/// contract UP (action row) → synopsis → UP (topnav), DOWN reverses. Since the
+/// 30 October northstars (03, 06) the stop is the synopsis itself: no "Meer
+/// lezen" control stands beside it.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -92,10 +94,15 @@ void main() {
     }
   }
 
-  testWidgets('a long synopsis gets a focusable Read more action', (tester) async {
+  testWidgets('a long synopsis is itself the focus stop, with no Read more beside it', (tester) async {
     await pumpDetail(tester, movie(summary: longSummary));
 
-    expect(find.text(t.discover.readMore), findsOneWidget);
+    expect(find.text(t.discover.readMore), findsNothing);
+    expect(
+      find.byWidgetPredicate((w) => w is Semantics && w.properties.label == t.discover.readMoreSemantic),
+      findsOneWidget,
+      reason: 'a screen reader still hears that the text opens',
+    );
 
     final readMore = focusNodeWithLabel(tester, 'detail_read_more');
     readMore.requestFocus();

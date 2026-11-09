@@ -34,7 +34,7 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
   Widget _buildTvDetailActionRow(MediaItem metadata) {
     final model = _detailActionModel(metadata);
     final pt = TvHig.of(context);
-    final iconSize = TvHig.body * pt;
+    final iconSize = TvDetailLayout.actionIconSize * pt;
     final play = model.of(_DetailActionKind.play)!;
     final onPlay = _tvDetailPlayAction(metadata, play.onPressed);
     // A series resumes into an episode, so that is what the ring reads. On a
@@ -106,7 +106,7 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
             ),
           ),
         ),
-        if (resumable && !widget.isOffline)
+        if (_tvDetailShowsRestart(metadata))
           round(
             'restart',
             onRestart,
@@ -171,6 +171,13 @@ extension _MediaDetailTvActionRow on _MediaDetailScreenState {
     if (!_tvDetailSeasonHasNoEpisode(target)) return play;
     if (_isLoadingSeasonEpisodes || _seasonEpisodesFirstPageError) return null;
     return () => showAppSnackBar(context, t.messages.noEpisodesFoundGeneral);
+  }
+
+  /// Whether the row has the round restart button: only for a title with a
+  /// position to restart from, and never offline.
+  bool _tvDetailShowsRestart(MediaItem metadata) {
+    final shown = _unifiedResumeItem(metadata) ?? _tvDetailResumeTarget(metadata);
+    return !widget.isOffline && (shown?.viewOffsetMs ?? 0) > 0;
   }
 
   /// What Play starts, for the ring and the restart button.

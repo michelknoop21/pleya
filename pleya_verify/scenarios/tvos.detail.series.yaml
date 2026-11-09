@@ -83,7 +83,9 @@ steps:
   - wait_until: {focused: media-detail.play, timeout: 4000}
   - press: up
   - settle: 800
+  # The synopsis itself, no Meer lezen beside it: 03 draws none.
   - assert: {id: media-detail.read-more, focused: true}
+  - snapshot: 03-synopsis-focus
   - press: up
   - settle: 800
   - assert: {id: "media-detail.tab[series]", focused: true}
