@@ -134,6 +134,12 @@ void main() {
     expect(manager.getClient(ServerId('srv-1')), isNull);
   });
 
+  test('a finished bind reports the profile it bound as settled', () async {
+    await createActiveLocalProfile('local-owner');
+    await binder.rebindActive();
+    expect(activeProfile.settledProfileId, 'local-owner');
+  });
+
   test('local profile with no connections binds successfully with empty visibility', () async {
     final profile = Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1));
     await profiles.upsert(profile);

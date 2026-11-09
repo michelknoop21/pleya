@@ -232,6 +232,16 @@ void main() {
       await hanging;
     });
 
+    test('the last reference of the active profile, not bound: short-lived client plus logout', () async {
+      // setUp: p1 is active and the only profile on this connection, and no
+      // client is bound (a removal right after a cold start).
+      await remove();
+
+      expect(presented, ['rt-1']);
+      expect(calls, ['DELETE /pleya/v1/users/me/push-installations/install-1', 'POST /pleya/v1/auth/logout']);
+      expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
+    });
+
     test('a connection shared with the active profile never gets a short-lived client', () async {
       await profileConnections.upsert(
         ProfileConnection(profileId: 'p2', connectionId: connection.id, userIdentifier: connection.userName),

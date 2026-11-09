@@ -50,6 +50,12 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   bool _busy = false;
   bool _reconcileRequested = false;
   final _releasing = <String>{};
+  // Withdrawals that failed are tried again when there is reason to expect
+  // a different answer: at the start, on resume, or when a server comes
+  // online. Not on every notification, which would rotate a short-lived
+  // client's token each time.
+  bool _withdrawalsDue = true;
+  Set<String> _onlineSeen = const {};
 
   bool get busy => _busy;
 
@@ -157,6 +163,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   /// may still hold: written before a PUT under a fresh id, dropped once that
   /// PUT lands (the server keeps one installation per token).
   static const _replaces = 'replaces:';
+  static const _maxReplaced = 4;
 
   /// Every installation id the stored opt-in may still have on the server.
   static List<String> _installationsOf(List<String> stored) => [
@@ -206,6 +213,13 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     await prefs.setStringList(key, [...stored.where((value) => !value.startsWith(_replaces)), _released]);
   }
 
+  static Future<void> _unmarkReleased(String key, String installation) async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final stored = prefs.getStringList(key);
+    if (stored == null || stored.first != installation || !stored.contains(_released)) return;
+    await prefs.setStringList(key, stored.where((value) => value != _released).toList());
+  }
+
   Future<Map<String, String>?> _token({required bool prompt}) =>
       _channel.invokeMapMethod<String, String>('deviceToken', prompt);
 
@@ -230,7 +244,12 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         await _applyStored(client, existing, token: token);
         if (!_current || !identical(_online[connection], client)) return;
       }
-      final stored = [id, source.name, if (next.movies) 'movies', if (next.episodes) 'episodes', 'pending'];
+      // Carry the ids a failed fresh PUT left behind: an opt-out must withdraw
+      // them too, or the old registration keeps sending.
+      final carried = (_saved[connection] ?? existing ?? const <String>[])
+          .skip(2)
+          .where((value) => value.startsWith(_replaces));
+      final stored = [id, source.name, if (next.movies) 'movies', if (next.episodes) 'episodes', 'pending', ...carried];
       await prefs.setStringList(_key(connection), stored);
       _saved[connection] = stored;
       _synced.remove(connection);
@@ -296,11 +315,15 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
           installation = const Uuid().v4();
           final prefs = await BaseSharedPreferencesService.sharedCache();
           final now = prefs.getStringList(_key(connection)) ?? stored;
+          final replaced = {..._installationsOf(now).skip(1), now.first}.toList();
           final next = [
             installation,
-            ...now.skip(1).where((value) => value != 'pending' && value != _released),
+            ...now.skip(1).where((value) => value != 'pending' && value != _released && !value.startsWith(_replaces)),
             'pending',
-            if (!now.contains('$_replaces${now.first}')) '$_replaces${now.first}',
+            // Only the last few replaced ids are kept; an older one that a
+            // timed-out PUT did register stays until the session ends.
+            for (final id in replaced.skip(replaced.length > _maxReplaced ? replaced.length - _maxReplaced : 0))
+              '$_replaces$id',
           ];
           await prefs.setStringList(_key(connection), next);
           _saved[connection] = next;
@@ -318,8 +341,17 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       if (_profile.activeId != _profileId) {
         // The profile changed while this PUT was in flight: the device now
         // belongs to another profile, so withdraw it again right away.
+        // Another profile's start may already have marked this key released,
+        // from a DELETE that came before this registration. Only this DELETE
+        // counts now; if it fails, the key stays open for the next attempt.
         final key = _key(connection);
-        _track(key, client.removePushInstallation(installation).then((_) => _markReleased(key, installation)));
+        _track(
+          key,
+          _unmarkReleased(
+            key,
+            installation,
+          ).then((_) => client.removePushInstallation(installation)).then((_) => _markReleased(key, installation)),
+        );
         return;
       }
       if (!_current) return;
@@ -348,6 +380,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   void _sync() {
     if (_profile.activeId != _profileId) return _release();
     if (!_current) return;
+    final onlineNow = _servers.onlineServerIds.toSet();
+    if (!_onlineSeen.containsAll(onlineNow)) _withdrawalsDue = true;
+    _onlineSeen = onlineNow;
     final online = _online;
     _synced.removeWhere((id, client) => !identical(online[id], client));
     // Defer notifications until the profile and server bindings have settled.
@@ -391,7 +426,10 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       // settled answer marks it so the next start does not withdraw it again.
       // Only once the binder has settled on this profile: binding the active
       // servers comes first and never waits on this.
-      final release = releaseElsewhere != null && _profile.settledProfileId == _profileId ? releaseElsewhere : null;
+      final release = releaseElsewhere != null && _withdrawalsDue && _profile.settledProfileId == _profileId
+          ? releaseElsewhere
+          : null;
+      if (release != null) _withdrawalsDue = false;
       // This profile's own pending opt-outs for a connection it can no longer
       // reach through a bound client (it was removed before the binding
       // came up) go the same way.
@@ -450,6 +488,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _withdrawalsDue = true;
       _synced.clear();
       _sync();
     }
