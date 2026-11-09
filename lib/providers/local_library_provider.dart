@@ -697,8 +697,12 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       return true;
     }
 
+    // Libraries this sync is for, against `libs=` stored ones: a stored library
+    // that is no longer synced keeps its completion date (lastSync).
+    var synced = 0;
     try {
       for (final library in librariesForSync().where(_allowedLibrary)) {
+        synced++;
         if (!valid()) throw LocalLibraryPaused();
         if (!forced && _recentlyScanned(store, library)) {
           skipped++;
@@ -793,7 +797,8 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
       ScanDiagnostics.scanning = false;
       appLogger.i(
         'syncstats trigger=$trigger ms=${watch.elapsedMilliseconds} scanned=$scanned skipped=$skipped '
-        'notifies=${_notifies - notifiesBefore} '
+        'notifies=${_notifies - notifiesBefore} libs=${store.libraries.length}/$synced '
+        'rows=${store.artworkItems.length} '
         'rss=${rssStart >> 20}/${ProcessInfo.currentRss >> 20}/${ProcessInfo.maxRss >> 20}MB',
       );
       if (_visibleDirty && !isDisposed) scheduleMicrotask(() => unawaited(revalidateVisibleArtwork()));

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/services/frame_timing_log.dart';
+import 'package:pleya/services/local_library/scan_diagnostics.dart';
 
 void main() {
   test('percentiles come from the sorted durations, not the arrival order', () {
@@ -43,5 +44,16 @@ void main() {
 
     expect(summary.pacingP50, 16667);
     expect(summary.pacingMax, 33333);
+  });
+
+  test('the log line counts card builds since the previous line, then starts over', () {
+    ScanDiagnostics.cardBuilds = 42;
+    ScanDiagnostics.posterPathCalls = 7;
+
+    final line = frameTimingLine(FrameTimingSummary.of([1000], [1000]));
+
+    expect(line, contains('posterPath=7 cards=42'));
+    expect(ScanDiagnostics.cardBuilds, 0);
+    expect(ScanDiagnostics.posterPathCalls, 0);
   });
 }
