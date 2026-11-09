@@ -12,6 +12,7 @@ import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../utils/isolate_helper.dart';
 import '../download_artwork_helpers.dart';
+import 'index_row.dart';
 
 /// Durable, device-local storage belonging to exactly one Pleya profile.
 /// Artwork is separate from the bounded transient image cache and downloads.
@@ -427,8 +428,8 @@ class LocalLibraryStore {
   Future<void> _pruneUnreferencedPosters() async {
     final posters = <(String, String)>{};
     for (final item in items) {
-      for (final path in [item.thumbPath, item.parentThumbPath, item.grandparentThumbPath]) {
-        if (item.serverId != null && path != null) posters.add((item.serverId!, path));
+      for (final path in indexedPosterPaths(item)) {
+        if (item.serverId != null) posters.add((item.serverId!, path));
       }
     }
     // A hash per poster, in the hundreds of thousands on a large library: off

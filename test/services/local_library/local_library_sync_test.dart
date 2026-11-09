@@ -11,6 +11,8 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
+import 'package:pleya/media/media_role.dart';
+import 'package:pleya/media/media_version.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
 import 'package:pleya/services/local_library/local_library_sync.dart';
@@ -139,6 +141,52 @@ void main() {
     expect(store.items.map((i) => i.id).toSet(), {'show', 'season', 'ep'});
   });
 
+  test('a scan reads no detail for seasons and episodes on any backend', () async {
+    final shows = library.copyWith(kind: MediaKind.show);
+    final show = film('show').copyWith(kind: MediaKind.show);
+    client.rows = [show];
+    client.childRows['show'] = [film('season').copyWith(kind: MediaKind.season, parentId: 'show')];
+    client.childRows['season'] = [
+      film('ep').copyWith(
+        kind: MediaKind.episode,
+        parentId: 'season',
+        grandparentId: 'show',
+        roles: const [MediaRole(tag: 'Actor')],
+        mediaVersions: const [MediaVersion(id: 'v1')],
+      ),
+    ];
+
+    await LocalLibrarySync(store: store).syncLibrary(shows, client);
+
+    expect(client.itemsAsked, ['show']);
+    final rows = {for (final i in store.items) i.id: i};
+    expect(rows.keys.toSet(), {'show', 'season', 'ep'});
+    expect(rows['ep']?.roles, isNull, reason: 'the index stores an episode as a list row');
+    expect(rows['ep']?.mediaVersions, isNull);
+    expect(store.isComplete(shows.globalKey), isTrue);
+  });
+
+  test('a rescan shrinks an episode row stored with cast and versions', () async {
+    final shows = library.copyWith(kind: MediaKind.show);
+    final show = film('show').copyWith(kind: MediaKind.show, updatedAt: 1);
+    final ep = film('ep').copyWith(kind: MediaKind.episode, parentId: 'show', updatedAt: 1);
+    await store.saveLibrary(shows, [
+      show,
+      ep.copyWith(
+        roles: const [MediaRole(tag: 'Actor')],
+        mediaVersions: const [MediaVersion(id: 'v1')],
+      ),
+    ], complete: true);
+    client.rows = [show];
+    client.childRows['show'] = [ep];
+
+    await LocalLibrarySync(store: store).syncLibrary(shows, client);
+
+    final stored = store.items.firstWhere((i) => i.id == 'ep');
+    expect(stored.roles, isNull);
+    expect(stored.mediaVersions, isNull);
+  });
+
   test('scanstats count exactly the requests the server answered', () async {
     final shows = library.copyWith(kind: MediaKind.show);
     MediaItem row(String id, MediaKind kind, [String? parent]) =>
@@ -164,8 +212,9 @@ void main() {
       [client.rootPages, client.childrenAsked.length, client.itemsAsked.length, client.idLookups, posters],
     );
     // Root and the season: two pages plus the head recheck each; s1 and s2 one
-    // page each; five titles.
-    expect([stats.root, stats.children, stats.detail, stats.posters], [3, 5, 5, 5]);
+    // page each; a detail for the two shows only, and posters for the shows and
+    // the season, not for the episode stills.
+    expect([stats.root, stats.children, stats.detail, stats.posters], [3, 5, 2, 3]);
   });
 
   test('a failed Plex id lookup does not fail the scan: the row is kept without ids', () async {

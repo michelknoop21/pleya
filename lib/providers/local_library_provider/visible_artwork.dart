@@ -45,11 +45,7 @@ extension LocalLibraryVisibleArtwork on LocalLibraryProvider {
         _store?.artworkItems.any(
           (i) =>
               i.serverId == request.serverId &&
-              [
-                i.thumbPath,
-                i.parentThumbPath,
-                i.grandparentThumbPath,
-              ].whereType<String>().any((path) => artworkStorageKey(path) == artworkStorageKey(request.path)),
+              indexedPosterPaths(i).any((path) => artworkStorageKey(path) == artworkStorageKey(request.path)),
         ) ??
         false;
     if (known) return false;

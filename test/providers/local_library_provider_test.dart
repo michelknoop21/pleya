@@ -425,6 +425,46 @@ void main() {
       expect(policyCalls, 1, reason: 'a change empties the cached answer');
     });
 
+    test('an offline episode list draws the season poster the index keeps, not the still it leaves out', () async {
+      provider.dispose();
+      final seeded = LocalLibraryStore(root);
+      await seeded.load();
+      final show = film('show').copyWith(kind: MediaKind.show, thumbPath: '/poster/show');
+      await seeded.saveLibrary(library, [
+        show,
+        film('season').copyWith(kind: MediaKind.season, parentId: 'show', thumbPath: '/poster/season'),
+        film('ep').copyWith(
+          kind: MediaKind.episode,
+          parentId: 'season',
+          grandparentId: 'show',
+          thumbPath: '/still/ep',
+          parentThumbPath: '/poster/season',
+          grandparentThumbPath: '/poster/show',
+        ),
+      ], complete: true);
+      await seeded.savePoster('one', '/poster/season', Uint8List.fromList([1, 2, 3]));
+      await seeded.savePoster('one', '/still/ep', Uint8List.fromList([1, 2, 3]));
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library],
+        clientFor: (_) => client,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => true,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+      );
+      await provider.ready;
+      await Future<void>.delayed(Duration.zero);
+
+      final episode = provider.episodes(show).single;
+      expect(episode.thumbPath, '/poster/season');
+      expect(provider.posterPath('one', episode.rowThumbPath), isNotNull);
+      expect(provider.posterPath('one', '/still/ep'), isNull, reason: 'the index keeps no episode still');
+    });
+
     test('a server revoked while the grid is mounted hides its posters at once', () async {
       await open();
       expect(provider.posterPath('one', '/shared-poster'), isNotNull);

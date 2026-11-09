@@ -5738,3 +5738,19 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 4. Geen "analyseren": de scan analyseert elk nieuw of gewijzigd bestand al, en ffprobe op ongewijzigde bytes met dezelfde gepinde ffmpeg geeft hetzelfde antwoord. Er is geen bestaande stap om te forceren.
 
 **Gevolgen:** Legen verwijdert met dezelfde cascade als het opruimen na een volledige scan: kijkstatus, geschiedenis, favorieten, waarderingen, downloads en lijstregels van een verwijderde titel gaan mee. Een bestand dat later terugkomt wordt een nieuw item. Geen migratie, geen nieuwe tabel. Het takenpaneel in de app toont naast Plex-activiteiten de lopende jobs van een server die het profiel beheert.
+
+## DEC-XXX: De offline index slaat seizoenen en afleveringen op als lijstregel
+
+**Date:** 2026-11-09
+**Status:** besloten (Michel, 9 november 2026, antwoord "Yes, go ahead" op: "Offline index: seasons and episodes stored without cast, versions and their own still; offline episode lists show the season or show poster. Movies and shows unchanged."). Het nummer volgt bij de merge (AGENTS.md); tot dan heet dit besluit DEC-XXX (offline index als lijstregel).
+**Roadmap:** A-06 (LIB-LOCAL1). Geen volgordewijziging.
+**Context:** Het ontwerp van 23 oktober 2026 ([plan](plans/2026-10-23-local-library-cache.md)) sloeg elke titel op als volledige detailregel met cast, versies en eigen afbeelding. In de meting van 9 november op de Apple TV (build 452) waren seizoenen en afleveringen 15 280 van de circa 16 300 regels, besloeg de index 91,9 MB en kostte een eerste Series-scan op Pleya Server 6698 detailverzoeken. De postersweep bewaarde ook elke afleveringsstill, zodat de postermap per ronde tot 60 stills groeide zonder ooit kleiner te worden.
+
+**Besluit:**
+
+1. Een seizoen of aflevering komt uit het lijstantwoord van de server, zonder detailverzoek per titel. De index bewaart die regel zonder `roles`, `mediaVersions`, `reviews` en `externalRatings` (`lib/services/local_library/index_row.dart`). Een regel die al met die velden was opgeslagen, krimpt bij de volgende scan.
+2. De index bewaart geen eigen still van een aflevering. Wel bewaard blijven de poster van het seizoen en die van de serie. Een volledige scan ruimt opgeslagen stills op.
+3. Een offline afleveringenlijst toont de seizoensposter, en zonder seizoensposter de serieposter. Online tekent de lijst de still zoals voorheen, van de server.
+4. Films en series blijven ongewijzigd: films houden hun versies voor de sortering op resolutie en de groepering, films en series houden hun cast voor offline zoeken en detail.
+
+**Gevolgen:** Offline zoeken op een acteur vindt films en series, geen afleveringen meer. Een offline geopende aflevering toont geen cast en geen versies. Afspelen zonder verbinding loopt via downloads en verandert niet. Het effect op opslag en scanduur is nog niet op hardware gemeten; dat gebeurt bij de hermeting na de TestFlight-build van deze bundel, op de Apple TV in de slaapkamer.

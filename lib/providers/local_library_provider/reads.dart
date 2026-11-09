@@ -23,6 +23,9 @@ extension LocalLibraryReads on LocalLibraryProvider {
   List<MediaItem> children(MediaItem parent) =>
       items.where((i) => i.serverId == parent.serverId && i.parentId == parent.id).toList()
         ..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
+
+  /// The index keeps no episode stills (DEC-XXX), so an offline episode list
+  /// draws the season or show poster it does keep.
   List<MediaItem> episodes(MediaItem parent) =>
       items
           .where(
@@ -31,6 +34,7 @@ extension LocalLibraryReads on LocalLibraryProvider {
                 (i.parentId == parent.id || i.grandparentId == parent.id) &&
                 i.kind.id == 'episode',
           )
+          .map((i) => i.copyWith(thumbPath: i.parentThumbPath ?? i.grandparentThumbPath ?? i.thumbPath))
           .toList()
         ..sort((a, b) {
           final season = (a.parentIndex ?? 0).compareTo(b.parentIndex ?? 0);

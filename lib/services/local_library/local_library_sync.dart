@@ -16,6 +16,7 @@ import '../jellyfin_client.dart';
 import '../plex_client.dart';
 import '../pleya_server_client.dart';
 import '../local_folder_client.dart';
+import 'index_row.dart';
 import 'local_library_store.dart';
 import 'scan_diagnostics.dart';
 import '../download_artwork_helpers.dart';
@@ -137,6 +138,11 @@ class LocalLibrarySync {
           candidate.title == old.title &&
           candidate.year == old.year) {
         detail = retained!;
+      } else if (candidate.kind == MediaKind.season || candidate.kind == MediaKind.episode) {
+        // The index keeps a season or episode as a list row (DEC-XXX), so the
+        // list answer is all it needs: a detail read per episode was most of
+        // the requests of a series scan.
+        detail = candidate;
       } else if (client is PleyaServerClient) {
         // Pleya Server sends no updatedAt, and needs none here: a list row
         // carries the same fields as a detail row (hydrateRead in
@@ -247,19 +253,21 @@ class LocalLibrarySync {
         identityRaw?.remove(pleyaExternalIdsRawKey);
         if (fresh != null) identityRaw?[pleyaExternalIdsRawKey] = fresh.toJson();
       }
-      next[item.globalKey] = ids == null
-          ? item.copyWith(raw: identityRaw)
-          : item.copyWith(
-              raw: {
-                ...?identityRaw,
-                'pleyaLocalExternalIds': ids.toJson(),
-                if (client is PleyaServerClient) ...{
-                  'pleyaLocalExternalIdsFinal': authoritative,
-                  pleyaExternalIdsSourceKey: identitySource ?? 'unknown',
-                  if (authoritative) pleyaExternalIdsRawKey: ids.toJson(),
+      next[item.globalKey] = indexRow(
+        ids == null
+            ? item.copyWith(raw: identityRaw)
+            : item.copyWith(
+                raw: {
+                  ...?identityRaw,
+                  'pleyaLocalExternalIds': ids.toJson(),
+                  if (client is PleyaServerClient) ...{
+                    'pleyaLocalExternalIdsFinal': authoritative,
+                    pleyaExternalIdsSourceKey: identitySource ?? 'unknown',
+                    if (authoritative) pleyaExternalIdsRawKey: ids.toJson(),
+                  },
                 },
-              },
-            );
+              ),
+      );
       done++;
       onProgress?.call(done, item.displayTitle);
       return true;
@@ -409,6 +417,8 @@ class LocalLibrarySync {
     // 5000 titles.
     final eligible = <String, (MediaItem, DateTime)>{};
     for (final item in items) {
+      // The index keeps no episode stills (DEC-XXX).
+      if (item.kind == MediaKind.episode) continue;
       if (item.serverId == null || item.thumbPath == null || item.thumbPath!.isEmpty) continue;
       final k = key(item);
       if (eligible.containsKey(k)) continue;
