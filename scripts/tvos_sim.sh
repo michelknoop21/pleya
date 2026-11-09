@@ -579,8 +579,15 @@ case "${1:-}" in
     # .../Pods-Runner-frameworks-Debug-input-files.xcfilelist", wat naar een
     # kapotte build lijkt in plaats van naar ontbrekende Pods. Ook idempotent.
     tvos/scripts/pod_install.sh >/dev/null
+    # Het echte pad, niet het pad door de tvos/build-symlink (link_build_dirs.sh):
+    # kent Xcode dezelfde map onder twee spellingen, dan wist het zijn eigen
+    # net gekopieerde XCFrameworks als "stale file" en faalt de link op
+    # "framework 'Libssl' not found". Zelfde valkuil als in pleya-tvbuild (#597).
+    mkdir -p tvos/build 2>/dev/null \
+      || die "tvos/build wijst naar een map die niet bestaat; draai scripts/link_build_dirs.sh"
+    DD_REAL="$(cd tvos/build && pwd -P)/dd"
     xcodebuild -workspace tvos/Runner.xcworkspace -scheme Runner -configuration Debug \
-      -destination 'generic/platform=tvOS Simulator' -derivedDataPath tvos/build/dd \
+      -destination 'generic/platform=tvOS Simulator' -derivedDataPath "$DD_REAL" \
       build CODE_SIGNING_ALLOWED=NO
     ;;
   run)

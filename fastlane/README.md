@@ -131,7 +131,7 @@ Losse previewbuild → TestFlight, zonder aan het App Store-versierecord te kopp
 [bundle exec] fastlane beta
 ```
 
-Alle platforms → TestFlight; gaat door als één platform faalt
+Alle platforms (of platforms:ios,tvos) → TestFlight onder één buildnummer; gaat door als één platform faalt
 
 ----
 

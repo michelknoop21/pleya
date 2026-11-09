@@ -18,14 +18,12 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### Fixed
+- macOS-pkg leesbaar voor iedereen, ook bij umask 077
 <!-- END GENERATED -->
 
 ### New
 
-- **Pleya plays video files from Finder on the Mac.** Pleya shows up under Open With for video
-  files such as mkv, mp4, mov and avi and starts the file in the player. On iPhone and iPad
-  this is in build 355; it is not in a Mac build yet and has not been checked on a Mac.
 - **Big P can use your Trakt history and watchlist.** With Trakt connected, Big P counts what
   you marked as watched there as seen and can tell you which watchlist titles are in your
   libraries. The code is in the builds from 355 on, but Trakt sign-in is not switched on in any
@@ -50,9 +48,32 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-## 2.8.1 · build 453 · 9 November 2026 · Apple TV
+## 2.8.1 · build 455 · 9 November 2026 · Apple TV
 
-<!-- commit: b845d5dd3eaf0418a041bb59f7527cb1a1698686 -->
+<!-- commit: b29f1fd82f38f33650c06a6ffe34668fd4aa9516 -->
+
+### Improved
+
+- **The offline index fills much faster from Pleya Server.** A first sync asked the server about
+  every episode separately: 6,698 requests and 13 minutes for one series library. It now uses
+  the list it already has.
+- **The offline index is smaller.** Seasons and episodes are stored without cast, versions and
+  their own still. Offline, an episode list shows the season or show poster. Films and series
+  keep everything.
+- **Choosing which posters to refresh sorts once.** On build 452 a sync that skipped every
+  library still took 40 seconds, and the poster choice re-sorted its list for every title. It
+  now sorts once; the re-measurement on this build shows how much of the 40 seconds that was.
+
+### Notes
+
+- These are the offline index changes that build 454 left for the next build. The grid and
+  poster lookup changes are in 454.
+- Worth checking on the older Apple TV: Instellingen > Bibliotheken > Offline index inschakelen,
+  then scroll Alle films and Alle series for a minute during the sync and a minute after it.
+
+## 2.8.1 · build 454 · 9 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: b799f54400d6341e7f4f292769f21ce3c37acb02 -->
 
 ### Improved
 
@@ -64,23 +85,39 @@ Nothing user-facing since the last published build.
 - **Posters on a card are found without disk reads.** The grid looked up a poster about 1,400
   times a second, and each lookup hashed the path twice and checked the file on disk. A lookup
   is now two reads from memory.
-- **The offline index fills much faster from Pleya Server.** A first sync asked the server about
-  every episode separately: 6,698 requests and 13 minutes for one series library. It now uses
-  the list it already has.
-- **The offline index is smaller.** Seasons and episodes are stored without cast, versions and
-  their own still. Offline, an episode list shows the season or show poster. Films and series
-  keep everything.
 
 ### Fixed
 
 - **"Laatste synchronisatie" moves again.** It stayed on an old date when a library that is no
   longer synced was still in the index. It now follows the libraries that are synced, and the
   ones the index shows when you are offline.
+- **A film's page keeps its artwork when the cached poster file is gone.** It falls back to the
+  artwork that was downloaded with the title.
 
 ### Notes
 
-- Worth checking on the older Apple TV: Instellingen > Bibliotheken > Offline index inschakelen,
-  then scroll Alle films and Alle series for a minute during the sync and a minute after it.
+- Worth checking on the older Apple TV: scroll Alle films and Alle series for a minute during a
+  library sync and a minute after it, and send the log.
+- Build 453 was announced for Apple TV, but that number went to the Mac build. This build carries
+  the Apple TV changes it described, apart from the offline index changes, which come in the next
+  build.
+
+## 2.8.1 · build 453 · 9 November 2026 · Mac
+
+<!-- commit: b799f54400d6341e7f4f292769f21ce3c37acb02 -->
+
+### New
+
+- **Pleya plays video files from Finder.** Pleya shows up under Open With for video files such
+  as mkv, mp4, mov and avi and starts the file in the player. iPhone and iPad have had this
+  since build 355.
+
+### Notes
+
+- This is the first Mac build since build 296 (24 September). It brings the Mac level with
+  the iPhone and iPad builds up to 454, so everything listed for those builds applies here too.
+- Worth checking: open a video file from Finder with Pleya, and play something from each server
+  you use. Nothing in this build has been checked on a Mac yet.
 
 ## 2.8.1 · build 452 · 9 November 2026 · Apple TV
 
