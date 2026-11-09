@@ -31,6 +31,7 @@ import '../../widgets/state_view.dart';
 import '../tv/tv_seerr_requests_view.dart';
 import 'seerr_discover_screen.dart';
 import 'seerr_media_detail_screen.dart';
+import 'seerr_phone.dart';
 import 'seerr_requests_list_parts.dart';
 
 export 'seerr_requests_list_parts.dart' show SeerrAutoLoadMoreListTile;
@@ -698,7 +699,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           ? _buildTv(title, ownOnly)
           : FocusedScrollScaffold(
               title: Text(title),
-              sliverAppBar: PlatformDetector.isHandheldIOS(context)
+              sliverAppBar: seerrIsIPhone(context)
                   ? MobileDenseSliverAppBar(
                       pinned: true,
                       row: MobileDenseTitleRow(title: title, onBack: () => Navigator.of(context).maybePop()),

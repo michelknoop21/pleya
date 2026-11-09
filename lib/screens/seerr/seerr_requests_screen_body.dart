@@ -198,7 +198,7 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
           final rights = _rightsFor(req);
           final busy = _busy.contains(req.id);
           final unresolved = _unresolved.contains(req.id);
-          final compact = PlatformDetector.isHandheldIOS(context);
+          final compact = seerrIsIPhone(context);
           return AutomationNode(
             id: AutomationIds.requestsListItem,
             instance: '$index',

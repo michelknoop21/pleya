@@ -42,6 +42,7 @@ import '../../widgets/seerr_status_badge.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/state_view.dart';
 import '../media_detail_screen.dart';
+import 'seerr_phone.dart';
 import 'seerr_requests_screen.dart';
 
 part 'seerr_media_detail_parts.dart';
@@ -390,7 +391,7 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
       },
       child: FocusedScrollScaffold(
         title: Text(_base.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        sliverAppBar: PlatformDetector.isHandheldIOS(context) && !(_errored && _detail == null)
+        sliverAppBar: seerrIsIPhone(context) && !(_errored && _detail == null)
             ? const SliverToBoxAdapter(child: SizedBox.shrink())
             : null,
         slivers: _buildSlivers(),

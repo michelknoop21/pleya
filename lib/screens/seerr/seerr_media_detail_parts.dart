@@ -27,8 +27,8 @@ class _HeroHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tk = tokens(context);
-    final handheld = PlatformDetector.isHandheldIOS(context);
-    final phone = handheld && PlatformDetector.isPhone(context);
+    final handheld = seerrIsIPhone(context);
+    final phone = handheld;
     final tv = PlatformDetector.isTV();
     final inset = tv ? TvLayoutConstants.horizontalInset : 16.0;
     final artwork = media.backdropUrl.isEmpty ? media.posterUrl : media.backdropUrl;
