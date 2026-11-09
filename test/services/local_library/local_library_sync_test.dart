@@ -402,7 +402,7 @@ void main() {
         for (final r in fake.requests)
           if (RegExp(r'/items/([^/?]+)$').firstMatch(r.split('?').first) case final m?) m.group(1),
       ];
-      expect(detailIds, unorderedEquals(['show', 'season']), reason: 'ancestor names once per parent, never per title');
+      expect(detailIds, isEmpty, reason: 'the list pages carry the ancestor names; never a read per title');
       final rows = {for (final i in store.items) i.id: i};
       expect(rows.keys.toSet(), {'show', 'season', 'episode'});
       expect(rows['episode']?.title, 'Pilot, renamed', reason: 'the fresh list row wins over the stored one');
@@ -435,7 +435,7 @@ void main() {
         for (final r in fake.requests)
           if (RegExp(r'/items/([^/?]+)$').firstMatch(r.split('?').first) case final m?) m.group(1),
       ];
-      expect(detailIds, unorderedEquals(['show', 'season']), reason: 'ancestor names once per parent');
+      expect(detailIds, isEmpty, reason: 'the list pages carry the ancestor names; never a read per title');
       final rows = {for (final i in store.items) i.id: i};
       expect(rows.keys.toSet(), {'show', 'season', 'episode'});
       expect(rows['episode']?.grandparentTitle, 'Show');
