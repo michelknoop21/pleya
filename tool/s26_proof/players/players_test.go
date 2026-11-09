@@ -252,6 +252,7 @@ func TestFFmpegRoutesAndVerification(t *testing.T) {
 		{"relay seek to 6 s, verify on", w.url("r1", "/movie.mp4"), append(verifyFF(w), "-ss", "6"), true},
 		{"MITM certificate, verify on", w.url("mitm", "/movie.mp4"), verifyFF(w), false},
 		{"valid cert of other server, verify on", w.url("wrongname", "/movie.mp4"), verifyFF(w), false},
+		{"valid cert of other server, verify off (control)", w.url("wrongname", "/movie.mp4"), nil, true},
 		{"MITM certificate, ffmpeg default", w.url("mitm", "/movie.mp4"), nil, true},
 	}
 	for _, c := range cases {
@@ -279,6 +280,7 @@ func TestMPVRoutesAndVerification(t *testing.T) {
 		{"relay external subtitle, verify on", w.url("r1", "/movie.mp4"), append(verifyMPV(w), "--sub-file="+w.url("r1", "/sub.vtt")), true},
 		{"MITM certificate, verify on", w.url("mitm", "/movie.mp4"), verifyMPV(w), false},
 		{"valid cert of other server, verify on", w.url("wrongname", "/movie.mp4"), verifyMPV(w), false},
+		{"valid cert of other server, verify off (control)", w.url("wrongname", "/movie.mp4"), nil, true},
 		{"MITM certificate, mpv default", w.url("mitm", "/movie.mp4"), nil, true},
 	}
 	for _, c := range cases {
@@ -334,8 +336,16 @@ func TestAuthorizationHeaderOnCrossHostRedirect(t *testing.T) {
 		t.Fatalf("redirect target saw %d requests, want %d (ffmpeg ok=%v, mpv ok=%v)", len(w.leaked), want, ff.ok, mp.ok)
 	}
 	t.Logf("Authorization at the other host: ffmpeg=%q mpv=%q", w.leaked[0], w.leaked[1])
+	// The report's finding: both players forward the header. If this changes,
+	// the finding is stale and the report must change with it.
+	if w.leaked[0] != secret || w.leaked[1] != secret {
+		t.Errorf("expected ffmpeg and mpv to forward Authorization, got %q and %q", w.leaked[0], w.leaked[1])
+	}
 	if dartRan {
 		t.Logf("Authorization at the other host: dart:io=%q go=%q", w.leaked[2], w.leaked[3])
+		if w.leaked[2] != "" {
+			t.Error("dart:io forwarded Authorization to another host")
+		}
 		if w.leaked[3] != "" {
 			t.Error("Go client leaked the header")
 		}
