@@ -356,6 +356,22 @@ void main() {
       },
     );
 
+    test('a Pleya title whose children fail keeps the stored snapshot, and the next scan completes', () async {
+      final (fake, rescan) = await live(reportsExternalIds: true);
+      expect((await rescan()).keys, ['later']);
+      final key = store.libraries.single.globalKey;
+      fake.addItem(id: 'other', kind: 'show', title: 'D', libraryId: 'lib-series', year: 2023);
+      fake.queueFailure(pathPrefix: '/items/later/children', status: 500, errorCode: 'server.internal');
+
+      // Pleya Server reads no detail per title, so a failing server shows up on
+      // the children page, and a page that did not arrive is never an empty one.
+      await expectLater(rescan(), throwsA(isA<StateError>()));
+
+      expect(store.items.map((i) => i.id), ['later'], reason: 'a failed scan saves nothing over the snapshot');
+      expect(store.isComplete(key), isTrue);
+      expect((await rescan()).keys.toSet(), {'later', 'other'});
+    });
+
     test('a Pleya rescan asks no detail per title: the list row is the detail row', () async {
       final fake = PleyaFakeServer();
       fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');

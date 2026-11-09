@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/external_rating.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_version.dart';
@@ -15,6 +16,7 @@ void main() {
     grandparentThumbPath: '/poster/show',
     roles: const [MediaRole(tag: 'Actor')],
     mediaVersions: const [MediaVersion(id: 'v1')],
+    externalRatings: const [ExternalRating(source: ExternalRatingSource.imdb, value: 8.1)],
   );
 
   test('an episode row keeps what a list needs and drops cast and versions', () {
@@ -24,6 +26,7 @@ void main() {
     expect(row.title, episodeWithRolesAndVersions.title);
     expect(row.viewOffsetMs, episodeWithRolesAndVersions.viewOffsetMs);
     expect(row.thumbPath, '/still/ep', reason: 'online lists still draw the still from the server');
+    expect(row.externalRatings, episodeWithRolesAndVersions.externalRatings, reason: 'only cast and versions go');
   });
 
   test('a season row drops cast and versions too', () {

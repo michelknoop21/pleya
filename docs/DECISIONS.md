@@ -5748,9 +5748,9 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 
 **Besluit:**
 
-1. Een seizoen of aflevering komt uit het lijstantwoord van de server, zonder detailverzoek per titel. De index bewaart die regel zonder `roles`, `mediaVersions`, `reviews` en `externalRatings` (`lib/services/local_library/index_row.dart`). Een regel die al met die velden was opgeslagen, krimpt bij de volgende scan.
+1. Een seizoen of aflevering komt uit het lijstantwoord van de server, zonder detailverzoek per titel. De index bewaart die regel zonder cast (`roles`) en versies (`mediaVersions`) (`lib/services/local_library/index_row.dart`); al het andere van de lijstregel blijft staan. Een regel die al met cast en versies was opgeslagen, krimpt bij de volgende scan.
 2. De index bewaart geen eigen still van een aflevering. Wel bewaard blijven de poster van het seizoen en die van de serie. Een volledige scan ruimt opgeslagen stills op.
-3. Een offline afleveringenlijst toont de seizoensposter, en zonder seizoensposter de serieposter. Online tekent de lijst de still zoals voorheen, van de server.
+3. Een offline afleveringenlijst toont de poster die de index van het seizoen bewaart, en zonder die poster de serieposter. Online tekent de lijst de still zoals voorheen, van de server.
 4. Films en series blijven ongewijzigd: films houden hun versies voor de sortering op resolutie en de groepering, films en series houden hun cast voor offline zoeken en detail.
 
 **Gevolgen:** Offline zoeken op een acteur vindt films en series, geen afleveringen meer. Een offline geopende aflevering toont geen cast en geen versies. Afspelen zonder verbinding loopt via downloads en verandert niet. Het effect op opslag en scanduur is nog niet op hardware gemeten; dat gebeurt bij de hermeting na de TestFlight-build van deze bundel, op de Apple TV in de slaapkamer.
