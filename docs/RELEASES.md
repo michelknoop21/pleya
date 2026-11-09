@@ -63,10 +63,11 @@ Nothing user-facing since the last published build.
 
 - This build is for measuring. With debug logging on, the log now records what a library sync
   costs (requests per kind, disk writes, rebuilds of the read index) and how many frames run
-  late while you scroll, with and without a sync running. Nothing in the app behaves
-  differently.
-- Worth checking on the older Apple TV: Settings > Local library > Sync now, then scroll Alle
-  films and Alle series for a minute during the sync and a minute after it, and send the log.
+  late while you scroll, with and without a sync running. The log change does not change how
+  the app behaves.
+- Worth checking on the older Apple TV: Instellingen > Lokale bibliotheek > Nu synchroniseren,
+  then scroll Alle films and Alle series for a minute during the sync and a minute after it, and
+  send the log.
 
 ## 2.8.1 · build 451 · 8 November 2026 · iPhone, iPad and Apple TV
 
