@@ -18,6 +18,7 @@ class MobilePlaybackControls extends StatelessWidget {
     super.key,
     required this.player,
     required this.isLive,
+    this.compact = false,
     this.onPrevious,
     this.onNext,
     this.onCancelAutoHide,
@@ -26,6 +27,7 @@ class MobilePlaybackControls extends StatelessWidget {
 
   final Player player;
   final bool isLive;
+  final bool compact;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final VoidCallback? onCancelAutoHide;
@@ -44,7 +46,7 @@ class MobilePlaybackControls extends StatelessWidget {
               CircularControlButton(
                 semanticLabel: t.videoControls.previousButton,
                 icon: Symbols.skip_previous_rounded,
-                iconSize: 48,
+                iconSize: compact ? 28 : 48,
                 onPressed: onPrevious,
               ),
               const SizedBox(width: 24),
@@ -56,7 +58,8 @@ class MobilePlaybackControls extends StatelessWidget {
               child: CircularControlButton(
                 semanticLabel: isPlaying ? t.videoControls.pauseButton : t.videoControls.playButton,
                 icon: isPlaying ? Symbols.pause_rounded : Symbols.play_arrow_rounded,
-                iconSize: 72,
+                iconSize: compact ? 40 : 72,
+                primary: true,
                 onPressed: () {
                   if (isPlaying) {
                     player.pause();
@@ -74,7 +77,7 @@ class MobilePlaybackControls extends StatelessWidget {
               CircularControlButton(
                 semanticLabel: t.videoControls.nextButton,
                 icon: Symbols.skip_next_rounded,
-                iconSize: 48,
+                iconSize: compact ? 28 : 48,
                 onPressed: onNext,
               ),
             ],

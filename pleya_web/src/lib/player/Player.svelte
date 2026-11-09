@@ -1,8 +1,6 @@
 <!--
-  De spelerschil uit mockup 50 (S13.2, S18.3): beeld over het hele venster,
-  bovenaan terug met titel en regel, rechtsboven wat er speelt, in het midden
-  tien seconden terug, afspelen en tien vooruit, onderaan de zoekbalk en de
-  knoppen (PlayerControls).
+  Filmbeeld: terug bovenaan, transport in het midden en titel, metadata
+  en tijdlijn in de onderste bedieningsband.
 
   Het afspeelpad zelf zit in PlayerSession; deze component koppelt alleen de
   `<video>` aan de knoppen, het toetsenbord en de levenscyclus. Sluiten,
@@ -24,8 +22,7 @@
   import { audioOptions, defaultAudioIndex, subtitleOptions } from './tracks';
   import { deliveryLabel } from './labels';
   import { ResumeFloor, resumePoint, WatchProgress } from './watchProgress';
-  // Globaal en niet gescoped, met `.player` als voorvoegsel: zo blijft deze
-  // component onder de 400 regels.
+  // De gedeelde spelerregels zijn globaal met `.player` als voorvoegsel.
   import './player.css';
 
   interface Props {
@@ -277,27 +274,15 @@
     {/if}
   </video>
 
-  {#if subtitles.caption && subtitles.url}
-    <p class="caption" class:caption--low={!showChrome}>{subtitles.caption}</p>
-  {/if}
-
   <div class="scrim scrim--top" aria-hidden="true"></div>
-  <div class="scrim scrim--bottom" aria-hidden="true"></div>
 
   <header class="top">
     <button class="round" type="button" aria-label={t('player.back')} onclick={onclose}>
       <PlayerIcon name="back" />
     </button>
-    <div class="top__text">
-      <h1 class="top__title">{item.title}</h1>
-      {#if meta}<p class="top__meta">{meta}</p>{/if}
-    </div>
-    <div class="chips">
-      {#if subtitleLabel}
-        <span class="chip"><PlayerIcon name="cc" size={16} />{subtitleLabel}</span>
-      {/if}
-      {#if modeLabel}<span class="chip">{modeLabel}</span>{/if}
-    </div>
+    {#if session.phase === 'error'}
+      <h1 class="film__title">{item.title}</h1>
+    {/if}
   </header>
 
   {#if session.phase === 'loading' || session.phase === 'idle'}
@@ -319,61 +304,89 @@
         </div>
       </div>
     </div>
-  {:else}
-    <div class="center center--controls">
-      <button class="round round--side" type="button" aria-label={t('player.rewind')} onclick={() => seekTo(current - 10)}>
-        <PlayerIcon name="rewind" size={26} />
-      </button>
-      <button class="round round--main" type="button" aria-label={paused ? t('player.play') : t('player.pause')} onclick={toggle}>
-        <PlayerIcon name={paused ? 'play' : 'pause'} size={30} />
-      </button>
-      <button class="round round--side" type="button" aria-label={t('player.forward')} onclick={() => seekTo(current + 10)}>
-        <PlayerIcon name="forward" size={26} />
-      </button>
-    </div>
   {/if}
 
   <div class="bottom" hidden={session.phase === 'error'}>
-    {#if menuOpen}
-      <PlayerTrackMenu
-        {audio}
-        {audioIndex}
-        {audioSwitchable}
-        onaudio={chooseAudio}
-        subtitles={subs.usable}
-        subtitleId={subtitles.pendingId ?? subtitles.activeId}
-        error={subtitles.error}
-        loading={subtitles.pendingId !== null}
-        preparing={subtitles.preparing}
-        skippedSubtitles={subs.skipped}
-        onsubtitle={(id) => void subtitles.choose(id)}
-        onsubtitleretry={subtitles.failedId ? () => subtitles.retry() : null}
-        onclose={() => (menuOpen = false)}
-      />
+    {#if session.phase === 'ready'}
+      <div class="center center--controls">
+        <button class="round round--side" type="button" aria-label={t('player.rewind')} onclick={() => seekTo(current - 10)}>
+          <PlayerIcon name="rewind" size={26} />
+        </button>
+        <button class="round round--main" type="button" aria-label={paused ? t('player.play') : t('player.pause')} onclick={toggle}>
+          <PlayerIcon name={paused ? 'play' : 'pause'} size={30} />
+        </button>
+        <button class="round round--side" type="button" aria-label={t('player.forward')} onclick={() => seekTo(current + 10)}>
+          <PlayerIcon name="forward" size={26} />
+        </button>
+      </div>
     {/if}
-    <PlayerControls
-      {paused}
-      {current}
-      {total}
-      {buffered}
-      limit={isHls ? seekLimit : null}
-      {volume}
-      {muted}
-      {rate}
-      {fullscreen}
-      subtitlesOn={subtitles.activeId !== null}
-      subtitlePreparing={subtitles.preparing}
-      {subtitleNote}
-      onsubtitleretry={subtitles.failedId ? () => subtitles.retry() : null}
-      {menuOpen}
-      ontoggle={toggle}
-      onseek={seekTo}
-      onvolume={setVolume}
-      onmute={() => video && (video.muted = !video.muted)}
-      onrate={() => video && (video.playbackRate = nextSpeed(rate))}
-      onfullscreen={() => void toggleFullscreen()}
-      onmenu={() => (menuOpen = !menuOpen)}
-    />
+    {#if menuOpen}
+      <div class="bottom__menu">
+        <PlayerTrackMenu
+          {audio}
+          {audioIndex}
+          {audioSwitchable}
+          onaudio={chooseAudio}
+          subtitles={subs.usable}
+          subtitleId={subtitles.pendingId ?? subtitles.activeId}
+          error={subtitles.error}
+          loading={subtitles.pendingId !== null}
+          preparing={subtitles.preparing}
+          skippedSubtitles={subs.skipped}
+          onsubtitle={(id) => void subtitles.choose(id)}
+          onsubtitleretry={subtitles.failedId ? () => subtitles.retry() : null}
+          onclose={() => (menuOpen = false)}
+        />
+      </div>
+    {/if}
+    <div class="bottom__controls">
+      <header class="film">
+        <div class="film__text">
+          <h1 class="film__title">{item.title}</h1>
+          {#if meta}<p class="film__meta">{meta}</p>{/if}
+        </div>
+        <div class="chips">
+          {#if subtitleLabel}
+            <span class="chip"><PlayerIcon name="cc" size={16} />{subtitleLabel}</span>
+          {/if}
+          {#if modeLabel}<span class="chip">{modeLabel}</span>{/if}
+        </div>
+      </header>
+      <PlayerControls
+        {paused}
+        {current}
+        {total}
+        {buffered}
+        limit={isHls ? seekLimit : null}
+        {volume}
+        {muted}
+        {rate}
+        {fullscreen}
+        subtitlesOn={subtitles.activeId !== null}
+        subtitlePreparing={subtitles.preparing}
+        {subtitleNote}
+        {menuOpen}
+        ontoggle={toggle}
+        onseek={seekTo}
+        onvolume={setVolume}
+        onmute={() => video && (video.muted = !video.muted)}
+        onrate={() => video && (video.playbackRate = nextSpeed(rate))}
+        onfullscreen={() => void toggleFullscreen()}
+        onmenu={() => (menuOpen = !menuOpen)}
+      />
+    </div>
+    {#if subtitles.caption && subtitles.url}
+      <p class="caption" class:caption--low={!showChrome}>{subtitles.caption}</p>
+    {/if}
   </div>
+  {#if subtitleNote && !menuOpen && showChrome}
+    <div class="player-toast" class:player-toast--wait={subtitles.preparing} role="status">
+      <span class="player-toast__icon"><PlayerIcon name="cc" size={17} /></span>
+      <span>{subtitleNote}</span>
+      {#if subtitles.failedId}
+        <button type="button" onclick={() => subtitles.retry()}>{t('player.subtitleRetry')}</button>
+      {/if}
+    </div>
+  {/if}
 </section>
 

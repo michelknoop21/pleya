@@ -852,6 +852,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
   @override
   Widget build(BuildContext context) {
     final isMobile = PlatformDetector.isMobile(context) && !PlatformDetector.isTV();
+    final useIosFilmFrame = PlatformDetector.isHandheldIOS(context) && !TvDetectionService.isIOSAppOnMacSync();
 
     // Hide ALL controls when in PiP mode (except macOS where main window stays visible)
     return ValueListenableBuilder<bool>(
@@ -934,6 +935,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                                         hasFrame: hasFrame,
                                         glass: isMobile && playerGlassOn(context),
                                         topFade: !PlatformDetector.isTV(),
+                                        bottomFade: isMobile,
                                       ),
                                       child: child,
                                     );
@@ -951,16 +953,18 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                                               final playbackState = context.watch<PlaybackStateProvider>();
                                               final hasStripContent =
                                                   _chapters.isNotEmpty || playbackState.isQueueActive;
-                                              return MobileVideoControls(
+                                              Widget mobileControls(
+                                                Widget header, [
+                                                Widget? footer,
+                                              ]) => MobileVideoControls(
                                                 player: widget.player,
                                                 metadata: widget.metadata,
                                                 chapters: _chapters,
                                                 chaptersLoaded: _chaptersLoaded,
                                                 showChapterMarkersOnTimeline: _showChapterMarkersOnTimeline,
                                                 seekTimeSmall: _seekTimeSmall,
-                                                trackChapterControls: _buildTrackChapterControlsWidget(
-                                                  hideChaptersAndQueue: hasStripContent,
-                                                ),
+                                                trackChapterControls: header,
+                                                footerControls: footer,
                                                 onSeek: _throttledSeek,
                                                 onSeekEnd: _finalizeSeek,
                                                 onScrubStart: _holdTimelineScrub,
@@ -997,6 +1001,14 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                                                   }
                                                 },
                                                 isInEdgeAdjustmentZone: _isGlobalPositionInEdgeAdjustmentZone,
+                                              );
+                                              if (useIosFilmFrame) {
+                                                return _buildTrackChapterControlsWidget(
+                                                  filmFrameLayout: mobileControls,
+                                                );
+                                              }
+                                              return mobileControls(
+                                                _buildTrackChapterControlsWidget(hideChaptersAndQueue: hasStripContent),
                                               );
                                             },
                                           ),
@@ -1078,9 +1090,16 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
-                      right: PlatformDetector.isTV() ? tvPageInset(context) : 24,
+                      right: PlatformDetector.isTV()
+                          ? tvPageInset(context)
+                          : 24.0 + (useIosFilmFrame ? MediaQuery.paddingOf(context).right : 0.0),
                       bottom: () {
-                        if (!_showControls) return 24.0;
+                        if (!_showControls)
+                          return 24.0 + (useIosFilmFrame ? MediaQuery.paddingOf(context).bottom : 0.0);
+                        if (!isMobile || useIosFilmFrame) {
+                          final block = widget.chromeController.subtitleLift * MediaQuery.sizeOf(context).height;
+                          if (block > 0) return block + 10;
+                        }
                         if (widget.chromeController.contentStripVisible) return 180.0;
                         return isMobile ? 80.0 : 115.0;
                       }(),

@@ -28,9 +28,12 @@ import '../sheets/track_sheet.dart';
 import '../sheets/video_settings_sheet.dart';
 import '../tv_info_panel/tv_panel_types.dart';
 import '../../../services/shader_service.dart';
+import '../mobile_video_controls_glass.dart';
 import '../video_control_button.dart';
 import 'deferred_subtitle_status.dart';
 import '../../pleya_fly_icon.dart';
+
+typedef FilmFrameControlsLayout = Widget Function(Widget header, Widget footer);
 
 /// Row of track and chapter control buttons for the video player
 class TrackChapterControls extends StatelessWidget {
@@ -59,6 +62,8 @@ class TrackChapterControls extends StatelessWidget {
   /// Whether to hide the chapters and queue buttons (mobile uses content strip instead)
   final bool hideChaptersAndQueue;
 
+  final FilmFrameControlsLayout? filmFrameLayout;
+
   /// On TV, the buttons open the player panel on a tab instead of a sheet
   /// (DEC-101). Null everywhere else, and the sheets behave as before.
   final ValueChanged<TvInfoPanelRequest>? onOpenTvPanel;
@@ -77,6 +82,7 @@ class TrackChapterControls extends StatelessWidget {
     this.onNavigateUp,
     this.onNavigateDown,
     this.hideChaptersAndQueue = false,
+    this.filmFrameLayout,
     this.onOpenTvPanel,
   });
 
@@ -178,7 +184,7 @@ class TrackChapterControls extends StatelessWidget {
     bool isActive = false,
     String? automationId,
   }) {
-    return VideoControlButton(
+    final button = VideoControlButton(
       icon: icon,
       iconWidget: iconWidget,
       tooltip: tooltip,
@@ -189,6 +195,22 @@ class TrackChapterControls extends StatelessWidget {
       onKeyEvent: focusNodes != null ? (node, event) => _handleButtonKeyEvent(node, event, buttonIndex) : null,
       onFocusChange: onFocusChange,
       onPressed: onPressed,
+    );
+    if (filmFrameLayout == null) return button;
+    final target = SizedBox.square(
+      dimension: 44,
+      child: IconTheme.merge(
+        data: const IconThemeData(shadows: []),
+        child: button,
+      ),
+    );
+    return playerGlassSurface(
+      const CircleBorder(),
+      target,
+      legacy: DecoratedBox(
+        decoration: const BoxDecoration(color: Color(0x99081217), shape: BoxShape.circle),
+        child: target,
+      ),
     );
   }
 
@@ -210,77 +232,81 @@ class TrackChapterControls extends StatelessWidget {
 
         // Build list of buttons dynamically to track indices
         final buttons = <Widget>[];
+        final filmFrameLayout = this.filmFrameLayout;
+        final headerButtons = filmFrameLayout == null ? buttons : <Widget>[];
         int buttonIndex = 0;
 
-        // Settings button (always shown)
-        buttons.add(
-          ListenableBuilder(
-            listenable: SleepTimerService(),
-            builder: (context, _) {
-              final sleepTimer = SleepTimerService();
-              final isShaderActive =
-                  shaderService != null && shaderService!.isSupported && shaderService!.currentPreset.isEnabled;
-              final isZoomActive = (videoZoomScale - 1.0).abs() > 0.0001;
-              final isActive =
-                  sleepTimer.isActive ||
-                  audioSyncOffset != 0 ||
-                  subtitleSyncOffset != 0 ||
-                  isShaderActive ||
-                  isZoomActive;
-              return _buildTrackButton(
-                buttonIndex: 0,
-                icon: Symbols.tune_rounded,
-                isActive: isActive,
-                automationId: AutomationIds.playerSettingsButton,
-                tooltip: t.videoControls.settingsButton,
-                semanticLabel: t.videoControls.settingsButton,
-                isMobile: isMobile,
-                isDesktop: isDesktop,
-                onPressed: () {
-                  final openPanel = onOpenTvPanel;
-                  if (openPanel != null) {
-                    openPanel(TvInfoPanelRequest.video);
-                    return;
-                  }
-                  onCancelAutoHide?.call();
-                  OverlaySheetController.of(context)
-                      .show(
-                        builder: (_) => VideoSettingsSheet(
-                          player: player,
-                          audioSyncOffset: audioSyncOffset,
-                          subtitleSyncOffset: subtitleSyncOffset,
-                          videoZoomScale: videoZoomScale,
-                          onVideoZoomChanged: onVideoZoomChanged,
-                          onResetVideoZoom: onResetVideoZoom,
-                          // A following phone has no speed: it would speed up the Apple TV too (A-23e).
-                          canControl: canControl && !(context.read<WatchTogetherProvider?>()?.isFlyFollower ?? false),
-                          isLive: isLive,
-                          availableVersions: availableVersions,
-                          selectedMediaIndex: selectedMediaIndex,
-                          selectedQualityPreset: selectedQualityPreset,
-                          serverSupportsTranscoding: serverSupportsTranscoding,
-                          sourceDurationMs: trackControlsState.sourceDurationMs,
-                          onVersionSelected: onSwitchVersion == null ? null : (i) => onSwitchVersion!(i),
-                          onQualitySelected: onSwitchQualityPreset,
-                          shaderService: shaderService,
-                          onShaderChanged: onShaderChanged,
-                          isAmbientLightingEnabled: isAmbientLightingEnabled,
-                          onToggleAmbientLighting: onToggleAmbientLighting,
-                          onCancelAutoHide: onCancelAutoHide,
-                          onStartAutoHide: onStartAutoHide,
-                          onSyncOffsetChanged: onSyncOffsetChanged,
-                        ),
-                      )
-                      .whenComplete(() {
-                        onStartAutoHide?.call();
-                        onLoadSeekTimes?.call();
-                      });
-                },
-              );
-            },
-          ),
-        );
-        buttonIndex++;
+        // Apple TV opens playback settings from the swipe-down panel.
+        if (!PlatformDetector.isAppleTV()) {
+          headerButtons.add(
+            ListenableBuilder(
+              listenable: SleepTimerService(),
+              builder: (context, _) {
+                final sleepTimer = SleepTimerService();
+                final isShaderActive =
+                    shaderService != null && shaderService!.isSupported && shaderService!.currentPreset.isEnabled;
+                final isZoomActive = (videoZoomScale - 1.0).abs() > 0.0001;
+                final isActive =
+                    sleepTimer.isActive ||
+                    audioSyncOffset != 0 ||
+                    subtitleSyncOffset != 0 ||
+                    isShaderActive ||
+                    isZoomActive;
+                return _buildTrackButton(
+                  buttonIndex: 0,
+                  icon: Symbols.tune_rounded,
+                  isActive: isActive,
+                  automationId: AutomationIds.playerSettingsButton,
+                  tooltip: t.videoControls.settingsButton,
+                  semanticLabel: t.videoControls.settingsButton,
+                  isMobile: isMobile,
+                  isDesktop: isDesktop,
+                  onPressed: () {
+                    final openPanel = onOpenTvPanel;
+                    if (openPanel != null) {
+                      openPanel(TvInfoPanelRequest.video);
+                      return;
+                    }
+                    onCancelAutoHide?.call();
+                    OverlaySheetController.of(context)
+                        .show(
+                          builder: (_) => VideoSettingsSheet(
+                            player: player,
+                            audioSyncOffset: audioSyncOffset,
+                            subtitleSyncOffset: subtitleSyncOffset,
+                            videoZoomScale: videoZoomScale,
+                            onVideoZoomChanged: onVideoZoomChanged,
+                            onResetVideoZoom: onResetVideoZoom,
+                            // A following phone has no speed: it would speed up the Apple TV too (A-23e).
+                            canControl: canControl && !(context.read<WatchTogetherProvider?>()?.isFlyFollower ?? false),
+                            isLive: isLive,
+                            availableVersions: availableVersions,
+                            selectedMediaIndex: selectedMediaIndex,
+                            selectedQualityPreset: selectedQualityPreset,
+                            serverSupportsTranscoding: serverSupportsTranscoding,
+                            sourceDurationMs: trackControlsState.sourceDurationMs,
+                            onVersionSelected: onSwitchVersion == null ? null : (i) => onSwitchVersion!(i),
+                            onQualitySelected: onSwitchQualityPreset,
+                            shaderService: shaderService,
+                            onShaderChanged: onShaderChanged,
+                            isAmbientLightingEnabled: isAmbientLightingEnabled,
+                            onToggleAmbientLighting: onToggleAmbientLighting,
+                            onCancelAutoHide: onCancelAutoHide,
+                            onStartAutoHide: onStartAutoHide,
+                            onSyncOffsetChanged: onSyncOffsetChanged,
+                          ),
+                        )
+                        .whenComplete(() {
+                          onStartAutoHide?.call();
+                          onLoadSeekTimes?.call();
+                        });
+                  },
+                );
+              },
+            ),
+          );
+          buttonIndex++;
+        }
 
         // Combined audio & subtitles button
         {
@@ -293,7 +319,7 @@ class TrackChapterControls extends StatelessWidget {
           final icon = hasSubtitleControls
               ? (isHidden ? Symbols.subtitles_off_rounded : Symbols.subtitles_rounded)
               : Symbols.audiotrack_rounded;
-          buttons.add(
+          headerButtons.add(
             _buildTrackButton(
               buttonIndex: currentIndex,
               icon: icon,
@@ -401,7 +427,7 @@ class TrackChapterControls extends StatelessWidget {
         // AirPlay route picker (iOS only — native AVRoutePickerView).
         if (AirPlayService.isAvailable) {
           final currentIndex = buttonIndex;
-          buttons.add(
+          headerButtons.add(
             _buildTrackButton(
               buttonIndex: currentIndex,
               icon: Symbols.airplay,
@@ -542,6 +568,12 @@ class TrackChapterControls extends StatelessWidget {
           );
         }
 
+        if (filmFrameLayout != null) {
+          return filmFrameLayout(
+            Row(mainAxisSize: .min, spacing: 4, children: headerButtons),
+            Wrap(alignment: .center, spacing: 4, runSpacing: 4, children: buttons),
+          );
+        }
         return IntrinsicHeight(
           child: Row(mainAxisSize: .min, crossAxisAlignment: .stretch, children: buttons),
         );

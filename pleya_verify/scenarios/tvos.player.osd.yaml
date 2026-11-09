@@ -48,8 +48,8 @@ steps:
   - assert: {id: player.title, insideViewport: true}
   - assert: {id: player.timeline, insideViewport: true}
   - assert: {id: player.timeline, below: player.title}
-  - assert: {id: player.settings_button, insideViewport: true}
-  - assert: {id: player.settings_button, sameRow: player.play_pause}
+  - assert: {id: player.settings_button, present: false}
+  - assert: {id: player.tracks_button, insideViewport: true, sameRow: player.play_pause}
   - snapshot: 01-osd-paused
 
   # A paused bar on Apple TV stays: it used to hide five seconds after the pause.

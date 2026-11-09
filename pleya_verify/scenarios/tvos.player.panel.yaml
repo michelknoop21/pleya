@@ -1,19 +1,11 @@
 name: tvos.player.panel
 target: tvos-sim
-# PLR2 / PLR3 (DEC-101): on TV the player panel is the only player menu, and
-# the tune button is the way in for a simulator that has no touch surface to
-# swipe on. The walk into the player is the one `tvos.home.hero-return-after-
-# playback` measured; from `player.surface` on, this scenario is the new part.
+# PLR2 / PLR3 (DEC-101). The simulator opens the player panel through the
+# tracks shortcut and uses the tab row to reach Video. The physical Siri
+# Remote can also open the panel with a down swipe.
 #
-# The player opens with its controls up and play/pause focused, so the first
-# Select pauses: the fixture clip lasts fifteen seconds, and without the pause mpv
-# reaches its end and returns to the detail page before the panel is open (the
-# run of 23 September recorded exactly that; `tvos.player.loudness` pauses for
-# the same reason). RIGHT then walks the mounted transport buttons (skip
-# forward, next chapter, next item) before it falls through to the first track
-# control, the tune button. Select there asks for the panel on Video
-# (`TrackChapterControls.onOpenTvPanel`), and the panel lands on the first row
-# of the Display group.
+# The fixture clip lasts fifteen seconds. Pause on Play/Pause, walk to Tracks,
+# then go up to the tab row, left to Video and down to its first row.
 #
 # Mockup 33 coverage (nine states, a-i): a Info, b Video, c Geluid, d
 # Ondertitels, e Audio-synchronisatie and i (the OSD entry point) are asserted
@@ -40,7 +32,7 @@ steps:
   - press: select
   - wait_until: {id: player.surface, timeout: 25000}
 
-  # Pause first, then over to the tune button.
+  # Pause first, then over to the tracks button.
   # No wait for the ring first: an idb press takes one to two seconds to land,
   # and the clip was two seconds long, so a press sent after polling for the
   # focus arrived when mpv had already ended (run of 23 September). The clip
@@ -50,18 +42,17 @@ steps:
   - press: select
   - settle: 400
   - assert: {id: player.play_pause, state: {playing: false}}
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 300
-  - assert: {id: player.settings_button, focused: true}
+  - walk: {direction: right, steps: 4, stopAt: player.tracks_button, timeout: 20000, settle: 250}
+  - assert: {id: player.tracks_button, focused: true}
   - press: select
   - wait_until: {id: player.panel, timeout: 5000}
   - settle: 400
+  - press: up
+  - settle: 250
+  - walk: {direction: left, steps: 2, stopAt: "player.panel.tab[video]", timeout: 5000, settle: 250}
+  - assert: {id: "player.panel.tab[video]", focused: true}
+  - press: down
+  - settle: 250
   - snapshot: 01-panel-video
 
   # 33 B: the panel opened on Video, inside the title-safe rect, with the first
