@@ -19,8 +19,15 @@ import '../test_helpers/prefs.dart';
 import 'pleya_fake_server.dart';
 
 class _Profile extends ChangeNotifier implements ActiveProfileProvider {
+  String _activeId = 'alice';
+
   @override
-  String get activeId => 'alice';
+  String get activeId => _activeId;
+
+  void switchTo(String id) {
+    _activeId = id;
+    notifyListeners();
+  }
 
   @override
   bool get isBinding => false;
@@ -145,5 +152,21 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(requests.map((request) => request.method), ['PUT', 'DELETE', 'PUT', 'DELETE']);
     expect(push.pending(source), isFalse);
+
+    // Shared iPad: another profile takes over, this profile's installation goes,
+    // and it comes back when this profile is active again.
+    await push.setChoices(source, (movies: true, episodes: false));
+    expect(requests.map((request) => request.method), ['PUT', 'DELETE', 'PUT', 'DELETE', 'PUT']);
+    final installation = requests.last.url;
+    profile.switchTo('bob');
+    await Future<void>.delayed(Duration.zero);
+    expect(requests.last.method, 'DELETE');
+    expect(requests.last.url, installation);
+    profile.switchTo('alice');
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(requests.map((request) => request.method), ['PUT', 'DELETE', 'PUT', 'DELETE', 'PUT', 'DELETE', 'PUT']);
+    expect(requests.last.url, installation);
+    expect(push.choices(source), (movies: true, episodes: false));
   });
 }

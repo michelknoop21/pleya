@@ -2,6 +2,8 @@ import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
 import '../media/ids.dart';
 import '../services/multi_server_manager.dart';
+import '../services/pleya_push_notifications.dart';
+import '../services/pleya_server_client.dart';
 import '../services/storage_service.dart';
 import 'profile_connection_registry.dart';
 
@@ -14,6 +16,16 @@ Future<void> removeProfileConnectionAndCleanup({
   MultiServerManager? serverManager,
 }) async {
   final removedServerIds = _serverIdsForConnection(connection);
+  // Before the runtime client goes: it is the only way to tell the server to
+  // stop pushing to this device for this profile.
+  if (connection is PleyaServerConnection) {
+    final client = serverManager?.getClient(ServerId(connection.serverId));
+    await PleyaPushNotifications.forgetConnection(
+      profileId,
+      connection.id,
+      client is PleyaServerClient ? client : null,
+    );
+  }
   await profileConnections.remove(profileId, connection.id);
   await _tearDownRuntimeServersForActiveProfile(
     profileId: profileId,

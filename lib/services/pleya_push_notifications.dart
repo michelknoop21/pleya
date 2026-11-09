@@ -65,8 +65,28 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
 
   bool canRetry(PushSource source) => _online.containsKey(source.id) && _saved.containsKey(source.id);
 
-  String get _prefix => 'pleya.push/${Uri.encodeComponent(_profileId)}/';
+  static String _prefixFor(String profileId) => 'pleya.push/${Uri.encodeComponent(profileId)}/';
+  String get _prefix => _prefixFor(_profileId);
   String _key(String id) => '$_prefix${Uri.encodeComponent(id)}';
+
+  /// Withdraws [profileId]'s push opt-in for a connection that is being
+  /// removed. Best effort: with [client] still open the server forgets the
+  /// installation; offline it stays there until that session is revoked, but
+  /// removing the connection never waits on the network for long.
+  static Future<void> forgetConnection(String profileId, String connectionId, PleyaServerClient? client) async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final key = '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
+    final installation = prefs.getStringList(key)?.firstOrNull;
+    if (installation == null) return;
+    if (client != null && client.connection.id == connectionId) {
+      try {
+        await client.removePushInstallation(installation).timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Offline or already closed: the local opt-in still goes.
+      }
+    }
+    await prefs.remove(key);
+  }
 
   Future<Map<String, String>?> _token({required bool prompt}) =>
       _channel.invokeMapMethod<String, String>('deviceToken', prompt);
@@ -150,11 +170,23 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   void retry() => _sync();
 
   void _sync() {
+    if (_profile.activeId != _profileId) return _release();
     if (!_current) return;
     final online = _online;
     _synced.removeWhere((id, client) => !identical(online[id], client));
     // Defer notifications until the profile and server bindings have settled.
     unawaited(Future<void>.microtask(_reconcile));
+  }
+
+  /// A shared device belongs to the active profile. Leaving it withdraws this
+  /// profile's installations so another profile never gets its alerts; the
+  /// stored choices stay and are registered again when this profile returns.
+  void _release() {
+    for (final MapEntry(key: connection, value: client) in _synced.entries) {
+      final installation = _saved[connection]?.firstOrNull;
+      if (installation != null) client.removePushInstallation(installation).ignore();
+    }
+    _synced.clear();
   }
 
   Future<void> _reconcile() async {
@@ -167,6 +199,8 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     try {
       final prefs = await BaseSharedPreferencesService.sharedCache();
       if (!_current) return;
+      // A removed connection takes its stored opt-in with it.
+      _saved.removeWhere((connection, _) => !prefs.containsKey(_key(connection)));
       for (final key in prefs.keys.where((key) => key.startsWith(_prefix))) {
         final stored = prefs.getStringList(key);
         if (stored == null || stored.length < 2) continue;
