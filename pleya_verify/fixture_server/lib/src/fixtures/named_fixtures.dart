@@ -90,6 +90,24 @@ bool applyNamedFixture(
       if (seerr == null) return false;
       _applySeerrRequestsV1(seerr);
       return true;
+    case 'seerr.issues.v1':
+      if (seerr == null) return false;
+      _applySeerrRequestsManageV1(seerr);
+      seerr.issues.add({
+        'id': 42,
+        'status': 1,
+        'issueType': 2,
+        'createdBy': {'id': 2, 'displayName': 'Robin'},
+        'media': {'mediaType': 'movie', 'tmdbId': 202},
+        'comments': [
+          {
+            'id': 1,
+            'message': 'Het geluid loopt achter op het beeld.',
+            'user': {'id': 2, 'displayName': 'Robin'},
+          },
+        ],
+      });
+      return true;
     case 'seerr.requests.manage.v1':
       if (seerr == null) return false;
       _applySeerrRequestsManageV1(seerr);

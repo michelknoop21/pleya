@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_node.dart';
@@ -16,7 +18,11 @@ import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/screens/my_pleya_screen.dart';
 import 'package:pleya/screens/profile/profile_switch_screen.dart';
+import 'package:pleya/services/seerr/seerr_client.dart';
+import 'package:pleya/services/seerr/seerr_constants.dart';
+import 'package:pleya/services/seerr/seerr_session.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
 import '../test_helpers/prefs.dart';
@@ -30,6 +36,9 @@ class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider
   _FakeActiveProfile(this._active);
 
   Profile? _active;
+
+  @override
+  bool get isBinding => false;
 
   @override
   Profile? get active => _active;
@@ -62,6 +71,37 @@ class _RouteRecorder extends NavigatorObserver {
 }
 
 Profile _profile(String name) => Profile.local(id: name, displayName: name, createdAt: DateTime.utc(2026, 8, 17));
+
+class _Status {
+  _Status(this.code);
+  int code;
+}
+
+class _IssueSeerr extends ConfiguredSeerrDouble {
+  _IssueSeerr({int issueStatus = 200, bool throwOnProbe = false}) : this._(_Status(issueStatus), throwOnProbe);
+
+  _IssueSeerr._(this.status, bool throwOnProbe)
+    : _client = SeerrClient(
+        SeerrSession(
+          baseUrl: 'https://seerr.example',
+          authMode: SeerrAuthMode.local,
+          cookie: 'connect.sid=fixture',
+          userId: 7,
+          permissions: SeerrPermission.manageIssues,
+        ),
+        issueProbeTtl: Duration.zero,
+        httpClient: MockClient((_) async {
+          if (throwOnProbe) throw StateError('probe failed');
+          return http.Response('{"results":[]}', status.code);
+        }),
+      );
+
+  final SeerrClient _client;
+  final _Status status;
+
+  @override
+  SeerrClient? get client => _client;
+}
 
 const bool _verifyOn = bool.fromEnvironment('PLEYA_VERIFY');
 const String _skipReason = 'run with --dart-define=PLEYA_VERIFY=true';
@@ -197,6 +237,57 @@ void main() {
     expect(find.byType(ProfileAvatar), findsWidgets);
     expect(find.text('Zonder foto'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group('Seerr-meldingen entry', () {
+    final ios = monoTheme(dark: true).copyWith(platform: TargetPlatform.iOS);
+    tearDown(() => TvDetectionService.debugSetIOSAppOnMacOverride(null));
+
+    testWidgets('shows on iOS handhelds', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+    });
+
+    testWidgets('is hidden when the server has no issue routes (Overseerr < 1.27)', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(issueStatus: 404), theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsNothing);
+    });
+
+    testWidgets('a late row only appends: the rows above keep their element', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      final before = tester.element(find.text(t.seerr.title));
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+      expect(identical(tester.element(find.text(t.seerr.title)), before), isTrue);
+    });
+
+    testWidgets('a transport failure on the probe keeps the row and the screen working', (tester) async {
+      await pumpScreen(tester, seerr: _IssueSeerr(throwOnProbe: true), theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('resuming the app probes again, so a server that gained issue routes gets its row', (tester) async {
+      final seerr = _IssueSeerr(issueStatus: 404);
+      await pumpScreen(tester, seerr: seerr, theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsNothing);
+
+      seerr.status.code = 200;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsOneWidget);
+    });
+
+    testWidgets('is absent in the iOS-app-on-Mac container', (tester) async {
+      TvDetectionService.debugSetIOSAppOnMacOverride(true);
+      await pumpScreen(tester, seerr: _IssueSeerr(), theme: ios);
+      await tester.pumpAndSettle();
+      expect(find.text(t.seerrIssues.title), findsNothing);
+    });
   });
 
   double topOf(WidgetTester tester, String text) => tester.getTopLeft(find.text(text)).dy;

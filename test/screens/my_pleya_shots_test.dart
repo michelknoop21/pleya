@@ -27,6 +27,9 @@ final _dir = Platform.environment['A24B_SHOT_DIR'];
 
 class _Profiles extends ChangeNotifier implements ActiveProfileProvider {
   @override
+  bool get isBinding => false;
+
+  @override
   Profile? get active => Profile.local(id: 'michel', displayName: 'Michel', createdAt: DateTime.utc(2026, 10, 25));
 
   @override

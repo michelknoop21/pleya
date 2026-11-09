@@ -3394,5 +3394,30 @@
     "controls": "Controls",
     "diagnostics": "Diagnostics",
     "activeProfile": "Active profile"
+  },
+  "seerrIssues": {
+    "title": "Reports",
+    "subtitle": "Problems reported with films and series",
+    "open": "Open",
+    "resolved": "Resolved",
+    "mine": "My reports",
+    "empty": "No reports in this view.",
+    "loadMore": "Load more",
+    "video": "Video",
+    "audio": "Audio",
+    "subtitles": "Subtitles",
+    "other": "Other",
+    "seasonNumber": "Season $number",
+    "episodeNumber": "Episode $number",
+    "number": "Report #$number",
+    "unknownAuthor": "Unknown user",
+    "reply": "Write a reply",
+    "sendReply": "Post reply",
+    "resolve": "Mark as resolved",
+    "reopen": "Reopen report",
+    "unavailable": "Reports are unavailable for this account.",
+    "serverUnsupported": "This server does not support reports.",
+    "loadFailed": "Could not load reports from Seerr.",
+    "changeUnconfirmed": "Seerr did not confirm your change. Check the conversation before trying again."
   }
 }
