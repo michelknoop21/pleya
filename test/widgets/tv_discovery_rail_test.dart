@@ -47,6 +47,7 @@ Widget _rail({
   String? initialFocusedGroupId,
   ValueChanged<String>? onFocusedGroupChanged,
   bool isPartial = false,
+  TvDiscoveryViewAllTile? viewAll,
   Key? key,
 }) => Builder(
   builder: (context) {
@@ -61,6 +62,7 @@ Widget _rail({
         initialFocusedGroupId: initialFocusedGroupId,
         onFocusedGroupChanged: onFocusedGroupChanged,
         onActivate: onActivate ?? (_) {},
+        viewAll: viewAll,
       ),
     );
   },
@@ -229,6 +231,87 @@ void main() {
       await tester.pumpWidget(_shell(_rail(groups: tvDiscoveryFilmsRow())));
       await tester.pumpAndSettle();
       expect(railOf(tester).focusGroup('not-in-this-rail'), isFalse);
+    });
+
+    // A tile the band has scrolled past keeps its node in the rail's map, but
+    // that node hangs in no focus tree any more. Reporting success for it hands
+    // the caller a restore that never happened.
+    testWidgets('refuses to focus a tile the band has scrolled away', (tester) async {
+      setGoldenSurfaceSize(tester);
+      final long = [
+        for (var i = 0; i < 30; i++) tvDiscoveryGroup('long-$i', [tvDiscoveryItem(id: 'long-$i', title: 'Film $i')]),
+      ];
+      await tester.pumpWidget(_shell(_rail(groups: long)));
+      await tester.pumpAndSettle();
+      expect(railOf(tester).focusGroup('long-0'), isTrue);
+      await tester.pumpAndSettle();
+
+      expect(railOf(tester).focusColumn(29), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('long-0')), findsNothing, reason: 'the first tile must be virtualized away');
+
+      expect(railOf(tester).focusGroup('long-0'), isFalse);
+    });
+
+    // A Home reload hands the rail new group objects. The focus follows the id;
+    // what the block describes and what Select opens must follow it too.
+    testWidgets('a reload that reorders the row keeps the focus and the fresh group on its title', (tester) async {
+      setGoldenSurfaceSize(tester);
+      final before = tvDiscoveryFilmsRow().take(2).toList();
+      final activated = <UnifiedMediaGroup>[];
+      await tester.pumpWidget(_shell(_rail(groups: before, onActivate: activated.add)));
+      await tester.pumpAndSettle();
+      railOf(tester).focusGroup(before[1].groupId);
+      await tester.pumpAndSettle();
+
+      final after = tvDiscoveryFilmsRow().take(2).toList().reversed.toList();
+      await tester.pumpWidget(_shell(_rail(groups: after, onActivate: activated.add)));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(activated, hasLength(1));
+      expect(activated.single, same(after.first));
+    });
+
+    testWidgets('a fresh group under the same id replaces what the block says', (tester) async {
+      setGoldenSurfaceSize(tester);
+      final films = tvDiscoveryFilmsRow();
+      await tester.pumpWidget(_shell(_rail(groups: films)));
+      await tester.pumpAndSettle();
+      railOf(tester).focusGroup(films[1].groupId);
+      await tester.pumpAndSettle();
+      final stale = discoveryContextFor(films[1]).title;
+      expect(find.text(stale), findsOneWidget);
+
+      final renamed = tvDiscoveryGroup(films[1].groupId, [
+        tvDiscoveryItem(id: 'renamed', title: 'A Title After The Merge', summary: 'The synopsis of the merged card.'),
+      ]);
+      await tester.pumpWidget(_shell(_rail(groups: [films[0], renamed, ...films.skip(2)])));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A Title After The Merge'), findsOneWidget);
+      expect(find.text(stale), findsNothing);
+    });
+
+    testWidgets('a reload while the focus is on the view-all tile leaves the block empty', (tester) async {
+      setGoldenSurfaceSize(tester);
+      final films = tvDiscoveryFilmsRow().take(3).toList();
+      final viewAll = TvDiscoveryViewAllTile(count: 42, destinationLabel: 'All movies', onSelect: () {});
+      await tester.pumpWidget(_shell(_rail(groups: films, viewAll: viewAll)));
+      await tester.pumpAndSettle();
+      expect(railOf(tester).focusColumn(films.length), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text(discoveryContextFor(films.first).title), findsNothing);
+
+      await tester.pumpWidget(_shell(_rail(groups: tvDiscoveryFilmsRow().take(3).toList(), viewAll: viewAll)));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(discoveryContextFor(films.first).title),
+        findsNothing,
+        reason: 'the remote stands on the view-all tile, so no poster is described',
+      );
     });
   });
 

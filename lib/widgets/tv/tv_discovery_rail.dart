@@ -371,11 +371,18 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     // describing the same title when that title is still there, and falls back
     // to the first only when it is not.
     final current = _focused.value;
-    if (current == null || !widget.groups.any((g) => g.groupId == current.groupId)) {
+    // The view-all tile describes nothing; a reload must not put a poster's
+    // block back under it.
+    if (current == null && _viewAllNode.hasFocus) return;
+    final fresh = current == null ? null : widget.groups.where((g) => g.groupId == current.groupId).firstOrNull;
+    if (fresh == null) {
       _focused.value = _restoredOrFirst();
       return;
     }
-    _keepFocusedTileInPlace(oldWidget.groups, current.groupId);
+    // Same title, new object: what the block says and what Select opens both
+    // read the fresh group.
+    _focused.value = fresh;
+    _keepFocusedTileInPlace(oldWidget.groups, fresh.groupId);
   }
 
   /// A silent Home reload can put a new title in front of the card the remote
@@ -528,7 +535,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   /// false — for restoration that means falling back to the rail's first tile.
   bool focusGroup(String groupId) {
     final node = _nodes[groupId];
-    if (node == null || !node.canRequestFocus) return false;
+    // A tile scrolled out of the band keeps its node here, detached.
+    if (node == null || node.parent == null || !node.canRequestFocus) return false;
     node.requestFocus();
     return true;
   }
@@ -636,6 +644,13 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
             instance: widget.automationRailIndex?.toString(),
             role: 'rail',
             label: widget.title,
+            // The title the metadata block under the band shows, null while it
+            // shows nothing: the same two conditions the block is built from.
+            state: () {
+              final group = _focused.value;
+              final shown = group != null && (_holdsFocus.value || widget.alwaysDescribesCurrent);
+              return {'describes': shown ? discoveryContextFor(group).title : null};
+            },
             child: SizedBox(height: TvDiscoveryLayout.railBandHeight(scale), child: _band(scale)),
           ),
           SizedBox(height: TvDiscoveryLayout.railMetaGap * scale),

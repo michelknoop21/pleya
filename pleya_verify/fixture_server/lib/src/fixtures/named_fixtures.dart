@@ -874,6 +874,10 @@ void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
 /// year, so only identity can fold them into one card; each side also holds a
 /// Battlestar Galactica with its own number (the 1978 series and the 2004
 /// remake), which must stay two cards. Every episode has a playable version.
+///
+/// Both sides also hold one film under the same TMDB number, started on both
+/// and in `continue_watching`: Verder kijken shows it as one card with two
+/// sources (`tvos.unified.continue-watching-one-card`).
 void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
   final fixture = 'unified.pair.$side.v1';
   server.resetCatalog();
@@ -926,4 +930,25 @@ void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
     posterId: _registerArtwork(server, bsgId),
     externalIds: {'tmdb': bsg.tmdb},
   );
+
+  final filmsLibraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: filmsLibraryId, title: side == 'a' ? 'Films' : 'Films NAS', kind: 'movies', itemCount: 1);
+  final filmId = _mintId(server, fixture, 'movie', 'tidewater');
+  server.addItem(
+    id: filmId,
+    kind: 'movie',
+    title: 'Tidewater',
+    libraryId: filmsLibraryId,
+    year: 2023,
+    durationMs: 5400000,
+    posterId: _registerArtwork(server, filmId),
+    externalIds: {'tmdb': 1100099},
+    userState: {
+      'position_ms': side == 'a' ? 1800000 : 1200000,
+      'watched': false,
+      'play_count': 0,
+      'updated_at': side == 'a' ? '2026-11-08T20:00:00Z' : '2026-11-07T20:00:00Z',
+    },
+  );
+  server.hubs['continue_watching']!.add(filmId);
 }
