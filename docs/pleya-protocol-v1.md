@@ -2823,14 +2823,26 @@ Een nieuwere sessie van hetzelfde account kan de registratie overnemen als
 zij hetzelfde toestel of APNs-token draagt. Een APNs-token hoort bij één
 registratie: een geslaagde PUT met hetzelfde token laat elke andere registratie
 met dat token vervallen, ook van een ander account op een gedeeld toestel.
-Maximaal acht registraties per sessie. DELETE is idempotent en geeft bij een onbekende of andere registratie
-ook 204. `DELETE /users/me/push-installations` zonder id trekt elke registratie
+Maximaal acht registraties per sessie. DELETE met een id raakt alleen een
+registratie van de aanroepende sessie, is idempotent en geeft bij een onbekende
+of andere registratie ook 204. `DELETE /users/me/push-installations` zonder id trekt elke registratie
 van de aanroepende sessie in, en geen van een andere sessie of een ander account;
 ook zonder registraties 204. De app trekt push daarmee in, zodat zij niet hoeft
 bij te houden welke ids een sessie ooit registreerde. Een oudere server zonder
-die route antwoordt 404 of 405; de app trekt dan alleen het id in dat zij voor
-dat profiel bewaart, en een ander id dat die sessie ooit registreerde blijft
-staan tot de sessie eindigt. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
+die route antwoordt 404 of 405; de app trekt dan alleen de ids in die zij voor
+die verbinding bewaart. Die terugval is niet convergent: een ander id dat de
+sessie ooit registreerde blijft staan tot de sessie eindigt.
+
+De app houdt de stand convergent. Bewaard worden alleen de keuze per profiel en
+verbinding en het installatie-id voor de PUT. Voor elke Pleya-sessie op het
+toestel hoort op de server precies één registratie te staan als die sessie bij
+het actieve profiel hoort en dat profiel er push aanzette, en anders niets. De
+app schrijft die stand weg bij het starten, bij hervatten, als een server
+online komt, bij een profielwissel, na een gewijzigde keuze, en met een
+oplopende pauze zolang een poging mislukt; per sessie loopt één poging
+tegelijk. Gebruikt een kinderprofiel dezelfde sessie als een ander profiel, dan
+gelden de bibliotheekrechten van dat account: de server kent geen profielen,
+alleen accounts, en de alerttekst is algemeen. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
 registraties geven 400 `session.invalid`. API-tokens geven 403
 `auth.scope_insufficient`. Alle antwoorden dragen `Cache-Control: no-store`.
 
@@ -2852,4 +2864,7 @@ profiel: de app gebruikt dan kort de opgeslagen verbinding van dat profiel. Kan 
 de server op dat moment niet bereiken, dan blijven sessie en registratie op de
 server staan tot de gebruiker of een beheerder de sessie intrekt, of tot de
 sessieronde haar opruimt nadat de refreshlevensduur verstreken is. Tot dan kan
-het toestel nog alerts van die server krijgen.
+het toestel nog alerts van die server krijgen. Gebruikt een ander profiel de
+verbinding nog, dan blijft de sessie bekend en maakt de volgende ronde haar leeg.
+Uitloggen in de app trekt push op elke Pleya-sessie in en sluit die sessies af,
+elk met dezelfde tijdsgrens.

@@ -265,12 +265,15 @@ class PleyaServerClient
   /// Withdraws every push installation of this session
   /// (`DELETE /users/me/push-installations`), so no client-side record of ids
   /// has to be complete. A server from before that route answers 404 or 405;
-  /// then only [knownId] can be withdrawn, and any other id this session once
-  /// registered stays until the session ends.
-  Future<void> withdrawPush({String? knownId}) async {
+  /// then only [knownIds] can be withdrawn, one by one, and any other id this
+  /// session once registered stays until the session ends.
+  Future<void> withdrawPush({List<String> knownIds = const []}) async {
     if (_offlineMode || _closed) throw StateError('Push registration unavailable');
     final missingRoute = await _adminSend('DELETE', '/users/me/push-installations', passStatuses: const {404, 405});
-    if (missingRoute != null && knownId != null) await removePushInstallation(knownId);
+    if (missingRoute == null) return;
+    for (final id in knownIds) {
+      await removePushInstallation(id);
+    }
   }
 
   /// Ends this session on the server (`POST /auth/logout`); its push

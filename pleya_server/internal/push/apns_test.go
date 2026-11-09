@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestOpenAPNsRefusesAKeyThatWouldLeakIntoBackups(t *testing.T) {
@@ -81,11 +82,13 @@ func TestProviderTokenRejectionRetriesWithAFreshToken(t *testing.T) {
 	}
 	a := &APNs{key: key, topic: bundleID, environment: "sandbox", host: apns.URL, client: apns.Client()}
 	ctx := context.Background()
+	clock := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	a.now = func() time.Time { return clock }
 	for i, want := range []outcome{retry, retry, accepted} {
-		a.resigned = false // every send in its own queue tick
 		if got, _, _ := a.send(ctx, "aabb", "en", "n", "c"); got != want {
 			t.Fatalf("send %d: outcome %d, want %d", i, got, want)
 		}
+		clock = clock.Add(21 * time.Minute)
 	}
 	if auths[0] == auths[1] || auths[1] == auths[2] {
 		t.Fatal("rejected provider token was reused")
@@ -110,7 +113,7 @@ func TestDeviceTokenNotForTopicDropsTheInstallation(t *testing.T) {
 	}
 }
 
-func TestAnInvalidProviderTokenIsResignedOncePerTick(t *testing.T) {
+func TestAnInvalidProviderTokenIsResignedAtMostEveryTwentyMinutes(t *testing.T) {
 	var auths []string
 	apns := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auths = append(auths, r.Header.Get("Authorization"))
@@ -124,16 +127,23 @@ func TestAnInvalidProviderTokenIsResignedOncePerTick(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a := &APNs{key: key, topic: bundleID, environment: "sandbox", host: apns.URL, client: apns.Client()}
-	for range 4 {
+	clock := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	a := &APNs{key: key, topic: bundleID, environment: "sandbox", host: apns.URL, client: apns.Client(),
+		now: func() time.Time { return clock }}
+	// Queue ticks are 30 seconds apart; a key that stays invalid keeps failing.
+	for range 50 {
 		if got, status, reason := a.send(context.Background(), "aabb", "en", "n", "c"); got != retry || status != http.StatusForbidden || reason != "InvalidProviderToken" {
 			t.Fatalf("outcome %d, status %d, reason %q", got, status, reason)
 		}
+		clock = clock.Add(30 * time.Second)
 	}
-	if auths[0] == auths[1] {
-		t.Fatal("first rejection did not re-sign")
+	distinct := map[string]bool{}
+	for _, auth := range auths {
+		distinct[auth] = true
 	}
-	if auths[1] != auths[2] || auths[2] != auths[3] {
-		t.Fatal("re-signed more than once in one tick")
+	// 25 minutes of rejections: the first token, one re-sign at once, and one
+	// more after 20 minutes. Not one per tick.
+	if len(distinct) != 3 {
+		t.Fatalf("%d distinct provider tokens in 25 minutes, want 3", len(distinct))
 	}
 }

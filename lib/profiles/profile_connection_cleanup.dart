@@ -15,27 +15,25 @@ Future<void> removeProfileConnectionAndCleanup({
   MultiServerManager? serverManager,
 }) async {
   final removedServerIds = _serverIdsForConnection(connection);
-  // Before the runtime client goes. A profile that is not active has no bound
-  // client, so this goes through a short-lived one for its own connection;
-  // a connection the active profile also uses only ever goes through its
-  // bound client, so nothing rotates the token the binding holds.
+  // Before the runtime client goes. The last profile on a Pleya connection
+  // withdraws its push and ends the session, so nothing on the server keeps
+  // acting for a device that let go; offline the session lapses with the
+  // server's sweep. A session another profile still uses stays known, and the
+  // next push reconcile empties it unless the active profile opted in there.
   if (connection is PleyaServerConnection) {
     final rows = await profileConnections.listForConnection(connection.id);
-    // The last profile on this connection also ends the session itself, so
-    // nothing on the server (push included) keeps acting for a device that let
-    // go. Offline both are skipped; the session then lapses with the sweep.
-    final last = rows.every((row) => row.profileId == profileId);
-    final active = storage.getActiveProfileId();
-    final shared = rows.any((row) => row.profileId == active);
-    await PleyaPushNotifications.forgetConnection(profileId, connection.id, (knownId) async {
-      if (serverManager == null || (knownId == null && !last)) return;
-      // The last reference is logged out anyway, so it may use a short-lived
-      // client; a shared connection waits for its bound client.
-      await serverManager.withPleyaServerClient(connection, persist: !last, boundOnly: shared && !last, (client) async {
-        if (knownId != null) await client.withdrawPush(knownId: knownId);
-        if (last) await client.logout();
-      });
-    });
+    if (serverManager != null && rows.every((row) => row.profileId == profileId)) {
+      try {
+        final ids = await PleyaPushNotifications.knownIdsFor(connection.id);
+        await serverManager
+            .withPleyaServerClient(connection, persist: false, (client) async {
+              await client.withdrawPush(knownIds: ids);
+              await client.logout();
+            })
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {}
+    }
+    await PleyaPushNotifications.forgetConnection(profileId, connection.id);
   }
   await profileConnections.remove(profileId, connection.id);
   await _tearDownRuntimeServersForActiveProfile(

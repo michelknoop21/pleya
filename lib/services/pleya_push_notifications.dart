@@ -11,30 +11,61 @@ import '../profiles/active_profile_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'base_shared_preferences_service.dart';
 import 'multi_server_manager.dart';
-import 'pleya_server_auth_service.dart';
 import 'pleya_server_client.dart';
 
 typedef PushChoices = ({bool movies, bool episodes});
 typedef PushSource = ({String id, String name});
 
+/// Reaches a Pleya session for a withdrawal: its bound client when there is
+/// one, otherwise a short-lived client for that connection.
+typedef PushReach =
+    Future<void> Function(PleyaServerConnection connection, Future<void> Function(PleyaServerClient client) action);
+
+/// Opt-in push per profile and Pleya Server account, kept convergent.
+///
+/// The only stored state is each profile's choice per connection plus the
+/// installation id its PUT uses. From that and the active profile follows,
+/// for every Pleya session the device knows (every Pleya connection in the
+/// registry, across profiles), what the server should hold:
+///
+/// - the session belongs to the active profile and that profile opted in
+///   there: one registration with its categories;
+/// - anything else: nothing, which the session-wide DELETE achieves.
+///
+/// Reconciling writes that state, one run per session at a time; a request
+/// during a run starts one more run after it. It runs at the start, on
+/// resume, when a server comes online, on a profile switch, after a change
+/// of choices, and on a growing pause while an attempt fails. A session whose
+/// last confirmed state still matches is skipped between those moments, but
+/// not at the start or on resume.
 class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver {
-  /// [releaseElsewhere] withdraws another profile's push through that
-  /// profile's own connection; the device belongs to the active profile.
-  /// [retryBackoff] is the first wait before a failed withdrawal is tried
-  /// again without a resume or a server coming online; it doubles up to ten
-  /// minutes.
+  /// [sessions] lists every Pleya connection the device knows; [profileSessions]
+  /// the ones bound to a profile. [retryBackoff] is the first pause before a
+  /// failed attempt runs again; it doubles up to ten minutes.
   PleyaPushNotifications(
     this._profileId,
     this._profile,
     this._servers, {
-    this.releaseElsewhere,
+    required this.sessions,
+    required this.profileSessions,
+    required this.reach,
     this.retryBackoff = const Duration(seconds: 30),
   }) {
     WidgetsBinding.instance.addObserver(this);
-    _servers.addListener(_sync);
-    _profile.addListener(_sync);
-    _withdrawn = _withdrawals.stream.listen(_afterWithdrawal);
-    _sync();
+    _servers.addListener(_onChange);
+    _profile.addListener(_onChange);
+    _confirmed.clear();
+    _failed.clear();
+    _onChange();
+  }
+
+  @visibleForTesting
+  static void resetForTesting() {
+    _active = null;
+    _running.clear();
+    _again.clear();
+    _confirmed.clear();
+    _failed.clear();
   }
 
   static const _channel = MethodChannel('com.pleya/push');
@@ -43,28 +74,30 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   final String _profileId;
   final ActiveProfileProvider _profile;
   final MultiServerProvider _servers;
-  final Future<void> Function(String connectionId, String installationId)? releaseElsewhere;
+  final Future<List<PleyaServerConnection>> Function() sessions;
+  final Future<Set<String>> Function(String profileId) profileSessions;
+  final PushReach reach;
   final Duration retryBackoff;
-  Duration? _nextBackoff;
-  Timer? _retryTimer;
-  late final StreamSubscription<String> _withdrawn;
   final _saved = <String, List<String>>{};
-  final _synced = <String, PleyaServerClient>{};
-  final _pending = <String>{};
   bool _disposed = false;
   bool _busy = false;
-  bool _reconcileRequested = false;
-  final _releasing = <String>{};
-  // Withdrawals that failed are tried again when there is reason to expect
-  // a different answer: at the start, on resume, or when a server comes
-  // online. Not on every notification, which would rotate a short-lived
-  // client's token each time.
-  bool _withdrawalsDue = true;
+  Duration? _nextBackoff;
+  Timer? _retryTimer;
   Set<String> _onlineSeen = const {};
+  ({String? active, bool binding})? _profileSeen;
+
+  // Device-wide: one push state per session, whatever instance asks.
+  static PleyaPushNotifications? _active;
+  static final _running = <String, Future<void>>{};
+  static final _again = <String>{};
+  static final _confirmed = <String, String>{};
+  static final _failed = <String>{};
 
   bool get busy => _busy;
 
-  bool get _current => !_disposed && !_profile.isBinding && _profile.activeId == _profileId;
+  bool get _owns => !_disposed && _profile.activeId == _profileId;
+
+  bool get _current => _owns && !_profile.isBinding;
 
   Map<String, PleyaServerClient> get _online => {
     if (_current)
@@ -88,9 +121,10 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
 
   bool available(PushSource source) => _online[source.id]?.supportsSecurePush == true;
 
-  bool pending(PushSource source) => _pending.contains(source.id);
+  /// The server does not hold what this choice asks for yet.
+  bool pending(PushSource source) => _failed.contains(source.id);
 
-  bool canRetry(PushSource source) => _online.containsKey(source.id) && _saved.containsKey(source.id);
+  bool canRetry(PushSource source) => _online.containsKey(source.id) && pending(source);
 
   /// The server registers one installation per device token, so on one server
   /// only one account of this profile can get push. Returns the name of the
@@ -109,111 +143,59 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   static String _serverOf(String connectionId) =>
       connectionId.substring(0, connectionId.lastIndexOf('.').clamp(0, connectionId.length));
 
-  /// The [releaseElsewhere] the app uses: through the other profile's own
-  /// stored connection, and not at all while the app knows it is offline,
-  /// where a short-lived client only spends time before failing. A connection
-  /// the active profile also uses only goes through its bound client, so no
-  /// second client rotates the refresh token the binding holds.
-  static Future<void> Function(String connectionId, String installationId) releaseThrough({
-    required Future<Connection?> Function(String id) connection,
-    required MultiServerManager servers,
-    required bool Function() offline,
-    required Future<bool> Function(String connectionId) sharedWithActive,
-  }) => (connectionId, installation) async {
-    if (offline()) throw StateError('Offline: withdrawal waits for the network');
-    if (await connection(connectionId) case final PleyaServerConnection stored) {
-      await servers.withPleyaServerClient(
-        stored,
-        (client) => client.withdrawPush(knownId: installation),
-        boundOnly: await sharedWithActive(connectionId),
-      );
+  static const _root = 'pleya.push/';
+  static String _prefixFor(String profileId) => '$_root${Uri.encodeComponent(profileId)}/';
+  static String _keyFor(String profileId, String connectionId) =>
+      '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
+  String _key(String connectionId) => _keyFor(_profileId, connectionId);
+
+  /// Every installation id any profile stored for [connectionId]: the fallback
+  /// for a server without the session-wide DELETE.
+  static Future<List<String>> knownIdsFor(String connectionId) async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final suffix = '/${Uri.encodeComponent(connectionId)}';
+    return [
+      for (final key in prefs.keys)
+        if (key.startsWith(_root) && key.endsWith(suffix)) ?prefs.getStringList(key)?.firstOrNull,
+    ];
+  }
+
+  /// A connection leaves [profileId]: its choice goes. A session another
+  /// profile still uses stays known, and the next reconcile empties it unless
+  /// the active profile opted in there. The last reference is withdrawn and
+  /// logged out by the caller before the connection row goes.
+  static Future<void> forgetConnection(String profileId, String connectionId) async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    await prefs.remove(_keyFor(profileId, connectionId));
+    _confirmed.remove(connectionId);
+    _active?._reconcileAll();
+  }
+
+  /// App-wide sign-out: every Pleya session withdraws its push and ends,
+  /// each capped like any other withdrawal, and every stored choice goes.
+  static Future<void> signOut(List<PleyaServerConnection> connections, MultiServerManager servers) async {
+    await Future.wait([
+      for (final connection in connections)
+        () async {
+          try {
+            final ids = await knownIdsFor(connection.id);
+            await servers
+                .withPleyaServerClient(connection, persist: false, (client) async {
+                  await client.withdrawPush(knownIds: ids);
+                  await client.logout();
+                })
+                .timeout(const Duration(seconds: 5));
+          } catch (_) {
+            // Offline: the session lapses with the server's session sweep.
+          }
+        }(),
+    ]);
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    for (final key in prefs.keys.where((key) => key.startsWith(_root)).toList()) {
+      await prefs.remove(key);
     }
-  };
-
-  static String _prefixFor(String profileId) => 'pleya.push/${Uri.encodeComponent(profileId)}/';
-  String get _prefix => _prefixFor(_profileId);
-  String _key(String id) => '$_prefix${Uri.encodeComponent(id)}';
-
-  /// Withdraws [profileId]'s push opt-in for a connection that is being
-  /// removed. [withdraw] gets the stored installation id (null when there is
-  /// none) as the fallback for an older server, and talks to the server; it is
-  /// best effort and capped, so removing the connection never waits on the
-  /// network for long. The opt-in goes either way.
-  static Future<void> forgetConnection(
-    String profileId,
-    String connectionId,
-    Future<void> Function(String? knownId) withdraw,
-  ) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final key = '${_prefixFor(profileId)}${Uri.encodeComponent(connectionId)}';
-    final stored = prefs.getStringList(key);
-    try {
-      final withdrawal = withdraw(stored?.first);
-      _track(connectionId, withdrawal);
-      await withdrawal.timeout(const Duration(seconds: 5));
-    } on PleyaClientNotBoundException {
-      // Only the bound client may withdraw here, and it is not there yet (just
-      // after a cold start). Keep it as a pending opt-out so a later reconcile
-      // withdraws it, instead of forgetting an installation the server keeps.
-      if (stored != null) {
-        await prefs.setStringList(key, _asOptOut(stored));
-        return;
-      }
-    } catch (_) {
-      // Offline or already closed: the local opt-in still goes.
-    }
-    await prefs.remove(key);
-  }
-
-  static const _released = 'released';
-
-  /// No category left: what remains is a withdrawal still to make.
-  static bool _isOptOut(List<String> stored) =>
-      !stored.skip(2).contains('movies') && !stored.skip(2).contains('episodes');
-
-  static List<String> _asOptOut(List<String> stored) => stored.take(2).toList();
-
-  /// A withdrawal is session-wide: it also removes a registration that was
-  /// made on the same connection while it was on its way (another profile on
-  /// a shared connection, or this one coming back). Every finished withdrawal
-  /// is announced per connection, and a live opt-in there registers again.
-  static final _withdrawals = StreamController<String>.broadcast(sync: true);
-
-  static void _track(String connection, Future<void> withdrawal) {
-    withdrawal.then<void>((_) {}, onError: (Object _) {}).whenComplete(() => _withdrawals.add(connection)).ignore();
-  }
-
-  void _afterWithdrawal(String connection) {
-    final stored = _saved[connection];
-    if (!_current || stored == null || _isOptOut(stored) || !_synced.containsKey(connection)) return;
-    _synced.remove(connection);
-    _sync();
-  }
-
-  /// Pleya itself said the session is gone: a 401 or 403 with an `auth.*`
-  /// code, or a revoked refresh chain. The server then has dropped the
-  /// installation. A bare status from a proxy or captive portal proves nothing
-  /// and is retried. (A server without push routes answers the DELETE with
-  /// `library.not_found`; [PleyaServerClient.withdrawPush] treats that
-  /// as done.)
-  static bool _settled(Object error) =>
-      error is PleyaRefreshChainRevokedException || error is PleyaAuthRejectedException;
-
-  /// After a confirmed withdrawal: an opt-out is done and goes, an opt-in stays
-  /// stored so it returns with its profile, but needs no further withdrawal.
-  static Future<void> _markReleased(String key, String installation) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final stored = prefs.getStringList(key);
-    if (stored == null || stored.first != installation || stored.contains(_released)) return;
-    if (_isOptOut(stored)) return prefs.remove(key);
-    await prefs.setStringList(key, [...stored, _released]);
-  }
-
-  static Future<void> _unmarkReleased(String key, String installation) async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final stored = prefs.getStringList(key);
-    if (stored == null || stored.first != installation || !stored.contains(_released)) return;
-    await prefs.setStringList(key, stored.where((value) => value != _released).toList());
+    _confirmed.clear();
+    _failed.clear();
   }
 
   Future<Map<String, String>?> _token({required bool prompt}) =>
@@ -228,239 +210,179 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     notifyListeners();
     final connection = source.id;
     try {
-      final prefs = await BaseSharedPreferencesService.sharedCache();
-      final existing = _saved[connection];
-      final id = existing?.firstOrNull ?? const Uuid().v4();
-      final token = enabling ? await _token(prompt: true) : null;
+      if (enabling && await _token(prompt: true) == null) return;
       if (!_current) return;
-      if (enabling && token == null) throw StateError('Push permission denied');
-      final client = _online[connection];
-      if (enabling && existing != null && (_isOptOut(existing) || existing.contains('pending'))) {
-        if (client == null) throw StateError('Pending opt-out requires connection');
-        await _applyStored(client, existing, token: token);
-        if (!_current || !identical(_online[connection], client)) return;
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      if (next == off) {
+        await prefs.remove(_key(connection));
+        _saved.remove(connection);
+      } else {
+        final id = _saved[connection]?.firstOrNull ?? const Uuid().v4();
+        final stored = [id, source.name, if (next.movies) 'movies', if (next.episodes) 'episodes'];
+        await prefs.setStringList(_key(connection), stored);
+        _saved[connection] = stored;
       }
-      final stored = [id, source.name, if (next.movies) 'movies', if (next.episodes) 'episodes', 'pending'];
-      await prefs.setStringList(_key(connection), stored);
-      _saved[connection] = stored;
-      _synced.remove(connection);
-      _pending.add(connection);
-      final connected = _online[connection];
-      if (connected != null) await _applyStored(connected, stored, token: token);
-      if (enabling && !_pending.contains(connection) && _current) {
-        // The server already moved the token here; the other account's opt-in
-        // on this server is gone, so the screen must not show it as on.
+      _confirmed.remove(connection);
+      final touched = {connection};
+      if (enabling) {
+        // The server keeps one installation per token: the other account of
+        // this profile on the same server loses push, so its choice goes too.
         for (final other in _saved.keys.toList()) {
           if (other == connection || _serverOf(other) != _serverOf(connection)) continue;
           _saved.remove(other);
-          _pending.remove(other);
           await prefs.remove(_key(other));
+          _confirmed.remove(other);
+          touched.add(other);
         }
       }
-    } catch (_) {
-      _pending.add(connection);
+      // Only the sessions this change touches: a slow unrelated server does
+      // not hold the switches.
+      await _reconcileAll(only: touched);
     } finally {
-      _finish();
+      _busy = false;
+      if (!_disposed) notifyListeners();
     }
   }
 
-  Future<void> _applyStored(PleyaServerClient client, List<String> stored, {Map<String, String>? token}) async {
-    final connection = client.connection.id;
-    final source = (id: connection, name: stored[1]);
-    final selected = choices(source);
-    final device = selected.movies || selected.episodes ? token ?? await _token(prompt: false) : null;
-    if (!_current || !identical(_online[connection], client)) return;
-    if (device == null) {
-      final prefs = await BaseSharedPreferencesService.sharedCache();
-      if (!_current || !identical(_online[connection], client)) return;
-      final removal = _asOptOut(stored);
-      await prefs.setStringList(_key(connection), removal);
-      _saved[connection] = removal;
-      final withdrawal = client.withdrawPush(knownId: stored.first);
-      _track(connection, withdrawal);
-      await withdrawal;
-      if (!_current) return;
-      await prefs.remove(_key(connection));
-      _saved.remove(connection);
-    } else {
-      final token = device['token'];
-      final environment = device['environment'];
-      if (token == null || environment == null) throw StateError('Missing push device identity');
-      final installation = stored.first;
-      await client.registerPushInstallation(
-        installation,
-        token: token,
-        environment: environment,
-        locale: LocaleSettings.currentLocale.languageCode == 'nl' ? 'nl' : 'en',
-        movies: selected.movies,
-        episodes: selected.episodes,
-      );
-      if (_profile.activeId != _profileId) {
-        // The profile changed while this PUT was in flight: the device now
-        // belongs to another profile, so withdraw it again right away.
-        // Another profile's start may already have marked this key released,
-        // from a DELETE that came before this registration. Only this DELETE
-        // counts now; if it fails, the key stays open for the next attempt.
-        final key = _key(connection);
-        _track(
-          connection,
-          _unmarkReleased(
-            key,
-            installation,
-          ).then((_) => client.withdrawPush(knownId: installation)).then((_) => _markReleased(key, installation)),
-        );
-        return;
-      }
-      if (!_current) return;
-      // Read again: a withdrawal that finished before this PUT may have marked
-      // the stored opt-in as released.
-      final prefs = await BaseSharedPreferencesService.sharedCache();
-      if (!_current) return;
-      final latest = prefs.getStringList(_key(connection)) ?? stored;
-      if (latest.first == installation && (latest.contains('pending') || latest.contains(_released))) {
-        final confirmed = latest.where((value) => value != 'pending' && value != _released).toList();
-        await prefs.setStringList(_key(connection), confirmed);
-        _saved[connection] = confirmed;
-      }
+  void retry() => unawaited(_reconcileAll());
+
+  void _onChange() {
+    if (_disposed) return;
+    if (_owns) {
+      _active = this;
+    } else if (identical(_active, this)) {
+      _active = null;
     }
-    _synced[connection] = client;
-    _pending.remove(connection);
+    // Only a new reason reconciles: a server coming online, a profile switch
+    // or a bind ending. Other notifications would retry a failure every time.
+    final online = _servers.onlineServerIds.toSet();
+    final profile = (active: _profile.activeId, binding: _profile.isBinding);
+    final cause = !_onlineSeen.containsAll(online) || profile != _profileSeen;
+    _onlineSeen = online;
+    _profileSeen = profile;
+    if (cause && _owns) unawaited(Future<void>.microtask(_reconcileAll));
   }
 
-  void retry() => _sync();
-
-  void _sync() {
-    if (_profile.activeId != _profileId) return _release();
-    if (!_current) return;
-    final onlineNow = _servers.onlineServerIds.toSet();
-    if (!_onlineSeen.containsAll(onlineNow)) _withdrawalsDue = true;
-    _onlineSeen = onlineNow;
-    final online = _online;
-    _synced.removeWhere((id, client) => !identical(online[id], client));
-    // Defer notifications until the profile and server bindings have settled.
-    unawaited(Future<void>.microtask(_reconcile));
-  }
-
-  /// A shared device belongs to the active profile. Leaving it withdraws this
-  /// profile's installations so another profile never gets its alerts; the
-  /// stored choices stay and are registered again when this profile returns.
-  void _release() {
-    for (final MapEntry(key: connection, value: client) in _synced.entries) {
-      final stored = _saved[connection];
-      if (stored == null) continue;
-      final key = _key(connection);
-      _track(connection, client.withdrawPush(knownId: stored.first).then((_) => _markReleased(key, stored.first)));
-    }
-    _synced.clear();
-  }
-
-  Future<void> _reconcile() async {
-    if (!_current) return;
-    if (_busy) {
-      _reconcileRequested = true;
-      return;
-    }
-    _busy = true;
+  Future<void> _reconcileAll({Set<String>? only}) async {
+    if (!_owns) return;
     try {
       final prefs = await BaseSharedPreferencesService.sharedCache();
-      if (!_current) return;
-      // A removed connection takes its stored opt-in with it.
-      _saved.removeWhere((connection, _) => !prefs.containsKey(_key(connection)));
-      // Other profiles' installations on this device: covers a cold start here
-      // after another profile was active and a release on switch that did not
-      // reach the server. A passing failure stays unmarked and is retried on
-      // the next reconcile (resume, a server coming online); success or a
-      // settled answer marks it so the next start does not withdraw it again.
-      // Only once the binder has settled on this profile: binding the active
-      // servers comes first and never waits on this.
-      final release = releaseElsewhere != null && _withdrawalsDue && _profile.settledProfileId == _profileId
-          ? releaseElsewhere
-          : null;
-      if (release != null) _withdrawalsDue = false;
-      // This profile's own pending opt-outs for a connection it can no longer
-      // reach through a bound client (it was removed before the binding
-      // came up) go the same way.
-      for (final key in prefs.keys.where((key) => key.startsWith('pleya.push/'))) {
-        final stored = prefs.getStringList(key);
-        if (release == null || stored == null || stored.length < 2 || stored.contains(_released)) continue;
-        final connection = Uri.decodeComponent(key.substring(key.lastIndexOf('/') + 1));
-        if (key.startsWith(_prefix) && (!_isOptOut(stored) || _online.containsKey(connection))) continue;
-        if (!_releasing.add(key)) continue;
-        Future<void> attempt() async {
-          try {
-            await release(connection, stored.first);
-          } catch (error) {
-            if (!_settled(error)) return _retryLater();
-          }
-          _nextBackoff = null;
-          await _markReleased(key, stored.first);
-        }
-
-        _track(connection, attempt().whenComplete(() => _releasing.remove(key)));
-      }
-      for (final key in prefs.keys.where((key) => key.startsWith(_prefix))) {
-        final stored = prefs.getStringList(key);
-        if (stored == null || stored.length < 2) continue;
-        final connection = Uri.decodeComponent(key.substring(_prefix.length));
-        _saved[connection] = stored;
-        final client = _online[connection];
-        if (client == null) {
-          if (_isOptOut(stored) || stored.contains('pending')) _pending.add(connection);
-          continue;
-        }
-        if (identical(_synced[connection], client)) continue;
-        try {
-          await _applyStored(client, stored);
-        } catch (_) {
-          _pending.add(connection);
-        }
-      }
+      if (!_owns) return;
+      _saved
+        ..clear()
+        ..addAll({
+          for (final key in prefs.keys.where((key) => key.startsWith(_prefixFor(_profileId))))
+            if (prefs.getStringList(key) case final stored? when stored.length > 2)
+              Uri.decodeComponent(key.substring(_prefixFor(_profileId).length)): stored,
+        });
+      final known = await sessions();
+      await Future.wait([
+        for (final connection in known)
+          if (only == null || only.contains(connection.id)) _schedule(connection),
+      ]);
     } catch (_) {
-      // Preference storage can be unavailable during startup.
+      _retryLater();
     } finally {
-      _finish();
+      if (!_disposed) notifyListeners();
     }
   }
 
-  /// A withdrawal that failed while the servers stayed online is not retried
-  /// on every notification, but after a growing pause, capped at ten minutes.
+  /// One run per session at a time; a request during a run starts one more.
+  static Future<void> _schedule(PleyaServerConnection connection) {
+    final id = connection.id;
+    final running = _running[id];
+    if (running != null) {
+      _again.add(id);
+      return running;
+    }
+    late final Future<void> run;
+    run = () async {
+      try {
+        do {
+          _again.remove(id);
+          await _converge(connection);
+        } while (_again.contains(id));
+      } finally {
+        if (identical(_running[id], run)) _running.remove(id);
+      }
+    }();
+    _running[id] = run;
+    return run;
+  }
+
+  static Future<void> _converge(PleyaServerConnection connection) async {
+    final owner = _active;
+    if (owner == null) return;
+    final id = connection.id;
+    try {
+      final mine = (await owner.profileSessions(owner._profileId)).contains(id);
+      // The binder holds this session's token right now: its bound client
+      // comes, and the end of the bind reconciles again.
+      if (mine && owner._profile.isBinding) return;
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      final stored = mine ? prefs.getStringList(owner._key(id)) : null;
+      final wanted = stored != null && stored.length > 2 && owner._owns ? stored : null;
+      final device = wanted == null ? null : await owner._token(prompt: false);
+      final put = wanted != null && device != null;
+      final state = put ? 'put:${wanted.join(',')}' : 'clear';
+      if (_confirmed[id] == state) return;
+      if (put) {
+        final client = owner._online[id];
+        if (client == null) {
+          // Offline or not bound: a server coming online reconciles again.
+          _failed.add(id);
+          return;
+        }
+        final token = device['token'];
+        final environment = device['environment'];
+        if (token == null || environment == null) throw StateError('Missing push device identity');
+        await client.registerPushInstallation(
+          wanted.first,
+          token: token,
+          environment: environment,
+          locale: LocaleSettings.currentLocale.languageCode == 'nl' ? 'nl' : 'en',
+          movies: wanted.contains('movies'),
+          episodes: wanted.contains('episodes'),
+        );
+      } else {
+        final ids = await knownIdsFor(id);
+        await owner.reach(connection, (client) => client.withdrawPush(knownIds: ids));
+      }
+      _confirmed[id] = state;
+      _failed.remove(id);
+      owner._nextBackoff = null;
+    } catch (_) {
+      _confirmed.remove(id);
+      _failed.add(id);
+      owner._retryLater();
+    }
+  }
+
+  /// A failed attempt runs again after a growing pause, capped at ten minutes.
   void _retryLater() {
     if (_disposed || (_retryTimer?.isActive ?? false)) return;
     final wait = _nextBackoff ?? retryBackoff;
     final doubled = wait * 2;
     _nextBackoff = doubled > const Duration(minutes: 10) ? const Duration(minutes: 10) : doubled;
-    _retryTimer = Timer(wait, () {
-      _withdrawalsDue = true;
-      _sync();
-    });
-  }
-
-  void _finish() {
-    _busy = false;
-    if (!_disposed) notifyListeners();
-    if (_reconcileRequested) {
-      _reconcileRequested = false;
-      _sync();
-    }
+    _retryTimer = Timer(wait, _reconcileAll);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _withdrawalsDue = true;
-      _synced.clear();
-      _sync();
+    if (state == AppLifecycleState.resumed && _owns) {
+      _confirmed.clear();
+      unawaited(_reconcileAll());
     }
   }
 
   @override
   void dispose() {
     _disposed = true;
+    if (identical(_active, this)) _active = null;
     _retryTimer?.cancel();
-    _withdrawn.cancel().ignore();
     WidgetsBinding.instance.removeObserver(this);
-    _servers.removeListener(_sync);
-    _profile.removeListener(_sync);
+    _servers.removeListener(_onChange);
+    _profile.removeListener(_onChange);
     super.dispose();
   }
 }

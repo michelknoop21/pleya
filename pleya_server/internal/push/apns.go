@@ -32,10 +32,13 @@ type APNs struct {
 	client               *http.Client
 	token                string
 	signedAt             time.Time
-	// resigned limits re-signing after a rejected provider token to once per
-	// queue tick; Service.Run clears it. A key that stays invalid would
-	// otherwise sign a new JWT for every delivery.
-	resigned bool
+	// resignedAt keeps re-signing after a rejected provider token at least
+	// 20 minutes apart: Apple answers more frequent new tokens with
+	// TooManyProviderTokenUpdates, and a key that stays invalid would otherwise
+	// sign a new JWT every queue tick.
+	resignedAt time.Time
+	// now is the clock; nil means time.Now.
+	now func() time.Time
 }
 
 // OpenAPNs reads the configuration and key from an operator-owned read-only mount.
@@ -145,7 +148,11 @@ const (
 
 // send returns the outcome plus the HTTP status and Apple's reason for the log.
 func (a *APNs) send(ctx context.Context, device, locale, notificationID, collapseID string) (outcome, int, string) {
-	token, err := a.providerToken(time.Now())
+	now := time.Now()
+	if a.now != nil {
+		now = a.now()
+	}
+	token, err := a.providerToken(now)
 	if err != nil {
 		return retry, 0, ""
 	}
@@ -181,9 +188,9 @@ func (a *APNs) send(ctx context.Context, device, locale, notificationID, collaps
 		return invalidDevice, resp.StatusCode, failure.Reason
 	case failure.Reason == "ExpiredProviderToken", failure.Reason == "InvalidProviderToken":
 		// The provider token is at fault, not this delivery: sign a new one and retry.
-		if !a.resigned {
+		if now.Sub(a.resignedAt) >= 20*time.Minute {
 			a.token = ""
-			a.resigned = true
+			a.resignedAt = now
 		}
 		return retry, resp.StatusCode, failure.Reason
 	case resp.StatusCode >= 500, resp.StatusCode == http.StatusTooManyRequests:

@@ -62,6 +62,7 @@ void main() {
 
   test('explicit opt-in, HTTPS push, and durable offline opt-out are profile-bound', () async {
     resetSharedPreferencesForTest();
+    PleyaPushNotifications.resetForTesting();
     final fake = PleyaFakeServer();
     final requests = <http.Request>[];
     final client = PleyaServerClient.create(
@@ -102,71 +103,58 @@ void main() {
 
     final profile = _Profile();
     final servers = _Servers(client);
-    final push = PleyaPushNotifications('alice', profile, servers);
+    final push = PleyaPushNotifications(
+      'alice',
+      profile,
+      servers,
+      sessions: () async => [client.connection],
+      profileSessions: (id) async => id == 'alice' ? {client.connection.id} : const {},
+      reach: (connection, action) async {
+        if (servers.onlineServerIds.isEmpty) throw StateError('offline');
+        await action(client);
+      },
+    );
     addTearDown(profile.dispose);
     addTearDown(servers.dispose);
     addTearDown(push.dispose);
     await BaseSharedPreferencesService.sharedCache();
-    await Future<void>.delayed(Duration.zero);
+    await pumpEventQueue();
+    Iterable<http.Request> puts() => requests.where((request) => request.method == 'PUT');
     final source = push.sources.single;
     expect(push.choices(source), PleyaPushNotifications.off);
-    expect(prompts, isEmpty);
+    expect(prompts, isEmpty, reason: 'no permission prompt before the user asks for push');
+    expect(puts(), isEmpty);
 
     await push.setChoices(source, (movies: true, episodes: false));
     expect(prompts, [true]);
-    expect(requests, isEmpty);
+    expect(puts(), isEmpty, reason: 'permission denied: nothing registered');
     expect(push.choices(source), PleyaPushNotifications.off);
 
     allow = true;
     await push.setChoices(source, (movies: true, episodes: false));
-    expect(prompts, [true, true]);
-    final registration = requests.single;
-    expect(registration.method, 'PUT');
+    expect(prompts.first, isTrue);
+    final registration = puts().single;
     expect(registration.url.scheme, 'https');
     expect(registration.followRedirects, isFalse);
     expect(jsonDecode(registration.body), containsPair('movies', true));
     expect(jsonDecode(registration.body), containsPair('episodes', false));
+    expect(prompts.where((prompted) => prompted), hasLength(2), reason: 'only the two user actions prompt');
 
     servers.setOnline(false);
-    await Future<void>.delayed(Duration.zero);
+    await pumpEventQueue();
     expect(push.sources.single, source);
+    requests.clear();
     await push.setChoices(source, PleyaPushNotifications.off);
-    expect(requests, hasLength(1));
-    expect(push.pending(source), isTrue);
+    expect(requests, isEmpty);
+    expect(push.pending(source), isTrue, reason: 'the opt-out waits for the server');
     expect(push.choices(source), PleyaPushNotifications.off);
 
     servers.setOnline(true);
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-    expect(requests.map((request) => request.method), ['PUT', 'DELETE']);
-    expect(requests.last.url.path, endsWith('/users/me/push-installations'), reason: 'session-wide withdrawal');
+    await pumpEventQueue();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(requests.map((request) => '${request.method} ${request.url.pathSegments.last}'), [
+      'DELETE push-installations',
+    ]);
     expect(push.pending(source), isFalse);
-    expect(prompts, [true, true]);
-
-    await push.setChoices(source, (movies: true, episodes: false));
-    servers.setOnline(false);
-    await Future<void>.delayed(Duration.zero);
-    final disable = push.setChoices(source, PleyaPushNotifications.off);
-    scheduleMicrotask(() => servers.setOnline(true));
-    await disable;
-    await Future<void>.delayed(Duration.zero);
-    expect(requests.map((request) => request.method), ['PUT', 'DELETE', 'PUT', 'DELETE']);
-    expect(push.pending(source), isFalse);
-
-    // Shared iPad: another profile takes over, this profile's installation goes,
-    // and it comes back when this profile is active again.
-    await push.setChoices(source, (movies: true, episodes: false));
-    expect(requests.map((request) => request.method), ['PUT', 'DELETE', 'PUT', 'DELETE', 'PUT']);
-    final installation = requests.last.url;
-    profile.switchTo('bob');
-    await Future<void>.delayed(Duration.zero);
-    expect(requests.last.method, 'DELETE');
-    expect(requests.last.url.path, endsWith('/users/me/push-installations'));
-    profile.switchTo('alice');
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-    expect(requests.map((request) => request.method), ['PUT', 'DELETE', 'PUT', 'DELETE', 'PUT', 'DELETE', 'PUT']);
-    expect(requests.last.url, installation);
-    expect(push.choices(source), (movies: true, episodes: false));
   });
 }

@@ -46,6 +46,9 @@ func newQueueFixture(t *testing.T) *queueFixture {
 			f.onSend()
 		}
 		w.WriteHeader(int(f.status.Load()))
+		if f.status.Load() == http.StatusGone {
+			_, _ = io.WriteString(w, `{"reason":"Unregistered"}`)
+		}
 	}))
 	apns.EnableHTTP2 = true
 	apns.StartTLS()
@@ -182,5 +185,21 @@ func TestPurgeRevokedWorksWithPushOff(t *testing.T) {
 	f.exec("UPDATE sessions SET revoked_at=now() WHERE id=$1", f.session)
 	if n, err := New(f.pool, nil).PurgeRevoked(f.ctx); err != nil || n != 1 {
 		t.Fatalf("purged %d, err %v", n, err)
+	}
+}
+
+func TestARefusedTokenOnlyDropsAnInstallationThatStillHasIt(t *testing.T) {
+	f := newQueueFixture(t)
+	installation := id.New()
+	f.optIn(installation)
+	f.newFilms(1)
+	// The device registers a new token while APNs is refusing the old one.
+	f.onSend = func() {
+		f.exec("UPDATE push_installations SET device_token='ccdd' WHERE id=$1", installation)
+	}
+	f.status.Store(http.StatusGone)
+	f.drain()
+	if got := f.count("SELECT count(*) FROM push_installations WHERE id=$1", installation); got != 1 {
+		t.Fatal("the registration with the new token was removed for the old token's refusal")
 	}
 }

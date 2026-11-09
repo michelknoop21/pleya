@@ -83,7 +83,7 @@ void main() {
       paths.add('${r.method} ${r.url.path}');
       return http.Response('', 204);
     });
-    await current.withdrawPush(knownId: 'x');
+    await current.withdrawPush(knownIds: ['x']);
     expect(paths, ['DELETE /pleya/v1/users/me/push-installations']);
   });
 
@@ -94,7 +94,7 @@ void main() {
       paths.add('${r.method} ${r.url.path}');
       return r.url.path.endsWith('/push-installations') ? envelope(404, 'library.not_found') : http.Response('', 204);
     });
-    await older.withdrawPush(knownId: 'x');
+    await older.withdrawPush(knownIds: ['x']);
     expect(paths, ['DELETE /pleya/v1/users/me/push-installations', 'DELETE /pleya/v1/users/me/push-installations/x']);
   });
 }

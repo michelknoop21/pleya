@@ -16,6 +16,7 @@ import '../providers/user_profile_provider.dart';
 import '../screens/auth_screen.dart';
 import '../screens/profile/profile_switch_screen.dart';
 import '../utils/dialogs.dart';
+import 'pleya_push_notifications.dart';
 import 'storage_service.dart';
 
 /// The account actions that used to live only behind the avatar in the Home
@@ -75,6 +76,12 @@ class AccountUiActions {
     final plexHome = context.read<PlexHomeService>();
     final companionRemote = context.read<CompanionRemoteProvider>();
 
+    // Every Pleya session withdraws its push and ends before its client
+    // and row go; each is capped, so an offline server cannot hold this up.
+    await PleyaPushNotifications.signOut(
+      await connectionRegistry.listPleyaServers(),
+      multiServerProvider.serverManager,
+    );
     // Clear all user data and provider states
     await companionRemote.resetForLogout();
     await userProfileProvider.logout();

@@ -100,12 +100,14 @@ func (s *Service) PurgeRevoked(ctx context.Context) (int64, error) {
 	return tag.RowsAffected(), err
 }
 
+// Remove withdraws one installation, and only one of the calling session.
+// A registration a newer session took over (same account, same device or
+// token) moved its session_id to that session in Register, so an older
+// session holds nothing of this device to withdraw.
 func (s *Service) Remove(ctx context.Context, installation, user, session id.ID) error {
 	_, err := s.pool.Exec(ctx, `
-		DELETE FROM push_installations p USING sessions registered, sessions current
-		WHERE p.id=$1 AND registered.id=p.session_id AND registered.user_id=$3
-		  AND current.id=$2 AND current.user_id=$3 AND current.revoked_at IS NULL
-		  AND (registered.id=current.id OR registered.created_at < current.created_at)
+		DELETE FROM push_installations p USING sessions current
+		WHERE p.id=$1 AND p.session_id=$2 AND current.id=$2 AND current.user_id=$3 AND current.revoked_at IS NULL
 	`, installation, session, user)
 	return err
 }
@@ -227,7 +229,9 @@ func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
 	finished := due
 	switch result {
 	case invalidDevice:
-		_, err = tx.Exec(ctx, `DELETE FROM push_installations WHERE id=$1`, installation)
+		// Only the token APNs refused: a registration that moved to a new token
+		// meanwhile stays.
+		_, err = tx.Exec(ctx, `DELETE FROM push_installations WHERE id=$1 AND device_token=$2`, installation, token)
 	case retry:
 		finished = slices.DeleteFunc(slices.Clone(due), func(d id.ID) bool { return slices.Contains(eligible, d) })
 		_, err = tx.Exec(ctx, `
@@ -249,7 +253,6 @@ func (s *Service) Run(ctx context.Context, log *slog.Logger) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for ctx.Err() == nil {
-		s.apns.resigned = false
 		if err := s.materialize(ctx); err != nil {
 			log.Warn("push queue unavailable")
 		} else {

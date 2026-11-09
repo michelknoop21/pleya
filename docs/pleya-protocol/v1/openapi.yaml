@@ -528,7 +528,8 @@ paths:
         sessiebearer. De server accepteert zijn geconfigureerde APNs-omgeving.
         Elke PUT vervangt het token en de gekozen categorieën. Een bestaande
         registratie blijft gebonden aan het account. Alleen een nieuwere sessie van
-        hetzelfde account en toestel kan de registratie overnemen. Een APNs-token hoort
+        hetzelfde account kan de registratie overnemen, als zij hetzelfde toestel
+        of hetzelfde APNs-token draagt. Een APNs-token hoort
         bij één registratie: een geslaagde PUT met hetzelfde token laat elke andere
         registratie met dat token vervallen, ook van een ander account. Geen categorie staat
         standaard aan. Gebruik DELETE om alle push voor dit toestel uit te zetten.
@@ -549,8 +550,9 @@ paths:
       operationId: deletePushInstallation
       summary: Trek de eigen opt-in in.
       description: |
-        Vereist de eigen sessiebearer. Een afwezige of andere registratie wordt
-        niet onderscheiden. Ondersteunende servers laten intrekking ook toe
+        Vereist de eigen sessiebearer. Raakt alleen een registratie van de
+        aanroepende sessie; een afwezige registratie, of een van een andere sessie
+        of een ander account, wordt niet onderscheiden en blijft staan. Ondersteunende servers laten intrekking ook toe
         als de APNs-bezorging uit staat.
       responses:
         "204": { description: Geen actieve registratie van deze sessie op dit id. }

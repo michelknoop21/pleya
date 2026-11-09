@@ -60,13 +60,6 @@ class ActiveProfileProvider extends ChangeNotifier with DisposableChangeNotifier
   /// failed `/home/users/{uuid}/switch`, or any error inside the binder.
   bool get lastBindingSucceeded => _lastBindingSucceeded;
 
-  String? _settledProfileId;
-
-  /// The profile the last successful bind applied; null while a bind runs, after
-  /// a failed one, and before the first. Work that must not compete with
-  /// binding (push withdrawals for other profiles) waits for this.
-  String? get settledProfileId => _isBinding ? null : _settledProfileId;
-
   /// Called by [ActiveProfileBinder] at the start of a rebind cycle.
   /// Re-entrant — no-ops if already in [isBinding].
   void markBindingStarted() {
@@ -80,14 +73,10 @@ class ActiveProfileProvider extends ChangeNotifier with DisposableChangeNotifier
   /// means the active profile was applied successfully. A local profile with
   /// no connections is successful and intentionally exposes no servers; false
   /// covers the "user cancelled the PIN" path and real binding errors.
-  ///
-  /// [profileId] is the profile this bind applied, which is not necessarily
-  /// the active one by the time it settles; null when it applied none.
-  void markBindingFinished({required bool success, String? profileId}) {
+  void markBindingFinished({required bool success}) {
     if (!_isBinding && _lastBindingSucceeded == success) return;
     _isBinding = false;
     _lastBindingSucceeded = success;
-    _settledProfileId = success ? profileId : null;
     safeNotifyListeners();
   }
 
@@ -294,7 +283,6 @@ class ActiveProfileProvider extends ChangeNotifier with DisposableChangeNotifier
     _initialized = false;
     _isBinding = false;
     _lastBindingSucceeded = true;
-    _settledProfileId = null;
     for (final c in _bindingSettleWaiters) {
       if (!c.isCompleted) c.complete(_lastBindingSucceeded);
     }

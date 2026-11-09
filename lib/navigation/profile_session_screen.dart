@@ -647,14 +647,15 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       activeId,
                       activeProfile,
                       servers,
-                      releaseElsewhere: PleyaPushNotifications.releaseThrough(
-                        connection: context.read<ConnectionRegistry>().get,
-                        servers: servers.serverManager,
-                        offline: () => network?.isOffline ?? false,
-                        sharedWithActive: (connectionId) async => (await profileConnections.listForProfile(
-                          activeId,
-                        )).any((row) => row.connectionId == connectionId),
-                      ),
+                      sessions: context.read<ConnectionRegistry>().listPleyaServers,
+                      profileSessions: (profileId) async => {
+                        for (final row in await profileConnections.listForProfile(profileId)) row.connectionId,
+                      },
+                      reach: (connection, action) async {
+                        // Offline a short-lived client only spends time failing.
+                        if (network?.isOffline ?? false) throw StateError('Offline');
+                        await servers.serverManager.withPleyaServerClient(connection, action);
+                      },
                     );
                   },
                 ),

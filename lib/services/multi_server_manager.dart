@@ -997,18 +997,15 @@ class MultiServerManager {
   /// Short-lived clients for one connection take turns, and a queued turn
   /// starts from the token the turn before it rotated to: two clients
   /// presenting the same refresh token count as reuse. Binding does not take
-  /// part, so a connection the active profile also uses must pass [boundOnly]:
-  /// it then only ever runs on the bound client, and fails without one.
-  /// [persist] false skips the write for a connection that is being removed,
-  /// so it cannot come back.
+  /// part; callers keep short-lived clients away from a connection the binder
+  /// is binding. [persist] false skips the write for a connection that is
+  /// being removed, so it cannot come back.
   Future<T> withPleyaServerClient<T>(
     PleyaServerConnection connection,
     Future<T> Function(PleyaServerClient client) action, {
     bool persist = true,
-    bool boundOnly = false,
   }) async {
     if (_boundPleyaClient(connection) case final bound?) return action(bound);
-    if (boundOnly) throw PleyaClientNotBoundException(connection.id);
     final (turn, inherited) = await _takePleyaTurn(connection.id);
     var handOn = inherited;
     try {
@@ -1931,16 +1928,4 @@ class MultiServerManager {
       _connectProgressController.close();
     }
   }
-}
-
-/// [MultiServerManager.withPleyaServerClient] with `boundOnly` found no bound
-/// client: the request may only go through the binding's own client, and the
-/// binding has not happened (yet).
-class PleyaClientNotBoundException implements Exception {
-  const PleyaClientNotBoundException(this.connectionId);
-
-  final String connectionId;
-
-  @override
-  String toString() => 'No bound Pleya client for $connectionId';
 }

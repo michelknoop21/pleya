@@ -103,7 +103,7 @@ void main() {
     expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
   });
 
-  test('another profile on the same connection keeps the session', () async {
+  test('a session another profile still uses stays known; the push reconcile empties it', () async {
     await profileConnections.upsert(
       ProfileConnection(profileId: 'p2', connectionId: connection.id, userIdentifier: connection.userName),
     );
@@ -111,7 +111,9 @@ void main() {
 
     await remove();
 
-    expect(requests.map((r) => r.method), ['DELETE']);
+    expect(requests, isEmpty, reason: 'no logout and no one-off DELETE: the session is shared');
+    expect(await connections.get(connection.id), isNotNull, reason: 'still known, so the reconcile reaches it');
+    expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
   });
 
   test('offline, the connection still goes and so does the local opt-in', () async {
@@ -210,7 +212,7 @@ void main() {
         serverManager: manager,
       );
 
-      expect(presented, ['rt-1', 'rt-2'], reason: 'the second profile must not present the token the first rotated');
+      expect(presented, ['rt-1'], reason: 'only the last reference talks to the server');
       expect(calls, ['DELETE /pleya/v1/users/me/push-installations', 'POST /pleya/v1/auth/logout']);
     });
 
@@ -240,29 +242,6 @@ void main() {
       expect(presented, ['rt-1']);
       expect(calls, ['DELETE /pleya/v1/users/me/push-installations', 'POST /pleya/v1/auth/logout']);
       expect((await BaseSharedPreferencesService.sharedCache()).containsKey(prefKey), isFalse);
-    });
-
-    test('a connection shared with the active profile never gets a short-lived client', () async {
-      await profileConnections.upsert(
-        ProfileConnection(profileId: 'p2', connectionId: connection.id, userIdentifier: connection.userName),
-      );
-      await storage.setActiveProfileId('p2');
-
-      await removeProfileConnectionAndCleanup(
-        profileId: 'p1',
-        connection: connection,
-        profileConnections: profileConnections,
-        connections: connections,
-        storage: storage,
-        serverManager: manager,
-      );
-
-      expect(presented, isEmpty, reason: 'only the bound client may present this token, and there is none');
-      expect(
-        (await BaseSharedPreferencesService.sharedCache()).getStringList(prefKey),
-        ['install-1', 'Zolder'],
-        reason: 'kept as a pending opt-out until the bound client can withdraw it',
-      );
     });
   });
 
