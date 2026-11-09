@@ -1,4 +1,4 @@
-//go:build unix
+//go:build linux || darwin || freebsd || netbsd || openbsd || dragonfly
 
 package artwork
 
@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -536,8 +537,15 @@ func TestCacheRealENOSPCCannotPublishOrReturnSuccess(t *testing.T) {
 		t.Fatalf("ENOSPC liet publicatie achter: %d %v", files, err)
 	}
 	entries, err := os.ReadDir(r.dir)
-	if err != nil || len(entries) != 0 {
+	if err != nil || len(entries) > 1 {
 		t.Fatalf("tempbestand achtergebleven: %v %v", entries, err)
+	}
+	// Een leeg vast lockslot is coördinatiemetadata, geen tijdelijke render of ladderpublicatie.
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if !strings.HasPrefix(entry.Name(), ".lock-") || err != nil || !info.Mode().IsRegular() || info.Size() != 0 {
+			t.Fatalf("onverwacht bestand na ENOSPC: %s %v", entry.Name(), err)
+		}
 	}
 }
 

@@ -49,6 +49,7 @@ export interface TokenFakeOptions {
   tokens?: Record<string, ApiToken[]>;
   audit?: AuditRow[];
   mcp?: ServerDetail['mcp'];
+  mcpSetting?: boolean;
   /** De rol van de aanvrager, voor de scope-cap van de nagebootste server. */
   requesterRole?: Role;
   /** "METHOD /pad" naar een vast antwoord, voor de foutpaden. */
@@ -59,14 +60,16 @@ export function tokenFake(options: TokenFakeOptions) {
   const seen: Seen[] = [];
   const state = structuredClone({
     tokens: options.tokens ?? ({} as Record<string, ApiToken[]>),
-    audit: options.audit ?? []
+    audit: options.audit ?? [],
+    mcp: options.mcp ?? { enabled: options.mcpSetting ?? false, tool_count: options.mcpSetting ? 49 : 0, ...(options.mcpSetting ? { url: "/mcp" } : {}) },
+    mcpSetting: options.mcpSetting
   });
   let counter = 0;
 
   const fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const request = input instanceof Request ? input : new Request(String(input), init);
     const url = new URL(request.url);
-    const path = url.pathname.slice('/pleya/v1'.length);
+    const path = url.pathname.startsWith('/pleya/v1/') ? url.pathname.slice('/pleya/v1'.length) : url.pathname;
     const method = request.method;
     const raw = method === 'GET' ? '' : await request.clone().text();
     const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : undefined;
@@ -75,6 +78,20 @@ export function tokenFake(options: TokenFakeOptions) {
     const failure = options.fail?.[`${method} ${path}`];
     if (failure) return typeof failure === 'function' ? failure() : failure.clone();
 
+    if (method === 'GET' && path === '/settings') {
+      return json(state.mcpSetting === undefined ? {} : { mcp_enabled: { value: state.mcpSetting, source: 'db' } });
+    }
+    if (method === 'PATCH' && path === '/settings' && typeof body?.['mcp_enabled'] === 'boolean') {
+      state.mcpSetting = body['mcp_enabled'];
+      state.mcp = { enabled: state.mcpSetting, tool_count: state.mcpSetting ? 49 : 0, ...(state.mcpSetting ? { url: '/mcp' } : {}) };
+      return json({ mcp_enabled: { value: state.mcpSetting, source: 'db' } });
+    }
+    if (method === 'POST' && url.pathname === '/mcp') {
+      return json({ jsonrpc: '2.0', id: 1, result: { tools: [
+        { name: 'listLibraries', annotations: { readOnlyHint: true } },
+        { name: 'getItem', annotations: { readOnlyHint: true } }
+      ] } });
+    }
     if (method === 'GET' && path === '/users') return json({ items: options.users });
     if (method === 'GET' && path === '/server') {
       return json({
@@ -82,7 +99,7 @@ export function tokenFake(options: TokenFakeOptions) {
         name: 'Pleya-server',
         version: '0.9.0',
         started_at: '2026-10-20T07:41:00Z',
-        mcp: options.mcp ?? { enabled: false, tool_count: 0 }
+        mcp: state.mcp
       });
     }
     if (method === 'GET' && path === '/auth/api-tokens') {

@@ -32,6 +32,7 @@ import (
 // De sleutels. Ze staan in het contract (schema Settings en SettingsPatch), dus
 // hernoemen is een protocolwijziging en niet een refactor.
 const (
+	KeyMCPEnabled        = "mcp_enabled"
 	KeyServerName        = "server_name"
 	KeyAccessTokenTTL    = "access_token_ttl"
 	KeyRefreshTokenTTL   = "refresh_token_ttl"
@@ -80,6 +81,7 @@ const (
 	// config.MaxCORSOrigins lang en zonder dubbele. De enige sleutel met een
 	// lijst als waarde; hij gaat als JSON-array de jsonb-kolom in.
 	KindOriginList
+	KindBool
 )
 
 // Definition is één sleutel met zijn grenzen.
@@ -96,6 +98,7 @@ type Definition struct {
 // noemt. Elke sleutel die hier niet in staat bestaat niet: PATCH weigert hem
 // met een gesloten body, en GET toont hem niet.
 var Definitions = []Definition{
+	{Key: KeyMCPEnabled, Kind: KindBool},
 	{Key: KeyServerName, Kind: KindString, MinLen: 1, MaxLen: 64},
 
 	// De vijf grenzen uit K rij 14. Ze zijn geen smaak: een accesstoken dat een
@@ -191,6 +194,12 @@ func Parse(key string, raw json.RawMessage) (any, error) {
 	}
 
 	switch def.Kind {
+	case KindBool:
+		var value *bool
+		if err := json.Unmarshal(raw, &value); err != nil || value == nil {
+			return nil, &InvalidValueError{Field: key, Reason: "verwacht true of false"}
+		}
+		return *value, nil
 	case KindDuration:
 		var text string
 		if err := json.Unmarshal(raw, &text); err != nil {
@@ -301,6 +310,8 @@ func Parse(key string, raw json.RawMessage) (any, error) {
 // wat de client ziet niet uit elkaar kunnen lopen.
 func Encode(value any) (json.RawMessage, error) {
 	switch v := value.(type) {
+	case bool:
+		return json.Marshal(v)
 	case time.Duration:
 		return json.Marshal(v.String())
 	case int:

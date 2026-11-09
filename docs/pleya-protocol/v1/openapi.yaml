@@ -6253,6 +6253,13 @@ components:
         value: { type: integer }
         source: { $ref: "#/components/schemas/SettingSource" }
 
+    SettingBoolean:
+      type: object
+      required: [value, source]
+      properties:
+        value: { type: boolean }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
     SettingStringList:
       type: object
       required: [value, source]
@@ -6277,6 +6284,7 @@ components:
         heeft gewijzigd; dan staat er de waarde uit de omgeving met `source:
         env`.
       properties:
+        mcp_enabled: { $ref: "#/components/schemas/SettingBoolean" }
         server_name: { $ref: "#/components/schemas/SettingString" }
         access_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
         refresh_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
@@ -6296,6 +6304,9 @@ components:
         beschrijving per veld; een waarde erbuiten geeft
         `settings.invalid_value` en wijzigt niets.
       properties:
+        mcp_enabled:
+          type: boolean
+          description: Schakel het MCP-transport in of uit. Standaard false; alleen admin mag wijzigen.
         server_name:
           type: string
           description: 1 tot 64 tekens.

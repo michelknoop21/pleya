@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -48,6 +49,8 @@ func Step(kind string, requested int) int {
 
 // Resizer maakt en bewaart de afgeleide maten.
 type Resizer struct {
+	warnMu           sync.Mutex
+	lastWarning      time.Time
 	ffmpeg           string
 	dir              string
 	log              *slog.Logger
@@ -64,6 +67,9 @@ type Resizer struct {
 // New bouwt een Resizer. Zonder cacheDir of ffmpeg is hij uitgeschakeld en geeft
 // Available false: de capability belooft dan niets.
 func New(ffmpegPath, cacheDir string, log *slog.Logger, protectedDirs ...string) *Resizer {
+	if log == nil {
+		log = slog.Default()
+	}
 	r := &Resizer{
 		ffmpeg:  ffmpegPath,
 		dir:     filepath.Join(cacheDir, "artwork-sizes"),
@@ -190,7 +196,12 @@ func (r *Resizer) Plan(src, kind string, requested int) int {
 
 // Open maakt de trede en opent haar onder dezelfde purgegrens. De aanroeper
 // bezit de descriptor; de HTTP-kopie houdt geen cachelock vast.
-func (r *Resizer) Open(ctx context.Context, src, key string, step int) (*os.File, error) {
+func (r *Resizer) Open(ctx context.Context, src, key string, step int) (file *os.File, err error) {
+	defer func() {
+		if err != nil && !errors.Is(err, context.Canceled) {
+			r.warnFallback(err, step)
+		}
+	}()
 	name := key + "_" + strconv.Itoa(step) + ".jpg"
 	if r.boundaryErr != nil {
 		return nil, r.boundaryErr
@@ -212,6 +223,11 @@ func (r *Resizer) Open(ctx context.Context, src, key string, step int) (*os.File
 		return nil, err
 	}
 	defer dir.Close()
+	releaseDirectory, err := lockCacheRead(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+	defer releaseDirectory()
 	if f, err := openArtifact(dir, name); err == nil {
 		return f, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -233,18 +249,24 @@ func (r *Resizer) Open(ctx context.Context, src, key string, step int) (*os.File
 	result := r.sf.DoChan(name, func() (any, error) {
 		work, cancel := context.WithTimeout(context.WithoutCancel(ctx), r.timeout)
 		defer cancel()
-		if f, err := openArtifact(workDir, name); err == nil {
-			f.Close()
-			return nil, nil
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return nil, err
-		}
 		select {
 		case r.sem <- struct{}{}:
 			defer func() { <-r.sem }()
 		case <-work.Done():
 			return nil, work.Err()
 		}
+		unlock, err := lockCacheRender(work, workDir, name)
+		if err != nil {
+			return nil, err
+		}
+		defer unlock()
+		if f, err := openArtifact(workDir, name); err == nil {
+			f.Close()
+			return nil, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+
 		return nil, r.run(work, src, workDir, name, step)
 	})
 	select {
@@ -269,9 +291,19 @@ func (r *Resizer) Open(ctx context.Context, src, key string, step int) (*os.File
 func (r *Resizer) Make(ctx context.Context, src, key string, step int) (string, bool) {
 	f, err := r.Open(ctx, src, key, step)
 	if err != nil {
-		r.log.Warn("afbeelding verkleinen mislukt; origineel geleverd", slog.String("error", err.Error()), slog.Int("width", step))
 		return "", false
 	}
 	f.Close()
 	return filepath.Join(r.dir, key+"_"+strconv.Itoa(step)+".jpg"), true
+}
+
+func (r *Resizer) warnFallback(err error, step int) {
+	r.warnMu.Lock()
+	defer r.warnMu.Unlock()
+	now := time.Now()
+	if now.Sub(r.lastWarning) < time.Minute {
+		return
+	}
+	r.lastWarning = now
+	r.log.Warn("afbeelding verkleinen mislukt; origineel geleverd", slog.String("error", err.Error()), slog.Int("width", step))
 }

@@ -712,3 +712,7 @@ bestaande bibliotheekroutes en beheerschermen.
 `compose.yaml` bevat een uitgecommentarieerd blok voor `/dev/dri` met `group_add: "937"`, de groep
 `videodriver` zoals gemeten op deze NAS. Het is volledig inert zolang het uitstaat en staat er alleen
 zodat later blijkt dat de weg vrij is. Aanzetten hoort bij PS-8.
+
+## MCP-koppeling
+
+De [MCP-operatorhandleiding](../docs/pleya-server-operator-mcp.md) beschrijft inschakelen, tokens en configuratie. De nieuwe implementatie is nog niet als NAS- of releaseacceptatie gesloten.

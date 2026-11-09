@@ -13,8 +13,6 @@
  * - ingetrokken tokens in de lijst (de lijst bevat alleen levende tokens);
  * - de bereikomschrijving "scans en bibliotheken": `maintenance` is gereserveerd
  *   en onderscheidt zich vandaag in geen enkele operatie van `read`;
- * - MCP-transport, tooloverzicht, "Configuratie kopiëren" en uitzetten:
- *   `ServerDetail.mcp` kent alleen `enabled`, `url` en `tool_count`;
  * - de toolnaam en een leesbare omschrijving per beheeractie: `AuditEntry` heeft
  *   de `operation` (operationId), het `target` en de uitkomst, verder niets;
  * - een eigenaar kiezen bij het aanmaken: dat kan (`user_id`), maar de

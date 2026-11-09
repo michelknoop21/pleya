@@ -151,6 +151,22 @@ func (s *Server) auditFor(r *http.Request, userID, sessionID id.ID, operation st
 // een handeling opleveren die gebeurd is en niet in het log staat, en dat is
 // precies het gat dat een aanvaller met opzet zou opzoeken.
 func (s *Server) auditWrite(r *http.Request, entry audit.Entry) {
+	if state, ok := r.Context().Value(mcpAuditKey{}).(*mcpAuditState); ok {
+		entry.Source = audit.SourceMCP
+		entry.Operation = state.operation
+		if entry.Detail == nil {
+			entry.Detail = map[string]any{}
+		}
+		if claims, ok := claimsFromContext(r.Context()); ok {
+			if userID, err := id.Parse(claims.Subject); err == nil {
+				entry.Detail["actor_user_id"] = userID.String()
+			}
+			if sessionID, err := id.Parse(claims.Sid); err == nil {
+				entry.Detail["actor_session_id"] = sessionID.String()
+			}
+		}
+		state.written = true
+	}
 	if s.opts.Audit == nil {
 		return
 	}

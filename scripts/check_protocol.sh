@@ -14,9 +14,11 @@ if command -v docker >/dev/null 2>&1; then
     -v "$PWD:/repo:ro" \
     -w /repo \
     "$PY_IMAGE" \
-    sh -c 'pip install --quiet --disable-pip-version-check openapi-spec-validator jsonschema pyyaml >/dev/null 2>&1 && python3 scripts/check_protocol.py'
+    sh -c 'pip install --quiet --disable-pip-version-check openapi-spec-validator jsonschema pyyaml >/dev/null 2>&1 && python3 scripts/check_protocol.py && python3 pleya_server/scripts/gen_mcp_tools.py --check && python3 pleya_server/scripts/test_gen_mcp_tools.py'
   exit $?
 fi
 
 echo "docker ontbreekt; alleen de lokale controles draaien" >&2
-exec python3 scripts/check_protocol.py
+python3 scripts/check_protocol.py &&
+  python3 pleya_server/scripts/gen_mcp_tools.py --check &&
+  python3 pleya_server/scripts/test_gen_mcp_tools.py

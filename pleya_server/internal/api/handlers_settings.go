@@ -38,6 +38,11 @@ type SettingIntWire struct {
 	Source string `json:"source"`
 }
 
+type SettingBoolWire struct {
+	Value  bool   `json:"value"`
+	Source string `json:"source"`
+}
+
 // SettingStringListWire is één sleutel met een lijst (schema
 // SettingStringList). Voorlopig alleen cors_origins.
 //
@@ -51,6 +56,7 @@ type SettingStringListWire struct {
 
 // SettingsWire is het antwoord van beide endpoints (schema Settings).
 type SettingsWire struct {
+	MCPEnabled        SettingBoolWire   `json:"mcp_enabled"`
 	ServerName        SettingStringWire `json:"server_name"`
 	AccessTokenTTL    SettingStringWire `json:"access_token_ttl"`
 	RefreshTokenTTL   SettingStringWire `json:"refresh_token_ttl"`
@@ -74,6 +80,7 @@ type SettingsWire struct {
 // van "meegestuurd met een waarde die niet klopt", en het laat het valideren
 // over aan het settings-pakket, dat de grens naast de sleutel bewaart.
 type settingsPatch struct {
+	MCPEnabled        json.RawMessage  `json:"mcp_enabled"`
 	ServerName        *json.RawMessage `json:"server_name"`
 	AccessTokenTTL    *json.RawMessage `json:"access_token_ttl"`
 	RefreshTokenTTL   *json.RawMessage `json:"refresh_token_ttl"`
@@ -87,6 +94,9 @@ type settingsPatch struct {
 
 func (p settingsPatch) keys() map[string]json.RawMessage {
 	out := map[string]json.RawMessage{}
+	if len(p.MCPEnabled) > 0 {
+		out[settings.KeyMCPEnabled] = p.MCPEnabled
+	}
 	for key, raw := range map[string]*json.RawMessage{
 		settings.KeyServerName:        p.ServerName,
 		settings.KeyAccessTokenTTL:    p.AccessTokenTTL,
@@ -110,6 +120,7 @@ func settingsWire(v settings.Values) SettingsWire {
 		return SettingStringWire{Value: settingText(v, key), Source: string(v.Source(key))}
 	}
 	return SettingsWire{
+		MCPEnabled:       SettingBoolWire{Value: v.MCPEnabled(), Source: string(v.Source(settings.KeyMCPEnabled))},
 		ServerName:       text(settings.KeyServerName),
 		AccessTokenTTL:   text(settings.KeyAccessTokenTTL),
 		RefreshTokenTTL:  text(settings.KeyRefreshTokenTTL),

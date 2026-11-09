@@ -222,6 +222,7 @@ export function mediaRisks(patch: SettingsPatch): Risk[] {
 
 /** De omgevingsvariabele achter elke instelling: de waarde die geldt zolang niemand hem hier wijzigt. */
 export const SETTING_ENV: Record<keyof Settings, string | null> = {
+  mcp_enabled: null,
   server_name: 'PLEYA_SERVER_NAME',
   access_token_ttl: 'PLEYA_SERVER_ACCESS_TOKEN_TTL',
   refresh_token_ttl: 'PLEYA_SERVER_REFRESH_TOKEN_TTL',
