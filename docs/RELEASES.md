@@ -18,14 +18,12 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### Fixed
+- macOS-pkg leesbaar voor iedereen, ook bij umask 077
 <!-- END GENERATED -->
 
 ### New
 
-- **Pleya plays video files from Finder on the Mac.** Pleya shows up under Open With for video
-  files such as mkv, mp4, mov and avi and starts the file in the player. On iPhone and iPad
-  this is in build 355; it is not in a Mac build yet and has not been checked on a Mac.
 - **Big P can use your Trakt history and watchlist.** With Trakt connected, Big P counts what
   you marked as watched there as seen and can tell you which watchlist titles are in your
   libraries. The code is in the builds from 355 on, but Trakt sign-in is not switched on in any
@@ -49,6 +47,47 @@ Nothing user-facing since the last published build.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
+
+## 2.8.1 · build 454 · 9 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: b799f54400d6341e7f4f292769f21ce3c37acb02 -->
+
+### Improved
+
+- **Alle films on Apple TV scrolls more smoothly.** Moving through the grid no longer redraws
+  every card on screen at each step.
+- **Posters in a large library cost less to look up.** On the bedroom Apple TV the film grid
+  asked for a poster about 1,400 times a second; each lookup now reads two values from memory
+  instead of hashing file names and checking the disk.
+
+### Fixed
+
+- **Last sync shows the real date again.** After a complete sync, Settings > Local library kept
+  showing an older date, taken from a library that is no longer synced.
+- **A film's page keeps its artwork when the cached poster file is gone.** It falls back to the
+  artwork that was downloaded with the title.
+
+### Notes
+
+- Worth checking on the older Apple TV: scroll Alle films for a minute with and without a sync
+  running, and send the log if it still stutters.
+
+## 2.8.1 · build 453 · 9 November 2026 · Mac
+
+<!-- commit: b799f54400d6341e7f4f292769f21ce3c37acb02 -->
+
+### New
+
+- **Pleya plays video files from Finder.** Pleya shows up under Open With for video files such
+  as mkv, mp4, mov and avi and starts the file in the player. iPhone and iPad have had this
+  since build 355.
+
+### Notes
+
+- This is the first Mac build since build 296 (24 September). It brings the Mac level with
+  the iPhone and iPad builds up to 454, so everything listed for those builds applies here too.
+- Worth checking: open a video file from Finder with Pleya, and play something from each server
+  you use. Nothing in this build has been checked on a Mac yet.
 
 ## 2.8.1 · build 452 · 9 November 2026 · Apple TV
 
