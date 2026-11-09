@@ -50,6 +50,38 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 453 · 9 November 2026 · Apple TV
+
+<!-- commit: b845d5dd3eaf0418a041bb59f7527cb1a1698686 -->
+
+### Improved
+
+- **Scrolling Alle films does far less work.** On the Apple TV 4K (2nd generation), build 452
+  dropped 29 percent of the frames while you scrolled Alle films, against 2 percent for Alle
+  series. A scroll step used to repaint every film card in the grid; now no card repaints, and
+  the cost no longer grows with the number of films. How much smoother it is on the Apple TV
+  itself is what this build is meant to show.
+- **Posters on a card are found without disk reads.** The grid looked up a poster about 1,400
+  times a second, and each lookup hashed the path twice and checked the file on disk. A lookup
+  is now two reads from memory.
+- **The offline index fills much faster from Pleya Server.** A first sync asked the server about
+  every episode separately: 6,698 requests and 13 minutes for one series library. It now uses
+  the list it already has.
+- **The offline index is smaller.** Seasons and episodes are stored without cast, versions and
+  their own still. Offline, an episode list shows the season or show poster. Films and series
+  keep everything.
+
+### Fixed
+
+- **"Laatste synchronisatie" moves again.** It stayed on an old date when a library that is no
+  longer synced was still in the index. It now follows the libraries that are synced, and the
+  ones the index shows when you are offline.
+
+### Notes
+
+- Worth checking on the older Apple TV: Instellingen > Bibliotheken > Offline index inschakelen,
+  then scroll Alle films and Alle series for a minute during the sync and a minute after it.
+
 ## 2.8.1 · build 452 · 9 November 2026 · Apple TV
 
 <!-- commit: a05d9ca99d1aeab170afec687548b1a09144de64 -->
