@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
@@ -46,7 +47,7 @@ import 'seerr_requests_screen.dart';
 part 'seerr_media_detail_parts.dart';
 
 /// A graphical detail page for a Jellyseerr / Overseerr media item, styled to
-/// match the app's own [MediaDetailScreen] (hero backdrop + poster + metadata +
+/// match the app's own [MediaDetailScreen] (hero artwork + metadata +
 /// action). Loads the full detail (genres, runtime, cast) on open and offers a
 /// recommendations row, so browsing seerr results feels like browsing the
 /// library instead of a bare list.
@@ -389,6 +390,9 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
       },
       child: FocusedScrollScaffold(
         title: Text(_base.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        sliverAppBar: PlatformDetector.isHandheldIOS(context) && !(_errored && _detail == null)
+            ? const SliverToBoxAdapter(child: SizedBox.shrink())
+            : null,
         slivers: _buildSlivers(),
       ),
     );
@@ -421,7 +425,7 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     }
 
     final detail = _detail;
-    final inset = PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : 12.0;
+    final inset = PlatformDetector.isTV() ? TvLayoutConstants.horizontalInset : 16.0;
     final slivers = <Widget>[
       SliverToBoxAdapter(
         child: _HeroHeader(

@@ -146,7 +146,8 @@ class TvCatalogRailOptionRow extends StatefulWidget {
     required this.option,
     required this.scale,
     required this.focusNode,
-    required this.onBack,
+    this.onBack,
+    this.onFocusChange,
     this.onNavigateUp,
     this.onNavigateDown,
     this.onNavigateLeft,
@@ -156,7 +157,8 @@ class TvCatalogRailOptionRow extends StatefulWidget {
   final TvCatalogRailOption option;
   final double scale;
   final FocusNode focusNode;
-  final VoidCallback onBack;
+  final VoidCallback? onBack;
+  final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
   final VoidCallback? onNavigateLeft;
@@ -180,7 +182,10 @@ class _RailOptionRowState extends State<TvCatalogRailOptionRow> {
 
     return FocusableWrapper(
       focusNode: widget.focusNode,
-      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      onFocusChange: (focused) {
+        setState(() => _isFocused = focused);
+        widget.onFocusChange?.call(focused);
+      },
       onSelect: option.onPressed,
       onNavigateUp: widget.onNavigateUp,
       onNavigateDown: widget.onNavigateDown,

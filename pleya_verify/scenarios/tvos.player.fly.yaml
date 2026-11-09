@@ -7,9 +7,8 @@ target: tvos-sim
 #
 # The walk into the player and the pause are the ones `tvos.player.panel`
 # uses; see there why the first Select pauses before the fixture clip ends.
-# From play/pause, RIGHT passes the three transport buttons, then the tune
-# button and the tracks button; the clip has no chapters, so the fifth RIGHT
-# is the Pleya Fly button.
+# From play/pause, RIGHT passes the mounted transport buttons and Tracks.
+# The clip has no chapters, so the next control is Pleya Fly.
 #
 # What this proves: the button and the row open the picker, the picker lands
 # its focus inside, and Menu goes back one layer. What it cannot prove: a
@@ -40,19 +39,7 @@ steps:
   - press: select
   - settle: 400
   - assert: {id: player.play_pause, state: {playing: false}}
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 300
-  - assert: {id: player.settings_button, focused: true}
-  - press: right
-  - settle: 250
-  - press: right
-  - settle: 300
+  - walk: {direction: right, steps: 6, stopAt: player.handoff_button, timeout: 20000, settle: 250}
   - assert: {id: player.handoff_button, focused: true}
   - snapshot: 01-player-bar-fly-button
 

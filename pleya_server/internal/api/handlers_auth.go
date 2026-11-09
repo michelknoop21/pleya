@@ -60,10 +60,11 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			SetupAcceptsName: s.opts.Settings != nil && s.opts.Settings.HasStore(),
 		},
 		Capabilities: Capabilities{
-			AssistantMemory: s.opts.Memory != nil,
-			Browse:          true,
-			Search:          true,
-			Artwork:         true,
+			PushNotifications: s.opts.Push.Enabled(),
+			AssistantMemory:   s.opts.Memory != nil,
+			Browse:            true,
+			Search:            true,
+			Artwork:           true,
 			// ArtworkSizes: de ladder bestaat zodra ffmpeg en een cachemap er zijn.
 			ArtworkSizes:      s.opts.Artwork.Available(),
 			ArtworkCacheAdmin: s.artworkCacheAdminAvailable(),

@@ -15,6 +15,11 @@ import '../profiles/active_profile_provider.dart';
 import '../profiles/profile.dart';
 import '../profiles/profile_avatar.dart';
 import '../services/account_ui_actions.dart';
+import '../services/seerr/seerr_client.dart';
+import '../utils/platform_detector.dart';
+import 'seerr/seerr_issues_screen.dart';
+import 'seerr/seerr_requests_screen.dart';
+import 'pleya_notifications_screen.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/offline_mode_provider.dart';
@@ -87,11 +92,15 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = context.watch<ActiveProfileProvider?>()?.active;
+    final active = context.watch<ActiveProfileProvider?>();
+    final profile = active?.active;
+    final seerr = context.watch<SeerrProvider?>();
+    final issueClient = seerr?.client;
+    final phone = PlatformDetector.isHandheldIOS(context);
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
     final watchlist = context.watch<WatchlistProvider?>();
     final downloads = context.watch<DownloadProvider?>();
-    final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
+    final hasSeerr = seerr?.isConfigured ?? false;
     final servers = context.watch<MultiServerProvider?>();
     final bigP = summonableBigP(context);
 
@@ -140,9 +149,33 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> {
       ),
       row(TvMyPleyaSection.downloads, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
       row(TvMyPleyaSection.requests, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
+      if (phone && !isOffline && active?.isBinding == false && profile != null && issueClient?.canViewIssues == true)
+        _MyPleyaRow(
+          instance: 'seerrIssues',
+          icon: Symbols.chat_bubble_outline_rounded,
+          title: t.seerrIssues.title,
+          subtitle: t.seerrIssues.subtitle,
+          onTap: () => _push(SeerrIssuesScreen(client: issueClient!, profileId: profile.id)),
+        ),
     ].nonNulls.toList();
 
     final pleyaRows = [
+      if (phone && !isOffline && active?.isBinding == false && seerr?.canManageRequests == true)
+        _MyPleyaRow(
+          instance: 'manageRequests',
+          icon: Symbols.rule_rounded,
+          title: t.pleyaNotifications.manageRequestsTitle,
+          subtitle: t.pleyaNotifications.manageRequests,
+          onTap: () => _push(const SeerrRequestsScreen(reviewPending: true)),
+        ),
+      if (phone && active?.isBinding == false && profile != null)
+        _MyPleyaRow(
+          instance: 'notifications',
+          icon: Symbols.notifications_rounded,
+          title: t.pleyaNotifications.title,
+          subtitle: t.pleyaNotifications.subtitle,
+          onTap: () => _push(PleyaNotificationsScreen(profileId: profile.id)),
+        ),
       row(TvMyPleyaSection.servers, onTap: () => _push(const ServersScreen())),
       row(TvMyPleyaSection.activity, onTap: () => _push(const NowWatchingScreen())),
       row(TvMyPleyaSection.watchTogether, onTap: () => _push(const WatchTogetherScreen())),

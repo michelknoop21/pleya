@@ -205,11 +205,13 @@ void main() {
           }, 200);
         }),
       );
-      await client.getRequests(requestedBy: 42);
+      await client.getRequests(requestedBy: 42, sortByModified: true);
+      expect(seen!.queryParameters['sort'], 'modified');
       expect(seen!.queryParameters['requestedBy'], '42');
 
       await client.getRequests();
       expect(seen!.queryParameters.containsKey('requestedBy'), isFalse);
+      expect(seen!.queryParameters['sort'], 'added');
     });
 
     test('discover threads filters and server-side sort into movie and TV queries', () async {

@@ -175,6 +175,9 @@ func TestSchemaHasExactlyTheExpectedTables(t *testing.T) {
 		"collection_items": true,
 		"playlists":        true,
 		"playlist_items":   true,
+		// A-21, migratie 0035: toestelregistratie en afleverwachtrij.
+		"push_installations": true,
+		"push_deliveries":    true,
 	}
 
 	rows, err := pool.Query(ctx, `

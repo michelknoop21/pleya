@@ -495,6 +495,51 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /users/me/push-installations/{installation_id}:
+    parameters:
+      - in: path
+        name: installation_id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [users]
+      operationId: putPushInstallation
+      summary: Registreer opt-in voor Apple-push op deze sessie.
+      description: |
+        Beschikbaar onder capabilities.push_notifications. Vereist de eigen
+        sessiebearer. De server accepteert zijn geconfigureerde APNs-omgeving.
+        Elke PUT vervangt het token en de gekozen categorieën. Een bestaande
+        registratie blijft gebonden aan het account. Alleen een nieuwere sessie van
+        hetzelfde account en toestel kan de registratie overnemen. Geen categorie staat
+        standaard aan. Gebruik DELETE om alle push voor dit toestel uit te zetten.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushInstallation" }
+      responses:
+        "204": { description: Opt-in vastgelegd. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [users]
+      operationId: deletePushInstallation
+      summary: Trek de eigen opt-in in.
+      description: |
+        Vereist de eigen sessiebearer. Een afwezige of andere registratie wordt
+        niet onderscheiden. Ondersteunende servers laten intrekking ook toe
+        als de APNs-bezorging uit staat.
+      responses:
+        "204": { description: Geen actieve registratie van deze sessie op dit id. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /users/me/memory:
     get:
       tags: [users]
@@ -3856,11 +3901,35 @@ components:
               type: boolean
               description: True zolang er nog geen eigenaar is aangemaakt.
 
+    PushInstallation:
+      type: object
+      additionalProperties: false
+      required: [device_token, environment]
+      anyOf:
+        - required: [movies]
+          properties:
+            movies: { const: true }
+        - required: [episodes]
+          properties:
+            episodes: { const: true }
+      properties:
+        device_token:
+          type: string
+          pattern: '^([0-9a-fA-F]{2}){1,256}$'
+          description: Het APNs-apparaattoken in hexadecimale vorm.
+        environment: { type: string, enum: [sandbox, production], x-unknown-safe: false }
+        locale: { type: string, enum: [en, nl], default: en, x-unknown-safe: false }
+        movies: { type: boolean, default: false }
+        episodes: { type: boolean, default: false }
+
     Capabilities:
       type: object
       description: Altijd leidend boven feature_level.
       required: [browse, search, artwork, watch_state]
       properties:
+        push_notifications:
+          type: boolean
+          description: Opt-in push is beschikbaar wanneer dit veld true is. Afwezig betekent uit.
         assistant_memory:
           type: boolean
           default: false

@@ -130,6 +130,7 @@ void main() {
       WidgetTester tester, {
       Size size = const Size(1920, 1080),
       ValueChanged<double>? onBottomChromeFractionChanged,
+      ValueNotifier<bool>? hasFirstFrame,
     }) async {
       final player = _QualityLinePlayer(
         playing: true,
@@ -182,6 +183,7 @@ void main() {
                       getReplayIcon: (_) => Icons.replay_10,
                       getForwardIcon: (_) => Icons.forward_10,
                       useDpadNavigation: true,
+                      hasFirstFrame: hasFirstFrame,
                       onBottomChromeFractionChanged: onBottomChromeFractionChanged,
                     ),
                   ),
@@ -254,52 +256,65 @@ void main() {
       });
     }
 
-    testWidgets('de titelscrim loopt onder de kwaliteitsregel uit en wordt geen donkere band', (tester) async {
+    testWidgets('Filmbeeld zet titel en kwaliteit onderaan zonder het midden te dimmen', (tester) async {
       await pumpTvOverlay(tester, size: const Size(1038, 584));
-      await tester.pump();
-      final qualityBottom = tester.getRect(find.byType(TvQualitySummaryLine)).bottom;
-      final timelineTop = tester.getRect(find.byType(VideoTimelineBar)).top;
-      final belowFade = Rect.fromLTRB(968, qualityBottom + 60, 1028, timelineTop - 20);
-      final pixel = await _brightestPixel(tester, belowFade);
-      expect(pixel, Colors.white, reason: 'the frame between title block and controls stays untouched');
+      final header = tester.getRect(find.byType(VideoControlsHeader));
+      final quality = tester.getRect(find.byType(TvQualitySummaryLine));
+      final timeline = tester.getRect(find.byType(VideoTimelineBar));
+      expect(header.top, greaterThan(584 * 0.60));
+      expect(quality.bottom, lessThan(timeline.top));
+      expect(await _brightestPixel(tester, const Rect.fromLTRB(968, 150, 1028, 300)), Colors.white);
     });
 
     // PLR-SUBS1: the TV controls report the share of the screen their bottom
     // block covers; the player lifts sub-pos by it (rounded up) while they
     // are visible. Lifting by that share must put the subtitle bottom above
-    // the timeline.
+    // the title and timeline.
     testWidgets('de onderste bedieningsband meldt zijn schermaandeel op TV', (tester) async {
       final reports = <double>[];
-      await pumpTvOverlay(tester, size: const Size(1038, 584), onBottomChromeFractionChanged: reports.add);
+      final hasFirstFrame = ValueNotifier(false);
+      addTearDown(hasFirstFrame.dispose);
+      await pumpTvOverlay(
+        tester,
+        size: const Size(1038, 584),
+        onBottomChromeFractionChanged: reports.add,
+        hasFirstFrame: hasFirstFrame,
+      );
+      expect(reports.last, 0);
+      hasFirstFrame.value = true;
       await tester.pump();
-      expect(reports, isNotEmpty);
       final fraction = reports.last;
-      final timelineTop = tester.getRect(find.byType(VideoTimelineBar)).top;
+      final titleTop = tester.getRect(find.byType(VideoControlsHeader)).top;
       final liftPercent = (fraction * 100).ceil();
       expect(fraction, inExclusiveRange(0.05, 0.5));
-      expect((100 - liftPercent) / 100 * 584, lessThanOrEqualTo(timelineTop), reason: 'fraction $fraction');
-      // Stable layout, no new report per rebuild value.
-      final count = reports.length;
+      expect((100 - liftPercent) / 100 * 584, lessThanOrEqualTo(titleTop), reason: 'fraction $fraction');
+      // The focus animation can resize the band after its first measurement.
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.pump();
-      expect(reports.sublist(count - 1).toSet(), {fraction});
+      final settledFraction = reports.last;
+      await tester.pump();
+      expect(reports.last, settledFraction);
     });
 
-    testWidgets('buiten TV meldt de bediening geen schermaandeel en geen titelscrim', (tester) async {
+    testWidgets('desktop rapporteert de onderste band zonder titelscrim bovenaan', (tester) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       final reports = <double>[];
       await pumpTvOverlay(tester, onBottomChromeFractionChanged: reports.add);
       await tester.pump();
-      expect(reports, isEmpty);
+      expect(reports.last, greaterThan(0));
       expect(find.byType(TvTitleScrim), findsNothing);
       expect(await _brightestPixel(tester, const Rect.fromLTRB(1850, 0, 1910, 40)), Colors.white);
       final shared = playerOverlayScrim(hasFrame: true, glass: false).gradient! as LinearGradient;
       expect(shared.colors.first, Colors.black.withValues(alpha: 0.7), reason: 'desktop/mobile top fade unchanged');
     });
 
-    testWidgets('buiten TV krijgt de titelbalk geen bovenruimte', (tester) async {
+    testWidgets('desktop behoudt de bovenste navigatie en toont de titel bij de tijdlijn', (tester) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await pumpTvOverlay(tester);
-      expect(tester.getTopLeft(find.byType(VideoControlsHeader)).dy, 0);
+      final navigation = find.byWidgetPredicate((widget) => widget is VideoControlsHeader && !widget.showTitle);
+      final title = find.byWidgetPredicate((widget) => widget is VideoControlsHeader && widget.showTitle);
+      expect(tester.getTopLeft(navigation).dy, 0);
+      expect(tester.getTopLeft(title).dy, greaterThan(1080 * 0.60));
     });
   });
 

@@ -43,6 +43,15 @@ Michel opende expliciet het [additieve metadata-venster](plans/2026-11-01-server
 
 Michel opende expliciet het [begrensde cachebeheer-venster](plans/2026-11-01-server-gap/CACHE-BEHEER-VENSTERVOORSTEL.md), [DEC-173](DECISIONS.md#cachebeheer-venster-2026-11-02), C-05/S4.6: uitsluitend admin GET/DELETE /artwork/cache, optionele artwork_cache_admin-capability, bevestigde bestaande duurzamejob en bestaande Opslag-/taken-UI. Alleen afgeleide ladderbytes; actieve I/O en bron-/pin-/media-/config-/backupbehoud zijn verplichte poorten. Geen quota-/anderecachevereiste geschrapt. Metadata heeft zijn eigen eerdere venster; alle overige protocolbevriezing blijft gelden. Geen implementatie-/NAS-/releaseacceptatie door dit besluit.
 
+## Scoped pushvenster, besluit 8 november 2026
+
+Michel gaf het additieve venster voor A-21 vrij. Zie [DEC-XXX](DECISIONS.md#pushvenster-2026-11-08).
+
+| ID | Taak | Status | Bewijs / open |
+| --- | --- | --- | --- |
+| A-21-PUSH | Opt-in per toestel en categorie, directe APNs-bezorging van films en afleveringen op de eigen Pleya Server | `[~]` | Lokaal gebouwd. Postgres + APNs-HTTP/2-test `TestDeliveryRequiresOptInAnActiveSessionAndLibraryAccess`, Flutter-opt-in-/reconnecttest, protocolcontrole en iOS-simulatorbuild groen. Getekende iPhone en echte APNs-bezorging blijven acceptatiecriteria. |
+| A-21-PUSH-2 | Seerr-gebeurtenissen en releaseberichten via dezelfde zelfgehoste bezorging | `[ ]` | Vereist een geverifieerde Seerr-gebruikerskoppeling en een betrouwbare releasebron. |
+
 ## 1. Stand in één blik
 
 | Blok | Slices | Gereed | Bezig | Open |

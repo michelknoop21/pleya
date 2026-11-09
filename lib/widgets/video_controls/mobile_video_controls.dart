@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../media/media_item.dart';
 import '../../mpv/mpv.dart';
 import '../../models/livetv_capture_buffer.dart';
@@ -21,7 +23,7 @@ import 'widgets/video_timeline_bar.dart';
 ///
 /// Displays a full-screen overlay with:
 /// - Top bar: Back button, title, and track/chapter controls
-/// - Center: Large playback controls (seek backward, play/pause, seek forward)
+/// - Center: Previous episode, play/pause and next episode
 /// - Bottom bar: Timeline slider with chapter markers and timestamps
 ///
 /// When chapters or queue are available, the user can swipe up on the bottom
@@ -35,6 +37,7 @@ class MobileVideoControls extends StatefulWidget {
   final bool showChapterMarkersOnTimeline;
   final int seekTimeSmall;
   final Widget trackChapterControls;
+  final Widget? footerControls;
   final Function(Duration) onSeek;
   final Function(Duration) onSeekEnd;
   final VoidCallback? onScrubStart;
@@ -96,6 +99,7 @@ class MobileVideoControls extends StatefulWidget {
     this.showChapterMarkersOnTimeline = true,
     required this.seekTimeSmall,
     required this.trackChapterControls,
+    this.footerControls,
     required this.onSeek,
     required this.onSeekEnd,
     this.onScrubStart,
@@ -130,6 +134,8 @@ class MobileVideoControls extends StatefulWidget {
 }
 
 class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTickerProviderStateMixin {
+  final _bottomChromeKey = GlobalKey();
+  final _stripChromeKey = GlobalKey();
   late final AnimationController _stripAnim;
   bool _stripVisible = false;
   late bool _lastControlsVisible;
@@ -221,15 +227,7 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
 
   Widget _buildLayout(BuildContext context) {
     if (!_hasStripContent) {
-      return Column(
-        children: [
-          _buildTopBar(context),
-          const Spacer(),
-          _buildPlaybackControls(context),
-          const Spacer(),
-          _buildBottomBar(context),
-        ],
-      );
+      return Column(children: [_buildTopBar(context), ..._buildMainControls(context)]);
     }
 
     // Top bar stays fixed. Everything below it is a Stack where the controls
@@ -258,20 +256,14 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
                           opacity: (1 - t * 2).clamp(0.0, 1.0),
                           child: Stack(
                             children: [
-                              Column(
-                                children: [
-                                  const Spacer(),
-                                  _buildPlaybackControls(context),
-                                  const Spacer(),
-                                  _buildBottomBar(context),
-                                ],
-                              ),
-                              const Positioned(
-                                left: 0,
-                                right: 0,
-                                bottom: 12,
-                                child: Icon(Symbols.keyboard_arrow_up_rounded, color: Colors.white24, size: 24),
-                              ),
+                              Column(children: _buildMainControls(context, timelineVisible: t < 0.5)),
+                              if (widget.footerControls == null)
+                                const Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 12,
+                                  child: Icon(Symbols.keyboard_arrow_up_rounded, color: Colors.white24, size: 24),
+                                ),
                             ],
                           ),
                         ),
@@ -286,36 +278,39 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
                           ignoring: t < 0.5,
                           child: Opacity(
                             opacity: (t * 2).clamp(0.0, 1.0),
-                            child: Container(
-                              padding: const EdgeInsets.only(top: 32),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.65),
-                                    Colors.black.withValues(alpha: 0.7),
-                                  ],
-                                  stops: const [0.0, 0.42, 1.0],
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisSize: .min,
-                                children: [
-                                  const Icon(Symbols.keyboard_arrow_down_rounded, color: Colors.white38, size: 20),
-                                  const SizedBox(height: 4),
-                                  ContentStrip(
-                                    player: widget.player,
-                                    chapters: widget.chapters,
-                                    chaptersLoaded: widget.chaptersLoaded,
-                                    serverId: widget.serverId,
-                                    showQueueTab: widget.showQueueTab,
-                                    onQueueItemSelected: widget.onQueueItemSelected,
-                                    onSeekRequested: widget.onSeekRequested,
-                                    onSeekCompleted: widget.onSeekCompleted,
+                            child: _measureBottomChrome(
+                              _stripChromeKey,
+                              Container(
+                                padding: const EdgeInsets.only(top: 32),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.65),
+                                      Colors.black.withValues(alpha: 0.7),
+                                    ],
+                                    stops: const [0.0, 0.42, 1.0],
                                   ),
-                                ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: .min,
+                                  children: [
+                                    const Icon(Symbols.keyboard_arrow_down_rounded, color: Colors.white38, size: 20),
+                                    const SizedBox(height: 4),
+                                    ContentStrip(
+                                      player: widget.player,
+                                      chapters: widget.chapters,
+                                      chaptersLoaded: widget.chaptersLoaded,
+                                      serverId: widget.serverId,
+                                      showQueueTab: widget.showQueueTab,
+                                      onQueueItemSelected: widget.onQueueItemSelected,
+                                      onSeekRequested: widget.onSeekRequested,
+                                      onSeekCompleted: widget.onSeekCompleted,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -332,20 +327,40 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    final topBar = _conditionalSafeArea(
-      context: context,
-      bottom: false, // Only respect top safe area when in portrait
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: VideoControlsHeader(
-          metadata: widget.metadata,
-          style: VideoHeaderStyle.multiLine,
-          trailing: playerGlassCapsule(widget.trackChapterControls),
-          onBack: widget.onBack,
+  List<Widget> _buildMainControls(BuildContext context, {bool timelineVisible = true}) {
+    final playback = _buildPlaybackControls(context);
+    final bottom = _buildBottomChrome(context, timelineVisible: timelineVisible);
+    if (widget.footerControls == null) return [const Spacer(), playback, const Spacer(), bottom];
+    return [
+      Expanded(
+        child: Center(
+          child: FittedBox(fit: .scaleDown, child: playback),
         ),
       ),
+      bottom,
+    ];
+  }
+
+  bool _compactFilmFrame(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return widget.footerControls != null && size.width > size.height && size.height < 375;
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    final header = Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: _compactFilmFrame(context) ? 8 : 16),
+      child: VideoControlsHeader(
+        metadata: widget.metadata,
+        style: VideoHeaderStyle.filmFrame,
+        trailing: widget.footerControls == null
+            ? playerGlassCapsule(widget.trackChapterControls)
+            : widget.trackChapterControls,
+        onBack: widget.onBack,
+      ),
     );
+    final topBar = widget.footerControls == null
+        ? _conditionalSafeArea(context: context, bottom: false, child: header)
+        : SafeArea(bottom: false, child: header);
 
     return DesktopAppBarHelper.wrapWithGestureDetector(topBar, opaque: true);
   }
@@ -361,6 +376,7 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
       builder: (context) => MobilePlaybackControls(
         player: widget.player,
         isLive: widget.isLive,
+        compact: _compactFilmFrame(context),
         onPrevious: widget.onPrevious,
         onNext: widget.onNext,
         onCancelAutoHide: widget.onCancelAutoHide,
@@ -369,7 +385,51 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
     );
   }
 
-  Widget _buildBottomBar(BuildContext _) {
+  void _reportBottomChrome() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final height = context.size?.height ?? 0;
+      final key = _hasStripContent && _stripAnim.value > 0.5 ? _stripChromeKey : _bottomChromeKey;
+      final bottom = key.currentContext?.size?.height ?? 0;
+      if (height > 0) widget.chromeController?.setBottomChromeFraction(bottom / height);
+    });
+  }
+
+  Widget _buildBottomChrome(BuildContext context, {bool timelineVisible = true}) {
+    final footer = widget.footerControls;
+    if (footer == null) return _buildBottomBar(context);
+    return _measureBottomChrome(
+      _bottomChromeKey,
+      SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: .min,
+          children: [
+            if (_hasStripContent && !_compactFilmFrame(context))
+              const Icon(Symbols.keyboard_arrow_up_rounded, color: Colors.white38, size: 20),
+            _buildBottomBar(context, timelineVisible: timelineVisible),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: footer),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _measureBottomChrome(GlobalKey key, Widget child) {
+    if (widget.footerControls == null) return child;
+    _reportBottomChrome();
+    return NotificationListener<SizeChangedLayoutNotification>(
+      onNotification: (_) {
+        _reportBottomChrome();
+        return true;
+      },
+      child: SizeChangedLayoutNotifier(
+        child: KeyedSubtree(key: key, child: child),
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext _, {bool timelineVisible = true}) {
     if (widget.isLive) {
       if (widget.captureBuffer != null) {
         // Live TV with time-shift: show seekable timeline
@@ -408,31 +468,40 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
         ),
       );
     }
-    return FirstFrameGuard(hasFirstFrame: widget.hasFirstFrame, builder: (context) => _buildBottomBarContent(context));
+    return FirstFrameGuard(
+      hasFirstFrame: widget.hasFirstFrame,
+      builder: (context) => _buildBottomBarContent(context, timelineVisible: timelineVisible),
+    );
   }
 
-  Widget _buildBottomBarContent(BuildContext context) {
-    return _conditionalSafeArea(
-      context: context,
-      top: false, // Only respect bottom safe area when in portrait
-      child: playerGlassPlate(
-        context,
-        VideoTimelineBar(
-          player: widget.player,
-          chapters: widget.chapters,
-          chaptersLoaded: widget.chaptersLoaded,
-          showChapterMarkersOnTimeline: widget.showChapterMarkersOnTimeline,
-          onSeek: widget.onSeek,
-          onSeekEnd: widget.onSeekEnd,
-          onScrubStart: widget.onScrubStart,
-          onScrubEnd: widget.onScrubEnd,
-          horizontalLayout: false,
-          enabled: widget.canControl,
-          showFinishTime: true,
-          thumbnailDataBuilder: widget.thumbnailDataBuilder,
-        ),
+  Widget _buildBottomBarContent(BuildContext context, {required bool timelineVisible}) {
+    final timeline = playerGlassPlate(
+      context,
+      VideoTimelineBar(
+        player: widget.player,
+        chapters: widget.chapters,
+        chaptersLoaded: widget.chaptersLoaded,
+        showChapterMarkersOnTimeline: widget.showChapterMarkersOnTimeline,
+        onSeek: widget.onSeek,
+        onSeekEnd: widget.onSeekEnd,
+        onScrubStart: widget.onScrubStart,
+        onScrubEnd: widget.onScrubEnd,
+        horizontalLayout: false,
+        enabled: widget.canControl,
+        showFinishTime: true,
+        thumbnailDataBuilder: widget.thumbnailDataBuilder,
       ),
+      verticalInset: _compactFilmFrame(context) ? 8 : 16,
     );
+    return widget.footerControls == null
+        ? _conditionalSafeArea(context: context, top: false, child: timeline)
+        : AutomationNode(
+            id: timelineVisible && widget.chromeController?.controlsVisible != false
+                ? AutomationIds.playerTimeline
+                : null,
+            role: 'region',
+            child: timeline,
+          );
   }
 
   /// Conditionally wraps child with SafeArea only in portrait mode

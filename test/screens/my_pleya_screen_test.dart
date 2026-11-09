@@ -32,6 +32,9 @@ class _FakeActiveProfile extends ChangeNotifier implements ActiveProfileProvider
   Profile? _active;
 
   @override
+  bool get isBinding => false;
+
+  @override
   Profile? get active => _active;
 
   set activeProfile(Profile? value) {

@@ -296,6 +296,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     String path, {
     Map<String, dynamic>? body,
     Map<String, dynamic>? queryParameters,
+    bool followRedirects = true,
   }) async {
     Future<MediaServerResponse> send() async {
       final headers = await _session.authHeaders();
@@ -304,7 +305,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
       return switch (method) {
         'GET' => _http.get(path, queryParameters: queryParameters, headers: headers, timeout: timeout),
         'POST' => _http.post(path, body: encoded, headers: headers, timeout: timeout),
-        'PUT' => _http.put(path, body: encoded, headers: headers, timeout: timeout),
+        'PUT' => _http.put(path, body: encoded, headers: headers, timeout: timeout, followRedirects: followRedirects),
         'PATCH' => _http.patch(path, body: encoded, headers: headers, timeout: timeout),
         'DELETE' => _http.delete(path, headers: headers, timeout: timeout),
         _ => throw ArgumentError.value(method, 'method'),

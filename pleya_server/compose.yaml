@@ -30,6 +30,7 @@ services:
       DATABASE_URL: postgresql://pleya:${POSTGRES_PASSWORD:-}@postgres:5432/pleya?sslmode=disable
       PLEYA_SERVER_HTTP_ADDR: ":8080"
       PLEYA_SERVER_CONFIG_DIR: /config
+      PLEYA_SERVER_APNS_CONFIG: ${PLEYA_SERVER_APNS_CONFIG:-}
       PLEYA_SERVER_CACHE_DIR: /cache
       PLEYA_SERVER_TRANSCODE_DIR: /transcode
       PLEYA_SERVER_LOG_LEVEL: ${PLEYA_SERVER_LOG_LEVEL:-info}

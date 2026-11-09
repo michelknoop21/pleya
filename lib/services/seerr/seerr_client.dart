@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 
+import '../../models/seerr/seerr_issue.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../models/seerr/seerr_request.dart';
 import '../../utils/app_logger.dart';
@@ -12,6 +13,7 @@ import 'seerr_types.dart';
 export 'seerr_types.dart';
 
 part 'seerr_client_requests.dart';
+part 'seerr_client_issues.dart';
 
 /// HTTP client for one Jellyseerr / Overseerr server, bound to a [SeerrSession].
 ///

@@ -5673,3 +5673,26 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 4. Om het seriesnummer te kennen, deelt een aflevering de opzoekemmer met haar serie in plaats van met haar exacte aflevering. De tokens blijven per aflevering. Een aflevering zonder seizoen- of afleveringsnummer koopt nog steeds geen seriesnummer.
 
 **Consequences:** Een serie waarvan één server geen bewezen nummer heeft, blijft twee kaarten tonen tot die server matcht. Rij-ordening en labels (DEC-177) zijn ongewijzigd en lezen de overgebleven kaart. **Unified impact:** gedeelde eigenaar is `oneContinueWatchingCardPerSeries` in `identity_resolver.dart`, aangeroepen door `DataAggregationService` en `HomeProjectionService`; geldt voor Plex, Jellyfin, Emby en Pleya Server, lokale mappen en Pleya Share blijven ongemerged. Geen protocolwijziging. Bewijs in `test/services/unified_catalog/unified_pleya_server_test.dart` en `identity_resolver_test.dart`.
+
+
+<a id="pushvenster-2026-11-08"></a>
+## DEC-XXX. Opt-in push via de eigen Pleya Server
+
+Michel koos op 7 november 2026 voor volledige selfhosting en gaf op 8 november
+het afzonderlijke protocolvenster voor A-21 vrij.
+
+1. Aanvankelijk haalden appnotificaties brondata op bij het openen van het overzicht.
+2. Bij gesloten iOS-app moet een actieve server events verzamelen, autoriseren en bezorgen.
+3. De bestaande protocolvensters dekken geen toestelregistratie of opt-in.
+4. Voeg optioneel `capabilities.push_notifications` en de eigen sessieroutes
+   `PUT/DELETE /users/me/push-installations/{installation_id}` toe. De eigen server
+   communiceert rechtstreeks met APNs en bewaart de topicgebonden sleutel lokaal.
+   Begin met films en afleveringen uit de serverbibliotheken en een duurzame wachtrij.
+5. Seerr en releases volgen met een geverifieerde accountkoppeling en releasebron.
+   Voor release volgt een proef met een getekende iOS-build en echte APNs-bezorging.
+6. Een centrale Pleya-relay en distributie van een gedeelde pushsleutel vallen weg.
+
+V1 behoudt de bestaande velden, betekenis, aanvraagbody's en enums. De optionele
+vlag is standaard uit en clients gebruiken de nieuwe gesloten body pas als de vlag
+aan staat. Oudere servers en clients houden de in-appmeldingen. Uitrol staat los van
+dit besluit.

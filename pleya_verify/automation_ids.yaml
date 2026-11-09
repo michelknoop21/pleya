@@ -600,6 +600,12 @@ ids:
   - id: requests.detail.action
     role: button
     instanceable: true
+  - id: seerr.issues.item
+    role: list.item
+    instanceable: true
+  - id: seerr.issues.status_action
+    role: button
+    instanceable: false
   - id: landing.header
     role: region
     instanceable: true

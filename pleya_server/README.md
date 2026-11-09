@@ -712,3 +712,42 @@ bestaande bibliotheekroutes en beheerschermen.
 `compose.yaml` bevat een uitgecommentarieerd blok voor `/dev/dri` met `group_add: "937"`, de groep
 `videodriver` zoals gemeten op deze NAS. Het is volledig inert zolang het uitstaat en staat er alleen
 zodat later blijkt dat de weg vrij is. Aanzetten hoort bij PS-8.
+
+### Opt-in push naar iOS
+
+Pleya Server kan nieuwe films en afleveringen rechtstreeks aan Apple Push
+Notification service aanbieden. De app vraagt pas iOS-toestemming nadat de
+gebruiker bij **Notificaties** een pushcategorie voor deze server aanzet.
+
+Verbind de iOS-app via een vertrouwd HTTPS-adres met de server. Gebruik een
+APNs-sleutel van het Apple Developer-team dat de Pleya iOS-build ondertekent,
+beperkt tot de gekozen omgeving en tot het topic `nl.michelknoop.pleya`. Plaats `AuthKey.p8`
+en `apns.json` samen in een alleen-lezen secretmount buiten `/config` en de
+back-upmap. Geef alleen de servergebruiker toegang. Voorbeeldinhoud van
+`apns.json` met fictieve identifiers:
+
+```json
+{
+  "team_id": "AAAAAAAAAA",
+  "key_id": "BBBBBBBBBB",
+  "environment": "production"
+}
+```
+
+Zet `PLEYA_SERVER_APNS_CONFIG=/run/secrets/pleya-apns/apns.json`. Voeg aan de
+service `pleya-server` een read-only bindmount toe van je secretmap naar
+`/run/secrets/pleya-apns`. De server maakt uitgaand HTTPS via HTTP/2 over poort
+443 naar `api.push.apple.com` of `api.sandbox.push.apple.com`. Gebruik
+`sandbox` voor een ontwikkelbuild en `production` voor TestFlight en distributie.
+Zonder geldige configuratie blijft push uit en de server schrijft een korte
+opstartmelding bij een configuratiefout.
+
+De eerste succesvolle scan per bibliotheek bepaalt de uitgangsstand. Uit
+latere voltooide scans komen alleen nieuwe, afspeelbare films en afleveringen
+van na de toestemming in de wachtrij. De server controleert sessie,
+categorie en bibliotheekrechten vóór verzending. De tekst op het vergrendelde
+scherm bevat geen titel of bibliotheeknaam. De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw. Apple
+bewaart de alert niet voor een onbereikbaar toestel. Offline uitschakelen wordt
+bij de eerstvolgende verbinding met de server verwerkt.
+Toestelregistraties en afleveringen staan buiten de databaseback-up. Seerr-
+en release-updates zijn in de app beschikbaar als in-appmeldingen.

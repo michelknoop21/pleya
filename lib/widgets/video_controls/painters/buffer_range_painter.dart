@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../media/media_source_info.dart';
 import '../../../mpv/models.dart';
+import '../film_frame_palette.dart';
 
 /// Custom painter that draws a segmented background track (split at chapter
 /// boundaries) and buffered range bars on the video timeline slider.
@@ -13,7 +14,7 @@ class BufferRangePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const trackHeight = 8.0;
+    const trackHeight = kFilmTrackHeight;
     const gapWidth = 4.0;
     final radius = trackHeight / 2;
     final y = (size.height - trackHeight) / 2;

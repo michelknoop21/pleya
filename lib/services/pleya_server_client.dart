@@ -225,6 +225,39 @@ class PleyaServerClient
   MemorySyncTransport assistantMemoryTransport({required bool Function() isCurrent}) =>
       _PleyaMemoryTransport(this, isCurrent);
 
+  bool get supportsSecurePush =>
+      wireCapabilities.pushNotifications && Uri.tryParse(connection.baseUrl)?.scheme == 'https';
+
+  Future<void> registerPushInstallation(
+    String id, {
+    required String token,
+    required String environment,
+    required String locale,
+    required bool movies,
+    required bool episodes,
+  }) async {
+    if (!supportsSecurePush || _offlineMode || _closed) {
+      throw StateError('Push registration unavailable');
+    }
+    await _adminSend(
+      'PUT',
+      '/users/me/push-installations/${Uri.encodeComponent(id)}',
+      followRedirects: false,
+      body: {
+        'device_token': token,
+        'environment': environment,
+        'locale': locale,
+        'movies': movies,
+        'episodes': episodes,
+      },
+    );
+  }
+
+  Future<void> removePushInstallation(String id) async {
+    if (_offlineMode || _closed) throw StateError('Push registration unavailable');
+    await _adminSend('DELETE', '/users/me/push-installations/${Uri.encodeComponent(id)}');
+  }
+
   bool _offlineMode = false;
   bool _identityCapabilitiesKnown = false;
   @override

@@ -24,6 +24,7 @@ class SeerrRequest {
   final int? requestedById;
   final String? requestedByName;
   final String? createdAt;
+  final String? updatedAt;
 
   /// The Radarr/Sonarr target stored on the request. Null means the payload
   /// carried no value, which is not the same as "the server default": an edit
@@ -69,6 +70,7 @@ class SeerrRequest {
     this.requestedById,
     this.requestedByName,
     this.createdAt,
+    this.updatedAt,
     this.serverId,
     this.profileId,
     this.rootFolder,
@@ -124,6 +126,7 @@ class SeerrRequest {
       requestedById: requestedById,
       requestedByName: requestedByName,
       createdAt: createdAt,
+      updatedAt: updatedAt,
       serverId: serverId,
       profileId: profileId,
       rootFolder: rootFolder,
@@ -235,6 +238,7 @@ class SeerrRequest {
       requestedByName: (requestedByMap['displayName'] ?? requestedByMap['username'] ?? requestedByMap['plexUsername'])
           ?.toString(),
       createdAt: json['createdAt']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
       serverId: _asInt(json['serverId']),
       profileId: _asInt(json['profileId']),
       rootFolder: json['rootFolder'] is String ? json['rootFolder'] as String : null,

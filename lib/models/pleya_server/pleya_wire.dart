@@ -160,6 +160,7 @@ class PleyaCapabilities {
     this.playlists = false,
     this.itemActivity = false,
     this.assistantMemory = false,
+    this.pushNotifications = false,
     this.transcode = false,
     this.downloads = false,
     this.liveTv = false,
@@ -217,6 +218,7 @@ class PleyaCapabilities {
   /// `/users/me/activity-sharing`, which always come together.
   final bool itemActivity;
   final bool assistantMemory;
+  final bool pushNotifications;
   final bool transcode;
   final bool downloads;
   final bool liveTv;
@@ -290,6 +292,7 @@ class PleyaCapabilities {
     playlists: booleanOr(json, 'playlists', orElse: false),
     itemActivity: booleanOr(json, 'item_activity', orElse: false),
     assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
+    pushNotifications: booleanOr(json, 'push_notifications', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),
     liveTv: booleanOr(json, 'live_tv', orElse: false),

@@ -39,6 +39,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
+	"github.com/edde746/plezy/pleya_server/internal/push"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
@@ -257,6 +258,18 @@ func run() int {
 
 	workers := &sync.WaitGroup{}
 	workers.Add(5)
+	apns, err := push.OpenAPNs(cfg.APNsConfig)
+	if err != nil {
+		startup.Warn("push uitgeschakeld", "error", err.Error())
+	}
+	pushService := push.New(pool, apns)
+	if pushService.Enabled() {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			pushService.Run(workCtx, logging.Component(log, "push"))
+		}()
+	}
 	var metadataProvider metadata.Provider
 	metadataName := catalog.SourceNFO
 	if cfg.TMDBKey != "" {
@@ -325,6 +338,7 @@ func run() int {
 	restarted := make(chan error, 1)
 	reg := &metrics.Registry{}
 	apiServer := api.New(api.Options{
+		Push:               pushService,
 		Backups:            backups,
 		BeforeRestore:      func() { stopWork(); workers.Wait() },
 		AfterRestore:       func(err error) { restarted <- err },

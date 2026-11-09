@@ -2768,3 +2768,29 @@ geen stille andere afbeelding. Nieuw bewust kiezen geeft een nieuwe UUID/ETag.
 Ontpinnen herstelt de gewone bronladder. `pins.*.state=ready` betekent aanwezige
 gevalideerde cachebytes, `unavailable` houdt intentie en herstelbare fout zichtbaar.
 GET mag cache herstellen; PUT lokt na publicatie geen nieuwe netwerkcall uit.
+
+## A-21 Push naar een iOS-installatie
+
+De optionele vlag `capabilities.push_notifications` staat alleen aan bij een
+geconfigureerde APNs-provider. De app gebruikt een HTTPS-verbinding en vraagt
+expliciete iOS-toestemming voordat zij een token verstuurt. Beide categorieën
+beginnen uit. Een client bewaart per profiel en serveraccount een willekeurige
+installatie-UUID en stuurt die naar
+`PUT /users/me/push-installations/{installation_id}`. De gesloten body bevat
+`device_token` in hex, `environment` (sandbox of production), optioneel
+`locale` (en of nl) en `movies` en `episodes`. De server accepteert alleen
+zijn eigen APNs-omgeving en ten minste één gekozen categorie.
+
+PUT en DELETE vereisen een eigen sessiebearer. PUT is vervangend en behoudt
+de oorspronkelijke toestemmingstijd van categorieën die aan blijven.
+Een nieuwere sessie van hetzelfde account kan de registratie overnemen als
+zij hetzelfde toestel of APNs-token draagt. Maximaal acht registraties per
+sessie. DELETE is idempotent en geeft bij een onbekende of andere registratie
+ook 204. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
+registraties geven 400 `session.invalid`. API-tokens geven 403
+`auth.scope_insufficient`. Alle antwoorden dragen `Cache-Control: no-store`.
+
+De server verstuurt alleen na controle van toestemming, sessie en bibliotheek.
+De alerttekst en de willekeurige aflever-ID bevatten geen titel of
+bibliotheeknaam. Een intrekking verwijdert wachtende afleveringen bij Pleya.
+De server vraagt APNs om niet-bezorgde alerts direct te laten verlopen.

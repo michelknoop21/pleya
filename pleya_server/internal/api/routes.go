@@ -136,6 +136,8 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/playback/sessions/{session_id}/{file}", s.streamAuthorized(s.handlePlaybackFile)},
 
 		// BP-08b: alleen het eigen account, uitsluitend een sessiebearer.
+		{"PUT " + p + "/users/me/push-installations/{installation_id}", s.authenticated(s.handlePushInstallation)},
+		{"DELETE " + p + "/users/me/push-installations/{installation_id}", s.authenticated(s.handlePushInstallation)},
 		{"GET " + p + "/users/me/memory", s.authenticated(s.handleGetMemory)},
 		{"PUT " + p + "/users/me/memory", s.authenticated(s.handlePutMemory)},
 		{"POST " + p + "/users/me/memory/clear", s.authenticated(s.handleClearMemory)},

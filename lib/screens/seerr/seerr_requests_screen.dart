@@ -22,6 +22,7 @@ import '../../utils/snackbar_helper.dart';
 import '../../widgets/focusable_tab_chip.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../widgets/mobile/mobile_dense_title_row.dart';
 import '../../widgets/segmented_tab_group.dart';
 import '../../widgets/seerr_request_actions_sheet.dart';
 import '../../widgets/seerr_request_edit_sheet.dart';
@@ -57,9 +58,10 @@ class SeerrRequestsScreen extends StatefulWidget {
   /// [mineOnly] scopes the list to the viewer's own requests, also for a manager. The
   /// phone's "Mijn aanvragen" header opens it that way; the header must not promise the
   /// viewer's own requests and then show everyone's.
-  const SeerrRequestsScreen({super.key, this.mineOnly = false, this.focusRequestId});
+  const SeerrRequestsScreen({super.key, this.mineOnly = false, this.focusRequestId, this.reviewPending = false});
 
   final bool mineOnly;
+  final bool reviewPending;
 
   /// The viewer's own request this page was opened for ("Mijn aanvraag" on a
   /// title page). The list lands on it instead of on its first row. Only used
@@ -74,7 +76,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   static const double _hInset = 16;
   static const int _pageSize = 20;
 
-  TvSeerrRequestFilter _filter = TvSeerrRequestFilter.all;
+  late TvSeerrRequestFilter _filter = widget.reviewPending ? TvSeerrRequestFilter.pending : TvSeerrRequestFilter.all;
   List<SeerrRequest> _items = const [];
   int _page = 1;
   bool _hasMore = false;
@@ -632,7 +634,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     final client = origin ?? _boundClient;
     if (!_owns(client) || _busy.contains(request.id)) return;
     final saved = await SeerrRequestEditSheet.show(context, request: request);
-    if (!_owns(client)) return;
+    if (!mounted || !_owns(client)) return;
     // Also after a close without a save: the sheet read the request back, and
     // what it found (approved meanwhile, refused) is news for the list too.
     unawaited(_loadCounts());
@@ -688,7 +690,11 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<SeerrProvider>();
     final ownOnly = _ownOnly(provider);
-    final title = ownOnly ? t.seerr.myRequests : t.seerr.allRequests;
+    final title = ownOnly
+        ? t.seerr.myRequests
+        : widget.reviewPending
+        ? t.pleyaNotifications.manageRequestsTitle
+        : t.seerr.allRequests;
 
     // Host so the action menu and the edit form get the overlay path (focus
     // trap, D-pad back) instead of the focusless modal-route fallback.
@@ -697,6 +703,12 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           ? _buildTv(title, ownOnly)
           : FocusedScrollScaffold(
               title: Text(title),
+              sliverAppBar: PlatformDetector.isHandheldIOS(context)
+                  ? MobileDenseSliverAppBar(
+                      pinned: true,
+                      row: MobileDenseTitleRow(title: title, onBack: () => Navigator.of(context).maybePop()),
+                    )
+                  : null,
               slivers: [
                 if (provider.canManageRequests) SliverToBoxAdapter(child: _scopeRow(ownOnly)),
                 SliverToBoxAdapter(child: _filterRow(ownOnly)),

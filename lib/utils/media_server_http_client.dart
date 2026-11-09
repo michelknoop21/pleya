@@ -119,6 +119,7 @@ class MediaServerHttpClient {
     Object? body,
     Duration? timeout,
     AbortController? abort,
+    bool followRedirects = true,
   }) => _send(
     'PUT',
     path,
@@ -127,6 +128,7 @@ class MediaServerHttpClient {
     body: body,
     timeout: timeout,
     abort: abort,
+    followRedirects: followRedirects,
   );
 
   Future<MediaServerResponse> patch(
@@ -293,6 +295,7 @@ class MediaServerHttpClient {
     Object? body,
     Duration? timeout,
     AbortController? abort,
+    bool followRedirects = true,
   }) async {
     if (_closing) {
       throw MediaServerHttpException(type: MediaServerHttpErrorType.cancelled, message: 'HTTP client is closing');
@@ -307,6 +310,7 @@ class MediaServerHttpClient {
     final requestAbort = AbortController();
     _activeAborts.add(requestAbort);
     final request = http.AbortableRequest(method, uri, abortTrigger: _abortTrigger(requestAbort, abort));
+    request.followRedirects = followRedirects;
     request.headers.addAll(mergedHeaders);
     _setBody(request, body);
 
