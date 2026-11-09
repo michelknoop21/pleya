@@ -681,6 +681,29 @@ void main() {
       expect(provider.lastSync, now, reason: 'the stored library outside the synced set is ignored');
     });
 
+    test('offline, the last sync is read from the libraries the index shows', () async {
+      provider.dispose();
+      final scanned = DateTime.utc(2026, 2, 1, 21, 7);
+      final seeded = LocalLibraryStore(root, clock: () => scanned);
+      await seeded.load();
+      await seeded.saveLibrary(library, client.rows, complete: true);
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [], // no server online, so nothing to sync
+        clientFor: (_) => null,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => false,
+        wifiConnected: () => false,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+      );
+      await provider.ready;
+      expect(provider.items, isNotEmpty);
+      expect(provider.lastSync, scanned);
+    });
+
     test('a scan that left titles out still moves the last sync', () async {
       await open();
       client.itemErrors['c'] = TimeoutException('slow');

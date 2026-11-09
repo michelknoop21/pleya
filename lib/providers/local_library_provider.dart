@@ -146,9 +146,11 @@ class LocalLibraryProvider extends ChangeNotifier with DisposableChangeNotifierM
   /// The oldest last scan, complete or with titles left out, over the
   /// libraries synced now. A stored library outside that set (hidden, server
   /// gone or in auth error) is never scanned again and would pin it forever.
+  /// Offline nothing is synced, so the libraries the index shows stand in.
   DateTime? get lastSync {
+    final synced = librariesForSync().where(_allowedLibrary).toList();
     DateTime? oldest;
-    for (final library in librariesForSync().where(_allowedLibrary)) {
+    for (final library in synced.isEmpty ? _visibleLibraries : synced) {
       final at = _store?.lastScan(library.globalKey)?.at;
       if (at != null && (oldest == null || at.isBefore(oldest))) oldest = at;
     }
