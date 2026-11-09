@@ -263,14 +263,17 @@ Map<int, UnifiedMediaGroup> _finalizeComponent(
 /// internally consistent — no scoped namespace may disagree across members,
 /// even when no single pair in the chain looks conflicting on its own.
 ///
-/// Only provider numbers conflict. A guid is how one library names a title
-/// (`plex://movie/…` on one Plex server, `com.plexapp.agents.imdb://tt…` on
-/// another), so two guids that differ say nothing against a shared number.
+/// For a film or series only provider numbers conflict. A guid is how one
+/// library names a title (`plex://movie/…` on one Plex server,
+/// `com.plexapp.agents.imdb://tt…` on another), so two guids that differ say
+/// nothing against a shared number. An episode keeps its guid as a conflict:
+/// its number is the series number plus `s1e2`, and two libraries on another
+/// episode order give one `s1e2` to two different episodes.
 bool _componentHasNamespaceConflict(List<int> members, List<GroupingCandidate> candidates) {
   final valueByNamespace = <String, String>{};
   for (final i in members) {
     for (final token in candidates[i].evidence.strongTokens) {
-      if (token.namespace == identityTokenNamespaceGuid) continue;
+      if (token.namespace == identityTokenNamespaceGuid && token.scope != 'episode') continue;
       final namespaceKey = '${token.scope}:${token.namespace}';
       final existing = valueByNamespace[namespaceKey];
       if (existing != null && existing != token.value) return true;

@@ -338,8 +338,10 @@ class HomeProjectionService {
   }
 
   /// One debug line per title bucket that stays more than one card, so a log
-  /// upload shows why: source key, backend, kind, token keys and group id per
-  /// source. The bucket key itself is left out, because it holds the title.
+  /// upload shows why: per source its card, backend, kind and token
+  /// namespaces, and per namespace whether the values agree. No title, no
+  /// provider number and no group id (which embeds one): those name what the
+  /// viewer watched.
   static void _logSeparatedBuckets(List<UnifiedMediaGroup> groups, Map<String, IdentityEvidence> evidenceBySourceKey) {
     final byBucket = <String, List<UnifiedMediaGroup>>{};
     for (final group in groups) {
@@ -348,14 +350,28 @@ class HomeProjectionService {
     }
     for (final cards in byBucket.values) {
       if (cards.length < 2) continue;
-      final parts = [
-        for (final group in cards)
-          for (final source in group.sources)
-            '${source.sourceKey} ${source.item.backend.name} ${source.item.kind.name} '
-                '[${(evidenceBySourceKey[source.sourceKey]?.strongTokens ?? const <IdentityToken>{}).map((t) => t.key).join(', ')}] '
-                '${group.groupId}',
+      final valuesByNamespace = <String, Set<String>>{};
+      final parts = <String>[];
+      for (final (index, group) in cards.indexed) {
+        for (final source in group.sources) {
+          final tokens = evidenceBySourceKey[source.sourceKey]?.strongTokens ?? const <IdentityToken>{};
+          final namespaces = <String>{};
+          for (final token in tokens) {
+            final namespace = '${token.scope}:${token.namespace}';
+            namespaces.add(namespace);
+            valuesByNamespace.putIfAbsent(namespace, () => {}).add(token.value);
+          }
+          parts.add(
+            '${source.sourceKey} card$index ${source.item.backend.name} ${source.item.kind.name} [${namespaces.join(', ')}]',
+          );
+        }
+      }
+      final agreement = [
+        for (final e in valuesByNamespace.entries) '${e.key}=${e.value.length == 1 ? 'same' : 'diff'}',
       ];
-      appLogger.d('Continue Watching: one title bucket stays ${cards.length} cards: ${parts.join('; ')}');
+      appLogger.d(
+        'Continue Watching: one title bucket stays ${cards.length} cards: ${parts.join('; ')} | ${agreement.join(', ')}',
+      );
     }
   }
 

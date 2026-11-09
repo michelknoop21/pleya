@@ -350,6 +350,37 @@ void main() {
       expect(idOf(forward, 'srv-b'), idOf(backward, 'srv-b'));
     });
 
+    test('two libraries on another episode order keep their own s1e2 apart by guid', () {
+      GroupingCandidate episode(String serverId, String guid) {
+        final item = MediaItem.plex(
+          id: '$serverId-ep',
+          kind: MediaKind.episode,
+          guid: guid,
+          title: 'Pilot',
+          parentIndex: 1,
+          index: 2,
+          serverId: serverId,
+          serverName: serverId,
+        );
+        return GroupingCandidate(
+          source: UnifiedMediaSource.fromItem(item),
+          evidence: IdentityEvidence(
+            identity: canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque(),
+            strongTokens: {
+              ...guidTokens(scope: 'episode', guid: guid, kind: MediaKind.episode),
+              ...externalIdTokens(scope: 'episode', ids: const ExternalIds(tvdb: 73141), discriminator: 's1e2'),
+            },
+          ),
+        );
+      }
+
+      final groups = groupUnifiedMediaSources([
+        episode('srv-aired', 'plex://episode/5d9c0aaa'),
+        episode('srv-dvd', 'plex://episode/5d9c0bbb'),
+      ]);
+      expect(groups, hasLength(2), reason: 'one s1e2 on two episode orders is two episodes');
+    });
+
     test('imdb, tmdb and tvdb conflicts still separate two sources that share a guid', () {
       MediaItem plex(String serverId) => MediaItem.plex(
         id: '$serverId-film',

@@ -874,7 +874,10 @@ void main() {
       // a viewer watched.
       final lines = [for (final event in log.buffer) ...event.lines].where((l) => l.contains('a:a1')).toList();
       expect(lines, hasLength(1));
-      expect(lines.single, allOf(contains('b:b1'), contains('movie:imdb:tt1817232'), isNot(contains('Brothers'))));
+      expect(
+        lines.single,
+        allOf(contains('b:b1'), contains('movie:imdb'), isNot(contains('tt1817232')), isNot(contains('Brothers'))),
+      );
     });
 
     test('a row with no serverId is set aside instead of throwing', () async {

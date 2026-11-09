@@ -379,8 +379,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
       _focused.value = _restoredOrFirst();
       return;
     }
-    // Same title, new object: what the block says and what Select opens both
-    // read the fresh group.
+    // Same title, new object: the block reads the fresh group, as the poster
+    // and Select already did.
     _focused.value = fresh;
     _keepFocusedTileInPlace(oldWidget.groups, fresh.groupId);
   }

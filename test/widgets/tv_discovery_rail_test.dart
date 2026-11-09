@@ -253,8 +253,8 @@ void main() {
       expect(railOf(tester).focusGroup('long-0'), isFalse);
     });
 
-    // A Home reload hands the rail new group objects. The focus follows the id;
-    // what the block describes and what Select opens must follow it too.
+    // Guard, green before and after: a Home reload hands the rail new group
+    // objects, and the focus and what Select opens follow the title.
     testWidgets('a reload that reorders the row keeps the focus and the fresh group on its title', (tester) async {
       setGoldenSurfaceSize(tester);
       final before = tvDiscoveryFilmsRow().take(2).toList();
