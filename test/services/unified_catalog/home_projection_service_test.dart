@@ -5,12 +5,14 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart' hide ProductionFilter;
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/unified/unified_media_hub.dart';
 import 'package:pleya/services/unified_catalog/home_projection_service.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/external_ids.dart';
 
 MediaItem _movie(
@@ -820,6 +822,61 @@ void main() {
       expect(row.groups, hasLength(2), reason: 'Continue Watching has never merged on title alone');
     });
 
+    // The guid is how one Plex library names a film, not what the film is. A
+    // library still on the legacy IMDb agent and one on the Plex agent name the
+    // same film differently, and both lookups return the same imdb number.
+    test('a legacy and a current Plex agent guid with the same imdb number are one card', () async {
+      final onDeck = [
+        _movie('a1', serverId: 'a', title: 'Brothers', year: 2024, guid: 'plex://movie/5d776d1e96b655001fe2b1a4'),
+        _movie(
+          'b1',
+          serverId: 'b',
+          title: 'Brothers',
+          year: 2024,
+          guid: 'com.plexapp.agents.imdb://tt1817232?lang=en',
+          serverName: 'Plex Zolder',
+        ),
+      ];
+      final service = _service(
+        ids: {
+          'a:a1': const ExternalIds(imdb: 'tt1817232', tmdb: 1100099),
+          'b:b1': const ExternalIds(imdb: 'tt1817232'),
+        },
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(1), reason: 'one proven film is one card');
+      expect(row.groups.single.sources.map((s) => s.item.id), ['a1', 'b1']);
+    });
+
+    test('a legacy guid whose lookup fails stays its own card', () async {
+      final onDeck = [
+        _movie('a1', serverId: 'a', title: 'Brothers', year: 2024, guid: 'plex://movie/5d776d1e96b655001fe2b1a4'),
+        _movie('b1', serverId: 'b', title: 'Brothers', year: 2024, guid: 'com.plexapp.agents.imdb://tt1817232?lang=en'),
+      ];
+      final service = HomeProjectionService(
+        fetchExternalIds: (serverId, targetId) async {
+          if (serverId == 'b') throw StateError('502');
+          return const ExternalIds(imdb: 'tt1817232');
+        },
+      );
+
+      final previous = appLogger;
+      final log = MemoryOutput();
+      appLogger = Logger(output: log, printer: SimplePrinter(), filter: _AllowAll(), level: Level.trace);
+      addTearDown(() => appLogger = previous);
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(2), reason: 'without numbers there is no proof, and a title is no proof');
+      // The next log upload has to show why the two stayed apart, and nothing
+      // a viewer watched.
+      final lines = [for (final event in log.buffer) ...event.lines].where((l) => l.contains('a:a1')).toList();
+      expect(lines, hasLength(1));
+      expect(lines.single, allOf(contains('b:b1'), contains('movie:imdb:tt1817232'), isNot(contains('Brothers'))));
+    });
+
     test('a row with no serverId is set aside instead of throwing', () async {
       final onDeck = [
         _episode('healthy', serverId: 'a', lastViewedAt: 100),
@@ -949,4 +1006,9 @@ void main() {
       );
     });
   });
+}
+
+class _AllowAll extends LogFilter {
+  @override
+  bool shouldLog(LogEvent event) => true;
 }

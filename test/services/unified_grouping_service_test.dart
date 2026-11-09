@@ -14,6 +14,7 @@ import 'package:pleya/media/media_version.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/identity_evidence.dart';
 import 'package:pleya/media/unified/source_row_descriptor.dart' show backendDisplayLabel;
+import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/services/unified_catalog/grouping_service.dart';
 import 'package:pleya/utils/external_ids.dart';
@@ -280,6 +281,96 @@ void main() {
 
       expect(groups, hasLength(3));
       expect(groups.every((g) => g.sources.length == 1), isTrue);
+    });
+
+    test('one film on a Plex agent guid, a legacy Plex agent guid and Jellyfin is one group', () {
+      // Two Plex libraries name the same film by a different guid; the guid is
+      // the server's own label, the provider numbers are the proof.
+      MediaItem plex(String serverId, String guid) => MediaItem.plex(
+        id: '$serverId-brothers',
+        kind: MediaKind.movie,
+        guid: guid,
+        title: 'Brothers',
+        year: 2024,
+        serverId: serverId,
+        serverName: serverId,
+      );
+      final jellyfin = MediaItem.jellyfin(
+        id: '5d1f0c2a9e8b4c7d8e9f0a1b2c3d4e5f',
+        kind: MediaKind.movie,
+        // What `jellyfin_mappers.dart` puts here: the item id, never a stable guid.
+        guid: '5d1f0c2a9e8b4c7d8e9f0a1b2c3d4e5f',
+        title: 'Brothers',
+        year: 2024,
+        serverId: 'server-jellyfin',
+        serverName: 'server-jellyfin',
+      );
+
+      final groups = groupUnifiedMediaSources([
+        _candidateFromItem(
+          plex('server-plex', 'plex://movie/5d776d1e96b655001fe2b1a4'),
+          ids: const ExternalIds(imdb: 'tt1817232', tmdb: 1100099),
+        ),
+        _candidateFromItem(
+          plex('server-plex-legacy', 'com.plexapp.agents.imdb://tt1817232?lang=en'),
+          ids: const ExternalIds(imdb: 'tt1817232'),
+        ),
+        _candidateFromItem(jellyfin, ids: const ExternalIds(imdb: 'tt1817232', tmdb: 1100099)),
+      ]);
+
+      expect(groups, hasLength(1), reason: 'a differing guid must not split a film its provider numbers prove');
+      expect(groups.single.sources, hasLength(3));
+    });
+
+    test('a component split by a provider-number conflict gives each card its own, order-independent id', () {
+      MediaItem film(String serverId) => MediaItem(
+        id: '$serverId-film',
+        backend: MediaBackend.jellyfin,
+        kind: MediaKind.movie,
+        title: 'X',
+        year: 2020,
+        serverId: serverId,
+        serverName: serverId,
+      );
+      final a = _candidateFromItem(film('srv-a'), ids: const ExternalIds(tmdb: 1, tvdb: 5));
+      final b = _candidateFromItem(film('srv-b'), ids: const ExternalIds(tmdb: 1, tvdb: 6));
+
+      final forward = groupUnifiedMediaSources([a, b]);
+      final backward = groupUnifiedMediaSources([b, a]);
+
+      expect(forward, hasLength(2));
+      expect(
+        forward.map((g) => g.groupId).toSet(),
+        hasLength(2),
+        reason: 'two cards sharing one id share one focus node',
+      );
+      String idOf(List<UnifiedMediaGroup> groups, String serverId) =>
+          groups.firstWhere((g) => g.sources.single.item.serverId == serverId).groupId;
+      expect(idOf(forward, 'srv-a'), idOf(backward, 'srv-a'));
+      expect(idOf(forward, 'srv-b'), idOf(backward, 'srv-b'));
+    });
+
+    test('imdb, tmdb and tvdb conflicts still separate two sources that share a guid', () {
+      MediaItem plex(String serverId) => MediaItem.plex(
+        id: '$serverId-film',
+        kind: MediaKind.movie,
+        guid: 'plex://movie/5d776d1e96b655001fe2b1a4',
+        title: 'X',
+        year: 2020,
+        serverId: serverId,
+        serverName: serverId,
+      );
+      for (final (left, right) in [
+        (const ExternalIds(tmdb: 1, imdb: 'tt1'), const ExternalIds(tmdb: 1, imdb: 'tt2')),
+        (const ExternalIds(imdb: 'tt1', tmdb: 1), const ExternalIds(imdb: 'tt1', tmdb: 2)),
+        (const ExternalIds(tmdb: 1, tvdb: 5), const ExternalIds(tmdb: 1, tvdb: 6)),
+      ]) {
+        final groups = groupUnifiedMediaSources([
+          _candidateFromItem(plex('srv-a'), ids: left),
+          _candidateFromItem(plex('srv-b'), ids: right),
+        ]);
+        expect(groups, hasLength(2), reason: '$left vs $right');
+      }
     });
 
     // Confirmed independently against an unauthorized remote commit's claim

@@ -329,12 +329,34 @@ class HomeProjectionService {
       candidates.add(GroupingCandidate(source: source, evidence: evidence[i]));
     }
 
-    return _inContinueWatchingOrder(
-      oneContinueWatchingCardPerSeries(
-        groupUnifiedMediaSources(candidates, allowWeakFallback: false),
-        evidenceBySourceKey,
-      ),
+    final groups = oneContinueWatchingCardPerSeries(
+      groupUnifiedMediaSources(candidates, allowWeakFallback: false),
+      evidenceBySourceKey,
     );
+    _logSeparatedBuckets(groups, evidenceBySourceKey);
+    return _inContinueWatchingOrder(groups);
+  }
+
+  /// One debug line per title bucket that stays more than one card, so a log
+  /// upload shows why: source key, backend, kind, token keys and group id per
+  /// source. The bucket key itself is left out, because it holds the title.
+  static void _logSeparatedBuckets(List<UnifiedMediaGroup> groups, Map<String, IdentityEvidence> evidenceBySourceKey) {
+    final byBucket = <String, List<UnifiedMediaGroup>>{};
+    for (final group in groups) {
+      final key = continueWatchingBucketKey(group.representativeSource.item);
+      if (key != null) byBucket.putIfAbsent(key, () => []).add(group);
+    }
+    for (final cards in byBucket.values) {
+      if (cards.length < 2) continue;
+      final parts = [
+        for (final group in cards)
+          for (final source in group.sources)
+            '${source.sourceKey} ${source.item.backend.name} ${source.item.kind.name} '
+                '[${(evidenceBySourceKey[source.sourceKey]?.strongTokens ?? const <IdentityToken>{}).map((t) => t.key).join(', ')}] '
+                '${group.groupId}',
+      ];
+      appLogger.d('Continue Watching: one title bucket stays ${cards.length} cards: ${parts.join('; ')}');
+    }
   }
 
   /// Hoofdstuk 13.3: a card sorts on the newest recency among its own valid

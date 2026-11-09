@@ -253,7 +253,7 @@ Map<int, UnifiedMediaGroup> _finalizeComponent(
     return {members.single: _buildSingleSourceGroup(candidates[members.single])};
   }
   if (_componentHasNamespaceConflict(members, candidates)) {
-    return {for (final i in members) i: _buildSingleSourceGroup(candidates[i])};
+    return {for (final i in members) i: _buildSingleSourceGroup(candidates[i], splitFromConflict: true)};
   }
   return {members.first: _buildMergedGroup(members, candidates, preferredSourceKeys)};
 }
@@ -262,10 +262,15 @@ Map<int, UnifiedMediaGroup> _finalizeComponent(
 /// chaining (item A shares tmdb with B, B shares imdb with C) must still be
 /// internally consistent — no scoped namespace may disagree across members,
 /// even when no single pair in the chain looks conflicting on its own.
+///
+/// Only provider numbers conflict. A guid is how one library names a title
+/// (`plex://movie/…` on one Plex server, `com.plexapp.agents.imdb://tt…` on
+/// another), so two guids that differ say nothing against a shared number.
 bool _componentHasNamespaceConflict(List<int> members, List<GroupingCandidate> candidates) {
   final valueByNamespace = <String, String>{};
   for (final i in members) {
     for (final token in candidates[i].evidence.strongTokens) {
+      if (token.namespace == identityTokenNamespaceGuid) continue;
       final namespaceKey = '${token.scope}:${token.namespace}';
       final existing = valueByNamespace[namespaceKey];
       if (existing != null && existing != token.value) return true;
@@ -275,10 +280,16 @@ bool _componentHasNamespaceConflict(List<int> members, List<GroupingCandidate> c
   return false;
 }
 
-UnifiedMediaGroup _buildSingleSourceGroup(GroupingCandidate candidate) {
+/// [splitFromConflict] marks a card cut out of a conflicting component. Its
+/// siblings share its tokens, so the smallest token key would give them all
+/// one id (and a rail one focus node); its own source key is unique and does
+/// not depend on input order.
+UnifiedMediaGroup _buildSingleSourceGroup(GroupingCandidate candidate, {bool splitFromConflict = false}) {
   final source = candidate.source;
   return UnifiedMediaGroup(
-    groupId: _deterministicGroupId([candidate.evidence], fallbackKey: source.sourceKey),
+    groupId: splitFromConflict
+        ? 'group:source:${source.sourceKey}'
+        : _deterministicGroupId([candidate.evidence], fallbackKey: source.sourceKey),
     identity: candidate.evidence.identity,
     sources: [source],
     representativeSourceKey: source.sourceKey,
