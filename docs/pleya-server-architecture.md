@@ -1269,6 +1269,8 @@ ook via een gewone aanroep op te halen. Een client zonder werkende websocket is 
 
 ## 15. Remote access
 
+> **Gedeeltelijk vervangen op 9 november 2026** door DEC-XXX (Pleya Server delen) in `docs/DECISIONS.md`: de binary krijgt wel TLS, een registratieclient en een relayclient, en delen loopt via uitnodigingen. Wat hieronder over correct gedrag achter een omgekeerde proxy staat blijft gelden. Voorstel en plan: `docs/pleya-server-sharing-proposal.md` en `docs/plans/2026-11-09-pleya-server-delen/PLAN.md`. De tekst hieronder is de baseline van augustus 2026 en is niet herschreven.
+
 **Het architectuurbesluit is productneutraal: Pleya Server bouwt in v1 geen eigen NAT-traversal, geen
 eigen relay en geen eigen certificaatuitgifte. Wat de server wel garandeert is correct gedrag achter
 HTTPS en achter een omgekeerde proxy.**

@@ -128,6 +128,7 @@ Productbesluit Michel, 10 oktober 2026, bindend gemaakt op 17 oktober 2026: unif
 | C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | PS-14 vrijgegeven voor uitvoering (DEC-149, 10 okt), onder drie voorwaarden; S3 vrij; P5 en PS-15 vrijgegeven op 29 okt (DEC-183), S6 houdt S3-/contractafhankelijkheden; protocolvenster voor boeken nog niet geopend. PS-11A: status staat in de masterlijst. Algemene Big P-pauze opgeheven (8 okt) |
 | C-04 | P1 | Server | Loudness D3-D5 en client-consumptie | Status herijken |
 | C-05 | P2 | Server | Volledige S0-S25-dekking, inclusief Web consumer, beheer-GUI en setup | Uitvoering alle pakketten opgedragen op 29 okt; detailstatus en bewijs in servermasterlijst, bestaande vrijgave-/hardware-/releasepoorten blijven gelden |
+| C-06 | P1 | Server | S26 Pleya Server delen: uitnodigingen, Pleya-account- en zelfstandige modus, automatisch versleutelde verbindingen, automatische routekeuze en een relay als rechtstreeks niet lukt; zie [C-06](#c-06-pleya-server-delen) | Gepland; stap 1 (inventarisatie en besluit) in uitvoering. Roadmap deviation: besluit Michel 9 nov 2026, DEC-XXX (Pleya Server delen), [voorstel](pleya-server-sharing-proposal.md), [plan](plans/2026-11-09-pleya-server-delen/PLAN.md). Geen protocolvenster geopend |
 | D-01 | P2 | E-books/routes | Bestaande e-bookbranch en schermen | Status herijken |
 | D-02 | P2 | E-books/routes | Resterende e-bookuitbreidingen uit northstar | Volgens actueel branchmanifest vast te stellen |
 | D-03 | P2 | E-books/routes | Eigen routes muziek, boeken en overige typen | Besluit nodig |
@@ -296,7 +297,8 @@ After that follow `docs/PLEYA-SERVER-MASTERLIST.md` and its dependency graph:
 - S22 metadata providers after S4 when released;
 - S24/S25 hardening/observability/backup/restore/upgrades;
 - S15 final hardening/acceptance/Plex-off gate;
-- PS-12 only as a later explicit choice.
+- PS-12 only as a later explicit choice;
+- S26 (C-06, sharing via invitations, encrypted routes and relay) runs as its own slice next to this order from 9 November 2026: step 1 and the TLS proof first, no protocol window until Michel opens one, no change to the S15 gate.
 
 This list groups scope, not a new serial dependency chain. In particular, the existing graph allows S7 after S0, S10 after S7+S1+S2, and S11 after S10+S2. The basic server management GUI does not have to wait for S14, the consumer player, or completion of every server slice. Existing phase approvals and the WIP limit still apply. S8 waits for S7+S4+S5; S9 for S7+S3+S6; S12 for S9+S6; S13 for S8. P5 remains a prerequisite for the reading-state contract.
 
@@ -351,6 +353,10 @@ Scope:
 Juridische toets vóór de licentietekst: auteurschap en herkomst (welke beelden of stemmen met externe tools zijn gemaakt, en wat hun voorwaarden zeggen; gedateerde originelen bewaren), bijdragen van anderen aan Big P-materiaal, of een binary met de beelden past bij GPLv3 terwijl de bron ze niet meer bevat, en de beelden op de publieke website. Kopieën die al onder de GPL zijn verspreid, ook in de git-historie en in forks, blijven onder de GPL; de beperking geldt vanaf de wijziging.
 
 Volgorde en impact: dit hoort bij stap 2 hierboven (publicatie en licenties) en loopt samen met E-02. De buildwijziging raakt `pubspec.yaml`, de laadcode van de stem, CI en de releaselanes, dus ze gaat niet in een lopende releasebundel en wacht tot de lopende A-24-vervolgronde (Instellingen en Mijn Pleya) is gemerged. Daarna eerst de juridische toets, dan de repo-splitsing. Big P-functies wachten er niet op.
+
+### C-06: Pleya Server delen
+
+Roadmap deviation: besluit Michel 9 november 2026. Michel vroeg of streamen via Pleya zo versleuteld kan dat niemand onderweg meekijkt, zonder verlies van performance of kwaliteit, en of self-hosted streamen buitenshuis eenvoudig kan, ook voor anderen die Pleya Server hosten. Het werk past bij geen werkpakket: S24 is gesloten en gaat over proxy-instellingen, DEC-037 sluit TLS, registratie en relay in de binary uit, en E-01 kent de relay niet als kostenpost. Michel koos voor één samenhangend werkpakket met uitnodigen als basis: de ontvanger accepteert een uitnodiging, logt in en kijkt; TLS, certificaten, routes en relay gebeuren achter de schermen. Twee modi (Pleya-account als standaard, zelfstandig zonder centrale dienst), TLS eerst bewezen met de echte spelerstacks, automatische routekeuze zonder stille terugval naar onversleuteld HTTP, relay zonder routerwerk als rechtstreeks niet lukt, kwaliteit nooit stil omlaag. Acht uitvoeringsstappen met eigen branch en review; security-gevoelige stappen krijgen een eigen adversariële review vóór de bundel. Wat verschuift: niets in de volgorde van C-05 of S15; de Pleya-relay krijgt een afhankelijkheid van het E-01-besluit; DEC-037 en architectuur §15 zijn gedeeltelijk vervangen door DEC-XXX (Pleya Server delen). Status per taak staat in de masterlijst onder S26; het [voorstel](pleya-server-sharing-proposal.md) draagt de zes onderdelen uit architectuur 23.1 en de protocolvensteraanvraag, het [plan](plans/2026-11-09-pleya-server-delen/PLAN.md) de stappen en acceptatiescenario's.
 
 ## October work windows
 
