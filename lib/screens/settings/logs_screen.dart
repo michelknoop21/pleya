@@ -333,14 +333,6 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     }
   }
 
-  /// Hold off until the limit has actually passed, and answer with the wait
-  /// the user is looking at.
-  ///
-  /// Only a 429 that names its own window starts a pre-emptive block. The
-  /// relay sends `Retry-After` on every refusal now, so a 429 without one is
-  /// an intermediary guessing; treating that as gospel is how the old
-  /// doubling ladder walked a user up to a five-minute wait the server never
-  /// asked for. The guess is still shown, just not enforced ahead of time.
   // Een fout blijft normaal staan tot je hem sluit, maar op de Apple TV bleef
   // een mislukte upload daardoor in beeld hangen. Deze verloopt, en een
   // geslaagde upload ruimt een eerdere fout op.
@@ -350,6 +342,14 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
   void _showUploadError(String message, String groupKey) =>
       showSnackBar(context, message, type: SnackBarType.error, duration: _uploadNoticeDuration, groupKey: groupKey);
 
+  /// Hold off until the limit has actually passed, and answer with the wait
+  /// the user is looking at.
+  ///
+  /// Only a 429 that names its own window starts a pre-emptive block. The
+  /// relay sends `Retry-After` on every refusal now, so a 429 without one is
+  /// an intermediary guessing; treating that as gospel is how the old
+  /// doubling ladder walked a user up to a five-minute wait the server never
+  /// asked for. The guess is still shown, just not enforced ahead of time.
   int _startUploadCooldown(int? serverRetryAfter) {
     final wait = serverRetryAfter ?? _uploadBackoffSeconds;
     if (serverRetryAfter != null) {
