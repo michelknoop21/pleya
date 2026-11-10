@@ -734,9 +734,9 @@ back-upmap. Geef alleen de servergebruiker toegang. Voorbeeldinhoud van
 }
 ```
 
-Zet `PLEYA_SERVER_APNS_CONFIG=/run/secrets/pleya-apns/apns.json`. Voeg aan de
-service `pleya-server` een read-only bindmount toe van je secretmap naar
-`/run/secrets/pleya-apns`. De server maakt uitgaand HTTPS via HTTP/2 over poort
+Zet `PLEYA_SERVER_APNS_CONFIG=/run/secrets/pleya-apns/apns.json`. `compose.yaml`
+mount de map uit `PLEYA_SERVER_APNS_HOST` (standaard `./data/apns`) read-only op
+`/run/secrets/pleya-apns`; zet die variabele in `.env` als de sleutel elders staat. De server maakt uitgaand HTTPS via HTTP/2 over poort
 443 naar `api.push.apple.com` of `api.sandbox.push.apple.com`. Gebruik
 `sandbox` voor een ontwikkelbuild en `production` voor TestFlight en distributie.
 Zonder geldige configuratie blijft push uit en de server schrijft een korte
