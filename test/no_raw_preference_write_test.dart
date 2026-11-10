@@ -228,6 +228,20 @@ void main() {
       'a mirror of the backend\'s Live TV favourites, in the legacy prefs store',
     ),
 
+    // -- Push and notification state of this device (A-21).
+    'lib/services/pleya_push_notifications.dart': RawWriteRecord(
+      WriteCategory.deviceLocal,
+      9,
+      'per-profile push choices with the installation id their PUT uses, and the marker of Pleya sessions '
+      'that may hold this device\'s registration. Both are about this device\'s APNs token and must '
+      'never reach another device; the keys have no sync policy, so they stay local-only',
+    ),
+    'lib/screens/pleya_notifications_screen.dart': RawWriteRecord(
+      WriteCategory.deviceLocal,
+      1,
+      'the per-profile in-app notification switch and the consent time per category, which decides '
+      'which events count as new on this device; no sync policy, so local-only',
+    ),
     // -- Local playback bookkeeping, in the store this engine does not own.
     'lib/services/local_folder_client.dart': RawWriteRecord(
       WriteCategory.runtimeCache,
@@ -286,8 +300,8 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 113, reason: 'total raw preference writes still classified as staying outside the coordinator');
-    expect(inventory.length, 32, reason: 'files containing them');
+    expect(total, 123, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(inventory.length, 34, reason: 'files containing them');
   });
 
   test('no category is a dumping ground', () {

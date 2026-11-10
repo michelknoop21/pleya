@@ -302,17 +302,17 @@ func newEnv(t *testing.T, opts ...envOption) *env {
 
 	reg := &metrics.Registry{}
 	options := api.Options{
-		Backups:            backups,
-		AfterRestore:       func(err error) { restored <- err },
-		Prober:             ffprobe.New("ffprobe", 60*time.Second),
-		Catalog:            store,
-		Auth:               authStore,
-		Watch:              watchStore,
-		Personal:           personal.NewStore(pool),
-		Memory:             memory.NewStore(pool),
-		Downloads:          downloads.NewStore(pool),
+		Backups:      backups,
+		AfterRestore: func(err error) { restored <- err },
+		Prober:       ffprobe.New("ffprobe", 60*time.Second),
+		Catalog:      store,
+		Auth:         authStore,
+		Watch:        watchStore,
+		Personal:     personal.NewStore(pool),
+		Memory:       memory.NewStore(pool),
+		Downloads:    downloads.NewStore(pool),
 		// Push zonder APNs: registreren blijft 404, intrekken werkt (A-21).
-		Push: push.New(pool, nil),
+		Push:               push.New(pool, nil),
 		Metrics:            reg,
 		Signer:             signer,
 		Logger:             logger,
