@@ -49,9 +49,9 @@ Nothing user-facing since the last published build.
 
 ## 2.8.1 · build 461 · 10 November 2026 · iPhone, iPad, Apple TV and Mac
 
-<!-- commit: 6a4041237 -->
+<!-- commit: a277fe84edea1f84c174dcdd3e060b4258ed84bf -->
 
-Prepared for upload; not yet uploaded when these notes were written.
+Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
 
 ### Fixed
 
