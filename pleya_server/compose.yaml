@@ -120,6 +120,12 @@ services:
       # PLEYA_SERVER_MEDIA_HOST_2 leeg, dan wijst deze mount naar dezelfde map
       # als de eerste en noemt PLEYA_SERVER_LIBRARIES hem gewoon niet.
       - ${PLEYA_SERVER_MEDIA_HOST_2:-./testdata/media}:/media/library2:ro
+      # APNs-sleutel en apns.json voor opt-in push (README.md, "Opt-in push naar
+      # iOS"). Read-only en buiten /config en /backups, zodat de sleutel nooit in
+      # een back-up belandt. Zonder PLEYA_SERVER_APNS_CONFIG leest de server deze
+      # map niet en blijft push uit; de standaardmap valt onder data/ en dus buiten
+      # git en de buildcontext.
+      - ${PLEYA_SERVER_APNS_HOST:-./data/apns}:/run/secrets/pleya-apns:ro
 
     read_only: true
     tmpfs:

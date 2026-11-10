@@ -734,10 +734,13 @@ back-upmap. Geef alleen de servergebruiker toegang. Voorbeeldinhoud van
 }
 ```
 
-Zet `PLEYA_SERVER_APNS_CONFIG=/run/secrets/pleya-apns/apns.json`. Voeg aan de
-service `pleya-server` een read-only bindmount toe van je secretmap naar
-`/run/secrets/pleya-apns`. De server maakt uitgaand HTTPS via HTTP/2 over poort
-443 naar `api.push.apple.com` of `api.sandbox.push.apple.com`. Gebruik
+Zet `PLEYA_SERVER_APNS_CONFIG=/run/secrets/pleya-apns/apns.json`. `compose.yaml`
+mount de map uit `PLEYA_SERVER_APNS_HOST` (standaard `./data/apns`) read-only op
+`/run/secrets/pleya-apns`; zet die variabele in `.env` als de sleutel elders staat.
+Kies geen map binnen `PLEYA_SERVER_CONFIG_HOST` of `PLEYA_SERVER_BACKUP_HOST`: de
+server ziet alleen het containerpad en merkt dan niet dat de sleutel ook onder
+`/config` of in de back-upmap staat. De server maakt uitgaand HTTPS via HTTP/2
+over poort 443 naar `api.push.apple.com` of `api.sandbox.push.apple.com`. Gebruik
 `sandbox` voor een ontwikkelbuild en `production` voor TestFlight en distributie.
 Zonder geldige configuratie blijft push uit en de server schrijft een korte
 opstartmelding bij een configuratiefout.
@@ -746,8 +749,10 @@ De server zet push ook uit als `AuthKey.p8` onder `PLEYA_SERVER_CONFIG_DIR`
 (standaard `/config`) staat, of als groep of anderen het bestand mogen lezen.
 Alles in `/config` gaat mee in elke back-up, en daar blijven alleen `.key`-bestanden
 en bestanden met rechten 0600 geheim. Geef de sleutel dus rechten 0600 voor de
-gebruiker uit `PLEYA_UID` (`chmod 600 AuthKey.p8`). De opstartmelding noemt welke van
-de twee regels de sleutel brak.
+gebruiker uit `PLEYA_UID` (`chown 1026:100 AuthKey.p8 && chmod 600 AuthKey.p8`, met de
+waarden van `PLEYA_UID` en `PLEYA_GID` uit `.env`; 1026:100 is die op de NAS).
+Een sleutel die na een kopie met `sudo` nog van root is, kan de server ook met rechten
+0600 niet lezen. De opstartmelding noemt welke van de twee regels de sleutel brak.
 
 De eerste succesvolle scan per bibliotheek bepaalt de uitgangsstand. Uit
 latere voltooide scans komen alleen nieuwe, afspeelbare films en afleveringen
