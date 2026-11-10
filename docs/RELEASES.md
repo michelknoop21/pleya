@@ -47,6 +47,30 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 459 · 10 November 2026 · Apple TV
+
+<!-- commit: a9c1a175aca43399be04b095b14c398d16c0fc4c -->
+
+### Improved
+
+- **An offline index scan gets in the way of scrolling less.** Build 457 scanned four titles at
+  a time. On the older Apple TV, Alle films then missed 5 percent of its frames in two
+  measurements during a rescan, against 2 percent on build 455. The Apple TV now scans two
+  titles at a time. iPhone, iPad and Mac keep four.
+- **Loading the offline index takes less memory.** At start each index file was read whole and
+  turned into one large structure before the entries were made from it. It is now read in
+  small blocks, one entry at a time. In a test on a Mac with made-up entries, loading an index
+  the size of the one on the older Apple TV peaked at 81 to 83 MB instead of 160 MB.
+
+### Notes
+
+- Neither change has been measured on an Apple TV yet. Build 457 peaked at 359 MB of memory on
+  the older Apple TV, 9 MB over the target of 350 MB. Whether this build stays under it is open.
+- A full sync can take longer than on build 457, where it took 164 seconds: the Apple TV now
+  scans two titles at a time instead of four.
+- Worth checking on the older Apple TV, with the offline index already on: Instellingen >
+  Bibliotheken > Nu synchroniseren, then scroll Alle films for a minute while the scan runs.
+
 ## 2.8.1 · build 458 · 10 November 2026 · Mac
 
 <!-- commit: 3eff12fc4ad99b6b325d5c683ff8c5bc3c81faef -->
