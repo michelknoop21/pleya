@@ -15,6 +15,7 @@ import 'package:pleya/services/local_library/local_library_store.dart';
 import 'package:pleya/services/local_library/local_library_sync.dart';
 import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/deletion_notifier.dart';
+import 'package:pleya/utils/platform_detector.dart';
 import '../services/local_library/local_library_store_test.dart' show library, film;
 import '../services/local_library/local_library_sync_test.dart' show Client;
 
@@ -641,6 +642,40 @@ void main() {
       hasLength(1),
     );
   });
+
+  for (final (appleTv, width) in [(true, 2), (false, 4)]) {
+    test('a scan runs $width root titles at a time ${appleTv ? 'on' : 'off'} the Apple TV', () async {
+      TvDetectionService.debugSetAppleTVOverride(appleTv);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      provider.dispose();
+      wifi = true;
+      client.rows = [for (var i = 0; i < 8; i++) film('s$i').copyWith(kind: MediaKind.show)];
+      for (final show in client.rows) {
+        client.childRows[show.id] = [film('${show.id}-e').copyWith(kind: MediaKind.episode, parentId: show.id)];
+      }
+      client.pacer = (_) => Future<void>.delayed(const Duration(milliseconds: 2));
+      provider = LocalLibraryProvider(
+        profileId: 'a',
+        directory: root,
+        librariesForSync: () => [library.copyWith(kind: MediaKind.show)],
+        clientFor: (_) => client,
+        mayReadServer: (_) => true,
+        mayReadLibrary: (_) => true,
+        networkConnected: () => true,
+        wifiConnected: () => wifi,
+        changes: changes,
+        availableBytes: () async => 1024 * 1024 * 1024,
+        posterLoader: (_, _) async => Uint8List.fromList([1, 2, 3]),
+      );
+      await provider.ready;
+
+      await provider.setEnabled(true);
+      await until(provider, () => provider.state == LocalLibraryState.ready);
+
+      expect(client.childrenAsked, hasLength(8));
+      expect(client.maxOpen, width);
+    });
+  }
 
   test('content sync and network changes keep the read boundary; access loss advances it', () async {
     wifi = true;

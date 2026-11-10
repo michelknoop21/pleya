@@ -31,7 +31,7 @@ class LocalLibrarySync {
     required this.store,
     this.pageSize = 100,
     this.checkpointEvery = const Duration(seconds: 30),
-    this.rootConcurrency = 4,
+    this.rootConcurrency = defaultRootConcurrency,
     this.mayContinue,
     this.posterLoader,
     this.posterRevalidator,
@@ -55,6 +55,11 @@ class LocalLibrarySync {
 
   /// Root titles scanned at once, each with its subtree in order; lower it on slow hardware.
   final int rootConcurrency;
+  static const defaultRootConcurrency = 4;
+
+  /// Four at once on the Apple TV dropped 5% of the frames while scrolling Alle
+  /// films during a scan (build 457), against 2% with one at a time (build 455).
+  static const appleTvRootConcurrency = 2;
   final Future<bool> Function()? mayContinue;
   final LocalPosterLoader? posterLoader;
   final void Function(int done, String title)? onProgress;
