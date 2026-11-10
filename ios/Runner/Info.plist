@@ -4,6 +4,8 @@
 <dict>
 	<key>PleyaAPNSEnvironment</key>
 	<string>$(PLEYA_APS_ENVIRONMENT)</string>
+	<key>PleyaPushKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)nl.michelknoop.pleya.shared</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
