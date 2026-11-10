@@ -20,7 +20,7 @@ const _openBrace = 0x7B, _closeBrace = 0x7D, _openBracket = 0x5B, _closeBracket 
 ///
 /// Relies on the layout the store writes: `items` is the only array directly
 /// under the root object. The bytes outside the rows are kept and decoded at
-/// the end, so a truncated or corrupt file still throws a [FormatException].
+/// the end, so a truncated file still throws a [FormatException].
 ({MediaLibrary library, Map<String, MediaItem> rows, DateTime? completed, DateTime? scanned, int? scannedUpdatedAt})
 decodeLibraryFile(String path) {
   final rows = <String, MediaItem>{};

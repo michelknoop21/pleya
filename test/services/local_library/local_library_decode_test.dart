@@ -94,7 +94,7 @@ void main() {
 
   test('loading a large index peaks under four times its file size', () {
     // 52,000 episode rows of about 1.7 KB, the row size of the index on the
-    // bedroom Apple TV. Decoding the file as one JSON tree peaked at 5.0 to 5.8
+    // bedroom Apple TV. Decoding the file as one JSON tree peaked at about 5
     // times the file size on the host; row by row it stays near 2.5 times.
     final row = MediaItem.plex(
       id: '0',
