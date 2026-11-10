@@ -7,12 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:provider/provider.dart';
-
-import '../../providers/local_library_provider.dart';
 
 import '../../i18n/strings.g.dart';
-import '../../media/ids.dart';
 import '../../media/media_item.dart';
 import '../../media/media_item_types.dart';
 import '../../media/media_kind.dart';
@@ -21,12 +17,12 @@ import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/continue_watching_labels.dart';
 import '../../utils/continue_watching_order.dart';
-import '../../utils/provider_extensions.dart';
 import '../app_icon.dart';
 import '../media_card_grid_layout.dart';
 import '../media_markers.dart';
 import '../new_content_badge.dart';
-import '../optimized_media_image.dart';
+import '../unified_media_image.dart';
+import '../../utils/media_image_helper.dart';
 import '../pressable.dart';
 import '../tv/tv_expandable_media_tile.dart' show discoveryPosterPath, discoveryWideArtPath;
 
@@ -58,37 +54,24 @@ class MobileMediaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = group.representativeSource.item;
-    final client = context.tryGetMediaClientWithFallback(serverIdOrNull(item.serverId));
-    // An episode without a still of its own borrows its series' backdrop, then
-    // its poster: a grey tile says nothing about what resumes (zvu4o).
-    final stillPath = item.isEpisode ? discoveryWideArtPath(item) ?? discoveryPosterPath(item) : item.thumbPath;
-    final imagePath = shape == MobileCardShape.portrait ? item.posterThumb() : stillPath;
-    final localPath = context.select<LocalLibraryProvider?, String?>((p) => p?.posterPath(item.serverId, imagePath));
     final aspect = shape == MobileCardShape.portrait ? 2 / 3 : 16 / 9;
     final height = width / aspect;
     final resumeFraction = resumeFractionFor(group);
     final newLabel = newBadgeLabel(item);
     final fallbackIcon = item.isShow || item.isSeason || item.isEpisode ? Symbols.tv_rounded : Symbols.movie_rounded;
 
-    final poster = shape == MobileCardShape.portrait
-        ? OptimizedMediaImage.poster(
-            client: client,
-            localFilePath: localPath,
-            imagePath: item.posterThumb(),
-            width: width,
-            height: height,
-            fallbackIcon: fallbackIcon,
-            blurHash: item.posterBlurHash,
-          )
-        : OptimizedMediaImage.thumb(
-            client: client,
-            localFilePath: localPath,
-            imagePath: stillPath,
-            width: width,
-            height: height,
-            fallbackIcon: fallbackIcon,
-            blurHash: item.posterBlurHash,
-          );
+    final poster = UnifiedMediaImage(
+      group: group,
+      pathOf: (source) => shape == MobileCardShape.portrait
+          ? source.posterThumb()
+          : source.isEpisode
+          ? discoveryWideArtPath(source) ?? discoveryPosterPath(source)
+          : source.thumbPath,
+      width: width,
+      height: height,
+      imageType: shape == MobileCardShape.portrait ? ImageType.poster : ImageType.thumb,
+      fallbackIcon: fallbackIcon,
+    );
 
     return GestureDetector(
       onLongPress: onLongPress,

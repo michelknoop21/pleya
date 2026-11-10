@@ -60,6 +60,15 @@ Michel gaf het additieve venster voor A-21 vrij. Zie [DEC-201](DECISIONS.md#push
 | A-21-PUSH-RICH | Rijke push: titel en poster versleuteld onder een toestelsleutel, Notification Service Extension op iOS ([DEC-202](DECISIONS.md#dec-xxx-rijke-push-met-titel-en-poster-versleuteld-onder-een-toestelsleutel), Roadmap deviation 10 november 2026) | `[~]` | Server en protocol lokaal gebouwd: `internal/push/rich_test.go`, `TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey`, `TestArtworkTokenOpensOnlyItsPosterWhileSessionAndRightLast`, `TestPushInstallationBodyTakesAnOptionalContentKey`, protocolcontrole groen. iOS-extensie en appregistratie gebouwd. Nu opnieuw gecontroleerd: `scripts/test_push_content.sh` opent de Go-vector met AAD, controleert terugval, Verify-keychainisolatie en stabiele titel bij postercompletion; de alias-negatieve controle faalt zonder kopie. App ID en handmatig App Store-profiel zijn aanwezig. Gerichte controles opnieuw groen: zes Go-tests met Postgres/ffmpeg, 55 Flutter-tests, vijf Verify-regressietests en beide codegates. PR #677 (`59ef263cf`) en #678 (`c731d4ef1`) gemerged met groene CI; productie draait de servercode van #677 op schema 37, readyz groen en rich-push-capability aan. iOS- en tvOS-archive/export geslaagd; de extensie is automatisch App Store-gesigneerd met de gedeelde keychaingroep en behoud van de standaardgroep van Runner. iOS en tvOS build 460 staan op VALID en hebben TestFlight-notities ([release](RELEASES.md)). Open: installatie openen voor sleutelregistratie, echte titel/poster op de iPhone en testfilm opruimen. |
 | A-21-PUSH-2 | Seerr-gebeurtenissen en releaseberichten via dezelfde zelfgehoste bezorging | `[ ]` | Vereist een geverifieerde Seerr-gebruikerskoppeling en een betrouwbare releasebron. |
 
+## Correctief vervolg 10 november: ontbrekende catalogusposters
+
+Michel geeft na log9fj9a opdracht de oorzaak te herstellen (C-05/S2.14/S22.6; client A-06/A-07).
+S2.14 wordt voor deze regressie uitgebreid met exacte bonusmapsegmenten onder een filmmap,
+waaronder Featurettes; geen substringfilter, rootfilmtitels of persoonlijke data verwijderen.
+The Simple Life vereist een bevestigde match met de serie2003 (TMDB4406), via de bestaande
+owner/admin-matchroute. Geen protocolwijziging, nieuw endpoint of autorisatie-uitbreiding.
+Status: onderzoek/implementatie; test-, review- en uitrolbewijs volgt, geen acceptatie gesloten.
+
 ## 1. Stand in één blik
 
 | Blok | Slices | Gereed | Bezig | Open |

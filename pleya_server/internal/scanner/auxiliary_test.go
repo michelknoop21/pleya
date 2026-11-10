@@ -418,3 +418,50 @@ func TestAuxiliaryLegacyNumberDoesNotEnterNextUp(t *testing.T) {
 		t.Fatalf("next-up filtering rewrote identity: %+v %v", direct, err)
 	}
 }
+
+func TestMovieFeaturettesRemainBoundButLeaveOrdinaryCatalog(t *testing.T) {
+	h := newHarness(t, "movies")
+	ctx := context.Background()
+	original := h.path("Film (2020)", "Film (2020).mkv")
+	testsupport.MakeVideo(t, original, 1)
+	h.scan()
+	var file, version, item id.ID
+	if err := h.pool.QueryRow(ctx, `SELECT f.id,f.version_id,v.item_id FROM media_files f JOIN media_versions v ON v.id=f.version_id`).Scan(&file, &version, &item); err != nil {
+		t.Fatal(err)
+	}
+	user := id.New()
+	if _, err := h.pool.Exec(ctx, `INSERT INTO users(id,username,password_hash,role) VALUES($1,'movie-extra-fixture','synthetic-only','member')`, user); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.pool.Exec(ctx, `INSERT INTO watch_states(subject,item_id,position_ms,duration_ms,play_count,revision) VALUES($1,$2,321,1000,2,7)`, user.String(), item); err != nil {
+		t.Fatal(err)
+	}
+	target := h.path("Film (2020)", "Featurettes", "Menu Art.mkv")
+	if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(original, target); err != nil {
+		t.Fatal(err)
+	}
+	for round := 0; round < 2; round++ {
+		h.scan()
+		var gotVersion, gotItem id.ID
+		if err := h.pool.QueryRow(ctx, `SELECT f.version_id,v.item_id FROM media_files f JOIN media_versions v ON v.id=f.version_id WHERE f.id=$1 AND f.missing_since IS NULL AND f.auxiliary_kind='extras'`, file).Scan(&gotVersion, &gotItem); err != nil {
+			t.Fatal(err)
+		}
+		if gotVersion != version || gotItem != item {
+			t.Fatal("bonus classification changed identity")
+		}
+		var position, plays, revision int
+		if err := h.pool.QueryRow(ctx, `SELECT position_ms,play_count,revision FROM watch_states WHERE subject=$1 AND item_id=$2`, user.String(), item).Scan(&position, &plays, &revision); err != nil {
+			t.Fatal(err)
+		}
+		if position != 321 || plays != 2 || revision != 7 {
+			t.Fatal("bonus classification changed watch data")
+		}
+		page, err := h.store.Items(ctx, catalog.Query{LibraryID: &h.lib.ID, Kinds: []string{"movie"}, Limit: 50})
+		if err != nil || len(page.Items) != 0 {
+			t.Fatalf("bonus still in ordinary movies: %+v %v", page, err)
+		}
+	}
+}

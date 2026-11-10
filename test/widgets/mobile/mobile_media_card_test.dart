@@ -337,4 +337,18 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+  testWidgets('missing representative poster uses another source without changing the title or watch state', (
+    tester,
+  ) async {
+    OptimizedMediaImage.debugImageBuilder = (_, path) => Text(path ?? 'NO POSTER');
+    addTearDown(() => OptimizedMediaImage.debugImageBuilder = null);
+    final primary = item(serverId: 'primary', year: 2021);
+    final alternate = item(serverId: 'alternate').copyWith(thumbPath: '/alternate-poster');
+    final media = group(primary, extraSources: [alternate], isWatched: true);
+    await pump(tester, MobileMediaCard(group: media, shape: MobileCardShape.portrait, width: 118));
+    expect(find.text('/alternate-poster'), findsOneWidget);
+    expect(find.text('Dune'), findsOneWidget);
+    expect(find.byType(WatchedTick), findsOneWidget);
+    expect(media.representativeSource.item, same(primary));
+  });
 }
