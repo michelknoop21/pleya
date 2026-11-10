@@ -47,6 +47,23 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 462 · prepared · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: c4390a83d647c8ba7ddc8f2808347060e291c2bf -->
+
+Prepared for TestFlight; not uploaded yet.
+
+### Fixed
+
+- **Catalog posters can fall back to another source.** If the selected source has no
+  poster, cannot provide its image URL or fails to load it, All Movies and All Shows try
+  the other sources already identified as the same title. This works in either direction
+  between Pleya Server and the other connected servers. Playback and watch progress keep
+  their existing source selection.
+- **Movie bonus folders stay out of the ordinary film list after a scan.** Pleya Server
+  recognizes Featurettes, Extras, Trailers and Samples subfolders while retaining their
+  files, item identity and watch history.
+
 ## 2.8.1 · build 461 · 10 November 2026 · iPhone, iPad, Apple TV and Mac
 
 <!-- commit: a277fe84edea1f84c174dcdd3e060b4258ed84bf -->
