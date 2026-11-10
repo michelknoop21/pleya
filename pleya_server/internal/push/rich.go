@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -19,9 +18,6 @@ import (
 // Rich push (DEC-XXX). Apple only ever sees the generic alert; the title and
 // the poster reference travel sealed under the key the app registered for this
 // installation, and the app's Notification Service Extension opens them.
-
-// artworkTokenTTL bounds the poster reference to the lifetime of the delivery.
-const artworkTokenTTL = 24 * time.Hour
 
 // maxTitleRunes keeps two long titles well inside Apple's 4 KB.
 const maxTitleRunes = 100
@@ -35,9 +31,15 @@ type richContent struct {
 	Token   string `json:"token,omitempty"`
 }
 
+// contentAAD binds the ciphertext to one notification of one installation, so
+// it does not open when moved into another alert.
+func contentAAD(installation, notificationID string) []byte {
+	return []byte(installation + "|" + notificationID)
+}
+
 // seal encrypts with AES-256-GCM and returns nonce|ciphertext|tag, the layout
 // of CryptoKit's AES.GCM.SealedBox.combined.
-func seal(key, plaintext []byte, random io.Reader) ([]byte, error) {
+func seal(key, plaintext, aad []byte, random io.Reader) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -50,13 +52,13 @@ func seal(key, plaintext []byte, random io.Reader) ([]byte, error) {
 	if _, err := io.ReadFull(random, nonce); err != nil {
 		return nil, err
 	}
-	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+	return gcm.Seal(nonce, nonce, plaintext, aad), nil
 }
 
 // sealedContent describes the first of the due items for this installation
 // and seals it. Empty means: send the generic alert only. Nothing here is
 // logged, so a title never reaches the server log either.
-func (s *Service) sealedContent(ctx context.Context, key []byte, locale string, user, session id.ID, items []id.ID) string {
+func (s *Service) sealedContent(ctx context.Context, key []byte, locale string, installation, user, session id.ID, notificationID string, items []id.ID) string {
 	if len(key) != 32 || len(items) == 0 || s.Items == nil {
 		return ""
 	}
@@ -77,7 +79,7 @@ func (s *Service) sealedContent(ctx context.Context, key []byte, locale string, 
 		poster = show.PosterID
 	}
 	if poster != nil && s.Signer != nil {
-		token, _, err := s.Signer.Mint(user.String(), session.String(), auth.TokenArtwork, artworkTokenTTL, poster.String())
+		token, _, err := s.Signer.Mint(user.String(), session.String(), auth.TokenArtwork, auth.ArtworkTokenTTL, poster.String())
 		if err == nil {
 			content.Artwork, content.Token = poster.String(), token
 		}
@@ -86,7 +88,7 @@ func (s *Service) sealedContent(ctx context.Context, key []byte, locale string, 
 	if err != nil {
 		return ""
 	}
-	sealed, err := seal(key, plain, rand.Reader)
+	sealed, err := seal(key, plain, contentAAD(installation.String(), notificationID), rand.Reader)
 	if err != nil {
 		return ""
 	}

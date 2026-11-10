@@ -241,6 +241,11 @@ func TestRevocationRetentionUsesLongestCredentialLifetimePlusMargin(t *testing.T
 	if auth.DefaultRevocationRetention != got {
 		t.Fatalf("standaardretentie = %s, verwacht afgeleide %s", auth.DefaultRevocationRetention, got)
 	}
+	// Rijke push (DEC-XXX): het artworktoken leeft niet langer dan het register
+	// een ingetrokken sessie onthoudt, marge inbegrepen.
+	if auth.ArtworkTokenTTL+auth.RevocationRetentionMargin > auth.DefaultRevocationRetention {
+		t.Fatalf("artworktoken leeft %s, langer dan de retentie %s min marge", auth.ArtworkTokenTTL, auth.DefaultRevocationRetention)
+	}
 }
 
 func mustSigner(t *testing.T) *auth.Signer {

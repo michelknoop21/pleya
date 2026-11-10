@@ -255,7 +255,8 @@ func TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey(t *testing.T) {
 			Alert          struct{ Body string }
 			MutableContent int `json:"mutable-content"`
 		}
-		Pleya *struct{ I, C string }
+		Pleya          *struct{ I, C string }
+		NotificationID string `json:"notification_id"`
 	}
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		t.Fatal(err)
@@ -270,9 +271,13 @@ func TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey(t *testing.T) {
 	}
 	block, _ := aes.NewCipher(key)
 	gcm, _ := cipher.NewGCM(block)
-	plain, err := gcm.Open(nil, sealed[:12], sealed[12:], nil)
+	aad := []byte(installation.String() + "|" + msg.NotificationID)
+	plain, err := gcm.Open(nil, sealed[:12], sealed[12:], aad)
 	if err != nil {
 		t.Fatalf("installation key does not open the content: %v", err)
+	}
+	if _, err := gcm.Open(nil, sealed[:12], sealed[12:], nil); err == nil {
+		t.Fatal("content opens without its notification binding")
 	}
 	var content richContent
 	if err := json.Unmarshal(plain, &content); err != nil {
@@ -285,7 +290,7 @@ func TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey(t *testing.T) {
 	if err != nil || claims.Resource != poster.String() || claims.Subject != f.user.String() || claims.Sid != f.session.String() {
 		t.Fatalf("poster token %+v, %v", claims, err)
 	}
-	if time.Unix(claims.ExpiresAt, 0).After(time.Now().Add(artworkTokenTTL + time.Minute)) {
+	if time.Unix(claims.ExpiresAt, 0).After(time.Now().Add(auth.ArtworkTokenTTL + time.Minute)) {
 		t.Fatal("poster token outlives the delivery")
 	}
 

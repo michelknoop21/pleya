@@ -20,7 +20,7 @@ type pushInstallationRequest struct {
 	Movies      bool   `json:"movies"`
 	Episodes    bool   `json:"episodes"`
 	// ContentKey is the optional base64 AES-256 key for rich push (DEC-XXX).
-	ContentKey string `json:"content_key,omitempty"`
+	ContentKey json.RawMessage `json:"content_key,omitempty"`
 }
 
 // pushCaller is the shared preamble: push is known on this server, and the
@@ -129,9 +129,13 @@ func (b pushInstallationRequest) valid() bool {
 // contentKey decodes the optional key: absent is nil, anything but exactly
 // 32 bytes of standard base64 is invalid.
 func (b pushInstallationRequest) contentKey() ([]byte, bool) {
-	if b.ContentKey == "" {
+	if b.ContentKey == nil {
 		return nil, true
 	}
-	key, err := base64.StdEncoding.Strict().DecodeString(b.ContentKey)
+	var encoded string
+	if json.Unmarshal(b.ContentKey, &encoded) != nil || len(encoded) != 44 {
+		return nil, false
+	}
+	key, err := base64.StdEncoding.Strict().DecodeString(encoded)
 	return key, err == nil && len(key) == 32
 }

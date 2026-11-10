@@ -70,3 +70,40 @@ func TestArtworkTokenOpensOnlyItsPosterWhileSessionAndRightLast(t *testing.T) {
 		t.Fatalf("na intrekken van de sessie %d, verwacht 401", got)
 	}
 }
+
+// Het register onthoudt een ingetrokken sessie maar DefaultRevocationRetention
+// lang (DEC-120). Een artworktoken van vóór de intrekking moet daarna niet weer
+// gaan werken, ook niet na een opruimronde of een herstart: daarom leeft het
+// niet langer dan auth.ArtworkTokenTTL.
+func TestArtworkTokenStaysDeadAfterTheRegisterForgetsItsSession(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	poster := *e.findMovie("Grease").Artwork.PosterID
+	films, err := id.Parse(e.libraryID("movies"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	member := e.createUser("member", "kind")
+	e.grantLibrary(member, films, "view")
+	session, err := e.auth.CreateSession(context.Background(), member, nil, "phone", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Gemunt bij de bezorging drie uur geleden, sessie vijf minuten later
+	// ingetrokken; het register is sindsdien opgeruimd.
+	minted := time.Now().Add(-3 * time.Hour)
+	e.signer.SetClock(func() time.Time { return minted })
+	token, _, err := e.signer.Mint(member.String(), session.String(), auth.TokenArtwork, auth.ArtworkTokenTTL, poster)
+	e.signer.SetClock(time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.revocations.Revoke(session, minted.Add(5*time.Minute))
+	e.revocations.Purge(time.Now())
+	if e.revocations.IsRevoked(session) {
+		t.Fatal("voorwaarde: het register hoort de sessie vergeten te zijn")
+	}
+	if got := e.do(http.MethodGet, "/pleya/v1/artwork/"+poster, nil, asUser(token)).Code; got != http.StatusUnauthorized {
+		t.Fatalf("artworktoken van een ingetrokken sessie gaf %d na het opruimen, verwacht 401", got)
+	}
+}
