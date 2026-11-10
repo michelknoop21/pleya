@@ -14,14 +14,15 @@ import 'package:pleya/providers/local_library_provider.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
-import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/media_markers.dart';
 import 'package:pleya/widgets/mobile/mobile_media_card.dart';
 import 'package:provider/provider.dart';
 
+import '../../test_helpers/catalog_artwork_client.dart';
 import '../../test_helpers/prefs.dart';
 import '../../test_helpers/temp_dir.dart';
 
@@ -85,13 +86,15 @@ void main() {
     );
   }
 
-  Future<void> pump(WidgetTester tester, Widget card, {double width = 393}) async {
+  Future<void> pump(WidgetTester tester, Widget card, {double width = 393, bool connected = true}) async {
     tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
     final manager = MultiServerManager();
-    final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+    final multiServerProvider = connected
+        ? CatalogArtworkServers(manager)
+        : MultiServerProvider(manager, DataAggregationService(manager));
     addTearDown(multiServerProvider.dispose);
 
     await tester.pumpWidget(
@@ -140,6 +143,7 @@ void main() {
         value: local,
         child: MobileMediaCard(group: group(cached), shape: MobileCardShape.portrait, width: 118),
       ),
+      connected: false,
     );
     final image = tester.widget<OptimizedMediaImage>(find.byType(OptimizedMediaImage));
     expect(image.client, isNull);
