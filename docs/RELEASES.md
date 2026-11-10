@@ -47,7 +47,23 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-## 2.8.1 · build 457 · 10 November 2026 · iPhone, iPad, Apple TV and Mac
+## 2.8.1 · build 458 · 10 November 2026 · Mac
+
+<!-- commit: 69395cb1e28a849ffe93bbf974e0f0e10b86788a -->
+
+### Improved
+
+- **The offline index scans faster**, as in build 457: four titles at a time, and a Pleya Server
+  scan no longer asks again for a show or season it already received.
+
+### Notes
+
+- This is the first Mac build since 453. It brings everything listed for builds 455, 456 and
+  457 to the Mac, apart from notifications, which are on iPhone and iPad only.
+- Worth checking: nothing in this build has been checked on a Mac yet. Play something from each
+  server you use and open a video file from Finder with Pleya.
+
+## 2.8.1 · build 457 · 10 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: abcb4bb386c24adc9232c9f0434fe079441295d0 -->
 
@@ -70,8 +86,7 @@ Nothing user-facing since the last published build.
 
 - Notifications need a Pleya Server that has been updated for them. Until your server has that
   update, the Notificaties switches do not appear.
-- On the Mac this is the first build since 453. It brings everything listed for builds 455 and
-  456 to the Mac as well. Nothing in it has been checked on a Mac yet.
+- The Mac build of these changes is 458.
 - Worth checking: on iPhone, switch on notifications for new films once the server is updated,
   add a film to a library, and see that one notification arrives. Then switch to another
   profile and check that no further notifications for the first profile arrive.
