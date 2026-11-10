@@ -56,8 +56,10 @@ void main() {
     expect(tester.takeException(), isNull, reason: 'no overflow');
     final title = tester.getRect(find.text('Wadlopers'));
     expect(title.width, greaterThan(80), reason: 'the facts column must not be squeezed away');
-    for (final label in [t.seerr.approve, t.seerr.decline, t.seerr.edit, t.seerr.cancelRequest]) {
-      final rect = tester.getRect(find.text(label));
+    // The row carries the decision as two round buttons; Bewerken and
+    // Annuleren are in the menu behind the row.
+    for (final label in [t.seerr.approve, t.seerr.decline]) {
+      final rect = tester.getRect(find.byTooltip(label));
       expect(rect.left, greaterThanOrEqualTo(0), reason: label);
       expect(rect.right, lessThanOrEqualTo(390), reason: label);
     }

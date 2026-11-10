@@ -703,6 +703,12 @@ class AutomationIds {
   /// (`requests.list.more[0]`). It opens [requestsActions].
   static const String requestsListMore = 'requests.list.more';
 
+  /// A Regiekamer count tile above the requests list (`pending`, `approved`, `all`, `issues`).
+  static const String requestsListTile = 'requests.list.tile';
+
+  /// The Goedkeuren that approves every ticked request at once.
+  static const String requestsListBulkApprove = 'requests.list.bulk_approve';
+
   /// What the list shows instead of rows: `requests.list.state[empty]`,
   /// `[filtered]`, `[error]`, `[unsupported]`.
   static const String requestsListState = 'requests.list.state';
@@ -914,6 +920,8 @@ class AutomationIds {
     requestsActionsItem,
     requestsListItem,
     requestsListMore,
+    requestsListTile,
+    requestsListBulkApprove,
     requestsListState,
     requestsDetailAction,
     seerrIssueItem,
@@ -1155,6 +1163,8 @@ class AutomationIds {
     {'id': requestsActionsItem, 'role': 'button', 'instanceable': true},
     {'id': requestsListItem, 'role': 'list.item', 'instanceable': true},
     {'id': requestsListMore, 'role': 'button', 'instanceable': true},
+    {'id': requestsListTile, 'role': 'button', 'instanceable': true},
+    {'id': requestsListBulkApprove, 'role': 'button', 'instanceable': false},
     {'id': requestsListState, 'role': 'region', 'instanceable': true},
     {'id': requestsListScope, 'role': 'button', 'instanceable': true},
     {'id': requestsDetailAction, 'role': 'button', 'instanceable': true},
