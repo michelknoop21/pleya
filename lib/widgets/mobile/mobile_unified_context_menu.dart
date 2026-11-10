@@ -32,6 +32,7 @@ import '../../screens/tv/tv_unified_context_actions.dart';
 import '../../screens/tv/tv_unified_context_menu.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../theme/mono_tokens.dart';
+import '../../services/unified_catalog/unified_management_menu.dart';
 import '../app_menu.dart';
 import '../overlay_sheet.dart';
 
@@ -136,6 +137,8 @@ Future<void> showMobileUnifiedQuickMenu(
       item: group.representativeSource.item,
     ),
   );
+  final management = unifiedManagementChoices(context, group, isOffline: isOffline);
+  UnifiedManagementChoice? managementChoice;
   final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
   PopupMenuItem<UnifiedGroupAction?> item(int index, UnifiedGroupAction? value, IconData icon, String label) =>
       PopupMenuItem<UnifiedGroupAction?>(
@@ -188,9 +191,27 @@ Future<void> showMobileUnifiedQuickMenu(
       ),
       for (var i = 0; i < actions.length; i++)
         item(i + 1, actions[i], iconForUnifiedGroupAction(actions[i]), labelForUnifiedGroupAction(actions[i])),
+      for (final choice in management)
+        PopupMenuItem<UnifiedGroupAction?>(
+          height: 44,
+          onTap: () => managementChoice = choice,
+          child: Row(
+            children: [
+              Icon(choice.icon, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(group.hasMultipleSources ? '${choice.label} · ${choice.source.serverName}' : choice.label),
+              ),
+            ],
+          ),
+        ),
     ],
   );
   if (!context.mounted) return;
+  if (managementChoice != null) {
+    await runUnifiedManagementChoice(context, managementChoice!, onChanged: onChanged);
+    return;
+  }
   if (play) return onPlay();
   if (chosen == null) return;
 
@@ -211,6 +232,7 @@ Future<void> openMobileUnifiedQuickMenuAt(
   required BuildContext anchorContext,
   required UnifiedMediaGroup group,
   required SourceAvailability Function(UnifiedMediaSource source) availabilityFor,
+  VoidCallback? onChanged,
 }) async {
   final box = anchorContext.findRenderObject();
   final overlay = Overlay.of(context).context.findRenderObject();
@@ -222,6 +244,7 @@ Future<void> openMobileUnifiedQuickMenuAt(
     anchor: origin & box.size,
     group: group,
     availabilityFor: availabilityFor,
+    onChanged: onChanged,
     isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
     onPlay: () => unawaited(
       openMobileMediaGroup(

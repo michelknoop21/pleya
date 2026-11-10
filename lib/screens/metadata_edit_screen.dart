@@ -7,6 +7,7 @@ import '../focus/focusable_button.dart';
 import '../focus/focusable_wrapper.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_item.dart';
+import '../media/media_server_client.dart';
 import '../metadata_edit/metadata_edit_adapters.dart';
 import '../metadata_edit/metadata_edit_models.dart';
 import '../services/file_picker_service.dart';
@@ -26,8 +27,10 @@ import '../widgets/tag_edit_dialog.dart';
 
 class MetadataEditScreen extends StatefulWidget {
   final MediaItem metadata;
+  final bool artworkOnly;
+  final MediaServerClient? expectedClient;
 
-  const MetadataEditScreen({super.key, required this.metadata});
+  const MetadataEditScreen({super.key, required this.metadata, this.artworkOnly = false, this.expectedClient});
 
   @override
   State<MetadataEditScreen> createState() => _MetadataEditScreenState();
@@ -47,7 +50,11 @@ class _MetadataEditScreenState extends State<MetadataEditScreen> {
 
   Future<void> _loadMetadata() async {
     try {
-      final client = context.getMediaClientWithFallback(serverIdOrNull(widget.metadata.serverId));
+      final serverId = serverIdOrNull(widget.metadata.serverId);
+      final client = serverId == null ? null : context.tryGetMediaClientForServer(serverId);
+      if (client == null || (widget.expectedClient != null && !identical(client, widget.expectedClient))) {
+        throw StateError('Metadata source is unavailable');
+      }
       final adapter = metadataEditAdapterFor(client);
       if (adapter == null || !adapter.supportsKind(widget.metadata.kind)) {
         if (!mounted) return;
@@ -258,21 +265,36 @@ class _MetadataEditScreenState extends State<MetadataEditScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return FocusedScrollScaffold(title: Text(t.metadataEdit.screenTitle), slivers: [LoadingIndicatorBox.sliver]);
+      return FocusedScrollScaffold(
+        title: Text(widget.artworkOnly ? t.metadataEdit.artwork : t.metadataEdit.screenTitle),
+        slivers: [LoadingIndicatorBox.sliver],
+      );
     }
 
     final adapter = _adapter;
     final draft = _draft;
     if (adapter == null || draft == null) {
       return FocusedScrollScaffold(
-        title: Text(t.metadataEdit.screenTitle),
+        title: Text(widget.artworkOnly ? t.metadataEdit.artwork : t.metadataEdit.screenTitle),
         slivers: [SliverFillRemaining(child: Center(child: Text(t.metadataEdit.metadataUpdateFailed)))],
       );
     }
 
-    final sections = adapter.schemaFor(draft).where((section) => section.fields.isNotEmpty).toList();
+    final sections = adapter
+        .schemaFor(draft)
+        .map(
+          (section) => MetadataEditSection(
+            id: section.id,
+            title: section.title,
+            fields: section.fields
+                .where((field) => !widget.artworkOnly || field.type == MetadataEditFieldType.artwork)
+                .toList(),
+          ),
+        )
+        .where((section) => section.fields.isNotEmpty)
+        .toList();
     return FocusedScrollScaffold(
-      title: Text(t.metadataEdit.screenTitle),
+      title: Text(widget.artworkOnly ? t.metadataEdit.artwork : t.metadataEdit.screenTitle),
       actions: [
         if (_isSaving)
           const Padding(padding: .all(12), child: LoadingIndicatorBox(size: 24))

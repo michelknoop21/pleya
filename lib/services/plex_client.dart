@@ -4557,7 +4557,13 @@ class PlexClient
     // without identity evidence for the rest of a catalog merge.
     final metadata = await _fetchMetadataWithGuidsOrThrow(itemId);
     final guids = metadata?['Guid'];
-    if (guids is List && guids.isNotEmpty) return ExternalIds.fromGuids(guids);
+    if (guids is List) {
+      final ids = ExternalIds.fromGuids(guids);
+      if (ids.hasAny) return ids;
+    }
+    // A library can send a nonempty Guid array containing only a Plex-local
+    // catalogue guid. Without a provider number, still consult the legacy
+    // agent guid. A usable provider array remains authoritative.
     // A library on a legacy agent sends no `Guid` array; the number is in the
     // item's own guid. Films and shows only: an episode's legacy guid starts
     // with its series number.

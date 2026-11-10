@@ -343,12 +343,12 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
 
   bool _compactFilmFrame(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return widget.footerControls != null && size.width > size.height && size.height < 375;
+    return widget.footerControls != null && size.width > size.height && size.height <= 500;
   }
 
   Widget _buildTopBar(BuildContext context) {
     final header = Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: _compactFilmFrame(context) ? 8 : 16),
+      padding: EdgeInsets.all(_compactFilmFrame(context) ? 8 : 16),
       child: VideoControlsHeader(
         metadata: widget.metadata,
         style: VideoHeaderStyle.filmFrame,

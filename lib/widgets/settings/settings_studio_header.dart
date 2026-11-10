@@ -16,6 +16,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
@@ -28,6 +29,7 @@ import '../../providers/multi_server_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/media_image_helper.dart';
 import '../optimized_media_image.dart';
+import '../hero_focus_crop.dart';
 import '../pleya_logo.dart';
 import 'settings_studio_bar.dart';
 import 'settings_studio_style.dart';
@@ -329,14 +331,39 @@ class _ArtPanel extends StatelessWidget {
       picture = Stack(
         fit: StackFit.expand,
         children: [
-          OptimizedMediaImage(
-            client: client,
-            imagePath: art.path,
-            imageType: ImageType.art,
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
-            placeholder: (_, _) => fallback,
-            errorWidget: (_, _, _) => fallback,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final box = constraints.biggest;
+              // Preserve the backdrop's wide source before the client crops it;
+              // a pre-cropped narrow response cannot recover a face outside it.
+              final requestWidth = math.max(box.width, box.height * 16 / 9);
+              final request = Size(requestWidth, requestWidth * 9 / 16);
+              Widget imageAt(Alignment alignment) => OptimizedMediaImage(
+                client: client,
+                imagePath: art.path,
+                imageType: ImageType.art,
+                requestSize: request,
+                fit: BoxFit.cover,
+                alignment: alignment,
+                placeholder: (_, _) => fallback,
+                errorWidget: (_, _, _) => fallback,
+              );
+              if (defaultTargetPlatform != TargetPlatform.iOS || box.height <= 0) return imageAt(Alignment.center);
+              final url = MediaImageHelper.getOptimizedImageUrl(
+                client: client,
+                thumbPath: art.path,
+                maxWidth: request.width,
+                maxHeight: request.height,
+                devicePixelRatio: MediaImageHelper.effectiveDevicePixelRatio(context),
+                imageType: ImageType.art,
+              );
+              return HeroFocusCrop(
+                imageUrl: url,
+                cacheKey: OptimizedMediaImage.artworkCacheKey(url),
+                boxAspect: box.width / box.height,
+                builder: imageAt,
+              );
+            },
           ),
           PositionedDirectional(top: statusInset + 10, end: 12, child: const PleyaLogo(size: 22)),
         ],

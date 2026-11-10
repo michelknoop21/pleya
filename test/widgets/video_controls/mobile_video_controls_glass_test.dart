@@ -29,6 +29,9 @@ import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 import 'package:pleya/widgets/video_controls/film_frame_palette.dart';
 import 'package:pleya/widgets/video_controls/widgets/content_strip.dart';
 import 'package:pleya/widgets/video_controls/mobile_video_controls.dart';
+import 'package:pleya/widgets/video_controls/video_control_button.dart';
+import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart';
+import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/mobile_video_controls_glass.dart';
 import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 import 'package:pleya/widgets/video_controls/widgets/video_timeline_bar.dart';
@@ -41,6 +44,7 @@ import '../../test_helpers/contrast.dart';
 import '../../test_helpers/glass_phone.dart';
 import '../../test_helpers/golden.dart';
 import '../../test_helpers/prefs.dart';
+import '../../test_helpers/followup_capture.dart';
 import '../../test_helpers/watch_together_fakes.dart';
 import 'package:pleya/services/settings_service.dart';
 
@@ -70,6 +74,7 @@ Future<void> _pumpControls(
   Widget? background,
   bool live = false,
   Widget? footer,
+  bool realFilmFrame = false,
   PlayerChromeController? chrome,
   Size? physicalSize,
   FakeViewPadding? padding,
@@ -99,22 +104,14 @@ Future<void> _pumpControls(
               children: [
                 background ?? const ColoredBox(color: Colors.black),
                 Builder(
-                  builder: (context) => DecoratedBox(
-                    decoration: playerOverlayScrim(hasFrame: true, glass: playerGlassOn(context)),
-                    child: MobileVideoControls(
+                  builder: (context) {
+                    Widget controls(Widget header, Widget? footer) => MobileVideoControls(
                       player: player,
                       metadata: MediaItem(id: '1', backend: MediaBackend.plex, kind: MediaKind.movie, title: _kTitle),
                       chapters: chapters,
                       chaptersLoaded: true,
                       seekTimeSmall: 10,
-                      trackChapterControls: Row(
-                        key: _kTrailingKey,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(onPressed: () {}, icon: const Icon(Icons.cast)),
-                          IconButton(onPressed: () {}, icon: const Icon(Icons.tune)),
-                        ],
-                      ),
+                      trackChapterControls: header,
                       footerControls: footer,
                       chromeController: chrome,
                       onSeek: (_) {},
@@ -127,8 +124,39 @@ Future<void> _pumpControls(
                           ? const CaptureBuffer(startedAt: 1790000000, seekStartSeconds: 0, seekEndSeconds: 3600)
                           : null,
                       streamStartEpoch: 1790001800,
-                    ),
-                  ),
+                    );
+                    final content = realFilmFrame
+                        ? TrackChapterControls(
+                            player: player,
+                            chapters: chapters,
+                            chaptersLoaded: true,
+                            trackControlsState: TrackControlsState(
+                              onTogglePIPMode: () {},
+                              onCycleBoxFitMode: () {},
+                              onToggleRotationLock: () {},
+                              onToggleScreenLock: () {},
+                            ),
+                            filmFrameLayout: (header, footer) => controls(
+                              KeyedSubtree(key: _kTrailingKey, child: header),
+                              KeyedSubtree(key: const Key('real-footer'), child: footer),
+                            ),
+                          )
+                        : controls(
+                            Row(
+                              key: _kTrailingKey,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(onPressed: () {}, icon: const Icon(Icons.cast)),
+                                IconButton(onPressed: () {}, icon: const Icon(Icons.tune)),
+                              ],
+                            ),
+                            footer,
+                          );
+                    return DecoratedBox(
+                      decoration: playerOverlayScrim(hasFrame: true, glass: playerGlassOn(context)),
+                      child: content,
+                    );
+                  },
                 ),
               ],
             ),
@@ -168,6 +196,41 @@ void main() {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
   });
+
+  for (final size in [const Size(667, 375), const Size(852, 393), const Size(956, 440)]) {
+    testWidgets('Filmbeeld landscape density $size', (tester) async {
+      await _pumpControls(
+        tester,
+        glass: false,
+        realFilmFrame: true,
+        chapters: [MediaChapter(id: 1, startTimeOffset: 0, title: 'Chapter 1')],
+        physicalSize: size * 3,
+        padding: const FakeViewPadding(left: 177, right: 177, bottom: 63),
+      );
+      final play = tester.getRect(find.bySemanticsLabel(t.videoControls.playButton));
+      final previous = tester.getRect(find.bySemanticsLabel(t.videoControls.previousButton));
+      final next = tester.getRect(find.bySemanticsLabel(t.videoControls.nextButton));
+      expect(play.height, inInclusiveRange(44, 72));
+      expect(previous.height, greaterThanOrEqualTo(44));
+      expect(next.center.dx - previous.center.dx, greaterThanOrEqualTo(250));
+      final trailing = tester.getRect(find.byKey(_kTrailingKey));
+      expect(trailing.right, closeTo(size.width - 59 - 8, 1));
+      final footer = tester.getRect(find.byKey(const Key('real-footer')));
+      expect(footer.width, greaterThan(size.width * 0.7));
+      final buttons = find.descendant(
+        of: find.byKey(const Key('real-footer')),
+        matching: find.byType(VideoControlButton),
+      );
+      final rects = [for (final element in buttons.evaluate()) tester.getRect(find.byWidget(element.widget))]
+        ..sort((a, b) => a.left.compareTo(b.left));
+      expect(rects.length, greaterThanOrEqualTo(5));
+      expect(rects.first.left, closeTo(footer.left, 1));
+      expect(rects.last.right, closeTo(footer.right, 1));
+      expect(play.bottom, lessThan(tester.getTopLeft(find.byType(VideoTimelineBar)).dy));
+      expect(tester.takeException(), isNull);
+      await captureFollowup(tester, find.byKey(_kSceneKey), 'player-${size.width.toInt()}x${size.height.toInt()}');
+    });
+  }
 
   testWidgets('Filmbeeld holds a safe footer below the timeline and lifts subtitles above it', (tester) async {
     final chrome = PlayerChromeController();
