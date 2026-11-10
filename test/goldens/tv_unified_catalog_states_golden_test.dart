@@ -43,6 +43,7 @@ import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/golden.dart';
+import '../test_helpers/catalog_artwork_client.dart';
 import '../test_helpers/tv_catalog_artwork.dart';
 import '../test_helpers/tv_catalog_fixtures.dart';
 import '../test_helpers/prefs.dart';
@@ -264,6 +265,8 @@ Widget _page({
     ),
     Expanded(
       child: TvUnifiedMediaGrid(
+        clientFor: (id) => CatalogArtworkClient(ServerId(id)),
+        precache: (_, _) async {},
         controller: controller,
         groups: groups,
         onActivate: onActivate,
