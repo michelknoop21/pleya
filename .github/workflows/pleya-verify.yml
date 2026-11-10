@@ -274,6 +274,11 @@ jobs:
         run: dart run bin/verify.dart run ../scenarios/discover.layout.yaml --json
 
       - if: ${{ always() && (needs.changes.result != 'success' || needs.changes.outputs.apple != 'false') }}
+        name: ios.unified.artwork-fallback (target ios-sim)
+        working-directory: pleya_verify/runner
+        run: dart run bin/verify.dart run ../scenarios/ios.unified.artwork-fallback.yaml --json
+
+      - if: ${{ always() && (needs.changes.result != 'success' || needs.changes.outputs.apple != 'false') }}
         name: Upload evidence bundles
         uses: actions/upload-artifact@v7
         with:

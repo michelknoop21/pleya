@@ -63,6 +63,12 @@ bool applyNamedFixture(
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
       return true;
+    case 'unified.artwork.a.v1':
+      _applyUnifiedPair(server, side: 'a', artworkFallback: true);
+      return true;
+    case 'unified.artwork.b.v1':
+      _applyUnifiedPair(server, side: 'b', artworkFallback: true);
+      return true;
     case 'unified.pair.a.v1':
       _applyUnifiedPair(server, side: 'a');
       return true;
@@ -896,7 +902,7 @@ void _applyActivityActiveSessionV1(TautulliFakeServer tautulli) {
 /// Both sides also hold one film under the same TMDB number, started on both
 /// and in `continue_watching`: Verder kijken shows it as one card with two
 /// sources (`tvos.unified.continue-watching-one-card`).
-void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
+void _applyUnifiedPair(PleyaFakeServer server, {required String side, bool artworkFallback = false}) {
   final fixture = 'unified.pair.$side.v1';
   server.resetCatalog();
   // Side B is attached with `connections_seed`, never through /auth/setup. A
@@ -919,7 +925,8 @@ void _applyUnifiedPair(PleyaFakeServer server, {required String side}) {
     year: severance.year,
     childCount: 1,
     episodeCount: 2,
-    posterId: _registerArtwork(server, showId),
+    posterId: artworkFallback && side == 'a' ? null : _registerArtwork(server, showId),
+    genres: artworkFallback && side == 'a' ? ['Drama'] : null,
     externalIds: {'tmdb': 95396},
   );
   final seasonId = _mintId(server, fixture, 'season', 'severance-s01');

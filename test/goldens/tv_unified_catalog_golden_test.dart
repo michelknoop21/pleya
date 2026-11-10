@@ -28,6 +28,7 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 
 import '../test_helpers/golden.dart';
+import '../test_helpers/catalog_artwork_client.dart';
 import '../test_helpers/tv_catalog_artwork.dart';
 import '../test_helpers/tv_catalog_fixtures.dart';
 
@@ -252,6 +253,8 @@ Widget _grid({
   required double reservedLeading,
   ScrollController? controller,
 }) => TvUnifiedMediaGrid(
+  clientFor: (id) => CatalogArtworkClient(ServerId(id)),
+  precache: (_, _) async {},
   controller: controller,
   reservedLeading: reservedLeading,
   groups: groups,
