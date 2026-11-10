@@ -90,11 +90,12 @@ class FrameTimingSummary {
 ///
 /// scan= is the state when the batch arrives, about once a second; posterPath
 /// counts the local poster lookups the cards made since the previous line, and
-/// cards the catalog cards that were built in that time.
+/// cards the catalog cards that were built in that time. rss is current/peak
+/// process memory, so a peak between two scan lines can be placed in time.
 String frameTimingLine(FrameTimingSummary summary) {
   final line =
       'FrameTiming: $summary scan=${ScanDiagnostics.scanning ? 'on' : 'off'} '
-      'posterPath=${ScanDiagnostics.posterPathCalls} cards=${ScanDiagnostics.cardBuilds}';
+      'posterPath=${ScanDiagnostics.posterPathCalls} cards=${ScanDiagnostics.cardBuilds} rss=$rssNow';
   ScanDiagnostics.posterPathCalls = 0;
   ScanDiagnostics.cardBuilds = 0;
   return line;
