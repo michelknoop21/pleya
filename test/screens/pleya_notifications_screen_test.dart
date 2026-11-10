@@ -15,6 +15,7 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/screens/pleya_notifications_screen.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -36,7 +37,9 @@ class _Profiles extends ChangeNotifier implements ActiveProfileProvider {
 }
 
 class _Servers extends ChangeNotifier implements MultiServerProvider {
-  final client = _PleyaLibrary();
+  _Servers({bool fail = false}) : client = _PleyaLibrary(fail: fail);
+
+  final _PleyaLibrary client;
 
   @override
   List<String> get onlineServerIds => [client.serverId];
@@ -49,6 +52,10 @@ class _Servers extends ChangeNotifier implements MultiServerProvider {
 }
 
 class _PleyaLibrary implements MediaServerClient {
+  _PleyaLibrary({this.fail = false});
+
+  final bool fail;
+
   @override
   final serverId = ServerId('fixture');
 
@@ -57,6 +64,7 @@ class _PleyaLibrary implements MediaServerClient {
 
   @override
   Future<List<MediaLibrary>> fetchLibraries() async => [
+    if (fail) throw StateError('libraries offline'),
     const MediaLibrary(id: 'shows', backend: MediaBackend.pleyaServer, title: 'Series', kind: MediaKind.show),
   ];
 
@@ -153,5 +161,29 @@ void main() {
     expect(find.text('New episode'), findsOneWidget);
     expect(find.text('Old episode'), findsNothing);
     expect(find.text(t.pleyaNotifications.loadPartial), findsNothing);
+  });
+
+  testWidgets('a failing source shows the partial notice and logs which source failed', (tester) async {
+    resetSharedPreferencesForTest(
+      initialAsync: {'pleya.notifications.alice': '{"enabled":true,"episodes":"2026-10-07T00:00:00"}'},
+    );
+    MemoryLogOutput.clearLogs();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ActiveProfileProvider>(create: (_) => _Profiles()),
+          ChangeNotifierProvider<MultiServerProvider>(create: (_) => _Servers(fail: true)),
+        ],
+        child: MaterialApp(
+          theme: monoTheme(dark: true).copyWith(platform: TargetPlatform.iOS),
+          home: const PleyaNotificationsScreen(profileId: 'alice'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(t.pleyaNotifications.loadPartial), findsOneWidget);
+    final failure = MemoryLogOutput.getLogs().where((e) => e.message.contains('source library pleyaServer failed'));
+    expect(failure, hasLength(1));
+    expect('${failure.single.error}', contains('libraries offline'));
   });
 }

@@ -25,6 +25,7 @@ import '../services/pleya_push_notifications.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
 import '../services/update_service.dart';
+import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/media_navigation_helper.dart';
 import '../widgets/focused_scroll_scaffold.dart';
@@ -315,10 +316,11 @@ class _PleyaNotificationsScreenState extends State<PleyaNotificationsScreen> {
     final hidden = hiddenProvider?.hiddenLibraryKeys ?? const <String>{};
     final followed = context.read<WatchlistProvider?>()?.entriesByRecentlyAdded;
     var partial = false;
-    Future<List<_Update>> safe(Future<List<_Update>> source) async {
+    Future<List<_Update>> safe(String name, Future<List<_Update>> source) async {
       try {
         return await source;
-      } catch (_) {
+      } catch (e, st) {
+        appLogger.w('Notifications: source $name failed', error: e, stackTrace: st);
         partial = true;
         return const [];
       }
@@ -327,15 +329,16 @@ class _PleyaNotificationsScreenState extends State<PleyaNotificationsScreen> {
     // shortcut: the latest page is an in-app digest, use durable server events for background delivery.
     final rows = await Future.wait([
       if (!offline && client != null) ...[
-        if (_after(_Category.requests) != null) safe(_requests(client, manage: false)),
-        if (_after(_Category.manageRequests) != null) safe(_requests(client, manage: true)),
-        if (_after(_Category.reports) != null) safe(_reports(client, manage: false)),
-        if (_after(_Category.manageReports) != null) safe(_reports(client, manage: true)),
+        if (_after(_Category.requests) != null) safe('requests', _requests(client, manage: false)),
+        if (_after(_Category.manageRequests) != null) safe('manageRequests', _requests(client, manage: true)),
+        if (_after(_Category.reports) != null) safe('reports', _reports(client, manage: false)),
+        if (_after(_Category.manageReports) != null) safe('manageReports', _reports(client, manage: true)),
       ],
       if (!offline && servers != null && (_after(_Category.movies) != null || _after(_Category.episodes) != null))
         for (final id in servers.onlineServerIds)
-          if (servers.getClientForServer(ServerId(id)) case final source?) safe(_library(source, hidden)),
-      if (_after(_Category.app) != null && UpdateService.isUpdateCheckEnabled && !offline) safe(_app()),
+          if (servers.getClientForServer(ServerId(id)) case final source?)
+            safe('library ${source.backend.name}', _library(source, hidden)),
+      if (_after(_Category.app) != null && UpdateService.isUpdateCheckEnabled && !offline) safe('app', _app()),
     ]);
     if (!mounted || !_current() || run != _refresh) return;
     final seen = <String>{};
