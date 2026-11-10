@@ -237,6 +237,7 @@ class PleyaServerClient
     required String locale,
     required bool movies,
     required bool episodes,
+    String? contentKey,
   }) async {
     if (!supportsSecurePush || _offlineMode || _closed) {
       throw StateError('Push registration unavailable');
@@ -251,6 +252,8 @@ class PleyaServerClient
         'locale': locale,
         'movies': movies,
         'episodes': episodes,
+        // The body is closed: only a server that announced the field gets it.
+        if (contentKey != null && wireCapabilities.pushRichContent) 'content_key': contentKey,
       },
     );
   }

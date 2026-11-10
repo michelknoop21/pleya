@@ -59,11 +59,30 @@ import UserNotifications
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PleyaPush") {
       let channel = FlutterMethodChannel(name: "com.pleya/push", binaryMessenger: registrar.messenger())
       channel.setMethodCallHandler { [weak self] call, result in
-        guard call.method == "deviceToken", let self = self else {
+        switch call.method {
+        case "contentKey":
+          // Rich push (DEC-XXX): the installation's key, made on first use.
+          let args = call.arguments as? [String: String]
+          guard let installation = args?["installation"], let base = args?["base"] else {
+            result(FlutterError(code: "BAD_ARGS", message: nil, details: nil))
+            return
+          }
+          PushContent.queue.async {
+            let key = PushContent.key(for: installation, base: base)
+            DispatchQueue.main.async { result(key) }
+          }
+        case "retainContentKeys":
+          let keep = Set(call.arguments as? [String] ?? [])
+          PushContent.queue.async {
+            PushContent.retain(keep)
+            DispatchQueue.main.async { result(nil) }
+          }
+        case "deviceToken":
+          guard let self = self else { return result(nil) }
+          self.pushDeviceToken(prompt: call.arguments as? Bool == true, result: result)
+        default:
           result(FlutterMethodNotImplemented)
-          return
         }
-        self.pushDeviceToken(prompt: call.arguments as? Bool == true, result: result)
       }
     }
 
