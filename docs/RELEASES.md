@@ -49,7 +49,7 @@ Nothing user-facing since the last published build.
 
 ## 2.8.1 · build 458 · 10 November 2026 · Mac
 
-<!-- commit: 69395cb1e28a849ffe93bbf974e0f0e10b86788a -->
+<!-- commit: 3eff12fc4ad99b6b325d5c683ff8c5bc3c81faef -->
 
 ### Improved
 
