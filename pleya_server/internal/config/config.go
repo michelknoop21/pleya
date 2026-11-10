@@ -33,6 +33,7 @@ type Config struct {
 	// een publiek adres is een bewuste keuze van de operator.
 	MetricsAddr  string
 	ConfigDir    string
+	APNsConfig   string
 	CacheDir     string
 	TranscodeDir string
 
@@ -182,6 +183,7 @@ func Load(getenv Getenv) (*Config, error) {
 		DatabaseURL:  strings.TrimSpace(getenv("DATABASE_URL")),
 		HTTPAddr:     valueOr(getenv, "PLEYA_SERVER_HTTP_ADDR", DefaultHTTPAddr),
 		ConfigDir:    valueOr(getenv, "PLEYA_SERVER_CONFIG_DIR", DefaultConfigDir),
+		APNsConfig:   strings.TrimSpace(getenv("PLEYA_SERVER_APNS_CONFIG")),
 		CacheDir:     valueOr(getenv, "PLEYA_SERVER_CACHE_DIR", DefaultCacheDir),
 		TranscodeDir: valueOr(getenv, "PLEYA_SERVER_TRANSCODE_DIR", DefaultTranscodeDir),
 	}

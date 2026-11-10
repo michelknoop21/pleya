@@ -59,9 +59,10 @@ class SeerrRequestsScreen extends StatefulWidget {
   /// [mineOnly] scopes the list to the viewer's own requests, also for a manager. The
   /// phone's "Mijn aanvragen" header opens it that way; the header must not promise the
   /// viewer's own requests and then show everyone's.
-  const SeerrRequestsScreen({super.key, this.mineOnly = false, this.focusRequestId});
+  const SeerrRequestsScreen({super.key, this.mineOnly = false, this.focusRequestId, this.reviewPending = false});
 
   final bool mineOnly;
+  final bool reviewPending;
 
   /// The viewer's own request this page was opened for ("Mijn aanvraag" on a
   /// title page). The list lands on it instead of on its first row. Only used
@@ -76,7 +77,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   static const double _hInset = 16;
   static const int _pageSize = 20;
 
-  TvSeerrRequestFilter _filter = TvSeerrRequestFilter.all;
+  late TvSeerrRequestFilter _filter = widget.reviewPending ? TvSeerrRequestFilter.pending : TvSeerrRequestFilter.all;
   List<SeerrRequest> _items = const [];
   int _page = 1;
   bool _hasMore = false;
@@ -690,7 +691,11 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<SeerrProvider>();
     final ownOnly = _ownOnly(provider);
-    final title = ownOnly ? t.seerr.myRequests : t.seerr.allRequests;
+    final title = ownOnly
+        ? t.seerr.myRequests
+        : widget.reviewPending
+        ? t.pleyaNotifications.manageRequestsTitle
+        : t.seerr.allRequests;
 
     // Host so the action menu and the edit form get the overlay path (focus
     // trap, D-pad back) instead of the focusless modal-route fallback.

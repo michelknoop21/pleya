@@ -227,6 +227,63 @@ class PleyaServerClient
   MemorySyncTransport assistantMemoryTransport({required bool Function() isCurrent}) =>
       _PleyaMemoryTransport(this, isCurrent);
 
+  bool get supportsSecurePush =>
+      wireCapabilities.pushNotifications && Uri.tryParse(connection.baseUrl)?.scheme == 'https';
+
+  Future<void> registerPushInstallation(
+    String id, {
+    required String token,
+    required String environment,
+    required String locale,
+    required bool movies,
+    required bool episodes,
+  }) async {
+    if (!supportsSecurePush || _offlineMode || _closed) {
+      throw StateError('Push registration unavailable');
+    }
+    await _adminSend(
+      'PUT',
+      '/users/me/push-installations/${Uri.encodeComponent(id)}',
+      followRedirects: false,
+      body: {
+        'device_token': token,
+        'environment': environment,
+        'locale': locale,
+        'movies': movies,
+        'episodes': episodes,
+      },
+    );
+  }
+
+  Future<void> removePushInstallation(String id) async {
+    if (_offlineMode || _closed) throw StateError('Push registration unavailable');
+    // A server without push routes answers `library.not_found`: there is no
+    // installation to withdraw, which is what the caller wanted.
+    await _adminSend('DELETE', '/users/me/push-installations/${Uri.encodeComponent(id)}', absentIsDone: true);
+  }
+
+  /// Withdraws every push installation of this session
+  /// (`DELETE /users/me/push-installations`), so no client-side record of ids
+  /// has to be complete. A server from before that route answers 404 or 405;
+  /// then only [knownIds] can be withdrawn, one by one, and any other id this
+  /// session once registered stays until the session ends.
+  Future<void> withdrawPush({List<String> knownIds = const []}) async {
+    if (_offlineMode || _closed) throw StateError('Push registration unavailable');
+    final missingRoute = await _adminSend('DELETE', '/users/me/push-installations', passStatuses: const {404, 405});
+    if (missingRoute == null) return;
+    for (final id in knownIds) {
+      await removePushInstallation(id);
+    }
+  }
+
+  /// Ends this session on the server (`POST /auth/logout`); its push
+  /// installations go with it. A server without sessions answers 404, which
+  /// the caller treats like any other failure.
+  Future<void> logout() async {
+    if (_offlineMode || _closed) throw StateError('Logout unavailable');
+    await _adminSend('POST', '/auth/logout');
+  }
+
   bool _offlineMode = false;
   bool _identityCapabilitiesKnown = false;
   @override

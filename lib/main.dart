@@ -851,6 +851,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
             _serverManager.onJellyfinConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             _serverManager.onPleyaShareConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             _serverManager.onPleyaServerConnectionUpdated = context.read<ConnectionRegistry>().upsert;
+            _serverManager.pleyaConnectionUpdateIfExists = context.read<ConnectionRegistry>().updateIfExists;
             SecureFolderService.instance.onConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             return MultiServerProvider(_serverManager, _aggregationService);
           },

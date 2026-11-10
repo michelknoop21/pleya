@@ -3419,5 +3419,31 @@
     "serverUnsupported": "This server does not support reports.",
     "loadFailed": "Could not load reports from Seerr.",
     "changeUnconfirmed": "Seerr did not confirm your change. Check the conversation before trying again."
+  },
+  "pleyaNotifications": {
+    "pushTitle": "Push on this device",
+    "pushExplanation": "Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.",
+    "pushOneAccount": "On this device, push from this server goes to one account. It now goes to $name; turning it on here turns it off there.",
+    "pushOffline": "Changes will take effect when this device can reach the server again.",
+    "pushPending": "Push preferences could not be confirmed. Check iOS notification permission and try again.",
+    "title": "Notifications",
+    "subtitle": "Choose which updates to receive",
+    "settings": "Notification preferences",
+    "enable": "Enable in-app notifications",
+    "explanation": "Choose which updates to show in Pleya. All categories start turned off.",
+    "disabled": "Notifications are off. Choose which updates to receive in preferences.",
+    "empty": "No new updates.",
+    "requests": "My request updates",
+    "reports": "My report updates",
+    "movies": "New films in my libraries",
+    "episodes": "New episodes in my libraries",
+    "releases": "Release dates for followed films and series",
+    "app": "New Pleya versions",
+    "manageRequests": "New requests to review",
+    "manageRequestsTitle": "Manage requests",
+    "manageReports": "New reports from users",
+    "version": "Pleya $version is available",
+    "loadPartial": "Some updates could not be loaded.",
+    "saveFailed": "Your preferences could not be saved."
   }
 }

@@ -71,6 +71,7 @@ extension SeerrClientRequests on SeerrClient {
     int page = 1,
     int take = 20,
     int? requestedBy,
+    bool sortByModified = false,
   }) async {
     final resp = await _send(
       () => _http.get(
@@ -79,7 +80,7 @@ extension SeerrClientRequests on SeerrClient {
           'take': take,
           'skip': (page - 1) * take,
           'filter': filter,
-          'sort': 'added',
+          'sort': sortByModified ? 'modified' : 'added',
           'requestedBy': ?requestedBy,
         },
         headers: _authHeaders(),

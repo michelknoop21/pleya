@@ -2804,3 +2804,76 @@ geen stille andere afbeelding. Nieuw bewust kiezen geeft een nieuwe UUID/ETag.
 Ontpinnen herstelt de gewone bronladder. `pins.*.state=ready` betekent aanwezige
 gevalideerde cachebytes, `unavailable` houdt intentie en herstelbare fout zichtbaar.
 GET mag cache herstellen; PUT lokt na publicatie geen nieuwe netwerkcall uit.
+
+## A-21 Push naar een iOS-installatie
+
+De optionele vlag `capabilities.push_notifications` staat alleen aan bij een
+geconfigureerde APNs-provider. De app gebruikt een HTTPS-verbinding en vraagt
+expliciete iOS-toestemming voordat zij een token verstuurt. Beide categorieën
+beginnen uit. Een client bewaart per profiel en serveraccount een willekeurige
+installatie-UUID en stuurt die naar
+`PUT /users/me/push-installations/{installation_id}`. De gesloten body bevat
+`device_token` in hex, `environment` (sandbox of production), optioneel
+`locale` (en of nl) en `movies` en `episodes`. De server accepteert alleen
+zijn eigen APNs-omgeving en ten minste één gekozen categorie.
+
+PUT en DELETE vereisen een eigen sessiebearer. PUT is vervangend en behoudt
+de oorspronkelijke toestemmingstijd van categorieën die aan blijven.
+Een nieuwere sessie van hetzelfde account kan de registratie overnemen als
+zij hetzelfde toestel of APNs-token draagt. Een APNs-token hoort bij één
+registratie: een geslaagde PUT met hetzelfde token laat elke andere registratie
+met dat token vervallen, ook van een ander account op een gedeeld toestel.
+Maximaal acht registraties per sessie. DELETE met een id raakt alleen een
+registratie van de aanroepende sessie, is idempotent en geeft bij een onbekende
+of andere registratie ook 204. `DELETE /users/me/push-installations` zonder id trekt elke registratie
+van de aanroepende sessie in, en geen van een andere sessie of een ander account;
+ook zonder registraties 204. De app trekt push daarmee in, zodat zij niet hoeft
+bij te houden welke ids een sessie ooit registreerde. Een oudere server zonder
+die route antwoordt 404 of 405; de app trekt dan alleen de ids in die zij voor
+die verbinding bewaart. Die terugval is niet convergent: een ander id dat de
+sessie ooit registreerde blijft staan tot de sessie eindigt.
+
+De app houdt de stand convergent. Bewaard worden alleen de keuze per profiel en
+verbinding en het installatie-id voor de PUT. Voor elke Pleya-sessie op het
+toestel hoort op de server precies één registratie te staan als die sessie bij
+het actieve profiel hoort en dat profiel er push aanzette, en anders niets. De
+app schrijft die stand weg bij het starten, bij hervatten, als een server
+online komt, bij een profielwissel, na een gewijzigde keuze, en met een
+oplopende pauze zolang een poging mislukt; per sessie loopt één poging
+tegelijk. Een sessie krijgt alleen een intrekking als zij mogelijk iets houdt:
+de app markeert haar vóór elke PUT en wist die markering pas na een bevestigde
+intrekking. Een lege sessie van een ander profiel krijgt zo geen client en
+verbruikt geen refreshtoken, en kan dus idle worden. Had de laatste PUT op een
+sessie geen bekende uitkomst (een time-out of een antwoord zonder foutenvelop),
+dan kan hij nog na een intrekking landen; de markering blijft dan staan en de
+app trekt na twee minuten nog één keer in. Bij de eerste run na deze versie
+geldt elke bekende Pleya-sessie als gemarkeerd. Zonder actief profiel (de
+profielkiezer) maakt de app de gemarkeerde sessies één keer leeg, zonder nieuwe
+pogingen; wat dan nog gemarkeerd is, maakt de volgende profielkeuze leeg. Gebruikt een kinderprofiel dezelfde sessie als een ander profiel, dan
+gelden de bibliotheekrechten van dat account: de server kent geen profielen,
+alleen accounts, en de alerttekst is algemeen. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
+registraties geven 400 `session.invalid`. API-tokens geven 403
+`auth.scope_insufficient`. Alle antwoorden dragen `Cache-Control: no-store`.
+
+De server verstuurt alleen na controle van toestemming, sessie en bibliotheek.
+De alerttekst en de willekeurige aflever-ID bevatten geen titel of
+bibliotheeknaam. Een intrekking verwijdert wachtende afleveringen bij Pleya.
+De server vraagt APNs om niet-bezorgde alerts direct te laten verlopen.
+Nieuwe titels die tegelijk klaarstaan gaan per registratie als één alert, en
+een latere alert vervangt de vorige op het toestel.
+Een opt-out of rechtenwijziging die binnenkomt terwijl de server een alert aan
+APNs aanbiedt, houdt die ene alert niet meer tegen; dat venster duurt hoogstens
+8 seconden, de time-out van de APNs-aanvraag. Daarna verstuurt de server niets
+meer op basis van de oude stand.
+
+Verwijdert de app de laatste verwijzing naar een verbinding, dan trekt zij de
+registratie in en sluit zij de sessie af met `POST /auth/logout`. Dat geldt ook
+voor een profiel dat niet actief is, zoals bij het verwijderen van een heel
+profiel: de app gebruikt dan kort de opgeslagen verbinding van dat profiel. Kan het toestel
+de server op dat moment niet bereiken, dan blijven sessie en registratie op de
+server staan tot de gebruiker of een beheerder de sessie intrekt, of tot de
+sessieronde haar opruimt nadat de refreshlevensduur verstreken is. Tot dan kan
+het toestel nog alerts van die server krijgen. Gebruikt een ander profiel de
+verbinding nog, dan blijft de sessie bekend en maakt de volgende ronde haar leeg.
+Uitloggen in de app trekt push op elke Pleya-sessie in en sluit die sessies af,
+elk met dezelfde tijdsgrens.

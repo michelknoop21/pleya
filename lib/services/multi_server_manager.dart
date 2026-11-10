@@ -945,6 +945,96 @@ class MultiServerManager {
   @visibleForTesting
   http.Client Function()? debugPleyaServerHttpClientFactory;
 
+  /// Writes a rotated Pleya token back only while the row is still there, in
+  /// one step. A short-lived client uses this, so it cannot bring back a
+  /// connection that was removed while it ran.
+  FutureOr<void> Function(PleyaServerConnection connection)? pleyaConnectionUpdateIfExists;
+
+  PleyaServerClient _createPleyaServerClient(
+    PleyaServerConnection connection, {
+    void Function(PleyaServerConnection updated)? onRotated,
+    bool persist = true,
+    bool onlyExisting = false,
+  }) => PleyaServerClient.create(
+    connection,
+    httpClientFactory: debugPleyaServerHttpClientFactory,
+    onConnectionUpdated: (updated) async {
+      onRotated?.call(updated);
+      final save = onlyExisting
+          ? pleyaConnectionUpdateIfExists ?? onPleyaServerConnectionUpdated
+          : onPleyaServerConnectionUpdated;
+      if (!persist || save == null) return;
+      try {
+        await Future.sync(() => save(updated));
+      } catch (e, st) {
+        appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
+      }
+    },
+  );
+
+  /// One queue per Pleya connection for its short-lived clients. Each turn
+  /// hands the connection it rotated to (or inherited) to the turn queued
+  /// right behind it; an empty queue keeps nothing. Binding never queues.
+  final _pleyaTurns = <String, Future<PleyaServerConnection?>>{};
+
+  PleyaServerClient? _boundPleyaClient(PleyaServerConnection connection) {
+    final bound = _clients[connection.serverId];
+    return bound is PleyaServerClient && bound.connection.id == connection.id ? bound : null;
+  }
+
+  /// Joins the queue for [id]: returns the turn to complete and what the
+  /// previous turn handed on.
+  Future<(Completer<PleyaServerConnection?>, PleyaServerConnection?)> _takePleyaTurn(String id) async {
+    final previous = _pleyaTurns[id];
+    final turn = Completer<PleyaServerConnection?>();
+    _pleyaTurns[id] = turn.future;
+    return (turn, previous == null ? null : await previous);
+  }
+
+  void _endPleyaTurn(String id, Completer<PleyaServerConnection?> turn, PleyaServerConnection? handOn) {
+    if (turn.isCompleted) return;
+    turn.complete(handOn);
+    if (identical(_pleyaTurns[id], turn.future)) _pleyaTurns.remove(id);
+  }
+
+  /// Runs [action] with a client for [connection]: the bound one when there is
+  /// one, otherwise a short-lived client that writes a rotated refresh token
+  /// back like a bound client does and is closed afterwards. For one-off
+  /// requests on behalf of a profile that is not active.
+  ///
+  /// Short-lived clients for one connection take turns, and a queued turn
+  /// starts from the token the turn before it rotated to: two clients
+  /// presenting the same refresh token count as reuse. Binding does not take
+  /// part; callers keep short-lived clients away from a connection the binder
+  /// is binding. [persist] false skips the write for a connection that is
+  /// being removed, so it cannot come back.
+  Future<T> withPleyaServerClient<T>(
+    PleyaServerConnection connection,
+    Future<T> Function(PleyaServerClient client) action, {
+    bool persist = true,
+  }) async {
+    if (_boundPleyaClient(connection) case final bound?) return action(bound);
+    final (turn, inherited) = await _takePleyaTurn(connection.id);
+    var handOn = inherited;
+    try {
+      // A binding may have finished while this call waited for its turn.
+      if (_boundPleyaClient(connection) case final bound?) return await action(bound);
+      final client = _createPleyaServerClient(
+        inherited ?? connection,
+        onRotated: (updated) => handOn = updated,
+        persist: persist,
+        onlyExisting: true,
+      );
+      try {
+        return await action(client);
+      } finally {
+        client.close();
+      }
+    } finally {
+      _endPleyaTurn(connection.id, turn, handOn);
+    }
+  }
+
   /// Add a Pleya Server connection as a media source.
   ///
   /// One endpoint, one identity, so this is closer to the Jellyfin path than to
@@ -956,19 +1046,7 @@ class MultiServerManager {
   /// re-auth banner rather than being hidden as offline.
   Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
     try {
-      final client = PleyaServerClient.create(
-        connection,
-        httpClientFactory: debugPleyaServerHttpClientFactory,
-        onConnectionUpdated: (updated) async {
-          final persist = onPleyaServerConnectionUpdated;
-          if (persist == null) return;
-          try {
-            await Future.sync(() => persist(updated));
-          } catch (e, st) {
-            appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
-          }
-        },
-      );
+      final client = _createPleyaServerClient(connection);
       final serverId = connection.serverId;
       _wireServerAuthority(client, ServerId(serverId));
       // A role change moves what the profile may administer without any

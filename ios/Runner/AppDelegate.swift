@@ -4,9 +4,14 @@ import AVFoundation
 import AVKit
 import MediaPlayer
 import Vision
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  private var apnsToken: String?
+  private var pushAttempt: UUID?
+  // Every caller waiting for the one registration in flight.
+  private var pendingPushRegistrations: [FlutterResult] = []
   private var deviceAdjustmentChannel: FlutterMethodChannel?
   private var originalBrightness: CGFloat?
   private var volumeView: MPVolumeView?
@@ -51,6 +56,17 @@ import Vision
 
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PleyaPush") {
+      let channel = FlutterMethodChannel(name: "com.pleya/push", binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler { [weak self] call, result in
+        guard call.method == "deviceToken", let self = self else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        self.pushDeviceToken(prompt: call.arguments as? Bool == true, result: result)
+      }
+    }
+
     // Register MPV player plugin
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MpvPlayerPlugin") {
       MpvPlayerPlugin.register(with: registrar)
@@ -91,6 +107,73 @@ import Vision
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "HeroFocusChannel") {
       registerHeroFocusChannel(messenger: registrar.messenger())
     }
+  }
+
+  private func pushDeviceToken(prompt: Bool, result: @escaping FlutterResult) {
+    let center = UNUserNotificationCenter.current()
+    center.getNotificationSettings { settings in
+      if settings.authorizationStatus == .notDetermined && prompt {
+        center.requestAuthorization(options: [.alert]) { _, error in
+          DispatchQueue.main.async {
+            if error != nil {
+              result(FlutterError(code: "PUSH_PERMISSION", message: nil, details: nil))
+            } else {
+              self.pushDeviceToken(prompt: false, result: result)
+            }
+          }
+        }
+        return
+      }
+      DispatchQueue.main.async {
+        guard settings.authorizationStatus == .authorized else {
+          result(nil)
+          return
+        }
+        if let token = self.apnsToken {
+          result(self.pushDeviceIdentity(token))
+          return
+        }
+        // A second caller waits for the registration already in flight.
+        self.pendingPushRegistrations.append(result)
+        guard self.pendingPushRegistrations.count == 1 else { return }
+        let attempt = UUID()
+        self.pushAttempt = attempt
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
+          guard self.pushAttempt == attempt, !self.pendingPushRegistrations.isEmpty else { return }
+          self.finishPushRegistration(FlutterError(code: "PUSH_TIMEOUT", message: nil, details: nil))
+        }
+        UIApplication.shared.registerForRemoteNotifications()
+      }
+    }
+  }
+
+  private func finishPushRegistration(_ answer: Any?) {
+    let waiting = pendingPushRegistrations
+    pendingPushRegistrations = []
+    waiting.forEach { $0(answer) }
+  }
+
+  private func pushDeviceIdentity(_ token: String) -> [String: String] {
+    let entitlement = Bundle.main.object(forInfoDictionaryKey: "PleyaAPNSEnvironment") as? String
+    return ["token": token, "environment": entitlement == "development" ? "sandbox" : "production"]
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+    apnsToken = token
+    finishPushRegistration(pushDeviceIdentity(token))
+    super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+  }
+
+  override func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+  ) {
+    finishPushRegistration(FlutterError(code: "PUSH_REGISTRATION", message: nil, details: nil))
+    super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
   }
 
   // MARK: - Home hero focus point

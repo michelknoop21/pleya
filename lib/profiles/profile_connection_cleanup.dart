@@ -2,6 +2,7 @@ import '../connection/connection.dart';
 import '../connection/connection_registry.dart';
 import '../media/ids.dart';
 import '../services/multi_server_manager.dart';
+import '../services/pleya_push_notifications.dart';
 import '../services/storage_service.dart';
 import 'profile_connection_registry.dart';
 
@@ -14,6 +15,16 @@ Future<void> removeProfileConnectionAndCleanup({
   MultiServerManager? serverManager,
 }) async {
   final removedServerIds = _serverIdsForConnection(connection);
+  // Before the runtime client goes. The last profile on a Pleya connection
+  // withdraws its push and ends the session, so nothing on the server keeps
+  // acting for a device that let go; offline the session lapses with the
+  // server's sweep. A session another profile still uses stays known, and the
+  // next push reconcile empties it unless the active profile opted in there.
+  if (connection is PleyaServerConnection) {
+    final rows = await profileConnections.listForConnection(connection.id);
+    if (rows.every((row) => row.profileId == profileId)) await _endPleyaSession(connection, serverManager);
+    await PleyaPushNotifications.forgetConnection(profileId, connection.id);
+  }
   await profileConnections.remove(profileId, connection.id);
   await _tearDownRuntimeServersForActiveProfile(
     profileId: profileId,
@@ -95,7 +106,8 @@ Future<void> removeConnectionCompletely({
   for (final row in await profileConnections.listForConnection(connection.id)) {
     await removeProfileConnectionAndCleanup(
       profileId: row.profileId,
-      connection: connection,
+      // Fresh per row: the previous row may have rotated a Pleya refresh token.
+      connection: connection is PleyaServerConnection ? await connections.get(connection.id) ?? connection : connection,
       profileConnections: profileConnections,
       connections: connections,
       storage: storage,
@@ -107,6 +119,13 @@ Future<void> removeConnectionCompletely({
       (connection is LocalFolderConnection ||
           connection is PleyaShareConnection ||
           connection is PleyaServerConnection)) {
+    // An orphan Pleya session is the last reference too: withdraw and end it.
+    if (connection is PleyaServerConnection) {
+      await _endPleyaSession(
+        await connections.get(connection.id) as PleyaServerConnection? ?? connection,
+        serverManager,
+      );
+    }
     await connections.remove(connection.id);
     if (connection is LocalFolderConnection) serverManager?.removeLocalSource(connection);
     if (connection is PleyaShareConnection) serverManager?.removePleyaShareSource(connection);
@@ -330,4 +349,20 @@ Set<ServerId> _serverIdsForConnection(Connection connection) {
     PleyaShareConnection(:final id) => {?ServerId.tryParse(id)},
     PleyaServerConnection(:final serverId) => {?ServerId.tryParse(serverId)},
   };
+}
+
+/// The last reference to a Pleya session withdraws its push and ends it, so
+/// nothing on the server keeps acting for a device that let go. Capped and
+/// best effort: offline the session lapses with the server's sweep.
+Future<void> _endPleyaSession(PleyaServerConnection connection, MultiServerManager? serverManager) async {
+  if (serverManager == null) return;
+  try {
+    final ids = await PleyaPushNotifications.knownIdsFor(connection.id);
+    await serverManager
+        .withPleyaServerClient(connection, persist: false, (client) async {
+          await client.withdrawPush(knownIds: ids);
+          await client.logout();
+        })
+        .timeout(const Duration(seconds: 5));
+  } catch (_) {}
 }

@@ -110,6 +110,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsLocalLibraryNl localLibrary = _TranslationsLocalLibraryNl._(_root);
 	@override late final _TranslationsSettingsStudioNl settingsStudio = _TranslationsSettingsStudioNl._(_root);
 	@override late final _TranslationsSeerrIssuesNl seerrIssues = _TranslationsSeerrIssuesNl._(_root);
+	@override late final _TranslationsPleyaNotificationsNl pleyaNotifications = _TranslationsPleyaNotificationsNl._(_root);
 }
 
 // Path: states
@@ -2926,6 +2927,39 @@ class _TranslationsSeerrIssuesNl extends TranslationsSeerrIssuesEn {
 	@override String get serverUnsupported => 'Deze server ondersteunt geen meldingen.';
 	@override String get loadFailed => 'Meldingen ophalen uit Seerr is mislukt.';
 	@override String get changeUnconfirmed => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.';
+}
+
+// Path: pleyaNotifications
+class _TranslationsPleyaNotificationsNl extends TranslationsPleyaNotificationsEn {
+	_TranslationsPleyaNotificationsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get pushTitle => 'Push op dit toestel';
+	@override String get pushExplanation => 'Ontvang nieuwe aanwinsten van je eigen Pleya Server, ook als Pleya gesloten is. iOS vraagt toestemming zodra je een categorie aanzet.';
+	@override String pushOneAccount({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.';
+	@override String get pushOffline => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.';
+	@override String get pushPending => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.';
+	@override String get title => 'Notificaties';
+	@override String get subtitle => 'Kies welke updates je ontvangt';
+	@override String get settings => 'Notificatievoorkeuren';
+	@override String get enable => 'Notificaties in Pleya inschakelen';
+	@override String get explanation => 'Kies welke updates je in Pleya wilt zien. Alle categorieën staan standaard uit.';
+	@override String get disabled => 'Notificaties staan uit. Kies in de voorkeuren welke updates je wilt ontvangen.';
+	@override String get empty => 'Geen nieuwe updates.';
+	@override String get requests => 'Updates over mijn aanvragen';
+	@override String get reports => 'Updates over mijn meldingen';
+	@override String get movies => 'Nieuwe films in mijn bibliotheken';
+	@override String get episodes => 'Nieuwe afleveringen in mijn bibliotheken';
+	@override String get releases => 'Releasedatums van gevolgde films en series';
+	@override String get app => 'Nieuwe Pleya-versies';
+	@override String get manageRequests => 'Nieuwe aanvragen om te beoordelen';
+	@override String get manageRequestsTitle => 'Aanvragen beheren';
+	@override String get manageReports => 'Nieuwe gebruikersmeldingen';
+	@override String version({required Object version}) => 'Pleya ${version} is beschikbaar';
+	@override String get loadPartial => 'Sommige updates konden niet worden geladen.';
+	@override String get saveFailed => 'Je voorkeuren konden niet worden opgeslagen.';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7726,6 +7760,30 @@ extension on TranslationsNl {
 			'seerrIssues.serverUnsupported' => 'Deze server ondersteunt geen meldingen.',
 			'seerrIssues.loadFailed' => 'Meldingen ophalen uit Seerr is mislukt.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.',
+			'pleyaNotifications.pushTitle' => 'Push op dit toestel',
+			'pleyaNotifications.pushExplanation' => 'Ontvang nieuwe aanwinsten van je eigen Pleya Server, ook als Pleya gesloten is. iOS vraagt toestemming zodra je een categorie aanzet.',
+			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.',
+			'pleyaNotifications.pushOffline' => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.',
+			'pleyaNotifications.pushPending' => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.',
+			'pleyaNotifications.title' => 'Notificaties',
+			'pleyaNotifications.subtitle' => 'Kies welke updates je ontvangt',
+			'pleyaNotifications.settings' => 'Notificatievoorkeuren',
+			'pleyaNotifications.enable' => 'Notificaties in Pleya inschakelen',
+			'pleyaNotifications.explanation' => 'Kies welke updates je in Pleya wilt zien. Alle categorieën staan standaard uit.',
+			'pleyaNotifications.disabled' => 'Notificaties staan uit. Kies in de voorkeuren welke updates je wilt ontvangen.',
+			'pleyaNotifications.empty' => 'Geen nieuwe updates.',
+			'pleyaNotifications.requests' => 'Updates over mijn aanvragen',
+			'pleyaNotifications.reports' => 'Updates over mijn meldingen',
+			'pleyaNotifications.movies' => 'Nieuwe films in mijn bibliotheken',
+			'pleyaNotifications.episodes' => 'Nieuwe afleveringen in mijn bibliotheken',
+			'pleyaNotifications.releases' => 'Releasedatums van gevolgde films en series',
+			'pleyaNotifications.app' => 'Nieuwe Pleya-versies',
+			'pleyaNotifications.manageRequests' => 'Nieuwe aanvragen om te beoordelen',
+			'pleyaNotifications.manageRequestsTitle' => 'Aanvragen beheren',
+			'pleyaNotifications.manageReports' => 'Nieuwe gebruikersmeldingen',
+			'pleyaNotifications.version' => ({required Object version}) => 'Pleya ${version} is beschikbaar',
+			'pleyaNotifications.loadPartial' => 'Sommige updates konden niet worden geladen.',
+			'pleyaNotifications.saveFailed' => 'Je voorkeuren konden niet worden opgeslagen.',
 			_ => null,
 		};
 	}

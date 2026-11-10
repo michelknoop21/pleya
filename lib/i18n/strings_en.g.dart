@@ -111,6 +111,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsLocalLibraryEn localLibrary = TranslationsLocalLibraryEn.internal(_root);
 	late final TranslationsSettingsStudioEn settingsStudio = TranslationsSettingsStudioEn.internal(_root);
 	late final TranslationsSeerrIssuesEn seerrIssues = TranslationsSeerrIssuesEn.internal(_root);
+	late final TranslationsPleyaNotificationsEn pleyaNotifications = TranslationsPleyaNotificationsEn.internal(_root);
 }
 
 // Path: states
@@ -7142,6 +7143,87 @@ class TranslationsSeerrIssuesEn {
 	String get changeUnconfirmed => 'Seerr did not confirm your change. Check the conversation before trying again.';
 }
 
+// Path: pleyaNotifications
+class TranslationsPleyaNotificationsEn {
+	TranslationsPleyaNotificationsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Push on this device'
+	String get pushTitle => 'Push on this device';
+
+	/// en: 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.'
+	String get pushExplanation => 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.';
+
+	/// en: 'On this device, push from this server goes to one account. It now goes to $name; turning it on here turns it off there.'
+	String pushOneAccount({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.';
+
+	/// en: 'Changes will take effect when this device can reach the server again.'
+	String get pushOffline => 'Changes will take effect when this device can reach the server again.';
+
+	/// en: 'Push preferences could not be confirmed. Check iOS notification permission and try again.'
+	String get pushPending => 'Push preferences could not be confirmed. Check iOS notification permission and try again.';
+
+	/// en: 'Notifications'
+	String get title => 'Notifications';
+
+	/// en: 'Choose which updates to receive'
+	String get subtitle => 'Choose which updates to receive';
+
+	/// en: 'Notification preferences'
+	String get settings => 'Notification preferences';
+
+	/// en: 'Enable in-app notifications'
+	String get enable => 'Enable in-app notifications';
+
+	/// en: 'Choose which updates to show in Pleya. All categories start turned off.'
+	String get explanation => 'Choose which updates to show in Pleya. All categories start turned off.';
+
+	/// en: 'Notifications are off. Choose which updates to receive in preferences.'
+	String get disabled => 'Notifications are off. Choose which updates to receive in preferences.';
+
+	/// en: 'No new updates.'
+	String get empty => 'No new updates.';
+
+	/// en: 'My request updates'
+	String get requests => 'My request updates';
+
+	/// en: 'My report updates'
+	String get reports => 'My report updates';
+
+	/// en: 'New films in my libraries'
+	String get movies => 'New films in my libraries';
+
+	/// en: 'New episodes in my libraries'
+	String get episodes => 'New episodes in my libraries';
+
+	/// en: 'Release dates for followed films and series'
+	String get releases => 'Release dates for followed films and series';
+
+	/// en: 'New Pleya versions'
+	String get app => 'New Pleya versions';
+
+	/// en: 'New requests to review'
+	String get manageRequests => 'New requests to review';
+
+	/// en: 'Manage requests'
+	String get manageRequestsTitle => 'Manage requests';
+
+	/// en: 'New reports from users'
+	String get manageReports => 'New reports from users';
+
+	/// en: 'Pleya $version is available'
+	String version({required Object version}) => 'Pleya ${version} is available';
+
+	/// en: 'Some updates could not be loaded.'
+	String get loadPartial => 'Some updates could not be loaded.';
+
+	/// en: 'Your preferences could not be saved.'
+	String get saveFailed => 'Your preferences could not be saved.';
+}
+
 // Path: settings.displayMaxResolutionOptions
 class TranslationsSettingsDisplayMaxResolutionOptionsEn {
 	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
@@ -13703,6 +13785,30 @@ extension on Translations {
 			'seerrIssues.serverUnsupported' => 'This server does not support reports.',
 			'seerrIssues.loadFailed' => 'Could not load reports from Seerr.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
+			'pleyaNotifications.pushTitle' => 'Push on this device',
+			'pleyaNotifications.pushExplanation' => 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.',
+			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.',
+			'pleyaNotifications.pushOffline' => 'Changes will take effect when this device can reach the server again.',
+			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
+			'pleyaNotifications.title' => 'Notifications',
+			'pleyaNotifications.subtitle' => 'Choose which updates to receive',
+			'pleyaNotifications.settings' => 'Notification preferences',
+			'pleyaNotifications.enable' => 'Enable in-app notifications',
+			'pleyaNotifications.explanation' => 'Choose which updates to show in Pleya. All categories start turned off.',
+			'pleyaNotifications.disabled' => 'Notifications are off. Choose which updates to receive in preferences.',
+			'pleyaNotifications.empty' => 'No new updates.',
+			'pleyaNotifications.requests' => 'My request updates',
+			'pleyaNotifications.reports' => 'My report updates',
+			'pleyaNotifications.movies' => 'New films in my libraries',
+			'pleyaNotifications.episodes' => 'New episodes in my libraries',
+			'pleyaNotifications.releases' => 'Release dates for followed films and series',
+			'pleyaNotifications.app' => 'New Pleya versions',
+			'pleyaNotifications.manageRequests' => 'New requests to review',
+			'pleyaNotifications.manageRequestsTitle' => 'Manage requests',
+			'pleyaNotifications.manageReports' => 'New reports from users',
+			'pleyaNotifications.version' => ({required Object version}) => 'Pleya ${version} is available',
+			'pleyaNotifications.loadPartial' => 'Some updates could not be loaded.',
+			'pleyaNotifications.saveFailed' => 'Your preferences could not be saved.',
 			_ => null,
 		};
 	}

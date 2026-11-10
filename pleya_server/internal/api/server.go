@@ -26,6 +26,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
+	"github.com/edde746/plezy/pleya_server/internal/push"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
@@ -33,6 +34,7 @@ import (
 
 // Options bundelt wat de HTTP-laag nodig heeft.
 type Options struct {
+	Push      *push.Service
 	Catalog   *catalog.Store
 	Auth      *auth.Store
 	Watch     *watch.Store
