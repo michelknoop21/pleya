@@ -5796,7 +5796,8 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Afgewezen:** samenvoegen op titel, poster of jaar (geen bewijs); een filter in de interface (lost alleen dit scherm op); een algemene slotpas voor unieke groupIds (breekt het bewuste contract in `unified_catalog_provider.dart`, test "groupId is not unique").
 **Consequences:** Twee bronnen die een nummer delen en alleen in guid verschillen, zijn voortaan één kaart met twee bronnen, op elk scherm dat `groupUnifiedMediaSources` gebruikt. Een titel zonder bewezen nummer blijft apart, net als een mislukte opzoeking en een item met agent `none`. Niet bewezen op hardware; de Verify-run gebruikt de Pleya-protocolfixture en kan het Plex-guidgeval niet nabootsen. **Unified impact:** gedeelde eigenaar is `grouping_service.dart`; geldt voor Plex, Jellyfin, Emby en Pleya Server. De legacy-vertaling raakt alleen Plex. Geen protocolwijziging. Bewijs: `test/services/unified_grouping_service_test.dart`, `test/services/unified_catalog/home_projection_service_test.dart`, `test/services/plex_item_gone_test.dart`, `test/widgets/tv_discovery_rail_test.dart`, scenario `tvos.unified.continue-watching-one-card`.
 
-## DEC-XXX: Rijke push met titel en poster, versleuteld onder een toestelsleutel
+<a id="dec-xxx-rijke-push-met-titel-en-poster-versleuteld-onder-een-toestelsleutel"></a>
+## DEC-202: Rijke push met titel en poster, versleuteld onder een toestelsleutel
 
 **Date:** 2026-11-10
 **Status:** accepted (Michel, 10 november 2026)
