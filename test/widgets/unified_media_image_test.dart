@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
@@ -6,6 +9,11 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/unified_media_image.dart';
 
+import 'package:provider/provider.dart';
+import 'package:pleya/providers/local_library_provider.dart';
+import 'package:pleya/services/local_library/local_library_store.dart';
+
+import '../services/local_library/local_library_store_test.dart' show film, library;
 import '../test_helpers/tv_catalog_fixtures.dart';
 
 class _Client extends Fake implements MediaServerClient {
@@ -107,6 +115,61 @@ void main() {
     );
     expect(find.text('/two'), findsOneWidget);
   });
+
+  for (final removeCachedFile in [false, true]) {
+    testWidgets('local cache priority respects file existence: removed=$removeCachedFile', (tester) async {
+      final first = film('one');
+      final second = tvGoldenMovie(id: 'two', title: 'Dune', serverId: 'two').copyWith(thumbPath: '/two');
+      final changes = ChangeNotifier();
+      late Directory root;
+      late LocalLibraryProvider local;
+      late String cachedPath;
+      await tester.runAsync(() async {
+        root = await Directory.systemTemp.createTemp('pleya-unified-artwork-');
+        final store = LocalLibraryStore(root);
+        await store.load();
+        await store.saveLibrary(library, [first], complete: true);
+        await store.savePoster('one', first.thumbPath!, Uint8List.fromList([1, 2, 3]));
+        cachedPath = store.posterPath('one', first.thumbPath!)!;
+        local = LocalLibraryProvider(
+          profileId: 'fixture',
+          directory: root,
+          librariesForSync: () => [library],
+          clientFor: (_) => null,
+          mayReadServer: (_) => true,
+          mayReadLibrary: (_) => true,
+          networkConnected: () => false,
+          wifiConnected: () => false,
+          changes: changes,
+        );
+        await local.ready;
+      });
+      addTearDown(() async {
+        local.dispose();
+        await local.pendingStoreWrites;
+        changes.dispose();
+        await root.delete(recursive: true);
+      });
+      expect(local.posterPath('one', first.thumbPath), cachedPath);
+      if (removeCachedFile) File(cachedPath).deleteSync();
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: local,
+          child: MaterialApp(
+            home: UnifiedMediaImage(
+              group: tvGoldenGroup('g', [first, second]),
+              pathOf: (item) => item.posterThumb(),
+              clientFor: (id) => id == 'two' ? _Client(id) : null,
+            ),
+          ),
+        ),
+      );
+      final image = tester.widget<OptimizedMediaImage>(find.byType(OptimizedMediaImage));
+      expect(image.imagePath, removeCachedFile ? '/two' : first.thumbPath);
+      expect(image.localFilePath, removeCachedFile ? isNull : cachedPath);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
 
   testWidgets('unavailable signed URL falls through without a network retry', (tester) async {
     final first = tvGoldenMovie(id: 'one', title: 'Dune', serverId: 'one').copyWith(thumbPath: '/one');

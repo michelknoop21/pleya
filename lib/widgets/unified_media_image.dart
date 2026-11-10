@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -55,7 +57,7 @@ class UnifiedMediaImage extends StatelessWidget {
 
     Widget render(int index) {
       final candidate = index < candidates.length ? candidates[index] : null;
-      if (candidate != null && candidate.local == null) {
+      if (candidate != null && (candidate.local == null || !File(candidate.local!).existsSync())) {
         try {
           final url = MediaImageHelper.getOptimizedImageUrl(
             client: candidate.client,
