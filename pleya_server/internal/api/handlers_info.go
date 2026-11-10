@@ -25,7 +25,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			SetupAcceptsName: s.opts.Settings != nil && s.opts.Settings.HasStore(),
 		},
 		Capabilities: Capabilities{
+			// DEC-XXX: rijke push hangt aan dezelfde schakelaar als push zelf.
 			PushNotifications: s.opts.Push.Enabled(),
+			PushRichContent:   s.opts.Push.Enabled(),
 			AssistantMemory:   s.opts.Memory != nil,
 			Browse:            true,
 			Search:            true,

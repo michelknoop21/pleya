@@ -1,6 +1,7 @@
 package push
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -17,7 +18,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -141,8 +141,52 @@ const (
 	rejected
 )
 
+// maxPayload is Apple's limit for an alert's JSON body.
+const maxPayload = 4096
+
+// payload is the JSON Apple sees: always the generic, localized alert. With
+// sealed content it adds mutable-content and the ciphertext for the
+// Notification Service Extension, unless that would exceed Apple's limit;
+// then the generic alert goes alone.
+func payload(locale, notificationID, installation, sealed string) []byte {
+	body := "There’s something new in your library."
+	if locale == "nl" {
+		body = "Er staat iets nieuws in je bibliotheek."
+	}
+	type alert struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	}
+	type aps struct {
+		Alert          alert `json:"alert"`
+		MutableContent int   `json:"mutable-content,omitempty"`
+	}
+	type rich struct {
+		Installation string `json:"i"`
+		Content      string `json:"c"`
+	}
+	type message struct {
+		APS            aps    `json:"aps"`
+		NotificationID string `json:"notification_id"`
+		Pleya          *rich  `json:"pleya,omitempty"`
+	}
+	msg := message{APS: aps{Alert: alert{Title: "Pleya", Body: body}}, NotificationID: notificationID}
+	generic, _ := json.Marshal(msg)
+	if sealed == "" {
+		return generic
+	}
+	msg.APS.MutableContent = 1
+	msg.Pleya = &rich{Installation: installation, Content: sealed}
+	if out, _ := json.Marshal(msg); len(out) <= maxPayload {
+		return out
+	}
+	return generic
+}
+
 // send returns the outcome plus the HTTP status and Apple's reason for the log.
-func (a *APNs) send(ctx context.Context, device, locale, notificationID, collapseID string) (outcome, int, string) {
+// The installation id doubles as collapse id; sealed is the base64 rich content
+// or empty.
+func (a *APNs) send(ctx context.Context, device, locale, notificationID, installation, sealed string) (outcome, int, string) {
 	now := time.Now()
 	if a.now != nil {
 		now = a.now()
@@ -151,12 +195,8 @@ func (a *APNs) send(ctx context.Context, device, locale, notificationID, collaps
 	if err != nil {
 		return retry, 0, ""
 	}
-	body := "There’s something new in your library."
-	if locale == "nl" {
-		body = "Er staat iets nieuws in je bibliotheek."
-	}
-	payload := fmt.Sprintf(`{"aps":{"alert":{"title":"Pleya","body":%q}},"notification_id":%q}`, body, notificationID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.host+"/3/device/"+device, strings.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.host+"/3/device/"+device,
+		bytes.NewReader(payload(locale, notificationID, installation, sealed)))
 	if err != nil {
 		return rejected, 0, ""
 	}
@@ -166,7 +206,7 @@ func (a *APNs) send(ctx context.Context, device, locale, notificationID, collaps
 	req.Header.Set("apns-push-type", "alert")
 	req.Header.Set("apns-priority", "5")
 	req.Header.Set("apns-id", notificationID)
-	req.Header.Set("apns-collapse-id", collapseID)
+	req.Header.Set("apns-collapse-id", installation)
 	// Apple must not retain an undelivered alert past a later opt-out.
 	req.Header.Set("apns-expiration", "0")
 	resp, err := a.client.Do(req)

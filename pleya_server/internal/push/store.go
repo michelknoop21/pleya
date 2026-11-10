@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,6 +17,10 @@ import (
 type Service struct {
 	pool *pgxpool.Pool
 	apns *APNs
+	// Items and Signer enable rich push (DEC-XXX); without them every
+	// installation gets the generic alert.
+	Items  *catalog.Store
+	Signer *auth.Signer
 }
 
 func New(pool *pgxpool.Pool, apns *APNs) *Service {
@@ -25,7 +31,9 @@ func (s *Service) Enabled() bool { return s != nil && s.apns != nil }
 
 var ErrConflict = errors.New("push installation unavailable")
 
-func (s *Service) Register(ctx context.Context, installation, user, session id.ID, token, environment, locale string, movies, episodes bool) error {
+// Register stores one opt-in. contentKey is the optional 32-byte key for
+// rich push; every PUT replaces it, so a registration without one clears it.
+func (s *Service) Register(ctx context.Context, installation, user, session id.ID, token, environment, locale string, movies, episodes bool, contentKey []byte) error {
 	if !s.Enabled() || s.apns.environment != environment {
 		return ErrConflict
 	}
@@ -50,13 +58,14 @@ func (s *Service) Register(ctx context.Context, installation, user, session id.I
 		WITH active_session AS (
 			SELECT id,user_id,device_id,created_at FROM sessions WHERE id=$2
 		)
-		INSERT INTO push_installations(id, session_id, device_token, environment, locale, movies_since, episodes_since)
-		SELECT $1, id, $3, $4, $5, CASE WHEN $6 THEN now() END, CASE WHEN $7 THEN now() END
+		INSERT INTO push_installations(id, session_id, device_token, environment, locale, movies_since, episodes_since, content_key)
+		SELECT $1, id, $3, $4, $5, CASE WHEN $6 THEN now() END, CASE WHEN $7 THEN now() END, $8
 		FROM active_session
 		WHERE (SELECT count(*) FROM push_installations WHERE session_id=$2) < 8
 		   OR EXISTS (SELECT 1 FROM push_installations WHERE id=$1 AND session_id=$2)
 		ON CONFLICT (id) DO UPDATE SET
 			session_id=excluded.session_id, device_token=excluded.device_token, locale=excluded.locale,
+			content_key=excluded.content_key,
 			movies_since=CASE WHEN $6 THEN coalesce(push_installations.movies_since,now()) END,
 			episodes_since=CASE WHEN $7 THEN coalesce(push_installations.episodes_since,now()) END
 		WHERE push_installations.environment=excluded.environment
@@ -66,7 +75,7 @@ func (s *Service) Register(ctx context.Context, installation, user, session id.I
 			  AND old.created_at < current.created_at
 			  AND (old.device_id=current.device_id OR push_installations.device_token=excluded.device_token)
 		  ))
-	`, installation, session, token, environment, locale, movies, episodes)
+	`, installation, session, token, environment, locale, movies, episodes, contentKey)
 	switch {
 	case err != nil:
 		return err
@@ -153,16 +162,17 @@ func (s *Service) materialize(ctx context.Context) error {
 // call: a revocation that commits meanwhile lets at most this alert through,
 // and the bookkeeping rechecks the session so no retry follows it.
 func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
-	var installation id.ID
+	var installation, user, session id.ID
 	var token, locale string
+	var contentKey []byte
 	err := s.pool.QueryRow(ctx, `
-		SELECT p.id,p.device_token,p.locale
+		SELECT p.id,p.device_token,p.locale,p.content_key,s.user_id,s.id
 		FROM push_deliveries d
 		JOIN push_installations p ON p.id=d.installation_id
 		JOIN sessions s ON s.id=p.session_id
 		WHERE s.revoked_at IS NULL AND NOT d.finished AND p.environment=$1 AND d.next_attempt_at <= now() AND d.expires_at > now()
 		ORDER BY d.next_attempt_at,d.id LIMIT 1
-	`, s.apns.environment).Scan(&installation, &token, &locale)
+	`, s.apns.environment).Scan(&installation, &token, &locale, &contentKey, &user, &session)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -170,7 +180,7 @@ func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
 		return false, err
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT d.id,
+		SELECT d.id, d.item_id,
 		  coalesce(m.added_at > CASE m.kind WHEN 'movie' THEN p.movies_since WHEN 'episode' THEN p.episodes_since END,false)
 		  AND EXISTS (SELECT 1 FROM media_versions v JOIN media_files f ON f.version_id=v.id
 			WHERE v.item_id=m.id AND f.role='media' AND f.missing_since IS NULL)
@@ -187,17 +197,18 @@ func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	var due, eligible []id.ID
+	var due, eligible, items []id.ID
 	for rows.Next() {
-		var delivery id.ID
+		var delivery, item id.ID
 		var ok bool
-		if err := rows.Scan(&delivery, &ok); err != nil {
+		if err := rows.Scan(&delivery, &item, &ok); err != nil {
 			rows.Close()
 			return false, err
 		}
 		due = append(due, delivery)
 		if ok {
 			eligible = append(eligible, delivery)
+			items = append(items, item)
 		}
 	}
 	rows.Close()
@@ -210,7 +221,8 @@ func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
 		var reason string
 		// The first delivery id stays stable across retries, so APNs drops a
 		// duplicate after a lost ack; the collapse id replaces an older alert.
-		result, status, reason = s.apns.send(ctx, token, locale, eligible[0].String(), installation.String())
+		sealed := s.sealedContent(ctx, contentKey, locale, user, session, items)
+		result, status, reason = s.apns.send(ctx, token, locale, eligible[0].String(), installation.String(), sealed)
 		if result != accepted && result != invalidDevice {
 			log.Warn("APNs delivery unsuccessful", "status", status, "reason", reason)
 		}

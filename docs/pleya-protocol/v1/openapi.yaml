@@ -3484,6 +3484,14 @@ paths:
         het antwoord het origineel. Elke trede heeft een eigen sterke ETag. Een
         afgeleide maat is altijd `image/jpeg`. Een `width` buiten het bereik of
         zonder waarde levert het origineel.
+
+        Onder `capabilities.push_rich_content` accepteert deze route naast het
+        accesstoken ook het artworktoken uit een versleutelde pushmelding
+        (DEC-XXX). Dat token gaat als bearer-header mee, nooit in de URL, opent
+        alleen het artwork-id waarvoor het gemunt is, vervalt na hooguit 24 uur
+        en sterft met zijn sessie. De bibliotheekrechten van de eigenaar gelden
+        per aanvraag. Een artworktoken voor een ander id is een 401. Een client
+        hoeft dit token nooit te lezen.
       parameters:
         - name: artwork_id
           in: path
@@ -4044,6 +4052,16 @@ components:
         locale: { type: string, enum: [en, nl], default: en, x-unknown-safe: false }
         movies: { type: boolean, default: false }
         episodes: { type: boolean, default: false }
+        content_key:
+          type: string
+          pattern: '^[A-Za-z0-9+/]{43}=$'
+          description: |
+            Alleen onder `capabilities.push_rich_content` (DEC-XXX). Een
+            willekeurige AES-256-sleutel van 32 bytes in standaard-base64, per
+            registratie door het toestel gemaakt. Met sleutel draagt een melding
+            naast de algemene tekst ook titel en posterverwijzing, versleuteld
+            met AES-GCM; Apple ziet alleen de algemene tekst. Elke PUT vervangt de
+            sleutel, dus een PUT zonder dit veld wist hem.
 
     Capabilities:
       type: object
@@ -4053,6 +4071,12 @@ components:
         push_notifications:
           type: boolean
           description: Opt-in push is beschikbaar wanneer dit veld true is. Afwezig betekent uit.
+        push_rich_content:
+          type: boolean
+          description: |
+            DEC-XXX. PushInstallation neemt `content_key` aan en GET
+            /artwork/{artwork_id} het artworktoken uit de versleutelde melding.
+            Afwezig betekent uit; stuur `content_key` dan niet, want de body is gesloten.
         assistant_memory:
           type: boolean
           default: false

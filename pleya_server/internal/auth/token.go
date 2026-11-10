@@ -24,6 +24,10 @@ const (
 	// header zetten. Kortlevend, gebonden aan één mediaresource, en zonder enig
 	// recht op de rest van de API (specificatie 6.4).
 	TokenStream TokenType = "stream"
+	// TokenArtwork opent één afbeelding en verder niets (DEC-XXX, rijke push).
+	// De pushdienst munt hem voor de poster in een versleutelde melding; hij
+	// gaat als bearer-header mee, nooit in een URL.
+	TokenArtwork TokenType = "artwork"
 )
 
 // tokenPrefix maakt het formaat herkenbaar en versienbaar. Een token uit een

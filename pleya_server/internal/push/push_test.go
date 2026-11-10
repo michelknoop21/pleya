@@ -99,10 +99,10 @@ func TestDeliveryRequiresOptInAnActiveSessionAndLibraryAccess(t *testing.T) {
 	}
 
 	materialize(0)
-	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false); err != nil {
+	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Register(ctx, installation, other, otherSession, "ccee", "sandbox", "nl", true, false); !errors.Is(err, ErrConflict) {
+	if err := s.Register(ctx, installation, other, otherSession, "ccee", "sandbox", "nl", true, false, nil); !errors.Is(err, ErrConflict) {
 		t.Fatalf("other account replaced installation: %v", err)
 	}
 	if err := s.Remove(ctx, installation, other, otherSession); err != nil {
@@ -142,7 +142,7 @@ func TestDeliveryRequiresOptInAnActiveSessionAndLibraryAccess(t *testing.T) {
 		t.Fatal("unregistered APNs token was retained")
 	}
 
-	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false); err != nil {
+	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	exec("UPDATE push_installations SET movies_since=now()-interval '30 minutes'")
@@ -150,27 +150,27 @@ func TestDeliveryRequiresOptInAnActiveSessionAndLibraryAccess(t *testing.T) {
 	exec("UPDATE sessions SET revoked_at=now() WHERE id=$1", session)
 	deliver(3, false)
 	materialize(0)
-	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false); !errors.Is(err, ErrConflict) {
+	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false, nil); !errors.Is(err, ErrConflict) {
 		t.Fatalf("revoked session registered: %v", err)
 	}
 	nextSession := id.New()
 	exec("INSERT INTO sessions(id,user_id,device_name,created_at) VALUES ($1,$2,'phone',now()+interval '1 minute')", nextSession, user)
 	exec("UPDATE sessions SET revoked_at=NULL WHERE id=$1", session)
-	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false); err != nil {
+	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Register(ctx, installation, user, nextSession, "aabb", "sandbox", "nl", true, false); err != nil {
+	if err := s.Register(ctx, installation, user, nextSession, "aabb", "sandbox", "nl", true, false, nil); err != nil {
 		t.Fatalf("same account and device could not register on new session: %v", err)
 	}
-	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false); !errors.Is(err, ErrConflict) {
+	if err := s.Register(ctx, installation, user, session, "aabb", "sandbox", "nl", true, false, nil); !errors.Is(err, ErrConflict) {
 		t.Fatalf("old session reclaimed installation: %v", err)
 	}
 	for i := range 7 {
-		if err := s.Register(ctx, id.New(), user, nextSession, fmt.Sprintf("%04x", i), "sandbox", "nl", true, false); err != nil {
+		if err := s.Register(ctx, id.New(), user, nextSession, fmt.Sprintf("%04x", i), "sandbox", "nl", true, false, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := s.Register(ctx, id.New(), user, nextSession, "ffff", "sandbox", "nl", true, false); !errors.Is(err, ErrConflict) {
+	if err := s.Register(ctx, id.New(), user, nextSession, "ffff", "sandbox", "nl", true, false, nil); !errors.Is(err, ErrConflict) {
 		t.Fatalf("session exceeded installation quota: %v", err)
 	}
 }

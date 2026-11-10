@@ -757,8 +757,15 @@ Een sleutel die na een kopie met `sudo` nog van root is, kan de server ook met r
 De eerste succesvolle scan per bibliotheek bepaalt de uitgangsstand. Uit
 latere voltooide scans komen alleen nieuwe, afspeelbare films en afleveringen
 van na de toestemming in de wachtrij. De server controleert sessie,
-categorie en bibliotheekrechten vóór verzending. De tekst op het vergrendelde
-scherm bevat geen titel of bibliotheeknaam. De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw; een door
+categorie en bibliotheekrechten vóór verzending. Apple ziet alleen de algemene
+tekst "Er staat iets nieuws in je bibliotheek." Een app die
+`capabilities.push_rich_content` ziet, stuurt bij de registratie een eigen sleutel
+mee; de server versleutelt daarmee titel en posterverwijzing in de melding, en de
+Notification Service Extension op de iPhone toont "Nieuw: <titel>" met de poster.
+Zonder sleutel, of als ontsleutelen mislukt, blijft de algemene tekst staan. Of
+de titel ook op het vergrendelde scherm verschijnt, regelt iOS met **Toon
+voorvertoning** (Instellingen, Berichtgeving). De poster komt van deze server met
+een artworktoken dat één afbeelding opent en na 24 uur vervalt (DEC-XXX). De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw; een door
 Apple geweigerd of verlopen providertoken telt als tijdelijk en wordt opnieuw
 ondertekend. Apple
 bewaart de alert niet voor een onbereikbaar toestel. Titels die in dezelfde

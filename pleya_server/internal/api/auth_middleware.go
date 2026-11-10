@@ -132,6 +132,30 @@ func (s *Server) authenticated(next http.HandlerFunc) http.Handler {
 	})
 }
 
+// artworkAuthenticated is authenticated plus het artworktoken uit de rijke
+// push (DEC-XXX). Dat token opent alleen de afbeelding in zijn resource, gaat
+// als bearer-header mee en nooit in de URL, en sterft met zijn sessie. De
+// bibliotheekrechten van het subject toetst de handler per aanvraag, net als
+// bij een accesstoken.
+func (s *Server) artworkAuthenticated(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if token, ok := bearerToken(r); ok {
+			if claims, err := s.opts.Signer.Verify(token, auth.TokenArtwork); err == nil {
+				if claims.Resource == "" || claims.Resource != r.PathValue("artwork_id") {
+					writeError(w, s.log, CodeTokenInvalid, "artwork token opens another artwork", nil)
+					return
+				}
+				if !s.sessionLives(w, claims) {
+					return
+				}
+				next(w, r.WithContext(withClaimsAndSession(r.Context(), claims)))
+				return
+			}
+		}
+		s.authenticated(next).ServeHTTP(w, r)
+	})
+}
+
 // authenticatedByAPIToken is het tweede pad van authenticated (S1.5, RB-20).
 //
 // Het bouwt dezelfde Claims als een accesstoken zou dragen, zodat elke handler

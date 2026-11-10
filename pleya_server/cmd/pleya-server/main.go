@@ -264,6 +264,7 @@ func run() int {
 		startup.Warn("push uitgeschakeld", "error", err.Error())
 	}
 	pushService := push.New(pool, apns)
+	pushService.Items, pushService.Signer = catalogStore, signer
 	if pushService.Enabled() {
 		workers.Add(1)
 		go func() {

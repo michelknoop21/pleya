@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,8 @@ type pushInstallationRequest struct {
 	Locale      string `json:"locale"`
 	Movies      bool   `json:"movies"`
 	Episodes    bool   `json:"episodes"`
+	// ContentKey is the optional base64 AES-256 key for rich push (DEC-XXX).
+	ContentKey string `json:"content_key,omitempty"`
 }
 
 // pushCaller is the shared preamble: push is known on this server, and the
@@ -72,19 +75,13 @@ func (s *Server) handlePushInstallation(w http.ResponseWriter, r *http.Request) 
 	if r.Method == http.MethodDelete {
 		err = s.opts.Push.Remove(r.Context(), installation, user, session)
 	} else {
-		var body pushInstallationRequest
-		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048))
-		dec.DisallowUnknownFields()
-		var extra any
-		if dec.Decode(&body) != nil || dec.Decode(&extra) != io.EOF || !body.valid() {
+		body, key, ok := decodePushInstallation(http.MaxBytesReader(w, r.Body, 2048))
+		if !ok {
 			writeError(w, s.log, CodeSessionInvalid, "invalid push installation", nil)
 			return
 		}
-		if body.Locale == "" {
-			body.Locale = "en"
-		}
 		err = s.opts.Push.Register(r.Context(), installation, user, session,
-			strings.ToLower(body.DeviceToken), body.Environment, body.Locale, body.Movies, body.Episodes)
+			strings.ToLower(body.DeviceToken), body.Environment, body.Locale, body.Movies, body.Episodes, key)
 	}
 	switch {
 	case errors.Is(err, push.ErrConflict):
@@ -97,6 +94,24 @@ func (s *Server) handlePushInstallation(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// decodePushInstallation reads the closed PUT body. content_key is the one
+// optional field rich push added (DEC-XXX); a body without it is the A-21
+// body and stays valid.
+func decodePushInstallation(r io.Reader) (pushInstallationRequest, []byte, bool) {
+	var body pushInstallationRequest
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+	var extra any
+	if dec.Decode(&body) != nil || dec.Decode(&extra) != io.EOF || !body.valid() {
+		return body, nil, false
+	}
+	if body.Locale == "" {
+		body.Locale = "en"
+	}
+	key, _ := body.contentKey()
+	return body, key, true
+}
+
 func (b pushInstallationRequest) valid() bool {
 	if len(b.DeviceToken) == 0 || len(b.DeviceToken) > 512 || (!b.Movies && !b.Episodes) {
 		return false
@@ -104,6 +119,19 @@ func (b pushInstallationRequest) valid() bool {
 	if _, err := hex.DecodeString(b.DeviceToken); err != nil {
 		return false
 	}
+	if _, ok := b.contentKey(); !ok {
+		return false
+	}
 	return (b.Environment == "sandbox" || b.Environment == "production") &&
 		(b.Locale == "" || b.Locale == "en" || b.Locale == "nl")
+}
+
+// contentKey decodes the optional key: absent is nil, anything but exactly
+// 32 bytes of standard base64 is invalid.
+func (b pushInstallationRequest) contentKey() ([]byte, bool) {
+	if b.ContentKey == "" {
+		return nil, true
+	}
+	key, err := base64.StdEncoding.Strict().DecodeString(b.ContentKey)
+	return key, err == nil && len(key) == 32
 }
