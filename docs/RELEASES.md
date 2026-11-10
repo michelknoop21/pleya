@@ -47,6 +47,36 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 457 · 10 November 2026 · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: abcb4bb386c24adc9232c9f0434fe079441295d0 -->
+
+### New
+
+- **Notifications from your own Pleya Server on iPhone and iPad.** Under My Pleya > Notificaties
+  you choose per server whether you want a notification for new films or new episodes. iOS asks
+  for permission only when you switch one on. The notification says that something new arrived,
+  without a title, and several new items at once arrive as one notification. Only the profile
+  that is active on the device gets them; switching profile or signing out stops them for the
+  profile you left.
+
+### Improved
+
+- **The offline index scans faster.** Every library now scans four titles at a time instead of
+  one after the other, and a Pleya Server scan no longer asks the server again for a show or
+  season it already received in a list.
+
+### Notes
+
+- Notifications need a Pleya Server that has been updated for them. Until your server has that
+  update, the Notificaties switches do not appear.
+- On the Mac this is the first build since 453. It brings everything listed for builds 455 and
+  456 to the Mac as well. Nothing in it has been checked on a Mac yet.
+- Worth checking: on iPhone, switch on notifications for new films once the server is updated,
+  add a film to a library, and see that one notification arrives. Then switch to another
+  profile and check that no further notifications for the first profile arrive.
+- Worth checking: a full offline index sync on the older Apple TV, and how long it takes.
+
 ## 2.8.1 · build 456 · 9 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: 031401ee51b5351e78594aeea4d4b05369f73416 -->
