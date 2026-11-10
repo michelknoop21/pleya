@@ -87,6 +87,12 @@ class ConnectionRegistry {
     appLogger.d('ConnectionRegistry: upserted ${connection.kind.id}/${connection.id}');
   }
 
+  /// The ids of every stored Pleya Server row, whether or not it decodes.
+  Future<List<String>> pleyaServerIds() async {
+    final rows = await (_db.select(_db.connections)..where((t) => t.kind.equals(ConnectionKind.pleyaServer.id))).get();
+    return [for (final row in rows) row.id];
+  }
+
   /// Whether a row with [id] is stored, whether or not it still decodes.
   Future<bool> exists(String id) async =>
       await (_db.select(_db.connections)..where((t) => t.id.equals(id))).getSingleOrNull() != null;

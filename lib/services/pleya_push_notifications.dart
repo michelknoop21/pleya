@@ -58,6 +58,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     required this.profileSessions,
     required this.reach,
     this.rowExists,
+    this.storedSessionIds,
     this.retryBackoff = const Duration(seconds: 30),
     this.putSettleWindow = const Duration(minutes: 2),
   }) {
@@ -71,6 +72,9 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
 
   @visibleForTesting
   bool get debugRetryPending => _retryTimer?.isActive ?? false;
+
+  @visibleForTesting
+  int get debugSettleTimers => _settleTimers.length;
 
   @visibleForTesting
   static void resetForTesting() {
@@ -95,6 +99,11 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
   /// Whether the connection row is stored at all, decodable or not. A row
   /// that fails to decode is not gone, so its mark stays.
   final Future<bool> Function(String connectionId)? rowExists;
+
+  /// The ids of every stored Pleya connection row, also ones that do not
+  /// decode right now. The first run marks these; a row that decodes again
+  /// later is then still withdrawn.
+  final Future<Iterable<String>> Function()? storedSessionIds;
   final Duration retryBackoff;
 
   /// How long a PUT whose outcome is unknown may still land on the server.
@@ -341,7 +350,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
                 Uri.decodeComponent(key.substring(_prefixFor(_profileId).length)): stored,
           });
       }
-      final known = [for (final connection in await sessions()) connection.id];
+      final known = {for (final connection in await sessions()) connection.id, ...?await storedSessionIds?.call()};
       await _seedMarks(known);
       // A marked session whose row is gone is visited too, so its mark goes.
       final ids = {...known, ...await _markedSessions()};
@@ -420,22 +429,27 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
           return;
         }
         await _mark(id, on: true);
-        Future<void> register(String installation) => client.registerPushInstallation(
-          installation,
-          token: token,
-          environment: environment,
-          locale: LocaleSettings.currentLocale.languageCode == 'nl' ? 'nl' : 'en',
-          movies: wanted.contains('movies'),
-          episodes: wanted.contains('episodes'),
-        );
+        // Every PUT, the fresh-id one too: a failure that may still land keeps
+        // the session marked past the next DELETE.
+        Future<void> register(String installation) async {
+          try {
+            await client.registerPushInstallation(
+              installation,
+              token: token,
+              environment: environment,
+              locale: LocaleSettings.currentLocale.languageCode == 'nl' ? 'nl' : 'en',
+              movies: wanted.contains('movies'),
+              episodes: wanted.contains('episodes'),
+            );
+          } catch (error) {
+            if (_mayHaveLanded(error)) _uncertainUntil[id] = DateTime.now().add(owner.putSettleWindow);
+            rethrow;
+          }
+        }
+
         try {
           await register(wanted.first);
         } on MediaServerHttpException catch (error) {
-          // Only a definite answer (an error envelope from the server) tells us
-          // the PUT did not land; anything else may still land later.
-          if (PleyaError.tryParse(error.responseData) == null) {
-            _uncertainUntil[id] = DateTime.now().add(owner.putSettleWindow);
-          }
           // The server will not take this id (it belongs to another account
           // or session it cannot take over): a fresh id, once.
           if (error.statusCode != 400 || PleyaError.tryParse(error.responseData)?.code != 'session.invalid') rethrow;
@@ -453,10 +467,6 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
           _failed.remove(id);
           owner._nextBackoff = null;
           return;
-        } catch (_) {
-          // A timeout or a dropped connection: the PUT may still land.
-          _uncertainUntil[id] = DateTime.now().add(owner.putSettleWindow);
-          rethrow;
         }
       } else {
         if ((await _markedSessions()).contains(id)) {
@@ -484,14 +494,28 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     }
   }
 
+  /// Whether a failed PUT may still have been applied by the server.
+  static bool _mayHaveLanded(Object error) => switch (error) {
+    // Refused before anything was sent (no capability, offline, closed).
+    StateError() => false,
+    // The server answered: an auth refusal applies nothing.
+    MediaServerAuthException() => false,
+    // An answer with Pleya's error envelope is definite; one without (a proxy,
+    // or a timeout and dropped connection mapped to this type) is not.
+    MediaServerHttpException(:final responseData) => PleyaError.tryParse(responseData) == null,
+    // A timeout or a dropped connection.
+    _ => true,
+  };
+
   void _checkAgainAt(String id, DateTime until) {
     if (_disposed) return;
-    _settleTimers.add(
-      Timer(until.difference(DateTime.now()) + const Duration(milliseconds: 10), () {
-        _confirmed.remove(id);
-        unawaited(_reconcileAll(only: {id}));
-      }),
-    );
+    late final Timer timer;
+    timer = Timer(until.difference(DateTime.now()) + const Duration(milliseconds: 10), () {
+      _settleTimers.remove(timer);
+      _confirmed.remove(id);
+      unawaited(_reconcileAll(only: {id}));
+    });
+    _settleTimers.add(timer);
   }
 
   /// A failed attempt runs again after a growing pause, capped at ten minutes.

@@ -35,6 +35,11 @@ class _Session {
   Completer<void>? holdPut;
   final requests = <String>[];
   final rejectIds = <String>{};
+  bool rejectNext = false; // the next PUT gets session.invalid
+  bool failNextPut = false; // the next PUT gets a 503 without an envelope
+  bool dropNextPut = false; // the next PUT loses its connection
+  bool envelopeFail = false; // PUTs get a 500 with Pleya's error envelope
+  bool pushCapable = true;
   // Rotation model: a short-lived client spends the refresh token once. A
   // lost answer leaves the device on the old token, and spending that again
   // gets the session revoked, as the real server does after its grace.
@@ -47,7 +52,8 @@ class _Session {
   bool burned = false;
   bool revoked = false;
 
-  Future<void> start() async {
+  Future<void> start({bool push = true}) async {
+    pushCapable = push;
     final fake = PleyaFakeServer();
     client = PleyaServerClient.create(
       connection,
@@ -58,6 +64,35 @@ class _Session {
           if (request.method == 'PUT') {
             mayHold = true;
             await holdPut?.future;
+            if (rejectNext) {
+              rejectNext = false;
+              return http.Response(
+                jsonEncode({
+                  'error': {'code': 'session.invalid', 'message': 'invalid push installation', 'retryable': false},
+                }),
+                400,
+                headers: {'content-type': 'application/json'},
+              );
+            }
+            if (failNextPut) {
+              failNextPut = false;
+              uncertainPut = true;
+              return http.Response('', 503);
+            }
+            if (dropNextPut) {
+              dropNextPut = false;
+              uncertainPut = true;
+              throw http.ClientException('connection reset');
+            }
+            if (envelopeFail) {
+              return http.Response(
+                jsonEncode({
+                  'error': {'code': 'storage.unavailable', 'message': 'database down', 'retryable': true},
+                }),
+                500,
+                headers: {'content-type': 'application/json'},
+              );
+            }
             if (failPut) {
               uncertainPut = true;
               return http.Response('', 503);
@@ -87,7 +122,7 @@ class _Session {
         final response = await fake.handle(request);
         if (!request.url.path.endsWith('/info')) return response;
         final info = jsonDecode(response.body) as Map<String, dynamic>;
-        (info['capabilities'] as Map<String, dynamic>)['push_notifications'] = true;
+        (info['capabilities'] as Map<String, dynamic>)['push_notifications'] = pushCapable;
         return http.Response(jsonEncode(info), 200, headers: {'content-type': 'application/json'});
       }),
     );
@@ -222,6 +257,7 @@ void main() {
           if (!undecodable.contains(session.connection.id)) session.connection,
       ],
       rowExists: (id) async => sessions.containsKey(id),
+      storedSessionIds: () async => sessions.keys,
       putSettleWindow: putSettleWindow,
       profileSessions: (id) async => profileSessions[id] ?? const {},
       // Bound client or short-lived: in this fake the same client either way.
@@ -260,6 +296,12 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 30));
     }
   }
+
+  Future<bool> marked(PleyaServerConnection connection) async =>
+      (await BaseSharedPreferencesService.sharedCache())
+          .getStringList('pleya.push.registered')
+          ?.contains(connection.id) ??
+      false;
 
   /// What an earlier PUT leaves: the server holds [id] and the session is marked.
   Future<void> leftBehind(PleyaServerConnection connection, String id) async {
@@ -592,6 +634,7 @@ void main() {
       isNot(contains(aliceOwn.id)),
       reason: 'unmarked after the window',
     );
+    expect(alice.debugSettleTimers, 0, reason: 'a fired timer leaves the list');
   });
 
   test('a row that does not decode keeps its mark', () async {
@@ -601,6 +644,139 @@ void main() {
     await settle();
     final prefs = await BaseSharedPreferencesService.sharedCache();
     expect(prefs.getStringList('pleya.push.registered'), contains(bobOwn.id));
+  });
+
+  test('RV fresh-id PUT with unknown outcome keeps the mark', () async {
+    final alice = open('alice', putSettleWindow: const Duration(milliseconds: 400));
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    session
+      ..rejectNext = true
+      ..failNextPut = true;
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    expect(
+      session.requests.where((m) => m == 'PUT'),
+      hasLength(2),
+      reason: 'precondition: rejected, then fresh PUT 503',
+    );
+    await alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await pumpEventQueue();
+    session.registered.add('late');
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await settle();
+    expect(session.registered, isEmpty, reason: 'fresh-id PUT outcome unknown, but mark dropped');
+  });
+
+  test('RV category change during session.invalid PUT survives', () async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final key = 'pleya.push/alice/${Uri.encodeComponent(aliceOwn.id)}';
+    final alice = open('alice');
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    await prefs.setStringList(key, ['taken-id', 'srv-1', 'movies']);
+    session.rejectIds.add('taken-id');
+    session.holdPut = Completer<void>();
+    alice.retry();
+    await pumpEventQueue();
+    final change = alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: true));
+    await pumpEventQueue();
+    session.holdPut!.complete();
+    session.holdPut = null;
+    await change;
+    await settle();
+    final stored = prefs.getStringList(key)!;
+    expect(stored.skip(2), ['movies', 'episodes'], reason: 'new categories clobbered by fresh-id write');
+    expect(session.registered, {stored.first});
+  });
+
+  test('RV re-enable within window is not wiped by the second DELETE', () async {
+    final alice = open('alice', putSettleWindow: const Duration(milliseconds: 400));
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    session.failPut = true;
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    session.failPut = false;
+    await alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await pumpEventQueue();
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await settle();
+    await expectDesired('alice');
+    expect(session.registered, hasLength(1));
+  });
+
+  test('RV dispose cancels the settle timer', () async {
+    final alice = open('alice', putSettleWindow: const Duration(milliseconds: 400));
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    session.failPut = true;
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    session.failPut = false;
+    await alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await pumpEventQueue();
+    final before = session.requests.length;
+    alice.dispose();
+    push = null;
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await settle();
+    expect(session.requests.length, before);
+  });
+
+  test('a PUT that lost its connection may still land: the mark outlives the DELETE', () async {
+    final alice = open('alice', putSettleWindow: const Duration(minutes: 2));
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    session.dropNextPut = true;
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    await alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await settle();
+    expect(session.requests, contains('DELETE'));
+    expect(await marked(aliceOwn), isTrue, reason: 'the dropped PUT may still land');
+  });
+
+  test('a PUT refused with Pleya\'s error envelope is definite: the DELETE clears the mark', () async {
+    final alice = open('alice', putSettleWindow: const Duration(minutes: 2));
+    await settle();
+    final session = sessions[aliceOwn.id]!;
+    session.envelopeFail = true;
+    await alice.setChoices(sourceFor(alice, aliceOwn), (movies: true, episodes: false));
+    session.envelopeFail = false;
+    await alice.setChoices(sourceFor(alice, aliceOwn), PleyaPushNotifications.off);
+    await settle();
+    expect(await marked(aliceOwn), isFalse, reason: 'nothing can still land');
+  });
+
+  test('a PUT refused before it was sent is not uncertain', () async {
+    // This server does not offer push: the client refuses the PUT itself.
+    final noPush = _Session(aliceOwn);
+    await noPush.start(push: false);
+    addTearDown(noPush.client.close);
+    sessions[aliceOwn.id] = noPush;
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final key = 'pleya.push/alice/${Uri.encodeComponent(aliceOwn.id)}';
+    await prefs.setStringList(key, ['id-a', 'srv-1', 'movies']);
+    final alice = open('alice', putSettleWindow: const Duration(minutes: 2));
+    await settle();
+    expect(noPush.requests.where((method) => method == 'PUT'), isEmpty, reason: 'precondition: nothing sent');
+    await prefs.remove(key);
+    alice.retry();
+    await settle();
+    expect(await marked(aliceOwn), isFalse);
+  });
+
+  test('a row that does not decode on the first run is marked, and withdrawn once it decodes', () async {
+    await (await BaseSharedPreferencesService.sharedCache()).remove('pleya.push.registered');
+    sessions[bobOwn.id]!
+      ..registered.add('old-bob-id')
+      ..mayHold = true;
+    undecodable.add(bobOwn.id);
+    final alice = open('alice');
+    await settle();
+    expect(await marked(bobOwn), isTrue);
+    undecodable.remove(bobOwn.id);
+    alice.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await settle();
+    expect(sessions[bobOwn.id]!.registered, isEmpty);
   });
 
   // Whatever happens in between, once requests succeed again the server holds

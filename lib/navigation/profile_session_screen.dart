@@ -649,6 +649,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       servers,
                       sessions: context.read<ConnectionRegistry>().listPleyaServers,
                       rowExists: context.read<ConnectionRegistry>().exists,
+                      storedSessionIds: context.read<ConnectionRegistry>().pleyaServerIds,
                       profileSessions: (profileId) async => {
                         for (final row in await profileConnections.listForProfile(profileId)) row.connectionId,
                       },
