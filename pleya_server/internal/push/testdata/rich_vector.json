@@ -1,0 +1,7 @@
+{
+  "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+  "nonce": "a0a1a2a3a4a5a6a7a8a9aaab",
+  "aad": "0198f2c0-0001-7000-8000-0000000000aa|0198f2c0-0001-7000-8000-0000000000bb",
+  "plaintext": "{\"title\":\"Nieuw: Dune\",\"body\":\"Nieuwe film in je bibliotheek.\",\"artwork\":\"0198f2c0-0001-7000-8000-000000000001\",\"token\":\"ply1.e30.c2ln\"}",
+  "sealed": "oKGio6SlpqeoqaqrnToIRDGnZ51YR8m6Yg+35FDoLH73lW5O/mFC/12RV0+7EzKIygI1VDPxJKFnWumcZ3kvKg65dQopO241ilKpktXO8Rhf14/CzsDPKbb2qoiuO4aU9fGoV9lFDqqcon2kv6kbmzOev6uu6zZgtbnPBAYkDsW7W7kGDb+y3YV7l371P9NNvyyiaiYeeMVqYtbAC0ge+kSEXuY="
+}

@@ -1,10 +1,15 @@
 package push
 
 import (
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -26,6 +33,7 @@ type queueFixture struct {
 	s             *Service
 	log           *slog.Logger
 	sends, status atomic.Int64
+	lastBody      atomic.Value
 	onSend        func()
 	user, session id.ID
 	library, root id.ID
@@ -42,6 +50,8 @@ func newQueueFixture(t *testing.T) *queueFixture {
 	f.status.Store(http.StatusOK)
 	apns := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.sends.Add(1)
+		body, _ := io.ReadAll(r.Body)
+		f.lastBody.Store(body)
 		if f.onSend != nil {
 			f.onSend()
 		}
@@ -85,7 +95,7 @@ func (f *queueFixture) count(sql string, args ...any) int {
 // optIn registers a film opt-in that predates the new films.
 func (f *queueFixture) optIn(installation id.ID) {
 	f.t.Helper()
-	if err := f.s.Register(f.ctx, installation, f.user, f.session, "aabb", "sandbox", "nl", true, false); err != nil {
+	if err := f.s.Register(f.ctx, installation, f.user, f.session, "aabb", "sandbox", "nl", true, false, nil); err != nil {
 		f.t.Fatal(err)
 	}
 	f.exec("UPDATE push_installations SET movies_since=now()-interval '30 minutes' WHERE id=$1", installation)
@@ -168,7 +178,7 @@ func TestADeviceTokenBelongsToOneInstallation(t *testing.T) {
 	other, otherSession, second := id.New(), id.New(), id.New()
 	f.exec("INSERT INTO users(id,username,password_hash,role) VALUES ($1,'kind','test','member')", other)
 	f.exec("INSERT INTO sessions(id,user_id,device_name) VALUES ($1,$2,'ipad')", otherSession, other)
-	if err := f.s.Register(f.ctx, second, other, otherSession, "aabb", "sandbox", "nl", true, false); err != nil {
+	if err := f.s.Register(f.ctx, second, other, otherSession, "aabb", "sandbox", "nl", true, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.count("SELECT count(*) FROM push_installations WHERE id=$1", first); got != 0 {
@@ -201,5 +211,99 @@ func TestARefusedTokenOnlyDropsAnInstallationThatStillHasIt(t *testing.T) {
 	f.drain()
 	if got := f.count("SELECT count(*) FROM push_installations WHERE id=$1", installation); got != 1 {
 		t.Fatal("the registration with the new token was removed for the old token's refusal")
+	}
+}
+
+// Rich push (DEC-XXX): with a registered key the alert carries the sealed
+// title and a poster reference only this installation's session can open;
+// Apple's part stays the generic text. Without a key nothing rich is sent.
+func TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey(t *testing.T) {
+	f := newQueueFixture(t)
+	signingKey := bytes.Repeat([]byte{7}, auth.KeyLength)
+	signer, err := auth.NewSigner(signingKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.s.Items, f.s.Signer = catalog.NewStore(f.pool), signer
+	key := bytes.Repeat([]byte{42}, 32)
+	installation := id.New()
+	register := func(key []byte) {
+		t.Helper()
+		if err := f.s.Register(f.ctx, installation, f.user, f.session, "aabb", "sandbox", "nl", true, false, key); err != nil {
+			t.Fatal(err)
+		}
+		f.exec("UPDATE push_installations SET movies_since=now()-interval '30 minutes' WHERE id=$1", installation)
+	}
+	register(key)
+	f.newFilms(2)
+	var first, poster id.ID
+	if err := f.pool.QueryRow(f.ctx, "SELECT id FROM media_items ORDER BY id LIMIT 1").Scan(&first); err != nil {
+		t.Fatal(err)
+	}
+	poster = id.New()
+	f.exec("UPDATE media_items SET title='Dune', added_at=added_at-interval '1 minute' WHERE id=$1", first)
+	f.exec(`INSERT INTO media_files(id,storage_location_id,relative_path,role,item_id,artwork_kind,size_bytes,mtime_unix)
+		VALUES ($1,$2,'dune/poster.jpg','artwork',$3,'poster',1,1)`, poster, f.root, first)
+	f.drain()
+
+	raw, _ := f.lastBody.Load().([]byte)
+	if bytes.Contains(raw, []byte("Dune")) || bytes.Contains(raw, []byte(poster.String())) {
+		t.Fatalf("Apple sees the title or the poster: %s", raw)
+	}
+	var msg struct {
+		APS struct {
+			Alert          struct{ Body string }
+			MutableContent int `json:"mutable-content"`
+		}
+		Pleya          *struct{ I, C string }
+		NotificationID string `json:"notification_id"`
+	}
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		t.Fatal(err)
+	}
+	if msg.APS.MutableContent != 1 || msg.Pleya == nil || msg.Pleya.I != installation.String() ||
+		msg.APS.Alert.Body != "Er staat iets nieuws in je bibliotheek." {
+		t.Fatalf("no rich part next to the generic alert: %s", raw)
+	}
+	sealed, err := base64.StdEncoding.DecodeString(msg.Pleya.C)
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, _ := aes.NewCipher(key)
+	gcm, _ := cipher.NewGCM(block)
+	aad := []byte(installation.String() + "|" + msg.NotificationID)
+	plain, err := gcm.Open(nil, sealed[:12], sealed[12:], aad)
+	if err != nil {
+		t.Fatalf("installation key does not open the content: %v", err)
+	}
+	if _, err := gcm.Open(nil, sealed[:12], sealed[12:], nil); err == nil {
+		t.Fatal("content opens without its notification binding")
+	}
+	var content richContent
+	if err := json.Unmarshal(plain, &content); err != nil {
+		t.Fatal(err)
+	}
+	if content.Title != "Nieuw: Dune en 1 meer" || content.Artwork != poster.String() {
+		t.Fatalf("content %+v", content)
+	}
+	claims, err := signer.Verify(content.Token, auth.TokenArtwork)
+	if err != nil || claims.Resource != poster.String() || claims.Subject != f.user.String() || claims.Sid != f.session.String() {
+		t.Fatalf("poster token %+v, %v", claims, err)
+	}
+	if time.Unix(claims.ExpiresAt, 0).After(time.Now().Add(auth.ArtworkTokenTTL + time.Minute)) {
+		t.Fatal("poster token outlives the delivery")
+	}
+
+	// A PUT without a key (an older app) clears it: generic alert only.
+	register(nil)
+	f.newFilms(1)
+	f.drain()
+	raw, _ = f.lastBody.Load().([]byte)
+	msg.Pleya, msg.APS.MutableContent = nil, 0
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		t.Fatal(err)
+	}
+	if msg.Pleya != nil || msg.APS.MutableContent != 0 || f.sends.Load() != 2 {
+		t.Fatalf("rich content without a key (sends %d): %s", f.sends.Load(), raw)
 	}
 }

@@ -45,7 +45,7 @@ func (s *Server) handleArtwork(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		file, resolveErr := s.pins.Resolve(r.Context(), pin)
-		s.authenticated(func(w http.ResponseWriter, fresh *http.Request) {
+		s.artworkAuthenticated(func(w http.ResponseWriter, fresh *http.Request) {
 			if !s.authorizeLibrary(w, fresh, pinLibrary) {
 				return
 			}

@@ -85,7 +85,7 @@ func TestProviderTokenRejectionRetriesWithAFreshToken(t *testing.T) {
 	clock := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
 	a.now = func() time.Time { return clock }
 	for i, want := range []outcome{retry, retry, accepted} {
-		if got, _, _ := a.send(ctx, "aabb", "en", "n", "c"); got != want {
+		if got, _, _ := a.send(ctx, "aabb", "en", "n", "c", ""); got != want {
 			t.Fatalf("send %d: outcome %d, want %d", i, got, want)
 		}
 		clock = clock.Add(21 * time.Minute)
@@ -113,7 +113,7 @@ func TestDeviceTokenNotForTopicDropsTheInstallation(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := &APNs{key: key, topic: bundleID, environment: "sandbox", host: apns.URL, client: apns.Client()}
-	if got, _, _ := a.send(context.Background(), "aabb", "en", "n", "c"); got != invalidDevice {
+	if got, _, _ := a.send(context.Background(), "aabb", "en", "n", "c", ""); got != invalidDevice {
 		t.Fatalf("outcome %d, want invalidDevice", got)
 	}
 }
@@ -137,7 +137,7 @@ func TestAnInvalidProviderTokenIsResignedAtMostEveryTwentyMinutes(t *testing.T) 
 		now: func() time.Time { return clock }}
 	// Queue ticks are 30 seconds apart; a key that stays invalid keeps failing.
 	for range 50 {
-		if got, status, reason := a.send(context.Background(), "aabb", "en", "n", "c"); got != retry || status != http.StatusForbidden || reason != "InvalidProviderToken" {
+		if got, status, reason := a.send(context.Background(), "aabb", "en", "n", "c", ""); got != retry || status != http.StatusForbidden || reason != "InvalidProviderToken" {
 			t.Fatalf("outcome %d, status %d, reason %q", got, status, reason)
 		}
 		clock = clock.Add(30 * time.Second)
