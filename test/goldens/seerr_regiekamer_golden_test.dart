@@ -99,17 +99,29 @@ void main() {
     await SettingsService.getInstance();
   });
 
+  // The list shows ages, so its dates move with the clock. The menu and the
+  // report show calendar dates, so those get fixed ones; otherwise the golden
+  // changes every day it runs.
   final now = DateTime.now().toUtc();
   String ago(Duration d) => now.subtract(d).toIso8601String();
+  const requested = '2026-11-06T12:00:00.000Z';
+  const reported = '2026-11-07T12:00:00.000Z';
+  const answered = '2026-11-08T12:00:00.000Z';
 
-  Future<void> pumpList(WidgetTester tester) async {
+  Future<void> pumpList(WidgetTester tester, {String? firstCreatedAt}) async {
     setGoldenSurfaceSize(tester, size: _phone);
     final fake = FakeSeerr()
       ..on('GET /request/count', {'total': 389, 'pending': 27, 'approved': 108, 'available': 35})
       ..on(
         'GET /request',
         seerrPage([
-          _req(1, 'Wadlopers', type: 'tv', seasons: [3, 4, 5], createdAt: ago(const Duration(days: 3))),
+          _req(
+            1,
+            'Wadlopers',
+            type: 'tv',
+            seasons: [3, 4, 5],
+            createdAt: firstCreatedAt ?? ago(const Duration(days: 3)),
+          ),
           _req(2, 'Tears of Steel', is4k: true, createdAt: ago(const Duration(days: 2))),
           _req(3, 'Dweebs', type: 'tv', seasons: [2], name: 'Noor', createdAt: ago(const Duration(days: 1))),
           _req(4, 'Elephants Dream', name: 'Sanne', createdAt: ago(const Duration(hours: 5))),
@@ -136,7 +148,8 @@ void main() {
   });
 
   testWidgets('Regiekamer menu with facts on an iPhone (C2)', (tester) async {
-    await pumpList(tester);
+    // Request 1 stays the oldest, so it keeps its place in the queue.
+    await pumpList(tester, firstCreatedAt: requested);
     await tester.tap(find.byWidgetPredicate((w) => w is SeerrRequestRow && w.request.id == 1));
     await tester.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('seerr_regiekamer_menu_dark.png'));
@@ -160,7 +173,7 @@ void main() {
                 'issueType': 2,
                 'problemSeason': 1,
                 'problemEpisode': 3,
-                'createdAt': ago(const Duration(days: 2)),
+                'createdAt': reported,
                 'createdBy': {'id': 9, 'displayName': 'Ravi'},
                 'media': {'tmdbId': 5, 'mediaType': 'tv'},
                 'comments': [
@@ -168,13 +181,13 @@ void main() {
                     'id': 1,
                     'message': 'Vanaf ongeveer 12 minuten loopt het geluid een halve seconde achter.',
                     'user': {'id': 9, 'displayName': 'Ravi'},
-                    'createdAt': ago(const Duration(days: 2)),
+                    'createdAt': reported,
                   },
                   {
                     'id': 2,
                     'message': 'Zie het ook. Ik heb een andere release aangevraagd.',
                     'user': {'id': 7, 'displayName': 'Michel'},
-                    'createdAt': ago(const Duration(days: 1)),
+                    'createdAt': answered,
                   },
                 ],
               }
