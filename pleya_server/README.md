@@ -749,7 +749,8 @@ De server zet push ook uit als `AuthKey.p8` onder `PLEYA_SERVER_CONFIG_DIR`
 (standaard `/config`) staat, of als groep of anderen het bestand mogen lezen.
 Alles in `/config` gaat mee in elke back-up, en daar blijven alleen `.key`-bestanden
 en bestanden met rechten 0600 geheim. Geef de sleutel dus rechten 0600 voor de
-gebruiker uit `PLEYA_UID` (`chown ${PLEYA_UID}:${PLEYA_GID} AuthKey.p8 && chmod 600 AuthKey.p8`).
+gebruiker uit `PLEYA_UID` (`chown 1026:100 AuthKey.p8 && chmod 600 AuthKey.p8`, met de
+waarden van `PLEYA_UID` en `PLEYA_GID` uit `.env`; 1026:100 is die op de NAS).
 Een sleutel die na een kopie met `sudo` nog van root is, kan de server ook met rechten
 0600 niet lezen. De opstartmelding noemt welke van de twee regels de sleutel brak.
 
