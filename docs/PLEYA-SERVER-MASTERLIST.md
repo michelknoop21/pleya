@@ -52,7 +52,7 @@ Michel opende expliciet het [begrensde MCP-instellingenvenster](pleya-server-mcp
 
 ## Scoped pushvenster, besluit 8 november 2026
 
-Michel gaf het additieve venster voor A-21 vrij. Zie [DEC-XXX](DECISIONS.md#pushvenster-2026-11-08).
+Michel gaf het additieve venster voor A-21 vrij. Zie [DEC-201](DECISIONS.md#pushvenster-2026-11-08).
 
 | ID | Taak | Status | Bewijs / open |
 | --- | --- | --- | --- |
