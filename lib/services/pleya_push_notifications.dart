@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, listEquals;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:uuid/uuid.dart';
@@ -267,6 +267,40 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
     _confirmed.clear();
     _failed.clear();
     _uncertainUntil.clear();
+    await _retainContentKeys();
+  }
+
+  /// Rich push (DEC-XXX) keeps one key per installation in the iOS keychain,
+  /// shared with the Notification Service Extension.
+  static bool get _contentKeys => defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// The installation's key, made on first use; null leaves the device on
+  /// the generic alert.
+  static Future<String?> _contentKey(String installation, String base) async {
+    if (!_contentKeys) return null;
+    try {
+      return await _channel.invokeMethod<String>('contentKey', {'installation': installation, 'base': base});
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Drops the key of every installation no profile stores any more, so an
+  /// opt-out, a removed connection or a sign-out takes the key off the device.
+  /// The keep-list is read and sent without a pause, and the native side runs
+  /// it in order with key creation, so a key made after it survives.
+  static Future<void> _retainContentKeys() async {
+    if (!_contentKeys) return;
+    try {
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      final keep = [
+        for (final key in prefs.keys)
+          if (key.startsWith(_root)) ?prefs.getStringList(key)?.firstOrNull,
+      ];
+      await _channel.invokeMethod<void>('retainContentKeys', keep);
+    } catch (_) {
+      // The next reconcile tries again.
+    }
   }
 
   Future<Map<String, String>?> _token({required bool prompt}) =>
@@ -358,6 +392,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         for (final id in ids)
           if (only == null || only.contains(id)) _schedule(id),
       ]);
+      await _retainContentKeys();
     } catch (_) {
       _retryLater();
     } finally {
@@ -416,8 +451,11 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
       final token = device?['token'];
       final environment = device?['environment'];
       final put = wanted != null && token != null && environment != null;
+      // A server that starts offering rich push gets the key on the next run.
+      final rich = owner._online[id]?.wireCapabilities.pushRichContent == true;
+      String putState(List<String> stored) => 'put:$token:$rich:${stored.join(',')}';
       // The device token is part of the state: a new one registers again.
-      final state = put ? 'put:$token:${wanted.join(',')}' : 'clear';
+      final state = put ? putState(wanted) : 'clear';
       if (_confirmed[id] == state) return;
       if (put) {
         final client = owner._online[id];
@@ -433,6 +471,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
         // the session marked past the next DELETE.
         Future<void> register(String installation) async {
           try {
+            final key = rich ? await _contentKey(installation, client.connection.baseUrl) : null;
             await client.registerPushInstallation(
               installation,
               token: token,
@@ -440,6 +479,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
               locale: LocaleSettings.currentLocale.languageCode == 'nl' ? 'nl' : 'en',
               movies: wanted.contains('movies'),
               episodes: wanted.contains('episodes'),
+              contentKey: key,
             );
           } catch (error) {
             if (_mayHaveLanded(error)) _uncertainUntil[id] = DateTime.now().add(owner.putSettleWindow);
@@ -463,7 +503,7 @@ class PleyaPushNotifications extends ChangeNotifier with WidgetsBindingObserver 
           await prefs.setStringList(owner._key(id), fresh);
           owner._saved[id] = fresh;
           await register(fresh.first);
-          _confirmed[id] = 'put:$token:${fresh.join(',')}';
+          _confirmed[id] = putState(fresh);
           _failed.remove(id);
           owner._nextBackoff = null;
           return;

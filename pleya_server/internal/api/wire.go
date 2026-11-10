@@ -54,6 +54,7 @@ type InfoAuth struct {
 // Capabilities is wat deze server werkelijk aanbiedt, en is altijd leidend.
 type Capabilities struct {
 	PushNotifications      bool `json:"push_notifications,omitempty"`
+	PushRichContent        bool `json:"push_rich_content,omitempty"`
 	PlaybackSubtitles      bool `json:"playback_subtitles"`
 	EmbeddedSubtitles      bool `json:"embedded_subtitles"`
 	AssistantMemory        bool `json:"assistant_memory"`

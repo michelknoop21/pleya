@@ -5682,6 +5682,22 @@ recentere kijkactie. Dit verandert de bewijsregel voor serie-identiteit en de br
 schrijfacties hierboven niet. De concrete nieuwe melding van een dubbele serie blijft open tot
 serietitel/servergegevens of een diagnostisch log vaststellen welk bewijs ontbreekt.
 
+**Aanvullende presentatiecorrectie 10 november 2026 (Michel: namen zonder mapjaartal).**
+Een afsluitend jaartal tussen haakjes wordt alleen voor weergave en de gedeelde
+Continue Watching-opzoekkandidaten verwijderd. Ruwe bronvelden, opgeslagen metadata,
+beheerformulieren en het afzonderlijke jaarveld blijven behouden. Numerieke titels
+zoals 1917 en niet-jaartal-kwalificaties blijven staan. MediaItem.displayTitle is de
+gedeelde presentatie-eigenaar; hero en TV-context omzeilen die niet met grandparentTitle.
+
+De sectie en het label van een samengevoegde Verder kijken-kaart volgen de concrete
+houder van de gedeelde watchState, terwijl artwork zijn eigen representatieve bron
+houdt. Daardoor wordt hervatten niet als volgende aflevering gepresenteerd. Voltooide
+films/afleveringen zonder actieve herkijkvoortgang worden vóór kaartselectie verwijderd,
+ook bij reconnect en opgeslagen Home-snapshots. Containers houden de bestaande
+backend-gestuurde substitutie. Geen serverstatus wordt hierdoor gewijzigd; een bron die
+zelf onterecht ongekeken rapporteert, vraagt nog bron-/syncdiagnose. American Hostage
+blijft als praktijkmelding open totdat de echte bronstatus gecontroleerd is.
+
 ## DEC-XXX: Pleya Fly en Companion Remote op Pleya Server, met een ticket van de server als identiteit
 
 **Date:** 2026-11-08
@@ -5730,6 +5746,13 @@ serietitel/servergegevens of een diagnostisch log vaststellen welk bewijs ontbre
 **Keuzes in de bouw-PR:** de beacon van de tv draagt alleen een vlag `playing` (buiten de HMAC, dus een hint); ziet de telefoon die vlag, dan vraagt hij over een geauthenticeerde Companion Remote-sessie wat er speelt (`RemoteCommandType.follow` met `peek`), en pas de tik vraagt de sessie zelf. Een vervalste vlag kost dus één vraag en toont niets. Zolang een andere telefoon met de tv verbonden is, laat de tv de vlag weg, want een nieuwe verbinding vervangt die client; de telefoon vraagt een tv die niet antwoordt pas na een wachttijd opnieuw, die per mislukking verdubbelt tot vijf minuten. De beacon van een telefoon met deze build draagt `follow`, en alleen zulke telefoons krijgen in de Fly-kiezer een rij Meenemen. Een telefoon die meekijkt gebruikt de relay die de tv noemt of de ingebouwde, nooit zijn eigen relay-instelling. Loopt op de telefoon al Samen kijken met een code, dan weigert Meenemen in plaats van die sessie te verlaten. De meekijkende telefoon schrijft geen kijkstatus naar de server: geen voortgang, geen tijdlijn en geen scrobbles; alleen de tv schrijft (besluit Michel, 8 november 2026). Zo krijgt een account nooit twee schrijvers met vrijwel dezelfde positie. De streefwaarde voor "beeld binnen enkele seconden" is nog niet gemeten: daar is een echt toestel voor nodig (A-22).
 
 **Consequences:** De Fly-kiezer op de Apple TV krijgt twee rijen per toestel; Verplaatsen blijft de eerste, zodat de landingsfocus van A-23d niet verschuift. Home op de telefoon krijgt een kaart die alleen verschijnt zolang een tv in de Home een ondersteunde titel speelt. Samen kijken krijgt een volgrol en een ingang zonder code; de bestaande sessies met code blijven zoals ze zijn. Niets hiervan is gebouwd of op een toestel geprobeerd.
+
+**Pleya Fly-herstel, 10 november2026 (log15api, iPhone19,2 build460):** een gesloten
+LAN-listener na iOS-resume liet isListening=true staan. Socketerror/close/done wissen
+nu uitsluitend de actuele listener en zijn hosts, zodat de bestaande15seconden-retry
+opnieuw kan binden. Een generatie bewaakt dat een late bind na stop geen listener
+terugbrengt. DiscoveryHMAC, crypto-contexten, ticketcontrole en profielbereik blijven
+ongewijzigd. Drie regressies vooraf rood; echte tweetoestellenherhaling blijft open.
 
 ## DEC-XXX: Bibliotheekonderhoud op Pleya Server zoals bij Plex
 
@@ -5804,6 +5827,22 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Afgewezen:** samenvoegen op titel, poster of jaar (geen bewijs); een filter in de interface (lost alleen dit scherm op); een algemene slotpas voor unieke groupIds (breekt het bewuste contract in `unified_catalog_provider.dart`, test "groupId is not unique").
 **Consequences:** Twee bronnen die een nummer delen en alleen in guid verschillen, zijn voortaan één kaart met twee bronnen, op elk scherm dat `groupUnifiedMediaSources` gebruikt. Een titel zonder bewezen nummer blijft apart, net als een mislukte opzoeking en een item met agent `none`. Niet bewezen op hardware; de Verify-run gebruikt de Pleya-protocolfixture en kan het Plex-guidgeval niet nabootsen. **Unified impact:** gedeelde eigenaar is `grouping_service.dart`; geldt voor Plex, Jellyfin, Emby en Pleya Server. De legacy-vertaling raakt alleen Plex. Geen protocolwijziging. Bewijs: `test/services/unified_grouping_service_test.dart`, `test/services/unified_catalog/home_projection_service_test.dart`, `test/services/plex_item_gone_test.dart`, `test/widgets/tv_discovery_rail_test.dart`, scenario `tvos.unified.continue-watching-one-card`.
 
+<a id="dec-xxx-rijke-push-met-titel-en-poster-versleuteld-onder-een-toestelsleutel"></a>
+## DEC-202: Rijke push met titel en poster, versleuteld onder een toestelsleutel
+
+**Date:** 2026-11-10
+**Status:** accepted (Michel, 10 november 2026)
+**Roadmap:** A-21 (zie de Roadmap deviation van 10 november in `docs/ROADMAP.md`). Breidt het pushvenster van [DEC-201](#pushvenster-2026-11-08) uit.
+**Context:** De pushmelding uit DEC-201 zegt alleen "Er staat iets nieuws in je bibliotheek." Dat was bewust: Apple krijgt de payload te zien, en een titel daarin vertelt Apple wat er in een privébibliotheek staat. Michel wil op de iPhone de echte titel met poster, zonder dat Apple de titel of de afbeelding ziet. Een Notification Service Extension kan de inhoud op het toestel aanvullen, maar heeft dan iets nodig om die inhoud te openen en de poster op te halen.
+**Decision:**
+1. Bij de registratie maakt de app per installatie een willekeurige AES-256-sleutel. Die staat in de keychain van het toestel (niet gesynchroniseerd, leesbaar na de eerste ontgrendeling) in de gedeelde toegangsgroep `<team>.nl.michelknoop.pleya.shared`, die app en extensie allebei in `keychain-access-groups` dragen. Bij de app staat die groep na de app-id, zodat de standaardgroep van bestaande keychainitems (ook de iCloud-items die tvOS leest) niet verschuift. Keychain-delen binnen het team vraagt geen extra capability op de App ID; een App Group is niet nodig. De app stuurt de sleutel mee als optioneel `content_key` in de PUT-body, alleen als de server `capabilities.push_rich_content` meldt; de body is gesloten, dus een oudere server krijgt het veld nooit. Elke PUT vervangt de sleutel, en een PUT zonder sleutel (een oudere app) wist hem.
+2. Voor een melding beschrijft de server het eerst toegevoegde item van de batch: titel ("Nieuw: Dune", "Nieuw: The Bear en 9 meer"), een regel eronder (seizoen en aflevering, of "Nieuwe film in je bibliotheek."), het artwork-id van de poster (bij een aflevering die van de serie) en een artworktoken. De server schrijft de tekst al in de taal van de registratie, zodat de vertaling op één plek staat en de extensie geen eigen teksten heeft. Hij versleutelt dat JSON met AES-GCM onder de sleutel van de installatie (nonce, ciphertext, tag: de `combined`-vorm van CryptoKit), met `<installatie-id>|<notification_id>` als associated data. Een ciphertext die in een andere melding of bij een andere installatie belandt, gaat daardoor niet open.
+3. De APNs-payload houdt de algemene tekst als alert en krijgt `mutable-content: 1` en `pleya: {i: <installatie-id>, c: <ciphertext>}`. Komt de payload boven de 4 KB van Apple, dan gaat alleen de algemene tekst. Collapse-id, apns-id en de batch van één melding per toestel en scanronde blijven zoals in DEC-201.
+4. Het artworktoken is een nieuw tokentype `artwork` van de bestaande ondertekenaar: één artwork-id, hooguit 15 minuten geldig (`auth.ArtworkTokenTTL`), gebonden aan de sessie van de registratie. `GET /artwork/{artwork_id}` accepteert het als bearer-header, nooit in de URL. Een ingetrokken bibliotheekrecht weigert het bij de volgende aanvraag. Een ingetrokken sessie weigert het via het intrekkingsregister van DEC-120; dat onthoudt een sessie 125 minuten, en het token leeft korter, dus binnen zijn kwartier blijft de weigering staan, ook na een opruimronde of een herstart. De levensduur telt mee in `DefaultRevocationRetention`. Een sleutelrotatie maakt het token ongeldig. De extensie haalt de poster binnen seconden op en APNs bewaart de melding niet (`apns-expiration: 0`), dus een kwartier is ruim.
+5. De extensie leest de sleutel, opent de inhoud, haalt de poster op met het artworktoken en zet titel, tekst en bijlage. Lukt het openen niet (geen sleutel, ander toestel, kapotte inhoud), dan blijft de algemene tekst staan. Lukt alleen de poster niet, of loopt de tijd af, dan gaat de titel zonder poster: de titel is dan al geldig ontsleuteld, en hem weggooien voor een ontbrekende afbeelding wint niets aan privacy.
+**Afgewezen:** de sessie of het refreshtoken van de app delen met de extensie. Refreshtokenrotatie is op deze server bedrijfsbreed; een extensie die parallel aan de app ververst kan de sessie van de app laten intrekken. Ook afgewezen: de titel in de APNs-payload zelf (Apple ziet hem dan), een gedeelde App Group (vraagt een portalregistratie en deelt meer dan één sleutel) en het token in de querystring van de poster-URL (komt dan in proxy- en toegangslogs terecht).
+**Consequences:** Het pushvenster groeit met `capabilities.push_rich_content`, `PushInstallation.content_key` en het artworktoken op `GET /artwork/{artwork_id}`; alle drie optioneel, en oudere servers en apps houden de algemene melding. Migratie 0037 voegt `push_installations.content_key` toe. Opt-out en afmelden wissen de sleutels op het toestel; een verwijderde of ingetrokken registratie neemt de sleutel op de server mee. Of de titel op het vergrendelde scherm staat, bepaalt iOS met **Toon voorvertoning**. De extensie heeft een eigen bundle-id (`nl.michelknoop.pleya.NotificationService`) en profiel; Pleya Verify haalt haar uit de geïsoleerde kopie, omdat haar bundle-id niet met de herschreven app-id begint. Bewijs: `internal/push/rich_test.go` en `TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey`, `TestArtworkTokenOpensOnlyItsPosterWhileSessionAndRightLast`, `TestPushInstallationBodyTakesAnOptionalContentKey`, de Swift-test die dezelfde vector (`internal/push/testdata/rich_vector.json`) opent. iOS en tvOS build 460 staan op VALID. De App Store-export van de extensie is met `codesign --verify --strict` gecontroleerd, met een automatisch Team Store-profiel; de gedeelde keychaingroep is in beide targets en hun Info.plist geverifieerd. Echte titel en poster op de iPhone blijven open. **Unified impact:** geen; push bestaat alleen voor Pleya Server (DEC-201), Plex, Jellyfin en Emby veranderen niet.
+
 <a id="pushvenster-2026-11-08"></a>
 **Aanvullende correctie 10 november 2026:** een niet-lege `Guid`-array kan uitsluitend een
 Plex-catalogusguid bevatten en dus geen imdb/tmdb/tvdb-nummer opleveren. Ook dan geldt de bestaande
@@ -5829,33 +5868,3 @@ van deze twee toestelbronnen zijn nog niet uitgelezen. Hardwarevalidatie blijft 
 **Context:** Appnotificaties haalden hun brondata pas op bij het openen van het overzicht. Met een gesloten iOS-app moet een actieve server gebeurtenissen verzamelen, autoriseren en bezorgen, en de bestaande protocolvensters dekken geen toestelregistratie of opt-in. Michel koos op 7 november voor volledige selfhosting en gaf op 8 november het afzonderlijke protocolvenster voor A-21 vrij.
 **Decision:** Een optionele `capabilities.push_notifications` en de eigen sessieroutes `PUT/DELETE /users/me/push-installations/{installation_id}`, plus `DELETE /users/me/push-installations` dat alle registraties van de aanroepende sessie intrekt. De eigen server praat rechtstreeks met APNs en bewaart de topicgebonden sleutel lokaal, buiten `/config`. Het begint met films en afleveringen uit de serverbibliotheken en een duurzame wachtrij. Een centrale Pleya-relay en distributie van een gedeelde pushsleutel vallen weg.
 **Consequences:** V1 behoudt de bestaande velden, betekenis, aanvraagbody's en enums; de vlag staat standaard uit en clients gebruiken de nieuwe gesloten body pas als hij aan staat. Oudere servers en clients houden de in-appmeldingen. Seerr en releases volgen pas met een geverifieerde accountkoppeling en releasebron (A-21-PUSH-2). Vóór release volgt een proef met een getekende iOS-build en echte APNs-bezorging. Uitrol staat los van dit besluit.
-
-
-## DEC-XXX: Mapjaartal uit de zichtbare titel en consistente Verder kijken-status
-
-**Date:** 2026-11-10
-**Status:** accepted (Michel: namen zonder jaartal; één kaart per serie, laatste voortgang wint).
-**Roadmap:** A-06/A-07.
-
-Een afsluitend jaartal tussen haakjes wordt alleen voor weergave en de gedeelde
-Continue Watching-opzoekkandidaten verwijderd. Ruwe bronvelden, opgeslagen metadata,
-beheerformulieren en het afzonderlijke jaarveld blijven behouden. Numerieke titels
-zoals 1917 en niet-jaartal-kwalificaties blijven staan. MediaItem.displayTitle is de
-gedeelde presentatie-eigenaar; hero en TV-context omzeilen die niet met grandparentTitle.
-
-De sectie en het label van een samengevoegde Verder kijken-kaart volgen de concrete
-houder van de gedeelde watchState, terwijl artwork zijn eigen representatieve bron
-houdt. Daardoor wordt hervatten niet als volgende aflevering gepresenteerd. Voltooide
-films/afleveringen zonder actieve herkijkvoortgang worden vóór kaartselectie verwijderd,
-ook bij reconnect en opgeslagen Home-snapshots. Containers houden de bestaande
-backend-gestuurde substitutie. Geen serverstatus wordt hierdoor gewijzigd; een bron die
-zelf onterecht ongekeken rapporteert, vraagt nog bron-/syncdiagnose. American Hostage
-blijft als praktijkmelding open totdat de echte bronstatus gecontroleerd is.
-
-
-**Pleya Fly-herstel, 10 november2026 (log15api, iPhone19,2 build460):** een gesloten
-LAN-listener na iOS-resume liet isListening=true staan. Socketerror/close/done wissen
-nu uitsluitend de actuele listener en zijn hosts, zodat de bestaande15seconden-retry
-opnieuw kan binden. Een generatie bewaakt dat een late bind na stop geen listener
-terugbrengt. DiscoveryHMAC, crypto-contexten, ticketcontrole en profielbereik blijven
-ongewijzigd. Drie regressies vooraf rood; echte tweetoestellenherhaling blijft open.
