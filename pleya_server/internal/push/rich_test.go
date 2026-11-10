@@ -19,6 +19,7 @@ import (
 type richVector struct {
 	Key       string `json:"key"`
 	Nonce     string `json:"nonce"`
+	AAD       string `json:"aad"`
 	Plaintext string `json:"plaintext"`
 	Sealed    string `json:"sealed"`
 }
@@ -40,26 +41,33 @@ func TestSealMatchesTheSharedVectorAndOnlyItsKeyOpensIt(t *testing.T) {
 	v := loadVector(t)
 	key, _ := base64.StdEncoding.DecodeString(v.Key)
 	nonce, _ := hex.DecodeString(v.Nonce)
-	sealed, err := seal(key, []byte(v.Plaintext), bytes.NewReader(nonce))
+	sealed, err := seal(key, []byte(v.Plaintext), []byte(v.AAD), bytes.NewReader(nonce))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := base64.StdEncoding.EncodeToString(sealed); got != v.Sealed {
 		t.Fatalf("sealed %s, vector says %s", got, v.Sealed)
 	}
-	open := func(key []byte) error {
+	open := func(key []byte, aad string) error {
 		block, _ := aes.NewCipher(key)
 		gcm, _ := cipher.NewGCM(block)
-		_, err := gcm.Open(nil, sealed[:12], sealed[12:], nil)
+		_, err := gcm.Open(nil, sealed[:12], sealed[12:], []byte(aad))
 		return err
 	}
-	if err := open(key); err != nil {
+	if err := open(key, v.AAD); err != nil {
 		t.Fatalf("own key does not open: %v", err)
 	}
 	other := bytes.Clone(key)
 	other[0] ^= 1
-	if open(other) == nil {
+	if open(other, v.AAD) == nil {
 		t.Fatal("another key opened the content")
+	}
+	// Moved into another notification (other id) or installation: no longer opens.
+	if open(key, v.AAD+"x") == nil || open(key, "") == nil {
+		t.Fatal("the content opened outside its own notification")
+	}
+	if got := string(contentAAD("a", "b")); got != "a|b" {
+		t.Fatalf("aad %q", got)
 	}
 	if bytes.Contains(sealed, []byte("Dune")) {
 		t.Fatal("plaintext visible in the sealed bytes")

@@ -17,6 +17,10 @@ func TestPushInstallationBodyTakesAnOptionalContentKey(t *testing.T) {
 	}{
 		{"A-21-body zonder sleutel", old, true, 0},
 		{"met sleutel", `{"device_token":"aabb","environment":"production","movies":true,"content_key":"` + key32 + `"}`, true, 32},
+		{"opvulbits niet nul (Strict)", `{"device_token":"aabb","environment":"production","movies":true,"content_key":"` + strings.Repeat("A", 42) + `B="}`, false, 0},
+		{"lege sleutel", `{"device_token":"aabb","environment":"production","movies":true,"content_key":""}`, false, 0},
+		{"null is geen sleutel", `{"device_token":"aabb","environment":"production","movies":true,"content_key":null}`, false, 0},
+		{"regelafbreking is geen canonieke base64", `{"device_token":"aabb","environment":"production","movies":true,"content_key":"` + key32 + `\n"}`, false, 0},
 		{"te korte sleutel", `{"device_token":"aabb","environment":"production","movies":true,"content_key":"AAAA"}`, false, 0},
 		{"geen base64", `{"device_token":"aabb","environment":"production","movies":true,"content_key":"` + strings.Repeat("!", 44) + `"}`, false, 0},
 		{"onbekend veld blijft geweigerd", `{"device_token":"aabb","environment":"production","movies":true,"title":"x"}`, false, 0},

@@ -221,7 +221,7 @@ func (s *Service) deliver(ctx context.Context, log *slog.Logger) (bool, error) {
 		var reason string
 		// The first delivery id stays stable across retries, so APNs drops a
 		// duplicate after a lost ack; the collapse id replaces an older alert.
-		sealed := s.sealedContent(ctx, contentKey, locale, user, session, items)
+		sealed := s.sealedContent(ctx, contentKey, locale, installation, user, session, eligible[0].String(), items)
 		result, status, reason = s.apns.send(ctx, token, locale, eligible[0].String(), installation.String(), sealed)
 		if result != accepted && result != invalidDevice {
 			log.Warn("APNs delivery unsuccessful", "status", status, "reason", reason)

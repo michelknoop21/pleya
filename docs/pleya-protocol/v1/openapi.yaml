@@ -3488,9 +3488,10 @@ paths:
         Onder `capabilities.push_rich_content` accepteert deze route naast het
         accesstoken ook het artworktoken uit een versleutelde pushmelding
         (DEC-XXX). Dat token gaat als bearer-header mee, nooit in de URL, opent
-        alleen het artwork-id waarvoor het gemunt is, vervalt na hooguit 24 uur
-        en sterft met zijn sessie. De bibliotheekrechten van de eigenaar gelden
-        per aanvraag. Een artworktoken voor een ander id is een 401. Een client
+        alleen het artwork-id waarvoor het gemunt is en vervalt na hooguit 15
+        minuten. Binnen die tijd weigert de server het zodra de sessie is
+        ingetrokken. De bibliotheekrechten van de eigenaar gelden per
+        aanvraag. Een artworktoken voor een ander id is een 401. Een client
         hoeft dit token nooit te lezen.
       parameters:
         - name: artwork_id
@@ -4054,13 +4055,14 @@ components:
         episodes: { type: boolean, default: false }
         content_key:
           type: string
-          pattern: '^[A-Za-z0-9+/]{43}=$'
+          pattern: '^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$'
           description: |
             Alleen onder `capabilities.push_rich_content` (DEC-XXX). Een
             willekeurige AES-256-sleutel van 32 bytes in standaard-base64, per
             registratie door het toestel gemaakt. Met sleutel draagt een melding
             naast de algemene tekst ook titel en posterverwijzing, versleuteld
-            met AES-GCM; Apple ziet alleen de algemene tekst. Elke PUT vervangt de
+            met AES-GCM, gebonden aan installatie-id en notification_id; Apple
+            ziet alleen de algemene tekst. Elke PUT vervangt de
             sleutel, dus een PUT zonder dit veld wist hem.
 
     Capabilities:

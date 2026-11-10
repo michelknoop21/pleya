@@ -30,6 +30,13 @@ const (
 	TokenArtwork TokenType = "artwork"
 )
 
+// ArtworkTokenTTL houdt het artworktoken korter dan het intrekkingsregister
+// een ingetrokken sessie onthoudt (DefaultRevocationRetention). Een langer
+// token zou na een opruimronde of een herstart weer werken. De extensie haalt
+// de poster binnen seconden op en APNs bewaart de melding niet, dus een
+// kwartier is ruim.
+const ArtworkTokenTTL = 15 * time.Minute
+
 // tokenPrefix maakt het formaat herkenbaar en versienbaar. Een token uit een
 // ander schema valt daarmee af voordat er iets ontleed wordt.
 const tokenPrefix = "ply1"

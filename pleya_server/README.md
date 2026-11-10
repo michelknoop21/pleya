@@ -765,7 +765,8 @@ Notification Service Extension op de iPhone toont "Nieuw: <titel>" met de poster
 Zonder sleutel, of als ontsleutelen mislukt, blijft de algemene tekst staan. Of
 de titel ook op het vergrendelde scherm verschijnt, regelt iOS met **Toon
 voorvertoning** (Instellingen, Berichtgeving). De poster komt van deze server met
-een artworktoken dat één afbeelding opent en na 24 uur vervalt (DEC-XXX). De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw; een door
+een artworktoken dat één afbeelding opent en na hooguit 15 minuten vervalt;
+binnen die tijd weigert de server het zodra de sessie is ingetrokken (DEC-XXX). De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw; een door
 Apple geweigerd of verlopen providertoken telt als tijdelijk en wordt opnieuw
 ondertekend. Apple
 bewaart de alert niet voor een onbereikbaar toestel. Titels die in dezelfde
