@@ -47,6 +47,26 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 460 · 10 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: c731d4ef1f795b6bf824fd7989423ccc78abe3b4 -->
+
+### New
+
+- **Movie and episode alerts can show the title and poster on iPhone and iPad.**
+  This needs the updated Pleya Server, notifications enabled for that server, and iOS
+  notification permission.
+
+### Notes
+
+- iOS preview settings control what appears on the lock screen. If the poster cannot load,
+  the title remains; content that cannot be opened falls back to the general Pleya alert.
+- Apple TV includes the recent offline-index changes: two titles scan at a time and the saved
+  index is decoded row by row. These changes have not been measured on a physical Apple TV.
+- Worth checking: receive a new-title alert with the app closed, expand it to see the poster,
+  and confirm that opting out stops new alerts. Title and poster on a physical iPhone remain
+  to be confirmed for this build.
+
 ## 2.8.1 · build 458 · 10 November 2026 · Mac
 
 <!-- commit: 3eff12fc4ad99b6b325d5c683ff8c5bc3c81faef -->
