@@ -38,8 +38,8 @@ class MobilePlaybackControls extends StatelessWidget {
     return PlayPauseStreamBuilder(
       player: player,
       builder: (context, isPlaying) {
-        return Row(
-          mainAxisAlignment: .center,
+        final row = Row(
+          mainAxisAlignment: compact && !isLive ? .spaceBetween : .center,
           children: [
             if (!isLive) ...[
               // Previous episode button (greyed out when unavailable)
@@ -49,7 +49,7 @@ class MobilePlaybackControls extends StatelessWidget {
                 iconSize: compact ? 28 : 48,
                 onPressed: onPrevious,
               ),
-              const SizedBox(width: 24),
+              if (!compact) const SizedBox(width: 24),
             ],
             AutomationNode(
               id: AutomationIds.playerPlayPause,
@@ -72,7 +72,7 @@ class MobilePlaybackControls extends StatelessWidget {
               ),
             ),
             if (!isLive) ...[
-              const SizedBox(width: 24),
+              if (!compact) const SizedBox(width: 24),
               // Next episode button (greyed out when unavailable)
               CircularControlButton(
                 semanticLabel: t.videoControls.nextButton,
@@ -83,6 +83,9 @@ class MobilePlaybackControls extends StatelessWidget {
             ],
           ],
         );
+        return compact
+            ? SizedBox(width: (MediaQuery.sizeOf(context).width * 0.55).clamp(300.0, 440.0), child: row)
+            : row;
       },
     );
   }

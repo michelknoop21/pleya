@@ -330,7 +330,10 @@ class HomeProjectionService {
     }
 
     final groups = oneContinueWatchingCardPerSeries(
-      groupUnifiedMediaSources(candidates, allowWeakFallback: false),
+      groupUnifiedMediaSources(
+        candidates,
+        allowWeakFallback: false,
+      ).where((group) => isContinueWatchingEligible(continueWatchingItemOf(group))).toList(),
       evidenceBySourceKey,
     );
     _logSeparatedBuckets(groups, evidenceBySourceKey);

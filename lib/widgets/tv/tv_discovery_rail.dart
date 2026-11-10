@@ -113,7 +113,7 @@ typedef DiscoveryContext = ({String title, String context, String? synopsis});
 DiscoveryContext discoveryContextFor(UnifiedMediaGroup group, {bool inContinueWatching = false}) {
   final item = group.representativeSource.item;
   final isEpisode = item.kind == MediaKind.episode;
-  final title = isEpisode ? (item.grandparentTitle ?? item.displayTitle) : item.displayTitle;
+  final title = item.displayTitle;
 
   final parts = <String>[
     if (isEpisode) ...[

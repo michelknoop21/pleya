@@ -5674,6 +5674,30 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 
 **Consequences:** Een serie waarvan één server geen bewezen nummer heeft, blijft twee kaarten tonen tot die server matcht. Rij-ordening en labels (DEC-177) zijn ongewijzigd en lezen de overgebleven kaart. **Unified impact:** gedeelde eigenaar is `oneContinueWatchingCardPerSeries` in `identity_resolver.dart`, aangeroepen door `DataAggregationService` en `HomeProjectionService`; geldt voor Plex, Jellyfin, Emby en Pleya Server, lokale mappen en Pleya Share blijven ongemerged. Geen protocolwijziging. Bewijs in `test/services/unified_catalog/unified_pleya_server_test.dart` en `identity_resolver_test.dart`.
 
+**Verduidelijking 10 november 2026 (Michel: “laatste voortgang wint”).** Een bekende
+`lastViewedAt` bepaalt welke aflevering wordt getoond. `addedAt` is geen kijkactie en mag een
+bekende kijktijd niet verdringen; `recencySortKey` blijft alleen een sorteertiebreak wanneer
+kijktijden gelijk of onbekend zijn. Een hoger afleveringsnummer of percentage wint niet van een
+recentere kijkactie. Dit verandert de bewijsregel voor serie-identiteit en de brongebonden
+schrijfacties hierboven niet. De concrete nieuwe melding van een dubbele serie blijft open tot
+serietitel/servergegevens of een diagnostisch log vaststellen welk bewijs ontbreekt.
+
+**Aanvullende presentatiecorrectie 10 november 2026 (Michel: namen zonder mapjaartal).**
+Een afsluitend jaartal tussen haakjes wordt alleen voor weergave en de gedeelde
+Continue Watching-opzoekkandidaten verwijderd. Ruwe bronvelden, opgeslagen metadata,
+beheerformulieren en het afzonderlijke jaarveld blijven behouden. Numerieke titels
+zoals 1917 en niet-jaartal-kwalificaties blijven staan. MediaItem.displayTitle is de
+gedeelde presentatie-eigenaar; hero en TV-context omzeilen die niet met grandparentTitle.
+
+De sectie en het label van een samengevoegde Verder kijken-kaart volgen de concrete
+houder van de gedeelde watchState, terwijl artwork zijn eigen representatieve bron
+houdt. Daardoor wordt hervatten niet als volgende aflevering gepresenteerd. Voltooide
+films/afleveringen zonder actieve herkijkvoortgang worden vóór kaartselectie verwijderd,
+ook bij reconnect en opgeslagen Home-snapshots. Containers houden de bestaande
+backend-gestuurde substitutie. Geen serverstatus wordt hierdoor gewijzigd; een bron die
+zelf onterecht ongekeken rapporteert, vraagt nog bron-/syncdiagnose. American Hostage
+blijft als praktijkmelding open totdat de echte bronstatus gecontroleerd is.
+
 ## DEC-XXX: Pleya Fly en Companion Remote op Pleya Server, met een ticket van de server als identiteit
 
 **Date:** 2026-11-08
@@ -5722,6 +5746,13 @@ Dit opent geen andere routes/vensters, provider-/upload-/MCP-/credential-/betaal
 **Keuzes in de bouw-PR:** de beacon van de tv draagt alleen een vlag `playing` (buiten de HMAC, dus een hint); ziet de telefoon die vlag, dan vraagt hij over een geauthenticeerde Companion Remote-sessie wat er speelt (`RemoteCommandType.follow` met `peek`), en pas de tik vraagt de sessie zelf. Een vervalste vlag kost dus één vraag en toont niets. Zolang een andere telefoon met de tv verbonden is, laat de tv de vlag weg, want een nieuwe verbinding vervangt die client; de telefoon vraagt een tv die niet antwoordt pas na een wachttijd opnieuw, die per mislukking verdubbelt tot vijf minuten. De beacon van een telefoon met deze build draagt `follow`, en alleen zulke telefoons krijgen in de Fly-kiezer een rij Meenemen. Een telefoon die meekijkt gebruikt de relay die de tv noemt of de ingebouwde, nooit zijn eigen relay-instelling. Loopt op de telefoon al Samen kijken met een code, dan weigert Meenemen in plaats van die sessie te verlaten. De meekijkende telefoon schrijft geen kijkstatus naar de server: geen voortgang, geen tijdlijn en geen scrobbles; alleen de tv schrijft (besluit Michel, 8 november 2026). Zo krijgt een account nooit twee schrijvers met vrijwel dezelfde positie. De streefwaarde voor "beeld binnen enkele seconden" is nog niet gemeten: daar is een echt toestel voor nodig (A-22).
 
 **Consequences:** De Fly-kiezer op de Apple TV krijgt twee rijen per toestel; Verplaatsen blijft de eerste, zodat de landingsfocus van A-23d niet verschuift. Home op de telefoon krijgt een kaart die alleen verschijnt zolang een tv in de Home een ondersteunde titel speelt. Samen kijken krijgt een volgrol en een ingang zonder code; de bestaande sessies met code blijven zoals ze zijn. Niets hiervan is gebouwd of op een toestel geprobeerd.
+
+**Pleya Fly-herstel, 10 november2026 (log15api, iPhone19,2 build460):** een gesloten
+LAN-listener na iOS-resume liet isListening=true staan. Socketerror/close/done wissen
+nu uitsluitend de actuele listener en zijn hosts, zodat de bestaande15seconden-retry
+opnieuw kan binden. Een generatie bewaakt dat een late bind na stop geen listener
+terugbrengt. DiscoveryHMAC, crypto-contexten, ticketcontrole en profielbereik blijven
+ongewijzigd. Drie regressies vooraf rood; echte tweetoestellenherhaling blijft open.
 
 ## DEC-XXX: Bibliotheekonderhoud op Pleya Server zoals bij Plex
 
@@ -5796,6 +5827,22 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Afgewezen:** samenvoegen op titel, poster of jaar (geen bewijs); een filter in de interface (lost alleen dit scherm op); een algemene slotpas voor unieke groupIds (breekt het bewuste contract in `unified_catalog_provider.dart`, test "groupId is not unique").
 **Consequences:** Twee bronnen die een nummer delen en alleen in guid verschillen, zijn voortaan één kaart met twee bronnen, op elk scherm dat `groupUnifiedMediaSources` gebruikt. Een titel zonder bewezen nummer blijft apart, net als een mislukte opzoeking en een item met agent `none`. Niet bewezen op hardware; de Verify-run gebruikt de Pleya-protocolfixture en kan het Plex-guidgeval niet nabootsen. **Unified impact:** gedeelde eigenaar is `grouping_service.dart`; geldt voor Plex, Jellyfin, Emby en Pleya Server. De legacy-vertaling raakt alleen Plex. Geen protocolwijziging. Bewijs: `test/services/unified_grouping_service_test.dart`, `test/services/unified_catalog/home_projection_service_test.dart`, `test/services/plex_item_gone_test.dart`, `test/widgets/tv_discovery_rail_test.dart`, scenario `tvos.unified.continue-watching-one-card`.
 
+**Aanvullende correctie 10 november 2026:** een niet-lege `Guid`-array kan uitsluitend een
+Plex-catalogusguid bevatten en dus geen imdb/tmdb/tvdb-nummer opleveren. Ook dan geldt de bestaande
+fallback naar een oude agent-guid voor film/serie. Een bruikbaar providernummer uit de array
+blijft leidend. Dit is een reproduceerbaar codepad; zonder gegevens van de twee Brothers-kaarten
+is niet bewezen dat dit het huidige praktijkgeval verklaart.
+
+**Aanvullende correctie 10 november 2026, Brothers op iOS/tvOS:** de beelden tonen
+`Brothers` en `Brothers (2026)`, beide S1 A8. `continueWatchingBucketKey` negeert nu
+een afsluitend jaartal tussen haakjes bij het verzamelen van kandidaten voor een
+provider-ID-opzoeking. Daarvoor kregen deze titels verschillende opzoekemmers en
+werd hun serie-ID niet vergeleken. Dezelfde gedeelde functie bedient aggregatie,
+reconnect en Home-projectie. Samenvoegen vereist nog steeds een gedeeld
+providernummer zonder conflict; een ontbrekend nummer of mislukte lookup blijft
+apart. Dit verklaart het aangetoonde codepad, maar de daadwerkelijke ID-antwoorden
+van deze twee toestelbronnen zijn nog niet uitgelezen. Hardwarevalidatie blijft open.
+
 <a id="dec-xxx-rijke-push-met-titel-en-poster-versleuteld-onder-een-toestelsleutel"></a>
 ## DEC-202: Rijke push met titel en poster, versleuteld onder een toestelsleutel
 
@@ -5813,6 +5860,7 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Consequences:** Het pushvenster groeit met `capabilities.push_rich_content`, `PushInstallation.content_key` en het artworktoken op `GET /artwork/{artwork_id}`; alle drie optioneel, en oudere servers en apps houden de algemene melding. Migratie 0037 voegt `push_installations.content_key` toe. Opt-out en afmelden wissen de sleutels op het toestel; een verwijderde of ingetrokken registratie neemt de sleutel op de server mee. Of de titel op het vergrendelde scherm staat, bepaalt iOS met **Toon voorvertoning**. De extensie heeft een eigen bundle-id (`nl.michelknoop.pleya.NotificationService`) en profiel; Pleya Verify haalt haar uit de geïsoleerde kopie, omdat haar bundle-id niet met de herschreven app-id begint. Bewijs: `internal/push/rich_test.go` en `TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey`, `TestArtworkTokenOpensOnlyItsPosterWhileSessionAndRightLast`, `TestPushInstallationBodyTakesAnOptionalContentKey`, de Swift-test die dezelfde vector (`internal/push/testdata/rich_vector.json`) opent. iOS en tvOS build 460 staan op VALID. De App Store-export van de extensie is met `codesign --verify --strict` gecontroleerd, met een automatisch Team Store-profiel; de gedeelde keychaingroep is in beide targets en hun Info.plist geverifieerd. Echte titel en poster op de iPhone blijven open. **Unified impact:** geen; push bestaat alleen voor Pleya Server (DEC-201), Plex, Jellyfin en Emby veranderen niet.
 
 <a id="pushvenster-2026-11-08"></a>
+
 ## DEC-201: Opt-in push via de eigen Pleya Server
 
 **Date:** 2026-11-08

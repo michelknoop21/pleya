@@ -139,6 +139,14 @@ void plexExternalIdsTests() {
 
   // A library on a legacy agent answers `includeGuids=1` without a `Guid`
   // array; its number sits in the item's own guid.
+  test('fetchExternalIds uses the legacy provider number when Guid contains no provider IDs', () async {
+    final film = clientAnsweringIds(
+      200,
+      '{"MediaContainer":{"Metadata":[{"type":"movie","guid":"com.plexapp.agents.imdb://tt1817232?lang=en","Guid":[{"id":"plex://movie/catalogue-only"}]}]}}',
+    );
+    expect((await film.fetchExternalIds('1')).imdb, 'tt1817232');
+  });
+
   test('fetchExternalIds reads a legacy agent guid for a film or a show', () async {
     final film = clientAnsweringIds(
       200,

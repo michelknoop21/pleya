@@ -571,7 +571,21 @@ class TrackChapterControls extends StatelessWidget {
         if (filmFrameLayout != null) {
           return filmFrameLayout(
             Row(mainAxisSize: .min, spacing: 4, children: headerButtons),
-            Wrap(alignment: .center, spacing: 4, runSpacing: 4, children: buttons),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final size = MediaQuery.sizeOf(context);
+                final spread = size.width > size.height && size.height <= 500;
+                return SizedBox(
+                  width: spread && constraints.hasBoundedWidth ? constraints.maxWidth : null,
+                  child: Wrap(
+                    alignment: spread ? .spaceBetween : .center,
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: buttons,
+                  ),
+                );
+              },
+            ),
           );
         }
         return IntrinsicHeight(

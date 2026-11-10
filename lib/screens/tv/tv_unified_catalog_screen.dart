@@ -53,6 +53,8 @@
 /// filter session wander off to a different catalog on the next LEFT press.
 library;
 
+import '../../services/unified_catalog/unified_management_menu.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show setEquals;
@@ -598,6 +600,22 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       group: group,
       availabilityFor: (source) => unifiedSourceAvailability(source, health),
       isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      extraAction:
+          unifiedManagementChoices(
+            context,
+            group,
+            isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+          ).isEmpty
+          ? null
+          : (
+              label: t.metadataEdit.editMetadata,
+              onSelected: () => showUnifiedManagementMenu(
+                context,
+                group,
+                isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+                onChanged: () => unawaited(widget.catalog.refresh()),
+              ),
+            ),
       onNavigate: (action) => switch (action) {
         UnifiedNavigationAction.playOrResume => _activate(
           group,

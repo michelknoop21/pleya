@@ -47,6 +47,39 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 461 · 10 November 2026 · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: 6a4041237 -->
+
+Prepared for upload; not yet uploaded when these notes were written.
+
+### Fixed
+
+- **Continue Watching compares sources with and without a year in the title.** A series
+  such as Brothers and Brothers (2026) can now be compared on its provider IDs before the
+  app decides whether the cards belong together. Titles alone still never merge.
+- **Resume and Next Episode use the same shared watch state.** A completed copy is reconciled
+  with other copies before it leaves the row, so an older position cannot undo a newer finish.
+  Active rewatch progress stays available.
+- **Pleya Fly discovery can recover after an iPhone network socket closes.** A failed listener
+  is cleared so the existing retry can find the Apple TV again after the app resumes.
+
+### Improved
+
+- **Folder-style years disappear from displayed titles.** The separate year and original server
+  metadata stay available.
+- **iPhone player controls use more of the landscape screen.** Compact transport and footer
+  actions spread across the available safe width.
+- **The mobile hero shows a Watched label.** Settings artwork reuses the existing iOS face crop.
+- **Library management is reachable from All Movies and All Shows.** Artwork, metadata and Plex
+  matching use the selected source and existing owner or administrator permissions.
+
+### Notes
+
+- The proposed new Apple TV player design is a separate draft, not a replacement player in
+  this build. Physical validation of the Fly card, the reported fully watched American Hostage
+  season and the two Brothers sources remains open.
+
 ## 2.8.1 · build 460 · 10 November 2026 · iPhone, iPad and Apple TV
 
 <!-- commit: c731d4ef1f795b6bf824fd7989423ccc78abe3b4 -->
@@ -66,6 +99,30 @@ Nothing user-facing since the last published build.
 - Worth checking: receive a new-title alert with the app closed, expand it to see the poster,
   and confirm that opting out stops new alerts. Title and poster on a physical iPhone remain
   to be confirmed for this build.
+
+## 2.8.1 · build 459 · 10 November 2026 · Apple TV
+
+<!-- commit: a9c1a175aca43399be04b095b14c398d16c0fc4c -->
+
+### Improved
+
+- **An offline index scan gets in the way of scrolling less.** Build 457 scanned four titles at
+  a time. On the older Apple TV, Alle films then missed 5 percent of its frames in two
+  measurements during a rescan, against 2 percent on build 455. The Apple TV now scans two
+  titles at a time. iPhone, iPad and Mac keep four.
+- **Loading the offline index takes less memory.** At start each index file was read whole and
+  turned into one large structure before the entries were made from it. It is now read in
+  small blocks, one entry at a time. In a test on a Mac with made-up entries, loading an index
+  the size of the one on the older Apple TV peaked at 81 to 83 MB instead of 160 MB.
+
+### Notes
+
+- Neither change has been measured on an Apple TV yet. Build 457 peaked at 359 MB of memory on
+  the older Apple TV, 9 MB over the target of 350 MB. Whether this build stays under it is open.
+- A full sync can take longer than on build 457, where it took 164 seconds: the Apple TV now
+  scans two titles at a time instead of four.
+- Worth checking on the older Apple TV, with the offline index already on: Instellingen >
+  Bibliotheken > Nu synchroniseren, then scroll Alle films for a minute while the scan runs.
 
 ## 2.8.1 · build 458 · 10 November 2026 · Mac
 

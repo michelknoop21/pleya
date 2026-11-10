@@ -17,6 +17,7 @@ import '../../media/unified/carried_external_ids.dart';
 import '../../media/unified/identity_evidence.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../utils/external_ids.dart';
+import '../../utils/title_normalizer.dart';
 
 /// Where to fetch external ids for one item: which server, and which id on
 /// that server to ask about (not always the item's own id — an episode's
@@ -299,7 +300,8 @@ String? continueWatchingOrdinal(MediaItem item) {
 
 /// Continue Watching's cheap duplicate-bucket key: scope plus a
 /// whitespace-collapsed lower-cased title (the series title for an episode or
-/// season). No year, no punctuation stripping; distinct from
+/// season), ignoring a trailing parenthesized year. This only buys provider-ID
+/// lookups: no title-only merge and no other punctuation stripping; distinct from
 /// [CanonicalMediaIdentity.bucketKey] on purpose (see the section comment
 /// above).
 ///
@@ -318,7 +320,7 @@ String? continueWatchingBucketKey(MediaItem item) {
     MediaKind.episode || MediaKind.season => item.grandparentTitle ?? item.parentTitle ?? item.title,
     _ => item.title,
   };
-  final normalized = title?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  final normalized = title == null ? null : titleWithoutYearSuffix(title).toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   if (normalized == null || normalized.isEmpty) return null;
   if ((item.kind == MediaKind.episode || item.kind == MediaKind.season) && continueWatchingOrdinal(item) == null) {
     return null;
@@ -378,7 +380,7 @@ List<UnifiedMediaGroup> oneContinueWatchingCardPerSeries(
   }
 
   int newestOf(UnifiedMediaGroup group) =>
-      group.sources.map((s) => s.item.recencySortKey).reduce((a, b) => a > b ? a : b);
+      group.sources.map((s) => s.item.lastViewedAt ?? -1).reduce((a, b) => a > b ? a : b);
 
   final byRecency = [for (var i = 0; i < groups.length; i++) i]
     ..sort((a, b) {

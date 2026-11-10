@@ -48,6 +48,14 @@ class DiscoveredHost {
 /// Hosts broadcast authenticated beacons; clients listen and filter
 /// by matching Plex home membership.
 class LanDiscoveryService {
+  LanDiscoveryService({Future<RawDatagramSocket> Function()? listenerSocketFactory})
+    : _listenerSocketFactory = listenerSocketFactory ?? _defaultListenerSocket;
+
+  final Future<RawDatagramSocket> Function() _listenerSocketFactory;
+
+  static Future<RawDatagramSocket> _defaultListenerSocket() =>
+      RawDatagramSocket.bind(InternetAddress.anyIPv4, discoveryPort, reuseAddress: true, reusePort: true);
+
   static const int discoveryPort = 48633;
   static const int _broadcastIntervalSeconds = 3;
   static const int _staleTimeoutSeconds = 10;
@@ -63,6 +71,7 @@ class LanDiscoveryService {
   Timer? _broadcastTimer;
 
   // Listener state (client)
+  int _listenGeneration = 0;
   RawDatagramSocket? _listenSocket;
   StreamSubscription<RawSocketEvent>? _listenSubscription;
   Timer? _staleCleanupTimer;
@@ -337,19 +346,28 @@ class LanDiscoveryService {
   }
 
   Future<void> _bindListener(List<RemoteAuthContext> contexts) async {
+    final generation = _listenGeneration;
     try {
-      _listenSocket = await RawDatagramSocket.bind(
-        InternetAddress.anyIPv4,
-        discoveryPort,
-        reuseAddress: true,
-        reusePort: true,
-      );
+      final socket = await _listenerSocketFactory();
+      if (generation != _listenGeneration) {
+        socket.close();
+        return;
+      }
+      _listenSocket = socket;
 
       appLogger.d('LanDiscovery: Listening on port $discoveryPort');
 
       _listenSubscription = _listenSocket!.listenDatagrams(
         (datagram) => _handleDatagram(datagram, contexts),
         debugLabel: 'LanDiscovery listener',
+        onSocketClosed: () {
+          if (!identical(_listenSocket, socket)) return;
+          // A suspended iOS socket can die without disappearing from memory.
+          // The puller sees isListening=false and rebinds on its retry tick.
+          _stopListeningInternal();
+          _discoveredHosts.clear();
+          _emitHosts();
+        },
       );
     } catch (e) {
       appLogger.e('LanDiscovery: Failed to bind listener', error: e);
@@ -466,6 +484,7 @@ class LanDiscoveryService {
   }
 
   void _stopListeningInternal() {
+    _listenGeneration++;
     _staleCleanupTimer?.cancel();
     _staleCleanupTimer = null;
     _listenSubscription?.cancel();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_item.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
@@ -18,9 +19,12 @@ import 'package:pleya/widgets/mobile/mobile_hero_indicator.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/prefs.dart';
+import '../../test_helpers/followup_capture.dart';
+import '../../test_helpers/golden.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadAppFontsForGoldens);
 
   setUp(() async {
     resetSharedPreferencesForTest();
@@ -28,7 +32,7 @@ void main() {
     await SettingsService.getInstance();
   });
 
-  UnifiedMediaGroup group(String id, {String title = 'Dune'}) {
+  UnifiedMediaGroup group(String id, {String title = 'Dune', bool watched = false, bool progress = false}) {
     final source = UnifiedMediaSource.fromItem(
       MediaItem(id: id, backend: .plex, kind: MediaKind.movie, title: title, serverId: 'nas', serverName: 'NAS'),
     );
@@ -37,7 +41,11 @@ void main() {
       identity: CanonicalMediaIdentity.movie(title: title, year: null),
       sources: [source],
       representativeSourceKey: source.sourceKey,
-      watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey),
+      watchState: UnifiedWatchState(
+        representativeSourceKey: source.sourceKey,
+        isWatched: watched,
+        hasActiveProgress: progress,
+      ),
     );
   }
 
@@ -61,6 +69,39 @@ void main() {
     );
     await tester.pump();
   }
+
+  testWidgets('hero shows the shared watched label and removes it for active progress', (tester) async {
+    MobileHeroCard card({required bool watched, bool progress = false}) => MobileHeroCard(
+      groups: [group('watched', watched: watched, progress: progress)],
+      width: 361,
+      height: 300,
+      onPlay: (_) {},
+      onSecondaryAction: (_) {},
+    );
+    await pump(tester, card(watched: true));
+    expect(find.textContaining(t.discover.watched), findsOneWidget);
+    await captureFollowup(tester, find.byType(MobileHeroCard), 'hero-watched');
+    await pump(tester, card(watched: true, progress: true));
+    expect(find.textContaining(t.discover.watched), findsNothing);
+    await pump(tester, card(watched: false));
+    expect(find.textContaining(t.discover.watched), findsNothing);
+  });
+
+  testWidgets('hero displays folder title without year suffix', (tester) async {
+    await pump(
+      tester,
+      MobileHeroCard(
+        groups: [group('brothers', title: 'Brothers (2026)')],
+        width: 361,
+        height: 300,
+        onPlay: (_) {},
+        onSecondaryAction: (_) {},
+      ),
+    );
+    expect(find.text('Brothers'), findsOneWidget);
+    expect(find.text('Brothers (2026)'), findsNothing);
+    await captureFollowup(tester, find.byType(MobileHeroCard), 'hero-title-without-year');
+  });
 
   // A-17: the iPad swaps this card for the billboard on a turn and keeps the slide.
   testWidgets('opens on the group it is told to, and falls back to the first', (tester) async {
