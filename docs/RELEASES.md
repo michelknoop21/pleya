@@ -51,6 +51,8 @@ Nothing user-facing since the last published build.
 
 <!-- commit: 6a4041237 -->
 
+Prepared for upload; not yet uploaded when these notes were written.
+
 ### Fixed
 
 - **Continue Watching compares sources with and without a year in the title.** A series

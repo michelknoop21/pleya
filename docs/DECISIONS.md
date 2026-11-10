@@ -5827,6 +5827,22 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Afgewezen:** samenvoegen op titel, poster of jaar (geen bewijs); een filter in de interface (lost alleen dit scherm op); een algemene slotpas voor unieke groupIds (breekt het bewuste contract in `unified_catalog_provider.dart`, test "groupId is not unique").
 **Consequences:** Twee bronnen die een nummer delen en alleen in guid verschillen, zijn voortaan één kaart met twee bronnen, op elk scherm dat `groupUnifiedMediaSources` gebruikt. Een titel zonder bewezen nummer blijft apart, net als een mislukte opzoeking en een item met agent `none`. Niet bewezen op hardware; de Verify-run gebruikt de Pleya-protocolfixture en kan het Plex-guidgeval niet nabootsen. **Unified impact:** gedeelde eigenaar is `grouping_service.dart`; geldt voor Plex, Jellyfin, Emby en Pleya Server. De legacy-vertaling raakt alleen Plex. Geen protocolwijziging. Bewijs: `test/services/unified_grouping_service_test.dart`, `test/services/unified_catalog/home_projection_service_test.dart`, `test/services/plex_item_gone_test.dart`, `test/widgets/tv_discovery_rail_test.dart`, scenario `tvos.unified.continue-watching-one-card`.
 
+**Aanvullende correctie 10 november 2026:** een niet-lege `Guid`-array kan uitsluitend een
+Plex-catalogusguid bevatten en dus geen imdb/tmdb/tvdb-nummer opleveren. Ook dan geldt de bestaande
+fallback naar een oude agent-guid voor film/serie. Een bruikbaar providernummer uit de array
+blijft leidend. Dit is een reproduceerbaar codepad; zonder gegevens van de twee Brothers-kaarten
+is niet bewezen dat dit het huidige praktijkgeval verklaart.
+
+**Aanvullende correctie 10 november 2026, Brothers op iOS/tvOS:** de beelden tonen
+`Brothers` en `Brothers (2026)`, beide S1 A8. `continueWatchingBucketKey` negeert nu
+een afsluitend jaartal tussen haakjes bij het verzamelen van kandidaten voor een
+provider-ID-opzoeking. Daarvoor kregen deze titels verschillende opzoekemmers en
+werd hun serie-ID niet vergeleken. Dezelfde gedeelde functie bedient aggregatie,
+reconnect en Home-projectie. Samenvoegen vereist nog steeds een gedeeld
+providernummer zonder conflict; een ontbrekend nummer of mislukte lookup blijft
+apart. Dit verklaart het aangetoonde codepad, maar de daadwerkelijke ID-antwoorden
+van deze twee toestelbronnen zijn nog niet uitgelezen. Hardwarevalidatie blijft open.
+
 <a id="dec-xxx-rijke-push-met-titel-en-poster-versleuteld-onder-een-toestelsleutel"></a>
 ## DEC-202: Rijke push met titel en poster, versleuteld onder een toestelsleutel
 
@@ -5844,21 +5860,6 @@ Michel opende op 5 november 2026 het [MCP-instellingenvenster](pleya-server-mcp-
 **Consequences:** Het pushvenster groeit met `capabilities.push_rich_content`, `PushInstallation.content_key` en het artworktoken op `GET /artwork/{artwork_id}`; alle drie optioneel, en oudere servers en apps houden de algemene melding. Migratie 0037 voegt `push_installations.content_key` toe. Opt-out en afmelden wissen de sleutels op het toestel; een verwijderde of ingetrokken registratie neemt de sleutel op de server mee. Of de titel op het vergrendelde scherm staat, bepaalt iOS met **Toon voorvertoning**. De extensie heeft een eigen bundle-id (`nl.michelknoop.pleya.NotificationService`) en profiel; Pleya Verify haalt haar uit de geïsoleerde kopie, omdat haar bundle-id niet met de herschreven app-id begint. Bewijs: `internal/push/rich_test.go` en `TestRichDeliverySealsTitleAndPosterAndFallsBackWithoutAKey`, `TestArtworkTokenOpensOnlyItsPosterWhileSessionAndRightLast`, `TestPushInstallationBodyTakesAnOptionalContentKey`, de Swift-test die dezelfde vector (`internal/push/testdata/rich_vector.json`) opent. iOS en tvOS build 460 staan op VALID. De App Store-export van de extensie is met `codesign --verify --strict` gecontroleerd, met een automatisch Team Store-profiel; de gedeelde keychaingroep is in beide targets en hun Info.plist geverifieerd. Echte titel en poster op de iPhone blijven open. **Unified impact:** geen; push bestaat alleen voor Pleya Server (DEC-201), Plex, Jellyfin en Emby veranderen niet.
 
 <a id="pushvenster-2026-11-08"></a>
-**Aanvullende correctie 10 november 2026:** een niet-lege `Guid`-array kan uitsluitend een
-Plex-catalogusguid bevatten en dus geen imdb/tmdb/tvdb-nummer opleveren. Ook dan geldt de bestaande
-fallback naar een oude agent-guid voor film/serie. Een bruikbaar providernummer uit de array
-blijft leidend. Dit is een reproduceerbaar codepad; zonder gegevens van de twee Brothers-kaarten
-is niet bewezen dat dit het huidige praktijkgeval verklaart.
-
-**Aanvullende correctie 10 november 2026, Brothers op iOS/tvOS:** de beelden tonen
-`Brothers` en `Brothers (2026)`, beide S1 A8. `continueWatchingBucketKey` negeert nu
-een afsluitend jaartal tussen haakjes bij het verzamelen van kandidaten voor een
-provider-ID-opzoeking. Daarvoor kregen deze titels verschillende opzoekemmers en
-werd hun serie-ID niet vergeleken. Dezelfde gedeelde functie bedient aggregatie,
-reconnect en Home-projectie. Samenvoegen vereist nog steeds een gedeeld
-providernummer zonder conflict; een ontbrekend nummer of mislukte lookup blijft
-apart. Dit verklaart het aangetoonde codepad, maar de daadwerkelijke ID-antwoorden
-van deze twee toestelbronnen zijn nog niet uitgelezen. Hardwarevalidatie blijft open.
 
 ## DEC-201: Opt-in push via de eigen Pleya Server
 

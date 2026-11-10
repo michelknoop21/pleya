@@ -38,3 +38,7 @@ Informatie/acties: gedeeltelijk; bovengenoemde missing/partialroutes moeten vó�
 Telefoonpolish na onafhankelijke kritiek: focus gebruikt preventScroll zodat de collectie niet naar de onderste iframe springt. Er is nu een aanraakbare sluitknop en een afzonderlijke44px-bekijkbalk op de telefoon. De productknoppen worden niet opgeblazen: het blijft een tvOS-ontwerp op1920×1080.
 
 Exacte open runtimeverplichtingen: Audio-selectie moet de huidige track en uitvoer aanpassen; hoofdstukselectie moet seeken; PiP moet het systeemvenster starten; tijdlijn moet play/pause/seek-toestanden doorlopen. Deze conceptschets toont de plek en de panelen, maar voert die effecten nog niet uit. Geen afgevinkte functiepariteit.
+
+Tweede telefoonpolish: de bekijkbalk staat in de normale paginastroom onder het TV-frame, nooit erover. In ingebedde previews is die balk verborgen. In landscape kan de telefoonreviewpagina scrollen naar de44px-knoppen, het TV-frame zelf behoudt16:9 en krijgt geen eigen scroll. Onafhankelijke hercontrole loopt.
+
+De collectie toont exports van de onafhankelijk beoordeelde1920×1080focus-/Meerbeelden als zoomafbeelding in plaats van ingesloten demos. De afzonderlijke links openen nog dezelfde touchbedienbare reviewviewer. Afbeelding openen en inzoomen werkt zonder kleine TV-knoppen op een telefoonscherm te hoeven raken.
