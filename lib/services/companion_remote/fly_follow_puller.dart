@@ -218,6 +218,7 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
     final previous = _retry[clientId]?.wait;
     final wait = previous == null ? firstRetryWait : (previous * 2 > maxRetryWait ? maxRetryWait : previous * 2);
     _retry[clientId] = (at: _clock().add(wait), wait: wait);
+    appLogger.d('Meenemen: asking again in ${wait.inSeconds} s');
     _retryTimer?.cancel();
     _retryTimer = Timer(wait, () {
       _retryTimer = null;
@@ -248,19 +249,32 @@ class FlyFollowPuller with ChangeNotifier, DisposableChangeNotifierMixin {
 
   Future<void> _peek(DiscoveredHost tv) async {
     final answer = await _overLink(tv, peek: true);
-    if (isDisposed || _askedFor != tv.clientId) return;
+    if (isDisposed || _askedFor != tv.clientId) {
+      appLogger.d('Meenemen: peek at ${tv.name} dropped (stopped, or the Apple TV no longer plays)');
+      return;
+    }
     if (answer == null || answer.refusal == FlyFollowRefusal.failed) {
+      // The exception behind a failed link is logged where it was caught ([_overLink]).
+      final reason = answer == null ? 'another link runs on this phone' : 'no usable answer';
+      appLogger.i('Meenemen: peek at ${tv.name}: failed ($reason)');
       _backOff(tv.clientId);
       return;
     }
     if (answer.refusal == FlyFollowRefusal.nothing) {
+      appLogger.i('Meenemen: peek at ${tv.name}: nothing (its player is still opening)');
       // Its beacon says a player is open, but it has nothing to offer yet: the
       // player is still opening (the Apple TV advertises from the first frame).
       _backOff(tv.clientId);
       return;
     }
     _retry.remove(tv.clientId);
-    _card = await _cardFor(tv, answer);
+    final card = await _cardFor(tv, answer);
+    _card = card;
+    appLogger.i(
+      card == null
+          ? 'Meenemen: peek at ${tv.name}: ${answer.refusal?.name} without a title, no card'
+          : 'Meenemen: card built for ${tv.name} (${card.block?.name ?? 'can follow'})',
+    );
     safeNotifyListeners();
   }
 
