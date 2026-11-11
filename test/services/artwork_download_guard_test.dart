@@ -134,4 +134,33 @@ void main() {
     expect(await afterResult, isA<http.RequestAbortedException>());
     expect(PlexImageCacheManager.debugInFlightDownloads, 0);
   });
+
+  test('closing after an answer nobody reads lets go of its connection', () async {
+    // CE throws on a 404 before it reads the body. On the dart:io client an
+    // unread body stays paused and keeps its connection out of the pool.
+    var listened = false;
+    var cancelled = false;
+    final body = StreamController<List<int>>(onListen: () => listened = true, onCancel: () => cancelled = true);
+    final client = PlexImageCacheManager.debugHttpClient(
+      MockStreamClient((_) async => http.StreamedResponse(body.stream, 404)),
+    );
+
+    final response = await client.send(http.Request('GET', poster));
+    expect(response.statusCode, 404);
+    client.close();
+    await pumpEventQueue();
+
+    expect(listened, isTrue);
+    expect(cancelled, isTrue);
+    expect(PlexImageCacheManager.debugInFlightDownloads, 0);
+  });
+}
+
+class MockStreamClient extends http.BaseClient {
+  MockStreamClient(this._handler);
+
+  final Future<http.StreamedResponse> Function(http.BaseRequest request) _handler;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) => _handler(request);
 }

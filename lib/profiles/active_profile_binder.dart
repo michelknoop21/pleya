@@ -332,7 +332,13 @@ class ActiveProfileBinder {
       );
       multiServerProvider.setCacheDeniedServerIds({for (final result in results) ...result.cacheDeniedServerIds});
       multiServerProvider.setExpectedVisibleServerIds(expectedServerIds);
-      multiServerProvider.setVisibleServerIds(visibleServerIds);
+      // A retained server that answered while the rest of the bind was still
+      // running is online already; nothing would promote it after this line.
+      final onlineNow = serverManager.onlineServerIds.toSet();
+      multiServerProvider.setVisibleServerIds({
+        ...visibleServerIds,
+        ...retainedOfflineServerIds.where(onlineNow.contains),
+      });
       success = (profile.isLocal && !localProfileHasJoinRows) || visibleServerIds.isNotEmpty;
       // Once we've bound a profile with real servers in this session,
       // we've crossed the cold-start boundary — every subsequent rebind

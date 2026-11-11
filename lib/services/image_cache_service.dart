@@ -217,6 +217,7 @@ class _SharedHttpClient extends http.BaseClient {
               throw TimeoutException('Artwork response headers', artworkHeaderTimeout);
             },
           );
+      download.unreadBody = response.stream;
       return http.StreamedResponse(
         _guardBody(response.stream, download, () => _finish(download)),
         response.statusCode,
@@ -239,10 +240,15 @@ class _SharedHttpClient extends http.BaseClient {
     // Backstop: CE throws on a non-200/202 status BEFORE reading the body, so
     // the stream-drain release never fires. CE always calls close() per
     // download, so release any still-held permit here — otherwise a few
-    // 404/500 posters would exhaust the limiter and freeze all artwork. The
-    // abort frees the socket of a response nobody is going to read.
+    // 404/500 posters would exhaust the limiter and freeze all artwork.
     for (final download in _downloads.toList()) {
       download.abort();
+      // An abort after the headers does not free a body nobody listens to: on
+      // the dart:io client it stays paused and its connection never returns to
+      // the pool. Listening and cancelling does.
+      final unread = download.unreadBody;
+      download.unreadBody = null;
+      if (unread != null) unawaited(unread.listen(null, onError: (Object _) {}).cancel());
       _finish(download);
     }
   }
@@ -260,6 +266,9 @@ class _ArtworkDownload {
   /// Set when the app was suspended while this request was in flight. tvOS
   /// drops every socket in that state and such a request never calls back.
   bool crossedSuspend = false;
+
+  /// The transport's response body until someone starts reading it.
+  Stream<List<int>>? unreadBody;
 
   Future<void> get abortTrigger => _abort.future;
 
@@ -342,6 +351,7 @@ http.BaseRequest _abortableCopy(http.BaseRequest request, Future<void> abortTrig
 }
 
 Stream<List<int>> _guardBody(Stream<List<int>> stream, _ArtworkDownload download, void Function() done) async* {
+  download.unreadBody = null;
   try {
     final guarded = stream.timeout(
       artworkBodyIdleTimeout,

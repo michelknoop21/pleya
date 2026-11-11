@@ -463,11 +463,13 @@ class OptimizedMediaImage extends StatelessWidget {
           headers: const {'User-Agent': 'Pleya'},
         );
 
+    final resized = ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider);
     final image = _ArtworkRetry(
       identity: (imageUrl, effectiveCacheKey),
+      provider: resized,
       builder: (context, imageKey, reportError) => Image(
         key: imageKey,
-        image: ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider),
+        image: resized,
         width: width,
         height: height,
         fit: fit,
@@ -574,14 +576,19 @@ List<Duration> artworkRetryDelays = const [Duration(seconds: 2), Duration(second
 /// Flutter's [Image] keeps its error until its provider changes, and the
 /// provider for one URL compares equal on every rebuild. A failure therefore
 /// stuck for as long as the tile lived: one dropped connection left a poster on
-/// its fallback until the page was left and opened again. A new key makes the
-/// [Image] resolve again; a loaded image is unaffected because it never
-/// reports an error.
+/// its fallback until the page was left and opened again.
+///
+/// The retry loads the picture off screen and only then gives the [Image] a
+/// new key. What the tile shows meanwhile stays put, and that matters:
+/// `UnifiedMediaImage` draws another server's poster as the error widget, and
+/// swapping the [Image] before the retry had an answer would replace that
+/// working poster with a placeholder for as long as the retry took.
 class _ArtworkRetry extends StatefulWidget {
-  const _ArtworkRetry({required this.identity, required this.builder});
+  const _ArtworkRetry({required this.identity, required this.provider, required this.builder});
 
   /// Changes when the widget is asked for a different picture.
   final Object identity;
+  final ImageProvider<Object> provider;
   final Widget Function(BuildContext context, Key imageKey, void Function(Object error) reportError) builder;
 
   @override
@@ -593,6 +600,8 @@ class _ArtworkRetryState extends State<_ArtworkRetry> {
   int _automaticRetries = 0;
   bool _failed = false;
   Timer? _timer;
+  ImageStream? _probe;
+  ImageStreamListener? _probeListener;
 
   @override
   void initState() {
@@ -605,6 +614,7 @@ class _ArtworkRetryState extends State<_ArtworkRetry> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.identity != widget.identity) {
       _timer?.cancel();
+      _stopProbe();
       _automaticRetries = 0;
       _failed = false;
     }
@@ -613,6 +623,7 @@ class _ArtworkRetryState extends State<_ArtworkRetry> {
   @override
   void dispose() {
     _timer?.cancel();
+    _stopProbe();
     ArtworkReloadSignal.instance.removeListener(_onReloadSignal);
     super.dispose();
   }
@@ -629,27 +640,58 @@ class _ArtworkRetryState extends State<_ArtworkRetry> {
   void _reportError(Object error) {
     if (_failed) return;
     _failed = true;
+    _scheduleRetry(error);
+  }
+
+  void _scheduleRetry(Object error) {
     if (_isPermanent(error) || _automaticRetries >= artworkRetryDelays.length) return;
     _timer?.cancel();
     _timer = Timer(artworkRetryDelays[_automaticRetries], () {
       _automaticRetries++;
-      _retry();
+      _startProbe();
     });
   }
 
   void _onReloadSignal() {
-    if (!_failed) return;
+    if (!_failed || _probe != null) return;
     _timer?.cancel();
     _automaticRetries = 0;
-    _retry();
+    _startProbe();
   }
 
-  void _retry() {
-    if (!mounted) return;
-    setState(() {
-      _failed = false;
-      _generation++;
-    });
+  void _startProbe() {
+    if (!mounted || _probe != null) return;
+    final stream = widget.provider.resolve(createLocalImageConfiguration(context));
+    final listener = ImageStreamListener(
+      (info, _) {
+        _stopProbe();
+        if (!mounted) {
+          info.dispose();
+          return;
+        }
+        // The picture is in the image cache now, so the new Image finds it at
+        // once. This handle keeps it alive until that Image has taken hold.
+        setState(() {
+          _failed = false;
+          _generation++;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => info.dispose());
+      },
+      onError: (error, _) {
+        _stopProbe();
+        if (mounted) _scheduleRetry(error);
+      },
+    );
+    _probe = stream;
+    _probeListener = listener;
+    stream.addListener(listener);
+  }
+
+  void _stopProbe() {
+    final listener = _probeListener;
+    if (listener != null) _probe?.removeListener(listener);
+    _probe = null;
+    _probeListener = null;
   }
 
   @override

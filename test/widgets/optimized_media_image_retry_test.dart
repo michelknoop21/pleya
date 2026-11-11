@@ -13,10 +13,13 @@ import 'package:pleya/widgets/optimized_media_image.dart';
 /// Evicts itself on error, as the real network provider does: Flutter's image
 /// cache otherwise hands every later resolve the same failed load.
 class _FlakyImage extends ImageProvider<_FlakyImage> {
-  _FlakyImage({required this.failures, this.error});
+  _FlakyImage({required this.failures, this.error, this.gate});
 
   final int failures;
   final Object? error;
+
+  /// When set, a successful load waits for it, like a download in progress.
+  final Completer<void>? gate;
   int loads = 0;
 
   @override
@@ -30,7 +33,8 @@ class _FlakyImage extends ImageProvider<_FlakyImage> {
       scheduleMicrotask(() => PaintingBinding.instance.imageCache.evict(key));
       return OneFrameImageStreamCompleter(Future<ImageInfo>.error(error ?? const _Dropped()));
     }
-    return OneFrameImageStreamCompleter(Future<ImageInfo>.value(ImageInfo(image: pixel!.clone())));
+    final ready = gate?.future ?? Future<void>.value();
+    return OneFrameImageStreamCompleter(ready.then((_) => ImageInfo(image: pixel!.clone())));
   }
 
   /// Decoded once per test, outside the fake clock.
@@ -144,5 +148,27 @@ void main() {
     await settleLoad(tester);
 
     expect(image.loads, 1);
+  });
+
+  testWidgets('what the tile shows instead stays until the retry has the picture', (tester) async {
+    // UnifiedMediaImage draws another server's poster as the error widget. A
+    // retry that swapped the image first would trade that poster for a
+    // placeholder for as long as the download took.
+    final gate = Completer<void>();
+    image = _FlakyImage(failures: 1, gate: gate);
+    await pumpPoster(tester);
+    expect(find.text('failed'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    await settleLoad(tester);
+    expect(image.loads, 2, reason: 'the retry is under way');
+    expect(find.text('failed'), findsOneWidget, reason: 'the stand-in is still on screen');
+
+    gate.complete();
+    await settleLoad(tester);
+    await tester.pump();
+
+    expect(find.text('failed'), findsNothing);
+    expect(tester.widget<RawImage>(find.byType(RawImage)).image, isNotNull);
   });
 }

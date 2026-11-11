@@ -422,6 +422,14 @@ void main() {
       var down = true;
       http.Response json(Object body) =>
           http.Response(jsonEncode(body), 200, headers: const {'content-type': 'application/json'});
+      MultiServerManager.offlineAddRetryDelays = const [Duration(milliseconds: 30), Duration(milliseconds: 30)];
+      addTearDown(
+        () => MultiServerManager.offlineAddRetryDelays = const [
+          Duration(seconds: 10),
+          Duration(seconds: 30),
+          Duration(seconds: 90),
+        ],
+      );
       manager = MultiServerManager()
         ..debugPleyaServerHttpClientFactory = () => MockClient((request) async {
           // The shape of log s5jok: `/info` got no answer during a busy start.
@@ -486,10 +494,10 @@ void main() {
       expect(manager.offlineServerIds, contains('srv-9'));
       expect(multiServerProvider.serverIds, isNot(contains('srv-9')), reason: 'hidden while it is away');
 
+      // No resume, no network change and no button: the probe that follows a
+      // failed add finds it by itself.
       down = false;
-      await manager.reconnectOfflineServers(alsoRetry: {'srv-9'});
-
-      expect(manager.onlineServerIds, contains('srv-9'));
+      await pumpUntil(() async => manager.onlineServerIds.contains('srv-9'));
       await pumpUntil(() async => multiServerProvider.onlineServerIds.contains('srv-9'));
     });
 

@@ -1077,22 +1077,39 @@ class MultiServerManager {
     }
   }
 
+  /// Waits between the probes of a server that did not answer while it was
+  /// being added.
+  @visibleForTesting
+  static List<Duration> offlineAddRetryDelays = const [
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+    Duration(seconds: 90),
+  ];
+
   /// A server that did not answer while it was being added gets asked again
   /// shortly after, without waiting for a resume or a network change. A start
   /// is the busiest moment the app has, and one probe that times out there
   /// says little about the server.
-  void _scheduleOfflineAddRetry(String serverId, MediaServerClient client, {int attempt = 0}) {
-    const delays = [Duration(seconds: 10), Duration(seconds: 30), Duration(seconds: 90)];
+  ///
+  /// A plain health probe, nothing more: no reconnect sweep (that would clear
+  /// the wait of every other server) and no auth retry, which stays reserved
+  /// for the user's own "reconnect" (see [retryPleyaServerAuth]).
+  void _scheduleOfflineAddRetry(String serverId, PleyaServerClient client, {int attempt = 0}) {
+    final delays = offlineAddRetryDelays;
     if (attempt >= delays.length) return;
     _offlineAddRetry[serverId]?.cancel();
     _offlineAddRetry[serverId] = Timer(delays[attempt], () async {
       _offlineAddRetry.remove(serverId);
-      if (!identical(_clients[serverId], client) || _serverStatus[serverId] != false) return;
-      if (_authErrorServers.contains(serverId)) return;
-      await reconnectOfflineServers(alsoRetry: {serverId});
-      if (identical(_clients[serverId], client) && _serverStatus[serverId] == false) {
-        _scheduleOfflineAddRetry(serverId, client, attempt: attempt + 1);
-      }
+      bool stillWaiting() =>
+          identical(_clients[serverId], client) &&
+          _serverStatus[serverId] == false &&
+          !_authErrorServers.contains(serverId);
+      if (!stillWaiting()) return;
+      final generation = generationFor(ServerId(serverId));
+      final health = await client.checkHealth();
+      if (!stillWaiting() || !ownsGeneration(ServerId(serverId), generation)) return;
+      _applyHealth(ServerId(serverId), health);
+      if (health == HealthStatus.offline) _scheduleOfflineAddRetry(serverId, client, attempt: attempt + 1);
     });
   }
 
