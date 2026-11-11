@@ -51,7 +51,8 @@ void main() {
         PlaybackInitializationOptions(metadata: item, selectedMediaIndex: 0),
       );
 
-      expect(result.videoUrl, 'http://nas.lan:8832/pleya/v1/stream/version-1');
+      // The stream session id is not secret; its secret travels as a cookie.
+      expect(result.videoUrl, 'http://nas.lan:8832/pleya/v1/stream/version-1?ss=ss-1');
       expect(result.videoUrl, isNot(contains('token')));
       expect(result.isTranscoding, isFalse, reason: 'PS-4 is direct play; a transcode path here would be PS-8 early');
       expect(result.playMethod, 'DirectPlay');

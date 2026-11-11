@@ -83,6 +83,7 @@ part 'pleya_server_client/parts/seam.dart';
 part 'pleya_server_client/parts/artwork.dart';
 part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
+part 'pleya_server_client/parts/stream_session.dart';
 part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/personal.dart';
 part 'pleya_server_client/parts/lists.dart';
@@ -127,6 +128,7 @@ class PleyaServerClient
         _PleyaServerBrowseMethods,
         _PleyaServerSearchMethods,
         _PleyaServerArtworkMethods,
+        _PleyaServerStreamSessionMethods,
         _PleyaServerPlaybackMethods,
         _PleyaServerPersonalMethods,
         _PleyaServerListMethods,
@@ -360,6 +362,11 @@ class PleyaServerClient
 
   /// The access token as a header, never as a query parameter.
   ///
+  /// The player uses this only when the server has no stream sessions or none
+  /// could be opened; otherwise [getPlaybackInitialization] hands it a stream
+  /// session cookie in [PlaybackInitializationResult.streamHeaders], which,
+  /// unlike this token, does not expire while the film plays.
+  ///
   /// mpv can set headers, so the stream token that exists for players that
   /// cannot stays out of this path: a credential that never enters a URL never
   /// enters a log, a referrer or a shell history either.
@@ -386,6 +393,7 @@ class PleyaServerClient
       held.timer.cancel();
     }
     _transcodeSessions.clear();
+    _releaseAllStreamSessions();
     _unregisterArtworkAuthorization();
     _http.close();
   }

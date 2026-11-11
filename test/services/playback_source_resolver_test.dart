@@ -113,4 +113,31 @@ void main() {
     expect(context.sourceKind, PlaybackSourceKind.remoteDirect);
     expect(context.streamHeaders, isNot(contains('X-Plex-Session-Identifier')));
   });
+  test('a result with its own stream headers replaces the client default, so mpv gets no bearer', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final manager = MultiServerManager();
+    addTearDown(() async {
+      manager.dispose();
+      await db.close();
+    });
+
+    final client = _PlaybackClient(
+      clientBackend: MediaBackend.pleyaServer,
+      result: PlaybackInitializationResult(
+        availableVersions: const [],
+        videoUrl: 'https://nas.example/pleya/v1/stream/v?ss=ss-1',
+        streamHeaders: const {'Cookie': 'pleya_ss_ss-1=secret'},
+      ),
+    );
+    manager.debugRegisterClientForTesting(client, online: true);
+
+    final context = await PlaybackSourceResolver(serverManager: manager, database: db).resolve(
+      metadata: MediaItem(id: 'item-1', backend: MediaBackend.pleyaServer, kind: MediaKind.movie, serverId: 'srv'),
+      selectedMediaIndex: 0,
+      offlineLibraryMode: false,
+      qualityPreset: TranscodeQualityPreset.original,
+    );
+
+    expect(context.streamHeaders, {'Cookie': 'pleya_ss_ss-1=secret'});
+  });
 }
