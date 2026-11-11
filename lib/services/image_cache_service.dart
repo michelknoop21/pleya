@@ -11,10 +11,11 @@ import 'package:cached_network_image_ce/cached_network_image.dart' show FileResp
 // behind a narrower unsupported-platform stub.
 // ignore: implementation_imports
 import 'package:cached_network_image_ce/src/cache/default_cache_manager.dart' as ce_cache;
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show ChangeNotifier, visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart';
 
 final _artworkHttpClient = MediaServerHttpClient(usePlexApiClient: true);
@@ -22,13 +23,35 @@ final _artworkRequestLimiter = _RequestLimiter(6);
 // Across retiring/new profile providers as well as one sequential sync.
 final _localPosterRevalidationLimiter = _RequestLimiter(3);
 
-/// Durable on-disk location for the artwork cache.
+/// How long one artwork download may wait for its response headers, and how
+/// long its body may go without a chunk. Without these a socket that died
+/// while the app was suspended never reports back, keeps one of the few
+/// download slots, and leaves its tile on the placeholder until a restart.
+@visibleForTesting
+Duration artworkHeaderTimeout = const Duration(seconds: 15);
+@visibleForTesting
+Duration artworkBodyIdleTimeout = const Duration(seconds: 20);
+
+/// Tells artwork widgets that a failed image is worth another attempt: the app
+/// came back from the background, or a server came back online. Widgets that
+/// show a loaded image ignore it.
+class ArtworkReloadSignal extends ChangeNotifier {
+  ArtworkReloadSignal._();
+  static final ArtworkReloadSignal instance = ArtworkReloadSignal._();
+
+  void requestReload() => notifyListeners();
+}
+
+/// On-disk location for the artwork cache.
 ///
 /// [getApplicationCacheDirectory] maps to iOS `Library/Caches`, which the OS
 /// purges under storage pressure — dropping the whole poster cache and forcing
-/// a re-download of every image on the next launch. Application Support is not
-/// auto-purged, so the cache survives restarts. A dedicated subfolder keeps the
-/// 3000-object pruning scoped to artwork.
+/// a re-download of every image on the next launch. On iOS and macOS,
+/// Application Support is not auto-purged, so the cache survives restarts. On
+/// tvOS there is no such place: the app's path provider maps Application
+/// Support into `Library/Caches` (the only writable directory), so tvOS may
+/// still empty this cache. A dedicated subfolder keeps the 3000-object pruning
+/// scoped to artwork.
 Future<Directory> _artworkCacheDirectory() async {
   final base = await getApplicationSupportDirectory();
   final dir = Directory('${base.path}/artwork_cache');
@@ -58,6 +81,15 @@ class PlexImageCacheManager extends ce_cache.DefaultCacheManager {
         httpClientFactory: () => _SharedHttpClient(_artworkHttpClient.inner),
         cacheDirectoryProvider: _artworkCacheDirectory,
       );
+
+  /// Artwork requests holding a download slot right now.
+  @visibleForTesting
+  static int get debugInFlightDownloads => _inFlightArtworkDownloads.length;
+
+  /// The client every artwork download goes through, over [inner], so a test
+  /// can drive the limiter and the timeouts without a cache directory.
+  @visibleForTesting
+  static http.Client debugHttpClient(http.Client inner) => _SharedHttpClient(inner);
 
   @override
   Stream<FileResponse> getImageFile(
@@ -150,15 +182,17 @@ class ArtworkAuthorizationRegistry {
 class _SharedHttpClient extends http.BaseClient {
   final http.Client _inner;
 
-  // One permit per in-flight request. Tracked as a set so a client that is
+  // One entry per in-flight request. Tracked as a set so a client that is
   // (against CE's usual one-per-download pattern) reused for multiple sends
   // never overwrites and leaks an earlier permit.
-  final Set<_RequestPermit> _permits = {};
+  final Set<_ArtworkDownload> _downloads = {};
 
   _SharedHttpClient(this._inner);
 
-  void _releaseOne(_RequestPermit permit) {
-    if (_permits.remove(permit)) permit.release();
+  void _finish(_ArtworkDownload download) {
+    if (!_downloads.remove(download)) return;
+    _inFlightArtworkDownloads.remove(download);
+    download.permit.release();
   }
 
   @override
@@ -170,11 +204,21 @@ class _SharedHttpClient extends http.BaseClient {
       request.headers.putIfAbsent(entry.key, () => entry.value);
     }
     final permit = await _artworkRequestLimiter.acquire();
-    _permits.add(permit);
+    final download = _ArtworkDownload(permit, request.url);
+    _downloads.add(download);
+    _inFlightArtworkDownloads.add(download);
     try {
-      final response = await _inner.send(request);
+      final response = await _inner
+          .send(_abortableCopy(request, download.abortTrigger))
+          .timeout(
+            artworkHeaderTimeout,
+            onTimeout: () {
+              download.abort();
+              throw TimeoutException('Artwork response headers', artworkHeaderTimeout);
+            },
+          );
       return http.StreamedResponse(
-        _releaseWhenDone(response.stream, () => _releaseOne(permit)),
+        _guardBody(response.stream, download, () => _finish(download)),
         response.statusCode,
         contentLength: response.contentLength,
         request: response.request,
@@ -183,8 +227,9 @@ class _SharedHttpClient extends http.BaseClient {
         persistentConnection: response.persistentConnection,
         reasonPhrase: response.reasonPhrase,
       );
-    } catch (_) {
-      _releaseOne(permit);
+    } catch (error) {
+      _logArtworkFailure(download, error);
+      _finish(download);
       rethrow;
     }
   }
@@ -194,20 +239,126 @@ class _SharedHttpClient extends http.BaseClient {
     // Backstop: CE throws on a non-200/202 status BEFORE reading the body, so
     // the stream-drain release never fires. CE always calls close() per
     // download, so release any still-held permit here — otherwise a few
-    // 404/500 posters would exhaust the limiter and freeze all artwork.
-    for (final permit in _permits.toList()) {
-      _releaseOne(permit);
+    // 404/500 posters would exhaust the limiter and freeze all artwork. The
+    // abort frees the socket of a response nobody is going to read.
+    for (final download in _downloads.toList()) {
+      download.abort();
+      _finish(download);
     }
   }
 }
 
-Stream<List<int>> _releaseWhenDone(Stream<List<int>> stream, void Function() release) async* {
+/// One artwork request between acquiring its permit and letting it go.
+class _ArtworkDownload {
+  _ArtworkDownload(this.permit, this.url);
+
+  final _RequestPermit permit;
+  final Uri url;
+  final Stopwatch elapsed = Stopwatch()..start();
+  final Completer<void> _abort = Completer<void>();
+
+  /// Set when the app was suspended while this request was in flight. tvOS
+  /// drops every socket in that state and such a request never calls back.
+  bool crossedSuspend = false;
+
+  Future<void> get abortTrigger => _abort.future;
+
+  void abort() {
+    if (!_abort.isCompleted) _abort.complete();
+  }
+}
+
+final Set<_ArtworkDownload> _inFlightArtworkDownloads = {};
+
+/// Marks the artwork downloads that are in flight while the app goes to the
+/// background. See [abortArtworkDownloadsFromBeforeSuspend].
+void markArtworkDownloadsSuspended() {
+  for (final download in _inFlightArtworkDownloads) {
+    download.crossedSuspend = true;
+  }
+}
+
+/// Aborts the downloads that were in flight when the app was suspended and
+/// asks failed tiles to try again. Returns how many were aborted.
+///
+/// Downloads started after the resume are left alone: on desktop a resume is
+/// every window focus, and aborting healthy requests there would only cost a
+/// second download.
+int abortArtworkDownloadsFromBeforeSuspend() {
+  final stale = _inFlightArtworkDownloads.where((download) => download.crossedSuspend).toList();
+  for (final download in stale) {
+    download.abort();
+  }
+  if (stale.isNotEmpty) {
+    appLogger.i(
+      'Artwork: aborted ${stale.length} download(s) from before the suspend '
+      '(active=${_artworkRequestLimiter.active} queued=${_artworkRequestLimiter.queued})',
+    );
+  }
+  ArtworkReloadSignal.instance.requestReload();
+  return stale.length;
+}
+
+/// Download slots in use and waiting, for log lines.
+String artworkDownloadStats() =>
+    'artworkActive=${_artworkRequestLimiter.active} artworkQueued=${_artworkRequestLimiter.queued}';
+
+DateTime _lastArtworkFailureLog = DateTime.fromMillisecondsSinceEpoch(0);
+int _artworkFailuresSinceLog = 0;
+
+/// One line per failed download would bury a log when a server is down, so
+/// failures are counted and reported at most once every five seconds. Host and
+/// path only: Plex and Jellyfin carry their token in the query string.
+void _logArtworkFailure(_ArtworkDownload download, Object error) {
+  _artworkFailuresSinceLog++;
+  final now = DateTime.now();
+  if (now.difference(_lastArtworkFailureLog) < const Duration(seconds: 5)) return;
+  appLogger.w(
+    'Artwork download failed ($_artworkFailuresSinceLog since last log): ${error.runtimeType} '
+    'after ${download.elapsed.elapsedMilliseconds}ms host=${download.url.host} path=${download.url.path} '
+    'active=${_artworkRequestLimiter.active} queued=${_artworkRequestLimiter.queued}',
+  );
+  _artworkFailuresSinceLog = 0;
+  _lastArtworkFailureLog = now;
+}
+
+/// A copy of [request] that [abortTrigger] can cut short. CE builds a plain
+/// request, which the transport could otherwise never abandon.
+http.BaseRequest _abortableCopy(http.BaseRequest request, Future<void> abortTrigger) {
+  final own = request is http.Abortable ? request.abortTrigger : null;
+  final copy =
+      http.AbortableStreamedRequest(
+          request.method,
+          request.url,
+          abortTrigger: own == null ? abortTrigger : Future.any<void>([abortTrigger, own]),
+        )
+        ..headers.addAll(request.headers)
+        ..followRedirects = request.followRedirects
+        ..maxRedirects = request.maxRedirects
+        ..persistentConnection = request.persistentConnection
+        ..contentLength = request.contentLength;
+  unawaited(request.finalize().pipe(copy.sink).catchError((Object _) {}));
+  return copy;
+}
+
+Stream<List<int>> _guardBody(Stream<List<int>> stream, _ArtworkDownload download, void Function() done) async* {
   try {
-    await for (final chunk in stream) {
+    final guarded = stream.timeout(
+      artworkBodyIdleTimeout,
+      onTimeout: (sink) {
+        download.abort();
+        sink.addError(TimeoutException('Artwork response body', artworkBodyIdleTimeout));
+        sink.close();
+      },
+    );
+    await for (final chunk in guarded) {
       yield chunk;
     }
+  } catch (error) {
+    _logArtworkFailure(download, error);
+    rethrow;
   } finally {
-    release();
+    done();
   }
 }
 
@@ -217,6 +368,9 @@ class _RequestLimiter {
   int _active = 0;
 
   _RequestLimiter(this.maxConcurrent);
+
+  int get active => _active;
+  int get queued => _queue.length;
 
   Future<_RequestPermit> acquire() {
     if (_active < maxConcurrent) {

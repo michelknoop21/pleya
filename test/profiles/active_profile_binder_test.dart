@@ -416,6 +416,83 @@ void main() {
       expect(recording.restrictedServerIds, {'srv-9'});
     });
 
+    test('a Pleya Server that does not answer at bind stays registered and comes back', () async {
+      binder.dispose();
+      multiServerProvider.dispose();
+      var down = true;
+      http.Response json(Object body) =>
+          http.Response(jsonEncode(body), 200, headers: const {'content-type': 'application/json'});
+      manager = MultiServerManager()
+        ..debugPleyaServerHttpClientFactory = () => MockClient((request) async {
+          // The shape of log s5jok: `/info` got no answer during a busy start.
+          if (down) throw http.ClientException('no answer', request.url);
+          if (request.url.path.endsWith('/info')) {
+            return json(const {
+              'protocol': {'major': 1, 'feature_level': 1, 'profile': 'full'},
+              'server': {'id': 'srv-9'},
+              'capabilities': {'browse': true, 'search': true, 'artwork': true, 'watch_state': true},
+              'auth': {
+                'methods': ['password'],
+                'setup_required': false,
+              },
+            });
+          }
+          if (request.url.path.endsWith('/auth/refresh')) {
+            return json(const {
+              'access_token': 'at',
+              'refresh_token': 'rt-2',
+              'token_type': 'bearer',
+              'expires_in_ms': 900000,
+            });
+          }
+          return json(const {
+            'id': 'srv-9',
+            'name': 'Zolder',
+            'version': '0.2.0',
+            'started_at': '2026-08-18T19:25:33Z',
+          });
+        });
+      multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      binder = ActiveProfileBinder(
+        activeProfile: activeProfile,
+        connections: connections,
+        profileConnections: profileConnections,
+        serverManager: manager,
+        multiServerProvider: multiServerProvider,
+        pinPrompt: (_, {String? errorMessage}) async => null,
+        shouldDeferInitialBind: (_) async => false,
+      );
+      final profile = await createActiveLocalProfile('local-pleya-offline');
+      final pleya = PleyaServerConnection(
+        id: 'pleyaServer.srv-9',
+        baseUrl: 'http://nas.lan:8832',
+        serverId: 'srv-9',
+        serverName: 'Zolder',
+        userName: 'owner',
+        refreshToken: 'rt',
+        role: 'owner',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await connections.upsert(pleya);
+      await profileConnections.upsert(
+        ProfileConnection(profileId: profile.id, connectionId: pleya.id, userIdentifier: 'u-owner'),
+      );
+
+      await binder.rebindActive();
+
+      // Removed here, nothing ever probed it again and the whole session ran
+      // without the server.
+      expect(manager.serverIds, contains('srv-9'));
+      expect(manager.offlineServerIds, contains('srv-9'));
+      expect(multiServerProvider.serverIds, isNot(contains('srv-9')), reason: 'hidden while it is away');
+
+      down = false;
+      await manager.reconnectOfflineServers(alsoRetry: {'srv-9'});
+
+      expect(manager.onlineServerIds, contains('srv-9'));
+      await pumpUntil(() async => multiServerProvider.onlineServerIds.contains('srv-9'));
+    });
+
     test('own Jellyfin row keeps its server role', () async {
       final recording = await bindLocalJellyfin(borrowed: false);
       expect(recording.restrictedServerIdsAtConnect, isEmpty);

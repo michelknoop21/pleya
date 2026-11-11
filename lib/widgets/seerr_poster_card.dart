@@ -15,6 +15,7 @@ import '../utils/platform_detector.dart';
 import 'pressable.dart';
 import 'seerr_status_badge.dart';
 import 'tv_browse_rail.dart';
+import '../services/image_cache_service.dart';
 
 /// Poster dimensions shared by every seerr surface (discover rows, grid, search
 /// fallback, recommendations). TV gets slightly larger touch/focus targets.
@@ -247,6 +248,9 @@ class SeerrPosterImage extends StatelessWidget {
     if (url.isEmpty) return const SeerrPosterPlaceholder();
     return CachedNetworkImage(
       imageUrl: url,
+      // The shared artwork cache: bounded downloads with a timeout, instead of
+      // the package default that waits on a dead socket forever.
+      cacheManager: PlexImageCacheManager.instance,
       fit: BoxFit.cover,
       placeholder: (context, _) => const SeerrPosterPlaceholder(),
       errorBuilder: (context, _, _) => const SeerrPosterPlaceholder(),

@@ -19,6 +19,7 @@ import '../utils/provider_extensions.dart';
 import '../widgets/big_p/big_p_rig.dart' show bigPAsset;
 import '../widgets/optimized_media_image.dart';
 import '../widgets/pleya_logo.dart';
+import '../services/image_cache_service.dart';
 
 /// How many kijklijst posters the page shows before "Bekijk alles" takes over.
 const int kMyPleyaWatchlistMax = 12;
@@ -73,6 +74,9 @@ class MyPleyaWatchlistArtwork extends StatelessWidget {
       '' => placeholder,
       final url => CachedNetworkImage(
         imageUrl: url,
+        // The shared artwork cache: bounded downloads with a timeout, instead of
+        // the package default that waits on a dead socket forever.
+        cacheManager: PlexImageCacheManager.instance,
         fit: BoxFit.cover,
         placeholder: (_, _) => placeholder,
         errorBuilder: (_, _, _) => placeholder,

@@ -29,19 +29,27 @@ class _ProfileBindResult {
     required this.visibleServerIds,
     required this.expectedServerIds,
     this.cacheDeniedServerIds = const {},
+    this.retainedOfflineServerIds = const {},
   });
 
   const _ProfileBindResult.empty()
     : visibleServerIds = const {},
       expectedServerIds = const {},
-      cacheDeniedServerIds = const {};
+      cacheDeniedServerIds = const {},
+      retainedOfflineServerIds = const {};
 
   _ProfileBindResult.visible(Set<String> ids)
     : visibleServerIds = Set.unmodifiable(ids),
       expectedServerIds = Set.unmodifiable(ids),
-      cacheDeniedServerIds = const {};
+      cacheDeniedServerIds = const {},
+      retainedOfflineServerIds = const {};
 
   final Set<String> cacheDeniedServerIds;
+
+  /// Servers this profile may use whose client was registered but did not
+  /// answer. They stay in the manager, hidden, so its reconnect sweep can bring
+  /// them back and `MultiServerProvider` can show them once they are online.
+  final Set<String> retainedOfflineServerIds;
   final Set<String> visibleServerIds;
   final Set<String> expectedServerIds;
 }
@@ -302,9 +310,11 @@ class ActiveProfileBinder {
         _bindJoinRows(profile),
       ]);
       final visibleServerIds = <String>{};
+      final retainedOfflineServerIds = <String>{};
       for (final result in results) {
         visibleServerIds.addAll(result.visibleServerIds);
         expectedServerIds.addAll(result.expectedServerIds);
+        retainedOfflineServerIds.addAll(result.retainedOfflineServerIds);
       }
 
       // Remove servers the profile no longer has access to. Always set the
@@ -312,7 +322,7 @@ class ActiveProfileBinder {
       // connections shows nothing — falling back to "all visible" on empty
       // would leak servers attached to other profiles.
       for (final serverId in serverManager.serverIds.toList()) {
-        if (!visibleServerIds.contains(serverId)) {
+        if (!visibleServerIds.contains(serverId) && !retainedOfflineServerIds.contains(serverId)) {
           serverManager.removeServer(ServerId(serverId));
         }
       }
@@ -600,6 +610,7 @@ class ActiveProfileBinder {
       visibleServerIds: visible,
       expectedServerIds: expected,
       cacheDeniedServerIds: {for (final result in results) ...result.cacheDeniedServerIds},
+      retainedOfflineServerIds: {for (final result in results) ...result.retainedOfflineServerIds},
     );
   }
 
@@ -1032,7 +1043,14 @@ class ActiveProfileBinder {
     if (ok || serverManager.authErrorServerIds.contains(conn.serverId)) {
       return _ProfileBindResult.visible({conn.serverId});
     }
-    return _ProfileBindResult(visibleServerIds: const {}, expectedServerIds: {conn.serverId});
+    // Not reachable right now. Removing it here ended the server for the whole
+    // session: nothing probes a server the manager no longer knows (log s5jok,
+    // one `/info` timeout during a busy start).
+    return _ProfileBindResult(
+      visibleServerIds: const {},
+      expectedServerIds: {conn.serverId},
+      retainedOfflineServerIds: {conn.serverId},
+    );
   }
 
   Future<_ProfileBindResult> _bindPleyaShare(PleyaShareConnection conn) async {

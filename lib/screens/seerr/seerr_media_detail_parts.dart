@@ -49,6 +49,9 @@ class _HeroHeader extends StatelessWidget {
                     children: [
                       CachedNetworkImage(
                         imageUrl: artwork,
+                        // The shared artwork cache: bounded downloads with a timeout, instead of
+                        // the package default that waits on a dead socket forever.
+                        cacheManager: PlexImageCacheManager.instance,
                         fit: BoxFit.cover,
                         alignment: handheld ? Alignment.topCenter : Alignment.centerRight,
                         errorBuilder: (_, _, _) => ColoredBox(color: surface),
@@ -318,6 +321,9 @@ class _CastCard extends StatelessWidget {
                     )
                   : CachedNetworkImage(
                       imageUrl: member.profileUrl,
+                      // The shared artwork cache: bounded downloads with a timeout, instead of
+                      // the package default that waits on a dead socket forever.
+                      cacheManager: PlexImageCacheManager.instance,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => ColoredBox(
                         color: scheme.surfaceContainerHighest,
