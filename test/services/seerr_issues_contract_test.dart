@@ -154,4 +154,27 @@ void main() {
     expect(await expiring.supportsIssues(), isTrue);
     expect(calls, 5);
   });
+
+  test('the counts behind the Meldingen tile are only asked for by an account that may see every report', () async {
+    var calls = 0;
+    final own = client(SeerrPermission.createIssues, (_) async {
+      calls++;
+      return json({'open': 1, 'closed': 1});
+    });
+    expect(await own.getIssueCounts(), isNull, reason: 'the route counts everyone\'s reports');
+    expect(calls, 0, reason: 'nothing is asked for that could not be shown');
+
+    final manager = client(SeerrPermission.manageIssues, (request) async {
+      expect(request.method, 'GET');
+      expect(request.url.path, '/api/v1/issue/count');
+      return json({'total': 5, 'open': 2, 'closed': 3, 'video': 1});
+    });
+    expect(await manager.getIssueCounts(), (open: 2, resolved: 3));
+
+    final unreadable = client(SeerrPermission.viewIssues, (_) async => json({'open': 'x', 'closed': 3}));
+    expect(await unreadable.getIssueCounts(), isNull, reason: 'a count that cannot be read is not a zero');
+
+    final down = client(SeerrPermission.viewIssues, (_) async => http.Response('{}', 500));
+    expect(await down.getIssueCounts(), isNull);
+  });
 }

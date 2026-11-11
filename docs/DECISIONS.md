@@ -5869,3 +5869,21 @@ van deze twee toestelbronnen zijn nog niet uitgelezen. Hardwarevalidatie blijft 
 **Context:** Appnotificaties haalden hun brondata pas op bij het openen van het overzicht. Met een gesloten iOS-app moet een actieve server gebeurtenissen verzamelen, autoriseren en bezorgen, en de bestaande protocolvensters dekken geen toestelregistratie of opt-in. Michel koos op 7 november voor volledige selfhosting en gaf op 8 november het afzonderlijke protocolvenster voor A-21 vrij.
 **Decision:** Een optionele `capabilities.push_notifications` en de eigen sessieroutes `PUT/DELETE /users/me/push-installations/{installation_id}`, plus `DELETE /users/me/push-installations` dat alle registraties van de aanroepende sessie intrekt. De eigen server praat rechtstreeks met APNs en bewaart de topicgebonden sleutel lokaal, buiten `/config`. Het begint met films en afleveringen uit de serverbibliotheken en een duurzame wachtrij. Een centrale Pleya-relay en distributie van een gedeelde pushsleutel vallen weg.
 **Consequences:** V1 behoudt de bestaande velden, betekenis, aanvraagbody's en enums; de vlag staat standaard uit en clients gebruiken de nieuwe gesloten body pas als hij aan staat. Oudere servers en clients houden de in-appmeldingen. Seerr en releases volgen pas met een geverifieerde accountkoppeling en releasebron (A-21-PUSH-2). Vóór release volgt een proef met een getekende iOS-build en echte APNs-bezorging. Uitrol staat los van dit besluit.
+
+## DEC-XXX: Regiekamer is de vorm van Aanvragen en Meldingen
+
+**Date:** 2026-11-09
+**Status:** accepted (Michel, 9 november 2026: "Ik ga voor regiekamer als je het nagekeken hebt akkoord, bouwen en door tot en met testflight"). Het nummer volgt bij de merge (AGENTS.md).
+**Roadmap:** A-20/A-21. Vervangt voor de lijst, het menu achter een aanvraag en Meldingen de vorm uit de goedgekeurde set [Requests 2.0](assets/requests-2.0/README.md); het gedrag uit die set (rechten, foutstaten, onbekende uitkomsten) blijft gelden.
+**Context:** De lijst Alle aanvragen zag er in de app niet uit als Pleya ([afwijkingen](assets/requests-2.1-meldingen/AFWIJKINGEN.md)). Michel koos uit [drie richtingen](assets/requests-richtingen/README.md) richting C, Regiekamer: compact, beheer eerst.
+**Decision:**
+
+1. Boven de lijst van een beheerder staan teltegels: wachten op jou, onderweg, en meldingen open (waar de pagina Meldingen bestaat, anders alle aanvragen). Een tegel is een snelkoppeling naar zijn filter; de getallen staan alleen in de tegels, de statuschips zijn kale filters.
+2. Onder Alle staat de lijst in beslisvolgorde: Wacht op jou (oudste eerst), Onderweg, Afgehandeld. Een gekozen filter is één lijst zonder koppen.
+3. Een aanvraag is een compacte rij in één kaart: poster, titel, één feitenregel, wachttijd, en voor een open beslissing ronde knoppen Afwijzen en Goedkeuren. De rij zelf opent het menu; daarin staan de feiten (seizoenen, kwaliteit, aangevraagd, al in Pleya) en alle acties.
+4. Een beheerder kan aanvragen aanvinken en ze met één Goedkeuren tegelijk goedkeuren (één verzoek per aanvraag, één herlaadactie). Vegen naar rechts keurt goed; vegen naar links vraagt eerst om bevestiging.
+5. Meldingen volgen dezelfde vorm: tegels Open en Opgelost, compacte rijen met het type als icoon, het gesprek als berichten. Snelle antwoorden vullen het antwoordveld en versturen niets.
+
+**Replaces:** de compacte iPhone-rij zonder knoppen uit PR #657 (REQ-PHONE-1109): op de iPhone staan Afwijzen en Goedkeuren weer op de rij, en de rij zelf opent het menu. De iPhone-titelbalk en de iPad- en Mac-afbakening uit die PR blijven.
+**Not in this decision:** de limiet van een aanvrager in het menu (vraagt beheerrecht op gebruikers), notificaties met samenvatting (C4, serverwerk), de Apple TV-vorm (C5) en Probleem melden (open beslispunt in `docs/ROADMAP.md`).
+**Consequences:** De goldens `test/goldens/seerr_regiekamer_*` bewaken de compositie op iPhone-breedte. De simulatorrun met Pleya Verify (`ios.requests.manage`, `ios.seerr.issues`) en de visuele review staan nog open.

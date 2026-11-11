@@ -66,10 +66,13 @@ void main() {
     expect(rows.last.onApprove, isNotNull);
   });
 
-  testWidgets('an iPhone request row moves the actions into the sheet', (tester) async {
+  // Regiekamer (DEC-XXX, Michel 9 november 2026) puts the decision back on the
+  // iPhone row as round Afwijzen/Goedkeuren buttons; the row itself opens the
+  // menu with the facts and every other action.
+  testWidgets('an iPhone request row keeps the decision on the row and opens the menu from the row', (tester) async {
     await pump(tester, iphone, requests);
     final rows = tester.widgetList<SeerrRequestRow>(find.byType(SeerrRequestRow)).toList();
-    expect(rows.last.onApprove, isNull);
+    expect(rows.last.onApprove, isNotNull);
     expect(rows.last.onMore, isNotNull);
   });
 
