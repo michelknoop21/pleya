@@ -20,6 +20,9 @@ class _FlakyImage extends ImageProvider<_FlakyImage> {
 
   /// When set, a successful load waits for it, like a download in progress.
   final Completer<void>? gate;
+
+  /// When set, the load with this number waits for it and then fails.
+  ({int load, Completer<void> until})? hangingFailure;
   int loads = 0;
 
   @override
@@ -29,6 +32,14 @@ class _FlakyImage extends ImageProvider<_FlakyImage> {
   ImageStreamCompleter loadImage(_FlakyImage key, ImageDecoderCallback decode) {
     loads++;
     final attempt = loads;
+    if (hangingFailure case (:final load, :final until) when load == attempt) {
+      return OneFrameImageStreamCompleter(
+        until.future.then<ImageInfo>((_) {
+          scheduleMicrotask(() => PaintingBinding.instance.imageCache.evict(key));
+          throw const _Dropped();
+        }),
+      );
+    }
     if (attempt <= failures) {
       scheduleMicrotask(() => PaintingBinding.instance.imageCache.evict(key));
       return OneFrameImageStreamCompleter(Future<ImageInfo>.error(error ?? const _Dropped()));
@@ -170,5 +181,28 @@ void main() {
 
     expect(find.text('failed'), findsNothing);
     expect(tester.widget<RawImage>(find.byType(RawImage)).image, isNotNull);
+  });
+
+  testWidgets('a reload signal during the last retry gives the tile its attempts back', (tester) async {
+    // A resume aborts the running download and sends the signal in one call.
+    // Ignoring the signal left the tile failed until the next one.
+    final abort = Completer<void>();
+    image = _FlakyImage(failures: 2)..hangingFailure = (load: 3, until: abort);
+    await pumpPoster(tester);
+    await tester.pump(const Duration(seconds: 2));
+    await settleLoad(tester);
+    await tester.pump(const Duration(seconds: 10));
+    await settleLoad(tester);
+    expect(image.loads, 3, reason: 'the last automatic retry hangs');
+
+    ArtworkReloadSignal.instance.requestReload();
+    abort.complete();
+    await settleLoad(tester);
+    await tester.pump(const Duration(seconds: 2));
+    await settleLoad(tester);
+    await tester.pump();
+
+    expect(image.loads, 4);
+    expect(find.text('failed'), findsNothing);
   });
 }

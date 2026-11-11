@@ -422,7 +422,9 @@ void main() {
       var down = true;
       http.Response json(Object body) =>
           http.Response(jsonEncode(body), 200, headers: const {'content-type': 'application/json'});
-      MultiServerManager.offlineAddRetryDelays = const [Duration(milliseconds: 30), Duration(milliseconds: 30)];
+      // Short and many: the probes start during the bind, and a loaded runner
+      // must not use them all up before the server is allowed to answer.
+      MultiServerManager.offlineAddRetryDelays = List.filled(40, const Duration(milliseconds: 50));
       addTearDown(
         () => MultiServerManager.offlineAddRetryDelays = const [
           Duration(seconds: 10),
@@ -430,7 +432,7 @@ void main() {
           Duration(seconds: 90),
         ],
       );
-      manager = MultiServerManager()
+      manager = _RecoversDuringBindManager()
         ..debugPleyaServerHttpClientFactory = () => MockClient((request) async {
           // The shape of log s5jok: `/info` got no answer during a busy start.
           if (down) throw http.ClientException('no answer', request.url);
@@ -493,6 +495,23 @@ void main() {
       expect(manager.serverIds, contains('srv-9'));
       expect(manager.offlineServerIds, contains('srv-9'));
       expect(multiServerProvider.serverIds, isNot(contains('srv-9')), reason: 'hidden while it is away');
+
+      // Second half: the server answers while the bind is still running.
+      // Nothing promotes a server after the bind has set the visible set, so
+      // the bind itself has to include it.
+      manager.removeServer(ServerId('srv-9'));
+      (manager as _RecoversDuringBindManager).recoverDuringBind = () async {
+        down = false;
+        await pumpUntil(() async => manager.onlineServerIds.contains('srv-9'));
+      };
+      down = true;
+      await binder.rebindActive();
+      expect(multiServerProvider.serverIds, contains('srv-9'), reason: 'online before the bind ended, so visible');
+      (manager as _RecoversDuringBindManager).recoverDuringBind = null;
+      manager.removeServer(ServerId('srv-9'));
+      down = true;
+      await binder.rebindActive();
+      expect(multiServerProvider.serverIds, isNot(contains('srv-9')));
 
       // No resume, no network change and no button: the probe that follows a
       // failed add finds it by itself.
@@ -1095,6 +1114,18 @@ mixin _RecordsRestrictions on MultiServerManager {
     );
     restrictedPlexAccounts = {if (keepExisting) ...restrictedPlexAccounts, ...plexAccountClientIds};
     restrictedServerIds = {if (keepExisting) ...restrictedServerIds, ...serverIds};
+  }
+}
+
+/// A Pleya Server that fails its add and answers before the bind is over.
+class _RecoversDuringBindManager extends MultiServerManager {
+  Future<void> Function()? recoverDuringBind;
+
+  @override
+  Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
+    final added = await super.addPleyaServerConnection(connection);
+    if (!added) await recoverDuringBind?.call();
+    return added;
   }
 }
 

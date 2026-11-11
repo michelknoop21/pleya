@@ -653,7 +653,14 @@ class _ArtworkRetryState extends State<_ArtworkRetry> {
   }
 
   void _onReloadSignal() {
-    if (!_failed || _probe != null) return;
+    if (!_failed) return;
+    if (_probe != null) {
+      // A retry is already under way. If it was the last automatic one and it
+      // fails (a resume aborts it in the same breath as this signal), the tile
+      // would wait for the next signal. Give it its attempts back instead.
+      _automaticRetries = 0;
+      return;
+    }
     _timer?.cancel();
     _automaticRetries = 0;
     _startProbe();
