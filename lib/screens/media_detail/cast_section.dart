@@ -10,6 +10,7 @@ import '../../utils/media_image_helper.dart';
 import '../../widgets/focus_builders.dart';
 import '../../widgets/horizontal_scroll_with_arrows.dart';
 import '../../widgets/optimized_media_image.dart';
+import 'borrowed_cast.dart';
 
 /// Horizontal cast row for the media detail screen, with the locked-focus
 /// pattern for D-pad navigation. Extracted from `MediaDetailScreen`; the
@@ -29,11 +30,16 @@ class CastSection extends StatelessWidget {
   /// and role centred below. Other platforms keep the square card.
   final bool round;
 
+  /// Pictures from another source of the same title, for a cast list that
+  /// came without any.
+  final BorrowedCast? borrowedCast;
+
   const CastSection({
     super.key,
     required this.metadata,
     required this.cardWidth,
     required this.client,
+    this.borrowedCast,
     required this.focusNode,
     required this.onKeyEvent,
     required this.scrollController,
@@ -82,6 +88,7 @@ class CastSection extends StatelessWidget {
                 itemCount: metadata.roles!.length,
                 itemBuilder: (context, index) {
                   final actor = metadata.roles![index];
+                  final picture = BorrowedCast.resolve(actor, client, borrowedCast);
                   final isFocused = hasFocus && index == focusedIndex;
 
                   return Padding(
@@ -104,8 +111,8 @@ class CastSection extends StatelessWidget {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(radius),
                                   child: OptimizedMediaImage(
-                                    client: client,
-                                    imagePath: actor.thumbPath,
+                                    client: picture.client,
+                                    imagePath: picture.thumbPath,
                                     width: imageSize,
                                     height: imageSize,
                                     fit: BoxFit.cover,

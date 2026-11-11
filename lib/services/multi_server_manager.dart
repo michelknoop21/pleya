@@ -11,6 +11,7 @@ import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../services/api_cache.dart';
+import 'image_cache_service.dart';
 import 'jellyfin_client.dart';
 import 'jellyfin_endpoint_discovery.dart';
 import 'local_folder_client.dart';
@@ -179,6 +180,7 @@ class MultiServerManager {
   /// Unlike [_unreachableSince] this one outlives a resume: it is cleared by a
   /// network change, a manual reconnect or a success only.
   final ReconnectBackoff _reconnectBackoff = ReconnectBackoff();
+  final Map<String, Timer> _offlineAddRetry = {};
 
   /// Get all registered server IDs (Plex + Jellyfin).
   ///
@@ -698,6 +700,7 @@ class MultiServerManager {
     _plexAccountByServer.remove(serverId);
     _serverStatus.remove(serverId);
     _authErrorServers.remove(serverId);
+    _offlineAddRetry.remove(serverId)?.cancel();
     _releaseGeneration(serverId);
     _statusController.add(Map.from(_serverStatus));
     appLogger.i('Removed server: $serverId');
@@ -1066,11 +1069,48 @@ class MultiServerManager {
       if (_connectivitySubscription == null && healthy) {
         _startNetworkMonitoring();
       }
+      if (health == HealthStatus.offline) _scheduleOfflineAddRetry(serverId, client);
       return healthy;
     } catch (e, stackTrace) {
       appLogger.e('Failed to add Pleya Server ${connection.serverName}', error: e, stackTrace: stackTrace);
       return false;
     }
+  }
+
+  /// Waits between the probes of a server that did not answer while it was
+  /// being added.
+  @visibleForTesting
+  static List<Duration> offlineAddRetryDelays = const [
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+    Duration(seconds: 90),
+  ];
+
+  /// A server that did not answer while it was being added gets asked again
+  /// shortly after, without waiting for a resume or a network change. A start
+  /// is the busiest moment the app has, and one probe that times out there
+  /// says little about the server.
+  ///
+  /// A plain health probe, nothing more: no reconnect sweep (that would clear
+  /// the wait of every other server) and no auth retry, which stays reserved
+  /// for the user's own "reconnect" (see [retryPleyaServerAuth]).
+  void _scheduleOfflineAddRetry(String serverId, PleyaServerClient client, {int attempt = 0}) {
+    final delays = offlineAddRetryDelays;
+    if (attempt >= delays.length) return;
+    _offlineAddRetry[serverId]?.cancel();
+    _offlineAddRetry[serverId] = Timer(delays[attempt], () async {
+      _offlineAddRetry.remove(serverId);
+      bool stillWaiting() =>
+          identical(_clients[serverId], client) &&
+          _serverStatus[serverId] == false &&
+          !_authErrorServers.contains(serverId);
+      if (!stillWaiting()) return;
+      final generation = generationFor(ServerId(serverId));
+      final health = await client.checkHealth();
+      if (!stillWaiting() || !ownsGeneration(ServerId(serverId), generation)) return;
+      _applyHealth(ServerId(serverId), health);
+      if (health == HealthStatus.offline) _scheduleOfflineAddRetry(serverId, client, attempt: attempt + 1);
+    });
   }
 
   /// One real auth attempt for a Pleya Server whose session was rejected.
@@ -1102,6 +1142,7 @@ class MultiServerManager {
     final client = _clients.remove(connection.serverId);
     if (client != null) _closeClient(client);
     _serverStatus.remove(connection.serverId);
+    _offlineAddRetry.remove(connection.serverId)?.cancel();
     // A rejected session is what sends people to "disconnect" in the first
     // place, so this is the common path, not the edge: leave the id in
     // [_authErrorServers] and the re-auth bar keeps standing over a connection
@@ -1340,6 +1381,7 @@ class MultiServerManager {
       _serverStatus[serverId] = isOnline;
       _statusController.add(Map.from(_serverStatus));
       appLogger.d('Server $serverId status changed to: $isOnline');
+      if (isOnline) ArtworkReloadSignal.instance.requestReload();
     }
   }
 
@@ -1367,6 +1409,8 @@ class MultiServerManager {
         appLogger.w('Server $serverId auth rejected — token expired or revoked');
       } else {
         appLogger.d('Server $serverId status changed to: $isOnline');
+        // Posters that failed while this server was away get another attempt.
+        if (isOnline && prevOnline != true) ArtworkReloadSignal.instance.requestReload();
       }
     }
   }
@@ -1891,6 +1935,10 @@ class MultiServerManager {
   }
 
   Set<MediaServerClient> _detachAllClients() {
+    for (final timer in _offlineAddRetry.values) {
+      timer.cancel();
+    }
+    _offlineAddRetry.clear();
     _stopNetworkMonitoring();
     for (final timer in _reconnectDebounce.values) {
       timer.cancel();

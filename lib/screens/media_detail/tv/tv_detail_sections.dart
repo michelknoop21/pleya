@@ -186,6 +186,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
       cardHeight: TvDetailCastCard.height(pt),
       itemBuilder: (context, cell) {
         final role = roles[cell.index];
+        final picture = BorrowedCast.resolve(role, client, _borrowedCast);
         return AutomationNode(
           id: AutomationIds.mediaDetailSectionItem,
           instance: '$id.${cell.index}',
@@ -193,8 +194,11 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
           focusNode: cell.focusNode,
           child: TvDetailCastCard(
             cell: cell,
-            role: role,
-            client: client,
+            // Only the picture differs; `onSelect` below keeps the page's own role.
+            role: picture.thumbPath == role.thumbPath
+                ? role
+                : MediaRole(id: role.id, tag: role.tag, role: role.role, thumbPath: picture.thumbPath),
+            client: picture.client,
             onSelect: () {
               SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
               _navigateToActorMedia(
