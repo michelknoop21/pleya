@@ -1,6 +1,6 @@
 # Aanvragen, meldingen en notificaties: drie richtingen
 
-**Status: GEKOZEN, 9 november 2026.** Michel koos richting C, Regiekamer ([DEC-XXX](../../DECISIONS.md)). A en B zijn niet gekozen en blijven alleen als referentie staan.
+**Status: GEKOZEN, 9 november 2026.** Michel koos richting C, Regiekamer ([DEC-203](../../DECISIONS.md#dec-203-regiekamer-is-de-vorm-van-aanvragen-en-meldingen)). A en B zijn niet gekozen en blijven alleen als referentie staan.
 
 Roadmap: A-20.
 

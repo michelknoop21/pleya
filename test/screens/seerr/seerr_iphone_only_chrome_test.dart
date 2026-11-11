@@ -66,7 +66,7 @@ void main() {
     expect(rows.last.onApprove, isNotNull);
   });
 
-  // Regiekamer (DEC-XXX, Michel 9 november 2026) puts the decision back on the
+  // Regiekamer (DEC-203, Michel 9 november 2026) puts the decision back on the
   // iPhone row as round Afwijzen/Goedkeuren buttons; the row itself opens the
   // menu with the facts and every other action.
   testWidgets('an iPhone request row keeps the decision on the row and opens the menu from the row', (tester) async {

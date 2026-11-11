@@ -1,4 +1,4 @@
-/// Regiekamer on an iPhone (DEC-XXX, mockups C1, C2, C3): the requests list with
+/// Regiekamer on an iPhone (DEC-203, mockups C1, C2, C3): the requests list with
 /// its count tiles and decision-first sections, the menu behind a row with its
 /// facts, and a report with its conversation and quick replies.
 ///

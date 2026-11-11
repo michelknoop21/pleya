@@ -5870,10 +5870,10 @@ van deze twee toestelbronnen zijn nog niet uitgelezen. Hardwarevalidatie blijft 
 **Decision:** Een optionele `capabilities.push_notifications` en de eigen sessieroutes `PUT/DELETE /users/me/push-installations/{installation_id}`, plus `DELETE /users/me/push-installations` dat alle registraties van de aanroepende sessie intrekt. De eigen server praat rechtstreeks met APNs en bewaart de topicgebonden sleutel lokaal, buiten `/config`. Het begint met films en afleveringen uit de serverbibliotheken en een duurzame wachtrij. Een centrale Pleya-relay en distributie van een gedeelde pushsleutel vallen weg.
 **Consequences:** V1 behoudt de bestaande velden, betekenis, aanvraagbody's en enums; de vlag staat standaard uit en clients gebruiken de nieuwe gesloten body pas als hij aan staat. Oudere servers en clients houden de in-appmeldingen. Seerr en releases volgen pas met een geverifieerde accountkoppeling en releasebron (A-21-PUSH-2). Vóór release volgt een proef met een getekende iOS-build en echte APNs-bezorging. Uitrol staat los van dit besluit.
 
-## DEC-XXX: Regiekamer is de vorm van Aanvragen en Meldingen
+## DEC-203: Regiekamer is de vorm van Aanvragen en Meldingen
 
 **Date:** 2026-11-09
-**Status:** accepted (Michel, 9 november 2026: "Ik ga voor regiekamer als je het nagekeken hebt akkoord, bouwen en door tot en met testflight"). Het nummer volgt bij de merge (AGENTS.md).
+**Status:** accepted (Michel, 9 november 2026: "Ik ga voor regiekamer als je het nagekeken hebt akkoord, bouwen en door tot en met testflight").
 **Roadmap:** A-20/A-21. Vervangt voor de lijst, het menu achter een aanvraag en Meldingen de vorm uit de goedgekeurde set [Requests 2.0](assets/requests-2.0/README.md); het gedrag uit die set (rechten, foutstaten, onbekende uitkomsten) blijft gelden.
 **Context:** De lijst Alle aanvragen zag er in de app niet uit als Pleya ([afwijkingen](assets/requests-2.1-meldingen/AFWIJKINGEN.md)). Michel koos uit [drie richtingen](assets/requests-richtingen/README.md) richting C, Regiekamer: compact, beheer eerst.
 **Decision:**
