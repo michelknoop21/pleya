@@ -319,7 +319,13 @@ class LanDiscoveryService {
     ]);
   }
 
-  Stream<List<DiscoveredHost>> startListeningForContexts(List<RemoteAuthContext> contexts) {
+  Stream<List<DiscoveredHost>> startListeningForContexts(List<RemoteAuthContext> contexts) =>
+      startListeningForCurrentContexts(() => contexts);
+
+  /// Like [startListeningForContexts], but [contexts] is asked at every beacon:
+  /// a listener that outlives an identity rebuild then matches the identities
+  /// of now, not those of the moment it bound (A-23e).
+  Stream<List<DiscoveredHost>> startListeningForCurrentContexts(List<RemoteAuthContext> Function() contexts) {
     _stopListeningInternal();
     _discoveredHosts.clear();
 
@@ -345,7 +351,7 @@ class LanDiscoveryService {
     return _hostsController.stream;
   }
 
-  Future<void> _bindListener(List<RemoteAuthContext> contexts) async {
+  Future<void> _bindListener(List<RemoteAuthContext> Function() contexts) async {
     final generation = _listenGeneration;
     try {
       final socket = await _listenerSocketFactory();
@@ -358,7 +364,7 @@ class LanDiscoveryService {
       appLogger.d('LanDiscovery: Listening on port $discoveryPort');
 
       _listenSubscription = _listenSocket!.listenDatagrams(
-        (datagram) => _handleDatagram(datagram, contexts),
+        (datagram) => _handleDatagram(datagram, contexts()),
         debugLabel: 'LanDiscovery listener',
         onSocketClosed: () {
           if (!identical(_listenSocket, socket)) return;
@@ -437,6 +443,9 @@ class LanDiscoveryService {
       if (_discoveredHosts.containsKey(hostKey)) {
         final existing = _discoveredHosts[hostKey]!;
         existing.lastSeen = DateTime.now();
+        if (existing.playing != playing) {
+          appLogger.d('LanDiscovery: $name ($platform) playing hint ${existing.playing} -> $playing');
+        }
         // Only emit if fields actually changed
         if (existing.name != name ||
             existing.port != port ||
