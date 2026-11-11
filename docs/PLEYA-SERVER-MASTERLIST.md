@@ -65,9 +65,15 @@ Michel gaf het additieve venster voor A-21 vrij. Zie [DEC-201](DECISIONS.md#push
 Michel geeft na log9fj9a opdracht de oorzaak te herstellen (C-05/S2.14/S22.6; client A-06/A-07).
 S2.14 wordt voor deze regressie uitgebreid met exacte bonusmapsegmenten onder een filmmap,
 waaronder Featurettes; geen substringfilter, rootfilmtitels of persoonlijke data verwijderen.
-The Simple Life vereist een bevestigde match met de serie2003 (TMDB4406), via de bestaande
+The Simple Life vereist een bevestigde match met de serie uit 2003 (TMDB 4406), via de bestaande
 owner/admin-matchroute. Geen protocolwijziging, nieuw endpoint of autorisatie-uitbreiding.
-Status: onderzoek/implementatie; test-, review- en uitrolbewijs volgt, geen acceptatie gesloten.
+Status 11 november: clientcorrectie beschikbaar in TestFlight 462 (iOS/tvOS/macOS), uit
+merge `8820ca925`; alle drie bij Apple VALID/IN_BETA_TESTING. NAS draait dezelfde serverbron op
+schema 37. Beide opstartscans zijn zonder fouten afgerond; de twee waargenomen film-bonusitems
+zijn nu extras, met behoud van item-/versie-/bestands-ID en aanwezigheid. De gewone catalogusfilter
+sluit beide uit. De eigenaarmatch van The Simple Life blijft open: ambiguous, geen toegepast ID;
+de benodigde beheersessie ontbreekt nog. Geen volledige hardware-/matchingacceptatie gesloten.
+[Afgebakend bewijs en release](qa/2026-11-11-catalog-artwork-fallback.md).
 
 ## 1. Stand in één blik
 

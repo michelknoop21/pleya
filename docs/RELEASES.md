@@ -47,11 +47,11 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-## 2.8.1 · build 462 · prepared · iPhone, iPad, Apple TV and Mac
+## 2.8.1 · build 462 · 11 November 2026 · iPhone, iPad, Apple TV and Mac
 
-<!-- commit: baa939551691e6e67e1e0ca035b27769a9663b0f -->
+<!-- commit: 8820ca925d46bb2faffecea791665afabf823447 -->
 
-Prepared for TestFlight; not uploaded yet.
+Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
 
 ### Fixed
 
@@ -63,6 +63,11 @@ Prepared for TestFlight; not uploaded yet.
 - **Movie bonus folders stay out of the ordinary film list after a scan.** Pleya Server
   recognizes Featurettes, Extras, Trailers and Samples subfolders while retaining their
   files, item identity and watch history.
+
+### Notes
+
+- Pleya Server titles with an ambiguous match still need an owner or administrator
+  to confirm the correct title before their sources can share artwork.
 
 ## 2.8.1 · build 461 · 10 November 2026 · iPhone, iPad, Apple TV and Mac
 
