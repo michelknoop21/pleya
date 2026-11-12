@@ -49,6 +49,18 @@ void main() {
       expect(out, contains('stream_token=[REDACTED]&x=1'));
     });
 
+    test('a stream session secret is redacted, with and without its Cookie header', () {
+      const secret = 'Q2hhbmdlZC1zZWNyZXQtdmFsdWUtZm9yLXRlc3Rpbmc';
+      for (final line in [
+        'http-header-fields=Cookie: pleya_ss_0191e27a-4f8d=$secret',
+        'reopen with pleya_ss_0191e27a-4f8d=$secret; other=1',
+      ]) {
+        final out = redactLogMessageForTest(line);
+        expect(out, isNot(contains(secret)), reason: line);
+      }
+      expect(redactLogMessageForTest('pleya_ss_abc=$secret'), 'pleya_ss_abc=[REDACTED]');
+    });
+
     test('negative control: other text passes untouched', () {
       const plain = 'pleyaServer.srv connected; plex.tv ok';
       expect(redactLogMessageForTest(plain), plain);

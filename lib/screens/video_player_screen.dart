@@ -681,7 +681,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   /// the commit leaves the previous session — and everything derived from
   /// it — untouched, so there is nothing to roll back.
   void _commitPlaybackSession(PlaybackSession session) {
+    final previous = _playbackSession;
     _playbackSession = session;
+    PlaybackSession.handOver(previous: previous, next: session, playerAlive: mounted);
     _effectiveSelectedMediaIndex = session.mediaIndex;
     _requestedMediaSourceId = session.mediaSourceId;
     _selectedQualityPreset = session.qualityPreset;
@@ -1465,6 +1467,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     }
     _progressTracker?.stopTracking();
     _progressTracker?.dispose();
+    // Whatever the report decision above, the stream credential's keep-alive
+    // ends with the player: a held one counts against the server's cap.
+    _playbackSession?.result.release?.call();
     _sendLiveTimeline('stopped');
     _stopLiveTimelineUpdates();
 

@@ -58,7 +58,7 @@ void main() {
 
       final result = await play(item);
 
-      expect(result.videoUrl, 'http://nas.lan:8832/pleya/v1/stream/version-2');
+      expect(result.videoUrl, 'http://nas.lan:8832/pleya/v1/stream/version-2?ss=ss-1');
       expect(result.selectedMediaIndex, 1);
       expect(server.planRequests.single.containsKey('version_id'), isFalse);
       expect(server.planRequests.single['item_id'], 'movie-1');
@@ -122,7 +122,7 @@ void main() {
       final result = await play(item);
 
       expect(server.requests.where((r) => r.contains('/playback/plan')), isEmpty);
-      expect(result.videoUrl, endsWith('/stream/version-1'));
+      expect(result.videoUrl, endsWith('/stream/version-1?ss=ss-1'));
     });
 
     test('quality sends explicit output limits only to a supporting server and validates the result', () async {
@@ -228,7 +228,7 @@ void main() {
 
       final result = await play(item);
 
-      expect(result.videoUrl, endsWith('/stream/version-1'));
+      expect(result.videoUrl, endsWith('/stream/version-1?ss=ss-1'));
       expect(result.playMethod, 'DirectPlay');
     });
 
@@ -242,7 +242,7 @@ void main() {
 
       final result = await play(item);
 
-      expect(result.videoUrl, endsWith('/stream/version-1'));
+      expect(result.videoUrl, endsWith('/stream/version-1?ss=ss-1'));
       expect(result.isTranscoding, isFalse);
       expect(server.sessionCalls, ['DELETE /playback/sessions/sess-1']);
     });
@@ -257,7 +257,7 @@ void main() {
 
       final result = await play(item);
 
-      expect(result.videoUrl, 'http://nas.lan:8832/pleya/v1/playback/sessions/sess-1/index.m3u8');
+      expect(result.videoUrl, 'http://nas.lan:8832/pleya/v1/playback/sessions/sess-1/index.m3u8?ss=ss-1');
       expect(result.isTranscoding, isTrue);
       expect(result.playMethod, 'Transcode');
       expect(result.selectedMediaIndex, 1);
