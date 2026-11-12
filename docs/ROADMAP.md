@@ -144,6 +144,7 @@ Productbesluit Michel, 10 oktober 2026, bindend gemaakt op 17 oktober 2026: unif
 | C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | PS-14 vrijgegeven voor uitvoering (DEC-149, 10 okt), onder drie voorwaarden; S3 vrij; P5 en PS-15 vrijgegeven op 29 okt (DEC-183), S6 houdt S3-/contractafhankelijkheden; protocolvenster voor boeken nog niet geopend. PS-11A: status staat in de masterlijst. Algemene Big P-pauze opgeheven (8 okt) |
 | C-04 | P1 | Server | Loudness D3-D5 en client-consumptie | Status herijken |
 | C-05 | P2 | Server | Volledige S0-S25-dekking, inclusief Web consumer, beheer-GUI en setup | Uitvoering alle pakketten opgedragen op 29 okt; detailstatus en bewijs in servermasterlijst, bestaande vrijgave-/hardware-/releasepoorten blijven gelden |
+| C-07 | P1 | Server | S27.1 LAN first: thuis rechtstreeks en versleuteld naar de NAS (TLS-listener op het LAN-adres, certificaat via DNS-01, route gemeld door de server, app kiest thuis eerst die route en anders de tunnel), zodat een haperende tunnel het afspelen thuis niet stopt; zie [C-07](#c-07-lan-first) en [het plan](plans/2026-11-12-lan-first/PLAN.md) | Gepland. Roadmap deviation: opdracht Michel 12 november 2026, eerst een plan, niets uitrollen. Besluit Michel 12 november 2026: eigen werkpakket en eigen slice S27, geen stap binnen C-06/S26, buiten C-05 en golf E6, en geen voorwaarde voor de S15-gate; P1 betekent dus geen gateblokkade. TLS in de binary als afwijking van DEC-037 (DEC-XXX (TLS-listener thuisnetwerk)) en een eigen domein los van S26 zijn besloten. Wacht op de besluiten B2 en B4 tot en met B8 en de NAS-metingen uit fase 0. C-06 is gereserveerd door het S26-werkpakket (commit `71200cd09`, niet gemerged); de routevelden van beide pakketten moeten nog op elkaar worden afgestemd (plan hoofdstuk 2) |
 | D-01 | P2 | E-books/routes | Bestaande e-bookbranch en schermen | Status herijken |
 | D-02 | P2 | E-books/routes | Resterende e-bookuitbreidingen uit northstar | Volgens actueel branchmanifest vast te stellen |
 | D-03 | P2 | E-books/routes | Eigen routes muziek, boeken en overige typen | Besluit nodig |
@@ -317,6 +318,17 @@ After that follow `docs/PLEYA-SERVER-MASTERLIST.md` and its dependency graph:
 This list groups scope, not a new serial dependency chain. In particular, the existing graph allows S7 after S0, S10 after S7+S1+S2, and S11 after S10+S2. The basic server management GUI does not have to wait for S14, the consumer player, or completion of every server slice. Existing phase approvals and the WIP limit still apply. S8 waits for S7+S4+S5; S9 for S7+S3+S6; S12 for S9+S6; S13 for S8. P5 remains a prerequisite for the reading-state contract.
 
 Loudness D5 gets its own protocol window only after D1-D4 are proven; it does not ride on S2.
+
+### C-07: LAN first
+
+Roadmap deviation: opdracht Michel 12 november 2026, na de tunnelstoring van 11 november waarbij een film op de Apple TV stokte. Wat de wijzigingsregel vraagt:
+
+1. Werkpakket: nieuw C-07 met slice S27 (taak S27.1, eerder als S24.7 voorgesteld). S24, golf E6, C-05 en de S15-gate veranderen niet; dat is het besluit van Michel van 12 november 2026.
+2. Waarom: thuis loopt elk toestel via de Cloudflare Tunnel terwijl de NAS in hetzelfde netwerk staat, en plat HTTP op het LAN is geen optie (DEC-051). S24 is gesloten en voorziet hier niet in; DEC-037 hield TLS buiten de binary.
+3. Afhankelijkheden en release: de fasen 1 tot en met 3 zijn security-branches met een eigen adversariële review vóór de bundel; fase 2 vraagt een protocolvenster (B5); fase 4 vraagt NAS-werk en een Apple TV in huis. Geen releaseblokker: Plex-off en de S15-gate wachten er niet op, en een app zonder C-07 werkt zoals nu via de tunnel. De appwijziging rijdt mee in een gewone TestFlight-bundel.
+4. Wat wijkt: zolang C-07 in de planfase zit (besluiten en fase 0) is het spec-werk dat de WIP-limiet toestaat, en verdringt het niets. Met de bouw van fase 1 neemt C-07 de ene onafhankelijke parallelle implementatieplek naast de primaire stroom; wat daar op dat moment loopt, wacht of C-07 wacht, en die keuze legt Michel vast bij de start van fase 1. De toestelproef in fase 4 vraagt Michels tijd naast de hardwareronde van A-22.
+5. Besluit Michel: eigen werkpakket en geen gatevoorwaarde, TLS in de binary (DEC-XXX (TLS-listener thuisnetwerk)) en een eigen domein los van S26, alle drie op 12 november 2026. De prioriteit P1 komt uit het plan; Michel kan haar herzien zonder dat de gate verandert.
+6. Review: deze roadmapdiff krijgt een onafhankelijke inhoudelijke review vóór de merge.
 
 ## Requests 2.0
 

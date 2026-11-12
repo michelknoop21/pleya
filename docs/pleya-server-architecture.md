@@ -1294,6 +1294,11 @@ Fase 11 hardent dit: rate limiting op de auth-endpoints, een expliciete lijst va
 authenticatie bereikbaar is, gedrag bij traag netwerk, en een test die aantoont dat range-requests
 door de gekozen proxy heen intact blijven.
 
+**Afwijking voor het thuisnetwerk, 12 november 2026.** Michel besloot dat de binary op een tweede,
+optionele listener TLS mag termineren, gepubliceerd op het LAN-adres van de NAS, met een certificaat
+dat buiten de binary wordt aangevraagd: [DEC-XXX (TLS-listener thuisnetwerk)](DECISIONS.md),
+roadmap C-07. Geen NAT-traversal, geen relay en geen certificaatuitgifte in de binary blijven gelden.
+
 ---
 
 ## 16. Security en dreigingsmodel
@@ -3091,6 +3096,8 @@ een sessie en een levenscyclus. fMP4 en HLS op het transcode-pad, geen DASH.
 **DEC-037: Pleya Server bouwt geen eigen NAT-traversal of relay.** Het architectuurbesluit is dat de
 server correct werkt achter HTTPS en achter een omgekeerde proxy; hoe die proxy tot stand komt is een
 deploymentrecept en staat in de documentatie, niet in de binary.
+Voor het thuisnetwerk is daar op 12 november 2026 bewust van afgeweken: de binary mag op een tweede,
+optionele listener TLS termineren, zie DEC-XXX (TLS-listener thuisnetwerk) en hoofdstuk 15.
 
 `DEC-119` tot en met `DEC-126` **zijn geschreven** op 24 augustus 2026, bij het ontwerpen van fase 9,
 en sluiten alle blokkerende gaten van het PS-9-ontwerp: het rollen- en rechtenmodel (DEC-119), de

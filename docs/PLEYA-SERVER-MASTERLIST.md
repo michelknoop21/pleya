@@ -83,13 +83,13 @@ de benodigde beheersessie ontbreekt nog. Geen volledige hardware-/matchingaccept
 | Backend basis | S1 tot S6 | 1 | 4 | 1 |
 | Web | S7 tot S13 | 2 | 4 | 1 |
 | Clients en agents | S14, S16 | 0 | 1 | 1 |
-| Uitgebreide scope | S17 tot S25 | 2 | 5 | 2 |
+| Uitgebreide scope | S17 tot S25, S27 | 2 | 5 | 3 |
 | Afronding | S15 | 0 | 1 | 0 |
-| **Totaal** | **26** | **6** | **15** | **5** |
+| **Totaal** | **27** | **6** | **15** | **6** |
 
 De slicetelling is op 29 oktober 2026 opnieuw afgeleid uit de bestaande taakstatussen; een slice met gereed én open werk telt als bezig. Dit voegt geen runtime- of releasebewijs toe.
 
-Per taak, en dat is de maat die telt: **165 taken, 92 gereed, 39 bezig, 34 open.** PS-12.0 is de afzonderlijke keuzefase: binnen de afrondingsscope zonder die regel zijn het **164 taken, 92 gereed, 39 bezig, 33 open**. Hercontrole op 5 november 2026 met `scripts/masterlist_counts.sh --check`: de taakregel klopt; dit is geen voltooiingspercentage. Zie de [reconciliatie per restregel](qa/2026-11-05-server-completion-reconciliation.md). S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **166 taken, 92 gereed, 39 bezig, 35 open.** PS-12.0 is de afzonderlijke keuzefase: binnen de afrondingsscope zonder die regel zijn het **165 taken, 92 gereed, 39 bezig, 34 open**. Hercontrole op 5 november 2026 met `scripts/masterlist_counts.sh --check`: de taakregel klopt; dit is geen voltooiingspercentage. Zie de [reconciliatie per restregel](qa/2026-11-05-server-completion-reconciliation.md). S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2, en S2.9 tot en met S2.11 (afleveringsnamen zonder `SxxExx`) zijn dat ook;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -143,6 +143,7 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 | Gate | S15 | Plex Replacement Readiness Gate op de testinstance (Plex blijft draaien, bestanden read-only gedeeld); productie-switch alleen met Michels go | E6 |
 | E7 (M7) | S3, rest van golf 2 tot 4 | boeken en de rest van de oorspronkelijke graaf | gate (naar voren te halen) |
 | keuze | PS-12 | Plex-migratie, eigen vrijgave | Michel |
+| los (C-07) | S27 | LAN first: thuis rechtstreeks en versleuteld naar de NAS, de tunnel alleen buitenshuis | fase 0 (besluiten en NAS-metingen) en het protocolvenster voor `routes` (B5); geen voorwaarde voor de S15-gate en niet in E6 (besluit Michel, 12 november 2026) |
 
 *Binnen E6 geldt: eerst de ketenacceptatie op de testinstance en de gaten die daaruit komen, dan de
 beheer-GUI (S10 met scherm 37, S18.3 en S25.6), en de off-site back-up (S25.7) loopt daar parallel aan.
@@ -598,6 +599,14 @@ is geen bewijs van gebouwde leesvoortgang of een reader.
 | S25.6 | Scherm 35 gebouwd, journey 13 | `[~]` | Scherm 35 gebouwd op `/admin/diagnostics/maintenance` (Diagnostiek > Onderhoud, zoals de northstar; link in de kop van Diagnostiek): lijst met status, trigger, grootte, geheimen wel/niet, laatste hersteltest; instellingen alleen lezen met variabelenaam en sleutel alleen als ingesteld/niet ingesteld; meldingen (`same_failure_domain`, geen sleutel, hersteltest te oud of nooit, laatste mislukt, bestand weg); Nu een back-up maken, Hersteltest, Terugzetten met de `restore_confirmation`-zin letterlijk over te typen, wachtstaat met 503/verbindingsverlies/401/time-out, en één uitleg per foutcode. Weggelaten omdat het contract het niet draagt: downloadknop, blok Versie en upgrade, lijst Faalpaden, onderhoudsmodus als schakelaar. Tests: `BackupsPage.test.ts` (24) en `backups.test.ts` met negatieve controles (restore zonder exacte zin stuurt niets, rood bevonden met `requirePhrase` weg; sleutel nergens in de DOM; weigering laat lijst staan; verversen stopt; lid ziet 404). Opnamen op 1920, 1440, 1280, 390 en 320 in `docs/qa/s25-backups/`. **Journey 13 open**: back-up, hersteltest, titel erbij, restore, upgrade over twee schema's heeft de echte testinstance nodig; alleen nagebootst bewezen | 2026-10-26 |
 | S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[~]` | 25 okt: geen eigen mechanisme; `docs/pleya-server-operator-backup.md` beschrijft Hyper Backup en rsync, de instellingen blijven omgevingsvariabelen (DEC-162 dicht). Hersteltest vanaf een kopie op de testinstance groen (`scripts/offsite-restore-test.sh`: verse back-up, rsync, bron weg, terugzetten, herstart, verify met 576 van 576 titels). Daarbij gevonden en gefixt: een terugkomende tar bleef op `missing` (`TestSyncRevivesABackupThatComesBackFromACopy`, negatieve controle met de oude SQL rood). 26 okt op productie: sleutel ingesteld, `/backups` op de USB3-schijf (andere fysieke schijf dan `/config`), verse back-up met geheimen en hersteltest geslaagd (577 van 577 titels), beschreven in "Zo staat het op de productie-NAS". 30 okt: ook lokaal tussen twee Docker-projecten op Windows herstelt de kopie accounts, instellingen, kijkstatus, favorieten en beoordelingen gelijk aan de bron; verkeerde sleutel (`409 backup_not_restorable`, reden `key`) en beschadigde tar laten de database ongewijzigd, zie [Windows-Docker-rapport](qa/2026-10-30-pleya-windows-docker-report.md). Geen off-site bewijs. Open bij Michel: de echte bestemming buiten de NAS en waar `PLEYA_SERVER_BACKUP_KEY` buiten de NAS staat | 2026-10-30 |
 | S25.8 | Deploy vervangt de webbundel zonder achtergebleven bestanden | `[x]` | C-05: 13 deploygevallen en 17 padcontroles groen; negatieve controle rood, codegate groen, onafhankelijke review zonder open bevindingen. Productiedeploy 5 november: 324 naar 203 bestanden, alle 203 bytegelijk; live HTML en JavaScript gelijk, readyz/healthz/HTML 200, container healthy. Schema 34 en `.env` behouden. [Bewijs en terugvalpunt](qa/2026-11-05-server-deploy-assets.md). | 2026-11-05 |
+
+### S27 LAN first (C-07)
+
+Toegevoegd op 12 november 2026 als eigen slice, op besluit van Michel van dezelfde dag: C-07 is een apart werkpakket, geen stap binnen C-06/S26 en geen voorwaarde voor de Plex Replacement Readiness Gate (S15). Daarom staat deze taak niet in S24 en niet in golf E6, en valt ze buiten C-05. Het nummer S26 is gereserveerd door het S26-werkpakket (C-06, commit `71200cd09`, niet gemerged). Afwijking van DEC-037: DEC-XXX (TLS-listener thuisnetwerk).
+
+| # | Taak | Status | Bewijs | Datum |
+| --- | --- | --- | --- | --- |
+| S27.1 | LAN first: een tweede listener met TLS op het LAN-adres van de NAS, certificaat via DNS-01 uit een sidecar, de route gemeld in `GET /server`, en de app die thuis eerst die route kiest en anders de tunnel (C-07) | `[ ]` | Plan: [docs/plans/2026-11-12-lan-first/PLAN.md](plans/2026-11-12-lan-first/PLAN.md), opdracht Michel 12 november 2026. Bevinding uit de repo: de server luistert in de container op `:8080` (`compose.yaml:31`); `127.0.0.1` is alleen de hostpublicatie (`compose.yaml:23`) en de tunnel bereikt de server over het bridgenetwerk (`server/docker-compose.yml:39-52`). Besloten door Michel op 12 november 2026: TLS in de binary (B3, DEC-XXX (TLS-listener thuisnetwerk)) en een eigen domein los van S26 (B1). Wacht op de besluiten B2 en B4 tot en met B8 in het plan en op de NAS-metingen van fase 0; het protocolvenster voor `routes` is niet geopend. Geen code, geen deploy | 2026-11-12 |
 
 ### PS-12 Plex-migratie (keuzefase)
 
