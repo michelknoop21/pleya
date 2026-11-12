@@ -23,6 +23,7 @@ import '../tv/tv_page_surface.dart';
 import '../tv/tv_unified_layout.dart';
 import '../../utils/formatters.dart';
 import '../../i18n/strings.g.dart';
+import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../models/livetv_capture_buffer.dart';
 import 'film_frame_palette.dart';
@@ -40,6 +41,9 @@ import 'widgets/tv_quality_summary_line.dart';
 import '../pleya_fly/fly_follow_indicators.dart';
 import 'widgets/volume_control.dart';
 import 'widgets/track_chapter_controls.dart';
+
+/// Corner radius of the filled play/pause button in the transport row.
+const double _kPrimaryButtonRadius = 12;
 
 /// Seek step multiplier for a streak of quickly repeated LEFT/RIGHT presses.
 ///
@@ -1443,7 +1447,10 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       onSelect: onPressed,
       onKeyEvent: (node, event) => _handleButtonKeyEvent(node, event, index),
       onFocusChange: _onFocusChange,
-      borderRadius: primary ? 12 : 20,
+      // The ring sits its own width outside the filled play button, so it needs
+      // the larger concentric radius; with the button's own 12 the corners of
+      // ring and fill part ways and the button reads as a hard square.
+      borderRadius: primary ? FocusTheme.ringRadiusAround(_kPrimaryButtonRadius) : 20,
       autoScroll: false,
       mode: primary ? FocusIndicatorMode.ring : FocusIndicatorMode.fill,
       focusColor: primary ? kFilmFocus : null,
@@ -1456,7 +1463,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
           style: primary
               ? IconButton.styleFrom(
                   backgroundColor: kFilmPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_kPrimaryButtonRadius)),
                 )
               : null,
           icon: AppIcon(icon, fill: 1, color: primary ? kFilmInk : color, size: iconSize),
