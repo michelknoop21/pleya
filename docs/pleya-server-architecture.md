@@ -1294,6 +1294,11 @@ Fase 11 hardent dit: rate limiting op de auth-endpoints, een expliciete lijst va
 authenticatie bereikbaar is, gedrag bij traag netwerk, en een test die aantoont dat range-requests
 door de gekozen proxy heen intact blijven.
 
+**Afwijking voor het thuisnetwerk, 12 november 2026.** Michel besloot dat de binary op een tweede,
+optionele listener TLS mag termineren, gepubliceerd op het LAN-adres van de NAS, met een certificaat
+dat buiten de binary wordt aangevraagd: [DEC-XXX (TLS-listener thuisnetwerk)](DECISIONS.md#dec-xxx-de-binary-mag-tls-termineren-op-een-thuislistener-het-certificaat-komt-van-buiten),
+roadmap C-07. Geen NAT-traversal, geen relay en geen certificaatuitgifte in de binary blijven gelden.
+
 ---
 
 ## 16. Security en dreigingsmodel
