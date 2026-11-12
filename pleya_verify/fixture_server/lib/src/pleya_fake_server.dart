@@ -285,6 +285,15 @@ class PleyaFakeServer {
   /// ask twice" read this.
   final List<String> requests = [];
 
+  /// Open stream sessions (DEC-051) by id. A test removes one to play an
+  /// expired session. A non-null [streamSessionFailureStatus] refuses a new one.
+  final Map<String, ({String versionId, String secret})> streamSessions = {};
+  int? streamSessionFailureStatus;
+  int _streamSessionCount = 0;
+
+  /// Every request a stream session authorised, as method and path.
+  final List<String> streamSessionUses = [];
+
   final Map<String, Map<String, dynamic>> items = {};
   final List<Map<String, dynamic>> libraries = [];
 
@@ -801,11 +810,15 @@ class PleyaFakeServer {
       return body == null ? _json(_error('library.not_found'), status: 404) : _json(body);
     }
     final bearer = request.headers['Authorization'];
+    // Like the server: a bearer is checked first, so a stream session or a
+    // stream token only authorises a request that carries none.
+    final streamAuthorized = bearer == null && _streamAuthorized(request, path, query);
+    if (streamAuthorized) streamSessionUses.add('${request.method} $path');
     final memoryUsername = _memoryAccessUsers[bearer];
     final expected = rejectCurrentAccessTokens ? null : 'Bearer at-$refreshCount';
     final authorized =
         !rejectCurrentAccessTokens && (assistantMemoryCapability ? memoryUsername != null : bearer == expected);
-    if (!authorized) {
+    if (!authorized && !streamAuthorized) {
       return _json(_error('auth.invalid_token'), status: 401);
     }
     if (path == '/server') {
@@ -840,6 +853,25 @@ class PleyaFakeServer {
     if (path == '/auth/stream-token') {
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       return _json({'stream_token': 'st-for-${body['version_id']}', 'expires_at': '2026-08-21T21:09:11Z'});
+    }
+
+    if (path == '/auth/stream-session' && request.method == 'POST' && watchState) {
+      if (streamSessionFailureStatus case final status?) {
+        return _json(_error('session.stream_session_limit'), status: status);
+      }
+      final versionId = (jsonDecode(request.body) as Map<String, dynamic>)['version_id'] as String;
+      final id = 'ss-${++_streamSessionCount}';
+      final secret = 'secret-$_streamSessionCount';
+      streamSessions[id] = (versionId: versionId, secret: secret);
+      return http.Response(
+        jsonEncode({'stream_session_id': id, 'expires_at': '2026-08-21T21:34:11Z'}),
+        200,
+        headers: {
+          'content-type': 'application/json',
+          'set-cookie':
+              'pleya_ss_$id=$secret; Path=/pleya/v1/stream/; Expires=Fri, 21 Aug 2026 21:34:11 GMT; HttpOnly; SameSite=Strict',
+        },
+      );
     }
 
     if (path == '/playback/plan' && request.method == 'POST' && playbackPlanCapability) {
@@ -1395,6 +1427,24 @@ class PleyaFakeServer {
     final polls = _downloadPolls[id] = (_downloadPolls[id] ?? 0) + 1;
     if (downloadFails) return _json(wire(id, 'failed'));
     return _json(wire(id, polls > downloadPrepareRounds ? 'ready' : 'preparing'));
+  }
+
+  /// DEC-051: `ss` plus the cookie named after it opens the bound version and
+  /// HLS files; a stream token opens its version and, loosely here, any
+  /// sidecar subtitle.
+  bool _streamAuthorized(http.Request request, String path, Map<String, String> query) {
+    final ss = query['ss'];
+    if (ss != null) {
+      final session = streamSessions[ss];
+      final cookies = (request.headers['cookie'] ?? '').split(';').map((c) => c.trim());
+      return session != null &&
+          cookies.contains('pleya_ss_$ss=${session.secret}') &&
+          (path == '/stream/${session.versionId}' || path.startsWith('/playback/sessions/'));
+    }
+    final token = query['stream_token'];
+    return token != null &&
+        token.startsWith('st-for-') &&
+        (path == '/stream/${token.substring('st-for-'.length)}' || path.startsWith('/subtitles/'));
   }
 
   http.Response _json(Object body, {int status = 200}) =>

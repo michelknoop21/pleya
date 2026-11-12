@@ -27,14 +27,16 @@ part of '../../pleya_server_client.dart';
 /// answer: a refused write teaches this client what it missed, and the next
 /// write carries the right claim.
 ///
-/// ## The stream URL carries no credential
+/// ## The stream URL carries no secret
 ///
-/// `GET /stream/{version_id}` is class `authenticated`, and this client
-/// authorises it with a bearer header rather than with the query-string stream
-/// token. The token in a URL exists for players that cannot set a header; mpv
-/// can, and a credential that never enters a URL never enters a log, a referrer
-/// or a shell history either. [PleyaServerClient.streamHeaders] carries it.
-mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
+/// With `capabilities.stream_sessions` the player gets a stream session: the
+/// non-secret id in the URL and the secret in a `Cookie` header, see
+/// `_PleyaServerStreamSessionMethods`. Without it, or when no session could be
+/// opened, it gets the access token as a bearer header from
+/// [PleyaServerClient.streamHeaders]. The query-string stream token exists for
+/// players that cannot set a header; mpv can, so only its sidecar subtitles use
+/// one, because `/subtitles` takes no stream session.
+mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSessionMethods {
   /// Where deferred subtitles are written; the app's temporary directory unless a test says otherwise.
   @visibleForTesting
   Directory? subtitleTempDirectory;
@@ -154,17 +156,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       deliverEmbeddedText:
           wireCapabilities.embeddedSubtitles && plan != null && plan.deliveryMode != PleyaDeliveryMode.directPlay,
     );
-    final subtitles = [
+    final sidecars = [
       for (final track in mediaInfo.subtitleTracks)
-        if (plan?.subtitle?.action != 'burn' && track.isExternalFile && track.key != null)
-          SubtitleTrack.uri(
-            track.key!,
-            title: track.title,
-            language: track.languageCode,
-            codec: track.codec,
-            isDefault: track.selected,
-            isForced: track.forced,
-          ),
+        if (plan?.subtitle?.action != 'burn' && track.isExternalFile && track.key != null) track,
     ];
 
     final deferredSubtitle = plan?.subtitle?.action == 'burn' ? null : _deferredEmbeddedSubtitle(mediaInfo);
@@ -182,6 +176,25 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       rethrow;
     }
 
+    final credential = await _playerStreamCredential(version.id, subtitles: sidecars.isNotEmpty);
+    String authorize(String url, String name, String? value) {
+      if (value == null) return url;
+      final uri = Uri.parse(url);
+      return uri.replace(queryParameters: {...uri.queryParameters, name: value}).toString();
+    }
+
+    final subtitles = [
+      for (final track in sidecars)
+        SubtitleTrack.uri(
+          authorize(track.key!, 'stream_token', credential?.subtitleToken),
+          title: track.title,
+          language: track.languageCode,
+          codec: track.codec,
+          isDefault: track.selected,
+          isForced: track.forced,
+        ),
+    ];
+
     // A delivery the server converts comes with a session: the player opens
     // its HLS playlist, and this client keeps the session alive until the
     // playback is reported stopped.
@@ -190,7 +203,10 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       _holdTranscodeSession(options.metadata.id, sessionId, start);
       return PlaybackInitializationResult(
         availableVersions: versions,
-        videoUrl: '${connection.baseUrl}${plan.streamUrl}',
+        videoUrl: authorize('${connection.baseUrl}${plan.streamUrl}', 'ss', credential?.sessionId),
+        streamHeaders: credential?.headers,
+        hold: credential?.hold,
+        release: credential?.release,
         selectedMediaIndex: index,
         isTranscoding: plan.deliveryMode == PleyaDeliveryMode.transcode,
         activeAudioStreamId: plan.selectedAudioStreamId == null ? null : effectiveOptions.selectedAudioStreamId,
@@ -207,7 +223,10 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
 
     return PlaybackInitializationResult(
       availableVersions: versions,
-      videoUrl: _streamUrl(version.id),
+      videoUrl: authorize(_streamUrl(version.id), 'ss', credential?.sessionId),
+      streamHeaders: credential?.headers,
+      hold: credential?.hold,
+      release: credential?.release,
       selectedMediaIndex: index,
       playMethod: 'DirectPlay',
       playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
@@ -477,27 +496,11 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     if (index < 0) return null;
     final versionId = versions[index].id;
 
-    // An external player URL is optional: a failed mint is "no URL", not an
-    // error the caller has to handle (`_postJson` throws on failure).
-    final Map<String, dynamic>? json;
-    try {
-      json = await _postJson('/auth/stream-token', {'version_id': versionId});
-    } catch (e) {
-      appLogger.d('PleyaServerClient: stream token mint failed', error: e);
-      return null;
-    }
-    if (json == null) return null;
-    try {
-      final token = PleyaStreamToken.fromJson(json);
-      return Uri.parse(_streamUrl(versionId)).replace(queryParameters: {'stream_token': token.streamToken}).toString();
-    } on PleyaWireFormatException catch (e) {
-      appLogger.w('PleyaServerClient: stream token did not match the contract', error: e);
-      return null;
-    }
+    // An external player URL is optional: a failed mint is "no URL".
+    final token = await _streamToken(versionId);
+    if (token == null) return null;
+    return Uri.parse(_streamUrl(versionId)).replace(queryParameters: {'stream_token': token}).toString();
   }
-
-  String _streamUrl(String versionId) =>
-      '${connection.baseUrl}$pleyaProtocolPrefix/stream/${Uri.encodeComponent(versionId)}';
 
   // ---------------------------------------------------------------------------
   // Watch state: reporting
