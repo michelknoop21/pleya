@@ -37,7 +37,12 @@ HomeCustomRow _currentHomeRow(AssistantCatalogServices catalog, HomeCustomRow li
 
 /// The row as Home calls it: its own name, or the label of its filter when
 /// it was never named. Never the internal id, which nobody can check on a card.
-String _homeRowName(HomeCustomRow row) => clipText(homeCustomRowLabel(row), 64);
+String _homeRowName(HomeCustomRow row) {
+  final label = clipText(homeCustomRowLabel(row), 64).trim();
+  if (label.isNotEmpty) return label;
+  // A filter that reads as nothing still needs a line on the card.
+  return row.kind == MediaKind.movie ? t.unifiedCatalog.discovery.allMovies : t.unifiedCatalog.discovery.allSeries;
+}
 
 final List<AssistantTool> _homeRowTools = [
   AssistantTool(
@@ -87,7 +92,12 @@ final List<AssistantTool> _homeRowTools = [
       final listed = _shownHomeRow(ctx, args);
       final title = _label(args, 'title');
       final row = _currentHomeRow(catalog, listed);
-      if (row.name == title) return AssistantToolResult({'status': 'already_named', 'title': title, 'done': false});
+      // Against what the user sees: an unnamed row that reads "Action" is
+      // not renamed to "Action" on a card that says "Action → Action".
+      if (_homeRowName(row) == title) {
+        return AssistantToolResult({'status': 'already_named', 'title': title, 'done': false});
+      }
+      final ref = _string(args, 'row_id');
       return AssistantPendingAction(
         kind: AssistantActionKind.renameHomeRow,
         serverId: ctx.userServers.firstOrNull ?? (throw const AssistantToolError('no_servers')),
@@ -97,7 +107,11 @@ final List<AssistantTool> _homeRowTools = [
         subject: '${_homeRowName(row)} → $title',
         execute: ({password}) async {
           final now = _currentHomeRow(catalog, listed);
-          await save(HomeCustomRow(id: now.id, kind: now.kind, name: title, preferences: now.preferences));
+          final renamed = HomeCustomRow(id: now.id, kind: now.kind, name: title, preferences: now.preferences);
+          await save(renamed);
+          // The ref now means the row as this run left it: a second change to
+          // the same row must not trip over the first.
+          _shownHomeRows[ctx]?[ref] = renamed;
           return {'status': 'row_renamed', 'title': title, 'was': _homeRowName(now)};
         },
       );

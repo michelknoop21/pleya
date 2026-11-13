@@ -105,6 +105,27 @@ void main() {
     expect(w.rows.map((r) => r.name), ['A', 'Feestdagen', 'C']);
   });
 
+  test('the same row can be renamed twice and then removed without listing again', () async {
+    final w = _World([_row('a', 'Kerstfilms')]);
+    await w.list();
+    await (await w.rename('r1', 'Feestdagen') as AssistantPendingAction).execute();
+    final second = await w.rename('r1', 'Feest') as AssistantPendingAction;
+    expect(second.subject, 'Feestdagen → Feest');
+    await second.execute();
+    expect(w.rows.single.name, 'Feest');
+    await (await w.remove('r1') as AssistantPendingAction).execute();
+    expect(w.rows, isEmpty);
+  });
+
+  test('an unnamed row is not renamed to the label it already shows', () async {
+    final w = _World([
+      _row('a', '', genres: {'Action'}),
+    ]);
+    await w.list();
+    final result = await w.rename('r1', 'Action') as AssistantToolResult;
+    expect(result.data['status'], 'already_named');
+  });
+
   test('the name it already has needs no card', () async {
     final w = _World([_row('a', 'A')]);
     await w.list();
