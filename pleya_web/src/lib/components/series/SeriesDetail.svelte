@@ -26,6 +26,7 @@
   import { session } from '../../stores/session.svelte';
   import { formatDate } from '../../util/format';
   import { emptyPager, loadNext, type PagerState } from '../../util/paging';
+  import { canRefreshMetadata, refreshMetadata } from '../refreshMetadata';
 
   let { item, onchange, onreload }: { item: Item; onchange: (next: Item) => void; onreload?: () => void } = $props();
   const uid = $props.id();
@@ -51,6 +52,7 @@
   let watchedDelta = $state(0);
   let signal: AbortSignal | undefined;
   let hubRun = 0;
+  let refreshNote = $state('');
 
   const seasons = $derived(seasonPager.items);
   const caps = $derived(session.capabilities);
@@ -219,11 +221,15 @@
               <div class="series__admin">
                 {#if caps?.metadata_overrides === true || caps?.artwork_choices === true}<a class="btn btn--secondary" href="/admin/metadata/edit?item={encodeURIComponent(item.id)}">{t('admin.metadata.editor.title')}</a>{/if}
                 <a class="btn btn--secondary" href="/admin/metadata/match?item={encodeURIComponent(item.id)}">{t('admin.match.title')}</a>
+                {#if canRefreshMetadata()}
+                  <button type="button" class="btn btn--secondary" onclick={() => void refreshMetadata(item.id).then(text => (refreshNote = text))}>{t('detail.refreshMetadata')}</button>
+                {/if}
                 {#if caps?.media_delete === true}
                   <button type="button" class="btn btn--danger" onclick={() => (deleteOpen = true)}>{t('item.delete.action')}</button>
                   <ItemDelete {item} bind:open={deleteOpen} {onreload} />
                 {/if}
               </div>
+              {#if refreshNote}<p class="series__note" role="status">{refreshNote}</p>{/if}
             {/if}
             {#if caps?.watch_state}<WatchedBy {item} />{/if}
           </div>

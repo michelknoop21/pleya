@@ -37,6 +37,12 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			ArtworkCacheAdmin: s.artworkCacheAdminAvailable(),
 			// LibraryMaintenance: legen gaat via de wachtrij, net als de scan.
 			LibraryMaintenance: s.opts.Jobs != nil,
+			// De drie gaten uit C-05 (DEC-XXX): de kijkstatusboom hangt aan de
+			// opslag, verversen per titel aan de catalogus, en de volgende scan
+			// aan de planner.
+			WatchStateTree:      s.opts.Watch != nil,
+			ItemMetadataRefresh: s.opts.Catalog != nil,
+			ScanSchedule:        s.opts.NextScanAt != nil,
 			// MediaDelete: aangezet en een schrijfbare root gemeten (DEC-XXX).
 			MediaDelete: len(s.opts.MediaDelete) > 0,
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.

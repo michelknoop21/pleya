@@ -126,6 +126,7 @@ Future<void> showMobileUnifiedQuickMenu(
   required VoidCallback onPlay,
   bool isOffline = false,
   VoidCallback? onChanged,
+  ValueChanged<UnifiedMediaSource>? onDeleted,
 }) async {
   final actions = availableUnifiedGroupActions(
     group: group,
@@ -195,21 +196,30 @@ Future<void> showMobileUnifiedQuickMenu(
         PopupMenuItem<UnifiedGroupAction?>(
           height: 44,
           onTap: () => managementChoice = choice,
-          child: Row(
-            children: [
-              Icon(choice.icon, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(group.hasMultipleSources ? '${choice.label} · ${choice.source.serverName}' : choice.label),
-              ),
-            ],
+          child: AutomationNode(
+            id: AutomationIds.sheetContextMenuItem,
+            instance: choice.automationInstance,
+            role: 'list.item',
+            state: () => {'label': managementLabel(group, choice)},
+            child: Row(
+              children: [
+                Icon(choice.icon, size: 20, color: choice.destructive ? Theme.of(context).colorScheme.error : null),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    managementLabel(group, choice),
+                    style: choice.destructive ? TextStyle(color: Theme.of(context).colorScheme.error) : null,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
     ],
   );
   if (!context.mounted) return;
   if (managementChoice != null) {
-    await runUnifiedManagementChoice(context, managementChoice!, onChanged: onChanged);
+    await runUnifiedManagementChoice(context, managementChoice!, onChanged: onChanged, onDeleted: onDeleted);
     return;
   }
   if (play) return onPlay();
@@ -233,6 +243,7 @@ Future<void> openMobileUnifiedQuickMenuAt(
   required UnifiedMediaGroup group,
   required SourceAvailability Function(UnifiedMediaSource source) availabilityFor,
   VoidCallback? onChanged,
+  ValueChanged<UnifiedMediaSource>? onDeleted,
 }) async {
   final box = anchorContext.findRenderObject();
   final overlay = Overlay.of(context).context.findRenderObject();
@@ -245,6 +256,7 @@ Future<void> openMobileUnifiedQuickMenuAt(
     group: group,
     availabilityFor: availabilityFor,
     onChanged: onChanged,
+    onDeleted: onDeleted,
     isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
     onPlay: () => unawaited(
       openMobileMediaGroup(

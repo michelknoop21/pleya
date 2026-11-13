@@ -731,6 +731,7 @@ void main() {
       WidgetTester tester,
       MediaServerClient client, {
       List<NavigatorObserver> navigatorObservers = const [],
+      MultiServerManager? manager,
     }) async {
       // Phone-sized, unlike `_pumpSearchScreen`'s 1280×900: `PlatformDetector`
       // has no debug override for `isPhone`, so the branch under test is only
@@ -748,8 +749,8 @@ void main() {
         tester.view.resetPhysicalSize();
       });
 
-      final manager = MultiServerManager()..debugRegisterClientForTesting(client);
-      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      final servers = (manager ?? MultiServerManager())..debugRegisterClientForTesting(client);
+      final provider = MultiServerProvider(servers, DataAggregationService(servers));
       addTearDown(provider.dispose);
       final hiddenLibraries = HiddenLibrariesProvider();
       addTearDown(hiddenLibraries.dispose);
@@ -864,6 +865,27 @@ void main() {
 
       expect(find.text(t.common.play), findsOneWidget);
       expect(find.byType(BottomSheet), findsNothing, reason: 'the anchored menu, not the sheet');
+    });
+
+    testWidgets('a title deleted from the quick menu leaves the results: the search runs again', (tester) async {
+      final client = _FakeMediaServerClient(items: [_dune('dune-a', 'server_1')]);
+      final key = await pumpPhoneSearchScreen(tester, client, manager: _OwnerManager());
+      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+      (key.currentState! as Refreshable).refresh();
+      await tester.pumpAndSettle();
+      final searches = client.queries.length;
+
+      await tester.longPress(find.text('Dune'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(t.mediaMenu.deleteFromServer));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, t.mediaMenu.deleteFromServer));
+      await tester.pumpAndSettle();
+
+      expect(client.deleted, ['dune-a']);
+      expect(client.queries.length, greaterThan(searches), reason: 'the query runs again after the delete');
+      expect(find.text('Dune'), findsNothing);
+      await tester.pump(const Duration(seconds: 10));
     });
 
     testWidgets('a collection opens through the same source-concrete route every other list uses', (tester) async {
@@ -1549,6 +1571,12 @@ class _RecordingNavigatorObserver extends NavigatorObserver {
   }
 }
 
+/// Owner of every server, for the one test that needs the delete row.
+class _OwnerManager extends MultiServerManager {
+  @override
+  bool canManageServerMetadata(ServerId serverId) => true;
+}
+
 class _FakeMediaServerClient implements MediaServerClient, PersonSearchClient {
   final List<MediaItem> items;
   final List<MediaItem> people;
@@ -1613,6 +1641,17 @@ class _FakeMediaServerClient implements MediaServerClient, PersonSearchClient {
 
   @override
   Future<MediaPlaylist?> fetchPlaylistMetadata(String id) async => playlistsById[id];
+
+  /// Ids removed through `deleteMediaItem`; a deleted item no longer turns up
+  /// in [searchItems], as on a real server.
+  final List<String> deleted = [];
+
+  @override
+  Future<bool> deleteMediaItem(MediaItem item) async {
+    deleted.add(item.id);
+    items.removeWhere((candidate) => candidate.id == item.id);
+    return true;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

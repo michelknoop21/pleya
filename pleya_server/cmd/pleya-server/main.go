@@ -257,6 +257,8 @@ func run() int {
 	// opruimronde in housekeeping, zodat de bewaartermijn op één plek staat.
 	auditStore := audit.NewStore(pool)
 
+	// De planning van de periodieke scans, zichtbaar in GET /libraries.
+	plan := &scanPlan{}
 	workers := &sync.WaitGroup{}
 	workers.Add(5)
 	apns, err := push.OpenAPNs(cfg.APNsConfig, cfg.ConfigDir)
@@ -285,7 +287,7 @@ func run() int {
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
 	go func() {
 		defer workers.Done()
-		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, logging.Component(log, "scanner"))
+		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, plan, logging.Component(log, "scanner"))
 	}()
 	go func() {
 		defer workers.Done()
@@ -357,6 +359,7 @@ func run() int {
 		MediaDelete:        mediaDeleteRoots(cfg, log),
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
+		NextScanAt:         plan.at,
 		MetadataProvider:   metadataProvider,
 		Artwork:            resizer,
 		Jobs:               runner,

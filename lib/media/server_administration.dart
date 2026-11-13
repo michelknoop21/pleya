@@ -55,7 +55,19 @@ abstract interface class MediaDeletionGate {
 
 /// Re-read metadata for one item (a film, a series) from its providers.
 abstract interface class ItemMetadataRefreshClient implements ServerAdministrationClient {
+  /// False where this server cannot do it right now (a Pleya Server without
+  /// the `item_metadata_refresh` capability).
+  bool get supportsItemMetadataRefresh;
+
   Future<void> refreshItemMetadata(String itemId);
+}
+
+/// When the server will next scan a library on its own schedule.
+///
+/// Null means the server reports no such moment: scheduled scans are off, or
+/// the backend does not expose the time (Plex keeps only the interval).
+abstract interface class LibraryScanScheduleClient implements ServerAdministrationClient {
+  Future<DateTime?> nextLibraryScan(String libraryId);
 }
 
 enum ServerJobState { queued, running, succeeded, failed, cancelled, unknown }

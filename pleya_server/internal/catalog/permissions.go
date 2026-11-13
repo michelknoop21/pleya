@@ -161,3 +161,37 @@ func (s *Store) ItemLibrary(ctx context.Context, itemID id.ID) (id.ID, error) {
 	}
 	return libraryID, nil
 }
+
+// ItemTree geeft het item zelf plus alle seizoenen en afleveringen eronder,
+// voor de markering van een heel seizoen of een hele serie (DEC-XXX, kijkstatus
+// van een seizoen of serie). Het item staat altijd vooraan; een film of
+// aflevering is een boom van één. Onder het item telt wat ook
+// GET /items/{id}/children toont: een seizoen of aflevering met alleen
+// bonusmateriaal (Samples, Trailers, Extras) blijft buiten.
+//
+// Alles in de boom deelt de bibliotheek van het item: de scanner hangt een
+// aflevering nooit onder een serie uit een andere bibliotheek, dus het recht op
+// die ene bibliotheek (ItemLibrary) dekt de hele boom. De query eist het
+// daarnaast zelf, zodat een rij die daar toch van afwijkt nooit meegaat.
+func (s *Store) ItemTree(ctx context.Context, itemID id.ID) ([]id.ID, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id FROM (SELECT i.id, 0 AS depth FROM media_items i WHERE i.id = $1
+		    UNION ALL
+		    SELECT d.id, 1 FROM media_items d
+		    LEFT JOIN media_items p ON p.id = d.parent_id
+		    WHERE (d.parent_id = $1 OR p.parent_id = $1)
+		      AND d.library_id = (SELECT library_id FROM media_items WHERE id = $1)
+		      AND `+ordinaryItemSQL("d")+`) tree
+		ORDER BY depth, id`, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("itemboom lezen: %w", err)
+	}
+	tree, err := pgx.CollectRows(rows, pgx.RowTo[id.ID])
+	if err != nil {
+		return nil, fmt.Errorf("itemboom lezen: %w", err)
+	}
+	if len(tree) == 0 {
+		return nil, ErrNotFound
+	}
+	return tree, nil
+}

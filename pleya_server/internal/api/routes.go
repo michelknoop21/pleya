@@ -102,6 +102,8 @@ func (s *Server) routeTable() []route {
 		// Bibliotheekonderhoud (DEC-XXX, matrixregels 108 en 109).
 		{"POST " + p + "/libraries/{library_id}/empty-trash", s.authenticated(s.handleEmptyLibraryTrash)},
 		{"POST " + p + "/libraries/{library_id}/refresh-metadata", s.authenticated(s.handleRefreshLibraryMetadata)},
+		// Metadata per titel (DEC-XXX, matrixregel 111). Klasse admin, in de handler.
+		{"POST " + p + "/items/{item_id}/refresh-metadata", s.authenticated(s.handleRefreshItemMetadata)},
 		// Een titel met zijn bestanden wissen (DEC-XXX, matrixregel 112).
 		// Standaard uit; recht manage op de bibliotheek, in de handler.
 		{"DELETE " + p + "/items/{item_id}", s.authenticated(s.handleDeleteItem)},
@@ -223,6 +225,8 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/artwork/{artwork_id}", s.artworkAuthenticated(s.handleArtwork)},
 		{"POST " + p + "/watch-state", s.authenticated(s.handleWatchStateReport)},
 		{"GET " + p + "/watch-state", s.authenticated(s.handleWatchStateList)},
+		// Een seizoen of serie in één keer markeren (DEC-XXX, matrixregel 110).
+		{"POST " + p + "/items/{item_id}/watch-state", s.authenticated(s.handleWatchStateTree)},
 
 		// Gebruikersbeheer (DEC-121, stap 4). De autorisatieklasse staat in de
 		// handler en niet in de route: "admin, of owner op zichzelf" is per

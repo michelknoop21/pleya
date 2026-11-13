@@ -3089,6 +3089,9 @@ class PlexClient
     await _getWithFailover('/library/sections/${adminPathSegment(libraryId)}/refresh');
   }
 
+  @override
+  bool get supportsItemMetadataRefresh => true;
+
   /// Re-read one item's metadata from its agents
   /// (`PUT /library/metadata/{ratingKey}/refresh`, official PMS API).
   @override

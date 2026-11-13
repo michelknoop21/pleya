@@ -534,6 +534,15 @@ class AutomationIds {
   /// The three dots of the iPhone library filter row: manage and refresh.
   static const String libraryFilterMore = 'library.filter.more';
   static const String libraryFilterCount = 'library.filter.count';
+
+  /// Library maintenance on the iPhone: "Manage libraries" in the three-dot
+  /// menu, the options of one library in that sheet (by row index), an entry
+  /// of its maintenance menu (by action name) and the confirm button of the
+  /// question that follows.
+  static const String libraryMoreManage = 'library.more.manage';
+  static const String libraryManageOptions = 'library.manage.options';
+  static const String libraryMaintenanceAction = 'library.maintenance.action';
+  static const String libraryMaintenanceConfirm = 'library.maintenance.confirm';
   static const String sheetLibrarySort = 'sheet.library_sort';
   static const String sheetLibraryFilter = 'sheet.library_filter';
 
@@ -791,6 +800,11 @@ class AutomationIds {
   /// order) already varies with the group's own state.
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
 
+  /// The two buttons of the "Verwijderen van server" confirmation, suffixed
+  /// `[confirm]` or `[cancel]`, so a scenario can prove that only the confirm
+  /// reaches the server.
+  static const String dialogDeleteMedia = 'dialog.delete_media';
+
   /// The TV library action sheet (LIB7, mockup 27 B). Its state lists the
   /// offered actions in order, so a scenario can prove that a non-owner gets
   /// only "Openen in catalogus" and "Verbergen" (the owner rule).
@@ -943,6 +957,7 @@ class AutomationIds {
     searchHistoryChip,
     sheetSourcePickerRow,
     sheetContextMenuItem,
+    dialogDeleteMedia,
     catalogHeader,
     catalogHeaderSearch,
     catalogChipSources,
@@ -1015,6 +1030,10 @@ class AutomationIds {
     {'id': libraryHeaderAvatar, 'role': 'button', 'instanceable': false},
     {'id': libraryFilterMore, 'role': 'button', 'instanceable': false},
     {'id': libraryFilterCount, 'role': 'region', 'instanceable': false},
+    {'id': libraryMoreManage, 'role': 'button', 'instanceable': false},
+    {'id': libraryManageOptions, 'role': 'button', 'instanceable': true},
+    {'id': libraryMaintenanceAction, 'role': 'button', 'instanceable': true},
+    {'id': libraryMaintenanceConfirm, 'role': 'button', 'instanceable': false},
     {'id': sheetLibrarySort, 'role': 'sheet', 'instanceable': false},
     {'id': sheetLibraryFilter, 'role': 'sheet', 'instanceable': false},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
@@ -1185,6 +1204,7 @@ class AutomationIds {
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
     {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
+    {'id': dialogDeleteMedia, 'role': 'button', 'instanceable': true},
     {'id': sheetLibraryActions, 'role': 'sheet', 'instanceable': false},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},

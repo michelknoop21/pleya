@@ -265,3 +265,50 @@ func (s *Store) RequeueLibraryMetadata(ctx context.Context, libraryID id.ID) (in
 	}
 	return n, nil
 }
+
+// RequeueItemMetadata is RequeueLibraryMetadata voor één titel (DEC-XXX,
+// metadata per titel). De titel is de film of serie waar het item onder valt:
+// een seizoen of aflevering haalt zijn gegevens uit de ronde van zijn serie,
+// dus verversen loopt altijd over de hele serie. Bij een serie gaan haar
+// seizoenen en afleveringen mee voor de sidecarcontrole (.nfo per seizoen en
+// aflevering); hun providergegevens komen met de ronde van de serie zelf.
+// Dezelfde uitzondering als bij de bibliotheek: een afgewezen of onbesliste
+// titel blijft buiten, en dan is het antwoord 0.
+//
+// ErrNotFound als het item niet bestaat.
+func (s *Store) RequeueItemMetadata(ctx context.Context, itemID id.ID) (int64, error) {
+	var n *int64
+	err := s.pool.QueryRow(ctx, `
+		WITH target AS (
+		    SELECT coalesce(gp.id, p.id, i.id) AS id
+		    FROM media_items i
+		    LEFT JOIN media_items p ON p.id = i.parent_id
+		    LEFT JOIN media_items gp ON gp.id = p.parent_id
+		    WHERE i.id = $1
+		), due AS (
+		    UPDATE media_items i SET sidecar_checked_at = NULL
+		    WHERE i.id IN (SELECT id FROM target) AND i.kind IN ('movie', 'show')
+		      AND NOT EXISTS (SELECT 1 FROM metadata_candidates c
+		                      WHERE c.item_id = i.id AND c.state IN ('rejected', 'ambiguous'))
+		    RETURNING i.id
+		), below AS (
+		    UPDATE media_items d SET sidecar_checked_at = NULL
+		    WHERE d.parent_id IN (SELECT id FROM due)
+		       OR d.parent_id IN (SELECT s.id FROM media_items s WHERE s.parent_id IN (SELECT id FROM due))
+		    RETURNING d.id
+		), requeued AS (
+		    UPDATE metadata_candidates c
+		    SET next_attempt_at = now(),
+		        updated_at = GREATEST(c.updated_at + interval '1 microsecond', clock_timestamp())
+		    WHERE c.item_id IN (SELECT id FROM due) AND c.state IN ('matched', 'unmatched', 'failed')
+		)
+		SELECT CASE WHEN EXISTS (SELECT 1 FROM target)
+		            THEN (SELECT count(*) FROM due) + (SELECT count(*) FROM below) END`, itemID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("metadata van een titel opnieuw inplannen: %w", err)
+	}
+	if n == nil {
+		return 0, ErrNotFound
+	}
+	return *n, nil
+}
