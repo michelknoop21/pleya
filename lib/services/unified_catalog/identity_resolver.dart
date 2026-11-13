@@ -10,6 +10,7 @@
 /// catalog that performs I/O.
 library;
 
+import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/canonical_media_identity.dart';
@@ -81,11 +82,14 @@ class ResolvableItem {
   });
 
   /// The numbers the item's own list answer carried, when they describe the
-  /// item itself: the lookup target is the item and nothing narrows them.
+  /// item itself: no lookup target points at another id and nothing narrows
+  /// them. A caller that passes no target only declines the request; what the
+  /// item already holds is still its own (the assistant passes none for an
+  /// item with a stable guid, and lost a Plex item's tmdb number that way).
   ExternalIds? _carriedIds({required bool allowLegacyPleya}) {
     if (externalIdDiscriminator != null) return null;
     final target = externalIdTarget;
-    if (target == null || target.targetId != item.id) return null;
+    if (target != null && target.targetId != item.id) return null;
     return externalIdsCarriedBy(item, allowLegacyPleya: allowLegacyPleya);
   }
 
@@ -326,6 +330,36 @@ String? continueWatchingBucketKey(MediaItem item) {
     return null;
   }
   return '$scope:$normalized';
+}
+
+/// The lookup bucket per item of one Verder kijken row, in input order.
+///
+/// On one server the title bucket ([continueWatchingBucketKey]) is enough: a
+/// backend lists a series once. Across servers it is not. The same series is
+/// "Brothers" on one server and "Brothers (2026)" or a translated title on the
+/// other, and two title buckets never compare their series numbers, so the row
+/// showed the series twice. As soon as a scope (episode, season, show, movie)
+/// is present from more than one server, every item of that scope shares one
+/// bucket and its numbers are looked up. The bucket still only decides who is
+/// worth a lookup: merging stays on identical provider numbers or guid.
+///
+/// Items that can never merge keep their title bucket: a local folder or
+/// Pleya Share source, and an episode or season without an ordinal (null).
+List<String?> continueWatchingLookupKeys(List<MediaItem> items) {
+  bool mergeable(MediaItem item) =>
+      item.backend != MediaBackend.local && (item.serverId ?? '').isNotEmpty && continueWatchingBucketKey(item) != null;
+
+  final serversByScope = <String, Set<String>>{};
+  for (final item in items) {
+    if (!mergeable(item)) continue;
+    serversByScope.putIfAbsent(continueWatchingScope(item)!, () => {}).add(item.serverId!);
+  }
+  return [
+    for (final item in items)
+      mergeable(item) && serversByScope[continueWatchingScope(item)!]!.length > 1
+          ? '${continueWatchingScope(item)}:*'
+          : continueWatchingBucketKey(item),
+  ];
 }
 
 /// Which id, on which server, Continue Watching fetches external ids for:

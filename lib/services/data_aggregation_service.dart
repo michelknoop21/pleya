@@ -9,6 +9,7 @@ import '../media/media_server_client.dart';
 import '../media/unified/identity_evidence.dart';
 import '../media/unified/unified_media_source.dart';
 import '../services/unified_catalog/grouping_service.dart';
+import '../services/unified_catalog/identity_lookup_cache.dart';
 import '../services/unified_catalog/identity_resolver.dart';
 import '../utils/stored_identity_trust.dart';
 import '../utils/app_logger.dart';
@@ -341,9 +342,7 @@ class DataAggregationService {
       ),
       fetchExternalIds: (serverId, targetId) async {
         try {
-          final client = _serverManager.getClient(ServerId(serverId));
-          if (client == null) throw StateError('No online client for server $serverId');
-          return await client.fetchExternalIds(targetId);
+          return await fetchExternalIdsForIdentity(_serverManager, serverId, targetId);
         } catch (e, stackTrace) {
           appLogger.d(
             'Failed to resolve Continue Watching identity for $serverId:$targetId',
@@ -354,12 +353,13 @@ class DataAggregationService {
         }
       },
     );
+    final lookupKeys = continueWatchingLookupKeys(items);
     final resolvables = [
-      for (final item in items)
+      for (final (i, item) in items.indexed)
         ResolvableItem(
           item: item,
           scope: continueWatchingScope(item) ?? '',
-          bucketKeyOverride: continueWatchingBucketKey(item),
+          bucketKeyOverride: lookupKeys[i],
           externalIdTarget: _hasOnlineClient(item) ? continueWatchingExternalIdTarget(item) : null,
           // An episode/season row's external ids are fetched from its
           // *series*, so they are narrowed to the exact row before they

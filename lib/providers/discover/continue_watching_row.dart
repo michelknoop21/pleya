@@ -15,6 +15,7 @@ import '../../utils/watch_state_notifier.dart';
 import '../continue_watching_hidden_provider.dart';
 import '../hidden_libraries_provider.dart';
 import '../multi_server_provider.dart';
+import 'progress_refresh_gate.dart';
 
 /// The Continue Watching row of Home: the whole on-deck list and its preview, the
 /// titles hidden on this device or waiting in the removal queue, the
@@ -271,8 +272,10 @@ class ContinueWatchingRow {
       default:
         break;
     }
-    unawaited(refresh());
+    if (_progressGate.shouldRefresh(event)) unawaited(refresh());
   }
+
+  final ProgressRefreshGate _progressGate = ProgressRefreshGate();
 
   void _remove(String globalKey) {
     final remaining = _all.where((item) => item.globalKey != globalKey).toList();
