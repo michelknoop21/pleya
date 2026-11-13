@@ -89,7 +89,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
   Future<void> _openTvDetailItem(MediaItem item, String sectionId) async {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
     if (item.isEpisode && item.grandparentId == _metadata.id) {
-      _tvDetailActivateEpisode(item, sectionId);
+      _tvDetailActivateEpisode(item);
       return;
     }
     await navigateToMediaItem(

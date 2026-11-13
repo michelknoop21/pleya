@@ -101,17 +101,17 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
     setStateIfMounted(() => _tvDetailFocusedEpisode = episode);
   }
 
-  /// Select on an episode of this very series, wherever on the page it stands.
-  /// Episode Action decides, as on every other card. "Details" is the episode's
-  /// own page and never [navigateToMediaItem]: that opens the series at this
-  /// episode, which is this page a second time (`tvDetailRouteId` tells the two
-  /// apart by the episode in the id, so nothing discards the duplicate).
-  void _tvDetailActivateEpisode(MediaItem episode, String sectionId) {
-    SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-    if (SettingsService.instance.read(SettingsService.episodeAction) != EpisodeAction.details) {
-      _tvDetailPlayEpisode(episode);
-      return;
-    }
+  /// Select on an episode of this very series, wherever on the page it stands,
+  /// always plays. The season tab already shows the focused episode's summary,
+  /// so a page in between is a stop the viewer did not ask for (Michel,
+  /// 13 November 2026). Episode Action still decides on every other surface.
+  void _tvDetailActivateEpisode(MediaItem episode) => _tvDetailPlayEpisode(episode);
+
+  /// The episode's own page, from the episode's menu. Never
+  /// [navigateToMediaItem]: that opens the series at this episode, which is
+  /// this page a second time (`tvDetailRouteId` tells the two apart by the
+  /// episode in the id, so nothing discards the duplicate).
+  void _tvDetailOpenEpisodePage(MediaItem episode, String sectionId) {
     unawaited(
       navigateToMediaItemDetails(
         context,
@@ -203,6 +203,7 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
             key: menuKey,
             item: episode,
             onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+            onViewDetails: () => _tvDetailOpenEpisodePage(episode, _tvDetailEpisodesSectionId),
             child: TvDetailEpisodeCard(
               cell: cell,
               imagePath: episode.rowThumbPath,
@@ -212,7 +213,7 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
               progress: _tvDetailEpisodeProgress(episode),
               blurred: hideSpoilers && episode.shouldHideSpoiler,
               semanticLabel: episode.title ?? episode.displayTitle,
-              onSelect: () => _tvDetailActivateEpisode(episode, _tvDetailEpisodesSectionId),
+              onSelect: () => _tvDetailActivateEpisode(episode),
               onContextMenu: () => menuKey.currentState?.showContextMenu(context),
               onFocused: () => _tvDetailOnEpisodeFocused(episode),
             ),

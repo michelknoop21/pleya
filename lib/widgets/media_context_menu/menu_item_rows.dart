@@ -105,7 +105,7 @@ extension on MediaContextMenuState {
 
     final isVideoKind = mediaItem.isVideoContent;
 
-    if (widget.isInContinueWatching && isVideoKind) {
+    if ((widget.isInContinueWatching || widget.onViewDetails != null) && isVideoKind) {
       menuActions.add(MediaMenuAction(value: 'details', icon: Symbols.info_rounded, label: t.mediaMenu.viewDetails));
     }
 

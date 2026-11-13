@@ -100,7 +100,9 @@ extension on MediaContextMenuState {
 
       case 'details':
         onNavigate();
-        if (context.mounted) {
+        if (widget.onViewDetails case final open?) {
+          open();
+        } else if (context.mounted) {
           await navigateToMediaItemDetails(context, mediaItem!, onRefresh: _notifyRefresh);
         }
         break;

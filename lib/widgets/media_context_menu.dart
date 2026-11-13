@@ -97,6 +97,12 @@ class MediaContextMenu extends StatefulWidget {
   /// [onShare] the menu shares the item itself, anchored to this widget.
   final VoidCallback? onShare;
   final VoidCallback? onRequest;
+
+  /// Opens the item's own page. When non-null a "View details" item is added to
+  /// the menu and runs this instead of the default navigation. The TV series
+  /// page passes it for its episode cards: Select there always plays, so the
+  /// menu is the way to the episode's own page.
+  final VoidCallback? onViewDetails;
   final Widget child;
   final bool isInContinueWatching;
   final String? collectionId; // The collection ID if displaying within a collection
@@ -123,6 +129,7 @@ class MediaContextMenu extends StatefulWidget {
     this.onPlayTrailer,
     this.onShare,
     this.onRequest,
+    this.onViewDetails,
     required this.child,
     this.isInContinueWatching = false,
     this.collectionId,

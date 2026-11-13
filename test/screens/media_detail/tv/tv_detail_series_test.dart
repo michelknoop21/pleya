@@ -41,6 +41,7 @@ import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_navigation_helper.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/media_context_menu.dart';
 import 'package:pleya/widgets/tv_browse_rail.dart';
 import 'package:provider/provider.dart';
 
@@ -462,7 +463,7 @@ void main() {
     expect(_focus, contains('TvDetailCard_episodes'));
   });
 
-  group('Select on an episode follows Episode Action', () {
+  group('Select on an episode of this series always plays', () {
     late List<String> played;
 
     Iterable<MediaDetailScreen> pages(WidgetTester tester) =>
@@ -475,21 +476,36 @@ void main() {
       await SettingsService.instance.write(SettingsService.episodeAction, action);
     }
 
-    testWidgets('play starts the episode and opens nothing', (tester) async {
+    /// The menu of the episode card for [episodeId], as a long press opens it.
+    Finder episodeMenu(String episodeId) => find.byWidgetPredicate(
+      (widget) => widget is MediaContextMenu && widget.item is MediaItem && (widget.item as MediaItem).id == episodeId,
+    );
+
+    Future<void> viewDetails(WidgetTester tester, String episodeId) async {
+      final menu = episodeMenu(episodeId);
+      final state = tester.state<MediaContextMenuState>(menu);
+      expect(state.menuActions(tester.element(menu)).map((action) => action.value), contains('details'));
+      await state.runMenuAction(tester.element(menu), 'details');
+      await tester.pumpAndSettle();
+    }
+
+    for (final action in EpisodeAction.values) {
+      testWidgets('Select starts the episode and opens nothing with Episode Action = ${action.name}', (tester) async {
+        await setAction(action);
+        await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
+
+        await _press(tester, LogicalKeyboardKey.enter);
+
+        expect(played, ['e2-2']);
+        expect(pages(tester), hasLength(1));
+      });
+    }
+
+    testWidgets('the episode menu opens the episode itself, not this series a second time', (tester) async {
       await setAction(EpisodeAction.play);
       await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
 
-      await _press(tester, LogicalKeyboardKey.enter);
-
-      expect(played, ['e2-2']);
-      expect(pages(tester), hasLength(1));
-    });
-
-    testWidgets('details opens the episode itself, not this series a second time', (tester) async {
-      await setAction(EpisodeAction.details);
-      await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2');
-
-      await _press(tester, LogicalKeyboardKey.enter);
+      await viewDetails(tester, 'e2-2');
 
       expect(played, isEmpty);
       expect(pages(tester).map((page) => page.metadata.id), ['show', 'e2-2']);
@@ -503,8 +519,8 @@ void main() {
       );
     });
 
-    testWidgets('details on a title across servers keeps the choice, read-only', (tester) async {
-      await setAction(EpisodeAction.details);
+    testWidgets('the episode page of a title across servers keeps the choice, read-only', (tester) async {
+      await setAction(EpisodeAction.play);
       final page = _show();
       final other = page.copyWith(id: 'other_show', serverId: 'server_2', serverName: 'Attic');
       UnifiedMediaSource source(MediaItem item) => UnifiedMediaSource(
@@ -525,15 +541,15 @@ void main() {
       );
       await pumpDetail(tester, _Client(), episode: 'e2-2', season: 2, seasonId: 'season_2', unified: route);
 
-      await _press(tester, LogicalKeyboardKey.enter);
+      await viewDetails(tester, 'e2-2');
 
       expect(pages(tester).map((page) => page.metadata.id), ['show', 'e2-2']);
       expect(pages(tester).last.unifiedRouteContext?.groupId, 'g');
       expect(pages(tester).last.onChangeSource, isNull);
     });
 
-    testWidgets('an episode of this series on a row of the page follows the same setting', (tester) async {
-      await setAction(EpisodeAction.play);
+    testWidgets('an episode of this series on a row of the page plays as well, whatever the setting', (tester) async {
+      await setAction(EpisodeAction.details);
       final hubs = [
         MediaHub(id: 'ondeck', title: 'On deck', type: 'episode', items: [_episode(1, 2)]),
       ];
@@ -546,11 +562,6 @@ void main() {
       await _press(tester, LogicalKeyboardKey.enter);
       expect(played, ['e1-2']);
       expect(pages(tester), hasLength(1));
-
-      await SettingsService.instance.write(SettingsService.episodeAction, EpisodeAction.details);
-      await _press(tester, LogicalKeyboardKey.enter);
-      expect(played, ['e1-2']);
-      expect(pages(tester).map((page) => page.metadata.id), ['show', 'e1-2']);
     });
 
     test('the target of an episode opened on its own series is the episode, and only then', () {
