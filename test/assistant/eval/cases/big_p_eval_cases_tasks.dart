@@ -12,6 +12,19 @@ Future<EvalWorld> _seerr() async => EvalWorld(seerr: evalSeerr());
 /// The same Seerr, where this user's request for Primer is still pending.
 Future<EvalWorld> _seerrPending() async => EvalWorld(
   seerr: evalSeerr()
+    // The search result carries the status too, as Seerr's does: without it
+    // the title reads as not requested and nobody would cancel anything.
+    ..search['Primer'] = [
+      {
+        'id': 14337,
+        'mediaType': 'movie',
+        'title': 'Primer',
+        'releaseDate': '2004-10-08',
+        'originalLanguage': 'en',
+        'voteCount': 1500,
+        'mediaInfo': {'status': 2},
+      },
+    ]
     ..details['/movie/14337'] = {
       'id': 14337,
       'title': 'Primer',
