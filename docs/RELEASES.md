@@ -47,7 +47,7 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-## 2.8.1 · build 463 · 13 November 2026 · iPhone, iPad, Apple TV and Mac
+## 2.8.1 · build 463 (Apple TV) and build 464 (iPhone, iPad and Mac) · 13 November 2026 · iPhone, iPad, Apple TV and Mac
 
 <!-- commit: 483819c7ae2afd281c2e2bc900bff17b535f2664 -->
 
