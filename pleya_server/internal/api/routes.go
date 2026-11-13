@@ -102,6 +102,9 @@ func (s *Server) routeTable() []route {
 		// Bibliotheekonderhoud (DEC-XXX, matrixregels 108 en 109).
 		{"POST " + p + "/libraries/{library_id}/empty-trash", s.authenticated(s.handleEmptyLibraryTrash)},
 		{"POST " + p + "/libraries/{library_id}/refresh-metadata", s.authenticated(s.handleRefreshLibraryMetadata)},
+		// Een titel met zijn bestanden wissen (DEC-XXX, matrixregel 112).
+		// Standaard uit; recht manage op de bibliotheek, in de handler.
+		{"DELETE " + p + "/items/{item_id}", s.authenticated(s.handleDeleteItem)},
 		{"GET " + p + "/scans", s.authenticated(s.handleListScans)},
 		{"GET " + p + "/scans/{scan_id}", s.authenticated(s.handleGetScan)},
 		{"GET " + p + "/jobs", s.authenticated(s.handleListJobs)},

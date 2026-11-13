@@ -126,6 +126,11 @@ type Capabilities struct {
 	// /libraries/{id}/empty-trash en /refresh-metadata bestaan; legen vraagt de
 	// wachtrij, net als de scan.
 	LibraryMaintenance bool `json:"library_maintenance"`
+	// MediaDelete (DEC-XXX, media verwijderen). Aan als de beheerder het
+	// verwijderen aanzette en minstens één mediaroot bij het opstarten
+	// schrijfbaar bleek. Weggelaten als het uit staat, zodat het antwoord van
+	// een server zonder deze functie byte voor byte gelijk blijft.
+	MediaDelete bool `json:"media_delete,omitempty"`
 
 	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen

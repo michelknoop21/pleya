@@ -91,6 +91,7 @@ part 'pleya_server_client/parts/memory.dart';
 part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
+part 'pleya_server_client/parts/media_delete.dart';
 part 'pleya_server_client/parts/verify_detail.dart';
 part 'pleya_server_client/parts/companion.dart';
 
@@ -135,6 +136,7 @@ class PleyaServerClient
         _PleyaServerDownloadMethods,
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
+        _PleyaServerMediaDeleteMethods,
         _PleyaVerifyDetailMethods,
         ServerAuthorityGuard
     implements

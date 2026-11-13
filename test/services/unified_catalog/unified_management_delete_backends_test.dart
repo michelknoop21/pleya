@@ -11,12 +11,14 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/connection/connection.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
@@ -379,6 +381,28 @@ void main() {
     await tester.pump(const Duration(seconds: 10));
   });
 
+  testWidgets('a partly failed delete that left the title tells the caller to refresh, and removes nothing', (
+    tester,
+  ) async {
+    final manager = MultiServerManager();
+    addTearDown(manager.dispose);
+    final context = await mount(tester, manager);
+    var refreshed = 0;
+    final done = confirmAndDeleteMediaItem(
+      context,
+      item: _movie('pleya-1', 'Pleya', MediaBackend.pleyaServer, 'item-1'),
+      client: () => _PartlyDeletingClient(),
+      onPartlyDeleted: () => refreshed++,
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining(t.mediaMenu.pleyaServerDeletesFiles), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, t.mediaMenu.deleteFromServer));
+    await tester.pumpAndSettle();
+    expect(await done, isFalse);
+    expect(refreshed, 1);
+    await tester.pump(const Duration(seconds: 10));
+  });
+
   testWidgets('the confirmation names the title', (tester) async {
     final manager = MultiServerManager();
     addTearDown(manager.dispose);
@@ -394,4 +418,16 @@ void main() {
     await tester.pumpAndSettle();
     await done;
   });
+}
+
+class _PartlyDeletingClient implements MediaServerClient {
+  @override
+  ServerId get serverId => ServerId('pleya-1');
+
+  @override
+  Future<bool> deleteMediaItem(MediaItem item) async =>
+      throw const MediaDeletionIncompleteException(removedFiles: 1, failedPaths: ['Arrival/extra.mkv']);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

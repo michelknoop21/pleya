@@ -665,6 +665,13 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get deleteFromServer => 'Verwijderen van server';
 	@override String get confirmDelete => 'Deze media en bestanden van je server verwijderen?';
 	@override String get deleteMultipleWarning => 'Dit omvat alle afleveringen en hun bestanden.';
+	@override String get pleyaServerDeletesFiles => 'Pleya Server wist de bestanden van de opslag. Dat is niet terug te draaien.';
+	@override String get pleyaDeletionDisabled => 'Bestanden wissen staat uit op deze Pleya Server. Er is niets verwijderd.';
+	@override String get pleyaDeletionReadOnly => 'De opslag van deze titel is op Pleya Server alleen-lezen gekoppeld. Er is niets verwijderd.';
+	@override String get pleyaDeletionRootOverlap => 'De map van deze titel hoort ook bij een andere bibliotheek. Er is niets verwijderd.';
+	@override String get pleyaDeletionScanInProgress => 'Pleya Server scant deze bibliotheek. Er is niets verwijderd; probeer het na de scan opnieuw.';
+	@override String get pleyaDeletionStorageUnavailable => 'Pleya Server kan de opslag van deze titel nu niet bereiken. Er is niets verwijderd.';
+	@override String pleyaDeletionIncomplete({required Object removed, required Object paths}) => 'Niet alles is gewist: ${removed} bestanden weg. Deze bleven staan: ${paths}';
 	@override String get mediaDeletedSuccessfully => 'Media-item succesvol verwijderd';
 	@override String get mediaFailedToDelete => 'Verwijderen van media-item mislukt';
 	@override String get plexDeletionDisabled => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.';
@@ -5246,6 +5253,13 @@ extension on TranslationsNl {
 			'mediaMenu.deleteFromServer' => 'Verwijderen van server',
 			'mediaMenu.confirmDelete' => 'Deze media en bestanden van je server verwijderen?',
 			'mediaMenu.deleteMultipleWarning' => 'Dit omvat alle afleveringen en hun bestanden.',
+			'mediaMenu.pleyaServerDeletesFiles' => 'Pleya Server wist de bestanden van de opslag. Dat is niet terug te draaien.',
+			'mediaMenu.pleyaDeletionDisabled' => 'Bestanden wissen staat uit op deze Pleya Server. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionReadOnly' => 'De opslag van deze titel is op Pleya Server alleen-lezen gekoppeld. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionRootOverlap' => 'De map van deze titel hoort ook bij een andere bibliotheek. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionScanInProgress' => 'Pleya Server scant deze bibliotheek. Er is niets verwijderd; probeer het na de scan opnieuw.',
+			'mediaMenu.pleyaDeletionStorageUnavailable' => 'Pleya Server kan de opslag van deze titel nu niet bereiken. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionIncomplete' => ({required Object removed, required Object paths}) => 'Niet alles is gewist: ${removed} bestanden weg. Deze bleven staan: ${paths}',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media-item succesvol verwijderd',
 			'mediaMenu.mediaFailedToDelete' => 'Verwijderen van media-item mislukt',
 			'mediaMenu.plexDeletionDisabled' => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.',
@@ -5272,6 +5286,8 @@ extension on TranslationsNl {
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, film',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV-serie',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
+			_ => null,
+		} ?? switch (path) {
 			'accessibility.mediaCardSeason' => ({required Object title, required Object seasonInfo}) => '${title}, ${seasonInfo}',
 			'accessibility.mediaCardWatched' => 'bekeken',
 			'accessibility.mediaCardPartiallyWatched' => ({required Object percent}) => '${percent} procent bekeken',
@@ -5279,8 +5295,6 @@ extension on TranslationsNl {
 			'accessibility.tapToPlay' => 'Tik om af te spelen',
 			'tooltips.shufflePlay' => 'Willekeurig afspelen',
 			'tooltips.playTrailer' => 'Trailer afspelen',
-			_ => null,
-		} ?? switch (path) {
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
@@ -5786,6 +5800,8 @@ extension on TranslationsNl {
 			'libraries.sortLabels.playCount' => 'Aantal afspelingen',
 			'libraries.sortLabels.productionYear' => 'Productiejaar',
 			'libraries.sortLabels.runtime' => 'Speelduur',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.officialRating' => 'Officiële beoordeling',
 			'libraries.sortLabels.premiereDate' => 'Premièredatum',
 			'libraries.sortLabels.startDate' => 'Begindatum',
@@ -5793,8 +5809,6 @@ extension on TranslationsNl {
 			'libraries.sortLabels.studio' => 'Studio',
 			'libraries.sortLabels.random' => 'Willekeurig',
 			'libraries.sortLabels.dateShared' => 'Gedeeld op',
-			_ => null,
-		} ?? switch (path) {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
 			'about.title' => 'Over',
@@ -6300,6 +6314,8 @@ extension on TranslationsNl {
 			'performanceOverlay.dvRpuAverage' => 'DV RPU gem.',
 			'performanceOverlay.dvSampleAverage' => 'DV-sample gem.',
 			'performanceOverlay.maxLuma' => 'Max luma',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.minLuma' => 'Min luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
 			'performanceOverlay.maxFall' => 'MaxFALL',
@@ -6307,8 +6323,6 @@ extension on TranslationsNl {
 			'performanceOverlay.cacheLimit' => 'Cachelimiet',
 			'performanceOverlay.speed' => 'Snelheid',
 			'performanceOverlay.player' => 'Speler',
-			_ => null,
-		} ?? switch (path) {
 			'performanceOverlay.memory' => 'Geheugen',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'Externe speler',
@@ -6814,6 +6828,8 @@ extension on TranslationsNl {
 			'nowWatching.paused' => 'Gepauzeerd',
 			'nowWatching.remaining' => ({required Object time}) => '${time} over',
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'Op je netwerk',
 			'nowWatching.onWan' => 'Van buiten',
@@ -6821,8 +6837,6 @@ extension on TranslationsNl {
 			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
 			'sourcePicker.playTitle' => 'Kies waar je wilt afspelen',
 			'sourcePicker.detailsTitle' => 'Kies een bron voor de details',
-			_ => null,
-		} ?? switch (path) {
 			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
@@ -7328,6 +7342,8 @@ extension on TranslationsNl {
 			'assistant.memory.sync.select' => 'Delen',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.memory.sync.clearChanged' => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.',
 			'assistant.memory.sync.clearServer' => 'Deze serverherinneringen wissen',
 			'assistant.memory.sync.clearEverywhere' => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.',
@@ -7335,8 +7351,6 @@ extension on TranslationsNl {
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
 			'assistant.mobile.setup' => 'Model instellen',
@@ -7842,6 +7856,8 @@ extension on TranslationsNl {
 			'seerrIssues.quickLooking' => 'Ik kijk ernaar',
 			'seerrIssues.quickNewVersion' => 'Ik heb een nieuwe versie gevraagd',
 			'seerrIssues.quickFixed' => 'Opgelost, probeer het opnieuw',
+			_ => null,
+		} ?? switch (path) {
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'opgelost',
 			'pleyaNotifications.pushTitle' => 'Push op dit toestel',
@@ -7849,8 +7865,6 @@ extension on TranslationsNl {
 			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.',
 			'pleyaNotifications.pushOffline' => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.',
 			'pleyaNotifications.pushPending' => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaNotifications.title' => 'Notificaties',
 			'pleyaNotifications.subtitle' => 'Kies welke updates je ontvangt',
 			'pleyaNotifications.settings' => 'Notificatievoorkeuren',

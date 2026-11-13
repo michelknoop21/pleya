@@ -1554,6 +1554,27 @@ class TranslationsMediaMenuEn {
 	/// en: 'This includes all episodes and their files.'
 	String get deleteMultipleWarning => 'This includes all episodes and their files.';
 
+	/// en: 'Pleya Server erases the files from its storage. This cannot be undone.'
+	String get pleyaServerDeletesFiles => 'Pleya Server erases the files from its storage. This cannot be undone.';
+
+	/// en: 'File deletion is switched off on this Pleya Server. Nothing was deleted.'
+	String get pleyaDeletionDisabled => 'File deletion is switched off on this Pleya Server. Nothing was deleted.';
+
+	/// en: 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.'
+	String get pleyaDeletionReadOnly => 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.';
+
+	/// en: 'The folder of this title is also part of another library. Nothing was deleted.'
+	String get pleyaDeletionRootOverlap => 'The folder of this title is also part of another library. Nothing was deleted.';
+
+	/// en: 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.'
+	String get pleyaDeletionScanInProgress => 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.';
+
+	/// en: 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.'
+	String get pleyaDeletionStorageUnavailable => 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.';
+
+	/// en: 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}'
+	String pleyaDeletionIncomplete({required Object removed, required Object paths}) => 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}';
+
 	/// en: 'Media item deleted successfully'
 	String get mediaDeletedSuccessfully => 'Media item deleted successfully';
 
@@ -11346,6 +11367,13 @@ extension on Translations {
 			'mediaMenu.deleteFromServer' => 'Delete from server',
 			'mediaMenu.confirmDelete' => 'Delete this media and its files from your server?',
 			'mediaMenu.deleteMultipleWarning' => 'This includes all episodes and their files.',
+			'mediaMenu.pleyaServerDeletesFiles' => 'Pleya Server erases the files from its storage. This cannot be undone.',
+			'mediaMenu.pleyaDeletionDisabled' => 'File deletion is switched off on this Pleya Server. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionReadOnly' => 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionRootOverlap' => 'The folder of this title is also part of another library. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionScanInProgress' => 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.',
+			'mediaMenu.pleyaDeletionStorageUnavailable' => 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionIncomplete' => ({required Object removed, required Object paths}) => 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media item deleted successfully',
 			'mediaMenu.mediaFailedToDelete' => 'Failed to delete media item',
 			'mediaMenu.plexDeletionDisabled' => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.',
@@ -11372,6 +11400,8 @@ extension on Translations {
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, movie',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV show',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
+			_ => null,
+		} ?? switch (path) {
 			'accessibility.mediaCardSeason' => ({required Object title, required Object seasonInfo}) => '${title}, ${seasonInfo}',
 			'accessibility.mediaCardWatched' => 'watched',
 			'accessibility.mediaCardPartiallyWatched' => ({required Object percent}) => '${percent} percent watched',
@@ -11379,8 +11409,6 @@ extension on Translations {
 			'accessibility.tapToPlay' => 'Tap to play',
 			'tooltips.shufflePlay' => 'Shuffle play',
 			'tooltips.playTrailer' => 'Play trailer',
-			_ => null,
-		} ?? switch (path) {
 			'tooltips.markAsWatched' => 'Mark as watched',
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
@@ -11886,6 +11914,8 @@ extension on Translations {
 			'libraries.sortLabels.playCount' => 'Play Count',
 			'libraries.sortLabels.productionYear' => 'Production Year',
 			'libraries.sortLabels.runtime' => 'Runtime',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.officialRating' => 'Official Rating',
 			'libraries.sortLabels.premiereDate' => 'Premiere Date',
 			'libraries.sortLabels.startDate' => 'Start Date',
@@ -11893,8 +11923,6 @@ extension on Translations {
 			'libraries.sortLabels.studio' => 'Studio',
 			'libraries.sortLabels.random' => 'Random',
 			'libraries.sortLabels.dateShared' => 'Date Shared',
-			_ => null,
-		} ?? switch (path) {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
 			'about.title' => 'About',
@@ -12400,6 +12428,8 @@ extension on Translations {
 			'performanceOverlay.dvRpuAverage' => 'DV RPU Avg',
 			'performanceOverlay.dvSampleAverage' => 'DV Sample Avg',
 			'performanceOverlay.maxLuma' => 'Max Luma',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.minLuma' => 'Min Luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
 			'performanceOverlay.maxFall' => 'MaxFALL',
@@ -12407,8 +12437,6 @@ extension on Translations {
 			'performanceOverlay.cacheLimit' => 'Cache Limit',
 			'performanceOverlay.speed' => 'Speed',
 			'performanceOverlay.player' => 'Player',
-			_ => null,
-		} ?? switch (path) {
 			'performanceOverlay.memory' => 'Memory',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'External Player',
@@ -12914,6 +12942,8 @@ extension on Translations {
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.addFolder' => 'Add a local folder',
 			'pleyaShare.notificationTitle' => 'Sharing media',
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
@@ -12921,8 +12951,6 @@ extension on Translations {
 			'pleyaShare.scanningSubnet' => 'Scanning the network…',
 			'sourcePicker.playTitle' => 'Choose where to play',
 			'sourcePicker.detailsTitle' => 'Choose a source for the details',
-			_ => null,
-		} ?? switch (path) {
 			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
@@ -13428,6 +13456,8 @@ extension on Translations {
 			'assistant.memory.sync.select' => 'Share',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.memory.sync.clearChanged' => 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.',
 			'assistant.memory.sync.clearServer' => 'Erase these server memories',
 			'assistant.memory.sync.clearEverywhere' => 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.',
@@ -13435,8 +13465,6 @@ extension on Translations {
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
 			'assistant.mobile.setup' => 'Set up model',
@@ -13942,6 +13970,8 @@ extension on Translations {
 			'seerrIssues.quickLooking' => 'Looking into it',
 			'seerrIssues.quickNewVersion' => 'I\'ve requested a new version',
 			'seerrIssues.quickFixed' => 'Fixed, please try again',
+			_ => null,
+		} ?? switch (path) {
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'resolved',
 			'pleyaNotifications.pushTitle' => 'Push on this device',
@@ -13949,8 +13979,6 @@ extension on Translations {
 			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.',
 			'pleyaNotifications.pushOffline' => 'Changes will take effect when this device can reach the server again.',
 			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaNotifications.title' => 'Notifications',
 			'pleyaNotifications.subtitle' => 'Choose which updates to receive',
 			'pleyaNotifications.settings' => 'Notification preferences',

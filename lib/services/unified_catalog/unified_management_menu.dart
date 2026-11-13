@@ -8,8 +8,10 @@ import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
+import '../../media/ids.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
+import '../../media/server_administration.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_source.dart';
 import '../../metadata_edit/metadata_edit_adapters.dart';
@@ -17,6 +19,7 @@ import '../../providers/multi_server_provider.dart';
 import '../../providers/offline_mode_provider.dart';
 import '../../screens/metadata_edit_screen.dart';
 import '../../screens/plex_match_screen.dart';
+import '../../services/multi_server_manager.dart';
 import '../../services/plex_client.dart';
 import '../../widgets/app_menu.dart';
 import '../../widgets/media_item_deletion.dart';
@@ -29,17 +32,31 @@ List<UnifiedManagementAction> unifiedManagementActions({
   required MediaKind kind,
   required bool canManage,
   required bool isOffline,
+  bool? canDelete,
 }) {
-  if (isOffline || !canManage || client == null) return const [];
+  if (isOffline || client == null) return const [];
   return [
-    if (supportsMetadataEdit(client, kind)) ...[UnifiedManagementAction.artwork, UnifiedManagementAction.metadata],
-    if (client is PlexClient && (kind == MediaKind.movie || kind == MediaKind.show)) UnifiedManagementAction.match,
-    // The same kinds and the same owner rule as "Delete from server" in the
-    // per-item menu. [canManage] is false on every backend without a delete.
-    if (kind == MediaKind.movie || kind == MediaKind.show || kind == MediaKind.season || kind == MediaKind.episode)
+    if (canManage && supportsMetadataEdit(client, kind)) ...[
+      UnifiedManagementAction.artwork,
+      UnifiedManagementAction.metadata,
+    ],
+    if (canManage && client is PlexClient && (kind == MediaKind.movie || kind == MediaKind.show))
+      UnifiedManagementAction.match,
+    // The same kinds and the same rule as "Delete from server" in the per-item
+    // menu: [canDelete], which without a value follows [canManage].
+    if ((canDelete ?? canManage) &&
+        (kind == MediaKind.movie || kind == MediaKind.show || kind == MediaKind.season || kind == MediaKind.episode))
       UnifiedManagementAction.delete,
   ];
 }
+
+/// May the active profile delete a title on [serverId]: the owner rule on Plex
+/// and Jellyfin, and on a server with its own switch (Pleya Server,
+/// `media_delete`) that switch plus server administration.
+bool canDeleteMediaOn(MultiServerManager manager, MediaServerClient client, ServerId serverId) => switch (client) {
+  MediaDeletionGate(:final supportsMediaDeletion) => supportsMediaDeletion && manager.canAdministerServer(serverId),
+  _ => manager.canManageServerMetadata(serverId),
+};
 
 class UnifiedManagementChoice {
   const UnifiedManagementChoice(this.source, this.action, this.client, {String? sourceName}) : _sourceName = sourceName;
@@ -100,6 +117,7 @@ List<UnifiedManagementChoice> unifiedManagementChoices(
             client: client,
             kind: source.item.kind,
             canManage: manager.canManageServerMetadata(source.serverId),
+            canDelete: canDeleteMediaOn(manager, client, source.serverId),
             isOffline: isOffline,
           ))
             UnifiedManagementChoice(source, action, client, sourceName: _sourceName(group, source)),
@@ -126,6 +144,7 @@ Future<void> runUnifiedManagementChoice(
     client: client,
     kind: source.item.kind,
     canManage: manager.canManageServerMetadata(source.serverId),
+    canDelete: client == null ? false : canDeleteMediaOn(manager, client, source.serverId),
     isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
   ).contains(choice.action))
     return;
@@ -137,6 +156,7 @@ Future<void> runUnifiedManagementChoice(
       item: source.item,
       client: () => choice.client,
       sourceName: choice.sourceName,
+      onPartlyDeleted: onChanged,
     );
     if (!deleted || !context.mounted) return;
     if (onDeleted != null) {

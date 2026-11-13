@@ -235,6 +235,28 @@ void main() {
       isEmpty,
     );
   });
+  test('a server with its own delete rule offers only the delete without metadata rights', () {
+    expect(
+      unifiedManagementActions(
+        client: client,
+        kind: MediaKind.movie,
+        canManage: false,
+        canDelete: true,
+        isOffline: false,
+      ),
+      [UnifiedManagementAction.delete],
+    );
+    expect(
+      unifiedManagementActions(
+        client: client,
+        kind: MediaKind.movie,
+        canManage: true,
+        canDelete: false,
+        isOffline: false,
+      ),
+      isNot(contains(UnifiedManagementAction.delete)),
+    );
+  });
   test('offline and disconnected sources expose no canonical actions', () {
     expect(unifiedManagementActions(client: client, kind: MediaKind.movie, canManage: true, isOffline: true), isEmpty);
     expect(unifiedManagementActions(client: null, kind: MediaKind.show, canManage: true, isOffline: false), isEmpty);
