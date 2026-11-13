@@ -1328,6 +1328,7 @@ controle, niet erna.
 | Beschadigd mediabestand dat ffprobe laat crashen | ffprobe draait als kindproces met timeout; een crash markeert het bestand en stopt de scan niet |
 | Een provider-API die HTML terugstuurt | providerantwoorden landen in de kandidatenlaag en worden gevalideerd voordat er iets canoniek wordt |
 | Uploaden van bestanden | bestaat niet in v1; alle mounts zijn read-only |
+| Bestanden wissen via `DELETE /items/{id}` | standaard uit; alleen met `PLEYA_SERVER_ALLOW_MEDIA_DELETE`, een mount zonder `:ro` die bij het opstarten schrijfbaar gemeten is, owner of admin met recht `manage` en een gewone sessie (geen API-token); paden uit de database, geopend vanaf de opgeloste bibliotheekroot, symlinks worden niet gevolgd en niet gewist ([DEC-XXX](DECISIONS.md), media verwijderen) |
 | Log met inhoud | paden en titels worden in logs afgekort en tokens nooit gelogd |
 
 Het publieke `/info`-antwoord draagt bewust geen servernaam, versie of buildnummer; die staan achter
@@ -1508,7 +1509,11 @@ de server maakt zijn eigen schema aan bij de eerste start.
 Configuratie via omgevingsvariabelen met een klein bestand als alternatief, en één principe: de
 server start met alleen een databaseverbinding en een bibliotheekpad, en al het andere heeft een
 werkende default. Mounts zijn read-only, en dat is geen aanbeveling maar de gedocumenteerde
-verwachting waar het dreigingsmodel op steunt.
+verwachting waar het dreigingsmodel op steunt. Er is één bewuste uitzondering, en die staat
+standaard uit: een beheerder die `PLEYA_SERVER_ALLOW_MEDIA_DELETE` zet en een mediamount zonder `:ro`
+koppelt, laat de server titels met hun bestanden wissen (DEC-XXX, media verwijderen). Op zo'n
+installatie kan een overgenomen beheeraccount mediabestanden vernietigen; een read-only mount sluit
+dat uit, en daarom blijft read-only de standaard.
 
 Updates: schemaversie in de binary, migraties bij het opstarten, en een weigering te starten als de
 database nieuwer is dan de binary. Terugrollen naar een oudere binary vraagt een back-up, zoals in

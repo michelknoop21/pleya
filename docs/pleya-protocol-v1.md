@@ -244,6 +244,10 @@ aflevering apart. `capabilities.item_metadata_refresh` zegt dat `POST /items/{it
 bestaat (17f). `capabilities.scan_schedule` zegt dat een bibliotheek voor klasse `admin`
 `next_scan_at` draagt (17f).
 
+`capabilities.media_delete` staat alleen aan als de beheerder het verwijderen van bestanden aanzette
+en minstens één mediaroot bij het opstarten schrijfbaar bleek (17h, DEC-XXX). Afwezig is false, en
+dan biedt een client verwijderen op deze server niet aan.
+
 `capabilities.mcp` staat aan zodra het MCP-endpoint beschikbaar is. Het register bepaalt welke gecontroleerde operaties beschikbaar zijn. Transport, toolargumenten en audit staan in [het MCP-hoofdstuk](pleya-protocol-mcp.md).
 Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
 dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
@@ -617,6 +621,9 @@ contract keurt ze af.
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
+| `library.delete_not_permitted` | 403 | nee | de bibliotheek is zichtbaar, maar de aanvrager is geen owner of admin met het recht `manage` (17h) |
+| `library.media_delete_unavailable` | 409 | nee | verwijderen staat uit (`details.reason` `disabled`), de opslag van het item is niet schrijfbaar gemount (`read_only`) of overlapt met die van een andere bibliotheek (`root_overlap`); er is niets gewist (17h) |
+| `library.media_delete_incomplete` | 409 | nee | een of meer bestanden bleven staan; `details` zegt wat wel en niet weg is (17h) |
 | `playback.file_corrupt` | 422 | nee | een omzetting mislukte en een tweede analyse van de bron ook: het bestand zelf is stuk (faalpad "kapot bestand", S25.5) |
 | `server.maintenance` | 503 | ja | de server zet een back-up terug en neemt niets aan tot hij herstart is (S25.3) |
 | `server.database_unavailable` | 503 | ja | de database is niet bereikbaar (faalpad "database weg", S25.5); een query die fout is blijft `server.internal` |
@@ -1599,7 +1606,8 @@ view  <  download  <  manage
 Eén waarde per `(gebruiker, bibliotheek)`, nooit drie losse vlaggen: `download` impliceert `view`,
 `manage` impliceert beide. `view` en `download` worden in deze fase gehandhaafd; `manage` wordt
 opgeslagen en teruggegeven, maar handhaaft pas iets zodra metadata-bewerken en bibliotheekbeheer
-bestaan (latere fasen).
+bestaan (latere fasen). Eén uitzondering: `DELETE /items/{id}` (17h) eist `manage` op de bibliotheek,
+en daarnaast de klasse `admin` (owner of admin). Een lid met `manage` mag dus nog steeds niets wissen.
 
 ### 16.3 De endpoints
 
@@ -1784,6 +1792,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 109 | `POST /libraries/{id}/refresh-metadata` | een providerronde over een hele bibliotheek | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f) |
 | 110 | `POST /items/{id}/watch-state` | kijkstatus van een hele serie in één aanvraag | klasse `authenticated` en elke rol, over de eigen kijkstatus; item buiten de bibliotheken van de aanvrager `404` zoals regel 12 (14.1c, DEC-XXX) |
 | 111 | `POST /items/{id}/refresh-metadata` | een providerronde over één titel | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f, DEC-XXX) |
+| 112 | `DELETE /items/{id}` | bestanden van de opslag wissen | klasse `admin` én recht `manage` op de bibliotheek: buiten zicht `404`, zichtbaar maar geen owner of admin met `manage` `403` `library.delete_not_permitted`; een API-token `403` `auth.scope_insufficient`; standaard uit (17h, DEC-XXX) |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2597,6 +2606,79 @@ is een back-up terugzetten.
 dat stuk is `playback.file_corrupt`. De laatste twee hebben dezelfde buitenkant; een tweede analyse
 van de bron beslist welke het is.
 
+### 17h. Een titel met zijn bestanden verwijderen
+
+`DELETE /items/{id}` haalt een film, serie, seizoen of aflevering uit de catalogus en wist de
+bestanden ervan van de opslag (DEC-XXX). Dat is anders dan `DELETE /libraries/{id}` (17e.3), dat
+alleen de database raakt. Het gedrag staat standaard uit, en een installatie die niets verandert
+houdt dus een server die nooit schrijft op de mediamount.
+
+**Aanzetten.** Twee dingen van de beheerder, en een meting van de server. De variabele
+`PLEYA_SERVER_ALLOW_MEDIA_DELETE=true`, en een mediamount zonder `:ro`. Bij het opstarten maakt de
+server in elke root uit `PLEYA_SERVER_MEDIA_DIRS` een leeg tijdelijk bestand aan en wist het meteen;
+alleen roots waar dat lukt komen in de lijst. Zonder variabele staat de functie uit
+(`library.media_delete_unavailable`, `details.reason` `disabled`). Met variabele maar zonder
+schrijfbare root, of voor een item waarvan de bibliotheekroot niet onder een gemeten root valt, is
+het `read_only`. In beide gevallen is er niets gewist. `capabilities.media_delete` is alleen waar
+als er minstens één schrijfbare root gemeten is.
+
+**Wie.** Een beheerder: de klasse `admin` (owner of admin) én het recht `manage` op de bibliotheek
+van het item. Owner en admin hebben `manage` altijd (16.2), dus in de praktijk beslist de rol. Buiten
+zicht is `404`; zichtbaar voor iemand die geen owner of admin is, ook een lid met `manage`, is `403`
+`library.delete_not_permitted`. Een API-token krijgt `403` `auth.scope_insufficient`, ook onder
+bereik `admin`: een agent of script wist geen bestanden.
+
+**Een scan in de rij.** Wacht of loopt er een scan van dezelfde bibliotheek, dan is het antwoord
+`409` `library.scan_in_progress` en is er niets gewist, net als bij het legen van de prullenbak (17f).
+Een scan die net na die controle begint wordt niet tegengehouden. Ziet hij een bestand nog vlak voor
+het wissen, dan kan er een item zonder bestand in de catalogus staan tot de volgende scan het als
+verdwenen markeert. Er gaat daarbij geen bestand of kijkstatus verloren die niet al weg moest.
+
+**Overlappende roots.** Valt de root van het item, met opgeloste symlinks, samen met of binnen de
+root van een andere opslaglocatie (of andersom), dan is het `409` `library.media_delete_unavailable`
+met `details.reason` `root_overlap`. Een bestand zou dan ook bij een andere bibliotheek kunnen horen.
+Naast de paden vergelijkt de server per bestand de mappen zelf (apparaat en inode): een andere root
+die een tweede bind-mount is van een map binnen deze root valt zo ook op. Niet gezien wordt een root
+die zelf binnen een andere ligt terwijl de paden dat niet tonen, en dezelfde share die twee keer los
+over het netwerk gekoppeld is.
+
+**Wat er gewist wordt.** Alleen wat de catalogus aan het item en alles eronder hing: de
+mediabestanden van elke versie, de losse ondertitels van die versies en de artwork van de items.
+Een bestand dat de scanner niet kende (een `.nfo`, een eigen notitie) blijft staan. Een map die door
+het wissen leeg raakt gaat mee tot aan de bibliotheekroot; een map waar nog iets in staat blijft, en
+een symlink naar een map ook.
+Mediabestanden gaan eerst. Blijft er één staan, dan blijven ook alle bijbestanden van het item
+staan (`media_kept`), zodat er geen titel zonder ondertitel of poster achterblijft.
+
+**De grens.** Het pad komt uit de database en wordt geopend binnen de bij het opstarten gemeten
+schrijfbare root, en daarbinnen vanaf de bibliotheekroot (`os.Root` in Go): een tussenliggende map
+die via een symlink naar buiten wijst, of een relatief pad met `..`, komt niet verder dan
+`outside_root`. Een bestand dat er niet is telt als gewist als de map van het bestand er is en gevuld
+is (iets anders wiste het net), of als de scanner het al als
+verdwenen had gemarkeerd; anders is het `remove_failed` en blijft de titel staan. Een bestand dat zelf een symlink is wordt niet gewist
+en zijn doel ook niet (`symlink`). Iets anders dan een gewoon bestand evenmin (`not_a_file`).
+
+**De database.** Na het wissen krijgen de gewiste bestanden de markering `missing_since`, en ruimt
+de server op langs hetzelfde pad als de prullenbak (17f): versies zonder aanwezig mediabestand, dan
+titels zonder versie met hun kijkstatus, geschiedenis, favorieten, waarderingen, downloads en
+lijstregels, en daarna de seizoenen en series die leeg raakten.
+
+**Halverwege fout.** Bleef er een bestand staan, dan is het antwoord `409`
+`library.media_delete_incomplete` met `details.removed_files`, `details.removed_items` en
+`details.failed` (pad relatief aan de bibliotheekroot en een reden). De database volgt precies wat
+er op schijf gebeurde: een versie waarvan een mediabestand bleef, blijft bestaan.
+
+**Lopende streams.** Omzettingen van de versies van het item stopt de server vóór het wissen. Een
+directe stream heeft geen sessie in het geheugen. Een range die al loopt, leest via de open
+bestandshandle uit tot het eind van dat bereik; pas de volgende range-aanvraag krijgt `404`, omdat
+de versie weg is.
+
+**Na het wissen.** De databasestap loopt los van de aanvraag: een client die ophangt nadat de
+bestanden weg zijn, laat de catalogus niet half staan.
+
+**Audit.** Elke poging die tot het wissen of tot de `read_only`-weigering komt schrijft een regel
+`deleteItem` met de aanvrager, het item en de aantallen.
+
 ---
 
 ## 18. Endpointoverzicht
@@ -2629,6 +2711,7 @@ van de bron beslist welke het is.
 | `POST /pleya/v1/jobs/{id}/retry` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
 | `GET /pleya/v1/items/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/items/{id}` | `admin` met recht `manage` (17h) | nee |
 | `GET /pleya/v1/items/{id}/children` | `authenticated` | ja |
 | `GET /pleya/v1/search` | `authenticated` | ja |
 | `GET /pleya/v1/hubs/{hub_id}` | `authenticated` | ja |

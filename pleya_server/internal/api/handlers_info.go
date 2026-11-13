@@ -43,6 +43,8 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			WatchStateTree:      s.opts.Watch != nil,
 			ItemMetadataRefresh: s.opts.Catalog != nil,
 			ScanSchedule:        s.opts.NextScanAt != nil,
+			// MediaDelete: aangezet en een schrijfbare root gemeten (DEC-XXX).
+			MediaDelete: len(s.opts.MediaDelete) > 0,
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
 			// ExternalIDLookup: de filterparameter external_id en het itemveld bestaan.

@@ -46,6 +46,12 @@ type Config struct {
 	LogLevel             slog.Level
 	ShutdownTimeout      time.Duration
 
+	// AllowMediaDelete zet DELETE /items/{id} aan (DEC-XXX, media verwijderen).
+	// Standaard uit. Ook aan wist de server alleen onder een mediaroot die bij
+	// het opstarten schrijfbaar bleek, dus naast deze variabele is een mount
+	// zonder :ro nodig.
+	AllowMediaDelete bool
+
 	// ServerName staat in GET /server, achter authenticatie. Hij staat bewust
 	// niet in GET /info: een servernaam aan de buitenkant is een gratis
 	// inlichting voor wie het netwerk aftast.
@@ -318,6 +324,12 @@ func Load(getenv Getenv) (*Config, error) {
 		return nil, fmt.Errorf("PLEYA_SERVER_SCAN_ON_START: %w", err)
 	}
 	cfg.ScanOnStart = onStart
+
+	allowDelete, err := parseBool(valueOr(getenv, "PLEYA_SERVER_ALLOW_MEDIA_DELETE", "false"))
+	if err != nil {
+		return nil, fmt.Errorf("PLEYA_SERVER_ALLOW_MEDIA_DELETE: %w", err)
+	}
+	cfg.AllowMediaDelete = allowDelete
 
 	workers, err := parsePositiveInt(valueOr(getenv, "PLEYA_SERVER_JOB_WORKERS", strconv.Itoa(DefaultJobWorkers)))
 	if err != nil {

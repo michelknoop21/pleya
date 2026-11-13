@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../automation/automation_ids.dart';
+import '../exceptions/media_server_exceptions.dart';
 import '../i18n/strings.g.dart';
+import '../media/media_backend.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
@@ -26,13 +28,18 @@ Future<bool> confirmAndDeleteMediaItem(
   required MediaItem item,
   required MediaServerClient Function() client,
   String? sourceName,
+  VoidCallback? onPartlyDeleted,
 }) async {
   final isMultipleMediaItems = item.kind == MediaKind.show || item.kind == MediaKind.season;
   final confirmed = await showDeleteConfirmation(
     context,
     title: sourceName == null ? t.mediaMenu.deleteFromServer : '${t.mediaMenu.deleteFromServer} · $sourceName',
-    message:
-        "${item.displayTitle}\n\n${t.mediaMenu.confirmDelete}${isMultipleMediaItems ? "\n\n${t.mediaMenu.deleteMultipleWarning}" : ""}",
+    message: [
+      item.displayTitle,
+      t.mediaMenu.confirmDelete,
+      if (isMultipleMediaItems) t.mediaMenu.deleteMultipleWarning,
+      if (item.backend == MediaBackend.pleyaServer) t.mediaMenu.pleyaServerDeletesFiles,
+    ].join('\n\n'),
     confirmText: t.mediaMenu.deleteFromServer,
     confirmAutomationId: '${AutomationIds.dialogDeleteMedia}[confirm]',
     cancelAutomationId: '${AutomationIds.dialogDeleteMedia}[cancel]',
@@ -60,6 +67,19 @@ Future<bool> confirmAndDeleteMediaItem(
       }
     }
     return success;
+  } on MediaDeletionIncompleteException catch (e) {
+    // Part of it is gone: say what stayed. The title only leaves the UI when the
+    // server says it left the catalogue too; a title with a file left is still
+    // on the server. [onPartlyDeleted] lets the caller refresh what is left.
+    appLogger.w(t.mediaMenu.mediaFailedToDelete, error: e);
+    if (context.mounted) showErrorSnackBar(context, mediaDeletionFailureMessage(e, item.backend));
+    final removed = incompleteDeletionRemovedTitle(e, item.kind);
+    if (removed) {
+      DeletionNotifier().notifyDeletedItem(item: item);
+    } else {
+      onPartlyDeleted?.call();
+    }
+    return removed;
   } catch (e) {
     appLogger.e(t.mediaMenu.mediaFailedToDelete, error: e);
     final message = await resolveMediaDeletionFailureMessage(e, item.backend, resolved);

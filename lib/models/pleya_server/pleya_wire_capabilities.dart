@@ -40,6 +40,7 @@ class PleyaCapabilities {
     this.watchStateTree = false,
     this.itemMetadataRefresh = false,
     this.scanSchedule = false,
+    this.mediaDelete = false,
     this.mcp = false,
   });
 
@@ -157,6 +158,11 @@ class PleyaCapabilities {
 
   /// `Library.next_scan_at` is on every library an admin reads (chapter 17f).
   final bool scanSchedule;
+
+  /// `DELETE /items/{id}` erases a title and its files from storage (chapter
+  /// 17h). Only true when the server admin switched it on and a media root was
+  /// measured writable at startup; absent means off.
+  final bool mediaDelete;
   final bool mcp;
 
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
@@ -198,6 +204,7 @@ class PleyaCapabilities {
     watchStateTree: booleanOr(json, 'watch_state_tree', orElse: false),
     itemMetadataRefresh: booleanOr(json, 'item_metadata_refresh', orElse: false),
     scanSchedule: booleanOr(json, 'scan_schedule', orElse: false),
+    mediaDelete: booleanOr(json, 'media_delete', orElse: false),
     mcp: booleanOr(json, 'mcp', orElse: false),
   );
 }

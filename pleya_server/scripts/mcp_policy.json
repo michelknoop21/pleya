@@ -23,6 +23,7 @@
   "deleteCollection": {"method": "DELETE", "path": "/collections/{collection_id}", "access": "blocked", "reason": "Mutatie wacht op G1."},
   "deleteDownload": {"method": "DELETE", "path": "/downloads/{download_id}", "access": "blocked", "reason": "Mutatie wacht op G1."},
   "deleteHistoryEntry": {"method": "DELETE", "path": "/history/{history_id}", "access": "blocked", "reason": "Mutatie wacht op G1."},
+  "deleteItem": {"method": "DELETE", "path": "/items/{item_id}", "access": "blocked", "reason": "Bestanden wissen is een handeling van een persoon; een API-token krijgt 403 (DEC-XXX)."},
   "deleteLibrary": {"method": "DELETE", "path": "/libraries/{library_id}", "access": "blocked", "reason": "Mutatie wacht op G1."},
   "deleteMetadataOverride": {"method": "DELETE", "path": "/items/{item_id}/overrides/{field}", "access": "blocked", "reason": "Mutatie wacht op G1."},
   "deletePlaylist": {"method": "DELETE", "path": "/playlists/{playlist_id}", "access": "blocked", "reason": "Mutatie wacht op G1."},

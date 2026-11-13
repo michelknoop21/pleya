@@ -53,6 +53,7 @@ const caps: Capabilities = {
   cookie_auth: false,
   cookie_upgrade: false,
   administration: false,
+  media_delete: false,
   mcp: false
 };
 const items = navItems(caps, [

@@ -3283,6 +3283,59 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [administration]
+      operationId: deleteItem
+      summary: Verwijder een titel en wis zijn bestanden van de opslag.
+      description: |
+        Capability `media_delete` (DEC-XXX, media verwijderen, hoofdstuk 17h).
+        Een film, serie, seizoen of aflevering, met alles eronder. De server
+        wist de mediabestanden van elke versie en de bijbestanden die de
+        catalogus eraan hing (losse ondertitels, artwork); een bestand dat de
+        catalogus niet kende blijft staan, net als een map die daardoor niet
+        leeg raakt. Daarna ruimt hij de titel op langs het pad van de
+        prullenbak, met kijkstatus, geschiedenis en lijstregels.
+
+        Klasse `admin` (owner of admin) én recht `manage` op de bibliotheek:
+        buiten zicht `404`, zichtbaar voor iemand anders, ook een lid met
+        `manage`, `403` `library.delete_not_permitted`. Een API-token krijgt
+        `403` `auth.scope_insufficient`. Staat de functie uit, of valt de
+        opslag van het item niet onder een bij het opstarten schrijfbaar
+        gemeten mount, dan `409` `library.media_delete_unavailable` met
+        `details.reason` `disabled` of `read_only`, en is er niets gewist; een
+        root die met opgeloste symlinks overlapt met een andere opslaglocatie
+        geeft hetzelfde met `root_overlap`. Wacht of loopt er een scan van de
+        bibliotheek, dan `409` `library.scan_in_progress`, niets gewist.
+        Bleef een bestand staan, dan `409` `library.media_delete_incomplete`
+        met in `details` `removed_files`, `removed_items` en `failed`
+        (`path` relatief aan de bibliotheekroot, `reason` uit `outside_root`,
+        `symlink`, `not_a_file`, `remove_failed`, `media_kept`).
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: Alles is weg.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemDeleted" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403":
+          description: library.delete_not_permitted of auth.scope_insufficient.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.media_delete_unavailable, library.media_delete_incomplete of library.scan_in_progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503":
+          description: storage.unavailable, een root van het item is niet bereikbaar; niets gewist.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
 
   /items/{item_id}/children:
     get:
@@ -4233,6 +4286,15 @@ components:
         artwork_cache_admin:
           type: boolean
           description: Optioneel; afwezig is false. Alleen true bij volledige geregistreerde stats-/purgeketen.
+        media_delete:
+          type: boolean
+          default: false
+          description: |
+            DEC-XXX (media verwijderen). `DELETE /items/{item_id}` wist een titel
+            met zijn bestanden. Alleen waar als de beheerder het aanzette
+            (`PLEYA_SERVER_ALLOW_MEDIA_DELETE`) en minstens één mediaroot bij het
+            opstarten schrijfbaar bleek. Afwezig is false: een client biedt
+            verwijderen op deze server dan niet aan.
         library_maintenance:
           type: boolean
           default: false
@@ -6007,6 +6069,19 @@ components:
         scan_id:
           allOf: [{ $ref: "#/components/schemas/Id" }]
           description: Alleen voor een scanjob die via POST /libraries/{id}/scan is gestart.
+    ItemDeleted:
+      type: object
+      required: [removed_files, removed_items]
+      additionalProperties: false
+      properties:
+        removed_files:
+          type: integer
+          minimum: 0
+          description: Gewiste bestanden, inclusief bijbestanden en bestanden die al weg waren.
+        removed_items:
+          type: integer
+          minimum: 0
+          description: Verwijderde films en afleveringen; lege seizoenen en series tellen niet mee.
     LibraryMaintenance:
       type: object
       required: [items]

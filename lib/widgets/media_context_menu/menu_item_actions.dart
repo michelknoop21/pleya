@@ -304,7 +304,12 @@ extension on MediaContextMenuState {
   /// Handle delete media item action
   /// This permanently removes the media item and its associated files from the server
   Future<void> _handleDeleteMediaItem(BuildContext context) async {
-    final deleted = await confirmAndDeleteMediaItem(context, item: _mediaItem!, client: _getMediaClientForItem);
+    final deleted = await confirmAndDeleteMediaItem(
+      context,
+      item: _mediaItem!,
+      client: _getMediaClientForItem,
+      onPartlyDeleted: _notifyListRefresh,
+    );
     // Backward-compatible list refresh for screens that are not DeletionAware yet
     if (deleted) _notifyListRefresh();
   }

@@ -104,6 +104,9 @@ func (s *Server) routeTable() []route {
 		{"POST " + p + "/libraries/{library_id}/refresh-metadata", s.authenticated(s.handleRefreshLibraryMetadata)},
 		// Metadata per titel (DEC-XXX, matrixregel 111). Klasse admin, in de handler.
 		{"POST " + p + "/items/{item_id}/refresh-metadata", s.authenticated(s.handleRefreshItemMetadata)},
+		// Een titel met zijn bestanden wissen (DEC-XXX, matrixregel 112).
+		// Standaard uit; recht manage op de bibliotheek, in de handler.
+		{"DELETE " + p + "/items/{item_id}", s.authenticated(s.handleDeleteItem)},
 		{"GET " + p + "/scans", s.authenticated(s.handleListScans)},
 		{"GET " + p + "/scans/{scan_id}", s.authenticated(s.handleGetScan)},
 		{"GET " + p + "/jobs", s.authenticated(s.handleListJobs)},
