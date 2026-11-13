@@ -504,8 +504,34 @@ extension _AssistantAnswer on AssistantRun {
     final shown = <String>{};
     String keyOf(AssistantMediaGridEntry e) =>
         '${e.item.kind.name}|${assistantTitleKey(e.item.title ?? '')}|${e.item.year ?? ''}';
+    // A match card and a grid card of one title are the same card to the
+    // user: a search and a title lookup in one ask showed Jurassic Park twice
+    // (disc-keyword, BP-12). A match without a year equals a grid card of
+    // that title and kind.
+    String matchKey(AssistantTitleMatch m) => '${m.kind}|${assistantTitleKey(m.title)}|${m.year ?? ''}';
+    bool seen(String key) {
+      if (shown.contains(key)) return true;
+      if (!key.endsWith('|')) return false;
+      return shown.any((k) => k.startsWith(key));
+    }
+
     for (var i = 0; i < _displays.length; i++) {
-      final grid = _displays[i];
+      final display = _displays[i];
+      if (display is AssistantTitleMatches) {
+        final kept = [
+          for (final m in display.matches)
+            if (!seen(matchKey(m))) m,
+        ];
+        shown.addAll(display.matches.map(matchKey));
+        if (kept.length == display.matches.length) continue;
+        if (kept.isEmpty) {
+          _displays.removeAt(i--);
+        } else {
+          _displays[i] = AssistantTitleMatches(display.context, kept);
+        }
+        continue;
+      }
+      final grid = display;
       if (grid is! AssistantMediaGrid) continue;
       final kept = [
         for (final e in grid.entries)
