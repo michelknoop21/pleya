@@ -15,6 +15,7 @@ import type {
   CreateLibraryRequest,
   Job,
   Library,
+  LibraryMaintenance,
   MetadataCoverage,
   Scan,
   StorageRoot,
@@ -97,6 +98,22 @@ export function adminApi(client: PleyaClient) {
     startScan: (libraryId: string): Promise<Scan> =>
       client.request((raw) =>
         raw.POST('/libraries/{library_id}/scan', { params: { path: { library_id: libraryId } } })
+      ),
+
+    /** `items` is het aantal titels dat nu aan de beurt staat. */
+    refreshLibraryMetadata: (libraryId: string): Promise<LibraryMaintenance> =>
+      client.request((raw) =>
+        raw.POST('/libraries/{library_id}/refresh-metadata', {
+          params: { path: { library_id: libraryId } }
+        })
+      ),
+
+    /** `items` is het aantal kandidaten bij de aanvraag; de job kan er minder verwijderen. */
+    emptyLibraryTrash: (libraryId: string): Promise<LibraryMaintenance> =>
+      client.request((raw) =>
+        raw.POST('/libraries/{library_id}/empty-trash', {
+          params: { path: { library_id: libraryId } }
+        })
       ),
 
     createLibrary: (body: CreateLibraryRequest): Promise<Library> =>

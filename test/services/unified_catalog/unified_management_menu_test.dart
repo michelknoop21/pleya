@@ -36,6 +36,13 @@ class _OwnerManager extends MultiServerManager {
   bool canManageServerMetadata(ServerId serverId) => true;
 }
 
+class _OwnerOf extends _OwnerManager {
+  _OwnerOf(this.owned);
+  String owned;
+  @override
+  bool canManageServerMetadata(ServerId serverId) => serverId == ServerId(owned);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(loadAppFontsForGoldens);
@@ -154,6 +161,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(t.metadataEdit.artwork), findsOneWidget);
     expect(find.text(t.matchScreen.fixMatch), findsOneWidget);
+    expect(find.text(t.mediaMenu.deleteFromServer), findsOneWidget);
     await captureFollowup(tester, find.byType(Overlay).last, 'catalogue-owner-management');
     Navigator.of(context).pop();
     await tester.pumpAndSettle();
@@ -235,6 +243,141 @@ void main() {
     expect(unifiedManagementActions(client: client, kind: MediaKind.episode, canManage: true, isOffline: false), [
       UnifiedManagementAction.artwork,
       UnifiedManagementAction.metadata,
+      UnifiedManagementAction.delete,
     ]);
+  });
+
+  group('delete from server', () {
+    late List<String> calls;
+    late PlexClient second;
+    late MediaItem onFixture;
+    late MediaItem onSecond;
+    setUp(() {
+      calls = [];
+      PlexClient plex(String id, String name) => PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://$id.invalid',
+          token: 'fixture',
+          clientIdentifier: 'test',
+          product: 'Pleya Verify',
+          version: 'test',
+        ),
+        serverId: ServerId(id),
+        serverName: name,
+        httpClient: MockClient((request) async {
+          calls.add('${request.method} ${request.url.host}${request.url.path}');
+          return http.Response('', 200);
+        }),
+      );
+      client.close();
+      client = plex('fixture', 'Fixture');
+      second = plex('second', 'Second');
+      MediaItem movie(String server, String name) => MediaItem(
+        id: 'movie-$server',
+        serverId: server,
+        serverName: name,
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Film',
+      );
+      onFixture = movie('fixture', 'Fixture');
+      onSecond = movie('second', 'Second');
+    });
+    tearDown(() => second.close());
+
+    UnifiedMediaGroup twoServers() {
+      final sources = [UnifiedMediaSource.fromItem(onFixture), UnifiedMediaSource.fromItem(onSecond)];
+      return UnifiedMediaGroup(
+        groupId: 'film',
+        identity: CanonicalMediaIdentity.movie(title: 'Film'),
+        sources: sources,
+        representativeSourceKey: sources.first.sourceKey,
+        watchState: UnifiedWatchState(representativeSourceKey: sources.first.sourceKey),
+      );
+    }
+
+    Future<BuildContext> mountBoth(WidgetTester tester, _OwnerManager owner) {
+      owner.debugRegisterClientForTesting(second);
+      return mount(tester, const Text('Alle films'), owner: owner);
+    }
+
+    testWidgets('a title on two servers offers one delete per server it may manage', (tester) async {
+      final context = await mountBoth(tester, _OwnerManager());
+      final deletes = unifiedManagementChoices(
+        context,
+        twoServers(),
+        isOffline: false,
+      ).where((c) => c.action == UnifiedManagementAction.delete).toList();
+      expect(deletes.map((c) => c.source.serverName), ['Fixture', 'Second']);
+      expect(deletes.every((c) => c.destructive), isTrue);
+    });
+
+    testWidgets('no rights on a server means no delete for its copy', (tester) async {
+      final context = await mountBoth(tester, _OwnerOf('second'));
+      final deletes = unifiedManagementChoices(
+        context,
+        twoServers(),
+        isOffline: false,
+      ).where((c) => c.action == UnifiedManagementAction.delete);
+      expect(deletes.map((c) => c.source.serverName), ['Second']);
+    });
+
+    testWidgets('confirming deletes only the named source and reports the change', (tester) async {
+      final context = await mountBoth(tester, _OwnerManager());
+      final choice = unifiedManagementChoices(
+        context,
+        twoServers(),
+        isOffline: false,
+      ).singleWhere((c) => c.action == UnifiedManagementAction.delete && c.source.serverName == 'Second');
+      var changed = 0;
+      final done = runUnifiedManagementChoice(context, choice, onChanged: () => changed++);
+      await tester.pumpAndSettle();
+      // The dialog names the server whose copy goes.
+      expect(find.text('${t.mediaMenu.deleteFromServer} · Second'), findsOneWidget);
+      expect(calls, isEmpty);
+      await tester.tap(find.text(t.mediaMenu.deleteFromServer));
+      await tester.pumpAndSettle();
+      await done;
+      expect(calls, ['DELETE second.invalid/library/metadata/movie-second']);
+      expect(changed, 1);
+      await tester.pump(const Duration(seconds: 10));
+    });
+
+    testWidgets('cancelling the confirmation deletes nothing', (tester) async {
+      final context = await mountBoth(tester, _OwnerManager());
+      final choice = unifiedManagementChoices(
+        context,
+        twoServers(),
+        isOffline: false,
+      ).firstWhere((c) => c.action == UnifiedManagementAction.delete);
+      var changed = 0;
+      final done = runUnifiedManagementChoice(context, choice, onChanged: () => changed++);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(t.common.cancel));
+      await tester.pumpAndSettle();
+      await done;
+      expect(calls, isEmpty);
+      expect(changed, 0);
+    });
+
+    testWidgets('rights lost while the dialog is open: the server is not asked', (tester) async {
+      final owner = _OwnerOf('second');
+      final context = await mountBoth(tester, owner);
+      final choice = unifiedManagementChoices(
+        context,
+        twoServers(),
+        isOffline: false,
+      ).singleWhere((c) => c.action == UnifiedManagementAction.delete);
+      var changed = 0;
+      final done = runUnifiedManagementChoice(context, choice, onChanged: () => changed++);
+      await tester.pumpAndSettle();
+      owner.owned = 'none';
+      await tester.tap(find.text(t.mediaMenu.deleteFromServer));
+      await tester.pumpAndSettle();
+      await done;
+      expect(calls, isEmpty);
+      expect(changed, 0);
+      await tester.pump(const Duration(seconds: 10));
+    });
   });
 }

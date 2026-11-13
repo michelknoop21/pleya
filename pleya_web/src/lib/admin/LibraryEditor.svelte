@@ -14,9 +14,8 @@
   `POST /libraries/{id}/scan`. Lukt alleen die scan niet, dan bestaat de
   bibliotheek wel: de lijst meldt dat en biedt daar Nu scannen.
 
-  Opslaan stuurt alleen wat veranderd is. Metadata verversen en het paneel
-  Toegang uit de northstar staan er niet: daar is geen route voor (er is geen
-  verversroute, en de rechten van een gebruiker zijn alleen te schrijven).
+  Opslaan stuurt alleen wat veranderd is. Het paneel Toegang uit de northstar
+  staat er niet: de rechten van een gebruiker zijn alleen te schrijven.
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -32,6 +31,7 @@
   import { session } from '../stores/session.svelte';
   import AdminPageHead from './AdminPageHead.svelte';
   import LibraryDeletePanel from './LibraryDeletePanel.svelte';
+  import LibraryMaintenancePanel from './LibraryMaintenancePanel.svelte';
   import LibraryNewAdvanced from './LibraryNewAdvanced.svelte';
   import LibraryNewIntro from './LibraryNewIntro.svelte';
   import LibraryProblemAlert from './LibraryProblemAlert.svelte';
@@ -263,6 +263,18 @@
     {#if library}
       <div class="side">
         <LibraryStatusPanel {library} scan={detail.scan} coverage={detail.coverage} />
+        <LibraryMaintenancePanel
+          {library}
+          onnotice={(text) => {
+            problem = null;
+            notice = text;
+          }}
+          onproblem={(found, again) => {
+            notice = null;
+            problem = found;
+            retry = again;
+          }}
+        />
         {#if !readonly}
           <LibraryDeletePanel
             {library}
