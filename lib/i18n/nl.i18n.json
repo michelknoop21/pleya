@@ -521,6 +521,9 @@
     "plexDeletionDisabled": "Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.",
     "plexDeletionFilesNotRemovable": "Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).",
     "plexDeletionRefusedUnknown": "Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).",
+    "deletionForbidden": "De server weigert het verwijderen: dit account mag daar geen media verwijderen. Sta verwijderen toe voor dit account in de serverinstellingen (in Jellyfin en Emby: ‘Verwijderen van media toestaan’) en probeer opnieuw.",
+    "plexDeletionForbidden": "Plex weigert het verwijderen: dit account mag op deze server geen media verwijderen. Verwijder het vanuit het account dat eigenaar is van de server.",
+    "deleteServerGone": "De server van dit item is niet verbonden. Er is niets verwijderd.",
     "rate": "Beoordelen",
     "playFromBeginning": "Afspelen vanaf het begin",
     "playVersion": "Versie afspelen..."

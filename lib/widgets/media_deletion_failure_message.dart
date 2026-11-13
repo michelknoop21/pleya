@@ -32,6 +32,13 @@ String mediaDeletionFailureMessage(Object error, MediaBackend? backend, {bool? p
       };
     }
   }
+  final status = error is MediaServerHttpException ? error.statusCode : null;
+  // Jellyfin and Emby answer 401/403 to a user without media deletion.
+  if (backend == MediaBackend.jellyfin && (status == 401 || status == 403)) return t.mediaMenu.deletionForbidden;
+  // On Plex a 401 is a token that no longer counts, which the connection's own
+  // re-sign-in path handles; a 403 is an account the server will not let delete.
+  if (backend == MediaBackend.plex && status == 401) return t.connections.reauthRequired;
+  if (backend == MediaBackend.plex && status == 403) return t.mediaMenu.plexDeletionForbidden;
   if (!_isPlexBadRequest(error, backend)) return t.mediaMenu.mediaFailedToDelete;
   return switch (plexAllowsMediaDeletion) {
     false => t.mediaMenu.plexDeletionDisabled,

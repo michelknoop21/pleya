@@ -35,6 +35,7 @@ import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/deletion_notifier.dart';
 import 'package:pleya/widgets/media_context_menu.dart';
 import 'package:pleya/widgets/notice/notice_controller.dart';
 import 'package:provider/provider.dart';
@@ -188,7 +189,7 @@ void main() {
       await db.close();
     });
 
-    Future<void> openMenu(WidgetTester tester, Object item, {String? collectionId}) async {
+    Future<void> openMenu(WidgetTester tester, Object item, {String? collectionId, VoidCallback? onListRefresh}) async {
       final menuKey = GlobalKey<MediaContextMenuState>();
       await tester.pumpWidget(
         TranslationProvider(
@@ -205,6 +206,7 @@ void main() {
                     key: menuKey,
                     item: item,
                     collectionId: collectionId,
+                    onListRefresh: onListRefresh,
                     child: const SizedBox(width: 120, height: 80, child: Text('target')),
                   ),
                 ),
@@ -277,6 +279,22 @@ void main() {
       expect(find.text(t.collections.removeFromCollection), findsOneWidget);
       expect(find.text(t.mediaMenu.deleteFromServer), findsOneWidget);
       expect(find.text(t.matchScreen.match), findsOneWidget);
+    });
+
+    testWidgets('owner deletes from the card menu: one deletion event, and the list refreshes', (tester) async {
+      manager.canManage = true;
+      final events = <DeletionEvent>[];
+      final subscription = DeletionNotifier().stream.listen(events.add);
+      addTearDown(subscription.cancel);
+      var refreshed = 0;
+      await openMenu(tester, movie, onListRefresh: () => refreshed++);
+      await tester.tap(find.text(t.mediaMenu.deleteFromServer));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, t.mediaMenu.deleteFromServer));
+      await tester.pumpAndSettle();
+      expect(events.map((e) => e.itemId), ['movie-1']);
+      expect(refreshed, 1);
+      await tester.pump(const Duration(seconds: 10));
     });
 
     testWidgets('non-owner Add to goes to playlists only, never collections', (tester) async {

@@ -10,7 +10,6 @@ extension on MediaContextMenuState {
     required VoidCallback onNavigate,
   }) async {
     final mediaItem = facts.mediaItem;
-    final mediaKind = facts.mediaKind;
     final isCollection = facts.isCollection;
     final isPlaylist = facts.isPlaylist;
 
@@ -223,7 +222,7 @@ extension on MediaContextMenuState {
         break;
 
       case 'delete_media':
-        await _handleDeleteMediaItem(context, mediaKind);
+        await _handleDeleteMediaItem(context);
         break;
     }
   }

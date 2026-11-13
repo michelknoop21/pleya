@@ -677,6 +677,9 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get plexDeletionDisabled => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.';
 	@override String get plexDeletionFilesNotRemovable => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
 	@override String get plexDeletionRefusedUnknown => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
+	@override String get deletionForbidden => 'De server weigert het verwijderen: dit account mag daar geen media verwijderen. Sta verwijderen toe voor dit account in de serverinstellingen (in Jellyfin en Emby: ‘Verwijderen van media toestaan’) en probeer opnieuw.';
+	@override String get plexDeletionForbidden => 'Plex weigert het verwijderen: dit account mag op deze server geen media verwijderen. Verwijder het vanuit het account dat eigenaar is van de server.';
+	@override String get deleteServerGone => 'De server van dit item is niet verbonden. Er is niets verwijderd.';
 	@override String get rate => 'Beoordelen';
 	@override String get playFromBeginning => 'Afspelen vanaf het begin';
 	@override String get playVersion => 'Versie afspelen...';
@@ -5262,6 +5265,9 @@ extension on TranslationsNl {
 			'mediaMenu.plexDeletionDisabled' => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.',
 			'mediaMenu.plexDeletionFilesNotRemovable' => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
 			'mediaMenu.plexDeletionRefusedUnknown' => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
+			'mediaMenu.deletionForbidden' => 'De server weigert het verwijderen: dit account mag daar geen media verwijderen. Sta verwijderen toe voor dit account in de serverinstellingen (in Jellyfin en Emby: ‘Verwijderen van media toestaan’) en probeer opnieuw.',
+			'mediaMenu.plexDeletionForbidden' => 'Plex weigert het verwijderen: dit account mag op deze server geen media verwijderen. Verwijder het vanuit het account dat eigenaar is van de server.',
+			'mediaMenu.deleteServerGone' => 'De server van dit item is niet verbonden. Er is niets verwijderd.',
 			'mediaMenu.rate' => 'Beoordelen',
 			'mediaMenu.playFromBeginning' => 'Afspelen vanaf het begin',
 			'mediaMenu.playVersion' => 'Versie afspelen...',
@@ -5280,11 +5286,11 @@ extension on TranslationsNl {
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, film',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV-serie',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
+			_ => null,
+		} ?? switch (path) {
 			'accessibility.mediaCardSeason' => ({required Object title, required Object seasonInfo}) => '${title}, ${seasonInfo}',
 			'accessibility.mediaCardWatched' => 'bekeken',
 			'accessibility.mediaCardPartiallyWatched' => ({required Object percent}) => '${percent} procent bekeken',
-			_ => null,
-		} ?? switch (path) {
 			'accessibility.mediaCardUnwatched' => 'niet bekeken',
 			'accessibility.tapToPlay' => 'Tik om af te spelen',
 			'tooltips.shufflePlay' => 'Willekeurig afspelen',
@@ -5794,11 +5800,11 @@ extension on TranslationsNl {
 			'libraries.sortLabels.playCount' => 'Aantal afspelingen',
 			'libraries.sortLabels.productionYear' => 'Productiejaar',
 			'libraries.sortLabels.runtime' => 'Speelduur',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.officialRating' => 'Officiële beoordeling',
 			'libraries.sortLabels.premiereDate' => 'Premièredatum',
 			'libraries.sortLabels.startDate' => 'Begindatum',
-			_ => null,
-		} ?? switch (path) {
 			'libraries.sortLabels.airTime' => 'Uitzendtijd',
 			'libraries.sortLabels.studio' => 'Studio',
 			'libraries.sortLabels.random' => 'Willekeurig',
@@ -6308,11 +6314,11 @@ extension on TranslationsNl {
 			'performanceOverlay.dvRpuAverage' => 'DV RPU gem.',
 			'performanceOverlay.dvSampleAverage' => 'DV-sample gem.',
 			'performanceOverlay.maxLuma' => 'Max luma',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.minLuma' => 'Min luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
 			'performanceOverlay.maxFall' => 'MaxFALL',
-			_ => null,
-		} ?? switch (path) {
 			'performanceOverlay.cacheUsed' => 'Cache gebruikt',
 			'performanceOverlay.cacheLimit' => 'Cachelimiet',
 			'performanceOverlay.speed' => 'Snelheid',
@@ -6822,11 +6828,11 @@ extension on TranslationsNl {
 			'nowWatching.paused' => 'Gepauzeerd',
 			'nowWatching.remaining' => ({required Object time}) => '${time} over',
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'Op je netwerk',
 			'nowWatching.onWan' => 'Van buiten',
-			_ => null,
-		} ?? switch (path) {
 			'nowWatching.unavailable' => 'Tautulli gaf geen antwoord',
 			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
 			'sourcePicker.playTitle' => 'Kies waar je wilt afspelen',
@@ -7336,11 +7342,11 @@ extension on TranslationsNl {
 			'assistant.memory.sync.select' => 'Delen',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.memory.sync.clearChanged' => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.',
 			'assistant.memory.sync.clearServer' => 'Deze serverherinneringen wissen',
 			'assistant.memory.sync.clearEverywhere' => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -7850,11 +7856,11 @@ extension on TranslationsNl {
 			'seerrIssues.quickLooking' => 'Ik kijk ernaar',
 			'seerrIssues.quickNewVersion' => 'Ik heb een nieuwe versie gevraagd',
 			'seerrIssues.quickFixed' => 'Opgelost, probeer het opnieuw',
+			_ => null,
+		} ?? switch (path) {
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'opgelost',
 			'pleyaNotifications.pushTitle' => 'Push op dit toestel',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaNotifications.pushExplanation' => 'Ontvang nieuwe aanwinsten van je eigen Pleya Server, ook als Pleya gesloten is. iOS vraagt toestemming zodra je een categorie aanzet.',
 			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.',
 			'pleyaNotifications.pushOffline' => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.',

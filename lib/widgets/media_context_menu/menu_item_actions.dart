@@ -303,54 +303,9 @@ extension on MediaContextMenuState {
 
   /// Handle delete media item action
   /// This permanently removes the media item and its associated files from the server
-  Future<void> _handleDeleteMediaItem(BuildContext context, MediaKind? mediaKind) async {
-    final item = _mediaItem!;
-    final isMultipleMediaItems = mediaKind == MediaKind.show || mediaKind == MediaKind.season;
-
-    // Show confirmation dialog
-    final confirmed = await showDeleteConfirmation(
-      context,
-      title: t.mediaMenu.deleteFromServer,
-      message: [
-        t.mediaMenu.confirmDelete,
-        if (isMultipleMediaItems) t.mediaMenu.deleteMultipleWarning,
-        if (item.backend == MediaBackend.pleyaServer) t.mediaMenu.pleyaServerDeletesFiles,
-      ].join('\n\n'),
-      confirmText: t.mediaMenu.deleteFromServer,
-    );
-
-    if (!confirmed || !context.mounted) return;
-
-    MediaServerClient? client;
-    try {
-      client = _getMediaClientForItem();
-      final success = await client.deleteMediaItem(item);
-
-      if (context.mounted) {
-        if (success) {
-          showSuccessSnackBar(context, t.mediaMenu.mediaDeletedSuccessfully);
-          // Broadcast deletion event for cross-screen propagation
-          DeletionNotifier().notifyDeletedItem(item: item);
-          // Backward-compatible list refresh for screens that are not DeletionAware yet
-          _notifyListRefresh();
-        } else {
-          showErrorSnackBar(context, t.mediaMenu.mediaFailedToDelete);
-        }
-      }
-    } on MediaDeletionIncompleteException catch (e) {
-      // Part of it is gone: say what stayed and refresh the list. The title only
-      // leaves the UI when the server says it left the catalogue too; a title
-      // with a file left is still on the server.
-      appLogger.w(t.mediaMenu.mediaFailedToDelete, error: e);
-      if (context.mounted) showErrorSnackBar(context, mediaDeletionFailureMessage(e, item.backend));
-      if (incompleteDeletionRemovedTitle(e, mediaKind)) DeletionNotifier().notifyDeletedItem(item: item);
-      _notifyListRefresh();
-    } catch (e) {
-      appLogger.e(t.mediaMenu.mediaFailedToDelete, error: e);
-      final message = await resolveMediaDeletionFailureMessage(e, item.backend, client);
-      if (context.mounted) {
-        showErrorSnackBar(context, message);
-      }
-    }
+  Future<void> _handleDeleteMediaItem(BuildContext context) async {
+    final deleted = await confirmAndDeleteMediaItem(context, item: _mediaItem!, client: _getMediaClientForItem);
+    // Backward-compatible list refresh for screens that are not DeletionAware yet
+    if (deleted) _notifyListRefresh();
   }
 }

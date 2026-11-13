@@ -174,6 +174,25 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// reorder path, and the pull-to-refresh / explicit-retry entry point.
   Future<void> refresh() => _restart();
 
+  /// Takes one copy its server just deleted off the wall, in place: no
+  /// restart, no skeleton, the other cards keep their positions, and a title
+  /// with another copy keeps its card. False when this merge never had it.
+  bool removeDeletedSource(String globalKey) {
+    final service = _service;
+    if (isDisposed || service == null || !service.removeDeletedItem(globalKey)) return false;
+    _snapshot = UnifiedCatalogSnapshot(
+      groups: [
+        for (final group in _snapshot.groups)
+          ?groupWithoutSource(group, globalKey, preferredSourceKeys: _rememberedSourceKeys),
+      ],
+      initialLoadFailed: _snapshot.initialLoadFailed,
+      failedLibraryIds: _snapshot.failedLibraryIds,
+      isComplete: _snapshot.isComplete,
+    );
+    safeNotifyListeners();
+    return true;
+  }
+
   /// Re-reads one concrete item and folds it back into whichever group holds
   /// it, without re-paging (I19).
   ///

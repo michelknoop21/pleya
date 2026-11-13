@@ -42,6 +42,50 @@ void main() {
     return jsonDecode(raw) as Map<String, dynamic>;
   }
 
+  group('catalog.delete.v1 and /__verify/jellyfin_deletes', () {
+    Future<HttpClientResponse> jellyfin(String method, String path) async {
+      final client = HttpClient();
+      final request = await client.openUrl(method, Uri.parse('http://127.0.0.1:${adapter.port}/jellyfin$path'));
+      return request.close();
+    }
+
+    test('the user is an administrator and a DELETE removes the item', () async {
+      expect((await verify('POST', '/__verify/seed', body: {'fixture': 'catalog.delete.v1'})).statusCode, 200);
+      final auth = await jsonBody(await jellyfin('POST', '/Users/AuthenticateByName'));
+      expect(((auth['User'] as Map)['Policy'] as Map)['IsAdministrator'], isTrue);
+      expect((await jellyfin('DELETE', '/Items/del-dune')).statusCode, HttpStatus.noContent);
+      expect((await jellyfin('DELETE', '/Items/del-dune')).statusCode, HttpStatus.notFound);
+      expect(adapter.jellyfin.movies.map((m) => m.id), isNot(contains('del-dune')));
+    });
+
+    test('the assertion passes only on exactly the expected deletes', () async {
+      await verify('POST', '/__verify/seed', body: {'fixture': 'catalog.delete.v1'});
+      final none = await verify('POST', '/__verify/jellyfin_deletes', body: {'items': <String>[]});
+      expect(none.statusCode, HttpStatus.ok);
+      await none.drain<void>();
+      await jellyfin('DELETE', '/Items/del-arrival');
+      final wrong = await verify('POST', '/__verify/jellyfin_deletes', body: {'items': <String>[]});
+      expect(wrong.statusCode, HttpStatus.conflict);
+      expect((await jsonBody(wrong))['ok'], isFalse);
+      final right = await verify(
+        'POST',
+        '/__verify/jellyfin_deletes',
+        body: {
+          'items': ['del-arrival'],
+        },
+      );
+      expect((await jsonBody(right))['ok'], isTrue);
+    });
+
+    test('reset takes the administrator and the deletes away again', () async {
+      await verify('POST', '/__verify/seed', body: {'fixture': 'catalog.delete.v1'});
+      await jellyfin('DELETE', '/Items/del-arrival');
+      await verify('POST', '/__verify/reset');
+      expect(adapter.jellyfin.administrator, isFalse);
+      expect(adapter.jellyfin.deletes, isEmpty);
+    });
+  });
+
   group('/__verify/* control-plane auth', () {
     test('a missing Authorization header is rejected with 401', () async {
       final client = HttpClient();
