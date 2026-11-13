@@ -39,9 +39,34 @@
   };
 
   // Een film of serie heeft geen bovenliggende pagina, dan het overzicht.
-  function destination(): string {
-    if ((item.kind === 'season' || item.kind === 'episode') && item.parent_id) return `/items/${encodeURIComponent(item.parent_id)}`;
-    return item.kind === 'movie' ? '/films' : '/series';
+  const overview = (): string => (item.kind === 'movie' ? '/films' : '/series');
+
+  // De ouders van een seizoen of aflevering, dichtstbijzijnde eerst. De server
+  // ruimt een seizoen of serie op dat door het verwijderen leeg raakt, dus wie
+  // de laatste aflevering wist, heeft daarna geen seizoen meer. De serie boven
+  // een aflevering moet daarom vóór het verwijderen bekend zijn.
+  async function ancestors(client: typeof session.client): Promise<string[]> {
+    if ((item.kind !== 'season' && item.kind !== 'episode') || !item.parent_id) return [];
+    if (item.kind === 'season') return [item.parent_id];
+    try {
+      const parent = await client.item(item.parent_id);
+      return parent.parent_id ? [item.parent_id, parent.parent_id] : [item.parent_id];
+    } catch {
+      return [item.parent_id];
+    }
+  }
+
+  // De eerste ouder die nog bestaat, anders het overzicht.
+  async function destination(client: typeof session.client, chain: string[]): Promise<string> {
+    for (const id of chain) {
+      try {
+        await client.item(id);
+        return `/items/${encodeURIComponent(id)}`;
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 404)) return `/items/${encodeURIComponent(id)}`;
+      }
+    }
+    return overview();
   }
 
   function count(value: unknown): number {
@@ -82,11 +107,12 @@
     // tweede klik in hetzelfde frame: één aanvraag.
     busy = true;
     const client = session.client;
+    const chain = await ancestors(client);
     try {
       const result = await adminSettingsApi(client).deleteItem(item.id);
       busy = false;
       open = false;
-      await show(destination(), { tone: 'info', text: plural('item.delete.done', result.removed_files, { title: item.title }), lines: [] });
+      await show(await destination(client, chain), { tone: 'info', text: plural('item.delete.done', result.removed_files, { title: item.title }), lines: [] });
     } catch (err) {
       busy = false;
       open = false;
@@ -101,13 +127,14 @@
         lines: failedLines(err)
       };
       pageNotice.current = { path: here, ...notice };
-      if (count(err.details['removed_items']) === 0) return;
-      // Er ging wel iets weg: lees het item opnieuw. Is het zelf weg, dan naar boven.
+      if (count(err.details['removed_items']) === 0 && count(err.details['removed_files']) === 0) return;
+      // Er ging wel iets weg (ook een losse versie telt): lees het item
+      // opnieuw. Is het zelf weg, dan naar de eerste ouder die nog bestaat.
       try {
         await client.item(item.id);
         onreload?.();
       } catch (readErr) {
-        if (readErr instanceof ApiError && readErr.status === 404) await show(destination(), notice);
+        if (readErr instanceof ApiError && readErr.status === 404) await show(await destination(client, chain), notice);
       }
     }
   }

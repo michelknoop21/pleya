@@ -90,6 +90,38 @@ describe('een titel met zijn bestanden verwijderen', () => {
     await waitFor(() => expect(h.goto).toHaveBeenCalledWith('/items/show1'));
   });
 
+  it('gaat na de laatste aflevering naar de serie als het seizoen mee weg is', async () => {
+    const episode = { id: 'e1', title: 'Pilot', kind: 'episode' as const, parent_id: 's1' };
+    let deleted = false;
+    reply = request => {
+      const path = new URL(request.url).pathname;
+      if (request.method === 'DELETE') { deleted = true; return json({ removed_files: 1, removed_items: 1 }); }
+      if (path.endsWith('/items/s1')) return deleted ? fail(404, 'item.not_found') : json({ id: 's1', kind: 'season', title: 'S1', parent_id: 'show1', added_at: '2026-01-01T00:00:00Z' });
+      return json({ id: 'show1', kind: 'show', title: 'Show', added_at: '2026-01-01T00:00:00Z' });
+    };
+    render(ItemDelete, { props: { item: episode, open: true } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete files' }));
+    await waitFor(() => expect(h.goto).toHaveBeenCalledWith('/items/show1'));
+    expect(deletes()).toHaveLength(1);
+  });
+
+  it('gaat naar Series als ook de serie leeg raakte', async () => {
+    reply = request => (request.method === 'DELETE' ? json({ removed_files: 2, removed_items: 2 }) : fail(404, 'item.not_found'));
+    render(ItemDelete, { props: { item: season, open: true } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete files' }));
+    await waitFor(() => expect(h.goto).toHaveBeenCalledWith('/series'));
+  });
+
+  it('leest het item opnieuw als er alleen een losse versie weg is', async () => {
+    const onreload = vi.fn();
+    reply = request => (request.method === 'DELETE'
+      ? fail(409, 'library.media_delete_incomplete', { removed_files: 1, removed_items: 0, failed: [{ path: 'b.mkv', reason: 'remove_failed' }] })
+      : json({ id: 'm1', kind: 'movie', title: 'Heat', added_at: '2026-01-01T00:00:00Z' }));
+    render(ItemDelete, { props: { item: movie, open: true, onreload } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete files' }));
+    await waitFor(() => expect(onreload).toHaveBeenCalledOnce());
+  });
+
   it('blijft bij een onvolledige verwijdering staan, toont de gebleven paden en leest het item opnieuw', async () => {
     const onreload = vi.fn();
     reply = request => request.method === 'DELETE'
