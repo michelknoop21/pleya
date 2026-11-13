@@ -41,6 +41,7 @@ import '../providers/home_extra_rows_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
 import '../providers/home_layout_provider.dart';
+import '../services/unified_catalog/one_card_per_title.dart';
 import '../services/unified_catalog/home_row_layout.dart';
 import '../utils/home_custom_row_labels.dart';
 import '../providers/watch_state_store.dart';
@@ -154,7 +155,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // Hero source on phone/desktop: newest released films (release-date
   // ordered), not on-deck. The TV hero no longer reads this at all — it reads
   // `TvHomeProjectionProvider.heroGroups` through `TvContentFeed` (DEC-067).
-  List<MediaItem> get _latestMovies => _discover.latestMovies;
+  // The legacy hero pages plain items, so a film on two servers is one slide
+  // here. The grouped heroes (TV, phone, iPad) read the provider's own list.
+  List<MediaItem> get _latestMovies => oneCardPerProvenTitleCached(_discover.latestMovies);
   HomeLayoutProvider? _homeLayout;
   HomeCustomRowsProvider? _customRows;
   HomeExtraRowsProvider? _extraRows;
@@ -182,7 +185,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // which is where DEC-100 (5) puts a new one when nothing has been
   // reordered yet: directly under Verder kijken.
   List<MediaHub> get _hubs {
-    final combined = [..._customRowHubs, ..._discover.hubs];
+    // This tree draws plain items (iPad, desktop, Android tablet), so a title
+    // that is on two servers is folded to one card per row here. TV and phone
+    // read the grouped projection and never come through this getter's rows.
+    final combined = [..._customRowHubs, for (final hub in _discover.hubs) hubWithOneCardPerProvenTitle(hub)];
     return _homeLayout?.apply(combined, _hubIdentity) ?? combined;
   }
 
