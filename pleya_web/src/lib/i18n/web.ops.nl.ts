@@ -79,6 +79,8 @@ export const webOpsNl = {
   'admin.act.sched.andOnStart': '{interval}, en bij het opstarten',
   'admin.act.sched.schedule': 'Schema',
   'admin.act.sched.last': 'Laatste keer',
+  'admin.act.sched.next': 'Volgende',
+  'admin.act.sched.noNext': 'Niet gepland',
   'admin.act.sched.runNamed': '{name} nu uitvoeren',
   'admin.act.sched.editNamed': 'Schema van {name} wijzigen',
   'admin.act.log.title': 'Log',

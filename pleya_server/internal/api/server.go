@@ -144,6 +144,13 @@ type Options struct {
 	// toegestaan: de ronde pakt de wijziging dan bij haar volgende tik op.
 	OnMetadataChange func()
 
+	// NextScanAt geeft het tijdstip van de volgende geplande scan van een
+	// bibliotheek, uit de planner in cmd/pleya-server (DEC-XXX, volgende scan).
+	// false betekent: er is geen geplande scan. Nil betekent dat deze server geen
+	// planner heeft; dan staat capabilities.scan_schedule uit en ontbreekt het
+	// veld next_scan_at.
+	NextScanAt func(libraryID id.ID) (time.Time, bool)
+
 	// MetadataProvider is the same configured provider used by the background runner.
 	MetadataProvider metadata.Provider
 

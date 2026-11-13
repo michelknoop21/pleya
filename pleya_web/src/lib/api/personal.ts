@@ -85,6 +85,18 @@ export function personalApi(client: PleyaClient) {
       assertAccount();
       return preference;
     },
+    /**
+     * Een seizoen of serie met alles eronder in één transactie
+     * (`POST /items/{id}/watch-state`, `capabilities.watch_state_tree`).
+     * Het antwoord is de nieuwe toestand van elk item, het gevraagde eerst.
+     */
+    async setTreeWatched(itemId: string, watched: boolean) {
+      assertAccount();
+      return client.request((raw) => raw.POST('/items/{item_id}/watch-state', {
+        params: { path: { item_id: itemId } },
+        body: { session_id: randomId(), explicit_action: watched ? 'mark_watched' : 'mark_unwatched' }
+      }));
+    },
     async setWatched(itemId: string, watched: boolean, durationMs?: number) {
       assertAccount();
       if (durationMs !== undefined && (!Number.isSafeInteger(durationMs) || durationMs < 0)) throw new RangeError('Invalid duration');

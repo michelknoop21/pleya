@@ -1036,6 +1036,7 @@
     "all": "Alles",
     "clearAll": "Alles wissen",
     "scanLibraryConfirm": "Weet je zeker dat je \"${title}\" wilt scannen?",
+    "nextScheduledScan": "Volgende geplande scan: ${time}.",
     "analyzeLibraryConfirm": "Weet je zeker dat je \"${title}\" wilt analyseren?",
     "refreshMetadataConfirm": "Weet je zeker dat je metadata wilt vernieuwen voor \"${title}\"?",
     "emptyTrashConfirm": "Weet je zeker dat je de prullenbak wilt legen voor \"${title}\"?",

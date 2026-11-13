@@ -1,11 +1,13 @@
 package watch
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -57,6 +59,51 @@ func (s *Store) Apply(ctx context.Context, subject string, itemID id.ID, ev Even
 		return out, err
 	}
 
+	if out, err = applyLocked(ctx, tx, subject, itemID, ev, now, lease); err != nil {
+		return out, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ApplyTree past één expliciete handeling toe op een reeks items, in één
+// transactie (DEC-XXX, kijkstatus van een seizoen of serie). Per item precies
+// wat Apply doet: rij vergrendelen, Decide, wegschrijven. Faalt één item, dan
+// rolt alles terug en blijft er geen half gemarkeerd seizoen achter.
+//
+// De items worden in vaste volgorde vergrendeld, zodat twee gelijktijdige
+// markeringen van overlappende reeksen elkaar niet in een deadlock houden. Wie
+// de reeks samenstelt (welke items onder een serie vallen, en of de aanvrager
+// ze mag zien) is de aanroeper: deze opslag kent geen bibliotheekrechten.
+func (s *Store) ApplyTree(ctx context.Context, subject string, itemIDs []id.ID, ev Event, now time.Time, lease time.Duration) (map[id.ID]Outcome, error) {
+	sorted := append([]id.ID(nil), itemIDs...)
+	slices.SortFunc(sorted, func(a, b id.ID) int { return bytes.Compare(a[:], b[:]) })
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	out := make(map[id.ID]Outcome, len(sorted))
+	for _, itemID := range sorted {
+		o, err := applyLocked(ctx, tx, subject, itemID, ev, now, lease)
+		if err != nil {
+			return nil, fmt.Errorf("kijkstatus van %s: %w", itemID, err)
+		}
+		out[itemID] = o
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// applyLocked is het hart van Apply binnen een lopende transactie.
+func applyLocked(ctx context.Context, tx pgx.Tx, subject string, itemID id.ID, ev Event, now time.Time, lease time.Duration) (Outcome, error) {
+	var out Outcome
 	cur, err := lockState(ctx, tx, subject, itemID)
 	if err != nil {
 		return out, err
@@ -85,19 +132,9 @@ func (s *Store) Apply(ctx context.Context, subject string, itemID id.ID, ev Even
 		}
 	}
 	if !out.Accepted {
-		if err := tx.Commit(ctx); err != nil {
-			return out, err
-		}
 		return out, nil
 	}
-
-	if err := upsertState(ctx, tx, subject, itemID, out.Next, ev.Copy); err != nil {
-		return out, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return out, err
-	}
-	return out, nil
+	return out, upsertState(ctx, tx, subject, itemID, out.Next, ev.Copy)
 }
 
 // recordPlay zet een event in de rij van zijn afspeelsessie (S20): één rij per

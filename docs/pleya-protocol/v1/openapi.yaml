@@ -3334,6 +3334,72 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /items/{item_id}/watch-state:
+    post:
+      tags: [watch-state]
+      operationId: markWatchStateTree
+      summary: Markeer een item met alles eronder als gezien of ongezien.
+      description: |
+        Klasse `authenticated`, alleen onder `capabilities.watch_state_tree`
+        (DEC-XXX, kijkstatus van een seizoen of serie). Zet het item en elk
+        seizoen en elke aflevering eronder in één transactie op gezien of
+        ongezien; faalt één item, dan verandert er niets. Een film of
+        aflevering is een boom van één, een lege serie ook. Onder het item
+        telt wat `GET /items/{item_id}/children` toont: een seizoen of
+        aflevering met alleen bonusmateriaal blijft buiten.
+
+        Elk item gaat door dezelfde regels als `POST /watch-state` met dezelfde
+        `explicit_action` (DEC-049): een markering negeert de lease van een
+        ander toestel, neemt het eigendom over voor `session_id`, verhoogt per
+        item de `revision` en schrijft geen kijkgeschiedenis. Er is geen
+        `base_revision`: een markering wordt ook op een verouderde toestand
+        toegepast (regel 5).
+
+        Een item buiten de bibliotheken van de aanvrager is `404`, hetzelfde
+        antwoord als een item dat niet bestaat; een seizoen of aflevering
+        hoort altijd bij de bibliotheek van zijn serie.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WatchStateTreeRequest" }
+      responses:
+        "200":
+          description: De nieuwe toestand van elk item, het gevraagde item eerst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WatchStateTree" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /items/{item_id}/refresh-metadata:
+    post:
+      tags: [administration]
+      operationId: refreshItemMetadata
+      summary: Haal de metadata van één titel opnieuw op.
+      description: |
+        Klasse `admin`, capability `item_metadata_refresh` (DEC-XXX, metadata
+        per titel). Hetzelfde als `POST /libraries/{library_id}/refresh-metadata`,
+        voor de film of serie waar het item onder valt: een seizoen of
+        aflevering ververst zijn hele serie. Bij een serie gaan de seizoenen en
+        afleveringen mee. Een afgewezen of onbesliste titel blijft buiten en
+        geeft `items: 0`; handmatige velden, locks en pins blijven staan.
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "202":
+          description: De titel staat aan de beurt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryMaintenance" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /search:
     get:
       tags: [library]
@@ -4174,6 +4240,25 @@ components:
             DEC-XXX (bibliotheekonderhoud). `POST /libraries/{library_id}/empty-trash` en
             `POST /libraries/{library_id}/refresh-metadata` bestaan voor klasse
             admin. Zonder de vlag biedt een client op deze server alleen de scan.
+        watch_state_tree:
+          type: boolean
+          default: false
+          description: |
+            DEC-XXX (kijkstatus van een seizoen of serie).
+            `POST /items/{item_id}/watch-state` bestaat. Zonder de vlag markeert
+            een client elke aflevering apart met `POST /watch-state`.
+        item_metadata_refresh:
+          type: boolean
+          default: false
+          description: |
+            DEC-XXX (metadata per titel). `POST /items/{item_id}/refresh-metadata`
+            bestaat voor klasse admin.
+        scan_schedule:
+          type: boolean
+          default: false
+          description: |
+            DEC-XXX (volgende scan). `Library.next_scan_at` staat voor klasse
+            admin in elk bibliotheekantwoord.
         artwork_sizes:
           type: boolean
           default: false
@@ -4731,6 +4816,21 @@ components:
         scan_on_start:
           type: boolean
           description: Alleen voor klasse admin (S2.2, J.3).
+        next_scan_at:
+          oneOf:
+            - { $ref: "#/components/schemas/Timestamp" }
+            - { type: "null" }
+          description: |
+            Alleen voor klasse admin en alleen onder `capabilities.scan_schedule`
+            (DEC-XXX, volgende scan). Het moment waarop de server de volgende
+            periodieke scan van deze bibliotheek in de wachtrij zet. `null`
+            betekent dat er nu geen geplande scan bekend is: het effectieve
+            interval is 0, of de planner heeft de bibliotheek nog niet gezien
+            (de eerste 30 seconden na het opstarten of na het aanmaken). Een root die niet gemount is verandert het moment niet; of die
+            scan slaagt staat daarna in `GET /scans`. Een opstartscan telt niet
+            mee. De planning leeft in het geheugen van de server: na een herstart
+            begint hij op nu plus het interval, en na een gewijzigd interval
+            volgt het veld binnen 30 seconden.
 
     LibraryList:
       type: object
@@ -6261,6 +6361,33 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/WatchStateEntry" }
+
+    WatchStateTreeRequest:
+      type: object
+      required: [session_id, explicit_action]
+      additionalProperties: false
+      properties:
+        session_id:
+          type: string
+          minLength: 1
+          description: Client-generated, zoals bij WatchStateEvent.
+        explicit_action:
+          type: string
+          enum: [mark_watched, mark_unwatched]
+          x-unknown-safe: false
+          description: |
+            Alleen de twee markeringen. Een positie of herstart over een hele
+            serie heeft geen betekenis; elke andere waarde geeft
+            `400 session.invalid`.
+
+    WatchStateTree:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Het gevraagde item eerst, daarna de seizoenen en afleveringen eronder.
+          items: { $ref: "#/components/schemas/WatchStateEntry" }
 
     Role:
       type: string

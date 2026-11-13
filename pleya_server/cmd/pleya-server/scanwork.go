@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -131,12 +132,36 @@ func effectiveScanInterval(lib catalog.Library, fallback time.Duration) time.Dur
 	return fallback
 }
 
+// scanPlan is wat schedule heeft gepland: per bibliotheek het moment van de
+// volgende scan. Het leeft net als de planner zelf alleen in het geheugen; na
+// een herstart begint elke bibliotheek opnieuw op nu plus haar interval
+// (DEC-XXX, volgende scan). GET /libraries leest het via api.Options.NextScanAt.
+type scanPlan struct {
+	mu   sync.RWMutex
+	next map[id.ID]time.Time
+}
+
+func (p *scanPlan) set(next map[id.ID]time.Time) {
+	p.mu.Lock()
+	p.next = next
+	p.mu.Unlock()
+}
+
+// at is api.Options.NextScanAt. false: geen geplande scan, omdat het interval
+// 0 is of de planner de bibliotheek nog niet zag.
+func (p *scanPlan) at(libraryID id.ID) (time.Time, bool) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	at, ok := p.next[libraryID]
+	return at, ok
+}
+
 // schedule laat de periodieke ronde lopen naast de gebeurtenissen.
 //
 // Hoofdstuk 7.3: events zijn een versnelling, nooit de enige bron, want een
 // gemiste event mag niet betekenen dat een bestand permanent onzichtbaar blijft.
 // PS-2 heeft nog geen events, dus dit is voorlopig de enige bron.
-func schedule(ctx context.Context, runner *jobs.Runner, store *catalog.Store, fallback time.Duration, log *slog.Logger) {
+func schedule(ctx context.Context, runner *jobs.Runner, store *catalog.Store, fallback time.Duration, plan *scanPlan, log *slog.Logger) {
 	const refresh = 30 * time.Second
 	type state struct {
 		next     time.Time
@@ -183,6 +208,13 @@ func schedule(ctx context.Context, runner *jobs.Runner, store *catalog.Store, fa
 			}
 		}
 		states = active
+		next := make(map[id.ID]time.Time, len(active))
+		for _, lib := range libs {
+			if st, ok := active[lib.ID.String()]; ok {
+				next[lib.ID] = st.next
+			}
+		}
+		plan.set(next)
 		if wakeAfter < time.Millisecond {
 			wakeAfter = time.Millisecond
 		}

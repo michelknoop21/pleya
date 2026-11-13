@@ -91,3 +91,28 @@ func (s *Server) handleRefreshLibraryMetadata(w http.ResponseWriter, r *http.Req
 	}
 	writeJSON(w, http.StatusAccepted, LibraryMaintenance{Items: items})
 }
+
+// handleRefreshItemMetadata is POST /items/{item_id}/refresh-metadata
+// (DEC-XXX, metadata per titel, matrixregel 111): dezelfde ronde als die van de
+// bibliotheek hierboven, voor de film of serie van één item. Klasse admin; een
+// beheerder ziet elke bibliotheek, dus naast requireAdmin is er geen
+// bibliotheekcontrole, net als bij de bibliotheekroute.
+func (s *Server) handleRefreshItemMetadata(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	itemID, ok := s.pathID(w, r, "item_id")
+	if !ok {
+		return
+	}
+	items, err := s.opts.Catalog.RequeueItemMetadata(r.Context(), itemID)
+	if err != nil {
+		s.writeStoreError(w, err)
+		return
+	}
+	s.auditEvent(r, auditRefreshItemMetadata, itemID.String(), audit.OutcomeOK, map[string]any{"items": items})
+	if s.opts.OnMetadataChange != nil {
+		s.opts.OnMetadataChange()
+	}
+	writeJSON(w, http.StatusAccepted, LibraryMaintenance{Items: items})
+}

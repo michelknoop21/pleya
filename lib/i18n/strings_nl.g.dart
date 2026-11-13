@@ -1252,6 +1252,7 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String get all => 'Alles';
 	@override String get clearAll => 'Alles wissen';
 	@override String scanLibraryConfirm({required Object title}) => 'Weet je zeker dat je "${title}" wilt scannen?';
+	@override String nextScheduledScan({required Object time}) => 'Volgende geplande scan: ${time}.';
 	@override String analyzeLibraryConfirm({required Object title}) => 'Weet je zeker dat je "${title}" wilt analyseren?';
 	@override String refreshMetadataConfirm({required Object title}) => 'Weet je zeker dat je metadata wilt vernieuwen voor "${title}"?';
 	@override String emptyTrashConfirm({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?';
@@ -5725,6 +5726,7 @@ extension on TranslationsNl {
 			'libraries.all' => 'Alles',
 			'libraries.clearAll' => 'Alles wissen',
 			'libraries.scanLibraryConfirm' => ({required Object title}) => 'Weet je zeker dat je "${title}" wilt scannen?',
+			'libraries.nextScheduledScan' => ({required Object time}) => 'Volgende geplande scan: ${time}.',
 			'libraries.analyzeLibraryConfirm' => ({required Object title}) => 'Weet je zeker dat je "${title}" wilt analyseren?',
 			'libraries.refreshMetadataConfirm' => ({required Object title}) => 'Weet je zeker dat je metadata wilt vernieuwen voor "${title}"?',
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?',
@@ -5789,9 +5791,9 @@ extension on TranslationsNl {
 			'libraries.sortLabels.dateShared' => 'Gedeeld op',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
-			'about.title' => 'Over',
 			_ => null,
 		} ?? switch (path) {
+			'about.title' => 'Over',
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -6303,9 +6305,9 @@ extension on TranslationsNl {
 			'performanceOverlay.player' => 'Speler',
 			'performanceOverlay.memory' => 'Geheugen',
 			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'Externe speler',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.title' => 'Externe speler',
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6817,9 +6819,9 @@ extension on TranslationsNl {
 			'sourcePicker.detailsTitle' => 'Kies een bron voor de details',
 			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
-			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
 			_ => null,
 		} ?? switch (path) {
+			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
 			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
 			'sourcePicker.lastUsed' => 'Laatst gebruikt',
@@ -7331,9 +7333,9 @@ extension on TranslationsNl {
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
-			'assistant.mobile.setup' => 'Model instellen',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.mobile.setup' => 'Model instellen',
 			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
 			'assistant.mobile.listening' => 'Ik luister…',
 			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
@@ -7845,9 +7847,9 @@ extension on TranslationsNl {
 			'pleyaNotifications.pushPending' => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.',
 			'pleyaNotifications.title' => 'Notificaties',
 			'pleyaNotifications.subtitle' => 'Kies welke updates je ontvangt',
-			'pleyaNotifications.settings' => 'Notificatievoorkeuren',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaNotifications.settings' => 'Notificatievoorkeuren',
 			'pleyaNotifications.enable' => 'Notificaties in Pleya inschakelen',
 			'pleyaNotifications.explanation' => 'Kies welke updates je in Pleya wilt zien. Alle categorieën staan standaard uit.',
 			'pleyaNotifications.disabled' => 'Notificaties staan uit. Kies in de voorkeuren welke updates je wilt ontvangen.',

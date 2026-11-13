@@ -3006,6 +3006,9 @@ class TranslationsLibrariesEn {
 	/// en: 'Are you sure you want to scan "${title}"?'
 	String scanLibraryConfirm({required Object title}) => 'Are you sure you want to scan "${title}"?';
 
+	/// en: 'Next scheduled scan: ${time}.'
+	String nextScheduledScan({required Object time}) => 'Next scheduled scan: ${time}.';
+
 	/// en: 'Are you sure you want to analyze "${title}"?'
 	String analyzeLibraryConfirm({required Object title}) => 'Are you sure you want to analyze "${title}"?';
 
@@ -11819,6 +11822,7 @@ extension on Translations {
 			'libraries.all' => 'All',
 			'libraries.clearAll' => 'Clear All',
 			'libraries.scanLibraryConfirm' => ({required Object title}) => 'Are you sure you want to scan "${title}"?',
+			'libraries.nextScheduledScan' => ({required Object time}) => 'Next scheduled scan: ${time}.',
 			'libraries.analyzeLibraryConfirm' => ({required Object title}) => 'Are you sure you want to analyze "${title}"?',
 			'libraries.refreshMetadataConfirm' => ({required Object title}) => 'Are you sure you want to refresh metadata for "${title}"?',
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Are you sure you want to empty trash for "${title}"?',
@@ -11883,9 +11887,9 @@ extension on Translations {
 			'libraries.sortLabels.dateShared' => 'Date Shared',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
-			'about.title' => 'About',
 			_ => null,
 		} ?? switch (path) {
+			'about.title' => 'About',
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -12397,9 +12401,9 @@ extension on Translations {
 			'performanceOverlay.player' => 'Player',
 			'performanceOverlay.memory' => 'Memory',
 			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'External Player',
 			_ => null,
 		} ?? switch (path) {
+			'externalPlayer.title' => 'External Player',
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -12911,9 +12915,9 @@ extension on Translations {
 			'sourcePicker.detailsTitle' => 'Choose a source for the details',
 			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
-			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
 			_ => null,
 		} ?? switch (path) {
+			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
 			'sourcePicker.checkingMoreSources' => 'Checking more sources…',
 			'sourcePicker.lastUsed' => 'Last used',
@@ -13425,9 +13429,9 @@ extension on Translations {
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
-			'assistant.mobile.setup' => 'Set up model',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.mobile.setup' => 'Set up model',
 			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
 			'assistant.mobile.listening' => 'Listening…',
 			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
@@ -13939,9 +13943,9 @@ extension on Translations {
 			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
 			'pleyaNotifications.title' => 'Notifications',
 			'pleyaNotifications.subtitle' => 'Choose which updates to receive',
-			'pleyaNotifications.settings' => 'Notification preferences',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaNotifications.settings' => 'Notification preferences',
 			'pleyaNotifications.enable' => 'Enable in-app notifications',
 			'pleyaNotifications.explanation' => 'Choose which updates to show in Pleya. All categories start turned off.',
 			'pleyaNotifications.disabled' => 'Notifications are off. Choose which updates to receive in preferences.',

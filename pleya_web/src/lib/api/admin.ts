@@ -94,6 +94,17 @@ export function adminApi(client: PleyaClient) {
         )
       ).items[0] ?? null,
 
+    /**
+     * `POST /items/{id}/refresh-metadata` (`capabilities.item_metadata_refresh`):
+     * de film of serie van het item staat weer aan de beurt voor de
+     * metadataronde. `items` telt wat aan de beurt staat, 0 bij een afgewezen
+     * of onbesliste titel.
+     */
+    refreshItemMetadata: (itemId: string): Promise<{ items: number }> =>
+      client.request((raw) =>
+        raw.POST('/items/{item_id}/refresh-metadata', { params: { path: { item_id: itemId } } })
+      ),
+
     startScan: (libraryId: string): Promise<Scan> =>
       client.request((raw) =>
         raw.POST('/libraries/{library_id}/scan', { params: { path: { library_id: libraryId } } })

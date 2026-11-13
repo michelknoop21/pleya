@@ -159,6 +159,18 @@ ids:
   - id: library.filter.more
     role: button
     instanceable: false
+  - id: library.more.manage
+    role: button
+    instanceable: false
+  - id: library.manage.options
+    role: button
+    instanceable: true
+  - id: library.maintenance.action
+    role: button
+    instanceable: true
+  - id: library.maintenance.confirm
+    role: button
+    instanceable: false
   - id: library.filter.count
     role: region
     instanceable: false

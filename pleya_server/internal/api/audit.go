@@ -60,6 +60,7 @@ const (
 	// opnieuw ophalen kan veel providerverkeer geven: allebei terug te vinden.
 	auditEmptyLibraryTrash      = "emptyLibraryTrash"
 	auditRefreshLibraryMetadata = "refreshLibraryMetadata"
+	auditRefreshItemMetadata    = "refreshItemMetadata"
 
 	// Omzetsessies (S18.5). De lijst schrijft niets weg.
 	auditStopTranscodeSession = "stopTranscodeSession"

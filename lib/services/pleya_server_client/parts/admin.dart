@@ -70,7 +70,13 @@ typedef PleyaWatchedTitle = ({
 /// alone: `GET /scans` lists the same work again with file counters, and a
 /// second source would show every scan twice.
 mixin _PleyaServerAdminMethods on _PleyaServerRequests
-    implements LibraryScanClient, LibraryTrashClient, RetryableJobsClient, ServerUserAdministration {
+    implements
+        LibraryScanClient,
+        LibraryTrashClient,
+        ItemMetadataRefreshClient,
+        LibraryScanScheduleClient,
+        RetryableJobsClient,
+        ServerUserAdministration {
   MediaServerHttpClient get _http;
 
   void assertCanAdministerServer();
@@ -96,6 +102,35 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
 
   @override
   bool get supportsLibraryTrash => wireCapabilities.libraryMaintenance;
+
+  @override
+  bool get supportsItemMetadataRefresh => wireCapabilities.itemMetadataRefresh;
+
+  /// `POST /items/{id}/refresh-metadata`: the film or show the item belongs
+  /// to goes back into the metadata round, a show with its seasons and
+  /// episodes. Callers check [supportsItemMetadataRefresh] first.
+  @override
+  Future<void> refreshItemMetadata(String itemId) async {
+    assertCanAdministerServer();
+    await _adminSend('POST', '/items/${adminPathSegment(itemId)}/refresh-metadata');
+  }
+
+  /// `Library.next_scan_at` from `GET /libraries`, which an admin reads with
+  /// the planned moment of the next periodic scan. Null without
+  /// `scan_schedule`, for a library without a planned scan, and for one the
+  /// answer does not list.
+  @override
+  Future<DateTime?> nextLibraryScan(String libraryId) async {
+    if (!wireCapabilities.scanSchedule) return null;
+    assertCanAdministerServer();
+    final json = await _adminSend('GET', '/libraries');
+    final items = json?['items'];
+    if (items is! List) return null;
+    for (final library in items.whereType<Map<String, dynamic>>()) {
+      if (library['id'] == libraryId) return DateTime.tryParse(library['next_scan_at'] as String? ?? '');
+    }
+    return null;
+  }
 
   /// `POST /libraries/{id}/empty-trash`: a server job removes the titles whose
   /// files are marked missing and are gone from disk. Refused (409) while a
