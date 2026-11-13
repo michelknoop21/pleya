@@ -155,6 +155,51 @@ Slechter in de nieuwe run:
 
 Wat dit zegt: Twee glm-cases die in alle voorgaande runs mislukten zijn omgezet op de code met BP-11m, en het doel van BP-11m (`con-everyone-no-capability`) is niet gehaald. De totalen verschuiven ongeveer zoveel als de ruis, bij gemma omlaag en bij glm omhoog. Dat is geen bewijs dat de drie reparaties samen niets verslechteren: bij gemma staan `rec-light-after-dinner` en de check voor `ser-next-season-no-source` hier tegenover.
 
+## BP-12: taken, weergave en jury (13 november 2026)
+
+Roadmap: BP-12. De set meet sinds deze ronde drie dingen meer: of een taak echt lukt (de bevestigingskaart krijgt ja of nee en de check leest de nepwereld daarna), wat er op het scherm komt (kopregel, kaarten, bevestigingen) en de kwaliteit van het antwoord via een modeljury per criterium (`tool/big_p_eval_judge.dart`, jurymodel `deepseek-v4.1-flash`). De set groeide van 68 naar 85 cases.
+
+Harde checks, cases die in elke poging slagen:
+
+| Meting | gemma4:31b (3 pogingen) | glm-5.3-flash (1 poging) |
+| --- | --- | --- |
+| Nulmeting | 65 van 68 | 65 van 68 |
+| Ronde 2 | 79 van 80 | 78 van 80 |
+| Ronde 3 | 80 van 80 (240 van 240 runs) | 80 van 83; de 3 missers zijn providerfouten zonder antwoord |
+
+Modeljury op gemma, cases waarin het criterium in alle drie de pogingen goed is. De jury is nog niet geijkt; lees dit als richting, niet als maat.
+
+| Criterium | Nulmeting (68) | Ronde 2 (80) | Ronde 3 (80) |
+| --- | --- | --- | --- |
+| Klopt het (grounded) | 43 | 64 | 65 |
+| Krijg je wat je vroeg (answers) | 46 | 66 | 67 |
+| Leest het prettig (tone) | 53 | 68 | 69 |
+| Eerlijk over grenzen (honest) | 49 | 64 | 68 |
+
+Weergave, nulmeting naar ronde 2: 198 van 204 naar 232 van 240 runs zonder weergavefout. Ronde 3 is hierop niet gemeten.
+
+Wat er in het product is opgelost, elk met een test die zonder de fix faalt:
+
+- Een server die niet antwoordde bleef ongenoemd; Pleya zet er nu zelf een regel bij.
+- Een titel die in dezelfde vraag was aangevraagd bleef op de kaart "niet aangevraagd".
+- Dezelfde titel stond dubbel als er twee zoekacties in één beurt waren.
+- Een lege zoekactie op onderwerp gaf geen aanwijzing om het anders te proberen.
+- "Een goede film voor vanavond" gaf "je hebt alles al gezien" wanneer de films alleen geen score hadden: de melding bij een lege zoekactie met `unwatched` en `min_rating` wees naar de kijkgeschiedenis.
+- Een beurt die op de stappenlimiet eindigde toonde de kaarten van tussentijdse zoekacties onder "dit kostte te veel stappen" (beide glm-missers van ronde 2).
+
+Wat een fout in de meting was en daar is hersteld: de nepserver negeerde genre- en jaarfilters; de jury zag de argumenten van een toolaanroep niet; de vraag bij `man-retry-job` was dubbelzinnig.
+
+Twee fouten van de jury zelf, gevonden in ronde 3 en hersteld in de tool, nog niet opnieuw gejureerd:
+
+- Een geheugenkaart komt samen met het antwoord en wordt daarna beantwoord. De jury rekende "je kunt dit bevestigen op de kaart" fout omdat de kaart met nee was beantwoord (`task-forget-no`, `mem-forget-unknown-ref`).
+- Een verwijzing naar een instellingenpagina van Pleya telde als onbewezen (`trk-not-linked`, `rec-trending-no-source`); de toolbeschrijvingen dragen die verwijzing juist op.
+
+Wat de jury wel terecht lijkt te vinden en aan Michel is om te wegen, via de ijkset: het antwoord herhaalt titels die al op de kaarten staan (de meeste tone-fouten), een Engelse vraag krijgt een Nederlands antwoord (`disc-english`, zo ontworpen), en "nieuwe afleveringen van Bluey" eindigt in de vaste tekst "de diagnose blijft onbekend".
+
+Tools: drie die nooit bereikt werden hebben nu nepdata en een case (`discover_request_titles`, `request_status`, `similar_titles`); de lijst zonder nepdata telt er nog tien. Nieuw is `cancel_request` (BP-12t1): je eigen aanvraag annuleren zolang die in behandeling is, met een eigen adversariële review.
+
+IJken: `build/big_p_eval/big-p-ijkset.html` toont 25 antwoorden uit ronde 3 zonder het oordeel van de jury; de antwoorden van Michel gaan terug in `ijkset.jsonl` en `--agreement` rekent de overeenkomst per criterium uit. Pas daarna telt de jury als maat.
+
 ## HTTP-probleem in de live test
 
 De eerste twee pogingen tot een nulmeting gaven bij gemma 180 van 180 en bij glm 68 van 180 runs een providerfout. De oorzaak lag niet bij Ollama: zodra de geheugenfixtures de Flutter-testbinding starten, beantwoordt die elk HTTP-verzoek met een lege 400. De live test zet daarom voor elke poging `HttpOverrides.global = null` terug. Het record bevat sindsdien `http_error` (status en begin van het antwoord) bij een niet-200.
@@ -167,7 +212,10 @@ Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met
 
 - `adm-search-with-offline-server` is met BP-11e een gewoon hard geval; de nulmeting is nog van vóór die fix, dus het live effect is niet gemeten.
 - De beheer- en huishoudcases (regel 2 en 7) bewijzen alleen de weigering zonder bevoegdheid; ze wachten op een inzichtenfixture.
-- De kwaliteitsbeoordelaar (stap 5) is uitgesteld.
+- De modeljury (BP-12) is gebouwd maar nog niet geijkt door Michel; ronde 3 is na de twee juryfixes niet opnieuw gejureerd.
+- Tien tools hebben nog geen nepdata (`_open` in `big_p_eval_matrix_test.dart`).
+- Ontbrekende tools na `cancel_request`: Home-rij en collectie wijzigen, kijklijst, gezien markeren, beoordelen, afspelen starten, samen kijken breder. Gezien markeren, beoordelen en afspelen raken gedeelde afspeellogica en krijgen eerst een kort plan.
+- De weergave is in ronde 3 niet opnieuw gemeten; de kinderprofieltak van `cancel_request` heeft geen test.
 - De ruis is gemeten met één herhaling op 400c6fd1; de vijfde meting is een andere code en dus geen derde run op dezelfde code.
 - `con-everyone-no-capability` (gemma) blijft 0 van 3 en vraagt een wijziging op tool- of resultaatniveau.
 - De check `EvalHonestMissing` markeert een eerlijk "ik kan niet zien wanneer het volgende seizoen komt" als bewering en kent "ik kan geen releasedatum vinden" niet als erkenning; daardoor zijn `ser-next-season-no-source` en `ser-new-episodes-no-source` onbetrouwbaar tot de check is aangescherpt.

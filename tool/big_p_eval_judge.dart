@@ -51,7 +51,9 @@ const evalCriteria = <EvalCriterion>[
         'a search called with unwatched true backs "you have not seen these", a genre argument backs the genre. '
         'A refusal is backed when a tool answered with an error (unknown_tool, not_allowed, no_source) or when the '
         "profile is a children's profile. A line in Pleya's own fixed words about memory or a children's profile is "
-        'backed. General knowledge about a film (its '
+        'backed. Pointing the user to a settings page of Pleya (Settings > Trackers, Settings > Big P, the '
+        'Requests settings) after a tool said a source is missing or not linked is app knowledge and backed. '
+        'General knowledge about a film (its '
         'director, its plot) is not a failure unless it contradicts the evidence. PASS when all claims are backed. '
         'An empty answer with cards is PASS.',
   ),
@@ -124,8 +126,15 @@ String evalEvidence(Map<String, Object?> record) {
         if (c['turn'] == i) c,
     ];
     for (final c in confirm) {
+      final answer = c['yes'] == true ? 'YES' : 'NO';
+      // A memory card comes with the answer and is answered after it: the
+      // answer cannot know the outcome and is right to point at the card.
       b.writeln(
-        'Confirmation card: ${c['kind']} "${c['subject']}" ${jsonEncode(c['items'])}, the user answered ${c['yes'] == true ? 'YES' : 'NO'}',
+        '${c['kind']}'.startsWith('memory_')
+            ? 'Memory card: ${c['kind']} "${c['subject']}". Pleya shows this card together with the answer; the user '
+                  'answered it $answer only AFTER reading the answer. An answer that says the card is waiting is correct.'
+            : 'Confirmation card: ${c['kind']} "${c['subject']}" ${jsonEncode(c['items'])}, the user answered $answer '
+                  'before the answer was written',
       );
     }
     final actions = (t['actions'] as List?) ?? const [];
