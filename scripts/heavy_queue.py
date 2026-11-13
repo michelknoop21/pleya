@@ -330,6 +330,10 @@ def main():
     run.add_argument('--label')
     run.add_argument('--wait-timeout', type=duration, default=7200)
     run.add_argument('--run-timeout', type=duration)
+    # Same flag as the shared runtime, which kills a task after this long without CPU activity
+    # (0 disables it). This wrapper has no idle watchdog, so here it never stops a task; it is
+    # accepted so a caller passes one set of flags to whichever queue the checkout routes to.
+    run.add_argument('--idle-timeout', type=duration)
     run.add_argument('--kill-after', type=duration, default=15)
     run.add_argument('command', nargs=argparse.REMAINDER)
     status = subs.add_parser('status')
@@ -367,5 +371,36 @@ def main():
     return 0
 
 
+def forward_to_shared_queue():
+    """On a Mac with the installed shared queue, every Pleya checkout enters that queue.
+
+    This standalone copy writes tickets the shared scheduler cannot read: on 13 November 2026 one
+    such ticket in the shared directory made every new admission crash until it was gone. A
+    caller that picks a queue directory other than the installed `queue_dir`, as the tests here
+    do, stays on this copy.
+
+    The shared ingress audit (Heavyworker `heavy_ingress.py`, FORWARD and FORWARD_MAIN) matches
+    this function and the guard below by AST. Change them only together with that audit.
+    """
+    entry = Path.home() / 'bin' / 'pleya-heavy'
+    if sys.platform != 'darwin' or not entry.with_name('heavy_launcher.py').is_file():
+        return
+    chosen = os.environ.get('PLEYA_HEAVY_QUEUE_DIR')
+    if chosen:
+        try:
+            config = Path('/Volumes/SSD/Projects/heavy-work/control/config.json')
+            shared = json.loads(config.read_text())['queue_dir']
+        except (OSError, ValueError, KeyError, TypeError):
+            shared = f'/tmp/pleya-heavy-{os.getuid()}'
+        if Path(chosen).resolve() != Path(shared).resolve():
+            return
+    try:
+        os.execv(sys.executable, [sys.executable, str(entry), *sys.argv[1:]])
+    except OSError as error:
+        print('heavy-queue: shared runtime unavailable: ' + str(error), file=sys.stderr)
+        raise SystemExit(75)
+
+
 if __name__ == '__main__':
+    forward_to_shared_queue()
     sys.exit(main())
