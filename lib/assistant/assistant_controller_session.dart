@@ -212,6 +212,8 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
               clientFor: manager.getClient,
             ),
             saveRow: layout?.saveCustomRow,
+            rows: layout == null ? null : () => layout.customRows,
+            removeRow: layout?.removeCustomRow,
             participantProfiles: profileConnections == null
                 ? null
                 : (id) => profileConnections.listJellyfinProfileIdentities(id.value),

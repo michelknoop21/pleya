@@ -3855,6 +3855,9 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get removeUser => 'Gebruiker verwijderen';
 	@override String get searchCatalog => 'Catalogus doorzoeken';
 	@override String get createHomeRow => 'Rij op het beginscherm maken';
+	@override String get listHomeRows => 'Rijen op het beginscherm bekijken';
+	@override String get renameHomeRow => 'Rij hernoemen';
+	@override String get removeHomeRow => 'Rij verwijderen';
 	@override String get createCollection => 'Collectie maken';
 	@override String get compareServers => 'Servers vergelijken';
 	@override String get watchStats => 'Kijkcijfers ophalen';
@@ -3921,6 +3924,8 @@ class _TranslationsAssistantActionsNl extends TranslationsAssistantActionsEn {
 	@override String get setLibraryAccess => 'Toegang aangepast';
 	@override String get removeUser => 'Gebruiker verwijderd';
 	@override String get createHomeRow => 'Rij aangemaakt';
+	@override String get renameHomeRow => 'Rij hernoemd';
+	@override String get removeHomeRow => 'Rij verwijderd';
 	@override String get createCollection => 'Collectie aangemaakt';
 	@override String get requestTitle => 'Aanvraag verstuurd';
 	@override String get cancelRequest => 'Aanvraag geannuleerd';
@@ -4456,6 +4461,8 @@ class _TranslationsAssistantConfirmTitlesNl extends TranslationsAssistantConfirm
 	@override String get setLibraryAccess => 'Toegang aanpassen';
 	@override String get removeUser => 'Gebruiker verwijderen';
 	@override String get createHomeRow => 'Rij op het beginscherm maken';
+	@override String get renameHomeRow => 'Rij hernoemen';
+	@override String get removeHomeRow => 'Rij van het beginscherm verwijderen';
 	@override String get createCollection => 'Collectie maken';
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get cancelRequest => 'Aanvraag annuleren';
@@ -7283,6 +7290,9 @@ extension on TranslationsNl {
 			'assistant.steps.removeUser' => 'Gebruiker verwijderen',
 			'assistant.steps.searchCatalog' => 'Catalogus doorzoeken',
 			'assistant.steps.createHomeRow' => 'Rij op het beginscherm maken',
+			'assistant.steps.listHomeRows' => 'Rijen op het beginscherm bekijken',
+			'assistant.steps.renameHomeRow' => 'Rij hernoemen',
+			'assistant.steps.removeHomeRow' => 'Rij verwijderen',
 			'assistant.steps.createCollection' => 'Collectie maken',
 			'assistant.steps.compareServers' => 'Servers vergelijken',
 			'assistant.steps.watchStats' => 'Kijkcijfers ophalen',
@@ -7331,6 +7341,8 @@ extension on TranslationsNl {
 			'assistant.actions.setLibraryAccess' => 'Toegang aangepast',
 			'assistant.actions.removeUser' => 'Gebruiker verwijderd',
 			'assistant.actions.createHomeRow' => 'Rij aangemaakt',
+			'assistant.actions.renameHomeRow' => 'Rij hernoemd',
+			'assistant.actions.removeHomeRow' => 'Rij verwijderd',
 			'assistant.actions.createCollection' => 'Collectie aangemaakt',
 			'assistant.actions.requestTitle' => 'Aanvraag verstuurd',
 			'assistant.actions.cancelRequest' => 'Aanvraag geannuleerd',
@@ -7346,6 +7358,8 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.setLibraryAccess' => 'Toegang aanpassen',
 			'assistant.confirm.titles.removeUser' => 'Gebruiker verwijderen',
 			'assistant.confirm.titles.createHomeRow' => 'Rij op het beginscherm maken',
+			'assistant.confirm.titles.renameHomeRow' => 'Rij hernoemen',
+			'assistant.confirm.titles.removeHomeRow' => 'Rij van het beginscherm verwijderen',
 			'assistant.confirm.titles.createCollection' => 'Collectie maken',
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
 			'assistant.confirm.titles.cancelRequest' => 'Aanvraag annuleren',

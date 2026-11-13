@@ -9,6 +9,9 @@ import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 
 import 'package:pleya/profiles/household_kids_store.dart';
 
@@ -119,6 +122,16 @@ Future<EvalOutcome> runEvalCase(
   // of the set, as they do on a Dutch device.
   await LocaleSettings.setLocale(AppLocale.nl);
   final world = await c.world?.call();
+  final rowStore = [
+    for (final (i, name) in (world?.homeRows ?? const <String>[]).indexed)
+      HomeCustomRow(
+        id: 'row-${i + 1}',
+        kind: MediaKind.movie,
+        name: name,
+        preferences: UnifiedCatalogPreferences.defaults,
+      ),
+  ];
+  outcome.homeRowNames = () => [for (final row in rowStore) row.name];
   final ctx = evalContext(
     kids: c.kids,
     kidsAges: c.kidsAges,
@@ -127,6 +140,7 @@ Future<EvalOutcome> runEvalCase(
     personal: c.personal,
     world: world,
     onSaveRow: outcome.savedRows.add,
+    rowStore: rowStore,
   );
   final history = <AssistantTurn>[];
   outcome.initial = await evalWorldState(world, outcome);
@@ -207,7 +221,7 @@ Future<EvalWorldState> evalWorldState(EvalWorld? world, EvalOutcome outcome) asy
       ? null
       : (world!.memoryOfSecond ? world.memory!.sanne.service : world.memory!.michel.service);
   return EvalWorldState(
-    homeRows: List.of(outcome.savedRows),
+    homeRows: outcome.homeRowNames(),
     requests: [
       for (final post in world?.seerr?.posts ?? const <({String path, Map<String, Object?> body})>[])
         if (post.path == '/request') '${post.body['mediaType']}:${post.body['mediaId']}',

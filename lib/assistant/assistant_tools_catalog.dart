@@ -10,6 +10,8 @@ class AssistantCatalogServices {
     required this.profileId,
     required this.activeProfileId,
     this.saveRow,
+    this.rows,
+    this.removeRow,
     this.participantProfiles,
   });
 
@@ -25,6 +27,13 @@ class AssistantCatalogServices {
   /// `HomeLayoutProvider.saveCustomRow` of the profile [profileId]. Null keeps
   /// `create_home_row` out of the run.
   final Future<void> Function(HomeCustomRow row)? saveRow;
+
+  /// `HomeLayoutProvider.customRows` of the same profile, in Home's order.
+  /// Null keeps the Home row tools out of the run.
+  final List<HomeCustomRow> Function()? rows;
+
+  /// `HomeLayoutProvider.removeCustomRow` of the same profile.
+  final Future<void> Function(String id)? removeRow;
 
   /// The profile [saveRow] writes to.
   final String profileId;

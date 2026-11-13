@@ -8949,6 +8949,15 @@ class TranslationsAssistantStepsEn {
 	/// en: 'Creating home row'
 	String get createHomeRow => 'Creating home row';
 
+	/// en: 'Reading home rows'
+	String get listHomeRows => 'Reading home rows';
+
+	/// en: 'Renaming home row'
+	String get renameHomeRow => 'Renaming home row';
+
+	/// en: 'Removing home row'
+	String get removeHomeRow => 'Removing home row';
+
 	/// en: 'Creating collection'
 	String get createCollection => 'Creating collection';
 
@@ -9086,6 +9095,12 @@ class TranslationsAssistantActionsEn {
 
 	/// en: 'Home row created'
 	String get createHomeRow => 'Home row created';
+
+	/// en: 'Home row renamed'
+	String get renameHomeRow => 'Home row renamed';
+
+	/// en: 'Home row removed'
+	String get removeHomeRow => 'Home row removed';
 
 	/// en: 'Collection created'
 	String get createCollection => 'Collection created';
@@ -10229,6 +10244,12 @@ class TranslationsAssistantConfirmTitlesEn {
 
 	/// en: 'Create home row'
 	String get createHomeRow => 'Create home row';
+
+	/// en: 'Rename home row'
+	String get renameHomeRow => 'Rename home row';
+
+	/// en: 'Remove home row'
+	String get removeHomeRow => 'Remove home row';
 
 	/// en: 'Create collection'
 	String get createCollection => 'Create collection';
@@ -13230,6 +13251,9 @@ extension on Translations {
 			'assistant.steps.removeUser' => 'Removing user',
 			'assistant.steps.searchCatalog' => 'Searching the catalog',
 			'assistant.steps.createHomeRow' => 'Creating home row',
+			'assistant.steps.listHomeRows' => 'Reading home rows',
+			'assistant.steps.renameHomeRow' => 'Renaming home row',
+			'assistant.steps.removeHomeRow' => 'Removing home row',
 			'assistant.steps.createCollection' => 'Creating collection',
 			'assistant.steps.compareServers' => 'Comparing servers',
 			'assistant.steps.watchStats' => 'Fetching watch statistics',
@@ -13278,6 +13302,8 @@ extension on Translations {
 			'assistant.actions.setLibraryAccess' => 'Access changed',
 			'assistant.actions.removeUser' => 'User removed',
 			'assistant.actions.createHomeRow' => 'Home row created',
+			'assistant.actions.renameHomeRow' => 'Home row renamed',
+			'assistant.actions.removeHomeRow' => 'Home row removed',
 			'assistant.actions.createCollection' => 'Collection created',
 			'assistant.actions.requestTitle' => 'Request sent',
 			'assistant.actions.cancelRequest' => 'Request cancelled',
@@ -13293,6 +13319,8 @@ extension on Translations {
 			'assistant.confirm.titles.setLibraryAccess' => 'Change access',
 			'assistant.confirm.titles.removeUser' => 'Remove user',
 			'assistant.confirm.titles.createHomeRow' => 'Create home row',
+			'assistant.confirm.titles.renameHomeRow' => 'Rename home row',
+			'assistant.confirm.titles.removeHomeRow' => 'Remove home row',
 			'assistant.confirm.titles.createCollection' => 'Create collection',
 			'assistant.confirm.titles.requestTitle' => 'Request title',
 			'assistant.confirm.titles.cancelRequest' => 'Cancel request',

@@ -84,6 +84,7 @@ part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_state.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_requests_cancel.dart';
+part 'assistant_tools_home_rows.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_discover.dart';
 part 'assistant_tools_kids.dart';
@@ -154,6 +155,8 @@ enum AssistantActionKind {
   setLibraryAccess,
   removeUser,
   createHomeRow,
+  renameHomeRow,
+  removeHomeRow,
   createCollection,
   requestTitle,
   cancelRequest,
@@ -378,6 +381,7 @@ final List<AssistantTool> assistantTools = [
   ..._generalTools,
   ..._adminTools,
   ..._catalogTools,
+  ..._homeRowTools,
   ..._recommendationTools,
   ..._insightTools,
   ..._requestTools,

@@ -35,6 +35,10 @@ const _findPrimer = EvalCall('find_request_title', {
     {'title': 'Primer', 'kind': 'movie'},
   ],
 });
+
+/// Two rows already saved on Home.
+Future<EvalWorld> _rows() async => const EvalWorld(homeRows: ['Actie uit de jaren 90', 'Kerstfilms']);
+
 Future<EvalWorld> _memory() async => EvalWorld(memory: await EvalMemory.open(michelFacts: ['houdt van komedies']));
 Future<EvalWorld> _emptyMemory() async => EvalWorld(memory: await EvalMemory.open());
 
@@ -317,5 +321,90 @@ final evalTaskCases = <EvalCase>[
     hard: const [evalNoDup, EvalStateUnchanged(), EvalNoFalseSuccess()],
     scripted: const [EvalConfirmShown(1)],
     soft: const EvalSoft(firstTools: {'find_request_title', 'find_title'}),
+  ),
+  // Saved Home rows (BP-12t2): rename and remove, each with its no.
+  EvalCase(
+    id: 'task-home-row-rename-yes',
+    source: 'BP-12t2: een opgeslagen rij hernoemen met een ja',
+    world: _rows,
+    turns: [
+      EvalTurn(
+        'Noem mijn rij Kerstfilms voortaan Feestdagen',
+        confirm: EvalConfirm.yes,
+        script: [
+          EvalCall('list_home_rows', {}),
+          EvalCall('rename_home_row', {'row_id': 'r2', 'title': 'Feestdagen'}),
+          'De rij heet nu Feestdagen.',
+        ],
+      ),
+    ],
+    hard: const [
+      evalNoDup,
+      EvalActionDone('renameHomeRow'),
+      EvalState(homeRows: ['Actie uit de jaren 90', 'Feestdagen']),
+    ],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'list_home_rows'}),
+  ),
+  EvalCase(
+    id: 'task-home-row-rename-no',
+    source: 'BP-12t2: hernoemen geweigerd, de rij houdt zijn naam',
+    world: _rows,
+    turns: [
+      EvalTurn(
+        'Noem mijn rij Kerstfilms voortaan Feestdagen',
+        confirm: EvalConfirm.no,
+        script: [
+          EvalCall('list_home_rows', {}),
+          EvalCall('rename_home_row', {'row_id': 'r2', 'title': 'Feestdagen'}),
+          'De rij heet nog steeds Kerstfilms.',
+        ],
+      ),
+    ],
+    hard: const [evalNoDup, EvalStateUnchanged(), EvalNoFalseSuccess()],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'list_home_rows'}),
+  ),
+  EvalCase(
+    id: 'task-home-row-remove-yes',
+    source: 'BP-12t2: een opgeslagen rij verwijderen met een ja',
+    world: _rows,
+    turns: [
+      EvalTurn(
+        'Haal de rij Actie uit de jaren 90 van mijn beginscherm',
+        confirm: EvalConfirm.yes,
+        script: [
+          EvalCall('list_home_rows', {}),
+          EvalCall('remove_home_row', {'row_id': 'r1'}),
+          'De rij is verwijderd.',
+        ],
+      ),
+    ],
+    hard: const [
+      evalNoDup,
+      EvalActionDone('removeHomeRow'),
+      EvalState(homeRows: ['Kerstfilms']),
+    ],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'list_home_rows'}),
+  ),
+  EvalCase(
+    id: 'task-home-row-remove-no',
+    source: 'BP-12t2: verwijderen geweigerd, de rij blijft staan',
+    world: _rows,
+    turns: [
+      EvalTurn(
+        'Haal de rij Actie uit de jaren 90 van mijn beginscherm',
+        confirm: EvalConfirm.no,
+        script: [
+          EvalCall('list_home_rows', {}),
+          EvalCall('remove_home_row', {'row_id': 'r1'}),
+          'De rij staat er nog.',
+        ],
+      ),
+    ],
+    hard: const [evalNoDup, EvalStateUnchanged(), EvalNoFalseSuccess()],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'list_home_rows'}),
   ),
 ];

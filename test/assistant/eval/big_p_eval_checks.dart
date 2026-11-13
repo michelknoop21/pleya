@@ -91,6 +91,10 @@ class EvalOutcome {
 
   /// Home rows the run saved. Nothing is saved without a yes.
   final List<String> savedRows = [];
+
+  /// Names of the Home rows as they stand: the world's own, plus what the
+  /// run saved, renamed or removed. Filled by the runner's row store.
+  List<String> Function() homeRowNames = () => const [];
 }
 
 typedef EvalNamed = ({String title, int? year});

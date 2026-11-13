@@ -17,6 +17,7 @@ import 'package:pleya/media/server_administration.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/profiles/household_kids_store.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 
@@ -387,6 +388,8 @@ AssistantToolContext evalContext({
   bool personal = false,
   EvalWorld? world,
   void Function(String name)? onSaveRow,
+  // Filled with the profile's saved Home rows; the row tools read and change it.
+  List<HomeCustomRow>? rowStore,
   // The profile's memory, with the saved "nothing I watched or started" (BP-11d).
   AssistantMemoryServices? memory,
 }) {
@@ -407,7 +410,18 @@ AssistantToolContext evalContext({
       ),
       profileId: 'p',
       activeProfileId: () => 'p',
-      saveRow: (row) async => onSaveRow?.call(row.name),
+      // A new id is a new row; a known id is an edit that keeps its place.
+      saveRow: (row) async {
+        final at = rowStore?.indexWhere((r) => r.id == row.id) ?? -1;
+        if (at >= 0) {
+          rowStore![at] = row;
+        } else {
+          rowStore?.add(row);
+          onSaveRow?.call(row.name);
+        }
+      },
+      rows: rowStore == null ? null : () => List.unmodifiable(rowStore),
+      removeRow: rowStore == null ? null : (id) async => rowStore.removeWhere((r) => r.id == id),
     ),
     titleFacts: _EvalFacts(),
     personal: world?.profile != null ? evalPersonalFor(world!.profile!) : (personal ? _evalPersonal() : null),

@@ -59,6 +59,9 @@ const kidsToolPolicy = <String, KidsTool>{
   'download_subtitle': KidsTool.neutral,
   // A saved search_catalog query holds every title, not only those that passed.
   'create_home_row': KidsTool.blocked,
+  'list_home_rows': KidsTool.blocked,
+  'rename_home_row': KidsTool.blocked,
+  'remove_home_row': KidsTool.blocked,
   'create_collection': KidsTool.blocked,
   'recommend_together': KidsTool.blocked,
   'spoiler_context': KidsTool.blocked,

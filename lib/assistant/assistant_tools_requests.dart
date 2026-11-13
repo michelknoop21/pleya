@@ -304,14 +304,10 @@ final List<AssistantTool> _requestTools = [
   AssistantTool(
     name: 'cancel_request',
     description:
-        'Cancel the user\'s own request for a title found with find_title, find_request_title or '
-        'discover_request_titles, in the same task. Only requests this user made that are still pending, and '
-        'all of them for that title at once: for a series every pending season, never one season of several; '
-        'the card lists them and the user confirms in Pleya. Returns status not_requested, other_quality (only '
-        'the other of standard and 4K has one; ask again with four_k set the other way), not_yours (someone '
-        'else asked for it) or not_pending (already approved, declined or done) when there is nothing to '
-        'cancel: say so plainly. With cancelled_requests in an error, say how many went and how many did not. '
-        'Use seerr_id exactly as returned.',
+        'Cancel the user\'s own pending requests for a title shown in this task: all of them, for a series '
+        'every pending season. The user confirms in Pleya. Nothing to cancel returns not_requested, '
+        'other_quality (retry with four_k flipped), not_yours or not_pending. An error with cancelled_requests: '
+        'say how many went.',
     risk: AssistantToolRisk.sensitive,
     needsServer: false,
     properties: const {

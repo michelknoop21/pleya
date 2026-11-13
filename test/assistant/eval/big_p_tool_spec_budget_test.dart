@@ -14,8 +14,13 @@ import 'package:pleya/assistant/assistant_tools.dart';
 // Baseline measured on 16 October 2026 (main 403fcc36): 28109 characters,
 // 7028 tokens. The specs may grow by the margin below; growing past it needs a
 // deliberate new baseline in the same change, with the reason in the commit.
+//
+// New baseline on 13 November 2026 (BP-12t1 and BP-12t2): 30386 characters,
+// 7597 tokens. Four tools came in that Big P could not do at all
+// (cancel_request, list_home_rows, rename_home_row, remove_home_row), with
+// their descriptions cut to the minimum first.
 
-const _baselineTokens = 7028;
+const _baselineTokens = 7597;
 const _marginTokens = 500;
 
 void main() {

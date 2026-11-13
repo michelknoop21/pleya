@@ -27,8 +27,16 @@ Future<EvalOutcome> _run(EvalCase c) {
 
 void main() {
   stepLimitTests();
+  homeRowTests();
   test('a task whose card was refused fails its state check', () async {
-    for (final id in ['task-home-row-yes', 'task-request-yes', 'task-forget-yes']) {
+    for (final id in [
+      'task-home-row-yes',
+      'task-request-yes',
+      'task-forget-yes',
+      'task-cancel-request-yes',
+      'task-home-row-rename-yes',
+      'task-home-row-remove-yes',
+    ]) {
       final c = _case(id);
       expect(evalViolations(c, await _run(c)), isEmpty, reason: '$id as written');
       final refused = evalViolations(c, await _run(_flip(c, EvalConfirm.no)));
@@ -37,7 +45,13 @@ void main() {
   });
 
   test('a refused task that is carried out anyway fails state-unchanged', () async {
-    for (final id in ['task-home-row-no', 'task-request-no']) {
+    for (final id in [
+      'task-home-row-no',
+      'task-request-no',
+      'task-cancel-request-no',
+      'task-home-row-rename-no',
+      'task-home-row-remove-no',
+    ]) {
       final c = _case(id);
       expect(evalViolations(c, await _run(c)), isEmpty, reason: '$id as written');
       final done = evalViolations(c, await _run(_flip(c, EvalConfirm.yes)));
@@ -75,6 +89,34 @@ void main() {
 // A run that hits the step limit never answered: what its searches turned up
 // on the way was not chosen by anyone. In the live run "a film with Bruce
 // Willis" ended in "too many steps" above ten unrelated films (BP-12).
+void homeRowTests() {
+  test('a Home row is only accepted by a ref this run listed', () async {
+    final base = _case('task-home-row-remove-yes');
+    final c = EvalCase(
+      id: 'home-row-unknown-ref',
+      source: 'rij zonder lijst: geweigerd',
+      world: base.world,
+      hard: const [EvalStateUnchanged()],
+      turns: [
+        EvalTurn(
+          'Haal de rij Kerstfilms weg',
+          confirm: EvalConfirm.yes,
+          script: [
+            EvalCall('remove_home_row', {'row_id': 'r2'}),
+            EvalCall('rename_home_row', {'row_id': 'row-2', 'title': 'X'}),
+            'Dat lukte niet.',
+          ],
+        ),
+      ],
+    );
+    final outcome = await _run(c);
+    expect(evalViolations(c, outcome), isEmpty);
+    final turn = (evalRecord(c, outcome, model: 's', attempt: 1)['turns'] as List).single as Map;
+    expect((turn['tool_results'] as List).every((r) => '$r'.contains('unknown_row_id')), isTrue, reason: '$turn');
+    expect(turn['actions'], isEmpty);
+  });
+}
+
 void stepLimitTests() {
   test('a run that ends on the step limit shows no cards from its searches', () async {
     final c = EvalCase(

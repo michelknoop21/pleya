@@ -229,7 +229,11 @@ class EvalWorld {
     this.memory,
     this.memoryOfSecond = false,
     this.admin,
+    this.homeRows = const [],
   });
+
+  /// Names of the rows already saved on this profile's Home, in order.
+  final List<String> homeRows;
 
   /// The asking profile administers the main server; changes land here.
   final EvalAdminState? admin;
