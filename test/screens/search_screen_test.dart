@@ -668,68 +668,63 @@ void main() {
     });
   });
 
-  for (final proven in [true, false])
-    testWidgets('desktop search shows a multi-server match once when its number proves it (proven: $proven)', (
-      tester,
-    ) async {
-      // The ordinary desktop SearchScreen draws plain items, not the unified
-      // projection the TV and phone builds get. A title two servers prove to be
-      // the same by its provider number is one row there too; the same title
-      // without a number on either side stays one row per server, because a
-      // title is no proof. A large,
-      // non-phone viewport is forced explicitly (`PlatformDetector.isPhone`
-      // has no debug override, unlike TV's `debugSetAppleTVOverride`) —
-      // without it the default flutter_test surface reads as phone-sized and
-      // this test would exercise the wrong build path.
-      tester.view.physicalSize = const Size(1440, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-      final clientA = _FakeMediaServerClient(
-        items: [_dune('dune-a', 'server_a', tmdb: proven ? 438631 : null)],
-        serverId: 'server_a',
-        serverName: 'Server A',
-        externalIdsByItemId: {'dune-a': const ExternalIds(tmdb: 438631)},
-      );
-      final clientB = _FakeMediaServerClient(
-        items: [_dune('dune-b', 'server_b', tmdb: proven ? 438631 : null)],
-        serverId: 'server_b',
-        serverName: 'Server B',
-        externalIdsByItemId: {'dune-b': const ExternalIds(tmdb: 438631)},
-      );
-      final manager = MultiServerManager()
-        ..debugRegisterClientForTesting(clientA)
-        ..debugRegisterClientForTesting(clientB);
-      final provider = MultiServerProvider(manager, DataAggregationService(manager));
-      addTearDown(provider.dispose);
-      final hiddenLibraries = HiddenLibrariesProvider();
-      addTearDown(hiddenLibraries.dispose);
+  testWidgets('desktop search stays source-concrete for the same multi-server match', (tester) async {
+    // Same fixture as the TV dedup test above, pumped through the ordinary
+    // desktop SearchScreen: desktop must keep showing one card per server,
+    // unchanged by the unified projection I4 gives the phone build. A large,
+    // non-phone viewport is forced explicitly (`PlatformDetector.isPhone`
+    // has no debug override, unlike TV's `debugSetAppleTVOverride`) —
+    // without it the default flutter_test surface reads as phone-sized and
+    // this test would exercise the wrong build path.
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final clientA = _FakeMediaServerClient(
+      items: [_dune('dune-a', 'server_a')],
+      serverId: 'server_a',
+      serverName: 'Server A',
+      externalIdsByItemId: {'dune-a': const ExternalIds(tmdb: 438631)},
+    );
+    final clientB = _FakeMediaServerClient(
+      items: [_dune('dune-b', 'server_b')],
+      serverId: 'server_b',
+      serverName: 'Server B',
+      externalIdsByItemId: {'dune-b': const ExternalIds(tmdb: 438631)},
+    );
+    final manager = MultiServerManager()
+      ..debugRegisterClientForTesting(clientA)
+      ..debugRegisterClientForTesting(clientB);
+    final provider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(provider.dispose);
+    final hiddenLibraries = HiddenLibrariesProvider();
+    addTearDown(hiddenLibraries.dispose);
 
-      final key = GlobalKey<State<SearchScreen>>();
-      await tester.pumpWidget(
-        TranslationProvider(
-          child: MultiProvider(
-            providers: [
-              ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
-              ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
-            ],
-            child: MaterialApp(
-              theme: monoTheme(dark: true),
-              home: SearchScreen(key: key),
-            ),
+    final key = GlobalKey<State<SearchScreen>>();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+          ],
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: SearchScreen(key: key),
           ),
         ),
-      );
-      await tester.pump();
-      (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
-      (key.currentState! as Refreshable).refresh();
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pump();
+    (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+    (key.currentState! as Refreshable).refresh();
+    await tester.pumpAndSettle();
 
-      expect(find.byType(TvCatalogCardRail), findsNothing, reason: 'off TV the plain list is drawn');
-      expect(find.text('Dune'), findsNWidgets(proven ? 1 : 2));
-    });
+    expect(find.byType(TvCatalogCardRail), findsNothing, reason: 'off TV the source-concrete list is unchanged');
+    expect(find.text('Dune'), findsNWidgets(2));
+  });
 
   group('I4: phone unified search sections (05-zoeken.png)', () {
     Future<GlobalKey<State<SearchScreen>>> pumpPhoneSearchScreen(
@@ -1432,7 +1427,7 @@ MediaItem _item(String id, String title) => MediaItem(
 // Same title, deliberately different serverId per call — the shape a real
 // multi-server merge candidate takes. `_item` above always claims
 // 'server_1', which is wrong for these fixtures' per-server fake clients.
-MediaItem _dune(String id, String serverId, {String? libraryId, int? tmdb}) => MediaItem(
+MediaItem _dune(String id, String serverId, {String? libraryId}) => MediaItem(
   id: id,
   backend: MediaBackend.plex,
   kind: MediaKind.movie,
@@ -1440,13 +1435,6 @@ MediaItem _dune(String id, String serverId, {String? libraryId, int? tmdb}) => M
   serverId: serverId,
   serverName: serverId,
   libraryId: libraryId,
-  raw: tmdb == null
-      ? null
-      : {
-          'Guid': [
-            {'id': 'tmdb://$tmdb'},
-          ],
-        },
 );
 
 Future<GlobalKey<State<SearchScreen>>> _pumpSearchScreen(WidgetTester tester, MediaServerClient client) async {

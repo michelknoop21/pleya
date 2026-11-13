@@ -38,7 +38,6 @@ import '../media/unified/unified_route_context.dart';
 import '../media/ids.dart';
 import '../providers/multi_server_provider.dart';
 import 'tv/tv_unified_activation.dart';
-import '../services/unified_catalog/one_card_per_title.dart';
 import '../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../services/unified_catalog/search_projection.dart';
 import '../utils/debouncer.dart';
@@ -542,11 +541,7 @@ class _SearchScreenState extends State<SearchScreen>
         if (!mounted || isStale()) return;
       }
       setStateIfMounted(() {
-        // Without a projection (iPad, desktop) the list itself is drawn: one
-        // row per proven title there too, not one per server.
-        _searchResults = projection == null
-            ? oneCardPerProvenTitle(neutral, trustStoredIdentity: storedIdentityTrustFor(multiServerProvider))
-            : neutral;
+        _searchResults = neutral;
         _projection = projection;
         _isSearching = false;
         _lastSearchedQuery = query;
