@@ -131,15 +131,34 @@ class VideoTimelineBar extends StatelessWidget {
     Duration remaining,
     List<BufferRange> bufferRanges,
   ) {
-    return Column(
+    // The track keeps its 20 pt row; its touch band (44 pt) lies over the
+    // times below, so a tap anywhere in the timeline row seeks (DENS1 review C1).
+    return Stack(
+      // The scrub tooltip floats above the track.
+      clipBehavior: Clip.none,
       children: [
-        _buildSlider(position, duration, bufferRanges),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: .spaceBetween,
-            children: [_buildTimestamp(position), _buildRemainingTimestamp(remaining)],
+        // At least the touch band tall: a Stack only hit-tests inside its own
+        // size, so a band reaching below it would lose its lower part.
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kTimelineTouchExtent),
+          child: Column(
+            children: [
+              const SizedBox(height: kTimelineTrackRowHeight),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: .spaceBetween,
+                  children: [_buildTimestamp(position), _buildRemainingTimestamp(remaining)],
+                ),
+              ),
+            ],
           ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _buildSlider(position, duration, bufferRanges, touchExtent: kTimelineTouchExtent),
         ),
       ],
     );
@@ -171,8 +190,9 @@ class VideoTimelineBar extends StatelessWidget {
     );
   }
 
-  Widget _buildSlider(Duration position, Duration duration, List<BufferRange> bufferRanges) {
+  Widget _buildSlider(Duration position, Duration duration, List<BufferRange> bufferRanges, {double? touchExtent}) {
     return TimelineSlider(
+      touchExtent: touchExtent,
       position: position,
       duration: duration,
       bufferRanges: bufferRanges,

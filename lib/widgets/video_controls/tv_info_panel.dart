@@ -443,9 +443,11 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
               color: isActive ? TvPanelTheme.activePill : TvPanelTheme.inactivePillFor(glass: tvPanelGlassOn(context)),
               borderRadius: BorderRadius.circular(m.gap(22)),
               boxShadow: hasFocus
+                  // Shadows paint in list order: the wide white ring first,
+                  // then the dark 2 px gap over it, so both stay visible.
                   ? const [
-                      BoxShadow(color: TvPanelTheme.focusInk, spreadRadius: 2),
                       BoxShadow(color: Colors.white, spreadRadius: 4),
+                      BoxShadow(color: TvPanelTheme.focusInk, spreadRadius: 2),
                     ]
                   : const [],
             ),
@@ -543,7 +545,8 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
           Expanded(
             child: Text(
               hint,
-              style: TextStyle(color: TvPanelTheme.textDim, fontSize: m.subtitleFontSize),
+              // The footer hint is read, not decoration: 50% white, not 30%.
+              style: TextStyle(color: TvPanelTheme.textFaint, fontSize: m.subtitleFontSize),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -753,7 +756,7 @@ class _ChapterPositionLine extends StatelessWidget {
         }
         return Text(
           parts.join(' · '),
-          style: TextStyle(color: TvPanelTheme.textDim, fontSize: TvPanelMetrics.of(context).subtitleFontSize),
+          style: TextStyle(color: TvPanelTheme.textFaint, fontSize: TvPanelMetrics.of(context).subtitleFontSize),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         );

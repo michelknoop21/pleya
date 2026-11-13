@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/mpv/models.dart';
 import 'package:pleya/mpv/player/player.dart';
 import 'package:pleya/mpv/player/player_state.dart';
@@ -9,6 +10,8 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/focusable_list_tile.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/app_icon.dart';
+import 'package:pleya/widgets/video_controls/film_frame_palette.dart';
 import 'package:pleya/widgets/video_controls/sheets/video_settings_sheet.dart';
 
 import '../test_helpers/prefs.dart';
@@ -56,6 +59,30 @@ void main() {
     // assertion is about the output mode, not about how often the word occurs.
     final modeRow = find.ancestor(of: find.text('Audio Output Mode'), matching: find.byType(FocusableListTile));
     expect(find.descendant(of: modeRow, matching: find.text('Auto')), findsOneWidget);
+  });
+
+  // DENS1: the sleep timer row said "Off" in every language.
+  testWidgets('the sleep timer value follows the app language', (tester) async {
+    await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
+    addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+    await _pumpSheet(tester);
+    final row = find.ancestor(of: find.text('Slaaptimer'), matching: find.byType(FocusableListTile));
+    expect(find.descendant(of: row, matching: find.text('Uit')), findsOneWidget);
+    expect(find.text('Off'), findsNothing);
+  });
+
+  // DENS1 review I1: mint on a white sheet is about 1.2:1. A light sheet keeps
+  // the app primary; only a dark sheet marks its choices in mint.
+  Iterable<Color?> markColours(WidgetTester tester) => [
+    ...tester.widgetList<AppIcon>(find.byType(AppIcon)).map((i) => i.color),
+    ...tester.widgetList<Text>(find.byType(Text)).map((t) => t.style?.color),
+  ];
+
+  testWidgets('a light sheet marks nothing in mint, a dark one does', (tester) async {
+    await _pumpSheet(tester, brightness: Brightness.light);
+    expect(markColours(tester), isNot(contains(kFilmFocus)));
+    await _pumpSheet(tester, brightness: Brightness.dark);
+    expect(markColours(tester), contains(kFilmFocus));
   });
 
   testWidgets('shows the audio output mode on Apple TV too', (tester) async {
@@ -122,10 +149,10 @@ Future<void> _pumpSheetInHost(WidgetTester tester, {required Size canvas}) async
   await tester.pumpAndSettle();
 }
 
-Future<void> _pumpSheet(WidgetTester tester) async {
+Future<void> _pumpSheet(WidgetTester tester, {Brightness? brightness}) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: ThemeData(extensions: const [_testTokens]),
+      theme: ThemeData(brightness: brightness, extensions: const [_testTokens]),
       home: Scaffold(
         body: SizedBox(
           width: 900,

@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../focus/card_focus_scope.dart';
 import '../../../focus/focusable_wrapper.dart';
 import '../../../utils/layout_constants.dart';
+import '../../../utils/tv_hig.dart';
 import '../../app_icon.dart';
 import '../../tv/tv_unified_layout.dart';
 import 'tv_panel_value_row_scope.dart';
@@ -76,11 +79,19 @@ class TvPanelTheme {
 /// same scale, because a panel that scales its type and not its furniture ends
 /// up worse proportioned than one that scales nothing.
 class TvPanelMetrics {
-  const TvPanelMetrics(this.scale);
+  const TvPanelMetrics(this.scale, {this.pt = 0});
 
-  factory TvPanelMetrics.of(BuildContext context) => TvPanelMetrics(TvLayoutConstants.scaleOf(context));
+  factory TvPanelMetrics.of(BuildContext context) =>
+      TvPanelMetrics(TvLayoutConstants.scaleOf(context), pt: TvHig.of(context));
 
   final double scale;
+
+  /// Logical pixels per HIG point ([TvHig.of]). Every text size below is held
+  /// at or above [TvHig.caption2] (23 pt, the tvOS floor): on an Apple TV the
+  /// 0.85 ladder alone put the quieter lines at 19 to 20 pt (DENS1).
+  final double pt;
+
+  double _text(double ladder) => math.max(ladder * scale, TvHig.caption2 * pt);
 
   double get rowMinHeight => TvSourcePickerLayout.rowMinHeight * scale;
   double get rowPaddingHorizontal => TvSourcePickerLayout.rowPaddingHorizontal * scale;
@@ -90,13 +101,13 @@ class TvPanelMetrics {
 
   /// A row's own three tiers: what it is, what it is set to, and the quieter
   /// second line under the title.
-  double get titleFontSize => TvSourcePickerLayout.rowPrimaryFontSize * scale;
-  double get valueFontSize => TvSourcePickerLayout.rowPrimaryFontSize * scale;
-  double get subtitleFontSize => TvSourcePickerLayout.rowSecondaryFontSize * scale;
+  double get titleFontSize => _text(TvSourcePickerLayout.rowPrimaryFontSize);
+  double get valueFontSize => _text(TvSourcePickerLayout.rowPrimaryFontSize);
+  double get subtitleFontSize => _text(TvSourcePickerLayout.rowSecondaryFontSize);
 
   /// The uppercase section label, and the value beside a choice mark.
-  double get sectionFontSize => TvSourcePickerLayout.statusFontSize * scale;
-  double get markValueFontSize => TvSourcePickerLayout.rowSecondaryFontSize * scale;
+  double get sectionFontSize => _text(TvSourcePickerLayout.statusFontSize);
+  double get markValueFontSize => _text(TvSourcePickerLayout.rowSecondaryFontSize);
 
   double get rowIconSize => 22 * scale;
   double get chevronSize => 20 * scale;

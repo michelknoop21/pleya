@@ -5,12 +5,17 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../mpv/mpv.dart';
+import 'film_frame_palette.dart';
 import 'widgets/circular_control_button.dart';
 import 'widgets/play_pause_stream_builder.dart';
 
 /// The centre row of the mobile player: previous episode, play/pause, next
-/// episode (no previous/next on live TV). Extracted from
-/// `MobileVideoControls` without behavior change; play/pause carries
+/// episode. Live TV has no previous/next, and neither does a film with nothing
+/// before or after it in the queue: then the pair is not drawn and play stands
+/// alone. An episode always keeps the pair, greyed where a direction is
+/// missing (also for a Watch Together guest, who cannot navigate), so play
+/// stays centred and the row does not change shape between episodes. Sizes follow mockup A (Filmbeeld): play 68 pt, skip 52 pt,
+/// 18 pt between them, centred. Play/pause carries
 /// [AutomationIds.playerPlayPause] with `playing` as its state, the same id
 /// the desktop/TV controls register.
 class MobilePlaybackControls extends StatelessWidget {
@@ -18,7 +23,7 @@ class MobilePlaybackControls extends StatelessWidget {
     super.key,
     required this.player,
     required this.isLive,
-    this.compact = false,
+    this.isEpisode = false,
     this.onPrevious,
     this.onNext,
     this.onCancelAutoHide,
@@ -27,7 +32,7 @@ class MobilePlaybackControls extends StatelessWidget {
 
   final Player player;
   final bool isLive;
-  final bool compact;
+  final bool isEpisode;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final VoidCallback? onCancelAutoHide;
@@ -35,22 +40,22 @@ class MobilePlaybackControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showSkip = !isLive && (isEpisode || onPrevious != null || onNext != null);
     return PlayPauseStreamBuilder(
       player: player,
       builder: (context, isPlaying) {
-        final row = Row(
-          mainAxisAlignment: compact && !isLive ? .spaceBetween : .center,
+        return Row(
+          mainAxisSize: .min,
+          spacing: kFilmTransportGap,
           children: [
-            if (!isLive) ...[
-              // Previous episode button (greyed out when unavailable)
+            if (showSkip)
               CircularControlButton(
                 semanticLabel: t.videoControls.previousButton,
                 icon: Symbols.skip_previous_rounded,
-                iconSize: compact ? 28 : 48,
+                iconSize: 26,
+                dimension: kFilmSkipSize,
                 onPressed: onPrevious,
               ),
-              if (!compact) const SizedBox(width: 24),
-            ],
             AutomationNode(
               id: AutomationIds.playerPlayPause,
               role: 'button',
@@ -58,7 +63,8 @@ class MobilePlaybackControls extends StatelessWidget {
               child: CircularControlButton(
                 semanticLabel: isPlaying ? t.videoControls.pauseButton : t.videoControls.playButton,
                 icon: isPlaying ? Symbols.pause_rounded : Symbols.play_arrow_rounded,
-                iconSize: compact ? 40 : 72,
+                iconSize: 36,
+                dimension: kFilmPlaySize,
                 primary: true,
                 onPressed: () {
                   if (isPlaying) {
@@ -71,21 +77,16 @@ class MobilePlaybackControls extends StatelessWidget {
                 },
               ),
             ),
-            if (!isLive) ...[
-              if (!compact) const SizedBox(width: 24),
-              // Next episode button (greyed out when unavailable)
+            if (showSkip)
               CircularControlButton(
                 semanticLabel: t.videoControls.nextButton,
                 icon: Symbols.skip_next_rounded,
-                iconSize: compact ? 28 : 48,
+                iconSize: 26,
+                dimension: kFilmSkipSize,
                 onPressed: onNext,
               ),
-            ],
           ],
         );
-        return compact
-            ? SizedBox(width: (MediaQuery.sizeOf(context).width * 0.55).clamp(300.0, 440.0), child: row)
-            : row;
       },
     );
   }

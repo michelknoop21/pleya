@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'package:pleya/widgets/video_controls/film_frame_palette.dart';
+import 'package:pleya/widgets/app_icon.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -70,6 +73,7 @@ void main() {
           value: watchTogether,
           child: MaterialApp(
             theme: ThemeData(extensions: const [_testTokens]),
+            builder: (context, child) => InputModeTracker(child: child!),
             home: Material(
               type: MaterialType.transparency,
               child: DesktopVideoControls(
@@ -164,22 +168,54 @@ void main() {
       expect(node.canRequestFocus, isTrue);
     });
 
-    testWidgets('de focusring van de afspeelknop loopt concentrisch om de gevulde knop', (tester) async {
+    // DENS1 review I2: the focus language itself, not only the absence of a
+    // ring. The focused button is the solid Filmbeeld tile with a dark glyph;
+    // play keeps its quiet tile while focus is elsewhere.
+    testWidgets('de gefocuste knop is de massieve tegel, afspelen blijft stil (DENS1 T4)', (tester) async {
       await pumpFilm(tester);
-      // The filled play/pause button is the only IconButton with its own shape.
-      final filled = find.byWidgetPredicate(
+      (key.currentState! as dynamic).requestPlayPauseFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      final focused = FocusManager.instance.primaryFocus!;
+
+      final tiles = find.byWidgetPredicate(
         (w) => w is IconButton && w.style?.shape?.resolve(const {}) is RoundedRectangleBorder,
       );
-      expect(filled, findsOneWidget);
-      final shape = tester.widget<IconButton>(filled).style!.shape!.resolve(const {})! as RoundedRectangleBorder;
-      final buttonRadius = (shape.borderRadius as BorderRadius).topLeft.x;
-      final wrapper = tester.widget<FocusableWrapper>(
-        find.ancestor(of: filled, matching: find.byType(FocusableWrapper)).first,
+      IconButton tileOf(FocusNode node) => tester.widget<IconButton>(
+        find.descendant(
+          of: find.byWidgetPredicate((w) => w is FocusableWrapper && w.focusNode == node),
+          matching: tiles,
+        ),
       );
+      Color? fill(IconButton b) => b.style!.backgroundColor?.resolve(const {});
+      Color? glyph(IconButton b) => (b.icon as AppIcon).color;
 
-      // The inside-aligned ring insets the button by its own width, so only a
-      // ring that is that much rounder follows the button's corners.
-      expect(wrapper.borderRadius, buttonRadius + FocusTheme.focusBorderWidth);
+      final next = tileOf(focused);
+      expect(fill(next), kFilmPrimary);
+      expect(glyph(next), kFilmInk);
+
+      final play = find.byWidgetPredicate(
+        (w) => w is IconButton && (w.icon is AppIcon) && (w.icon as AppIcon).icon == Symbols.pause_rounded,
+      );
+      final playButton = tester.widget<IconButton>(play);
+      expect(fill(playButton), Colors.white.withValues(alpha: 0.2));
+      expect(glyph(playButton), Colors.white);
+    });
+
+    testWidgets('de transportrij heeft één focustaal: geen ring om afspelen, gelijke steek (DENS1 T4)', (tester) async {
+      await pumpFilm(tester);
+      // Every transport button is the same rounded tile and draws its own
+      // focus (the solid Filmbeeld tile); none goes through a ring that adds
+      // its width around play alone. Before, only play had the tile shape.
+      final tiles = find.byWidgetPredicate(
+        (w) => w is IconButton && w.style?.shape?.resolve(const {}) is RoundedRectangleBorder,
+      );
+      expect(tiles.evaluate().length, greaterThanOrEqualTo(5));
+      final wrappers = tester.widgetList<FocusableWrapper>(
+        find.ancestor(of: tiles, matching: find.byType(FocusableWrapper)),
+      );
+      expect(wrappers.where((w) => w.mode == FocusIndicatorMode.ring), isEmpty);
     });
   });
 }

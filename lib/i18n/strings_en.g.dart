@@ -1737,6 +1737,12 @@ class TranslationsVideoControlsEn {
 	/// en: 'Timer Active'
 	String get timerActive => 'Timer Active';
 
+	/// en: 'Normal'
+	String get playbackRateNormal => 'Normal';
+
+	/// en: 'Active (${remaining})'
+	String sleepTimerActive({required Object remaining}) => 'Active (${remaining})';
+
 	/// en: 'Playback will pause in ${duration}'
 	String playbackWillPauseIn({required Object duration}) => 'Playback will pause in ${duration}';
 
@@ -11388,6 +11394,8 @@ extension on Translations {
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
 			'videoControls.timerActive' => 'Timer Active',
+			'videoControls.playbackRateNormal' => 'Normal',
+			'videoControls.sleepTimerActive' => ({required Object remaining}) => 'Active (${remaining})',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
@@ -11882,10 +11890,10 @@ extension on Translations {
 			'libraries.sortLabels.random' => 'Random',
 			'libraries.sortLabels.dateShared' => 'Date Shared',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
-			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
-			'about.title' => 'About',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
+			'about.title' => 'About',
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -12396,10 +12404,10 @@ extension on Translations {
 			'performanceOverlay.speed' => 'Speed',
 			'performanceOverlay.player' => 'Player',
 			'performanceOverlay.memory' => 'Memory',
-			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'External Player',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.uiFps' => 'UI FPS',
+			'externalPlayer.title' => 'External Player',
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -12910,10 +12918,10 @@ extension on Translations {
 			'sourcePicker.playTitle' => 'Choose where to play',
 			'sourcePicker.detailsTitle' => 'Choose a source for the details',
 			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
-			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
-			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
 			_ => null,
 		} ?? switch (path) {
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
+			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
 			'sourcePicker.checkingMoreSources' => 'Checking more sources…',
 			'sourcePicker.lastUsed' => 'Last used',
@@ -13424,10 +13432,10 @@ extension on Translations {
 			'assistant.providerLabel' => 'AI provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
-			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
-			'assistant.mobile.setup' => 'Set up model',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
+			'assistant.mobile.setup' => 'Set up model',
 			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
 			'assistant.mobile.listening' => 'Listening…',
 			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
@@ -13938,10 +13946,10 @@ extension on Translations {
 			'pleyaNotifications.pushOffline' => 'Changes will take effect when this device can reach the server again.',
 			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
 			'pleyaNotifications.title' => 'Notifications',
-			'pleyaNotifications.subtitle' => 'Choose which updates to receive',
-			'pleyaNotifications.settings' => 'Notification preferences',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaNotifications.subtitle' => 'Choose which updates to receive',
+			'pleyaNotifications.settings' => 'Notification preferences',
 			'pleyaNotifications.enable' => 'Enable in-app notifications',
 			'pleyaNotifications.explanation' => 'Choose which updates to show in Pleya. All categories start turned off.',
 			'pleyaNotifications.disabled' => 'Notifications are off. Choose which updates to receive in preferences.',

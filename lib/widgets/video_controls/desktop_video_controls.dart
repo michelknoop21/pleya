@@ -23,8 +23,10 @@ import '../tv/tv_page_surface.dart';
 import '../tv/tv_unified_layout.dart';
 import '../../utils/formatters.dart';
 import '../../i18n/strings.g.dart';
-import '../../focus/focus_theme.dart';
+import '../../focus/card_focus_scope.dart';
+import '../../utils/tv_hig.dart';
 import '../../focus/focusable_wrapper.dart';
+import '../../focus/input_mode_tracker.dart';
 import '../../models/livetv_capture_buffer.dart';
 import 'film_frame_palette.dart';
 import 'helpers/apple_tv_scrub_pan.dart';
@@ -951,16 +953,28 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
                               children: [
                                 Positioned.fill(
                                   top: -40 * TvLayoutConstants.scaleOf(context),
-                                  child: const IgnorePointer(
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [Colors.transparent, kTvTitleScrimColor],
-                                          stops: [0, 0.23],
-                                        ),
-                                      ),
+                                  child: IgnorePointer(
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        // The TV's title-safe bottom band (DENS1, T1) adds height
+                                        // under the controls only, so the fade still reaches full
+                                        // strength at the same distance from its top.
+                                        final extra = _bottomInset(context) - 16;
+                                        final height = constraints.maxHeight;
+                                        final full = height > 0
+                                            ? (0.23 * (height - extra) / height).clamp(0.0, 1.0)
+                                            : 0.23;
+                                        return DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: const [Colors.transparent, kTvTitleScrimColor],
+                                              stops: [0, full],
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ),
                                 ),
@@ -1130,12 +1144,20 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     );
   }
 
+  /// Space under the transport row: the HIG's 60 pt title-safe band on a TV,
+  /// a desktop window's 16 elsewhere.
+  double _bottomInset(BuildContext context) => PlatformDetector.isTV() ? TvHig.titleSafeBottom * TvHig.of(context) : 16;
+
   Widget _buildBottomControlsContent(BuildContext _, {required bool hasFrame}) {
     final canInteract = _canControl && hasFrame;
     return Padding(
       // 24 is a desktop-window margin; a television pays its title-safe inset
       // instead, so "3:09" and "Eindigt om" stay clear of the overscan band.
-      padding: EdgeInsets.symmetric(horizontal: PlatformDetector.isTV() ? tvPageInset(context) : 24, vertical: 16),
+      // The bottom on a TV is the HIG's 60 pt title-safe band (DENS1, T1):
+      // with 16 the transport row ended about 30 pt above the panel edge.
+      padding: PlatformDetector.isTV()
+          ? EdgeInsets.fromLTRB(tvPageInset(context), 16, tvPageInset(context), _bottomInset(context))
+          : const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
           Padding(padding: const EdgeInsets.only(bottom: 10), child: _buildTitleBlock(filmFrame: true)),
@@ -1441,36 +1463,43 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     String? tooltip,
   }) {
     final primary = focusNode == _playPauseFocusNode && onPressed != null;
+    // One focus language for the whole row (DENS1, T4): the focused button
+    // becomes the solid Filmbeeld tile with a dark glyph, the rest stay bare.
+    // Play keeps a quieter tile of its own while focus is elsewhere, and the
+    // solid one whenever no remote or keyboard is driving. No ring, so every
+    // button keeps the same outer size and the row the same pitch; the ring
+    // used to add its own width around play only (98 against 89 pt on tvOS).
     return FocusableWrapper(
       focusNode: focusNode,
       canRequestFocus: onPressed != null,
       onSelect: onPressed,
       onKeyEvent: (node, event) => _handleButtonKeyEvent(node, event, index),
       onFocusChange: _onFocusChange,
-      // The ring sits its own width outside the filled play button, so it needs
-      // the larger concentric radius; with the button's own 12 the corners of
-      // ring and fill part ways and the button reads as a hard square.
-      borderRadius: primary ? FocusTheme.ringRadiusAround(_kPrimaryButtonRadius) : 20,
       autoScroll: false,
-      mode: primary ? FocusIndicatorMode.ring : FocusIndicatorMode.fill,
-      focusColor: primary ? kFilmFocus : null,
+      mode: FocusIndicatorMode.delegated,
+      disableScale: true,
       semanticLabel: semanticLabel,
-      child: Semantics(
-        label: semanticLabel,
-        button: true,
-        excludeSemantics: true,
-        child: IconButton(
-          style: primary
-              ? IconButton.styleFrom(
-                  backgroundColor: kFilmPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_kPrimaryButtonRadius)),
-                )
-              : null,
-          icon: AppIcon(icon, fill: 1, color: primary ? kFilmInk : color, size: iconSize),
-          iconSize: iconSize,
-          tooltip: tooltip,
-          onPressed: onPressed,
-        ),
+      child: Builder(
+        builder: (context) {
+          final focused = CardFocusScope.maybeOf(context) ?? false;
+          final solid = focused || (primary && !InputModeTracker.isKeyboardMode(context));
+          final Color? tile = solid ? kFilmPrimary : (primary ? Colors.white.withValues(alpha: 0.2) : null);
+          return Semantics(
+            label: semanticLabel,
+            button: true,
+            excludeSemantics: true,
+            child: IconButton(
+              style: IconButton.styleFrom(
+                backgroundColor: tile,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_kPrimaryButtonRadius)),
+              ),
+              icon: AppIcon(icon, fill: 1, color: solid ? kFilmInk : color, size: iconSize),
+              iconSize: iconSize,
+              tooltip: tooltip,
+              onPressed: onPressed,
+            ),
+          );
+        },
       ),
     );
   }

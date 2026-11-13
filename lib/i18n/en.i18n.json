@@ -566,6 +566,8 @@
     "lockRotation": "Lock rotation",
     "unlockRotation": "Unlock rotation",
     "timerActive": "Timer Active",
+    "playbackRateNormal": "Normal",
+    "sleepTimerActive": "Active (${remaining})",
     "playbackWillPauseIn": "Playback will pause in ${duration}",
     "sleepTimerEndOfVideo": "End of current video",
     "sleepTimerStopAtHeader": "Stop at",

@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../focus/dpad_navigator.dart';
 import '../../../focus/focusable_wrapper.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../utils/platform_detector.dart';
 import '../../../media/media_item.dart';
 import '../../../media/media_item_types.dart';
 import '../../../media/media_server_client.dart';
@@ -322,7 +323,9 @@ class ContentStripState extends State<ContentStrip> {
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+    // An Apple TV's panel is 584 logical tall, under the tablet threshold, so
+    // the TV used to get the phone strip (DENS1, T8).
+    final isTablet = MediaQuery.sizeOf(context).shortestSide >= 600 || PlatformDetector.isTV();
     final stripHeight = isTablet ? 170.0 : 106.0;
     // Add extra height for focus decoration when in focus navigation mode
     final effectiveStripHeight = widget.useFocusNavigation ? stripHeight + 16.0 : stripHeight;

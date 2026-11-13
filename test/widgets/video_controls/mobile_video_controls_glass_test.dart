@@ -210,13 +210,13 @@ void main() {
       final play = tester.getRect(find.bySemanticsLabel(t.videoControls.playButton));
       final previous = tester.getRect(find.bySemanticsLabel(t.videoControls.previousButton));
       final next = tester.getRect(find.bySemanticsLabel(t.videoControls.nextButton));
-      expect(play.height, inInclusiveRange(44, 72));
-      expect(previous.height, greaterThanOrEqualTo(44));
-      expect(next.center.dx - previous.center.dx, greaterThanOrEqualTo(250));
+      // Mockup A (DENS1): a compact centred transport group and a centred
+      // footer, not one spread over the full width.
+      expect(play.height, kFilmPlaySize);
+      expect(previous.height, kFilmSkipSize);
+      expect(next.left - previous.right, closeTo(kFilmPlaySize + 2 * kFilmTransportGap, 1));
       final trailing = tester.getRect(find.byKey(_kTrailingKey));
       expect(trailing.right, closeTo(size.width - 59 - 8, 1));
-      final footer = tester.getRect(find.byKey(const Key('real-footer')));
-      expect(footer.width, greaterThan(size.width * 0.7));
       final buttons = find.descendant(
         of: find.byKey(const Key('real-footer')),
         matching: find.byType(VideoControlButton),
@@ -224,8 +224,8 @@ void main() {
       final rects = [for (final element in buttons.evaluate()) tester.getRect(find.byWidget(element.widget))]
         ..sort((a, b) => a.left.compareTo(b.left));
       expect(rects.length, greaterThanOrEqualTo(5));
-      expect(rects.first.left, closeTo(footer.left, 1));
-      expect(rects.last.right, closeTo(footer.right, 1));
+      expect((rects.first.left + rects.last.right) / 2, closeTo(size.width / 2, 1));
+      expect(rects.last.right - rects.first.left, lessThan(size.width * 0.5));
       expect(play.bottom, lessThan(tester.getTopLeft(find.byType(VideoTimelineBar)).dy));
       expect(tester.takeException(), isNull);
       await captureFollowup(tester, find.byKey(_kSceneKey), 'player-${size.width.toInt()}x${size.height.toInt()}');
@@ -297,7 +297,8 @@ void main() {
     final circles = tester
         .widgetList<Container>(find.byType(Container))
         .where(
-          (c) => c.decoration == BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+          // DENS1: the skip buttons share the one Filmbeeld disc colour.
+          (c) => c.decoration == const BoxDecoration(color: kFilmDisc, shape: BoxShape.circle),
         );
     expect(circles, hasLength(2));
     expect(
@@ -324,7 +325,8 @@ void main() {
     // No backdrop anywhere: the video is a native layer Flutter can't sample.
     expect(find.byType(GlassLayer), findsNothing);
     expect(_surfaces(tester, CircleBorder).every((s) => !s.backdrop), isTrue);
-    expect(_surfaces(tester, CircleBorder), hasLength(3));
+    // Previous, next and (DENS1) the back button's disc.
+    expect(_surfaces(tester, CircleBorder), hasLength(3 + 1));
     expect(_surfaces(tester, RoundedRectangleBorder), hasLength(1));
     expect(_surfaces(tester, StadiumBorder), hasLength(1));
     expect(find.byType(BackdropFilter), findsNothing);
@@ -373,7 +375,8 @@ void main() {
 
   testWidgets('(b) live: met glas aan staat de live-tijdlijn op een plaat, met glas uit zoals vandaag', (tester) async {
     await _pumpControls(tester, glass: false, live: true);
-    expect(find.byType(GlassSurface), findsNWidgets(2)); // play circle, capsule: both render legacy
+    // Play circle, capsule and (DENS1) the back disc: all render legacy.
+    expect(find.byType(GlassSurface), findsNWidgets(3));
     final offBar = tester.getRect(find.byType(LiveTimelineBar));
     expect(tester.widget<Text>(_liveTime).style!.color, Colors.white70);
 

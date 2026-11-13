@@ -750,6 +750,8 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get lockRotation => 'Vergrendel rotatie';
 	@override String get unlockRotation => 'Ontgrendel rotatie';
 	@override String get timerActive => 'Timer actief';
+	@override String get playbackRateNormal => 'Normaal';
+	@override String sleepTimerActive({required Object remaining}) => 'Actief (${remaining})';
 	@override String playbackWillPauseIn({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}';
 	@override String get sleepTimerEndOfVideo => 'Einde van huidige video';
 	@override String get sleepTimerStopAtHeader => 'Stoppen bij';
@@ -5294,6 +5296,8 @@ extension on TranslationsNl {
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
 			'videoControls.timerActive' => 'Timer actief',
+			'videoControls.playbackRateNormal' => 'Normaal',
+			'videoControls.sleepTimerActive' => ({required Object remaining}) => 'Actief (${remaining})',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stoppen bij',
@@ -5788,10 +5792,10 @@ extension on TranslationsNl {
 			'libraries.sortLabels.random' => 'Willekeurig',
 			'libraries.sortLabels.dateShared' => 'Gedeeld op',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
-			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
-			'about.title' => 'Over',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
+			'about.title' => 'Over',
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -6302,10 +6306,10 @@ extension on TranslationsNl {
 			'performanceOverlay.speed' => 'Snelheid',
 			'performanceOverlay.player' => 'Speler',
 			'performanceOverlay.memory' => 'Geheugen',
-			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'Externe speler',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.uiFps' => 'UI FPS',
+			'externalPlayer.title' => 'Externe speler',
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6816,10 +6820,10 @@ extension on TranslationsNl {
 			'sourcePicker.playTitle' => 'Kies waar je wilt afspelen',
 			'sourcePicker.detailsTitle' => 'Kies een bron voor de details',
 			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
-			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
-			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
 			_ => null,
 		} ?? switch (path) {
+			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
+			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
 			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
 			'sourcePicker.lastUsed' => 'Laatst gebruikt',
@@ -7330,10 +7334,10 @@ extension on TranslationsNl {
 			'assistant.providerLabel' => 'AI-provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
-			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
-			'assistant.mobile.setup' => 'Model instellen',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
+			'assistant.mobile.setup' => 'Model instellen',
 			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
 			'assistant.mobile.listening' => 'Ik luister…',
 			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
@@ -7844,10 +7848,10 @@ extension on TranslationsNl {
 			'pleyaNotifications.pushOffline' => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.',
 			'pleyaNotifications.pushPending' => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.',
 			'pleyaNotifications.title' => 'Notificaties',
-			'pleyaNotifications.subtitle' => 'Kies welke updates je ontvangt',
-			'pleyaNotifications.settings' => 'Notificatievoorkeuren',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaNotifications.subtitle' => 'Kies welke updates je ontvangt',
+			'pleyaNotifications.settings' => 'Notificatievoorkeuren',
 			'pleyaNotifications.enable' => 'Notificaties in Pleya inschakelen',
 			'pleyaNotifications.explanation' => 'Kies welke updates je in Pleya wilt zien. Alle categorieën staan standaard uit.',
 			'pleyaNotifications.disabled' => 'Notificaties staan uit. Kies in de voorkeuren welke updates je wilt ontvangen.',
