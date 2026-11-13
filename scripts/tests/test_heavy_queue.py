@@ -252,6 +252,26 @@ class HeavyQueueTest(unittest.TestCase):
                             '--idle-timeout', '.2s')
         self.assertEqual(holder.wait(timeout=4), 0, holder.communicate()[1])
 
+    @unittest.skipUnless(sys.platform == 'darwin', 'the shared queue only exists on macOS')
+    def test_shared_queue_directory_forwards_and_a_private_one_stays_here(self):
+        # A fake installed entry under a fake HOME records what it was called with.
+        home, called = self.root / 'home', self.root / 'forwarded'
+        (home / 'bin').mkdir(parents=True)
+        (home / 'bin' / 'heavy_launcher.py').write_text('')
+        (home / 'bin' / 'pleya-heavy').write_text(
+            f'import sys; open({str(called)!r}, "w").write(" ".join(sys.argv[1:]))')
+        shared = dict(self.env, HOME=str(home), PLEYA_HEAVY_QUEUE_DIR=f'/tmp/pleya-heavy-{os.getuid()}')
+        result = subprocess.run([sys.executable, str(QUEUE), 'status', '--json'], env=shared,
+                                capture_output=True, text=True, timeout=4)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(called.read_text(), 'status --json')
+        called.unlink()
+        private = dict(self.env, HOME=str(home))
+        result = subprocess.run([sys.executable, str(QUEUE), 'status', '--json'], env=private,
+                                capture_output=True, text=True, timeout=4)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(called.exists())
+
     def test_guardian_crash_does_not_release_while_its_worker_runs(self):
         marker = self.root / 'guardian-worker-started'
         done = self.root / 'guardian-worker-done'

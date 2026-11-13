@@ -371,5 +371,26 @@ def main():
     return 0
 
 
+def forward_to_shared_queue():
+    """On a Mac with the installed shared queue, every Pleya checkout enters that queue.
+
+    This standalone copy writes tickets the shared scheduler cannot read: on 13 November 2026 one
+    such ticket in the shared directory made every new admission crash until it was gone. A
+    caller that picks a private queue directory, as the tests here do, stays on this copy.
+    """
+    entry = Path.home() / 'bin' / 'pleya-heavy'
+    if sys.platform != 'darwin' or not entry.with_name('heavy_launcher.py').is_file():
+        return
+    chosen = os.environ.get('PLEYA_HEAVY_QUEUE_DIR')
+    if chosen and Path(chosen).resolve() != Path(f'/tmp/pleya-heavy-{os.getuid()}').resolve():
+        return
+    try:
+        os.execv(sys.executable, [sys.executable, str(entry), *sys.argv[1:]])
+    except OSError as error:
+        print('heavy-queue: shared runtime unavailable: ' + str(error), file=sys.stderr)
+        raise SystemExit(75)
+
+
 if __name__ == '__main__':
+    forward_to_shared_queue()
     sys.exit(main())
