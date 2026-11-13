@@ -202,6 +202,10 @@ class AssistantToolContext {
   /// "requested" from then on, not the state from before the request.
   final Set<String> requestedSeerrIds = {};
 
+  /// Seerr ids whose request this ask cancelled, with the card status read
+  /// afterwards (`not_requested`, or `requested` when another one remains).
+  final Map<String, String> cancelledSeerrIds = {};
+
   /// The region whose age ratings count (`NL`); the device's by default.
   final String Function() region;
 

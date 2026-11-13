@@ -473,10 +473,18 @@ extension _AssistantAnswer on AssistantRun {
 
   /// A card of a title this ask requested says "requested": the card was
   /// built before the request and would still offer it (BP-12).
+  ///
+  /// The mirror for a cancel: the card takes the status read after it.
   void _markRequested() {
     final sent = _ctx.requestedSeerrIds;
-    if (sent.isEmpty) return;
-    AssistantRequestOption mark(AssistantRequestOption o) => !sent.contains(o.seerrId) || o.status != 'not_requested'
+    final cancelled = _ctx.cancelledSeerrIds;
+    if (sent.isEmpty && cancelled.isEmpty) return;
+    String? after(AssistantRequestOption o) => cancelled[o.seerrId] != null
+        ? (cancelled[o.seerrId] == o.status ? null : cancelled[o.seerrId])
+        : sent.contains(o.seerrId) && o.status == 'not_requested'
+        ? 'requested'
+        : null;
+    AssistantRequestOption mark(AssistantRequestOption o) => after(o) == null
         ? o
         : AssistantRequestOption(
             seerrId: o.seerrId,
@@ -484,7 +492,7 @@ extension _AssistantAnswer on AssistantRun {
             kind: o.kind,
             posterUrl: o.posterUrl,
             overview: o.overview,
-            status: 'requested',
+            status: after(o)!,
             year: o.year,
             facts: o.facts,
           );

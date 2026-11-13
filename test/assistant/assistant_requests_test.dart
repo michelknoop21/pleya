@@ -6,6 +6,7 @@ import 'package:pleya/exceptions/identity_lookup_exceptions.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
@@ -115,8 +116,18 @@ class _Seerr {
   /// The requests on The Matrix as Seerr lists them under `mediaInfo`; null
   /// leaves the field out, as an older answer does.
   List<Map<String, Object?>>? requestRows;
+
+  /// The same for Game of Thrones.
+  List<Map<String, Object?>>? tvRequestRows;
   final deletes = <int>[];
   int deleteCode = 204;
+
+  /// A delete code for one request id; the rest answer [deleteCode].
+  Map<int, int> deleteCodes = {};
+
+  /// The id `/auth/me` answers with, and the one the session was signed in as.
+  int meId = 7;
+  int? sessionUserId;
   void Function(int id)? onDelete;
 
   late final SeerrClient client = SeerrClient(
@@ -125,6 +136,7 @@ class _Seerr {
       authMode: SeerrAuthMode.apiKey,
       apiKey: 'k',
       permissions: permissions,
+      userId: sessionUserId,
     ),
     httpClient: MockClient((request) async {
       final path = request.url.path.replaceFirst('/api/v1', '');
@@ -161,8 +173,10 @@ class _Seerr {
         final id = int.parse(path.substring('/request/'.length));
         deletes.add(id);
         onDelete?.call(id);
-        if (deleteCode != 204) return _json({'message': 'no'}, status: deleteCode);
+        final code = deleteCodes[id] ?? deleteCode;
+        if (code != 204) return _json({'message': 'no'}, status: code);
         requestRows?.removeWhere((row) => row['id'] == id);
+        tvRequestRows?.removeWhere((row) => row['id'] == id);
         if (requestRows?.isEmpty ?? false) movieStatus = 1;
         return http.Response('', 204);
       }
@@ -180,7 +194,7 @@ class _Seerr {
         'seasons': ?seasons,
       };
       return switch (path) {
-        '/auth/me' => _json({'id': 7, 'permissions': permissions}),
+        '/auth/me' => _json({'id': meId, 'permissions': permissions}),
         '/search' when request.url.queryParameters['query'] == 'reloaded' => _json({
           'results': [
             {'id': 604, 'mediaType': 'movie', 'title': 'The Matrix Reloaded', 'releaseDate': '2003-05-15'},
@@ -217,10 +231,13 @@ class _Seerr {
           'seasons': [
             for (final n in [0, 1, 2, 3]) {'seasonNumber': n, 'episodeCount': 10},
           ],
-          'mediaInfo': info(1, 1, [
-            for (final n in {...seasonStatus.keys, ...seasonStatus4k.keys})
-              {'seasonNumber': n, 'status': seasonStatus[n] ?? 1, 'status4k': seasonStatus4k[n] ?? 1},
-          ]),
+          'mediaInfo': {
+            ...info(1, 1, [
+              for (final n in {...seasonStatus.keys, ...seasonStatus4k.keys})
+                {'seasonNumber': n, 'status': seasonStatus[n] ?? 1, 'status4k': seasonStatus4k[n] ?? 1},
+            ]),
+            'requests': ?tvRequestRows,
+          },
         }),
         '/search/keyword' => _json({
           'results': [
@@ -313,11 +330,12 @@ Map<String, Object?> _request(Map<String, Object?> args) => _call('request_title
 Map<String, Object?> _cancel(Map<String, Object?> args) => _call('cancel_request', args, id: 'call_3');
 
 /// One request row as Seerr lists it; user 7 is the signed-in one.
-Map<String, Object?> _row(int id, {int by = 7, int status = 1, bool fourK = false}) => {
+Map<String, Object?> _row(int id, {int by = 7, int status = 1, bool fourK = false, List<int>? seasons}) => {
   'id': id,
   'status': status,
   'is4k': fourK,
   'requestedBy': {'id': by},
+  'seasons': ?seasons?.map((n) => {'seasonNumber': n}).toList(),
 };
 
 class _LibraryServer extends find.FakeServer {
@@ -1461,7 +1479,8 @@ void main() {
         ([_row(41, by: 8)], 'not_yours'),
         ([_row(41, status: 2)], 'not_pending'),
         (<Map<String, Object?>>[], 'not_requested'),
-        ([_row(41, fourK: true)], 'not_requested'),
+        ([_row(41, fourK: true)], 'other_quality'),
+        ([_row(41, by: 8, fourK: true)], 'not_requested'),
       ]) {
         final seerr = pending(rows);
         final (_, model) = await run(script, seerr: seerr);
@@ -1478,7 +1497,7 @@ void main() {
     });
 
     test('a row this build cannot read cancels nothing', () async {
-      final seerr = pending([
+      for (final row in <Map<String, Object?>>[
         {'id': 41, 'status': 1, 'is4k': false},
         {
           'id': 'x',
@@ -1486,11 +1505,83 @@ void main() {
           'is4k': false,
           'requestedBy': {'id': 7},
         },
+      ]) {
+        final seerr = pending([_row(40), row]);
+        final (_, model) = await run(script, seerr: seerr);
+        expect((model.toolResults.last as Map)['status'], 'request_status_unknown', reason: '$row');
+        expect(cards, isEmpty);
+        expect(seerr.deletes, isEmpty);
+      }
+    });
+
+    test('a series card names every season that goes, and one yes takes all own pending requests', () async {
+      final seerr = _Seerr()
+        ..tvRequestRows = [
+          _row(51, seasons: [1]),
+          _row(52, seasons: [2, 3]),
+          _row(53, by: 8, seasons: [1]),
+        ];
+      final (_, model) = await run([
+        _find('thrones'),
+        _cancel({'seerr_id': 'tv:1399'}),
+        _say('x'),
+      ], seerr: seerr);
+      expect(cards.single.subject, 'Game of Thrones (2011)');
+      expect(cards.single.items, [
+        for (final n in [1, 2, 3]) t.seerr.season(number: n),
       ]);
-      final (_, model) = await run(script, seerr: seerr);
+      expect(seerr.deletes, [51, 52]);
+      expect((model.toolResults.last as Map)['seasons'], [1, 2, 3]);
+    });
+
+    test('a series request whose seasons cannot be read cancels nothing', () async {
+      final seerr = _Seerr()..tvRequestRows = [_row(51)];
+      final (_, model) = await run([
+        _find('thrones'),
+        _cancel({'seerr_id': 'tv:1399'}),
+        _say('x'),
+      ], seerr: seerr);
       expect((model.toolResults.last as Map)['status'], 'request_status_unknown');
       expect(cards, isEmpty);
       expect(seerr.deletes, isEmpty);
+    });
+
+    test('a refusal halfway says how many went, and records no finished action', () async {
+      final seerr = pending([_row(41), _row(45)])..deleteCodes = {45: 403};
+      final (result, model) = await run(script, seerr: seerr);
+      expect(seerr.deletes, [41, 45]);
+      expect(model.toolResults.last, {
+        'error': 'not_allowed',
+        'cancelled_requests': 1,
+        'of_requests': 2,
+        'done': false,
+      });
+      expect(result.actions, isEmpty);
+    });
+
+    test('another Seerr account than the session signed in as cancels nothing', () async {
+      final seerr = pending([_row(41, by: 9)])
+        ..meId = 9
+        ..sessionUserId = 7;
+      final (_, model) = await run(script, seerr: seerr);
+      expect(model.toolResults.last, {'error': 'not_allowed'});
+      expect(cards, isEmpty);
+      expect(seerr.deletes, isEmpty);
+    });
+
+    test('the option card of a cancelled title no longer says requested', () async {
+      final seerr = pending([_row(41)]);
+      final (result, _) = await run(script, seerr: seerr);
+      final options = result.displays.whereType<AssistantRequestOptions>().single.options;
+      expect(options.firstWhere((o) => o.seerrId == 'movie:603').status, 'not_requested');
+    });
+
+    test('with another user\'s request left, the card keeps requested', () async {
+      final seerr = pending([_row(41), _row(42, by: 8)]);
+      seerr.onDelete = (_) => Future<void>.microtask(() => seerr.movieStatus = 2);
+      final (result, _) = await run(script, seerr: seerr);
+      final options = result.displays.whereType<AssistantRequestOptions>().single.options;
+      expect(options.firstWhere((o) => o.seerrId == 'movie:603').status, 'requested');
     });
 
     test('a request approved while the card was open is not deleted', () async {
@@ -1517,7 +1608,12 @@ void main() {
       expect((m1.toolResults.last as Map)['error'], 'not_allowed');
       final broken = pending([_row(41)])..deleteCode = 502;
       final (r2, m2) = await run(script, seerr: broken);
-      expect(m2.toolResults.last, {'error': 'cancel_outcome_unknown', 'cancelled_requests': 0, 'done': false});
+      expect(m2.toolResults.last, {
+        'error': 'cancel_outcome_unknown',
+        'cancelled_requests': 0,
+        'of_requests': 1,
+        'done': false,
+      });
       expect(r2.actions, isEmpty, reason: 'nothing was carried out for certain');
     });
 
