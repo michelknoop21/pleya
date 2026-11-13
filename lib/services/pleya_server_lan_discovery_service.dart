@@ -27,7 +27,7 @@ class PleyaServerLanDiscoveryService {
   static const int discoveryPort = 48635;
   static const String discoveryMessage = 'who is PleyaServer?';
 
-  /// The server keeps its reply under this; anything larger is not a reply.
+  /// The server keeps its reply at or under this; anything larger is not a reply.
   static const int maxReplyBytes = 512;
 
   static const String _app = 'pleya-server';

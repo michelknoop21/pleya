@@ -68,7 +68,7 @@ Wat je ermee openzet: met `PLEYA_SERVER_BIND=0.0.0.0` is de server voor elk toes
 
 De UDP-poort ligt vast op 48635, want daar roepen de apps op. Zet `PLEYA_SERVER_LAN=on` dus op één stack per host en niet ook op een testinstance op dezelfde machine.
 
-Werkt het niet, controleer dan of de firewall van de NAS UDP 48635 doorlaat en of het toestel op hetzelfde netwerk zit; een gastnetwerk of een tweede VLAN laat een broadcast niet door. Het adresveld in de app blijft altijd werken.
+Werkt het niet, controleer dan of de firewall van de NAS UDP 48635 doorlaat en of het toestel op hetzelfde netwerk zit; een gastnetwerk of een tweede VLAN laat een broadcast niet door. Stuurt iets op je netwerk een stortvloed aan oproepen, dan krijgen nieuwe toestellen tijdelijk geen antwoord; dat herstelt binnen tien seconden na het einde ervan. Het adresveld in de app blijft altijd werken.
 
 ## Metrics
 

@@ -124,14 +124,19 @@ void main() {
     expect(find.text(t.addServer.signIn), findsNothing);
   });
 
-  testWidgets('a typed address is not held to a found server id', (tester) async {
+  testWidgets('a found address typed by hand is held to the same id, another address is not', (tester) async {
     await tester.pumpWidget(_screen(found: const [_home], answersAs: 'someone-else'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, 'http://192.168.1.20:8832');
+    await tester.enterText(find.byType(TextField).first, 'http://192.168.1.20:8832/');
     await tester.testTextInput.receiveAction(TextInputAction.go);
     await tester.pumpAndSettle();
+    expect(find.text(t.addServer.pleyaServerDiscoveryMismatch), findsOneWidget);
+    expect(find.text(t.addServer.signIn), findsNothing);
 
+    await tester.enterText(find.byType(TextField).first, 'http://192.168.1.99:8832');
+    await tester.testTextInput.receiveAction(TextInputAction.go);
+    await tester.pumpAndSettle();
     expect(find.text(t.addServer.signIn), findsOneWidget);
   });
 

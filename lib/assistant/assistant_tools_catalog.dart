@@ -177,6 +177,9 @@ final List<AssistantTool> _catalogTools = [
             for (final s in g.sources) buildGlobalKey(s.serverId, s.item.id),
         };
       }
+      // Nothing reaches the minimum rating, on the first page of an ungated
+      // search: only then does the rating explain an empty result.
+      final belowRatingExplains = age == null && query.offset == 0 && query.groups.isEmpty && query.belowRating > 0;
       return AssistantToolResult({
         'query_id': queryId,
         // For children only what passed counts.
@@ -190,8 +193,8 @@ final List<AssistantTool> _catalogTools = [
           'matches_at_least': query.matchesRead,
         },
         if (age == null && query.seenElsewhere > 0) 'seen_before': query.seenElsewhere,
-        // Nothing reaches the minimum rating: how many sit just under it.
-        if (age == null && query.offset == 0 && query.groups.isEmpty && query.belowRating > 0) ...{
+        // How many sit under the minimum rating.
+        if (belowRatingExplains) ...{
           'below_min_rating': query.belowRating,
           if (query.bestBelowRating != null) 'best_rating_below': query.bestBelowRating,
         },
@@ -204,10 +207,9 @@ final List<AssistantTool> _catalogTools = [
                 // "A good film for tonight" came back as "you have seen
                 // everything" while 36 unseen films merely had no score
                 // (BP-12): the rating emptied this result, not the history.
-                query.belowRating > 0
-                ? 'Empty because of min_rating, not because everything was watched: below_min_rating unwatched '
-                      'titles are under it or carry no rating at all. Do not say everything was seen; search again '
-                      'without min_rating.'
+                belowRatingExplains
+                ? 'Empty because of min_rating: below_min_rating titles are under it or carry no rating at all. '
+                      'Do not conclude from this result that everything was watched; search again without min_rating.'
                 : 'Empty with unwatched only means: nothing unwatched. A title left out may be watched or merely '
                       'started; do not say it was watched to the end from this result.',
           if (ctx.personal?.seenIncludesTrakt() == true) 'seen_includes_trakt': true,

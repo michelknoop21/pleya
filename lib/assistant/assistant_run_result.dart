@@ -8,6 +8,12 @@ extension _AssistantResult on AssistantRun {
     // A pick grid the answer never narrowed (cancelled, an action, a step
     // limit) names nothing: its picks were never shown.
     _displays.removeWhere(_pickGrids.contains);
+    // A run that never answered chose nothing: what its searches turned up
+    // on the way is not an answer. "Too many steps" stood above ten films
+    // nobody asked for (BP-12).
+    if (end == AssistantRunEnd.stepLimit) {
+      _displays.removeWhere((d) => d is AssistantMediaGrid || d is AssistantTitleMatches);
+    }
     _dedupeGrids();
     _markRequested();
     final evidenceContext = _ctx;

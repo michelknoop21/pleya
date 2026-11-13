@@ -133,7 +133,7 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
   Future<void> _useDiscoveredServer(DiscoveredPleyaServer server) async {
     if (busy) return;
     _urlController.text = server.address;
-    await _probe(expectedServerId: server.id);
+    await _probe();
   }
 
   void _focusFirstDiscoveredOrContinue() {
@@ -146,9 +146,18 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
     (last ?? _urlFocus).requestFocus();
   }
 
-  /// [expectedServerId] is set when the address came from the network search:
-  /// the server that answers `/info` there has to be the one that was found.
-  Future<void> _probe({String? expectedServerId}) async {
+  /// The id a found server claimed for [baseUrl], or null for an address
+  /// nobody found. Tied to the address and not to how the probe started: a
+  /// found address that is still in the field after a failed attempt is held
+  /// to the same check on the next press of Continue.
+  String? _foundServerIdFor(String baseUrl) {
+    for (final server in _localServers) {
+      if (server.address == baseUrl) return server.id;
+    }
+    return null;
+  }
+
+  Future<void> _probe() async {
     final typed = _urlController.text.trim();
     if (typed.isEmpty) {
       setErrorText(t.addServer.enterPleyaServerUrlError);
@@ -159,11 +168,10 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
       return (info: await _auth().probe(baseUrl), baseUrl: baseUrl);
     }, errorMapper: _describe);
     if (result == null || !mounted) return;
+    final expectedServerId = _foundServerIdFor(result.baseUrl);
     if (expectedServerId != null && result.info.serverId != expectedServerId) {
       // A reply on the network proves nothing. This catches a mix-up or a
-      // stale answer before anyone types a password at the wrong server. The
-      // address goes too: left in the field, one press on Continue would
-      // probe it again without this check.
+      // stale answer before anyone types a password at the wrong server.
       _urlController.clear();
       setErrorText(t.addServer.pleyaServerDiscoveryMismatch);
       return;

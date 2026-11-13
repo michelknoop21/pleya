@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'big_p_eval_cases.dart';
 import 'big_p_eval_checks.dart';
 import 'big_p_eval_runner.dart';
+import 'checks/big_p_eval_checks_extra.dart';
 import 'checks/big_p_eval_checks_state.dart';
 
 // The state checks grade the eval world, not the model's words (BP-12).
@@ -25,6 +26,7 @@ Future<EvalOutcome> _run(EvalCase c) {
 }
 
 void main() {
+  stepLimitTests();
   test('a task whose card was refused fails its state check', () async {
     for (final id in ['task-home-row-yes', 'task-request-yes', 'task-forget-yes']) {
       final c = _case(id);
@@ -67,5 +69,30 @@ void main() {
     expect((turn['state_after'] as Map)['requests'], ['tv:95396']);
     expect(turn['answer_shown'], isNotEmpty);
     expect(const EvalStateUnchanged().id, 'state-unchanged');
+  });
+}
+
+// A run that hits the step limit never answered: what its searches turned up
+// on the way was not chosen by anyone. In the live run "a film with Bruce
+// Willis" ended in "too many steps" above ten unrelated films (BP-12).
+void stepLimitTests() {
+  test('a run that ends on the step limit shows no cards from its searches', () async {
+    final c = EvalCase(
+      id: 'step-limit-no-cards',
+      source: 'stappenlimiet: geen kaarten van onderweg',
+      hard: const [EvalCardCount(max: 0)],
+      turns: [
+        EvalTurn(
+          'Zoek een film met Bruce Willis',
+          script: [
+            for (var i = 0; i < 8; i++) EvalCall('search_catalog', {'kind': 'movie', 'limit': 5, 'offset': i * 5}),
+          ],
+        ),
+      ],
+    );
+    final outcome = await _run(c);
+    final record = evalRecord(c, outcome, model: 's', attempt: 1);
+    expect(((record['turns'] as List).single as Map)['end'], 'stepLimit');
+    expect(evalViolations(c, outcome), isEmpty);
   });
 }

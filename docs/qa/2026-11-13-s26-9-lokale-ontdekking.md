@@ -16,7 +16,7 @@ Unified impact: alleen het koppelen van een Pleya Server. Plex, Jellyfin, Emby, 
 | Wat | Resultaat |
 | --- | --- |
 | `go test ./internal/discovery ./internal/config` | groen, echte UDP-socket; negatieve controle: zonder de controle op de oproeptekst antwoordt hij op alles en faalt de test |
-| `test/services/pleya_server_lan_discovery_service_test.dart` | 10 groen: adres uit de afzender, een `url` verandert het adres niet, vreemde `app` of `v` overgeslagen, ontdubbeld op id via een echte socket |
+| `test/services/pleya_server_lan_discovery_service_test.dart` | 9 groen: adres uit de afzender, een `url` verandert het adres niet, vreemde `app` of `v` overgeslagen, ontdubbeld op id via een echte socket |
 | `test/screens/settings/add_pleya_server_screen_test.dart` | 8 groen; negatieve controle: zonder de id-controle faalt "another server on the found address stops before sign-in" |
 | `test/screens/tv/tv_auth_view_test.dart`, `test/screens/auth_screen_test.dart` | groen; negatieve controle: zonder `abandonAttempt` faalt "Pleya Server stays reachable during polling and a late Plex claim is ignored" |
 | `test/screens/settings/add_jellyfin_screen_test.dart` | groen na het delen van de tegel |
@@ -41,6 +41,7 @@ Onafhankelijke review van `3bbc52e` en `108c8f8`: geen Critical. Verwerkt:
 
 - **I-1** Een vrij `url`-veld kon een inlogpoging naar een host buiten het netwerk sturen. Het veld is geschrapt in client, server en protocol; test met drie vijandige waarden.
 - **I-2** Na een afwijkend id bleef het adres staan en ging Doorgaan zonder controle verder. Het veld wordt nu gewist; de test drukt daarna op Doorgaan.
+- **Herreview van de fixes** (andere reviewer): I-2 was nog te omzeilen na een mislukte eerste poging. De id-controle hangt nu aan het adres: elk adres dat gelijk is aan een gevonden server wordt aan diens id gehouden, hoe de zoekactie ook start. Test: een gevonden adres dat met de hand is getypt.
 - **M-1** `go test -race` faalde op twee tests; ze gebruiken nu atomics. **M-2** Het register van afzenders is begrensd op 4096 en schoont hoogstens één keer per venster op; test met negatieve controle. **M-3** Een mislukte ssh leest niet meer als "uit". **M-4** De UDP-hostpoort ligt vast op 48635. **M-5** Documentatie gelijkgetrokken. **M-6** De NAS-controle toetst ook het afzenderadres.
 
 Niet opgelost, buiten deze wijziging: de reviewer zag in een losse proef dat een tik op "Doorgaan" na een foutmelding geen tweede zoekactie startte. Die code is ouder dan dit werk en de oorzaak is niet gevonden.
