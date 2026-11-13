@@ -13,4 +13,5 @@
 <LibrariesPage
   removed={page.url.searchParams.get('removed')}
   added={page.url.searchParams.get('added')}
+  firstScan={page.url.searchParams.get('scan')}
 />

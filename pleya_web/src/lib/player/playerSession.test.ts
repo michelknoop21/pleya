@@ -164,6 +164,22 @@ describe('omzetsessie met hls.js', () => {
     expect(s.phase).toBe('idle');
   });
 
+  it('stopt na twee snelle starts de verouderde sessie en niet de sessie die speelt', async () => {
+    const waiting: ((p: ReturnType<typeof transcodePlan>) => void)[] = [];
+    const api = fakeApi({ plan: () => new Promise((r) => waiting.push(r)) });
+    const s = new PlayerSession(deps(api));
+    const media = asMedia(fakeMedia());
+    const first = s.start(media, target);
+    const second = s.start(media, target);
+    waiting[1]!(transcodePlan({ session_id: 'sess-nieuw', stream_url: '/pleya/v1/playback/sessions/sess-nieuw/index.m3u8' }));
+    await second;
+    waiting[0]!(transcodePlan({ session_id: 'sess-oud' }));
+    await first;
+    expect(api.stops).toEqual([{ id: 'sess-oud', keepalive: false }]);
+    expect(s.heldSession).toBe('sess-nieuw');
+    expect(s.phase).toBe('ready');
+  });
+
   it('gaat na een fatale hls-fout naar de foutstaat en stopt de sessie', async () => {
     const api = fakeApi({ plan: async () => transcodePlan() });
     const hls = fakeHls();
@@ -340,5 +356,22 @@ describe('streamsessie-id in de tabbladopslag', () => {
     expect(JSON.parse(store.get('pleya.stream_sessions') ?? '{}')).toEqual({
       'v-1': { id: 'ss-blijft', expiresAt: Date.parse('2026-10-26T11:30:00Z') }
     });
+  });
+});
+
+describe('kwaliteitslimiet', () => {
+  const quality = { max_video_bitrate_kbps: 4000, max_height: 720 };
+
+  it('gaat alleen met playback_quality mee in de planaanvraag', async () => {
+    const api = fakeApi();
+    await new PlayerSession(deps(api, { server: { ...SERVER_CAPS, playback_quality: true } })).start(asMedia(fakeMedia()), { ...target, quality });
+    expect(api.plan).toHaveBeenCalledWith(expect.objectContaining({ quality }));
+  });
+
+  it('blijft weg zonder capability en zonder keuze (negatieve controle)', async () => {
+    const api = fakeApi();
+    await new PlayerSession(deps(api)).start(asMedia(fakeMedia()), { ...target, quality });
+    await new PlayerSession(deps(api, { server: { ...SERVER_CAPS, playback_quality: true } })).start(asMedia(fakeMedia()), target);
+    for (const call of vi.mocked(api.plan).mock.calls) expect(call[0]).not.toHaveProperty('quality');
   });
 });

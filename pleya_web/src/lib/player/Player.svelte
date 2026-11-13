@@ -1,6 +1,8 @@
 <!--
-  Filmbeeld: terug bovenaan, transport in het midden en titel, metadata
-  en tijdlijn in de onderste bedieningsband.
+  Filmbeeld volgens het doelbeeld Kijken-speler: terug en titel bovenaan, de
+  tijdlijn en één rij knoppen onderaan, met het ondertitelmenu, het
+  instellingenmenu en de afspeelinfo erboven. In de laatste dertig seconden
+  komt de kaart "volgende aflevering", of het slotscherm als er niets volgt.
 
   Het afspeelpad zelf zit in PlayerSession; deze component koppelt alleen de
   `<video>` aan de knoppen, het toetsenbord en de levenscyclus. Sluiten,
@@ -8,19 +10,23 @@
   ontkoppeld en de omzetsessie gestopt.
 -->
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, type Snippet } from 'svelte';
 
   import type { Item, Version } from '../api/types';
   import { t } from '../i18n';
   import { formatDuration } from '../util/format';
-  import { clamp, keyAction, nextSpeed } from './keyboard';
+  import { clamp, keyAction } from './keyboard';
   import PlayerControls from './PlayerControls.svelte';
   import PlayerIcon from './PlayerIcon.svelte';
-  import PlayerTrackMenu from './PlayerTrackMenu.svelte';
+  import PlayerInfo from './PlayerInfo.svelte';
+  import PlayerNextCard from './PlayerNextCard.svelte';
+  import PlayerSettingsMenu, { type Aspect } from './PlayerSettingsMenu.svelte';
+  import PlayerTrackMenu, { type SubtitleSize } from './PlayerTrackMenu.svelte';
   import { PlayerSession, type PlayerDeps } from './playerSession.svelte';
   import { PlayerSubtitles } from './playerSubtitles.svelte';
   import { audioOptions, defaultAudioIndex, subtitleOptions } from './tracks';
-  import { deliveryLabel } from './labels';
+  import { deliveryLabel, playbackInfo, qualityOptions, type QualityOption } from './labels';
+  import { nextCountdown } from './upNext';
   import { ResumeFloor, resumePoint, WatchProgress } from './watchProgress';
   // De gedeelde spelerregels zijn globaal met `.player` als voorvoegsel.
   import './player.css';
@@ -29,14 +35,31 @@
     item: Item;
     version: Version | undefined;
     startAt?: number;
+    /** Stream-id's uit `?audio=` en `?subtitle=`: de keuze van het filmdetail voor deze afspeelactie. */
+    audioId?: string | null;
+    subtitleId?: string | null;
     deps: PlayerDeps;
     onclose: () => void;
     onlogin: () => void;
     /** Het item is uitgespeeld; een afspeellijst gaat dan door. */
     onfinished?: () => void;
+    /** Bij een aflevering: de serie als kop en "S2 · A3 · titel" eronder. */
+    heading?: string | null;
+    subheading?: string | null;
+    /** De aflevering hierna; met `onnext` komt de knop en, in de laatste dertig seconden, de kaart. */
+    next?: Item | null;
+    /** Een belofte die afwijst (afgebroken navigatie) maakt een nieuwe poging mogelijk. */
+    onnext?: () => void | Promise<unknown>;
+    /** Het element dat volledig scherm krijgt; de route geeft er een dat een volgende aflevering overleeft. */
+    fullscreenTarget?: HTMLElement | null;
+    /** Het slotscherm, voor een titel waar niets op volgt. Zonder snippet blijft het beeld staan. */
+    end?: Snippet<[{ replay: () => void }]>;
   }
 
-  let { item, version, startAt = 0, deps, onclose, onlogin, onfinished }: Props = $props();
+  let {
+    item, version, startAt = 0, audioId = null, subtitleId = null, deps, onclose, onlogin, onfinished,
+    heading = null, subheading = null, next = null, onnext, fullscreenTarget = null, end
+  }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   const session = new PlayerSession(deps);
@@ -54,9 +77,24 @@
   let muted = $state(false);
   let rate = $state(1);
   let fullscreen = $state(false);
-  let menuOpen = $state(false);
+  let menu = $state<'subtitles' | 'settings' | null>(null);
   let active = $state(true);
   let audioIndex = $state(0);
+  // svelte-ignore state_referenced_locally
+  let audioPick = $state(audioId);
+  let quality = $state<QualityOption | null>(null);
+  let aspect = $state<Aspect>('contain');
+  let subtitleSize = $state<SubtitleSize>('normal');
+  let infoOpen = $state(false);
+  let frames = $state<{ dropped: number; total: number } | null>(null);
+  let ended = $state(false);
+  let credits = $state(false);
+  let advanced = false;
+  /** Waar de laatste start begon: een keuze tijdens het laden en "Opnieuw" gaan daar verder. */
+  let resumeAt = 0;
+  let subtitlePicked = false;
+  let nativeAudio = $state(0);
+  const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled === true;
   let progress: WatchProgress | null = null;
   let lastPosition = 0;
   let resumeFloor = new ResumeFloor(0);
@@ -68,36 +106,63 @@
   const isHls = $derived(session.delivery?.kind === 'hls');
   const audio = $derived(audioOptions(version));
   const subs = $derived(subtitleOptions(version, deps.server?.embedded_subtitles === true));
-  const audioSwitchable = $derived(
-    !isHls && (video as { audioTracks?: { length: number } } | null)?.audioTracks?.length === audio.length
-  );
-  const remaining = $derived(formatDuration(Math.max(0, total - current) * 1000));
-  const meta = $derived(
-    [item.year, formatDuration(total * 1000), remaining ? t('player.remaining', { duration: remaining }) : null]
-      .filter(Boolean)
-      .join(' · ')
-  );
+  const wantedAudio = $derived(audio.findIndex((option) => option.id === audioPick));
+  const planAudioSelection = $derived(deps.server?.playback_audio_selection === true && version !== undefined);
+  const qualities = $derived(deps.server?.playback_quality === true ? qualityOptions(version) : []);
+  // De sporenlijst van het element is niet reactief; `applyPicks` leest hem bij `loadedmetadata`.
+  const audioSwitchable = $derived(!isHls && nativeAudio > 0 && nativeAudio === audio.length);
+  const meta = $derived(subheading ?? [item.year, formatDuration(total * 1000)].filter(Boolean).join(' · '));
   const modeLabel = $derived(session.delivery ? deliveryLabel(session.delivery.mode, version) : null);
   const subtitleLabel = $derived(subs.usable.find((s) => s.id === subtitles.activeId)?.label ?? null);
   const subtitleNote = $derived(subtitles.preparing ? t('player.subtitlePreparing') : subtitles.error);
-  const showChrome = $derived(active || paused || menuOpen || session.phase !== 'ready');
+  const showChrome = $derived(active || paused || menu !== null || session.phase !== 'ready');
+  const countdown = $derived(session.phase === 'ready' ? nextCountdown(current, total) : null);
+  const hasNext = $derived(next !== null && onnext !== undefined);
+  const showNext = $derived(hasNext && countdown !== null && !credits && !ended);
+  const showEnd = $derived(end !== undefined && !hasNext && (ended || (countdown !== null && !credits)));
+  const info = $derived(playbackInfo({
+    mode: session.delivery?.mode, version, audio: audio[audioIndex]?.label, subtitle: subtitleLabel,
+    ahead: buffered - current, frames
+  }));
 
-  function start(): void {
+  /** Start, of herstart met een andere kwaliteit of een ander audiospoor vanaf `from` seconden. */
+  function start(from: number = resumeAt): void {
     if (!video) return;
+    resumeAt = from;
+    nativeAudio = 0;
     subtitles.abort();
     progress?.finish(false);
     progress = null;
     lastPosition = 0;
-    // The contract's duration, not the element's: a growing transcode has no end of its own yet.
-    const from = resumePoint(startAt, (version?.duration_ms ?? 0) / 1000);
     resumeFloor = new ResumeFloor(from);
     audioIndex = 0;
-    void session.start(video, { itemId: item.id, versionId: version?.id ?? null, startAt: from });
+    void session.start(video, {
+      itemId: item.id, versionId: version?.id ?? null, startAt: from,
+      ...(plannedAudio() && audioPick ? { audioStreamId: audioPick } : {}),
+      ...(quality?.quality ? { quality: quality.quality } : {})
+    });
   }
 
+  // Alleen een afwijkend spoor gaat naar de planner: een expliciete audiokeuze valt nooit terug op direct play.
+  const plannedAudio = () => deps.server?.playback_audio_selection === true && wantedAudio >= 0 && wantedAudio !== defaultAudioIndex(audio);
+
   $effect(() => {
-    if (session.delivery) audioIndex = session.delivery.kind === 'hls' ? 0 : defaultAudioIndex(audio);
+    if (!session.delivery) return;
+    // Een gepland spoor is het spoor dat speelt, ook als de omzetting er maar één draagt. Zonder plan
+    // geldt de wens pas als het element hem uitvoert (`applyPicks`): anders toont het menu een spoor dat niet speelt.
+    audioIndex = plannedAudio() ? wantedAudio : session.delivery.kind === 'hls' ? 0 : defaultAudioIndex(audio);
   });
+
+  // De keuze van het filmdetail, toegepast zodra de sporen van het element bekend zijn.
+  function applyPicks(): void {
+    // Rechtstreeks gelezen: de sporenlijst van het element is niet reactief.
+    nativeAudio = (video as { audioTracks?: { length: number } } | null)?.audioTracks?.length ?? 0;
+    if (wantedAudio >= 0 && audioSwitchable) chooseAudio(wantedAudio);
+    // Eén keer: na een planwissel komt `loadedmetadata` opnieuw, en een ondertitel die de kijker uitzette blijft uit.
+    if (subtitlePicked || !subtitleId || !subs.usable.some((option) => option.id === subtitleId)) return;
+    subtitlePicked = true;
+    void subtitles.choose(subtitleId);
+  }
 
   // Teardown empties the element, so a report after an error reads the last position that played.
   function samplePosition(): number {
@@ -160,7 +225,7 @@
     if (document.fullscreenElement) {
       await document.exitFullscreen().catch(() => undefined);
     } else if (root?.requestFullscreen) {
-      await root.requestFullscreen().catch(() => undefined);
+      await (fullscreenTarget ?? root).requestFullscreen().catch(() => undefined);
     } else {
       // iOS Safari kent alleen volledig scherm op de video zelf.
       (video as { webkitEnterFullscreen?: () => void } | null)?.webkitEnterFullscreen?.();
@@ -172,6 +237,60 @@
     if (!tracks) return;
     for (let i = 0; i < tracks.length; i++) tracks[i]!.enabled = i === index;
     audioIndex = index;
+  }
+
+  // Tijdens het laden staat het element leeg; dan geldt waar de lopende start begon.
+  const here = () => (session.phase === 'ready' ? current : resumeAt);
+
+  // Het menu: wisselen in de browser als het element de sporen draagt, anders een nieuw plan. Direct play
+  // hervat op de positie; een omzetting begint bij het begin, en het menu zegt dat erbij.
+  function pickAudio(index: number): void {
+    if (audioSwitchable) return chooseAudio(index);
+    if (!planAudioSelection || index === audioIndex) return;
+    audioPick = audio[index]?.id ?? null;
+    start(here());
+  }
+
+  function pickQuality(option: QualityOption): void {
+    if (option.id === (quality?.id ?? 'original')) return;
+    quality = option;
+    start(here());
+  }
+
+  async function togglePip(): Promise<void> {
+    if (document.pictureInPictureElement) await document.exitPictureInPicture().catch(() => undefined);
+    else await video?.requestPictureInPicture().catch(() => undefined);
+  }
+
+  function advance(): void {
+    if (advanced || !onnext) return;
+    advanced = true;
+    void Promise.resolve(onnext()).catch(() => { advanced = false; });
+  }
+
+  // De kaart telt af op de afspeelpositie; op nul start de volgende aflevering vanzelf.
+  $effect(() => {
+    if (showNext && countdown === 0 && menu === null) advance();
+  });
+
+  // Terugspoelen uit het eindvenster: de volgende keer komt de kaart of het slotscherm weer.
+  $effect(() => {
+    if (countdown === null) credits = false;
+  });
+
+  function finished(): void {
+    paused = true;
+    ended = true;
+    progress?.finish(false);
+    progress = null;
+    if (hasNext) advance();
+    else onfinished?.();
+  }
+
+  function replay(): void {
+    credits = true;
+    seekTo(0);
+    void video?.play().catch(() => undefined);
   }
 
   function onKey(event: KeyboardEvent): void {
@@ -186,12 +305,15 @@
     });
     if (!action) return;
     if (action.kind === 'escape') {
-      if (menuOpen) {
-        menuOpen = false;
+      if (menu !== null) {
+        menu = null;
         event.preventDefault();
       }
       return;
     }
+    // In een open menu zijn de pijlen van het menu.
+    // Alleen het instellingenmenu heeft pijlnavigatie; in het ondertitelmenu blijven pijlen spoelen en volume regelen.
+    if (menu === 'settings' && (action.kind === 'seekBy' || action.kind === 'volumeBy')) return;
     event.preventDefault();
     poke();
     if (action.kind === 'toggle') toggle();
@@ -210,20 +332,25 @@
     buffered = b.length ? b.end(b.length - 1) : 0;
     const s = video.seekable;
     seekLimit = s.length ? s.end(s.length - 1) : 0;
+    const q = infoOpen ? video.getVideoPlaybackQuality?.() : null;
+    frames = q ? { dropped: q.droppedVideoFrames, total: q.totalVideoFrames } : null;
   }
 
   const onPageHide = () => { subtitles.abort(); progress?.finish(true); progress = null; session.dispose(true); };
   const onPageShow = (e: PageTransitionEvent) => {
     if (e.persisted) start();
   };
-  const onFullscreen = () => (fullscreen = document.fullscreenElement !== null);
+  const onFullscreen = () => (fullscreen = !!document.fullscreenElement);
 
   onMount(() => {
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('pageshow', onPageShow);
     document.addEventListener('fullscreenchange', onFullscreen);
     poke();
-    start();
+    onFullscreen();
+    // Alleen de eerste start: het hervatpunt hoort bij de titel en kan voorbij het eind van deze versie liggen.
+    // The contract's duration, not the element's: a growing transcode has no end of its own yet.
+    start(resumePoint(startAt, (version?.duration_ms ?? 0) / 1000));
   });
 
   onDestroy(() => {
@@ -244,6 +371,7 @@
 <section
   class="player"
   class:player--idle={!showChrome}
+  class:player--end={showEnd}
   aria-label={t('player.title')}
   bind:this={root}
   onpointermove={poke}
@@ -251,15 +379,17 @@
   <!-- svelte-ignore a11y_media_has_caption -->
   <video
     class="player__video"
+    class:player__video--cover={aspect === 'cover' && !showEnd}
     bind:this={video}
     playsinline
-    onplay={() => (paused = false)}
+    onplay={() => { paused = false; ended = false; }}
     onplaying={playing}
     onpause={() => { paused = true; progress?.report(); }}
     onseeked={() => progress?.report()}
-    onended={() => { paused = true; progress?.finish(false); progress = null; onfinished?.(); }}
+    onended={finished}
     ontimeupdate={syncTime}
     ondurationchange={syncTime}
+    onloadedmetadata={applyPicks}
     onprogress={syncTime}
     onvolumechange={() => {
       volume = video?.volume ?? 1;
@@ -280,10 +410,14 @@
     <button class="round" type="button" aria-label={t('player.back')} onclick={onclose}>
       <PlayerIcon name="back" />
     </button>
-    {#if session.phase === 'error'}
-      <h1 class="film__title">{item.title}</h1>
-    {/if}
+    <div class="film__text">
+      <h1 class="film__title">{heading ?? item.title}</h1>
+      {#if meta}<p class="film__meta">{meta}</p>{/if}
+    </div>
+    {#if modeLabel && session.phase === 'ready'}<div class="chips"><span class="chip">{modeLabel}</span></div>{/if}
   </header>
+
+  {#if infoOpen && session.phase === 'ready' && !showEnd}<PlayerInfo rows={info} />{/if}
 
   {#if session.phase === 'loading' || session.phase === 'idle'}
     <div class="center" role="status" aria-live="polite">
@@ -296,7 +430,7 @@
         <p class="problem__text">{session.problem.message}</p>
         <div class="problem__actions">
           {#if session.problem.wayOut === 'retry'}
-            <button class="btn" type="button" onclick={start}>{t('player.retry')}</button>
+            <button class="btn" type="button" onclick={() => start()}>{t('player.retry')}</button>
           {:else if session.problem.wayOut === 'login'}
             <button class="btn" type="button" onclick={onlogin}>{t('player.signIn')}</button>
           {/if}
@@ -307,51 +441,43 @@
   {/if}
 
   <div class="bottom" hidden={session.phase === 'error'}>
-    {#if session.phase === 'ready'}
-      <div class="center center--controls">
-        <button class="round round--side" type="button" aria-label={t('player.rewind')} onclick={() => seekTo(current - 10)}>
-          <PlayerIcon name="rewind" size={26} />
-        </button>
-        <button class="round round--main" type="button" aria-label={paused ? t('player.play') : t('player.pause')} onclick={toggle}>
-          <PlayerIcon name={paused ? 'play' : 'pause'} size={30} />
-        </button>
-        <button class="round round--side" type="button" aria-label={t('player.forward')} onclick={() => seekTo(current + 10)}>
-          <PlayerIcon name="forward" size={26} />
-        </button>
-      </div>
-    {/if}
-    {#if menuOpen}
-      <div class="bottom__menu">
+    <div class="bottom__menu">
+      {#if menu === 'subtitles'}
         <PlayerTrackMenu
-          {audio}
-          {audioIndex}
-          {audioSwitchable}
-          onaudio={chooseAudio}
           subtitles={subs.usable}
           subtitleId={subtitles.pendingId ?? subtitles.activeId}
           error={subtitles.error}
           loading={subtitles.pendingId !== null}
           preparing={subtitles.preparing}
           skippedSubtitles={subs.skipped}
+          size={subtitleSize}
+          onsize={(size) => (subtitleSize = size)}
           onsubtitle={(id) => void subtitles.choose(id)}
           onsubtitleretry={subtitles.failedId ? () => subtitles.retry() : null}
-          onclose={() => (menuOpen = false)}
+          onclose={() => (menu = null)}
         />
-      </div>
-    {/if}
+      {:else if menu === 'settings'}
+        <PlayerSettingsMenu
+          quality={qualities}
+          qualityId={quality?.id ?? 'original'}
+          onquality={pickQuality}
+          {audio}
+          {audioIndex}
+          audioSwitchable={audioSwitchable || planAudioSelection}
+          audioReplans={!audioSwitchable && planAudioSelection}
+          onaudio={pickAudio}
+          {rate}
+          onrate={(next) => video && (video.defaultPlaybackRate = video.playbackRate = next)}
+          {aspect}
+          onaspect={(next) => (aspect = next)}
+          info={infoOpen}
+          oninfo={() => { infoOpen = !infoOpen; syncTime(); }}
+        />
+      {:else if showNext && next && countdown !== null}
+        <PlayerNextCard {next} seconds={countdown} onplay={advance} oncredits={() => (credits = true)} />
+      {/if}
+    </div>
     <div class="bottom__controls">
-      <header class="film">
-        <div class="film__text">
-          <h1 class="film__title">{item.title}</h1>
-          {#if meta}<p class="film__meta">{meta}</p>{/if}
-        </div>
-        <div class="chips">
-          {#if subtitleLabel}
-            <span class="chip"><PlayerIcon name="cc" size={16} />{subtitleLabel}</span>
-          {/if}
-          {#if modeLabel}<span class="chip">{modeLabel}</span>{/if}
-        </div>
-      </header>
       <PlayerControls
         {paused}
         {current}
@@ -362,30 +488,44 @@
         {muted}
         {rate}
         {fullscreen}
-        subtitlesOn={subtitles.activeId !== null}
+        ready={session.phase === 'ready'}
+        {subtitleLabel}
         subtitlePreparing={subtitles.preparing}
         {subtitleNote}
-        {menuOpen}
+        {menu}
         ontoggle={toggle}
         onseek={seekTo}
         onvolume={setVolume}
         onmute={() => video && (video.muted = !video.muted)}
-        onrate={() => video && (video.playbackRate = nextSpeed(rate))}
         onfullscreen={() => void toggleFullscreen()}
-        onmenu={() => (menuOpen = !menuOpen)}
+        onsubtitles={() => (menu = menu === 'subtitles' ? null : 'subtitles')}
+        onsettings={() => (menu = menu === 'settings' ? null : 'settings')}
+        onnext={hasNext ? advance : null}
+        onpip={canPip ? () => void togglePip() : null}
       />
     </div>
     {#if subtitles.caption && subtitles.url}
-      <p class="caption" class:caption--low={!showChrome}>{subtitles.caption}</p>
+      <p class="caption" class:caption--low={!showChrome} class:caption--small={subtitleSize === 'small'} class:caption--large={subtitleSize === 'large'}>{subtitles.caption}</p>
     {/if}
   </div>
-  {#if subtitleNote && !menuOpen && showChrome}
+  {#if subtitleNote && menu !== 'subtitles' && showChrome}
     <div class="player-toast" class:player-toast--wait={subtitles.preparing} role="status">
       <span class="player-toast__icon"><PlayerIcon name="cc" size={17} /></span>
       <span>{subtitleNote}</span>
       {#if subtitles.failedId}
         <button type="button" onclick={() => subtitles.retry()}>{t('player.subtitleRetry')}</button>
       {/if}
+    </div>
+  {/if}
+  {#if showEnd && end}
+    <div class="end">
+      <button class="round" type="button" aria-label={t('player.back')} onclick={onclose}>
+        <PlayerIcon name="back" />
+      </button>
+      {#if !ended}
+        <button class="end__tile" type="button" aria-label={t('player.creditsFull')} onclick={() => (credits = true)}></button>
+      {/if}
+      {@render end({ replay })}
     </div>
   {/if}
 </section>

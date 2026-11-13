@@ -1,13 +1,13 @@
 <!--
-  De vier tellers van scherm 20: bibliotheken, opslag, scan en nu aan het
-  kijken. Vier kolommen vanaf 1200, twee daaronder (web.css `.stats`).
-  Een scanpercentage staat er niet: `Scan` draagt geen totaal, alleen wat er
-  al gezien is.
+  De vier tellers onderaan het overzicht: bibliotheken, opslag, gebruikers en
+  scan. Elke tegel is een link naar zijn sectie. Vier kolommen vanaf 1200,
+  twee daaronder (web.css `.stats`). Een scanpercentage staat er niet: `Scan`
+  draagt geen totaal, alleen wat er al gezien is. Het aantal kijkers staat
+  niet meer hier maar in de kop van Nu aan het kijken.
 -->
 <script lang="ts">
   import AdminIcon from '../components/AdminIcon.svelte';
   import StatTile from '../components/StatTile.svelte';
-  import { knownDeviceName } from '../auth/device';
   import { t } from '../i18n';
   import { formatBytes, formatCount, formatRelative } from '../util/format';
   import {
@@ -57,33 +57,38 @@
     };
   });
 
-  const watching = $derived({
-    value: formatCount(data.streams.length),
-    sub:
-      data.streams.length === 0
-        ? t('admin.tile.watchingNone')
-        : data.streams.map((s) => knownDeviceName(s.device_name) ?? s.username).join(' · ')
+  const users = $derived({
+    value: formatCount(data.users.length),
+    sub: data.users.map((u) => u.username).join(' · ')
   });
 </script>
 
 <div class="tiles">
-  <StatTile label={t('admin.tile.libraries')} value={libraries.value} sub={libraries.sub}>
-    {#snippet icon()}<AdminIcon name="folder" />{/snippet}
-  </StatTile>
-  <StatTile
-    label={t('admin.tile.storage')}
-    value={storage.value}
-    unit={t('admin.tile.free')}
-    sub={storage.sub}
-  >
-    {#snippet icon()}<AdminIcon name="drive" />{/snippet}
-  </StatTile>
-  <StatTile label={t('admin.tile.scan')} value={scan.value} sub={scan.sub}>
-    {#snippet icon()}<AdminIcon name="activity" />{/snippet}
-  </StatTile>
-  <StatTile label={t('admin.tile.watching')} value={watching.value} sub={watching.sub}>
-    {#snippet icon()}<AdminIcon name="play" />{/snippet}
-  </StatTile>
+  <a class="tile" href="/admin/libraries">
+    <StatTile label={t('admin.tile.libraries')} value={libraries.value} sub={libraries.sub}>
+      {#snippet icon()}<AdminIcon name="folder" />{/snippet}
+    </StatTile>
+  </a>
+  <a class="tile" href="/admin/storage">
+    <StatTile
+      label={t('admin.tile.storage')}
+      value={storage.value}
+      unit={t('admin.tile.free')}
+      sub={storage.sub}
+    >
+      {#snippet icon()}<AdminIcon name="drive" />{/snippet}
+    </StatTile>
+  </a>
+  <a class="tile" href="/admin/users">
+    <StatTile label={t('admin.nav.users')} value={users.value} sub={users.sub}>
+      {#snippet icon()}<AdminIcon name="people" />{/snippet}
+    </StatTile>
+  </a>
+  <a class="tile" href="/admin/activity">
+    <StatTile label={t('admin.tile.scan')} value={scan.value} sub={scan.sub}>
+      {#snippet icon()}<AdminIcon name="activity" />{/snippet}
+    </StatTile>
+  </a>
 </div>
 
 <style>
@@ -91,6 +96,22 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
+  }
+
+  /* De link is de hele tegel; de tegel zelf vult hem, zodat een rij even hoog blijft. */
+  .tile {
+    display: grid;
+    min-width: 0;
+    border-radius: var(--radius-panel);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  @media (hover: hover) {
+    .tile:hover :global(.stat) {
+      border-color: var(--hairline-strong);
+      background: var(--panel-2);
+    }
   }
 
   @media (max-width: 1199px) {

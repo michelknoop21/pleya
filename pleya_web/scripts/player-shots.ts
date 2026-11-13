@@ -1,9 +1,10 @@
 /**
- * Opnamen van de spelerschil (S13.2, S18.3, mockup 50) op 1920 bij 1080,
- * 1440, 1280, 390 en 320: laden, spelend met besturing, de foutstaat, de
- * spoorkiezer open, en de detailpagina met de hervatknop. Per breedte
- * herladen, de horizontale overloop meten, een jpeg op kwaliteit 62, alleen
- * het venster.
+ * Opnamen van de spelerschil (S13.2, S18.3, doelbeeld Kijken-speler) op 1920
+ * bij 1080, 1440, 1280, 390 en 320: laden, spelend met besturing, de
+ * foutstaat, het instellingenmenu met afspeelinfo, het ondertitelmenu, de
+ * kaart "volgende aflevering", het slotscherm, en de detailpagina met de
+ * hervatknop. Per breedte herladen, de horizontale overloop meten, een jpeg op
+ * kwaliteit 62, alleen het venster.
  *
  *   ffmpeg -f lavfi -i testsrc2=size=1280x720:rate=24:duration=60 \
  *     -f lavfi -i sine=frequency=440:duration=60 -c:v libx264 -pix_fmt yuv420p \
@@ -64,6 +65,23 @@ const ITEM = {
   ]
 };
 
+// Een aflevering met seizoen, serie en een opvolger: de kop en de kaart "volgende aflevering".
+const SHOW = { id: 'show-1', kind: 'show', title: 'Testbeeld: de serie', added_at: ITEM.added_at, artwork: null };
+const SEASON = { id: 'season-2', kind: 'season', title: 'Seizoen 2', index: 2, parent_id: 'show-1', added_at: ITEM.added_at, artwork: null };
+const EPISODE = { ...ITEM, id: 'ep-3', kind: 'episode', title: 'Kleurbalken', index: 3, parent_id: 'season-2', year: null, user_state: null };
+const EPISODE_NEXT = { ...EPISODE, id: 'ep-4', title: 'Testtoon', index: 4, duration_ms: 3_060_000, versions: undefined };
+const CONTINUE = [
+  { ...ITEM, id: 'c-1', title: 'Rasterbeeld', versions: undefined, user_state: { ...ITEM.user_state, position_ms: 20_000 } },
+  { ...ITEM, id: 'c-2', title: 'Grijstrap', versions: undefined, user_state: { ...ITEM.user_state, position_ms: 45_000 } },
+  { ...ITEM, id: 'c-3', title: 'Zoneplaat', versions: undefined, user_state: { ...ITEM.user_state, position_ms: 9_000 } }
+];
+const ITEMS: Record<string, unknown> = {
+  '/items/item-1': ITEM, '/items/ep-3': EPISODE, '/items/ep-4': EPISODE_NEXT, '/items/season-2': SEASON, '/items/show-1': SHOW,
+  '/items/season-2/children': { items: [EPISODE, EPISODE_NEXT] },
+  '/items/show-1/children': { items: [SEASON] },
+  '/hubs/continue_watching': { items: CONTINUE }
+};
+
 const PLAN = {
   item_id: 'item-1',
   version_id: 'v-1',
@@ -105,7 +123,8 @@ await context.route('**/pleya/v1/**', (route) => {
     if (mode === 'busy') {
       return json(route, { error: { code: 'playback.transcode_busy', message: 'nagebootst', retryable: true } }, 503);
     }
-    return json(route, PLAN);
+    const body = request.postDataJSON() as { item_id: string };
+    return json(route, { ...PLAN, item_id: body.item_id });
   }
   if (method === 'POST' && path === '/auth/stream-session') {
     return json(route, { stream_session_id: 'ss-nagebootst', expires_at: new Date(Date.now() + 1_800_000).toISOString() });
@@ -136,15 +155,16 @@ await context.route('**/pleya/v1/**', (route) => {
       return json(route, {
         protocol: { major: 1, feature_level: 1, profile: 'full' },
         server: { id: 's1', setup_accepts_name: false },
-        capabilities: { browse: true, search: true, artwork: true, watch_state: true, playback_plan: true, transcode: true, stream_sessions: true },
+        capabilities: {
+          browse: true, search: true, artwork: true, watch_state: true, playback_plan: true, transcode: true, stream_sessions: true,
+          playback_quality: true, playback_audio_selection: true, ratings: true, favorites: true
+        },
         auth: { methods: ['password'], setup_required: false }
       });
     case '/server':
       return json(route, { id: 's1', name: 'Pleya-server', version: '0.9.0', started_at: '2026-10-20T10:00:00Z' });
     case '/libraries':
       return json(route, { items: [{ id: 'l1', title: 'Films', kind: 'movies', item_count: 1 }] });
-    case '/items/item-1':
-      return json(route, ITEM);
     case '/subtitles/sub-nl':
       return route.fulfill({
         status: 200,
@@ -152,6 +172,7 @@ await context.route('**/pleya/v1/**', (route) => {
         body: 'WEBVTT\n\n00:00:00.000 --> 00:01:00.000\nEen ondertitel in WebVTT, nagebootst.\n'
       });
     default:
+      if (ITEMS[path]) return json(route, ITEMS[path]);
       return json(route, { error: { code: 'library.not_found', message: 'nagebootst', retryable: false } }, 404);
   }
 });
@@ -168,17 +189,26 @@ async function measure(name: string, width: number): Promise<void> {
   console.log(`${name}@${width}: overloop ${over}px`);
 }
 
-/** Zet de video stil op een vast beeld en houdt de besturing in beeld. */
-async function settle(p: Page): Promise<void> {
+/** Zet de video op een vast beeld en houdt de besturing in beeld; `play` laat hem daarna lopen. */
+async function settle(p: Page, at = 24, play = true): Promise<void> {
   await p.waitForFunction(() => (document.querySelector('video')?.readyState ?? 0) >= 2, null, { timeout: 15_000 });
-  await p.evaluate(async () => {
+  await p.evaluate(async ([seconds, run]) => {
     const v = document.querySelector('video')!;
-    v.currentTime = 24;
+    v.pause();
+    v.currentTime = seconds as number;
     await new Promise((r) => v.addEventListener('seeked', r, { once: true }));
-    await v.play().catch(() => undefined);
-  });
+    if (run) await v.play().catch(() => undefined);
+  }, [at, play] as const);
   await p.mouse.move(200, 200);
   await p.mouse.move(220, 220);
+  // De besturing komt met een overgang in beeld; zonder wachten staat ze half doorzichtig op de opname.
+  await p.waitForTimeout(600);
+}
+
+async function chooseDutch(p: Page): Promise<void> {
+  await p.getByRole('button', { name: t('player.subtitles') }).click();
+  await p.getByRole('radio', { name: 'Nederlands', exact: true }).check();
+  await p.waitForTimeout(400);
 }
 
 async function shoot(name: string, m: Mode, prepare?: (p: Page) => Promise<void>, path = '/items/item-1/play?t=24'): Promise<void> {
@@ -196,12 +226,29 @@ await shoot('detail-hervatten-nagebootst', 'play', undefined, '/items/item-1');
 await shoot('laden-nagebootst', 'hang');
 await shoot('spelend-nagebootst', 'play', settle);
 await shoot('fout-bezet-nagebootst', 'busy', (p) => p.getByRole('alert').waitFor().then(() => undefined));
-await shoot('spoorkiezer-nagebootst', 'play', async (p) => {
+const EPISODE_PLAY = '/items/ep-3/play?t=24';
+await shoot('speler-instellingen-nagebootst', 'play', async (p) => {
   await settle(p);
-  await p.getByRole('button', { name: t('player.tracks') }).click();
-  await p.getByRole('radio', { name: 'Nederlands', exact: true }).check();
-  await p.waitForTimeout(400);
+  await chooseDutch(p);
+  await p.getByRole('button', { name: t('player.settings') }).click();
+  await p.getByRole('menuitemcheckbox', { name: new RegExp(t('player.info')) }).click();
   await p.mouse.move(240, 240);
+}, EPISODE_PLAY);
+await shoot('speler-ondertitelmenu-nagebootst', 'play', async (p) => {
+  await settle(p);
+  await chooseDutch(p);
+  await p.mouse.move(240, 240);
+}, EPISODE_PLAY);
+// Lopend en zonder muis: de kaart staat er ook als de besturing weg is.
+await shoot('speler-einde-nagebootst', 'play', async (p) => {
+  await settle(p, 32);
+  await p.mouse.move(0, 0);
+  await p.waitForTimeout(3400);
+}, EPISODE_PLAY);
+await shoot('speler-slot-nagebootst', 'play', async (p) => {
+  await settle(p, 40, false);
+  await p.getByRole('button', { name: t('player.rewatch') }).waitFor();
+  await p.waitForTimeout(500);
 });
 
 console.log(`consolefouten: ${errors.length}`);

@@ -60,6 +60,17 @@ function setup(overrides: Parameters<typeof opsFake>[0] = {}) {
   return server;
 }
 
+/**
+ * "Scan Films" staat ook bij Geplande taken. Deze twee wijzen het paneel Bezig
+ * en de rij in de Geschiedenis aan.
+ */
+async function findRunning(text: string): Promise<HTMLElement> {
+  return within(await screen.findByRole('region', { name: 'Bezig' })).findByText(text);
+}
+function historyRow(text: string): HTMLElement {
+  return screen.getAllByText(text).map((el) => el.closest('tr')).find(Boolean) as HTMLElement;
+}
+
 beforeEach(() => setLocale('nl'));
 afterEach(() => {
   setLocale('en');
@@ -71,7 +82,7 @@ describe('scherm 25, wat er loopt', () => {
     const server = setup();
     render(ActivityPage);
 
-    const running = await screen.findByText('Scan Series');
+    const running = await findRunning('Scan Series');
     const body = running.closest('li') as HTMLElement;
     expect(body).toHaveTextContent('3.104 bestanden gezien');
     expect(body).toHaveTextContent('41 geanalyseerd');
@@ -106,7 +117,7 @@ describe('scherm 25, wat er loopt', () => {
   it('biedt geen Afbreken aan voor een scan zonder vindbare job', async () => {
     setup({ jobs: [] });
     render(ActivityPage);
-    await screen.findByText('Scan Series');
+    await findRunning('Scan Series');
     expect(screen.queryByRole('button', { name: /afbreken/ })).toBeNull();
   });
 
@@ -129,7 +140,7 @@ describe('scherm 25, wat er loopt', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const server = setup();
     render(ActivityPage);
-    await screen.findByText('Scan Series');
+    await findRunning('Scan Series');
     const count = () => server.seen.filter((s) => s.path.startsWith('/jobs?')).length;
     expect(count()).toBe(1);
     await vi.advanceTimersByTimeAsync(5100);
@@ -312,7 +323,7 @@ describe('scherm 25, alles scannen', () => {
       ]
     });
     render(ActivityPage);
-    await screen.findByText('Scan Series');
+    await findRunning('Scan Series');
     expect(server.writes()).toEqual([]);
     await userEvent.click(screen.getByRole('button', { name: 'Alles scannen' }));
 
@@ -350,7 +361,7 @@ describe('scherm 25, alles scannen', () => {
     expect(alert).toHaveTextContent('database');
     expect(within(alert).getByRole('button', { name: 'Opnieuw proberen' })).toBeInTheDocument();
     // De rest van het scherm blijft staan, en de scans die wel lukten zijn gemeld.
-    expect(screen.getByText('Scan Films')).toBeInTheDocument();
+    expect(historyRow('Scan Films')).toBeInTheDocument();
     expect(screen.getByText(/2 in de wachtrij gezet/)).toBeInTheDocument();
     expect(server.writes()).toContain('POST /libraries/l1/scan');
   });
@@ -360,13 +371,14 @@ describe('scherm 25, geschiedenis', () => {
   it('toont tellers, duur en status per scan, en bij een mislukte scan zijn melding', async () => {
     setup({ scans: [DONE, FAILED_SCAN], jobs: [] });
     render(ActivityPage);
-    const done = (await screen.findByText('Scan Films')).closest('tr') as HTMLElement;
+    await screen.findAllByText('Scan Films');
+    const done = historyRow('Scan Films');
     expect(done).toHaveTextContent('11 min');
     expect(done).toHaveTextContent('28.412 bestanden gezien · 3 nieuw · 0 ontbrekend');
     expect(within(done).getByText('klaar')).toBeInTheDocument();
     expect(within(done).getByText('handmatig')).toBeInTheDocument();
 
-    const failed = screen.getByText('Scan Boeken').closest('tr') as HTMLElement;
+    const failed = historyRow('Scan Boeken');
     expect(failed).toHaveTextContent('root niet gemount');
     expect(within(failed).getByText('mislukt')).toBeInTheDocument();
   });

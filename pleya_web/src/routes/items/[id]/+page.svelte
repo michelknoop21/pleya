@@ -11,13 +11,18 @@
   import Select from '#lib/components/Select.svelte';
   import ItemPersonalActions from '#lib/components/ItemPersonalActions.svelte';
   import VersionPanel from '#lib/components/VersionPanel.svelte';
+  import TrackChoice from '#lib/components/TrackChoice.svelte';
+  import CastCrew from '#lib/components/CastCrew.svelte';
+  import FileFacts from '#lib/components/FileFacts.svelte';
+  import ItemAdminMenu from '#lib/components/ItemAdminMenu.svelte';
   import WatchedBy from '#lib/components/WatchedBy.svelte';
+  import SeriesDetail from '#lib/components/series/SeriesDetail.svelte';
   import { session } from '#lib/stores/session.svelte.js';
   import { describeError } from '#lib/api/errors.js';
   import type { Item } from '#lib/api/types.js';
-  import { formatDate, formatDuration } from '#lib/util/format.js';
+  import { formatClock, formatDate, formatDuration } from '#lib/util/format.js';
   import { t } from '#lib/i18n/index.js';
-  import { playerHref } from '#lib/player/route.js';
+  import { playerHref, type TrackPick } from '#lib/player/route.js';
   import { formatPlayTime } from '#lib/player/keyboard.js';
   import { videoContext, type VideoContext } from '#lib/util/videoContext.js';
 
@@ -31,6 +36,9 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
   let selectedVersionId = $state('');
+  // De spoorkeuze van het filmdetail; bij serie, seizoen en aflevering blijft ze leeg.
+  let tracks = $state<TrackPick>({});
+  let now = $state(Date.now());
   let retry = $state(0);
 
   async function load(id: string, signal: AbortSignal): Promise<void> {
@@ -41,6 +49,7 @@
     childPager = emptyPager();
     loadSignal = signal;
     selectedVersionId = '';
+    tracks = {};
     try {
       const loaded = await session.client.item(id, signal);
       if (signal.aborted || id !== itemId) return;
@@ -50,10 +59,10 @@
       void videoContext(loaded, (parentId, active) => session.client.item(parentId, active), signal)
         .then(value => { if (!signal.aborted && id === itemId) context = value; });
 
-      // Seizoenen van een serie en afleveringen van een seizoen komen uit
-      // /children. Voor een film is dat een lege lijst en geen fout, dus die
-      // aanvraag wordt overgeslagen in plaats van weggegooid.
-      if (loaded.kind === 'show' || loaded.kind === 'season') {
+      // Afleveringen van een seizoen komen uit /children. Voor een film is dat
+      // een lege lijst en geen fout, dus die aanvraag wordt overgeslagen in
+      // plaats van weggegooid. Een serie haalt haar seizoenen zelf op (SeriesDetail).
+      if (loaded.kind === 'season') {
         await fetchChildren(id, signal);
       }
     } catch (err) {
@@ -103,7 +112,20 @@
       ? item.user_state.position_ms
       : null
   );
-  const childHeading = $derived(item?.kind === 'show' ? t('item.seasons') : t('item.episodes'));
+  const isMovie = $derived(item?.kind === 'movie');
+  const movieDuration = $derived(isMovie ? item?.duration_ms ?? version?.duration_ms ?? null : null);
+  // "klaar om 23:31": nu plus wat er nog te kijken is, in de klok van de browser.
+  $effect(() => {
+    const timer = setInterval(() => (now = Date.now()), 30_000);
+    return () => clearInterval(timer);
+  });
+  const endsAt = $derived.by(() => {
+    if (!movieDuration) return null;
+    const clock = formatClock(new Date(now + Math.max(0, movieDuration - (resumeMs ?? 0))).toISOString());
+    return clock ? t('detail.endsAt', { time: clock }) : null;
+  });
+  const watchedPercent = $derived(movieDuration && resumeMs ? Math.min(100, Math.round((resumeMs / movieDuration) * 100)) : null);
+  const childHeading = $derived(t('item.episodes'));
   const backdropId = $derived(item?.artwork?.backdrop_id ?? context.show?.artwork?.backdrop_id ?? context.season?.artwork?.backdrop_id);
   const posterId = $derived(item?.artwork?.poster_id ?? context.season?.artwork?.poster_id ?? context.show?.artwork?.poster_id);
 
@@ -135,6 +157,10 @@
       onRetry={() => retry++}
     />
   </div>
+{:else if item?.kind === 'show'}
+  {#key item.id}
+    <SeriesDetail {item} onchange={updated => { if (item?.id === updated.id) item = updated; }} />
+  {/key}
 {:else if item}
   <article class="detail">
     <header class="detail__head" class:detail__head--artwork={Boolean(backdropId)}>
@@ -159,30 +185,34 @@
         {/if}
         <h1 class="t-headline">{item.title}</h1>
         <p class="detail__line t-body">
-          {[item.year, item.kind === 'episode' && typeof item.index === 'number'
+          {[item.year, formatDuration(movieDuration), item.kind === 'episode' && typeof item.index === 'number'
             ? t('item.episode', { index: item.index })
             : null,
           item.content_rating, ...(item.genres ?? []).filter(genre => genre.trim()),
           item.kind === 'season' && typeof item.index === 'number'
             ? t('item.season', { index: item.index })
-            : null]
+            : null, endsAt]
             .filter(Boolean)
             .join(' · ')}
         </p>
 
         {#if item.summary?.trim()}<p class="detail__summary t-body">{item.summary}</p>{/if}
-        {#if playable}
+        {#if playable || (isMovie && session.canAdminister)}
           <!-- S13.2: de kijkstatus wordt hier gelezen en getoond (PS-4E), niet geschreven. -->
           <div class="detail__play">
-            {#if resumeMs}
-              <a class="btn" href={playerHref(item.id, resumeMs, version?.id)}>
+            {#if playable && resumeMs}
+              <a class="btn" href={playerHref(item.id, resumeMs, version?.id, undefined, tracks)}>
                 {t('player.resume', { time: formatPlayTime(resumeMs / 1000) })}
               </a>
-              <a class="btn btn--secondary" href={playerHref(item.id, undefined, version?.id)}>{t('player.playFromStart')}</a>
-            {:else}
-              <a class="btn" href={playerHref(item.id, undefined, version?.id)}>{t('player.play')}</a>
+              <a class="btn btn--secondary" href={playerHref(item.id, undefined, version?.id, undefined, tracks)}>{t('player.playFromStart')}</a>
+            {:else if playable}
+              <a class="btn" href={playerHref(item.id, undefined, version?.id, undefined, tracks)}>{t('player.play')}</a>
             {/if}
+            {#if isMovie}<ItemAdminMenu {item} />{/if}
           </div>
+        {/if}
+        {#if watchedPercent !== null}
+          <progress class="detail__progress" max="100" value={watchedPercent} aria-label={t('detail.progress', { percent: watchedPercent })}></progress>
         {/if}
 
         {#if session.capabilities?.favorites || session.capabilities?.ratings || session.capabilities?.watch_state}
@@ -191,17 +221,14 @@
           {/key}
         {/if}
 
-        {#if session.canAdminister && (item.kind === 'movie' || item.kind === 'show')}
-          <div class="detail__play">
-            {#if (session.capabilities?.metadata_overrides === true || session.capabilities?.artwork_choices === true)}<a class="btn btn--secondary" href="/admin/metadata/edit?item={encodeURIComponent(item.id)}">{t('admin.metadata.editor.title')}</a>{/if}
-            <a class="btn btn--secondary" href="/admin/metadata/match?item={encodeURIComponent(item.id)}">{t('admin.match.title')}</a>
-          </div>
-        {/if}
-
-        {#if versionOptions.length > 1}
+        {#if isMovie}
+          {#key item.id}
+            <TrackChoice {item} {version} {versionOptions} onversion={value => selectedVersionId = value} onpick={value => tracks = value} />
+          {/key}
+        {:else if versionOptions.length > 1}
           <Select label={t('item.version')} value={version?.id ?? ''} options={versionOptions} onchange={value => selectedVersionId = value} />
         {/if}
-        {#if credits.length}
+        {#if !isMovie && credits.length}
           <dl class="credits">
             {#each credits as group (group.role)}
               <div><dt>{group.label}</dt><dd><ul>
@@ -210,7 +237,7 @@
             {/each}
           </dl>
         {/if}
-        {#if facts.length > 0}
+        {#if !isMovie && facts.length > 0}
           <dl class="facts">
             {#each facts as fact (fact.label)}
               <div class="facts__row">
@@ -223,13 +250,17 @@
       </div>
     </header>
 
-    {#if version}
+    <!-- Film: sporen staan in de keuzelijsten, de rest van de versie in "Bestand" onderaan. -->
+    {#if isMovie}
+      <CastCrew people={item.people} />
+    {:else if version}
       <VersionPanel {version} />
     {/if}
 
     {#if session.capabilities?.watch_state}<WatchedBy {item} />{/if}
+    {#if isMovie}<FileFacts {item} {version} />{/if}
 
-    {#if item.kind === 'show' || item.kind === 'season'}
+    {#if item.kind === 'season'}
       <section class="section">
         <h2 class="section-h">{childHeading}</h2>
         {#if children.length > 0}<MediaGrid items={children} label={childHeading} />{/if}
@@ -284,6 +315,7 @@
   }
 
   .detail__play :global(.btn) { border-radius: 999px; }
+  .detail__progress { width: min(100%, 420px); height: 4px; accent-color: var(--accent); }
 
   .detail__meta {
     display: flex;
@@ -307,9 +339,7 @@
     align-items: center;
   }
 
-  .detail__line {
-    color: var(--ink-2);
-  }
+  .detail__line { color: var(--ink-2); }
 
   .detail__play {
     display: flex;
@@ -330,13 +360,8 @@
     align-items: baseline;
   }
 
-  .facts__row dt {
-    min-width: 88px;
-  }
-
-  .facts__row dd {
-    margin: 0;
-  }
+  .facts__row dt { min-width: 88px; }
+  .facts__row dd { margin: 0; }
 
   .section {
     display: flex;
@@ -353,9 +378,5 @@
     color: var(--ink);
   }
 
-  @media (max-width: 899px) {
-    .section-h {
-      font-size: 18px;
-    }
-  }
+  @media (max-width: 899px) { .section-h { font-size: 18px; } }
 </style>

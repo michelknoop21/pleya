@@ -55,7 +55,7 @@ function setup(fail: Parameters<typeof userFake>[0]['fail'] = {}) {
 }
 
 async function openCleanup() {
-  render(UserEditor, { props: { id: 'u1' } });
+  render(UserEditor, { props: { id: 'u1', tab: 'devices' } });
   await screen.findByRole('heading', { level: 1 });
   await userEvent.click(screen.getByRole('button', { name: 'Oude toestellen opruimen' }));
   return screen.findByRole('dialog');
@@ -70,7 +70,7 @@ afterEach(() => setLocale('en'));
 describe('oude toestellen opruimen, scherm 27', () => {
   it('toont een toestel zonder naam als Onbekend toestel', async () => {
     setup();
-    render(UserEditor, { props: { id: 'u1' } });
+    render(UserEditor, { props: { id: 'u1', tab: 'devices' } });
     await screen.findByRole('heading', { level: 1 });
     expect(screen.getAllByText('Onbekend toestel')).toHaveLength(2);
     expect(screen.queryByText('Unknown device')).not.toBeInTheDocument();

@@ -13,13 +13,17 @@
   - Nu opnieuw: `POST /jobs/{id}/retry`.
   - Nu scannen bij een bibliotheek waarvan de laatste scan mislukte: dezelfde
     `POST /libraries/{id}/scan` als Alles scannen, voor die ene bibliotheek.
-  Geen van vier vraagt een bevestiging: de northstar tekent er geen, en geen
+  - Nu uitvoeren bij een geplande taak: ook `POST /libraries/{id}/scan`.
+  Onder de kop staan de onderdelen als links (doelbeeld Activiteit): Nu bezig,
+  Geplande taken, Geschiedenis en Log. Het logpaneel leest zelf.
+  Geen van de acties vraagt een bevestiging: de northstar tekent er geen, en geen
   van de drie vernietigt iets dat niet terug te halen is (een afgebroken scan
   begint bij de volgende ronde opnieuw).
 -->
 <script lang="ts">
   import Alert from '../components/Alert.svelte';
   import AdminIcon from '../components/AdminIcon.svelte';
+  import SectionNav from '../components/SectionNav.svelte';
   import SkeletonPage from '../components/SkeletonPage.svelte';
   import StateView from '../components/StateView.svelte';
   import { adminApi } from '../api/admin';
@@ -29,7 +33,9 @@
   import { session } from '../stores/session.svelte';
   import ActivityFailures from './ActivityFailures.svelte';
   import ActivityHistory from './ActivityHistory.svelte';
+  import ActivityLog from './ActivityLog.svelte';
   import ActivityRunning from './ActivityRunning.svelte';
+  import ActivityScheduled from './ActivityScheduled.svelte';
   import AdminPageHead from './AdminPageHead.svelte';
   import LibraryProblemAlert from './LibraryProblemAlert.svelte';
   import {
@@ -38,10 +44,11 @@
     historyRows,
     isLive,
     loadActivity,
-    planScanAll,
     runningItems,
+    scanAll as scanAllLibraries,
     type ActivityData
   } from './activity';
+  import { scheduledRows } from './activitySchedule';
   import type { LibraryProblem } from './libraryErrors';
   import { opsProblem } from './opsErrors';
 
@@ -99,6 +106,19 @@
   });
   const running = $derived(data ? runningItems(data) : []);
   const failures = $derived(data ? failureItems(data) : []);
+  const scheduled = $derived(data ? scheduledRows(data, now) : []);
+  const sections = $derived([
+    {
+      href: '#bezig',
+      label:
+        running.length > 0
+          ? t('admin.act.nav.runningCount', { count: running.length })
+          : t('admin.act.nav.running')
+    },
+    { href: '#gepland', label: t('admin.act.sched.title') },
+    { href: '#geschiedenis', label: t('admin.act.history.title') },
+    { href: '#log', label: t('admin.act.log.title') }
+  ]);
   const rows = $derived(data ? historyRows([...data.scans, ...older], data.libraries, now) : []);
   const moreCursor = $derived(older.length > 0 || olderCursor !== undefined ? olderCursor : data?.next);
 
@@ -141,27 +161,14 @@
     problem = null;
     notice = null;
     scanning = true;
-    const plan = planScanAll(data);
-    let queued = 0;
-    let already = plan.running.length;
-    let firstError: { err: unknown; library: Library } | null = null;
-    const results = await Promise.allSettled(plan.start.map((l) => api.startScan(l.id)));
-    for (const [i, result] of results.entries()) {
-      if (result.status === 'fulfilled') queued += 1;
-      else if (result.reason instanceof ApiError && result.reason.code === 'library.scan_in_progress')
-        already += 1;
-      else if (!firstError) firstError = { err: result.reason, library: plan.start[i]! };
-    }
+    const { message, firstError } = await scanAllLibraries(api, data);
     scanning = false;
-    const parts = [t('admin.act.scanAll.result', { queued })];
-    if (already > 0) parts.push(t('admin.act.scanAll.running', { count: already }));
-    if (plan.skipped.length > 0) parts.push(t('admin.act.scanAll.skipped', { count: plan.skipped.length }));
     if (firstError) {
       const { err, library } = firstError;
       fail(err, library.title, () => void scanAll());
     }
     // Na `fail`, dat de melding wist: wat wel lukte hoort er ook bij te staan.
-    notice = parts.join(' ');
+    notice = message;
     // Ook bij een gedeeltelijke mislukking: wat wel in de wachtrij staat moet zichtbaar zijn.
     tick += 1;
   }
@@ -243,8 +250,11 @@
 {/if}
 
 {#if data}
+  <SectionNav label={t('admin.act.nav.label')} items={sections} />
   <div class="stack">
-    <ActivityRunning items={running} {now} {stopping} onstop={(j, n) => void stop(j, n)} />
+    <div id="bezig" class="anchor">
+      <ActivityRunning items={running} {now} {stopping} onstop={(j, n) => void stop(j, n)} />
+    </div>
     <ActivityFailures
       items={failures}
       {retrying}
@@ -253,7 +263,13 @@
       onscan={(l) => void scanLibrary(l)}
       {now}
     />
-    <ActivityHistory {rows} more={Boolean(moreCursor)} {loadingMore} onmore={() => void more()} />
+    <div id="gepland" class="anchor">
+      <ActivityScheduled rows={scheduled} scanning={scanningLibrary} onscan={(l) => void scanLibrary(l)} />
+    </div>
+    <div id="geschiedenis" class="anchor">
+      <ActivityHistory {rows} more={Boolean(moreCursor)} {loadingMore} onmore={() => void more()} />
+    </div>
+    <div id="log" class="anchor"><ActivityLog /></div>
   </div>
 {:else if failure}
   <StateView kind="error" message={failure} onRetry={() => (attempt += 1)} />
@@ -269,6 +285,12 @@
   .stack {
     display: grid;
     gap: 16px;
+  }
+
+  /* De links onder de kop springen hierheen; de kop van de schil blijft erboven vrij. */
+  .anchor {
+    min-width: 0;
+    scroll-margin-top: 80px;
   }
 
   /* Onder 900 over de volle breedte, zoals 25@393 de knop tekent. */

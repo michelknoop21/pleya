@@ -24,4 +24,17 @@ export const webCatalogNl = {
   'catalog.newEpisodes': 'Nieuwe afleveringen',
   'catalog.recentlyWatched': 'Onlangs bekeken',
   'catalog.chooseLibrary': 'Kies een bibliotheek om de volledige catalogus te bekijken.',
+  // Filmdetail (C-05).
+  'detail.endsAt': 'klaar om {time}',
+  'detail.progress': '{percent}% gekeken',
+  'detail.moreActions': 'Meer acties',
+  'detail.chooseArtwork': 'Poster en achtergrond kiezen',
+  'detail.castCrew': 'Cast en crew',
+  'detail.actor': 'Acteur',
+  'detail.file': 'Bestand',
+  'detail.file.format': 'Formaat',
+  'detail.file.source': 'Bron',
+  'detail.tracks.remembered': 'De keuze voor audio en ondertitels wordt voor deze titel onthouden.',
+  'detail.tracks.once': 'De keuze voor audio en ondertitels geldt alleen voor de eerstvolgende keer afspelen.',
+  'detail.tracks.notInBrowser': 'Deze ondertitel moet eerst omgezet worden en verschijnt in deze browser nog niet.',
 };

@@ -31,7 +31,7 @@ const labels = () => screen.getAllByRole('menuitem').map((el) => el.textContent?
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.setWatched.mockResolvedValue({});
+  h.setWatched.mockImplementation(async (_id: string, watched: boolean) => ({ watched }));
   h.setFavorite.mockResolvedValue(undefined);
   h.clearMetadataMatch.mockResolvedValue({});
 });

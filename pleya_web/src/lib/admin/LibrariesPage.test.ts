@@ -136,6 +136,15 @@ describe('scherm 21, bibliotheken', () => {
     expect(await screen.findByText('Oud is verwijderd. De bestanden op schijf zijn niet aangeraakt.')).toBeInTheDocument();
   });
 
+  it('zegt na het toevoegen of de eerste scan in de wachtrij staat of niet startte', async () => {
+    setup();
+    const first = render(LibrariesPage, { props: { added: 'Docu', firstScan: 'queued' } });
+    expect(await screen.findByText('Docu is toegevoegd. De eerste scan staat in de wachtrij.')).toBeInTheDocument();
+    first.unmount();
+    render(LibrariesPage, { props: { added: 'Docu', firstScan: 'failed' } });
+    expect(await screen.findByText(/Docu is toegevoegd, maar de scan starten lukte niet/)).toBeInTheDocument();
+  });
+
   it('geeft een foutstaat met opnieuw proberen als de lijst niet laadt', async () => {
     setup({ 'GET /storage/roots': apiError('server.internal', 500) });
     render(LibrariesPage);
