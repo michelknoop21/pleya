@@ -257,6 +257,8 @@ func run() int {
 	// opruimronde in housekeeping, zodat de bewaartermijn op één plek staat.
 	auditStore := audit.NewStore(pool)
 
+	// De planning van de periodieke scans, zichtbaar in GET /libraries.
+	plan := &scanPlan{}
 	workers := &sync.WaitGroup{}
 	workers.Add(5)
 	apns, err := push.OpenAPNs(cfg.APNsConfig, cfg.ConfigDir)
@@ -285,7 +287,7 @@ func run() int {
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
 	go func() {
 		defer workers.Done()
-		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, logging.Component(log, "scanner"))
+		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, plan, logging.Component(log, "scanner"))
 	}()
 	go func() {
 		defer workers.Done()
@@ -354,8 +356,10 @@ func run() int {
 		Downloads:          downloadStore,
 		Metrics:            reg,
 		MediaRoots:         cfg.MediaDirs,
+		MediaDelete:        mediaDeleteRoots(cfg, log),
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
+		NextScanAt:         plan.at,
 		MetadataProvider:   metadataProvider,
 		Artwork:            resizer,
 		Jobs:               runner,
@@ -505,6 +509,29 @@ func reportMedia(cfg *config.Config, log *slog.Logger) {
 			log.Info("mediamount gereed", slog.Any("mount", info))
 		}
 	}
+}
+
+// mediaDeleteRoots meet bij het opstarten waar DELETE /items/{id} mag wissen
+// (DEC-XXX, media verwijderen). Zonder PLEYA_SERVER_ALLOW_MEDIA_DELETE nil: de
+// functie bestaat dan niet. Met de variabele en geen enkele schrijfbare root
+// een lege, niet-nil lijst: aangezet, maar de mounts staan op :ro.
+func mediaDeleteRoots(cfg *config.Config, log *slog.Logger) []string {
+	if !cfg.AllowMediaDelete {
+		return nil
+	}
+	writable, readOnly := catalog.WritableRoots(cfg.MediaDirs)
+	for _, dir := range readOnly {
+		log.Warn("media verwijderen staat aan, maar deze mediaroot is niet schrijfbaar; hier wist de server niets",
+			slog.String("dir", dir))
+	}
+	for _, dir := range writable {
+		log.Warn("media verwijderen staat aan: een beheerder kan bestanden onder deze root wissen",
+			slog.String("dir", dir))
+	}
+	if writable == nil {
+		writable = []string{}
+	}
+	return writable
 }
 
 // runHealthcheck is het subcommando dat de container-HEALTHCHECK aanroept. De

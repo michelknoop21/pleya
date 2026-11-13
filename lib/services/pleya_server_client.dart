@@ -59,6 +59,7 @@ import '../utils/external_ids.dart';
 import '../utils/language_codes.dart';
 import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
+import '../utils/watch_state_notifier.dart';
 import 'pleya_subtitle_fetcher.dart';
 import 'api_cache.dart';
 import 'cached_playback_metadata_service.dart';
@@ -91,6 +92,7 @@ part 'pleya_server_client/parts/memory.dart';
 part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
+part 'pleya_server_client/parts/media_delete.dart';
 part 'pleya_server_client/parts/verify_detail.dart';
 part 'pleya_server_client/parts/companion.dart';
 
@@ -135,6 +137,7 @@ class PleyaServerClient
         _PleyaServerDownloadMethods,
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
+        _PleyaServerMediaDeleteMethods,
         _PleyaVerifyDetailMethods,
         ServerAuthorityGuard
     implements

@@ -54,6 +54,19 @@ class PleyaFakeServer {
   /// without it refuses `copy` whole: `WatchStateEvent` is a closed schema.
   bool watchStateCopyCapability = false;
 
+  /// Whether `/info` advertises `watch_state_tree` and
+  /// `POST /items/{id}/watch-state` exists. Off by default, like a server from
+  /// before DEC-XXX (drie servergaten).
+  bool watchStateTreeCapability = false;
+
+  /// Whether `/info` advertises `scan_schedule`; the planned moment itself is
+  /// `next_scan_at` on each library map.
+  bool scanScheduleCapability = false;
+
+  /// Every `POST /items/{id}/watch-state` this server received: the item id and
+  /// the body as sent.
+  final List<({String itemId, Map<String, dynamic> body})> watchTreeEvents = [];
+
   /// The session that holds each title. `playback_started` and the explicit
   /// actions take it, which is rule 5: a mark ignores whoever is watching. A copy
   /// reads it, the way `watch.Decide` refuses one on any live lease.
@@ -181,6 +194,10 @@ class PleyaFakeServer {
   /// envelope, without recording the event. Reads (the 5xx regression of
   /// backlog 24.3) need a write that fails fast, not a timeout.
   int? watchStateFailureStatus;
+
+  /// `POST /watch-state` for these item ids answers 500, the rest as usual: a
+  /// failure halfway through a client that marks one item at a time.
+  final Set<String> watchStateFailingItems = {};
 
   /// While set, `POST /watch-state` answers 200 with this body as it stands. A
   /// proxy or a broken build can do that, and it says nothing about the write.
@@ -402,6 +419,9 @@ class PleyaFakeServer {
     watchStates.clear();
     ownedByThisSession = true;
     watchStateCopyCapability = false;
+    watchStateTreeCapability = false;
+    scanScheduleCapability = false;
+    watchTreeEvents.clear();
     watchLeases.clear();
     filtersCapability = false;
     playbackPlanCapability = false;
@@ -445,6 +465,7 @@ class PleyaFakeServer {
     planRequests.clear();
     sessionCalls.clear();
     watchStateFailureStatus = null;
+    watchStateFailingItems.clear();
     watchStateRawAnswer = null;
     usersCapability = false;
     adminJobs.clear();
@@ -982,10 +1003,43 @@ class PleyaFakeServer {
     }
     if (downloadsCapability && path.startsWith('/downloads')) return _downloads(request, path);
 
+    final tree = RegExp(r'^/items/([^/]+)/watch-state$').firstMatch(path);
+    if (tree != null && request.method == 'POST') {
+      if (!watchStateTreeCapability) return _json(_error('library.not_found'), status: 404);
+      final itemId = Uri.decodeComponent(tree.group(1)!);
+      if (!items.containsKey(itemId)) return _json(_error('library.not_found'), status: 404);
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      watchTreeEvents.add((itemId: itemId, body: body));
+      final ids = <String>[itemId];
+      for (var i = 0; i < ids.length; i++) {
+        ids.addAll(children[ids[i]] ?? const <String>[]);
+      }
+      final watched = body['explicit_action'] == 'mark_watched';
+      return _json({
+        'items': [
+          for (final id in ids)
+            {
+              'item_id': id,
+              'state': watchStates[id] = {
+                'position_ms': 0,
+                'watched': watched,
+                // mark_unwatched leaves the count, as the real server does.
+                'play_count': watched && ((watchStates[id]?['play_count'] as int?) ?? 0) == 0
+                    ? 1
+                    : (watchStates[id]?['play_count'] as int?) ?? 0,
+                'updated_at': '2026-08-21T20:00:00Z',
+                'revision': ((watchStates[id]?['revision'] as int?) ?? 0) + 1,
+              },
+            },
+        ],
+      });
+    }
+
     if (path == '/watch-state' && request.method == 'POST') {
       final failure = watchStateFailureStatus;
       if (failure != null) return _json(_error('server.internal'), status: failure);
       final event = jsonDecode(request.body) as Map<String, dynamic>;
+      if (watchStateFailingItems.contains(event['item_id'])) return _json(_error('server.internal'), status: 500);
       watchEvents.add(event);
       final raw = watchStateRawAnswer;
       if (raw != null) return http.Response(raw, 200, headers: {'content-type': 'application/json'});
@@ -1265,6 +1319,8 @@ class PleyaFakeServer {
       if (assistantMemoryCapability) 'assistant_memory': true,
       'watch_state_ownership': watchStateOwnership,
       if (watchStateCopyCapability) 'watch_state_copy': true,
+      if (watchStateTreeCapability) 'watch_state_tree': true,
+      if (scanScheduleCapability) 'scan_schedule': true,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
       if (reportsExternalIds) 'external_id_lookup': true,

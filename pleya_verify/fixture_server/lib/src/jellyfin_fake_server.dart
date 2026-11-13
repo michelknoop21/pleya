@@ -16,6 +16,8 @@ class JellyfinFakeMovie {
     this.officialRating,
     this.runTimeMinutes = 100,
     this.releasedDaysAgo,
+    this.tmdbId,
+    this.type = 'Movie',
   });
 
   final String id;
@@ -32,12 +34,20 @@ class JellyfinFakeMovie {
   /// 90-day window. Null keeps the year's fixed date.
   final int? releasedDaysAgo;
 
+  /// `ProviderIds.Tmdb`: what lets the app put this title on one card with the
+  /// same title on another server.
+  final int? tmdbId;
+
+  /// `Movie`, or `Series` for an entry of [JellyfinFakeServer.shows].
+  final String type;
+
   Map<String, Object?> toJson(String serverId) => {
     'Id': id,
     'ServerId': serverId,
     'Name': title,
     'SortName': title.toLowerCase(),
-    'Type': 'Movie',
+    'Type': type,
+    if (tmdbId != null) 'ProviderIds': {'Tmdb': '$tmdbId'},
     'ProductionYear': year,
     'PremiereDate': releasedDaysAgo == null
         ? '$year-06-01T00:00:00.0000000Z'
@@ -64,8 +74,29 @@ class JellyfinFakeServer {
   static const serverId = 'verify-jellyfin';
   static const userId = 'verify-jellyfin-user';
   static const libraryId = 'verify-jellyfin-movies';
+  static const showsLibraryId = 'verify-jellyfin-shows';
 
   final List<JellyfinFakeMovie> movies = [];
+
+  /// Series, in their own library. Empty keeps the single Movies library the
+  /// older scenarios were written on.
+  final List<JellyfinFakeMovie> shows = [];
+
+  /// `Policy.IsAdministrator` of the signed-in user. Off by default: only a
+  /// scenario about server management makes the user an administrator.
+  bool administrator = false;
+
+  /// Every `DELETE /Items/{id}` the app sent, in order. The item leaves the
+  /// library, as it does on a real server.
+  final List<String> deletes = [];
+
+  void reset() {
+    movies.clear();
+    shows.clear();
+    administrator = false;
+    deletes.clear();
+    itemQueries.clear();
+  }
 
   /// Every `/Items` query, for a test that wants to see what the app asked for.
   final List<Map<String, String>> itemQueries = [];
@@ -87,17 +118,38 @@ class JellyfinFakeServer {
         'User': {
           'Id': userId,
           'Name': 'verify-owner',
-          'Policy': {'IsAdministrator': false},
+          'Policy': {'IsAdministrator': administrator},
         },
       });
+    }
+    if (path == '/Users/$userId' || path == '/Users/Me') {
+      return _json({
+        'Id': userId,
+        'Name': 'verify-owner',
+        'Policy': {'IsAdministrator': administrator},
+      });
+    }
+    if (request.method == 'DELETE' && path.startsWith('/Items/')) {
+      final id = Uri.decodeComponent(path.substring('/Items/'.length));
+      final before = movies.length + shows.length;
+      movies.removeWhere((m) => m.id == id);
+      shows.removeWhere((m) => m.id == id);
+      if (movies.length + shows.length == before) return http.Response('', 404);
+      deletes.add(id);
+      return http.Response('', 204);
     }
     if (path == '/Users/$userId/Views' || path == '/UserViews') {
       return _list([
         {'Id': libraryId, 'Name': 'Movies', 'CollectionType': 'movies', 'Type': 'CollectionFolder'},
+        if (shows.isNotEmpty)
+          {'Id': showsLibraryId, 'Name': 'Shows', 'CollectionType': 'tvshows', 'Type': 'CollectionFolder'},
       ]);
     }
     if (path == '/Items' && request.url.queryParameters['ParentId'] == libraryId) {
-      return _items(request.url.queryParameters);
+      return _items(request.url.queryParameters, movies);
+    }
+    if (path == '/Items' && request.url.queryParameters['ParentId'] == showsLibraryId) {
+      return _items(request.url.queryParameters, shows);
     }
     // Latest answers with a bare array, not an Items wrapper. Only dated films:
     // the other catalogs keep the empty Home their scenarios were written on.
@@ -120,7 +172,7 @@ class JellyfinFakeServer {
     return _list(const []);
   }
 
-  http.Response _items(Map<String, String> query) {
+  http.Response _items(Map<String, String> query, List<JellyfinFakeMovie> movies) {
     itemQueries.add(query);
     // Both are lists, as on Jellyfin: a key without an order of its own takes the
     // first one (measured on 12.4.0), so one value runs the SortName behind the

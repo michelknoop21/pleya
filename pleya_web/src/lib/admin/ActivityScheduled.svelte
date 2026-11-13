@@ -49,6 +49,12 @@
             <dt>{t('admin.act.sched.schedule')}</dt>
             <dd>{row.schedule}</dd>
           </dl>
+          {#if row.next !== undefined}
+            <dl class="fact">
+              <dt>{t('admin.act.sched.next')}</dt>
+              <dd>{row.next ?? t('admin.act.sched.noNext')}</dd>
+            </dl>
+          {/if}
           <dl class="fact">
             <dt>{t('admin.act.sched.last')}</dt>
             <dd><StatusPill variant="dot" tone={row.lastTone} label={row.last} /></dd>

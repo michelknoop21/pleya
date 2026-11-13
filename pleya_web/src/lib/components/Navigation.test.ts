@@ -15,6 +15,9 @@ const caps: Capabilities = {
   metadata_search: false,
   metadata_overrides: false,
   library_maintenance: false,
+  watch_state_tree: false,
+  item_metadata_refresh: false,
+  scan_schedule: false,
   artwork_choices: false,
   assistant_memory: false,
   browse: true,
@@ -51,6 +54,7 @@ const caps: Capabilities = {
   cookie_auth: false,
   cookie_upgrade: false,
   administration: false,
+  media_delete: false,
   mcp: false
 };
 const items = navItems(caps, [

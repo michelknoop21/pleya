@@ -106,7 +106,7 @@
   });
   const running = $derived(data ? runningItems(data) : []);
   const failures = $derived(data ? failureItems(data) : []);
-  const scheduled = $derived(data ? scheduledRows(data, now) : []);
+  const scheduled = $derived(data ? scheduledRows(data, now, session.capabilities?.scan_schedule === true) : []);
   const sections = $derived([
     {
       href: '#bezig',

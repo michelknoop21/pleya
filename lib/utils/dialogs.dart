@@ -40,6 +40,7 @@ Future<bool> showConfirmDialog(
   String? cancelText,
   bool isDestructive = false,
   String? confirmAutomationId,
+  String? cancelAutomationId,
 }) async {
   final confirmed = await showScopedDialog<bool>(
     context: context,
@@ -52,10 +53,14 @@ Future<bool> showConfirmDialog(
           FocusableButton(
             autofocus: true,
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              style: TextButton.styleFrom(padding: _buttonPadding),
-              child: Text(cancelText ?? t.common.cancel),
+            child: AutomationNode(
+              id: cancelAutomationId,
+              role: 'button',
+              child: TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                style: TextButton.styleFrom(padding: _buttonPadding),
+                child: Text(cancelText ?? t.common.cancel),
+              ),
             ),
           ),
           FocusableButton(
@@ -260,6 +265,8 @@ Future<bool> showDeleteConfirmation(
   required String title,
   required String message,
   String? confirmText,
+  String? confirmAutomationId,
+  String? cancelAutomationId,
 }) {
   return showConfirmDialog(
     context,
@@ -267,6 +274,8 @@ Future<bool> showDeleteConfirmation(
     message: message,
     confirmText: confirmText ?? t.common.delete,
     isDestructive: true,
+    confirmAutomationId: confirmAutomationId,
+    cancelAutomationId: cancelAutomationId,
   );
 }
 

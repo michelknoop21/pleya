@@ -45,6 +45,12 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
   /// Kept in step with `watch.WatchedFraction` on the server side.
   static const double _watchedFraction = 0.9;
 
+  /// From the browse methods; marking a season or show on an older server
+  /// walks them.
+  Future<List<MediaItem>> fetchPlayableDescendants(String parentId);
+  Future<List<MediaItem>> fetchChildren(String parentId);
+  String get scopedServerId;
+
   // ---------------------------------------------------------------------------
   // Direct play
   // ---------------------------------------------------------------------------
@@ -720,7 +726,14 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
   // ---------------------------------------------------------------------------
 
   /// Mark watched. Ignores another device's lease, by rule 5.
-  Future<void> markWatched(MediaItem item) async => _markWatched(item);
+  ///
+  /// A season or show is marked with everything below it: the server keeps no
+  /// state that rolls up from episodes, so a mark on the container alone left
+  /// every episode unwatched.
+  Future<void> markWatched(MediaItem item) async {
+    if (_isContainer(item)) return _markTree(item, 'mark_watched');
+    await _markWatched(item);
+  }
 
   Future<PleyaUserState?> _markWatched(MediaItem item) => _applyWatchState(
     itemId: item.id,
@@ -730,12 +743,65 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
     action: 'mark_watched',
   );
 
-  Future<void> markUnwatched(MediaItem item) async => _applyWatchState(
+  Future<void> markUnwatched(MediaItem item) async {
+    if (_isContainer(item)) return _markTree(item, 'mark_unwatched');
+    await _markUnwatched(item);
+  }
+
+  Future<PleyaUserState?> _markUnwatched(MediaItem item) => _applyWatchState(
     itemId: item.id,
     sessionId: _watchLedger.sessionFor(item.id, _mintSessionId),
     position: Duration.zero,
     action: 'mark_unwatched',
   );
+
+  bool _isContainer(MediaItem item) => item.kind == MediaKind.season || item.kind == MediaKind.show;
+
+  /// Marks [container] and every season and episode below it.
+  ///
+  /// With `watch_state_tree` that is one request the server applies in one
+  /// transaction, and every revision in the answer goes into the ledger like a
+  /// single mark's does. An older server has no such route; there the episodes
+  /// are marked one at a time, then a show's seasons, then the container
+  /// itself, which is what the app used to send on its own.
+  Future<void> _markTree(MediaItem container, String action) async {
+    if (!wireCapabilities.watchState) return;
+    if (wireCapabilities.watchStateTree) {
+      final json = await _postJson('/items/${container.id}/watch-state', {
+        'session_id': _watchLedger.sessionFor(container.id, _mintSessionId),
+        'explicit_action': action,
+      });
+      if (json == null) return;
+      try {
+        for (final entry in PleyaWatchStateEntry.pageFromJson(json)) {
+          _watchLedger.remember(entry.itemId, entry.state.revision);
+        }
+      } on PleyaWireFormatException catch (e) {
+        appLogger.w('PleyaServerClient: watch-state tree answer did not match the contract', error: e);
+      }
+      return;
+    }
+    final watched = action == 'mark_watched';
+    final seasons = container.kind == MediaKind.show
+        ? (await fetchChildren(container.id)).where((child) => child.kind == MediaKind.season).toList()
+        : const <MediaItem>[];
+    final items = [...await fetchPlayableDescendants(container.id), ...seasons, container];
+    final done = <MediaItem>[];
+    try {
+      for (final item in items) {
+        await (watched ? _markWatched(item) : _markUnwatched(item));
+        done.add(item);
+      }
+    } catch (_) {
+      // The caller announces the whole tree only on success. What did land
+      // before the failure is announced here, so the screen does not keep
+      // showing it the old way.
+      for (final item in done) {
+        WatchStateNotifier().notifyWatched(item: item, isNowWatched: watched, cacheServerId: scopedServerId);
+      }
+      rethrow;
+    }
+  }
 
   /// Hide from Continue Watching.
   ///

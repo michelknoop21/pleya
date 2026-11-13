@@ -10,8 +10,10 @@
   import { t } from '../i18n';
   import { session } from '../stores/session.svelte.js';
   import ActionMenu from './lists/ActionMenu.svelte';
+  import { canRefreshMetadata, refreshMetadata } from './refreshMetadata';
 
   let { item }: { item: Pick<Item, 'id'> } = $props();
+  let message = $state('');
 
   const actions = $derived.by(() => {
     if (!session.canAdminister) return [];
@@ -24,6 +26,9 @@
     if (caps?.artwork_choices === true) {
       list.push({ label: t('detail.chooseArtwork'), onselect: () => void goto(`/admin/metadata/edit${query}#artwork`) });
     }
+    if (canRefreshMetadata()) {
+      list.push({ label: t('detail.refreshMetadata'), onselect: () => void refreshMetadata(item.id).then(text => (message = text)) });
+    }
     return list;
   });
 </script>
@@ -31,3 +36,12 @@
 {#if actions.length > 0}
   <ActionMenu label={t('detail.moreActions')} {actions} />
 {/if}
+{#if message}<p class="refresh-note" role="status">{message}</p>{/if}
+
+<style>
+  .refresh-note {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+</style>

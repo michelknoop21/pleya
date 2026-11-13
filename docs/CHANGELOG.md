@@ -4,6 +4,25 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-11-13] CI: Unit Tests in vier shards, Verify per platform op een eigen runner
+
+Twee checks bepaalden de wachttijd van elke PR: `Unit Tests` met één `flutter test` van 26 tot 28
+minuten, en `Verify - macOS + iOS simulator` met drie scenario's na elkaar in 28 minuten (gemeten
+op #690, #692 en #693).
+
+- `Unit Tests` draait als vier shards, per testbestand verdeeld (gesorteerd, om en om). Gemeten op
+  #697: 7 tot 9 minuten per shard. De som over de shards is gelijk aan één run op main: 14713
+  tests geslaagd, 246 overgeslagen.
+- `--total-shards` van `flutter test` bleek ongeschikt: elke shard laadde toch alle 1138
+  testbestanden (17 minuten voor een kwart van de tests), en een test die op een eerdere test in
+  hetzelfde bestand leunt faalde.
+- `Verify` draait macOS en de iOS-simulator op een eigen runner: 8 en 17 minuten. De twee
+  iOS-scenario's blijven samen en in volgorde. Los op een eigen runner faalde
+  `ios.unified.artwork-fallback` op zijn catalogus-assert; of dat aan volgorde of aan een koude
+  simulator ligt is niet uitgezocht.
+- De checknamen hebben nu een achtervoegsel per poot. Main heeft geen required checks, dus niets
+  wacht op de oude namen.
+
 ## [2026-10-31] Unified: één titel over servers heen
 
 Een serie wisselde mee met de gekozen bron en voortgang op de ene server bestond op de andere niet.

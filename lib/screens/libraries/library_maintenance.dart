@@ -9,6 +9,8 @@ import '../../media/media_server_client.dart';
 import '../../media/server_administration.dart';
 import '../../services/multi_server_manager.dart';
 import '../../services/plex_client.dart';
+import '../../i18n/strings.g.dart';
+import '../../utils/formatters.dart';
 
 enum LibraryMaintenance { scan, analyze, refreshMetadata, emptyTrash }
 
@@ -47,3 +49,46 @@ Future<void> runLibraryMaintenance(MediaServerClient client, LibraryMaintenance 
       LibraryMaintenance.refreshMetadata => client.refreshLibraryMetadata(libraryId),
       LibraryMaintenance.emptyTrash => (client as LibraryTrashClient).emptyLibraryTrash(libraryId),
     };
+
+/// One scan question at a time per screen. Choosing Scan again while the
+/// planned time is still being read gets null, so a double tap does not stack
+/// two dialogs.
+class ScanQuestion {
+  bool _asking = false;
+
+  Future<String?> ask(MediaServerClient? client, MediaLibrary library, {required bool is24Hour}) async {
+    if (_asking) return null;
+    _asking = true;
+    try {
+      return await scanConfirmation(client, library, is24Hour: is24Hour);
+    } finally {
+      _asking = false;
+    }
+  }
+}
+
+/// How long the scan question waits for the planned time before it goes out
+/// without it.
+const scanScheduleTimeout = Duration(seconds: 2);
+
+/// The scan confirmation for [library], with the next scan the server has
+/// planned when it reports one (Pleya Server, Jellyfin and Emby; Plex keeps
+/// only its interval). A server that cannot say, or a read that fails, leaves
+/// the question as it was.
+Future<String> scanConfirmation(MediaServerClient? client, MediaLibrary library, {required bool is24Hour}) async {
+  final ask = t.libraries.scanLibraryConfirm(title: library.title);
+  DateTime? next;
+  // ignore: avoid-unrelated-type-assertions
+  if (client case final LibraryScanScheduleClient schedule) {
+    try {
+      next = await schedule.nextLibraryScan(library.id).timeout(scanScheduleTimeout);
+    } catch (_) {
+      // The planned time is a courtesy next to the question, not a reason to
+      // block the scan the user asked for.
+    }
+  }
+  if (next == null) return ask;
+  final local = next.toLocal();
+  final time = '${formatRelativeDayLabel(local)} ${formatClockTime(local, is24Hour: is24Hour)}';
+  return '$ask\n\n${t.libraries.nextScheduledScan(time: time)}';
+}
