@@ -216,6 +216,7 @@ Future<AssistantToolOutcome> _requestCard(
         };
       }
       _requestLive(ctx, client);
+      ctx.requestedSeerrIds.add('${shown.mediaType}:${shown.tmdbId}');
       final base = <String, Object?>{
         'accepted': true,
         'title': subject,

@@ -198,6 +198,10 @@ class AssistantToolContext {
   /// by name. The answer must say so; Pleya adds the line when it does not.
   final Set<String> offlineSeen = {};
 
+  /// Seerr ids (`tv:95396`) this ask sent a request for. Their cards show
+  /// "requested" from then on, not the state from before the request.
+  final Set<String> requestedSeerrIds = {};
+
   /// The region whose age ratings count (`NL`); the device's by default.
   final String Function() region;
 

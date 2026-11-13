@@ -471,6 +471,31 @@ extension _AssistantAnswer on AssistantRun {
     return (index: index, display: display, current: current);
   }
 
+  /// A card of a title this ask requested says "requested": the card was
+  /// built before the request and would still offer it (BP-12).
+  void _markRequested() {
+    final sent = _ctx.requestedSeerrIds;
+    if (sent.isEmpty) return;
+    AssistantRequestOption mark(AssistantRequestOption o) => !sent.contains(o.seerrId) || o.status != 'not_requested'
+        ? o
+        : AssistantRequestOption(
+            seerrId: o.seerrId,
+            title: o.title,
+            kind: o.kind,
+            posterUrl: o.posterUrl,
+            overview: o.overview,
+            status: 'requested',
+            year: o.year,
+            facts: o.facts,
+          );
+    for (var i = 0; i < _displays.length; i++) {
+      final d = _displays[i];
+      if (d is AssistantRequestOptions) {
+        _displays[i] = AssistantRequestOptions(d.context, [for (final o in d.options) mark(o)]);
+      }
+    }
+  }
+
   /// One card per title across the grids of a run: a later search that finds
   /// a title an earlier grid already shows does not show it again. Inside one
   /// grid nothing is removed (the same title on two servers is that grid's

@@ -9,6 +9,7 @@ extension _AssistantResult on AssistantRun {
     // limit) names nothing: its picks were never shown.
     _displays.removeWhere(_pickGrids.contains);
     _dedupeGrids();
+    _markRequested();
     final evidenceContext = _ctx;
     final namedTitlesCurrent = _namedTitlesCurrent;
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);

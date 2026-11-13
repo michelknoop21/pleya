@@ -49,6 +49,15 @@ void main() {
     expect(gone.any((v) => v.startsWith('state:')), isTrue, reason: '$gone');
   });
 
+  test('after a sent request the card says requested; after a refused one it still offers it', () async {
+    String status(Map record) =>
+        ((((record['turns'] as List).last as Map)['displays'] as List).first as Map)['cards'][0]['status'] as String;
+    final yes = _case('task-request-yes');
+    expect(status(evalRecord(yes, await _run(yes), model: 's', attempt: 1)), 'requested');
+    final no = _case('task-request-no');
+    expect(status(evalRecord(no, await _run(no), model: 's', attempt: 1)), 'not_requested');
+  });
+
   test('the record carries what the user sees and the world after the turn', () async {
     final c = _case('task-request-yes');
     final record = evalRecord(c, await _run(c), model: 'scripted', attempt: 1);
