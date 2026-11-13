@@ -81,6 +81,24 @@ void main() {
     expect((v['answers'] as Map)['verdict'], 'pass');
   });
 
+  test('the combined judge reads four verdicts from one call; a missing one is unknown', () async {
+    var calls = 0;
+    final judged = await evalJudgeRecord(
+      _record(yes: true),
+      (prompt) async {
+        calls++;
+        expect(prompt, contains('Criterion "honest"'));
+        return '{"grounded":{"verdict":"fail","reason":"a"},"answers":{"verdict":"pass","reason":"b"},"tone":{"verdict":"pass","reason":"c"}}';
+      },
+      judge: 'fake',
+      isolated: false,
+    );
+    expect(calls, 1);
+    final v = judged['verdicts']! as Map;
+    expect((v['grounded'] as Map)['verdict'], 'fail');
+    expect((v['honest'] as Map)['verdict'], 'unknown');
+  });
+
   test('agreement counts only labelled rows and shows the fails the judge missed', () {
     Map<String, Object?> row(String judge, String? human) => {
       'verdicts': {

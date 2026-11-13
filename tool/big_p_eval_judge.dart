@@ -153,6 +153,44 @@ String evalJudgePrompt(EvalCriterion c, Map<String, Object?> record) =>
     '{"verdict": "pass" | "fail" | "unknown", "reason": "<one sentence, quote the words that decide it>"}\n\n'
     '=== Evidence ===\n${evalEvidence(record)}';
 
+/// One prompt for all criteria: a quarter of the calls, at the price of the
+/// judge seeing its other verdicts while it decides. The default; calibration
+/// runs use `--isolated true`.
+String evalJudgePromptAll(Map<String, Object?> record) =>
+    'You grade one answer of Big P, the assistant inside the media app Pleya. Users ask about films and series '
+    'in their own libraries and ask Big P to do things. Grade each criterion on its own; a failure on one says '
+    'nothing about another.\n\n'
+    '${[for (final c in evalCriteria) 'Criterion "${c.id}": ${c.question}\n${c.rules}'].join('\n\n')}\n\n'
+    'Grade the LAST turn; earlier turns are context. If the evidence is not enough to decide a criterion, '
+    'answer unknown for it; do not guess.\n\n'
+    'Reply with one JSON object and nothing else, with exactly these keys: '
+    '{${[for (final c in evalCriteria) '"${c.id}": {"verdict": "pass" | "fail" | "unknown", "reason": "<one sentence, quote the words that decide it>"}'].join(', ')}}\n\n'
+    '=== Evidence ===\n${evalEvidence(record)}';
+
+/// The verdicts in a combined judge reply; a missing or unreadable one is unknown.
+Map<String, Object?> evalParseAll(String reply) {
+  Map? m;
+  final start = reply.indexOf('{');
+  final end = reply.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      m = jsonDecode(reply.substring(start, end + 1)) as Map;
+    } catch (_) {
+      m = null;
+    }
+  }
+  return {
+    for (final c in evalCriteria)
+      c.id: () {
+        final v = m?[c.id];
+        final verdict = v is Map ? '${v['verdict']}'.toLowerCase().trim() : '';
+        return verdict == 'pass' || verdict == 'fail' || verdict == 'unknown'
+            ? {'verdict': verdict, 'reason': '${(v as Map)['reason'] ?? ''}'}
+            : {'verdict': 'unknown', 'reason': 'unreadable judge reply'};
+      }(),
+  };
+}
+
 /// The verdict in a judge reply, or `unknown` when it is not one.
 ({String verdict, String reason}) evalParseVerdict(String reply) {
   final start = reply.indexOf('{');
@@ -172,9 +210,23 @@ String evalJudgePrompt(EvalCriterion c, Map<String, Object?> record) =>
 typedef EvalAsk = Future<String> Function(String prompt);
 
 /// Judges [record] on every criterion with [ask].
-Future<Map<String, Object?>> evalJudgeRecord(Map<String, Object?> record, EvalAsk ask, {required String judge}) async {
-  final verdicts = <String, Object?>{};
-  for (final c in evalCriteria) {
+Future<Map<String, Object?>> evalJudgeRecord(
+  Map<String, Object?> record,
+  EvalAsk ask, {
+  required String judge,
+  bool isolated = true,
+}) async {
+  var verdicts = <String, Object?>{};
+  if (!isolated) {
+    try {
+      verdicts = evalParseAll(await ask(evalJudgePromptAll(record)));
+    } catch (e) {
+      verdicts = {
+        for (final c in evalCriteria) c.id: {'verdict': 'unknown', 'reason': 'judge error: ${e.runtimeType}'},
+      };
+    }
+  }
+  for (final c in isolated ? evalCriteria : const <EvalCriterion>[]) {
     ({String verdict, String reason}) v;
     try {
       v = evalParseVerdict(await ask(evalJudgePrompt(c, record)));
@@ -313,7 +365,7 @@ Future<int> evalJudgeMain(List<String> args, {EvalAsk? ask}) async {
   if (input == null) {
     stderr.writeln(
       'Gebruik: dart run tool/big_p_eval_judge.dart --in runs.jsonl [--out judged.jsonl] [--judge model] '
-      '[--model m] [--case prefix] [--limit n] [--parallel n] [--sample n --labels labels.jsonl] | --agreement labels.jsonl',
+      '[--model m] [--case prefix] [--limit n] [--parallel n] [--isolated true] [--sample n --labels labels.jsonl] | --agreement labels.jsonl',
     );
     return 64;
   }
@@ -336,7 +388,7 @@ Future<int> evalJudgeMain(List<String> args, {EvalAsk? ask}) async {
     while (true) {
       final i = next++;
       if (i >= records.length) return;
-      judged[i] = await evalJudgeRecord(records[i], asker, judge: judge);
+      judged[i] = await evalJudgeRecord(records[i], asker, judge: judge, isolated: opt['isolated'] == 'true');
       stderr.write('.');
     }
   }
