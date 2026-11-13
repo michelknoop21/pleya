@@ -1576,12 +1576,46 @@ void main() {
       expect(options.firstWhere((o) => o.seerrId == 'movie:603').status, 'not_requested');
     });
 
-    test('with another user\'s request left, the card keeps requested', () async {
-      final seerr = pending([_row(41), _row(42, by: 8)]);
-      seerr.onDelete = (_) => Future<void>.microtask(() => seerr.movieStatus = 2);
-      final (result, _) = await run(script, seerr: seerr);
+    test('cancelled and then requested again in one ask, the card says requested', () async {
+      final seerr = pending([_row(41)]);
+      final (result, model) = await run([
+        _find('matrix'),
+        _cancel({'seerr_id': 'movie:603'}),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ], seerr: seerr);
+      expect(seerr.deletes, [41]);
+      expect(seerr.posts, hasLength(1));
+      expect((model.toolResults.last as Map)['status'], 'requested');
       final options = result.displays.whereType<AssistantRequestOptions>().single.options;
       expect(options.firstWhere((o) => o.seerrId == 'movie:603').status, 'requested');
+    });
+
+    test('an own 4K request next to someone else\'s standard one points at the other quality', () async {
+      final seerr = pending([_row(41, fourK: true), _row(42, by: 8)]);
+      final (_, model) = await run(script, seerr: seerr);
+      expect((model.toolResults.last as Map)['status'], 'other_quality');
+      expect(seerr.deletes, isEmpty);
+    });
+
+    test('a series request that gained a season while the card was open is not deleted', () async {
+      final seerr = _Seerr()
+        ..tvRequestRows = [
+          _row(51, seasons: [1]),
+        ];
+      final (_, model) = await run(
+        [
+          _find('thrones'),
+          _cancel({'seerr_id': 'tv:1399'}),
+          _say('x'),
+        ],
+        seerr: seerr,
+        onConfirm: () async => seerr.tvRequestRows = [
+          _row(51, seasons: [1, 2]),
+        ],
+      );
+      expect(seerr.deletes, isEmpty);
+      expect(model.toolResults.last, {'error': 'request_changed', 'done': false});
     });
 
     test('a request approved while the card was open is not deleted', () async {

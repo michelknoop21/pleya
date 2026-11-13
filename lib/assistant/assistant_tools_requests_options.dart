@@ -216,7 +216,12 @@ Future<AssistantToolOutcome> _requestCard(
         };
       }
       _requestLive(ctx, client);
-      ctx.requestedSeerrIds.add('${shown.mediaType}:${shown.tmdbId}');
+      // The option cards carry the standard quality. A request sent after a
+      // cancel in the same ask is the newer fact.
+      if (!fourK) {
+        ctx.requestedSeerrIds.add('${shown.mediaType}:${shown.tmdbId}');
+        ctx.cancelledSeerrIds.remove('${shown.mediaType}:${shown.tmdbId}');
+      }
       final base = <String, Object?>{
         'accepted': true,
         'title': subject,

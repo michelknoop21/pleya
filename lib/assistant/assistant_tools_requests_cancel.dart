@@ -70,17 +70,25 @@ Future<_OwnRequests> _ownPendingRequests(
   return (
     cancellable: const <int>[],
     seasons: const <int>[],
+    // An own request in the other quality is the most useful answer: the
+    // user can ask again for that one.
     blocked: settled
         ? 'not_pending'
-        : others
-        ? 'not_yours'
         : otherQuality
         ? 'other_quality'
+        : others
+        ? 'not_yours'
         : 'not_requested',
   );
 }
 
-bool _sameInts(List<int> a, List<int> b) => a.length == b.length && a.every(b.contains);
+bool _sameInts(List<int> a, List<int> b) =>
+    a.length == b.length && a.toSet().containsAll(b) && b.toSet().containsAll(a);
+
+/// A children's profile does not learn that someone else asked for a title:
+/// request_status is closed to it for the same reason.
+String _cancelBlocked(AssistantToolContext ctx, String blocked) =>
+    blocked == 'not_yours' && ctx.ageGate == AssistantAgeGate.kidsProfile ? 'not_requested' : blocked;
 
 Future<AssistantToolOutcome> _cancelRequestCard(
   AssistantToolContext ctx,
@@ -93,12 +101,12 @@ Future<AssistantToolOutcome> _cancelRequestCard(
   final subject = shown.year == null ? title : '$title (${shown.year})';
   final found = await _ownPendingRequests(ctx, client, shown, fourK);
   if (found.blocked != null) {
-    // A children's profile does not learn that someone else asked for a
-    // title: request_status is closed to it for the same reason.
-    final status = found.blocked == 'not_yours' && ctx.ageGate == AssistantAgeGate.kidsProfile
-        ? 'not_requested'
-        : found.blocked;
-    return AssistantToolResult({'status': status, 'title': subject, 'done': false, if (fourK) 'four_k': true});
+    return AssistantToolResult({
+      'status': _cancelBlocked(ctx, found.blocked!),
+      'title': subject,
+      'done': false,
+      if (fourK) 'four_k': true,
+    });
   }
   final ids = List<int>.unmodifiable(found.cancellable);
   final seasons = List<int>.unmodifiable(found.seasons);
@@ -118,7 +126,9 @@ Future<AssistantToolOutcome> _cancelRequestCard(
       // What the card showed has to be what is still there: a request that
       // was approved in the meantime is no longer the viewer's to cancel.
       final fresh = await _ownPendingRequests(ctx, client, shown, fourK);
-      if (fresh.blocked != null) return {'status': fresh.blocked, 'title': subject, 'done': false};
+      if (fresh.blocked != null) {
+        return {'status': _cancelBlocked(ctx, fresh.blocked!), 'title': subject, 'done': false};
+      }
       if (!_sameInts(fresh.cancellable, ids) || !_sameInts(fresh.seasons, seasons)) {
         return {'error': 'request_changed', 'done': false};
       }
