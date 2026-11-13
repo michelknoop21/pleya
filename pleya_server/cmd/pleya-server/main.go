@@ -560,7 +560,7 @@ func startTranscoder(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool
 		startup.Info("omzetten met hardwareversnelling", slog.String("accel", string(hw.Accel)), slog.String("node", hw.Node))
 	}
 	m, err := transcode.New(transcode.Options{
-		FFmpegPath: cfg.FFmpegPath, Dir: cfg.TranscodeDir, Max: cfg.TranscodeMaxSessions,
+		FFmpegPath: cfg.FFmpegPath, FFprobePath: cfg.FFprobePath, Dir: cfg.TranscodeDir, Max: cfg.TranscodeMaxSessions,
 		HW: hw.Accel, RenderNode: hw.Node, HWReason: hw.Reason, Recorder: transcode.NewStore(pool), Log: log,
 	})
 	if err != nil {

@@ -592,7 +592,7 @@ contract keurt ze af.
 | `playback.version_unavailable` | 409 | ja | het bestand is er wel maar nu niet te lezen |
 | `playback.range_not_satisfiable` | 416 | nee | de gevraagde range valt buiten het bestand |
 | `playback.not_playable` | 415 | nee | deze versie is niet zonder bewerking te leveren |
-| `playback.selection_invalid` | 400 | nee | de gevraagde kwaliteit, audio of ondertitel past niet bij deze versie |
+| `playback.selection_invalid` | 400 | nee | de gevraagde kwaliteit, audio, ondertitel of startpositie past niet bij deze versie |
 | `playback.transcode_busy` | 503 | ja | alle omzetsessies zijn bezet |
 | `playback.transcode_failed` | 502 | nee | de omzetting leverde geen speelbare uitvoer |
 | `memory.invalid` | 400 | nee | ongeldige geheugensnapshot, geen inhoud in foutbody |
@@ -1093,6 +1093,23 @@ beleid; onbekende vlag betekent geen nieuwe velden. Limieten zijn respectievelij
 De planner/ffmpeg voeren de keuze uit; het antwoord bevestigt optioneel
 `effective_quality` en `selected_audio_stream_id`. Een onuitvoerbare expliciete
 keuze geeft een fout, geen stille direct-play/defaultaudio-terugval.
+
+Het op 13 november 2026 vrijgegeven startpositievenster voegt het optionele
+`start_position_ms` toe achter `playback_start_position`: de positie in de titel
+waar de client wil beginnen. Een omzetting begint daar. Wordt beeld of geluid
+gekopieerd, dan begint de stream op het keyframe vóór de positie; een volledige
+omzetting begint hooguit één frame later dan gevraagd. De segmenten dragen filmtijd: hun tijdstempels zijn
+posities in de titel. Het antwoord draagt dan `start_position_ms`, het gemeten
+eerste tijdstempel van de stream. Een speler die de stream naar nul verschuift
+(hls.js, mpv standaard) meldt aan `/watch-state` `start_position_ms` plus zijn
+eigen tijd; een speler die de tijdstempels houdt (mpv met
+`rebase-start-time=no`) meldt zijn eigen tijd. In beide gevallen blijft
+`position_ms` de positie in de film (hoofdstuk 14). Bij `direct_play`
+is het antwoord `0` en zoekt de client zelf. Negatief, of op of voorbij de duur
+van de gekozen versie, is `400 playback.selection_invalid` met `version_id` en
+`duration_ms` in `details`; de laatste tien seconden schuiven naar tien seconden
+voor het einde. Een andere positie is een nieuw plan en een nieuwe sessie: de
+client stopt de vorige eerst, anders telt die mee voor `playback.transcode_busy`.
 
 ```json
 {

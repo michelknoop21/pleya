@@ -6,6 +6,29 @@ extension _VideoPlayerSeekingMethods on VideoPlayerScreenState {
     if (!mounted || currentPlayer == null) return;
 
     final target = clampSeekPosition(currentPlayer, position);
+    if (seekNeedsNewStream(streamStart: _playbackSession?.result.streamStart, target: target)) {
+      // Same item, same choices, a stream from the target: the reload stops the
+      // old conversion before it plans the new one, and rebinds the reports.
+      final reloading = await _reloadMediaInPlace(
+        metadata: _currentMetadata.copyWith(viewOffsetMs: target.inMilliseconds),
+        selectedMediaIndex: _effectiveSelectedMediaIndex,
+        selectedMediaSourceId: _requestedMediaSourceId,
+        qualityPreset: _selectedQualityPreset,
+        selectedAudioStreamId: _selectedAudioStreamId,
+        selectedSubtitleStreamId: _serverSupportsSubtitleSelection
+            ? _selectedSourceSubtitleStreamIdForControls(_sourceSubtitleTracksForControls())
+            : null,
+        resumePosition: target,
+        reason: 'seek before the stream start',
+      );
+      // Another transition holds the player: go as far back as this stream
+      // reaches rather than dropping the seek.
+      if (!reloading && mounted && player == currentPlayer) {
+        await currentPlayer.seek(_playbackSession?.result.streamStart ?? target);
+        _progressTracker?.onSeek();
+      }
+      return;
+    }
     if (_plexTranscodeSeekAction(currentPlayer, target) == PlexTranscodeSeekAction.nativeSeek) {
       await currentPlayer.seek(target);
       // A jump must reach the server now, not at the next periodic tick: seek
@@ -106,11 +129,12 @@ extension _VideoPlayerSeekingMethods on VideoPlayerScreenState {
         isTranscoding: result.isTranscoding,
         isLocalMedia: result.usesLocalMedia,
         selectedVersion: result.selectedVersion,
-        timing: _playbackOpenTiming(
+        timing: playbackOpenTiming(
           backend: replacementMetadata.backend,
           isTranscoding: result.isTranscoding,
           resumePosition: target,
           durationMs: replacementMetadata.durationMs,
+          streamStart: result.streamStart,
         ),
         headers: playbackContext.streamHeaders,
         play: shouldAutoPlay,

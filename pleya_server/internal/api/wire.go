@@ -64,9 +64,12 @@ type Capabilities struct {
 	WatchState             bool `json:"watch_state"`
 	PlaybackQuality        bool `json:"playback_quality"`
 	PlaybackAudioSelection bool `json:"playback_audio_selection"`
-	PlaybackPlan           bool `json:"playback_plan"`
-	Transcode              bool `json:"transcode"`
-	Downloads              bool `json:"downloads"`
+	// PlaybackStartPosition: POST /playback/plan kent start_position_ms en een
+	// omzetting begint daar.
+	PlaybackStartPosition bool `json:"playback_start_position"`
+	PlaybackPlan          bool `json:"playback_plan"`
+	Transcode             bool `json:"transcode"`
+	Downloads             bool `json:"downloads"`
 	// Backups (venster 7, S25). Aan zodra de back-upservice en de wachtrij er
 	// zijn: GET/POST /backups, GET /backups/{id} en de hersteltest en restore
 	// eronder bestaan dan voor klasse admin.

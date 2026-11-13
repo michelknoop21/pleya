@@ -9,6 +9,7 @@ class PleyaCapabilities {
     this.playbackPlan = false,
     this.playbackQuality = false,
     this.playbackAudioSelection = false,
+    this.playbackStartPosition = false,
     this.embeddedSubtitles = false,
     this.playbackSubtitles = false,
     this.history = false,
@@ -60,6 +61,11 @@ class PleyaCapabilities {
   final bool playbackPlan;
   final bool playbackQuality;
   final bool playbackAudioSelection;
+
+  /// `POST /playback/plan` takes `start_position_ms` and a conversion starts
+  /// there (DEC-XXX, startpositie in het afspeelplan). The request body is
+  /// closed, so the field goes out only behind this flag.
+  final bool playbackStartPosition;
   final bool embeddedSubtitles;
   final bool playbackSubtitles;
 
@@ -153,6 +159,7 @@ class PleyaCapabilities {
     playbackPlan: booleanOr(json, 'playback_plan', orElse: false),
     playbackQuality: booleanOr(json, 'playback_quality', orElse: false),
     playbackAudioSelection: booleanOr(json, 'playback_audio_selection', orElse: false),
+    playbackStartPosition: booleanOr(json, 'playback_start_position', orElse: false),
     embeddedSubtitles: booleanOr(json, 'embedded_subtitles', orElse: false),
     playbackSubtitles: booleanOr(json, 'playback_subtitles', orElse: false),
     history: booleanOr(json, 'history', orElse: false),

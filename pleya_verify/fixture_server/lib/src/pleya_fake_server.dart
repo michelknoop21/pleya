@@ -76,6 +76,16 @@ class PleyaFakeServer {
   bool playbackPlanCapability = false;
   bool playbackQualityCapability = false;
   bool playbackAudioSelectionCapability = false;
+
+  /// `/info` advertises `playback_start_position`, and a plan with
+  /// `start_position_ms` starts its HLS at the segment that holds that
+  /// position, answering where that segment begins (the measured start).
+  bool playbackStartPositionCapability = false;
+
+  /// True plays a server that lost the flag after the client read `/info`: it
+  /// ignores `start_position_ms`, leaves it out of the answer and streams
+  /// from zero, as the contract says.
+  bool planIgnoresStartPosition = false;
   bool embeddedSubtitlesCapability = false;
   bool playbackSubtitlesCapability = false;
 
@@ -397,6 +407,8 @@ class PleyaFakeServer {
     playbackPlanCapability = false;
     playbackQualityCapability = false;
     playbackAudioSelectionCapability = false;
+    playbackStartPositionCapability = false;
+    planIgnoresStartPosition = false;
     embeddedSubtitlesCapability = false;
     playbackSubtitlesCapability = false;
     personalCapability = false;
@@ -888,6 +900,13 @@ class PleyaFakeServer {
         'params': <String, dynamic>{},
       };
       final direct = planDeliveryMode == 'direct_play';
+      final requestedStart = playbackStartPositionCapability && !planIgnoresStartPosition
+          ? body['start_position_ms'] as int?
+          : null;
+      final firstSegment = requestedStart == null || direct
+          ? 0
+          : sampleHlsSegmentStartsMs.lastIndexWhere((start) => start <= requestedStart);
+      final playlist = firstSegment == 0 ? 'index.m3u8' : 'from-$firstSegment.m3u8';
       // A mode the client does not know still comes with a session, like a
       // newer server would send it.
       return _json({
@@ -902,7 +921,7 @@ class PleyaFakeServer {
           },
         if (body['quality'] != null) 'effective_quality': body['quality'],
         if (body['audio_stream_id'] != null) 'selected_audio_stream_id': body['audio_stream_id'],
-        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/$sessionId/index.m3u8',
+        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/$sessionId/$playlist',
         'container': direct ? 'original' : 'hls',
         'video': {'action': (body['subtitle'] as Map?)?['mode'] == 'burn' ? 'transcode' : 'copy'},
         'audio': {'action': 'copy'},
@@ -910,13 +929,15 @@ class PleyaFakeServer {
         'session_id': direct ? null : sessionId,
         'reason': reason,
         'reasons': [reason],
+        if (requestedStart != null) 'start_position_ms': direct ? 0 : sampleHlsSegmentStartsMs[firstSegment],
       });
     }
 
     if (path.startsWith('/playback/sessions/') && playbackPlanCapability) {
       if (request.method == 'GET') {
         final file = path.split('/').last;
-        final bytes = sampleHlsFiles[file];
+        final from = RegExp(r'^from-(\d+)\.m3u8$').firstMatch(file);
+        final bytes = from == null ? sampleHlsFiles[file] : sampleHlsPlaylistFrom(int.parse(from[1]!));
         if (bytes != null) {
           if (!file.endsWith('.m3u8')) return _streamResponse(request, bytes);
           return http.Response.bytes(bytes, 200, headers: {'content-type': 'application/vnd.apple.mpegurl'});
@@ -1252,6 +1273,7 @@ class PleyaFakeServer {
       if (playbackQualityCapability || playbackAudioSelectionCapability || playbackSubtitlesCapability)
         'transcode': true,
       if (playbackAudioSelectionCapability) 'playback_audio_selection': true,
+      if (playbackStartPositionCapability) 'playback_start_position': true,
       if (embeddedSubtitlesCapability) 'embedded_subtitles': true,
       if (playbackSubtitlesCapability) 'playback_subtitles': true,
       if (downloadsCapability) 'downloads': true,

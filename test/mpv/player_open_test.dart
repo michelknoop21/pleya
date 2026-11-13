@@ -774,6 +774,66 @@ void main() {
       );
     });
 
+    test('MPV keeps the title time of a stream that starts later, for this file only', () async {
+      final calls = <MethodCall>[];
+
+      await _withMockChannels(
+        methodChannelName: 'com.pleya/mpv_player',
+        eventChannelName: 'com.pleya/mpv_player/events',
+        methodHandler: (call) {
+          calls.add(call);
+          return Future.value(call.method == 'initialize' ? true : null);
+        },
+        testBody: () async {
+          final player = PlayerNative();
+          try {
+            expect(
+              player.keepsAbsoluteTimestamps,
+              Platform.isIOS || Platform.isMacOS,
+              reason: 'measured on Apple only',
+            );
+            const sidecar = 'https://example.test/pleya/v1/subtitles/s1?stream_token=t';
+            await player.open(
+              Media('https://example.test/from-4.m3u8', start: const Duration(seconds: 70)),
+              externalSubtitles: const [SubtitleTrack(id: 'external-en', uri: sidecar, codec: 'srt')],
+              timelineDuration: const Duration(seconds: 120),
+              absoluteTimestamps: true,
+            );
+
+            // Per-file, next to the sidecars, so the subtitle runs on the same clock.
+            expect(_loadfileArgs(calls), [
+              'loadfile',
+              'https://example.test/from-4.m3u8',
+              'replace',
+              '-1',
+              'rebase-start-time=no,sub-files=${_fixedLengthPathList([sidecar])}',
+            ]);
+            final start = calls.lastWhere(
+              (c) => c.method == 'setProperty' && Map<Object?, Object?>.from(c.arguments as Map)['name'] == 'start',
+            );
+            expect(Map<Object?, Object?>.from(start.arguments as Map)['value'], '70.0');
+
+            // mpv reports title time (measured: 70.36 s after `start=70`), and
+            // the stream's own length (59.9 s) does not shorten the title.
+            player.handlePropertyChange('time-pos', 70.357);
+            player.handlePropertyChange('duration', 59.889);
+            expect(player.currentPosition, const Duration(milliseconds: 70357));
+            expect(player.state.duration, const Duration(seconds: 120));
+
+            await player.seek(const Duration(seconds: 80));
+            final seek = calls.lastWhere((c) => c.method == 'command');
+            expect(Map<Object?, Object?>.from(seek.arguments as Map)['args'], ['seek', '80.0', 'absolute']);
+
+            calls.clear();
+            await player.open(Media('https://example.test/movie.mkv'));
+            expect(_loadfileArgs(calls), ['loadfile', 'https://example.test/movie.mkv', 'replace']);
+          } finally {
+            await player.dispose();
+          }
+        },
+      );
+    });
+
     test('MPV refresh seek preserves timeline offset position', () async {
       final calls = <MethodCall>[];
 

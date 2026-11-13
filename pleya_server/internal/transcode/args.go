@@ -58,6 +58,12 @@ type Job struct {
 	RenderNode string // bijvoorbeeld /dev/dri/renderD128
 
 	SegmentSeconds int
+
+	// StartMs is de positie in de film waar de omzetting begint, in
+	// milliseconden. Nul is het begin en geeft exact de argumenten van vóór dit
+	// veld. Zodra een spoor gekopieerd wordt, begint de stream op het keyframe
+	// ervoor; een volledige omzetting begint hooguit één frame erna.
+	StartMs int64
 }
 
 // PlaylistName en InitName zijn de vaste bestandsnamen in een sessiemap.
@@ -86,6 +92,9 @@ func BuildArgs(j Job) ([]string, error) {
 		}
 		audioMap = "0:" + strconv.Itoa(*j.AudioStreamIndex)
 	}
+	if j.StartMs < 0 {
+		return nil, fmt.Errorf("ongeldige startpositie")
+	}
 	if (j.SubtitleBitmap || j.SubtitlePath != "") && j.Mode != ModeTranscode || j.SubtitleBitmap && (j.SubtitlePath != "" || j.SubtitleStreamIndex < 0) {
 		return nil, fmt.Errorf("ongeldig ondertitelplan")
 	}
@@ -111,7 +120,22 @@ func BuildArgs(j Job) ([]string, error) {
 	// kopiëren heeft de HLS-muxer daar geen tijd uit en schrijft hij een
 	// afspeellijst met TARGETDURATION:0 en één segment van 0 s, die geen
 	// speler afspeelt. ffmpeg leidt de tijden dan af uit de volgorde.
-	a = append(a, "-fflags", "+genpts", "-i", j.InputPath)
+	a = append(a, "-fflags", "+genpts")
+	if j.StartMs > 0 {
+		// -ss vóór -i zoekt in de container en decodeert niet wat ervoor ligt.
+		// -copyts met -start_at_zero houdt de tijden van de film in de segmenten:
+		// daaraan meet de manager waar de stream werkelijk begint, en het filter
+		// voor ingebrande ondertitels kiest zijn regels op die tijd.
+		a = append(a, "-ss", fmt.Sprintf("%d.%03d", j.StartMs/1000, j.StartMs%1000))
+		if j.Mode != ModeTranscode || j.AudioCodec == "" {
+			// Een gekopieerd spoor begint op het keyframe vóór de positie. Zonder
+			// deze vlag knipt ffmpeg het omgezette spoor wel precies af en begint
+			// het beeld een stuk eerder dan het geluid.
+			a = append(a, "-noaccurate_seek")
+		}
+		a = append(a, "-copyts", "-start_at_zero")
+	}
+	a = append(a, "-i", j.InputPath)
 	videoMap := "0:v:0"
 	if j.SubtitleBitmap {
 		videoMap = "[subbed]"

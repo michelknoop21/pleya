@@ -71,6 +71,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			EmbeddedSubtitles:      s.transcodeEnabled(),
 			PlaybackSubtitles:      s.transcodeEnabled(),
 			PlaybackAudioSelection: s.transcodeEnabled(),
+			// De startpositie wordt gemeten met ffprobe; zonder ffprobe is er geen
+			// eerlijke tijdlijn en blijft de vlag uit.
+			PlaybackStartPosition: s.startPositionEnabled(),
 			// Transcode: aan zodra er een manager met sessies is (S18).
 			Transcode: s.transcodeEnabled(),
 			Downloads: s.opts.Downloads != nil && s.opts.Jobs != nil,

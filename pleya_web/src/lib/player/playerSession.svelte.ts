@@ -15,6 +15,15 @@
  *
  * Kijkstatus volgt de werkelijke media-events in Player via WatchProgress.
  * De audiokeuze gaat als `audio_stream_id` mee en een kwaliteitslimiet als `quality`.
+ *
+ * Startpositie (DEC-XXX, startpositie in het afspeelplan): met
+ * `playback_start_position` vraagt een start op een later punt het plan vanaf
+ * dat punt, en begint een omzetting daar in plaats van op nul. Het antwoord
+ * meldt het eerste tijdstempel van de stream; de segmenten dragen filmtijd.
+ * hls.js verschuift de stream naar nul, dus dat getal is `offset`, en de
+ * positie in de film is overal `offset + currentTime`. Alleen onder hls.js: wat
+ * de eigen HLS-speler van Safari met de tijden van zo'n stream doet is niet
+ * gemeten, dus die houdt het oude gedrag.
  */
 import type { Capabilities } from '../api/types';
 import type { DeviceCapabilities, PlaybackQuality } from './types';
@@ -39,6 +48,9 @@ import { StreamSessionCache } from './streamSessionCache';
 import { TranscodeHold, type Timers } from './transcodeHold';
 
 export type PlayerPhase = 'idle' | 'loading' | 'ready' | 'error';
+
+/** Zo lang wacht een volgend plan hooguit op de DELETE van de vorige omzetsessie. */
+export const STOP_WAIT_MS = 3000;
 
 export interface PlayerDeps {
   api: PlaybackApi;
@@ -85,9 +97,13 @@ export class PlayerSession {
   phase = $state<PlayerPhase>('idle');
   problem = $state<PlayerProblem | null>(null);
   delivery = $state<Delivery | null>(null);
+  /** Seconden in de film waar de huidige stream begint (hls.js telt vanaf daar 0); 0 zonder startpositie. */
+  offset = $state(0);
 
   #deps: PlayerDeps;
   #hold: TranscodeHold;
+  /** De DELETE's die nog onderweg zijn; een volgend plan wacht erop, want een sessie telt mee voor de limiet. */
+  #stopping: Promise<void> | null = null;
   #hls: HlsHandle | null = null;
   #media: HTMLMediaElement | null = null;
   #run = 0;
@@ -104,31 +120,47 @@ export class PlayerSession {
     return this.#hold.sessionId;
   }
 
+  /** Of een omzetting op de gevraagde positie begint, en niet op nul. */
+  get startsAtPosition(): boolean {
+    return this.#deps.server?.playback_start_position === true && this.#deps.probe().hls.hlsjs;
+  }
+
   async start(media: HTMLMediaElement, target: PlayerTarget): Promise<void> {
     const run = ++this.#run;
     this.#teardown(false);
+    const stopping = this.#stopping;
     this.#media = media;
     this.phase = 'loading';
     this.problem = null;
     this.delivery = null;
+    this.offset = 0;
     const { api, server } = this.#deps;
     const stale = () => run !== this.#run;
 
     try {
       const { caps, hls } = this.#deps.probe();
+      const startAt = target.startAt ?? 0;
+      const startMs = server?.playback_start_position === true && hls.hlsjs && startAt > 0 ? Math.round(startAt * 1000) : null;
       let plan = null;
       if (server?.playback_plan) {
+        // De vorige omzetsessie is eerst weg: anders telt hij nog mee voor de limiet van de server.
+        // Dat geldt ook na een fout ("Opnieuw") en na een plan dat tijdens het laden verouderde.
+        if (stopping) {
+          await stopping;
+          if (stale()) return;
+        }
         plan = await api.plan({
           item_id: target.itemId,
           ...(target.versionId ? { version_id: target.versionId } : {}),
           ...(target.versionId && target.audioStreamId ? { audio_stream_id: target.audioStreamId } : {}),
           ...(target.quality && server.playback_quality === true ? { quality: target.quality } : {}),
+          ...(startMs !== null ? { start_position_ms: startMs } : {}),
           capabilities: caps
         });
         // Eerst verouderd, dan pas vasthouden: `hold` stopt de vorige sessie, en
         // na twee snelle keuzes is dat de sessie van de start die wel speelt.
         if (stale()) {
-          if (plan.session_id) api.stop(plan.session_id, false);
+          if (plan.session_id) this.#track(api.stop(plan.session_id, false));
           return;
         }
         if (plan.session_id) this.#hold.hold(plan.session_id);
@@ -136,10 +168,16 @@ export class PlayerSession {
       if (!plan && !target.versionId) throw new DeliveryError('client.no_version');
 
       const delivery = chooseDelivery(plan, target.versionId ?? '', hls);
-      if (delivery.kind === 'hls') await this.#openHls(media, delivery, target.startAt ?? 0, stale);
-      else await this.#openDirect(media, delivery, target.startAt ?? 0, stale);
+      // Bij direct play meldt de server 0: de stream is het bestand en het element zoekt zelf.
+      const offset = (plan?.start_position_ms ?? 0) / 1000;
+      // De server begon al op (het keyframe vóór) de positie; de stream speelt dan vanaf zijn eigen nul.
+      // hls.js begint op de gevraagde positie binnen de stream: anders speelt het stuk vanaf het keyframe opnieuw.
+      const local = offset > 0 ? Math.max(0, startAt - offset) : startAt;
+      if (delivery.kind === 'hls') await this.#openHls(media, delivery, local, stale);
+      else await this.#openDirect(media, delivery, local, stale);
       if (stale()) return;
 
+      this.offset = offset;
       this.delivery = delivery;
       this.phase = 'ready';
       media.play()?.catch(() => {
@@ -224,15 +262,17 @@ export class PlayerSession {
   }
 
   #fail(problem: PlayerProblem): void {
-    this.#teardown(false);
+    void this.#teardown(false);
     this.problem = problem;
     this.phase = 'error';
   }
 
-  #teardown(keepalive: boolean): void {
+  #teardown(keepalive: boolean): Promise<void> {
     this.#hls?.destroy();
     this.#hls = null;
-    this.#hold.release(keepalive);
+    const held = this.#hold.sessionId !== null;
+    const stopped = this.#hold.release(keepalive);
+    if (held) this.#track(stopped);
     const media = this.#media;
     if (media) {
       media.pause();
@@ -241,6 +281,17 @@ export class PlayerSession {
       media.removeAttribute('src');
       media.load();
     }
+    return stopped;
+  }
+
+  #track(stop: Promise<void>): void {
+    // Begrensd: een DELETE die nooit antwoordt mag een volgende start niet op
+    // "laden" laten hangen. De server ruimt een sessie zonder hartslag zelf op.
+    const bounded = Promise.race([stop.catch(() => undefined), new Promise<void>((r) => setTimeout(r, STOP_WAIT_MS))]);
+    const all: Promise<void> = Promise.all([this.#stopping, bounded]).then(() => {
+      if (this.#stopping === all) this.#stopping = null;
+    });
+    this.#stopping = all;
   }
 
   /**
@@ -249,7 +300,7 @@ export class PlayerSession {
    */
   dispose(keepalive = false): void {
     this.#run += 1;
-    this.#teardown(keepalive);
+    void this.#teardown(keepalive);
     this.#media = null;
     this.phase = 'idle';
   }

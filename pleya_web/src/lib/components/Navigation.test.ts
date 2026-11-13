@@ -26,6 +26,7 @@ const caps: Capabilities = {
   playback_plan: false,
   playback_quality: false,
   playback_audio_selection: false,
+  playback_start_position: false,
   embedded_subtitles: false,
   playback_subtitles: false,
   history: false,

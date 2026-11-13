@@ -136,6 +136,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
             selectedSubtitleStreamId: needsBurn ? subtitleId : options.selectedSubtitleStreamId,
             sessionIdentifier: options.sessionIdentifier,
             transcodeSessionId: options.transcodeSessionId,
+            startAtViewOffset: options.startAtViewOffset,
           );
           plan = await _planPlayback(options.metadata.id, versions, index, explicit: true, options: effectiveOptions);
         }
@@ -218,6 +219,10 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
         mediaInfo: mediaInfo,
         externalSubtitles: subtitles,
         deferredSubtitle: deferredSubtitle,
+        streamStart: switch (plan.startPositionMs) {
+          final int ms => Duration(milliseconds: ms),
+          null => null,
+        },
       );
     }
 
@@ -379,6 +384,13 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
   ///
   /// An automatic first version lets the server choose. A stable source id
   /// carries explicit intent, including selection of the first version.
+  ///
+  /// A conversion starts at the view offset when the player can place a stream
+  /// whose timestamps do not start at zero, and the server says it can start
+  /// there (DEC-XXX, startpositie in het afspeelplan). Plex and Jellyfin take
+  /// their start from the same offset, so a resume or a switch of quality or
+  /// audio continues where it was on every backend. Without both, the request
+  /// is byte for byte the one from before.
   Future<PleyaPlaybackPlan?> _planPlayback(
     String itemId,
     List<MediaVersion> versions,
@@ -420,6 +432,20 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
           ?.id;
       if (audioId == null) throw PlaybackException('The selected audio stream is no longer available.');
     }
+    final offsetMs = options.metadata.viewOffsetMs ?? 0;
+    final durationMs = options.metadata.durationMs;
+    final startMs =
+        options.startAtViewOffset &&
+            wireCapabilities.playbackStartPosition &&
+            offsetMs > 0 &&
+            // Without a known duration the player would take the stream's own
+            // length, the rest of the film, as the title's: the position then
+            // runs past the end and progress and "nearly done" go off.
+            durationMs != null &&
+            durationMs > 0 &&
+            offsetMs < durationMs
+        ? offsetMs
+        : null;
     String? receivedSessionId;
     try {
       final json = await _postJson('/playback/plan', {
@@ -431,6 +457,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
         if (!quality.isOriginal)
           'quality': {'max_video_bitrate_kbps': quality.videoBitrateKbps, 'max_height': quality.resolutionHeight},
         'capabilities': pleyaDeviceCapabilitiesToWire(DeviceCapabilitiesService.currentSnapshot),
+        'start_position_ms': ?startMs,
       });
       if (json == null) {
         if (selected) throw PlaybackException('The requested playback selection could not be prepared.');
@@ -455,6 +482,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSes
                   plan.subtitle?.url !=
                       '$pleyaProtocolPrefix/subtitles/${Uri.encodeComponent(subtitle!.sourceStreamId!)}') ||
               (subtitleMode == 'burn' && plan.deliveryMode != PleyaDeliveryMode.transcode));
+      // No `start_position_ms` in the answer means a stream from zero (a server
+      // without the flag ignores the field): streamStart stays null and the
+      // player seeks to the resume point, as before the start position.
       if (wrongSource ||
           (selected &&
               (plan.deliveryMode == null ||

@@ -233,11 +233,12 @@ extension _VideoPlayerPlaybackStartMethods on VideoPlayerScreenState {
         // Backends that support at-open sidecars receive them with open()
         // so tracks are discovered in a single prepare/loadfile cycle. Any
         // backend that cannot do that still uses the post-open sub-add path.
-        final openTiming = _playbackOpenTiming(
+        final openTiming = playbackOpenTiming(
           backend: _currentMetadata.backend,
           isTranscoding: result.isTranscoding,
           resumePosition: resumePosition,
           durationMs: _currentMetadata.durationMs,
+          streamStart: result.streamStart,
         );
         final didOpen = await _openMediaOnPlayer(
           player: currentPlayer,

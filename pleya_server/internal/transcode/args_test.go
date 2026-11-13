@@ -180,3 +180,69 @@ func TestSubtitleBurnUsesAControlledFilterFilename(t *testing.T) {
 		t.Fatal("burn silently accepted in remux")
 	}
 }
+
+// Een aanvraag zonder startpositie geeft byte voor byte de argumenten van vóór
+// dat veld. De lijsten hieronder zijn uitgeschreven en niet afgeleid, zodat een
+// wijziging aan het pad zonder startpositie hier zichtbaar wordt.
+func TestZonderStartpositieZijnDeArgumentenByteVoorByteGelijk(t *testing.T) {
+	kop := []string{"-nostdin", "-hide_banner", "-loglevel", "error", "-fflags", "+genpts",
+		"-i", "/media/Film (2020)/Film.mkv", "-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn"}
+	staart := []string{"-f", "hls", "-hls_time", "4", "-hls_playlist_type", "event", "-hls_segment_type", "fmp4",
+		"-hls_flags", "independent_segments+temp_file", "-hls_fmp4_init_filename", "init.mp4",
+		"-hls_segment_filename", "/transcode/s1/seg_%05d.m4s", "/transcode/s1/index.m3u8"}
+	for mode, midden := range map[transcode.Mode][]string{
+		transcode.ModeRemux:        {"-c", "copy"},
+		transcode.ModeDirectStream: {"-c:v", "copy", "-c:a", "aac", "-ac", "2", "-b:a", "128k"},
+		transcode.ModeTranscode: {"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+			"-c:a", "aac", "-ac", "2", "-b:a", "128k"},
+	} {
+		args, err := transcode.BuildArgs(job(mode))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := slices.Concat(kop, midden, staart)
+		if !slices.Equal(args, want) {
+			t.Fatalf("%s zonder startpositie:\n kreeg   %q\n verwacht %q", mode, args, want)
+		}
+	}
+}
+
+// -ss is een invoeroptie en hoort vóór -i. Zodra een spoor gekopieerd wordt
+// begint alles op het keyframe ervoor (-noaccurate_seek); alleen een volledige
+// omzetting knipt precies op de positie.
+func TestStartpositieStaatVoorDeInvoerEnVolgtDeModus(t *testing.T) {
+	alleenBeeld := job(transcode.ModeTranscode)
+	alleenBeeld.AudioCodec = ""
+	for naam, c := range map[string]struct {
+		job     transcode.Job
+		precies bool
+	}{
+		"remux":                      {job(transcode.ModeRemux), false},
+		"direct_stream":              {job(transcode.ModeDirectStream), false},
+		"transcode":                  {job(transcode.ModeTranscode), true},
+		"transcode, geluid kopieert": {alleenBeeld, false},
+	} {
+		c.job.StartMs = 4_200_040
+		args, err := transcode.BuildArgs(c.job)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ss, input := slices.Index(args, "-ss"), slices.Index(args, "-i")
+		if ss < 0 || ss > input || args[ss+1] != "4200.040" {
+			t.Fatalf("%s: -ss 4200.040 hoort vóór -i: %q", naam, args)
+		}
+		for _, vlag := range []string{"-copyts", "-start_at_zero"} {
+			if i := slices.Index(args, vlag); i < 0 || i > input {
+				t.Fatalf("%s: %s ontbreekt vóór -i: %q", naam, vlag, args)
+			}
+		}
+		if slices.Contains(args, "-noaccurate_seek") == c.precies {
+			t.Fatalf("%s: -noaccurate_seek klopt niet met de modus: %q", naam, args)
+		}
+	}
+	negatief := job(transcode.ModeRemux)
+	negatief.StartMs = -1
+	if _, err := transcode.BuildArgs(negatief); err == nil {
+		t.Fatal("een negatieve startpositie hoort een fout te geven")
+	}
+}

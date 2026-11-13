@@ -406,6 +406,160 @@ void main() {
     });
   });
 
+  group('starting a conversion where the viewer was (DEC-XXX, startpositie in het afspeelplan)', () {
+    MediaItem resumed({int offsetMs = 70000}) =>
+        twoVersions(server).copyWith(viewOffsetMs: offsetMs, durationMs: 6720000);
+
+    PleyaFakeServer startServer({String mode = 'transcode', bool capability = true, bool watchState = false}) =>
+        PleyaFakeServer(watchState: watchState)
+          ..playbackPlanCapability = true
+          ..playbackStartPositionCapability = capability
+          ..planDeliveryMode = mode;
+
+    Future<PlaybackInitializationResult> start(MediaItem item, {bool playerKeepsTimestamps = true}) =>
+        client.getPlaybackInitialization(
+          PlaybackInitializationOptions(
+            metadata: item,
+            selectedMediaIndex: 0,
+            startAtViewOffset: playerKeepsTimestamps,
+          ),
+        );
+
+    test('the view offset goes out, and the measured start comes back as where the stream begins', () async {
+      server = startServer();
+      final item = resumed();
+      client = await connected(server);
+
+      final result = await start(item);
+
+      expect(server.planRequests.single['start_position_ms'], 70000);
+      // The segment holding 70 s begins at 60.186 s: the server's measurement,
+      // not the request, is what the player's first frame stands for.
+      expect(result.streamStart, const Duration(milliseconds: 60186));
+      expect(result.videoUrl, contains('/playback/sessions/sess-1/from-4.m3u8'));
+    });
+
+    test('without the capability the request is the one from before', () async {
+      server = startServer(capability: false);
+      final item = resumed();
+      client = await connected(server);
+
+      final result = await start(item);
+
+      expect(server.planRequests.single.containsKey('start_position_ms'), isFalse);
+      expect(result.streamStart, isNull);
+      expect(result.videoUrl, contains('/playback/sessions/sess-1/index.m3u8'));
+    });
+
+    test('a player that counts from zero gets a stream from the start', () async {
+      server = startServer();
+      final item = resumed();
+      client = await connected(server);
+
+      final result = await start(item, playerKeepsTimestamps: false);
+
+      expect(server.planRequests.single.containsKey('start_position_ms'), isFalse);
+      expect(result.streamStart, isNull);
+    });
+
+    test('nothing to resume sends nothing, and an offset past the end is not asked for', () async {
+      server = startServer();
+      client = await connected(server);
+
+      await start(resumed(offsetMs: 0));
+      await start(resumed(offsetMs: 6720000));
+
+      expect(server.planRequests.map((r) => r.containsKey('start_position_ms')), [false, false]);
+    });
+
+    test('an unknown duration sends no start, or the stream length would pass for the title length', () async {
+      server = startServer();
+      final item = twoVersions(server).copyWith(viewOffsetMs: 70000);
+      expect(item.durationMs, isNull);
+      client = await connected(server);
+
+      final result = await start(item);
+
+      expect(server.planRequests.single.containsKey('start_position_ms'), isFalse);
+      expect(result.streamStart, isNull);
+    });
+
+    test('direct play starts at zero and the player seeks itself', () async {
+      server = startServer(mode: 'direct_play');
+      final item = resumed();
+      client = await connected(server);
+
+      final result = await start(item);
+
+      expect(server.planRequests.single['start_position_ms'], 70000);
+      expect(result.streamStart, isNull);
+      expect(result.playMethod, 'DirectPlay');
+    });
+
+    test('a server that ignores the start streams from zero, and the conversion still plays', () async {
+      server = startServer()..planIgnoresStartPosition = true;
+      final item = resumed();
+      client = await connected(server);
+
+      final result = await start(item);
+
+      expect(server.planRequests.single['start_position_ms'], 70000);
+      expect(result.streamStart, isNull, reason: 'no start in the answer: the player seeks to the resume point');
+      expect(result.playMethod, 'Transcode');
+      expect(result.videoUrl, contains('/playback/sessions/sess-1/index.m3u8'));
+      expect(server.sessionCalls.where((c) => c.startsWith('DELETE')), isEmpty);
+    });
+
+    test('another position stops the held conversion before planning the new one', () async {
+      server = startServer()..numberPlanSessions = true;
+      client = await connected(server);
+      await start(resumed());
+      final before = server.requests.length;
+
+      final result = await start(resumed(offsetMs: 20000));
+
+      expect(server.requests.skip(before).toList(), ['/pleya/v1/playback/sessions/sess-1', '/pleya/v1/playback/plan']);
+      expect(server.sessionCalls.first, 'DELETE /playback/sessions/sess-1');
+      expect(server.planRequests.last['start_position_ms'], 20000);
+      expect(result.streamStart, const Duration(milliseconds: 15046));
+    });
+
+    test('a switch that plans twice keeps the start position on the second plan', () async {
+      server = startServer()..playbackAudioSelectionCapability = true;
+      final item = resumed().copyWith(
+        mediaVersions: const [
+          MediaVersion(
+            id: 'version-1',
+            parts: [
+              MediaPart(
+                id: 'part',
+                streams: [
+                  MediaStream(id: 'audio-a', kind: MediaStreamKind.audio, index: 1, codec: 'aac', selected: true),
+                  MediaStream(id: 'audio-b', kind: MediaStreamKind.audio, index: 2, codec: 'aac', languageCode: 'nld'),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+      client = await connected(server);
+
+      final result = await client.getPlaybackInitialization(
+        PlaybackInitializationOptions(
+          metadata: item,
+          selectedMediaIndex: 0,
+          startAtViewOffset: true,
+          selectSourceTracks: (_) async => (audioStreamId: 2, subtitleStreamId: null),
+        ),
+      );
+
+      expect(server.planRequests, hasLength(2));
+      expect(server.planRequests.map((r) => r['start_position_ms']), [70000, 70000]);
+      expect(server.planRequests.last['audio_stream_id'], 'audio-b');
+      expect(result.streamStart, const Duration(milliseconds: 60186));
+    });
+  });
+
   group('capabilities on the wire', () {
     test('an unknown capability goes out as null with confidence unknown', () {
       final wire = pleyaDeviceCapabilitiesToWire(DeviceCapabilities.unknown);

@@ -28,3 +28,6 @@ func (s *Server) ListSharingProbe() http.Handler {
 		}
 	})
 }
+
+// StartPosition is de grensregel voor start_position_ms, los van een aanvraag.
+var StartPosition = startPosition

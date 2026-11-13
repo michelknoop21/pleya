@@ -2209,6 +2209,28 @@ paths:
         audio zonder versie zijn `400 playback.selection_invalid`; een
         onvindbaar spoor is `404`. Deze keuzes vallen nooit stil terug op direct play.
 
+        Met `playback_start_position` accepteert de server `start_position_ms`:
+        de positie in de titel waar de client wil beginnen. Een omzetting begint
+        daar en niet op nul. Zodra beeld of geluid gekopieerd wordt (`remux`,
+        `direct_stream`, of een `transcode` die het geluid kopieert) begint de
+        stream op het keyframe vóór de positie. Een volledige omzetting knipt
+        precies en begint hooguit één frame na de positie. De segmenten dragen filmtijd: hun tijdstempels zijn posities
+        in de titel. Het antwoord draagt dan ook `start_position_ms`: het eerste
+        tijdstempel van de stream, gemeten aan het eerste segment. Een speler
+        die de stream naar nul verschuift (hls.js, mpv standaard) meldt
+        `start_position_ms` plus zijn eigen tijd aan `/watch-state`; een speler
+        die de tijdstempels houdt (mpv met `rebase-start-time=no`) meldt zijn
+        eigen tijd, want die is al de positie in de titel. Bij
+        `direct_play` dwingt het veld geen omzetting af: de stream is het
+        bestand, het antwoord meldt `0` en de client zoekt zelf. Een positie in
+        de laatste tien seconden van de gekozen versie schuift naar tien
+        seconden voor het einde. Een negatieve positie, of een op of voorbij
+        de duur van de gekozen versie, is `400 playback.selection_invalid` met
+        `version_id` en `duration_ms` in `details`. Elke aanvraag met een
+        andere positie start een nieuwe sessie en telt mee voor
+        `playback.transcode_busy`; de client stopt de vorige eerst. Zonder het
+        veld blijven aanvraag, omzetting en antwoord zoals ze waren.
+
         `reason` is de hoofdreden en het eerste element van `reasons`. Een reden
         is een domeincode met parameters, geen vertaalsleutel; een client die
         een code niet kent toont een generieke tekst en logt de code.
@@ -4092,6 +4114,16 @@ components:
         embedded_subtitles: { type: boolean, default: false }
         playback_subtitles: { type: boolean, default: false }
         playback_audio_selection: { type: boolean, default: false }
+        playback_start_position:
+          type: boolean
+          default: false
+          description: |
+            DEC-XXX (startpositie in het afspeelplan). POST /playback/plan
+            neemt `start_position_ms` aan en meldt in het antwoord waar de
+            stream begint. Afwezig betekent uit; stuur het veld dan niet, want
+            de body is gesloten. Zonder de vlag negeert de server het veld; het
+            antwoord draagt dan geen `start_position_ms` en de stream begint op
+            nul.
         transcode: { type: boolean, default: false }
         downloads: { type: boolean, default: false }
         backups:
@@ -5294,6 +5326,14 @@ components:
         audio_stream_id:
           description: Alleen met playback_audio_selection; vereist version_id. Afwezig behoudt het bestaande audiobeleid.
           $ref: "#/components/schemas/Id"
+        start_position_ms:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            Alleen met playback_start_position. De positie in de titel, in
+            milliseconden, waar een omzetting begint. Afwezig is het bestaande
+            gedrag: een omzetting begint op nul.
 
     PlaybackDeliveryMode:
       type: string
@@ -5342,6 +5382,19 @@ components:
         session_id:
           type: [string, "null"]
           description: Null bij `direct_play`; een omzetting draagt hier de id van zijn sessie.
+        start_position_ms:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            Alleen aanwezig als de aanvraag `start_position_ms` droeg. Het
+            eerste tijdstempel van de stream, in milliseconden: de segmenten
+            dragen filmtijd, dus dit is de positie in de titel waar de stream
+            begint. Gemeten aan het eerste segment: bij gekopieerde sporen het
+            keyframe vóór de gevraagde positie, bij een volledige omzetting
+            hooguit één frame erna. Een speler die naar nul
+            verschuift telt dit op bij zijn eigen tijd; een speler die de
+            tijdstempels houdt telt niets op. `0` bij `direct_play`.
         reason: { $ref: "#/components/schemas/PlaybackReason" }
         reasons:
           type: array

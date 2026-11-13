@@ -66,6 +66,9 @@ class PlayerAndroid extends PlayerBase {
   bool get providesNativeStats => true;
 
   @override
+  bool get keepsAbsoluteTimestamps => false;
+
+  @override
   bool get audioPassthroughActive => _audioPassthroughEnabled;
 
   @override
@@ -140,6 +143,7 @@ class PlayerAndroid extends PlayerBase {
     List<SubtitleTrack>? externalSubtitles,
     Duration timelineOffset = Duration.zero,
     Duration? timelineDuration,
+    bool absoluteTimestamps = false,
   }) async {
     if (disposed) return;
     await _ensureInitialized();
