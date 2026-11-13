@@ -16,6 +16,7 @@
   import SeriesEpisodes from './SeriesEpisodes.svelte';
   import Artwork from '../Artwork.svelte';
   import CardMenu from '../CardMenu.svelte';
+  import ItemDelete from '../ItemDelete.svelte';
   import ItemPersonalActions from '../ItemPersonalActions.svelte';
   import StateView from '../StateView.svelte';
   import WatchedBy from '../WatchedBy.svelte';
@@ -27,7 +28,7 @@
   import { emptyPager, loadNext, type PagerState } from '../../util/paging';
   import { canRefreshMetadata, refreshMetadata } from '../refreshMetadata';
 
-  let { item, onchange }: { item: Item; onchange: (next: Item) => void } = $props();
+  let { item, onchange, onreload }: { item: Item; onchange: (next: Item) => void; onreload?: () => void } = $props();
   const uid = $props.id();
 
   type Tab = 'episodes' | 'details';
@@ -47,6 +48,7 @@
   let candidates = $state<Item[]>([]);
   let seasonId = $state('');
   let hubsSettled = $state(false);
+  let deleteOpen = $state(false);
   let watchedDelta = $state(0);
   let signal: AbortSignal | undefined;
   let hubRun = 0;
@@ -221,6 +223,10 @@
                 <a class="btn btn--secondary" href="/admin/metadata/match?item={encodeURIComponent(item.id)}">{t('admin.match.title')}</a>
                 {#if canRefreshMetadata()}
                   <button type="button" class="btn btn--secondary" onclick={() => void refreshMetadata(item.id).then(text => (refreshNote = text))}>{t('detail.refreshMetadata')}</button>
+                {/if}
+                {#if caps?.media_delete === true}
+                  <button type="button" class="btn btn--danger" onclick={() => (deleteOpen = true)}>{t('item.delete.action')}</button>
+                  <ItemDelete {item} bind:open={deleteOpen} {onreload} />
                 {/if}
               </div>
               {#if refreshNote}<p class="series__note" role="status">{refreshNote}</p>{/if}
