@@ -608,6 +608,12 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     } else {
       await player.setProperty('stream-lavf-o', '');
     }
+    // Always written, like the tunings around it: a reused player must not
+    // carry a direct-play timeout into a transcode or a live stream.
+    await player.setProperty(
+      'network-timeout',
+      '${networkTimeoutSeconds(isNetworkVod: isNetworkVod, isTranscoding: isTranscoding)}',
+    );
 
     int? ringBytes;
     if (isNetworkVod && !isTranscoding) {

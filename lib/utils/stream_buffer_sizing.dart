@@ -20,6 +20,25 @@ const quickTimeFamilyContainers = {'mp4', 'mov', 'm4v', '3gp', '3g2'};
 const matroskaFamilyContainers = {'mkv', 'matroska', 'webm'};
 const _highBitrateMatroskaThresholdKbps = 40 * 1000;
 
+/// mpv's built-in `network-timeout` (seconds): how long a network read may
+/// stay silent before it counts as an error.
+const mpvDefaultNetworkTimeoutSeconds = 60;
+
+/// The read timeout for direct network playback. A connection that stalls
+/// without closing is otherwise only noticed when the peer or the OS ends it:
+/// on an Apple TV (log vcf49, 13 November 2026) the stream stood still for
+/// about 36 seconds, the 64 MiB cache ran dry after 20 and playback buffered
+/// for 16 seconds, although the reconnect then took one second. With ten
+/// seconds ffmpeg gives up the dead connection and reconnects at the same
+/// byte while the cache still plays.
+const directPlayNetworkTimeoutSeconds = 10;
+
+/// The `network-timeout` for an open. Only direct play of a network file gets
+/// the short one: a transcode can keep a request waiting while the server
+/// prepares its first segments, and live and local media keep mpv's default.
+int networkTimeoutSeconds({required bool isNetworkVod, required bool isTranscoding}) =>
+    isNetworkVod && !isTranscoding ? directPlayNetworkTimeoutSeconds : mpvDefaultNetworkTimeoutSeconds;
+
 const minStreamRingBytes = 16 * 1024 * 1024;
 const maxStreamRingBytes = 128 * 1024 * 1024;
 

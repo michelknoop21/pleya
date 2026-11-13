@@ -77,4 +77,18 @@ void main() {
       expect(androidStreamRingCapBytes(1024), 128 * 1024 * 1024);
     });
   });
+
+  group('networkTimeoutSeconds', () {
+    // Log vcf49: a stalled connection was only noticed after about 36 s.
+    test('direct play of a network file gives up a silent connection after ten seconds', () {
+      expect(networkTimeoutSeconds(isNetworkVod: true, isTranscoding: false), 10);
+      expect(directPlayNetworkTimeoutSeconds, lessThan(mpvDefaultNetworkTimeoutSeconds));
+    });
+
+    test('a transcode, live and local media keep the mpv default', () {
+      expect(networkTimeoutSeconds(isNetworkVod: true, isTranscoding: true), 60);
+      expect(networkTimeoutSeconds(isNetworkVod: false, isTranscoding: false), 60);
+      expect(networkTimeoutSeconds(isNetworkVod: false, isTranscoding: true), 60);
+    });
+  });
 }
