@@ -45,6 +45,14 @@ abstract interface class LibraryTrashClient implements ServerAdministrationClien
   Future<void> emptyLibraryTrash(String libraryId);
 }
 
+/// Whether `MediaServerClient.deleteMediaItem` can work on this server right
+/// now. Only a backend whose delete depends on a server switch implements it
+/// (a Pleya Server without the `media_delete` capability answers false); Plex
+/// and Jellyfin decide on their side and report a refusal as an error.
+abstract interface class MediaDeletionGate {
+  bool get supportsMediaDeletion;
+}
+
 /// Re-read metadata for one item (a film, a series) from its providers.
 abstract interface class ItemMetadataRefreshClient implements ServerAdministrationClient {
   Future<void> refreshItemMetadata(String itemId);

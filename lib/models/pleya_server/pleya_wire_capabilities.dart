@@ -37,6 +37,7 @@ class PleyaCapabilities {
     this.sessions = false,
     this.administration = false,
     this.libraryMaintenance = false,
+    this.mediaDelete = false,
     this.mcp = false,
   });
 
@@ -143,6 +144,11 @@ class PleyaCapabilities {
   /// `POST /libraries/{id}/empty-trash` and `/refresh-metadata` exist
   /// (chapter 17f, proposal). Without it a library offers only the scan.
   final bool libraryMaintenance;
+
+  /// `DELETE /items/{id}` erases a title and its files from storage (chapter
+  /// 17h). Only true when the server admin switched it on and a media root was
+  /// measured writable at startup; absent means off.
+  final bool mediaDelete;
   final bool mcp;
 
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
@@ -181,6 +187,7 @@ class PleyaCapabilities {
     sessions: booleanOr(json, 'sessions', orElse: false),
     administration: booleanOr(json, 'administration', orElse: false),
     libraryMaintenance: booleanOr(json, 'library_maintenance', orElse: false),
+    mediaDelete: booleanOr(json, 'media_delete', orElse: false),
     mcp: booleanOr(json, 'mcp', orElse: false),
   );
 }

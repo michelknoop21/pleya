@@ -311,7 +311,11 @@ extension on MediaContextMenuState {
     final confirmed = await showDeleteConfirmation(
       context,
       title: t.mediaMenu.deleteFromServer,
-      message: "${t.mediaMenu.confirmDelete}${isMultipleMediaItems ? "\n\n${t.mediaMenu.deleteMultipleWarning}" : ""}",
+      message: [
+        t.mediaMenu.confirmDelete,
+        if (isMultipleMediaItems) t.mediaMenu.deleteMultipleWarning,
+        if (item.backend == MediaBackend.pleyaServer) t.mediaMenu.pleyaServerDeletesFiles,
+      ].join('\n\n'),
       confirmText: t.mediaMenu.deleteFromServer,
     );
 
@@ -333,6 +337,14 @@ extension on MediaContextMenuState {
           showErrorSnackBar(context, t.mediaMenu.mediaFailedToDelete);
         }
       }
+    } on MediaDeletionIncompleteException catch (e) {
+      // Part of it is gone: say what stayed and refresh the list. The title only
+      // leaves the UI when the server says it left the catalogue too; a title
+      // with a file left is still on the server.
+      appLogger.w(t.mediaMenu.mediaFailedToDelete, error: e);
+      if (context.mounted) showErrorSnackBar(context, mediaDeletionFailureMessage(e, item.backend));
+      if (incompleteDeletionRemovedTitle(e, mediaKind)) DeletionNotifier().notifyDeletedItem(item: item);
+      _notifyListRefresh();
     } catch (e) {
       appLogger.e(t.mediaMenu.mediaFailedToDelete, error: e);
       final message = await resolveMediaDeletionFailureMessage(e, item.backend, client);

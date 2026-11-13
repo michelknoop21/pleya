@@ -15,6 +15,29 @@ sealed class MediaServerException implements Exception {
   String toString() => '$runtimeType: $message';
 }
 
+/// A delete that erased some files and left others (Pleya Server answers
+/// `library.media_delete_incomplete`). The title may still be listed with what
+/// is left. Outside the sealed hierarchy on purpose: it is not a transport or
+/// auth failure, and existing exhaustive matches stay as they are.
+class MediaDeletionIncompleteException implements Exception {
+  const MediaDeletionIncompleteException({
+    required this.removedFiles,
+    required this.failedPaths,
+    this.removedItems = 0,
+  });
+
+  final int removedFiles;
+
+  /// Films and episodes that did leave the catalogue (`removed_items`).
+  final int removedItems;
+
+  /// Paths relative to the library root of the files that stayed.
+  final List<String> failedPaths;
+
+  @override
+  String toString() => 'MediaDeletionIncompleteException: $removedFiles removed, ${failedPaths.length} left';
+}
+
 /// The supplied base URL is unreachable, returns the wrong shape, or doesn't
 /// look like the expected backend at all. Surfaces in onboarding probes
 /// (Jellyfin `/System/Info/Public`, Plex resource discovery).

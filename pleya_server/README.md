@@ -430,6 +430,46 @@ curl -s -X POST -H "Authorization: Bearer $A" $B/jobs/<job_id>/retry
 `job` is het achtste foutdomein. Na een mislukte probe van een bestand wacht de scanner volgens
 `probe_attempts` steeds langer voor hij het opnieuw probeert (`probeBackoff`).
 
+### Titels met hun bestanden verwijderen
+
+Standaard kan Pleya Server geen bestand wissen: de mediamounts in `compose.yaml` staan op `:ro` en
+dat blijft zo. Wie vanuit de app of de API een film, serie, seizoen of aflevering wil verwijderen
+mét de bestanden op de NAS, zet het zelf aan (DEC-XXX, media verwijderen; specificatie 17h).
+
+1. Leg de schrijfbare mount en de schakelaar samen vast in een eigen bestand naast `compose.yaml`,
+   niet in `compose.yaml` zelf (dat staat in git en geeft omgevingsvariabelen één voor één door).
+   Bijvoorbeeld `compose.media-delete.yaml`:
+
+   ```yaml
+   services:
+     pleya-server:
+       environment:
+         PLEYA_SERVER_ALLOW_MEDIA_DELETE: "true"
+       volumes:
+         - ${PLEYA_SERVER_MEDIA_HOST}:/media/library
+   ```
+
+   Compose vervangt daarmee de mount op `/media/library`; `/media/library2` blijft `:ro` zolang je
+   hem hier niet noemt, en daar wist de server dan niets.
+2. Start met beide bestanden:
+   `docker compose -f compose.yaml -f compose.media-delete.yaml up -d`.
+   `deploy-nas.sh` geeft zijn eigen `-f`-lijst mee en kent dit bestand niet: na een uitrol met dat
+   script staat verwijderen weer uit (geen variabele, mount `:ro`) tot je dit commando opnieuw draait.
+3. Controleer het log. Per mediaroot staat er een waarschuwing: "media verwijderen staat aan" voor
+   een schrijfbare root, "deze mediaroot is niet schrijfbaar" voor een root die `:ro` bleef.
+   `GET /pleya/v1/info` heeft dan `capabilities.media_delete: true`.
+
+Wat er dan gebeurt: een beheerder (owner of admin) kan via `DELETE /pleya/v1/items/{id}` een titel
+verwijderen. Een lid niet, ook niet met het recht `manage`. De server wist de videobestanden, de
+losse ondertitels en de artwork die de scanner aan die titel hing, en mappen die daardoor leeg raken
+tot aan de bibliotheekroot. Een `.nfo` of ander bestand dat de scanner niet kende blijft staan, en
+de map eromheen dus ook. Een API-token kan niet wissen. Er is geen prullenbak op schijf: weg is weg,
+dus een back-up van de media is het vangnet, en de back-up van Pleya bevat geen media.
+
+De prijs: met een schrijfbare mount kan een overgenomen beheeraccount mediabestanden vernietigen,
+en met `:ro` kan dat niet. Uitzetten: zonder het extra bestand herstarten
+(`docker compose -f compose.yaml up -d`).
+
 ### Back-ups en restore
 
 Sinds S25 maakt de server elke nacht een back-up (database, `/config`, versleutelde geheimen),
