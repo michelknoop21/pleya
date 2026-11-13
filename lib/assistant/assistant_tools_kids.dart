@@ -53,6 +53,8 @@ const kidsToolPolicy = <String, KidsTool>{
   'remove_user': KidsTool.neutral,
   // Only a seerr_id a gated tool showed can be requested.
   'request_title': KidsTool.neutral,
+  // The viewer's own pending request only, the mirror of asking for it.
+  'cancel_request': KidsTool.neutral,
   'change_playback': KidsTool.neutral,
   'download_subtitle': KidsTool.neutral,
   // A saved search_catalog query holds every title, not only those that passed.

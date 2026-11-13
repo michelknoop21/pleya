@@ -8,6 +8,33 @@ import 'big_p_eval_cases_support.dart';
 // model's words. Each task has its twin with a no, where nothing may change.
 
 Future<EvalWorld> _seerr() async => EvalWorld(seerr: evalSeerr());
+
+/// The same Seerr, where this user's request for Primer is still pending.
+Future<EvalWorld> _seerrPending() async => EvalWorld(
+  seerr: evalSeerr()
+    ..details['/movie/14337'] = {
+      'id': 14337,
+      'title': 'Primer',
+      'releaseDate': '2004-10-08',
+      'mediaInfo': {
+        'status': 2,
+        'requests': [
+          {
+            'id': 41,
+            'status': 1,
+            'is4k': false,
+            'requestedBy': {'id': 7},
+          },
+        ],
+      },
+    },
+);
+
+const _findPrimer = EvalCall('find_request_title', {
+  'titles': [
+    {'title': 'Primer', 'kind': 'movie'},
+  ],
+});
 Future<EvalWorld> _memory() async => EvalWorld(memory: await EvalMemory.open(michelFacts: ['houdt van komedies']));
 Future<EvalWorld> _emptyMemory() async => EvalWorld(memory: await EvalMemory.open());
 
@@ -246,5 +273,49 @@ final evalTaskCases = <EvalCase>[
     // The cards come from the request service, not from the catalogue.
     hard: const [evalNoDup, EvalCardCount(min: 1), EvalStateUnchanged()],
     soft: const EvalSoft(firstTools: {'similar_titles'}),
+  ),
+  // Cancelling a request (BP-12t1): the request leaves Seerr after a yes
+  // and stays after a no.
+  EvalCase(
+    id: 'task-cancel-request-yes',
+    source: 'BP-12t1: eigen aanvraag annuleren met een ja',
+    world: _seerrPending,
+    turns: [
+      EvalTurn(
+        'Annuleer mijn aanvraag voor Primer',
+        confirm: EvalConfirm.yes,
+        script: [
+          _findPrimer,
+          EvalCall('cancel_request', {'seerr_id': 'movie:14337'}),
+          'De aanvraag voor Primer is geannuleerd.',
+        ],
+      ),
+    ],
+    hard: const [
+      evalNoDup,
+      EvalActionDone('cancelRequest'),
+      EvalState(cancelledRequests: ['41'], requests: []),
+    ],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'find_request_title', 'find_title'}),
+  ),
+  EvalCase(
+    id: 'task-cancel-request-no',
+    source: 'BP-12t1: annuleren geweigerd, de aanvraag blijft staan',
+    world: _seerrPending,
+    turns: [
+      EvalTurn(
+        'Annuleer mijn aanvraag voor Primer',
+        confirm: EvalConfirm.no,
+        script: [
+          _findPrimer,
+          EvalCall('cancel_request', {'seerr_id': 'movie:14337'}),
+          'De aanvraag voor Primer blijft staan.',
+        ],
+      ),
+    ],
+    hard: const [evalNoDup, EvalStateUnchanged(), EvalNoFalseSuccess()],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'find_request_title', 'find_title'}),
   ),
 ];

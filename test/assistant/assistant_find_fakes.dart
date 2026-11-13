@@ -171,6 +171,10 @@ class FakeSeerr {
 
   /// Every POST as path and decoded JSON body, in order: what Pleya changed.
   final posts = <({String path, Map<String, Object?> body})>[];
+
+  /// Every DELETE as its path, in order. A deleted request also leaves the
+  /// `mediaInfo.requests` of the title that listed it.
+  final deletes = <String>[];
   Map<String, List<Map<String, Object?>>> search = {};
   Map<String, Map<String, Object?>> details = {};
 
@@ -190,6 +194,24 @@ class FakeSeerr {
           body = const {};
         }
         posts.add((path: path, body: body));
+      }
+      if (request.method == 'DELETE') {
+        deletes.add(path);
+        final id = int.tryParse(path.split('/').last);
+        for (final detail in details.values) {
+          final info = detail['mediaInfo'];
+          if (info is! Map || info['requests'] is! List) continue;
+          final left = [
+            for (final row in info['requests'] as List)
+              if (row is! Map || row['id'] != id) row,
+          ];
+          if (left.isEmpty) {
+            detail.remove('mediaInfo');
+          } else {
+            info['requests'] = left;
+          }
+        }
+        return http.Response('', 204);
       }
       if (path == '/search') {
         return jsonResponse({

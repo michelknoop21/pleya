@@ -83,6 +83,7 @@ part 'assistant_tools_insights_plays.dart';
 part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_state.dart';
 part 'assistant_tools_requests_options.dart';
+part 'assistant_tools_requests_cancel.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_discover.dart';
 part 'assistant_tools_kids.dart';
@@ -155,6 +156,7 @@ enum AssistantActionKind {
   createHomeRow,
   createCollection,
   requestTitle,
+  cancelRequest,
   downloadEpisodes,
   downloadSubtitle,
   changePlayback,

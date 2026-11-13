@@ -198,6 +198,7 @@ const assistantExampleExempt = <String, String>{
   'find_request_title': 'needs a title',
   'request_status': 'needs a title shown in the same ask',
   'request_title': 'needs a title shown in the same ask',
+  'cancel_request': 'needs a title shown in the same ask',
   'download_next': 'needs a series',
   'find_subtitles': 'needs a title',
   'download_subtitle': 'needs a title',

@@ -9003,6 +9003,9 @@ class TranslationsAssistantStepsEn {
 	/// en: 'Requesting title'
 	String get requestTitle => 'Requesting title';
 
+	/// en: 'Cancelling request'
+	String get cancelRequest => 'Cancelling request';
+
 	/// en: 'Finding the title'
 	String get findTitle => 'Finding the title';
 
@@ -9089,6 +9092,9 @@ class TranslationsAssistantActionsEn {
 
 	/// en: 'Request sent'
 	String get requestTitle => 'Request sent';
+
+	/// en: 'Request cancelled'
+	String get cancelRequest => 'Request cancelled';
 
 	/// en: 'Download started'
 	String get downloadEpisodes => 'Download started';
@@ -10229,6 +10235,9 @@ class TranslationsAssistantConfirmTitlesEn {
 
 	/// en: 'Request title'
 	String get requestTitle => 'Request title';
+
+	/// en: 'Cancel request'
+	String get cancelRequest => 'Cancel request';
 
 	/// en: 'Download episodes'
 	String get downloadEpisodes => 'Download episodes';
@@ -13239,6 +13248,7 @@ extension on Translations {
 			'assistant.steps.findRequestTitle' => 'Searching Seerr',
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
 			'assistant.steps.requestTitle' => 'Requesting title',
+			'assistant.steps.cancelRequest' => 'Cancelling request',
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.recallMemory' => 'Checking your memory',
 			'assistant.steps.rememberFact' => 'Preparing a memory',
@@ -13270,6 +13280,7 @@ extension on Translations {
 			'assistant.actions.createHomeRow' => 'Home row created',
 			'assistant.actions.createCollection' => 'Collection created',
 			'assistant.actions.requestTitle' => 'Request sent',
+			'assistant.actions.cancelRequest' => 'Request cancelled',
 			'assistant.actions.downloadEpisodes' => 'Download started',
 			'assistant.actions.downloadSubtitle' => 'Subtitle downloaded',
 			'assistant.actions.changePlayback' => 'Playback changed',
@@ -13284,6 +13295,7 @@ extension on Translations {
 			'assistant.confirm.titles.createHomeRow' => 'Create home row',
 			'assistant.confirm.titles.createCollection' => 'Create collection',
 			'assistant.confirm.titles.requestTitle' => 'Request title',
+			'assistant.confirm.titles.cancelRequest' => 'Cancel request',
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
 			'assistant.confirm.titles.changePlayback' => 'Change playback',

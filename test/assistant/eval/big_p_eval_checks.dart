@@ -38,6 +38,7 @@ class EvalWorldState {
   const EvalWorldState({
     this.homeRows = const [],
     this.requests = const [],
+    this.cancelledRequests = const [],
     this.memory = const [],
     this.admin = const {},
   });
@@ -52,12 +53,16 @@ class EvalWorldState {
   /// Seerr requests sent, as `movie:14337` or `tv:95396`.
   final List<String> requests;
 
+  /// Seerr requests deleted, as their request id.
+  final List<String> cancelledRequests;
+
   /// The asking profile's stored memory facts, as text.
   final List<String> memory;
 
   Map<String, Object?> toJson() => {
     'home_rows': homeRows,
     'requests': requests,
+    if (cancelledRequests.isNotEmpty) 'cancelled_requests': cancelledRequests,
     'memory': memory,
     if (admin.isNotEmpty) 'admin': admin,
   };

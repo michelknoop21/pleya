@@ -3873,6 +3873,7 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get findRequestTitle => 'Seerr doorzoeken';
 	@override String get discoverRequestTitles => 'Passende titels zoeken';
 	@override String get requestTitle => 'Titel aanvragen';
+	@override String get cancelRequest => 'Aanvraag annuleren';
 	@override String get findTitle => 'Titel op beschrijving zoeken';
 	@override String get recallMemory => 'Geheugen raadplegen';
 	@override String get rememberFact => 'Herinnering klaarzetten';
@@ -3922,6 +3923,7 @@ class _TranslationsAssistantActionsNl extends TranslationsAssistantActionsEn {
 	@override String get createHomeRow => 'Rij aangemaakt';
 	@override String get createCollection => 'Collectie aangemaakt';
 	@override String get requestTitle => 'Aanvraag verstuurd';
+	@override String get cancelRequest => 'Aanvraag geannuleerd';
 	@override String get downloadEpisodes => 'Download gestart';
 	@override String get downloadSubtitle => 'Ondertitel gedownload';
 	@override String get changePlayback => 'Afspelen aangepast';
@@ -4456,6 +4458,7 @@ class _TranslationsAssistantConfirmTitlesNl extends TranslationsAssistantConfirm
 	@override String get createHomeRow => 'Rij op het beginscherm maken';
 	@override String get createCollection => 'Collectie maken';
 	@override String get requestTitle => 'Titel aanvragen';
+	@override String get cancelRequest => 'Aanvraag annuleren';
 	@override String get downloadEpisodes => 'Afleveringen downloaden';
 	@override String get downloadSubtitle => 'Ondertitel downloaden';
 	@override String get changePlayback => 'Afspelen aanpassen';
@@ -7298,6 +7301,7 @@ extension on TranslationsNl {
 			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
+			'assistant.steps.cancelRequest' => 'Aanvraag annuleren',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
 			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
@@ -7329,6 +7333,7 @@ extension on TranslationsNl {
 			'assistant.actions.createHomeRow' => 'Rij aangemaakt',
 			'assistant.actions.createCollection' => 'Collectie aangemaakt',
 			'assistant.actions.requestTitle' => 'Aanvraag verstuurd',
+			'assistant.actions.cancelRequest' => 'Aanvraag geannuleerd',
 			'assistant.actions.downloadEpisodes' => 'Download gestart',
 			'assistant.actions.downloadSubtitle' => 'Ondertitel gedownload',
 			'assistant.actions.changePlayback' => 'Afspelen aangepast',
@@ -7343,6 +7348,7 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.createHomeRow' => 'Rij op het beginscherm maken',
 			'assistant.confirm.titles.createCollection' => 'Collectie maken',
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
+			'assistant.confirm.titles.cancelRequest' => 'Aanvraag annuleren',
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',

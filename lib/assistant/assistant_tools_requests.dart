@@ -301,4 +301,26 @@ final List<AssistantTool> _requestTools = [
       return _requestCard(ctx, shown, fourK: _bool(args, 'four_k'), wanted: _seasonNumbers(args));
     },
   ),
+  AssistantTool(
+    name: 'cancel_request',
+    description:
+        'Cancel the user\'s own request for a title found with find_title, find_request_title or '
+        'discover_request_titles, in the same task. Only a request this user made that is still pending; '
+        'the user confirms in Pleya. Returns status not_requested, not_yours (someone else asked for it) or '
+        'not_pending (already approved, declined or done) when there is nothing to cancel: say so plainly. '
+        'Use seerr_id exactly as returned.',
+    risk: AssistantToolRisk.sensitive,
+    needsServer: false,
+    properties: const {
+      'seerr_id': {'type': 'string'},
+      'four_k': {'type': 'boolean'},
+    },
+    required: const ['seerr_id'],
+    serves: _servesRequests,
+    run: (ctx, _, args) async {
+      final shown =
+          _shownRequestTitles[ctx]?[_string(args, 'seerr_id')] ?? (throw const AssistantToolError('unknown_seerr_id'));
+      return _cancelRequestCard(ctx, shown, fourK: _bool(args, 'four_k'));
+    },
+  ),
 ];

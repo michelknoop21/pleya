@@ -14,13 +14,14 @@ bool _same(List<String> a, List<String> b) =>
 bool _equal(EvalWorldState a, EvalWorldState b) =>
     _same(a.homeRows, b.homeRows) &&
     _same(a.requests, b.requests) &&
+    _same(a.cancelledRequests, b.cancelledRequests) &&
     _same(a.memory, b.memory) &&
     jsonEncode(a.admin) == jsonEncode(b.admin);
 
 /// After the last turn the world holds exactly what [want] says. A field
 /// left null in the expectation is not compared.
 class EvalState extends EvalHard {
-  const EvalState({this.homeRows, this.homeRowCount, this.requests, this.memory, this.admin});
+  const EvalState({this.homeRows, this.homeRowCount, this.requests, this.cancelledRequests, this.memory, this.admin});
 
   /// Fields of the administrator's state that must equal these values, such
   /// as `{'scans': ['films']}` or `{'users': {'Michel': 'all'}}`.
@@ -30,6 +31,7 @@ class EvalState extends EvalHard {
   /// How many Home rows exist, when the model is free to name the row.
   final int? homeRowCount;
   final List<String>? requests;
+  final List<String>? cancelledRequests;
 
   /// Facts that must be stored, each matched as a case-insensitive substring
   /// of one stored fact; the count must match too.
@@ -50,6 +52,9 @@ class EvalState extends EvalHard {
     }
     if (requests != null && !_same(s.requests, requests!)) {
       found.add('$id: requests ${s.requests}, wanted $requests');
+    }
+    if (cancelledRequests != null && !_same(s.cancelledRequests, cancelledRequests!)) {
+      found.add('$id: cancelled requests ${s.cancelledRequests}, wanted $cancelledRequests');
     }
     if (memory != null) {
       final stored = [for (final m in s.memory) m.toLowerCase()];

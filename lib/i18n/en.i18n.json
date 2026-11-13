@@ -2954,6 +2954,7 @@
       "findRequestTitle": "Searching Seerr",
       "discoverRequestTitles": "Finding matching titles",
       "requestTitle": "Requesting title",
+      "cancelRequest": "Cancelling request",
       "findTitle": "Finding the title",
       "recallMemory": "Checking your memory",
       "rememberFact": "Preparing a memory",
@@ -2997,6 +2998,7 @@
       "createHomeRow": "Home row created",
       "createCollection": "Collection created",
       "requestTitle": "Request sent",
+      "cancelRequest": "Request cancelled",
       "downloadEpisodes": "Download started",
       "downloadSubtitle": "Subtitle downloaded",
       "changePlayback": "Playback changed"
@@ -3014,6 +3016,7 @@
         "createHomeRow": "Create home row",
         "createCollection": "Create collection",
         "requestTitle": "Request title",
+        "cancelRequest": "Cancel request",
         "downloadEpisodes": "Download episodes",
         "downloadSubtitle": "Download subtitle",
         "changePlayback": "Change playback"
