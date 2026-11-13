@@ -254,23 +254,35 @@ class HeavyQueueTest(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == 'darwin', 'the shared queue only exists on macOS')
     def test_shared_queue_directory_forwards_and_a_private_one_stays_here(self):
-        # A fake installed entry under a fake HOME records what it was called with.
+        # A fake installed entry under a fake HOME records what it was called with. The shared
+        # directory comes from the installed configuration, which the audited form reads at a
+        # fixed path; without it the form falls back to the default directory.
         home, called = self.root / 'home', self.root / 'forwarded'
         (home / 'bin').mkdir(parents=True)
         (home / 'bin' / 'heavy_launcher.py').write_text('')
         (home / 'bin' / 'pleya-heavy').write_text(
             f'import sys; open({str(called)!r}, "w").write(" ".join(sys.argv[1:]))')
-        shared = dict(self.env, HOME=str(home), PLEYA_HEAVY_QUEUE_DIR=f'/tmp/pleya-heavy-{os.getuid()}')
-        result = subprocess.run([sys.executable, str(QUEUE), 'status', '--json'], env=shared,
-                                capture_output=True, text=True, timeout=4)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(called.read_text(), 'status --json')
-        called.unlink()
-        private = dict(self.env, HOME=str(home))
-        result = subprocess.run([sys.executable, str(QUEUE), 'status', '--json'], env=private,
-                                capture_output=True, text=True, timeout=4)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(called.exists())
+        try:
+            config = Path('/Volumes/SSD/Projects/heavy-work/control/config.json')
+            shared_dir = json.loads(config.read_text())['queue_dir']
+        except (OSError, ValueError, KeyError, TypeError):
+            shared_dir = f'/tmp/pleya-heavy-{os.getuid()}'
+        base = dict(self.env, HOME=str(home))
+
+        def status(**env):
+            result = subprocess.run([sys.executable, str(QUEUE), 'status', '--json'],
+                                    env=dict(base, **env), capture_output=True, text=True, timeout=4)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            forwarded = called.exists()
+            if forwarded:
+                self.assertEqual(called.read_text(), 'status --json')
+                called.unlink()
+            return forwarded
+
+        # Only the forwarding cases name the shared directory, and they reach the fake entry.
+        self.assertTrue(status(PLEYA_HEAVY_QUEUE_DIR=shared_dir))
+        self.assertTrue(status(PLEYA_HEAVY_QUEUE_DIR=''))
+        self.assertFalse(status())  # self.env carries the test's private directory
 
     def test_guardian_crash_does_not_release_while_its_worker_runs(self):
         marker = self.root / 'guardian-worker-started'

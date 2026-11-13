@@ -376,14 +376,24 @@ def forward_to_shared_queue():
 
     This standalone copy writes tickets the shared scheduler cannot read: on 13 November 2026 one
     such ticket in the shared directory made every new admission crash until it was gone. A
-    caller that picks a private queue directory, as the tests here do, stays on this copy.
+    caller that picks a queue directory other than the installed `queue_dir`, as the tests here
+    do, stays on this copy.
+
+    The shared ingress audit (Heavyworker `heavy_ingress.py`, FORWARD and FORWARD_MAIN) matches
+    this function and the guard below by AST. Change them only together with that audit.
     """
     entry = Path.home() / 'bin' / 'pleya-heavy'
     if sys.platform != 'darwin' or not entry.with_name('heavy_launcher.py').is_file():
         return
     chosen = os.environ.get('PLEYA_HEAVY_QUEUE_DIR')
-    if chosen and Path(chosen).resolve() != Path(f'/tmp/pleya-heavy-{os.getuid()}').resolve():
-        return
+    if chosen:
+        try:
+            config = Path('/Volumes/SSD/Projects/heavy-work/control/config.json')
+            shared = json.loads(config.read_text())['queue_dir']
+        except (OSError, ValueError, KeyError, TypeError):
+            shared = f'/tmp/pleya-heavy-{os.getuid()}'
+        if Path(chosen).resolve() != Path(shared).resolve():
+            return
     try:
         os.execv(sys.executable, [sys.executable, str(entry), *sys.argv[1:]])
     except OSError as error:
