@@ -292,12 +292,13 @@ class HomeProjectionService {
       maxConcurrentFetches: maxConcurrentFetches,
       trustStoredIdentity: trustStoredIdentity,
     );
+    final lookupKeys = continueWatchingLookupKeys(onDeck);
     final evidence = await resolver.resolveEvidence([
-      for (final item in onDeck)
+      for (final (i, item) in onDeck.indexed)
         ResolvableItem(
           item: item,
           scope: continueWatchingScope(item) ?? '',
-          bucketKeyOverride: continueWatchingBucketKey(item),
+          bucketKeyOverride: lookupKeys[i],
           externalIdTarget: continueWatchingExternalIdTarget(item),
           // An episode/season row's external ids are fetched from its
           // *series*, so they are narrowed to the exact row before they

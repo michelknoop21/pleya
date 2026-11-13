@@ -11,16 +11,13 @@ import '../media/ids.dart';
 import '../media/media_item.dart';
 import 'stored_identity_trust.dart';
 import '../providers/multi_server_provider.dart';
+import '../services/unified_catalog/identity_lookup_cache.dart';
 import 'external_ids.dart';
 
 /// Builds the `fetchExternalIds` callback `UnifiedIdentityResolver` (and
 /// everything built on it) expects, backed by [multiServer]'s live clients.
 Future<ExternalIds> Function(String serverId, String targetId) externalIdsFetcherFor(MultiServerProvider multiServer) {
-  return (serverId, targetId) async {
-    final client = multiServer.serverManager.getClient(ServerId(serverId));
-    if (client == null) throw StateError('No client for server $serverId');
-    return client.fetchExternalIds(targetId);
-  };
+  return (serverId, targetId) => fetchExternalIdsForIdentity(multiServer.serverManager, serverId, targetId);
 }
 
 /// Carries the live source boundary into otherwise pure projections.
