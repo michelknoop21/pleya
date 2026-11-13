@@ -5,20 +5,31 @@ part of 'assistant_tools.dart';
 // so a change made here shows up there and the other way round.
 
 /// Wired into [AssistantToolContext] by the UI layer from `WatchlistProvider`.
+/// How the list a read returned came about. [failed] with an empty list is no
+/// list at all; a list that is [incomplete] or [fromSnapshot] cannot prove a
+/// title is not on it.
+typedef AssistantWatchlistRead = ({bool failed, bool incomplete, bool fromSnapshot});
+
 class AssistantWatchlistServices {
   const AssistantWatchlistServices({
-    required this.load,
+    required this.read,
     required this.entries,
+    required this.keyFor,
     required this.add,
     required this.remove,
     required this.available,
   });
 
-  /// Loads the list when it was not loaded yet (`ensureLoaded`).
-  final Future<void> Function() load;
+  /// Brings the list up to date: waits for a load that is running, loads when
+  /// nothing was loaded, tries again after a failed load. Says how it ended.
+  final Future<AssistantWatchlistRead> Function() read;
 
-  /// The merged list, newest first. Read after [load].
+  /// The merged list as it stands, newest first.
   final List<WatchlistEntry> Function() entries;
+
+  /// The key [item] gets on the list, or null when no source takes this
+  /// title (the same question the kijklijst button asks before it shows).
+  final String? Function(MediaItem item) keyFor;
 
   /// `WatchlistProvider.addToWatchlist`, with the device's offline state.
   final Future<WatchlistOutcome> Function(MediaItem item) add;
@@ -43,12 +54,17 @@ AssistantWatchlistServices _watchlist(AssistantToolContext ctx) {
   return services;
 }
 
-/// What a change that did not go through means, as a code for the model.
-String _watchlistRefusal(WatchlistOutcome outcome) => switch (outcome) {
-  WatchlistOutcome.unsupported => 'watchlist_not_supported_for_title',
-  WatchlistOutcome.offlineRejected => 'device_offline',
-  WatchlistOutcome.partiallyFailed => 'watchlist_partly_changed',
-  _ => 'watchlist_failed',
+/// What a change that did not go through means for the model. After a half
+/// change the list was read again and an entry may have another ref.
+Map<String, Object?> _watchlistRefusal(WatchlistOutcome outcome) => {
+  'error': switch (outcome) {
+    WatchlistOutcome.unsupported => 'watchlist_not_supported_for_title',
+    WatchlistOutcome.offlineRejected => 'device_offline',
+    WatchlistOutcome.partiallyFailed => 'watchlist_partly_changed',
+    _ => 'watchlist_failed',
+  },
+  if (outcome == WatchlistOutcome.partiallyFailed) 'list_again': true,
+  'done': false,
 };
 
 String _watchlistTitle(WatchlistEntry entry) => clipText(entry.item.title ?? '', 64);
@@ -59,7 +75,8 @@ final List<AssistantTool> _watchlistTools = [
     description:
         'The user\'s kijklijst in Pleya (Plex watchlist and server favourites merged), newest first, each with '
         'an entry_id for remove_from_watchlist. in_library is true, false or unknown (not looked up: never say '
-        'it is missing). Pass kind for films or series only.',
+        'it is missing). With incomplete or from_snapshot, never say a title is not on the list. kind narrows to '
+        'films or series, title to a name.',
     risk: AssistantToolRisk.read,
     needsServer: false,
     properties: const {
@@ -67,11 +84,15 @@ final List<AssistantTool> _watchlistTools = [
         'type': 'string',
         'enum': ['movie', 'show'],
       },
+      'title': {'type': 'string'},
     },
     serves: _servesWatchlist,
     run: (ctx, _, args) async {
       final services = _watchlist(ctx);
-      await services.load();
+      final read = await services.read();
+      // No list at all is not an empty list.
+      if (read.failed && services.entries().isEmpty) throw const AssistantToolError('watchlist_unreachable');
+      final wanted = args['title'] is String ? (args['title'] as String).trim().toLowerCase() : '';
       final kind = switch (args['kind']) {
         'movie' => MediaKind.movie,
         'show' => MediaKind.show,
@@ -82,12 +103,16 @@ final List<AssistantTool> _watchlistTools = [
       final shown = _watchlistShown[ctx] ??= {};
       final all = [
         for (final entry in services.entries())
-          if (kind == null || entry.kind == kind) entry,
+          if ((kind == null || entry.kind == kind) &&
+              (wanted.isEmpty || (entry.item.title ?? '').toLowerCase().contains(wanted)))
+            entry,
       ];
       const limit = 30;
       return AssistantToolResult({
         'total': all.length,
         if (all.length > limit) 'shown': limit,
+        if (read.failed || read.incomplete) 'incomplete': true,
+        if (read.fromSnapshot) 'from_snapshot': true,
         'entries': [
           for (final entry in all.take(limit))
             () {
@@ -129,6 +154,14 @@ final List<AssistantTool> _watchlistTools = [
       }
       final title = clipText(item.title ?? '', 64);
       final subject = item.year == null ? title : '$title (${item.year})';
+      // Before the card: a yes that cannot succeed is not asked for.
+      final key = _watchlist(ctx).keyFor(item);
+      if (key == null) {
+        return AssistantToolResult({'status': 'watchlist_not_supported_for_title', 'title': subject, 'done': false});
+      }
+      if (_watchlist(ctx).entries().any((e) => e.key == key)) {
+        return AssistantToolResult({'status': 'already_on_watchlist', 'title': subject, 'done': false});
+      }
       return AssistantPendingAction(
         kind: AssistantActionKind.addToWatchlist,
         serverId: id,
@@ -137,7 +170,7 @@ final List<AssistantTool> _watchlistTools = [
         execute: ({password}) async {
           if (ctx.userClient(id) != client) throw const AssistantToolError('not_allowed');
           final outcome = await _watchlist(ctx).add(item);
-          if (outcome != WatchlistOutcome.added) return {'error': _watchlistRefusal(outcome), 'done': false};
+          if (outcome != WatchlistOutcome.added) return _watchlistRefusal(outcome);
           return {'status': 'on_watchlist', 'title': subject};
         },
       );
@@ -173,7 +206,7 @@ final List<AssistantTool> _watchlistTools = [
         execute: ({password}) async {
           // The entry as it is now: its memberships may have changed.
           final outcome = await services.remove(current());
-          if (outcome != WatchlistOutcome.removed) return {'error': _watchlistRefusal(outcome), 'done': false};
+          if (outcome != WatchlistOutcome.removed) return _watchlistRefusal(outcome);
           return {'status': 'off_watchlist', 'title': subject};
         },
       );

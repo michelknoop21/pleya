@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:pleya/assistant/assistant_watchlist_read.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -774,6 +775,68 @@ void main() {
 
       expect(provider.entries, isEmpty);
       expect(scopeChanges, 1);
+    });
+  });
+
+  // What Big P reads (BP-12t3). `ensureLoaded` returns at once while a load
+  // runs and never retries a failed one; a read through it told the user
+  // their kijklijst was empty.
+  group('assistantReadWatchlist', () {
+    test('waits for a load another screen started, then reads the list', () async {
+      final pending = _PendingSource();
+      final provider = providerWith(sources: [pending]);
+      addTearDown(provider.dispose);
+      unawaited(provider.load());
+      await pending.started.future;
+
+      var done = false;
+      final reading = assistantReadWatchlist(provider, offline: false).whenComplete(() => done = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(done, isFalse, reason: 'the list is not there yet');
+
+      pending.result.complete([entry()]);
+      final read = await reading;
+      expect(read, (failed: false, incomplete: false, fromSnapshot: false));
+      expect(provider.entries, hasLength(1));
+    });
+
+    test('a load that never ends is a failed read, not an empty list', () async {
+      final pending = _PendingSource();
+      final provider = providerWith(sources: [pending]);
+      addTearDown(provider.dispose);
+      unawaited(provider.load());
+      await pending.started.future;
+
+      final read = await assistantReadWatchlist(provider, offline: false, patience: const Duration(milliseconds: 20));
+      expect(read.failed, isTrue);
+      pending.result.complete(const []);
+    });
+
+    test('loads when nothing was loaded and says when a source did not answer', () async {
+      final provider = providerWith(
+        sources: [
+          _StubSource(scope: plexScope, entries: [entry()]),
+          _StubSource(scope: jellyfinScope, fails: true),
+        ],
+      );
+      addTearDown(provider.dispose);
+
+      final read = await assistantReadWatchlist(provider, offline: false);
+      expect(read.failed, isFalse);
+      expect(read.incomplete, isTrue);
+      expect(provider.entries, hasLength(1));
+    });
+
+    test('an offline read comes from the snapshot and says so', () async {
+      final provider = providerWith(
+        sources: [
+          _StubSource(scope: plexScope, entries: [entry()]),
+        ],
+      );
+      addTearDown(provider.dispose);
+
+      final read = await assistantReadWatchlist(provider, offline: true);
+      expect(read.fromSnapshot, isTrue);
     });
   });
 }

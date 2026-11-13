@@ -85,12 +85,47 @@ void main() {
       (WatchlistOutcome.partiallyFailed, 'watchlist_partly_changed'),
     ]) {
       list.fail = outcome;
+      final want = {'error': code, if (outcome == WatchlistOutcome.partiallyFailed) 'list_again': true, 'done': false};
       final add = await _tool('add_to_watchlist').run(ctx, _zolder, {'item_id': 'm02'}) as AssistantPendingAction;
-      expect(await add.execute(), {'error': code, 'done': false});
+      expect(await add.execute(), want);
       final remove = await _tool('remove_from_watchlist').run(ctx, null, {'entry_id': 'w1'}) as AssistantPendingAction;
-      expect(await remove.execute(), {'error': code, 'done': false});
+      expect(await remove.execute(), want);
     }
     expect(list.entries, hasLength(2));
+  });
+
+  test('a list that could not be read is an error, never an empty list', () async {
+    list.entries.clear();
+    list.state = (failed: true, incomplete: false, fromSnapshot: false);
+    await expectLater(_tool('my_watchlist').run(ctx, null, const {}), _refuses('watchlist_unreachable'));
+  });
+
+  test('a partial or stored list says so', () async {
+    list.state = (failed: false, incomplete: true, fromSnapshot: true);
+    final result = await _tool('my_watchlist').run(ctx, null, const {}) as AssistantToolResult;
+    expect(result.data['incomplete'], isTrue);
+    expect(result.data['from_snapshot'], isTrue);
+    list.state = (failed: true, incomplete: false, fromSnapshot: false);
+    final stale = await _tool('my_watchlist').run(ctx, null, const {}) as AssistantToolResult;
+    expect(stale.data['incomplete'], isTrue, reason: 'a failed refresh over an older list');
+    expect(stale.data['total'], 2);
+  });
+
+  test('a title narrows the list, so one past the cap can still be found', () async {
+    final rows = await _list(ctx, {'title': 'arr'});
+    expect(rows.map((r) => r['title']), ['Arrival']);
+  });
+
+  test('a title no source takes, or one already on the list, gets no card', () async {
+    ctx.showItem(_zolder, 'm02');
+    list.unsupported.add('m02');
+    final refused = await _tool('add_to_watchlist').run(ctx, _zolder, {'item_id': 'm02'}) as AssistantToolResult;
+    expect(refused.data['status'], 'watchlist_not_supported_for_title');
+    list.unsupported.clear();
+    await (await _tool('add_to_watchlist').run(ctx, _zolder, {'item_id': 'm02'}) as AssistantPendingAction).execute();
+    final again = await _tool('add_to_watchlist').run(ctx, _zolder, {'item_id': 'm02'}) as AssistantToolResult;
+    expect(again.data['status'], 'already_on_watchlist');
+    expect(list.entries, hasLength(3));
   });
 
   test('without a list the tools are not on offer', () {

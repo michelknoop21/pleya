@@ -248,9 +248,16 @@ class EvalWatchlist {
     coverageComplete: item.serverId != null,
   );
 
+  /// How the next read ends; a clean one by default.
+  AssistantWatchlistRead state = (failed: false, incomplete: false, fromSnapshot: false);
+
+  /// Item ids no source takes.
+  final unsupported = <String>{};
+
   late final services = AssistantWatchlistServices(
-    load: () async {},
+    read: () async => state,
     entries: () => List.unmodifiable(entries),
+    keyFor: (item) => unsupported.contains(item.id) ? null : 'eval:${item.id}',
     add: (item) async {
       if (fail != null) return fail!;
       entries.insert(0, _entry(item));

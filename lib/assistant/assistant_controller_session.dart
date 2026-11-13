@@ -26,6 +26,8 @@ import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../models/plex/plex_home_user.dart' show PlexHomeUser;
 import '../providers/trakt_account_provider.dart';
 import '../providers/watchlist_provider.dart';
+import '../media/watchlist_key.dart';
+import 'assistant_watchlist_read.dart';
 import '../profiles/household_kids_store.dart';
 import '../profiles/plex_home_service.dart';
 import 'current_user_binding.dart';
@@ -293,8 +295,10 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
     watchlist: watchlist == null
         ? null
         : AssistantWatchlistServices(
-            load: () => watchlist.ensureLoaded(offline: offlineMode?.isOffline ?? false),
+            read: () => assistantReadWatchlist(watchlist, offline: offlineMode?.isOffline ?? false),
             entries: () => watchlist.entriesByRecentlyAdded,
+            // The question the kijklijst button asks before it shows itself.
+            keyFor: (item) => watchlist.repository?.targetFor(item) == null ? null : watchlistKeyForItem(item),
             add: (item) => watchlist.addToWatchlist(item, isOffline: offlineMode?.isOffline ?? false),
             remove: (entry) => watchlist.removeFromWatchlist(entry, isOffline: offlineMode?.isOffline ?? false),
             available: () => watchlist.repository?.sources.isNotEmpty ?? false,
