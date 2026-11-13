@@ -670,6 +670,9 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get plexDeletionDisabled => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.';
 	@override String get plexDeletionFilesNotRemovable => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
 	@override String get plexDeletionRefusedUnknown => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
+	@override String get deletionForbidden => 'De server weigert het verwijderen: dit account mag daar geen media verwijderen. Sta verwijderen toe voor dit account in de serverinstellingen (in Jellyfin en Emby: ‘Verwijderen van media toestaan’) en probeer opnieuw.';
+	@override String get plexDeletionForbidden => 'Plex weigert het verwijderen: dit account mag op deze server geen media verwijderen. Verwijder het vanuit het account dat eigenaar is van de server.';
+	@override String get deleteServerGone => 'De server van dit item is niet verbonden. Er is niets verwijderd.';
 	@override String get rate => 'Beoordelen';
 	@override String get playFromBeginning => 'Afspelen vanaf het begin';
 	@override String get playVersion => 'Versie afspelen...';
@@ -5248,6 +5251,9 @@ extension on TranslationsNl {
 			'mediaMenu.plexDeletionDisabled' => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.',
 			'mediaMenu.plexDeletionFilesNotRemovable' => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
 			'mediaMenu.plexDeletionRefusedUnknown' => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
+			'mediaMenu.deletionForbidden' => 'De server weigert het verwijderen: dit account mag daar geen media verwijderen. Sta verwijderen toe voor dit account in de serverinstellingen (in Jellyfin en Emby: ‘Verwijderen van media toestaan’) en probeer opnieuw.',
+			'mediaMenu.plexDeletionForbidden' => 'Plex weigert het verwijderen: dit account mag op deze server geen media verwijderen. Verwijder het vanuit het account dat eigenaar is van de server.',
+			'mediaMenu.deleteServerGone' => 'De server van dit item is niet verbonden. Er is niets verwijderd.',
 			'mediaMenu.rate' => 'Beoordelen',
 			'mediaMenu.playFromBeginning' => 'Afspelen vanaf het begin',
 			'mediaMenu.playVersion' => 'Versie afspelen...',
@@ -5273,11 +5279,11 @@ extension on TranslationsNl {
 			'accessibility.tapToPlay' => 'Tik om af te spelen',
 			'tooltips.shufflePlay' => 'Willekeurig afspelen',
 			'tooltips.playTrailer' => 'Trailer afspelen',
+			_ => null,
+		} ?? switch (path) {
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
 			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
@@ -5787,11 +5793,11 @@ extension on TranslationsNl {
 			'libraries.sortLabels.studio' => 'Studio',
 			'libraries.sortLabels.random' => 'Willekeurig',
 			'libraries.sortLabels.dateShared' => 'Gedeeld op',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
 			'about.title' => 'Over',
-			_ => null,
-		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -6301,11 +6307,11 @@ extension on TranslationsNl {
 			'performanceOverlay.cacheLimit' => 'Cachelimiet',
 			'performanceOverlay.speed' => 'Snelheid',
 			'performanceOverlay.player' => 'Speler',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.memory' => 'Geheugen',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'Externe speler',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6815,11 +6821,11 @@ extension on TranslationsNl {
 			'nowWatching.sidebarLabel' => 'Nu aan het kijken',
 			'sourcePicker.playTitle' => 'Kies waar je wilt afspelen',
 			'sourcePicker.detailsTitle' => 'Kies een bron voor de details',
+			_ => null,
+		} ?? switch (path) {
 			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
-			_ => null,
-		} ?? switch (path) {
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
 			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
 			'sourcePicker.lastUsed' => 'Laatst gebruikt',
@@ -7329,11 +7335,11 @@ extension on TranslationsNl {
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
 			'assistant.mobile.setup' => 'Model instellen',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
 			'assistant.mobile.listening' => 'Ik luister…',
 			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
@@ -7843,11 +7849,11 @@ extension on TranslationsNl {
 			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.',
 			'pleyaNotifications.pushOffline' => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.',
 			'pleyaNotifications.pushPending' => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaNotifications.title' => 'Notificaties',
 			'pleyaNotifications.subtitle' => 'Kies welke updates je ontvangt',
 			'pleyaNotifications.settings' => 'Notificatievoorkeuren',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaNotifications.enable' => 'Notificaties in Pleya inschakelen',
 			'pleyaNotifications.explanation' => 'Kies welke updates je in Pleya wilt zien. Alle categorieën staan standaard uit.',
 			'pleyaNotifications.disabled' => 'Notificaties staan uit. Kies in de voorkeuren welke updates je wilt ontvangen.',

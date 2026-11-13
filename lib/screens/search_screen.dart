@@ -1315,6 +1315,9 @@ class _SearchScreenState extends State<SearchScreen>
             anchorContext: rowContext,
             group: group,
             availabilityFor: _mobileAvailabilityFor(),
+            // A delete or an edit from this menu changes what the query
+            // finds, so it runs again.
+            onChanged: () => unawaited(_performSearch(_searchController.text)),
           ),
         ),
       ),
