@@ -16,6 +16,7 @@
   import SeriesEpisodes from './SeriesEpisodes.svelte';
   import Artwork from '../Artwork.svelte';
   import CardMenu from '../CardMenu.svelte';
+  import ItemDelete from '../ItemDelete.svelte';
   import ItemPersonalActions from '../ItemPersonalActions.svelte';
   import StateView from '../StateView.svelte';
   import WatchedBy from '../WatchedBy.svelte';
@@ -26,7 +27,7 @@
   import { formatDate } from '../../util/format';
   import { emptyPager, loadNext, type PagerState } from '../../util/paging';
 
-  let { item, onchange }: { item: Item; onchange: (next: Item) => void } = $props();
+  let { item, onchange, onreload }: { item: Item; onchange: (next: Item) => void; onreload?: () => void } = $props();
   const uid = $props.id();
 
   type Tab = 'episodes' | 'details';
@@ -46,6 +47,7 @@
   let candidates = $state<Item[]>([]);
   let seasonId = $state('');
   let hubsSettled = $state(false);
+  let deleteOpen = $state(false);
   let watchedDelta = $state(0);
   let signal: AbortSignal | undefined;
   let hubRun = 0;
@@ -217,6 +219,10 @@
               <div class="series__admin">
                 {#if caps?.metadata_overrides === true || caps?.artwork_choices === true}<a class="btn btn--secondary" href="/admin/metadata/edit?item={encodeURIComponent(item.id)}">{t('admin.metadata.editor.title')}</a>{/if}
                 <a class="btn btn--secondary" href="/admin/metadata/match?item={encodeURIComponent(item.id)}">{t('admin.match.title')}</a>
+                {#if caps?.media_delete === true}
+                  <button type="button" class="btn btn--danger" onclick={() => (deleteOpen = true)}>{t('item.delete.action')}</button>
+                  <ItemDelete {item} bind:open={deleteOpen} {onreload} />
+                {/if}
               </div>
             {/if}
             {#if caps?.watch_state}<WatchedBy {item} />{/if}

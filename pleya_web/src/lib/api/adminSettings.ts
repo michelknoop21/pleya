@@ -115,6 +115,14 @@ export function adminSettingsApi(client: PleyaClient) {
         raw.DELETE('/items/{item_id}/metadata-match', { params: { path: { item_id: itemId } } })
       ),
 
+    /**
+     * Wist een film, serie, seizoen of aflevering met de bestanden van de
+     * opslag (17h). Niet terug te halen; een onvolledige verwijdering komt
+     * terug als `library.media_delete_incomplete` met `details.failed`.
+     */
+    deleteItem: (itemId: string) =>
+      client.request((raw) => raw.DELETE('/items/{item_id}', { params: { path: { item_id: itemId } } })),
+
     stopTranscodeSession: (sessionId: string): Promise<true> =>
       client.request<true>(async (raw) => {
         const result = await raw.DELETE('/transcode-sessions/{session_id}', {

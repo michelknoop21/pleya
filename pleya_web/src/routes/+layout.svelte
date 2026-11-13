@@ -14,6 +14,7 @@
   import SkeletonPage from '#lib/components/SkeletonPage.svelte';
   import UnreachableState from '#lib/components/UnreachableState.svelte';
   import AddToListDialog from '#lib/components/lists/AddToListDialog.svelte';
+  import PageNoticeView from '#lib/components/PageNoticeView.svelte';
   import { activeItemId, navItems } from '#lib/components/navItems.js';
   import { adminBackHref, isAdminPath } from '#lib/admin/sections.js';
   import { isPlayerPath } from '#lib/player/route.js';
@@ -188,6 +189,7 @@
           onRetry={() => session.start()}
         />
       {:else}
+        <PageNoticeView path={page.url.pathname} />
         {@render children()}
       {/if}
     </main>

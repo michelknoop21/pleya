@@ -159,7 +159,7 @@
   </div>
 {:else if item?.kind === 'show'}
   {#key item.id}
-    <SeriesDetail {item} onchange={updated => { if (item?.id === updated.id) item = updated; }} />
+    <SeriesDetail {item} onreload={() => retry++} onchange={updated => { if (item?.id === updated.id) item = updated; }} />
   {/key}
 {:else if item}
   <article class="detail">
@@ -197,7 +197,7 @@
         </p>
 
         {#if item.summary?.trim()}<p class="detail__summary t-body">{item.summary}</p>{/if}
-        {#if playable || (isMovie && session.canAdminister)}
+        {#if playable || (session.canAdminister && (isMovie || session.capabilities?.media_delete === true))}
           <!-- S13.2: de kijkstatus wordt hier gelezen en getoond (PS-4E), niet geschreven. -->
           <div class="detail__play">
             {#if playable && resumeMs}
@@ -208,7 +208,7 @@
             {:else if playable}
               <a class="btn" href={playerHref(item.id, undefined, version?.id, undefined, tracks)}>{t('player.play')}</a>
             {/if}
-            {#if isMovie}<ItemAdminMenu {item} />{/if}
+            <ItemAdminMenu {item} onreload={() => retry++} />
           </div>
         {/if}
         {#if watchedPercent !== null}
