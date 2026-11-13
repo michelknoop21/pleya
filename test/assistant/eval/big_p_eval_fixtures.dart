@@ -13,6 +13,8 @@ import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/recommendations/taste_profile.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_administration.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/profiles/household_kids_store.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
@@ -184,6 +186,126 @@ class _EvalFacts extends TitleFactsService {
   ];
 }
 
+/// What an administrator changed on the eval server, as plain data (BP-12).
+class EvalAdminState {
+  /// Library ids a scan was started for, in order.
+  final scans = <String>[];
+
+  /// Item ids whose metadata was refreshed.
+  final refreshed = <String>[];
+  final cancelledJobs = <String>[];
+  final retriedJobs = <String>[];
+
+  /// The users of the server: name to `all` or its sorted library ids.
+  final users = <String, String>{'Michel': 'all', 'Sanne': 'films', 'Oma': 'films,series'};
+  final _ids = <String, String>{'Michel': 'u1', 'Sanne': 'u2', 'Oma': 'u3'};
+  var _next = 4;
+
+  Map<String, Object?> toJson() => {
+    'scans': scans,
+    'refreshed': refreshed,
+    'cancelled_jobs': cancelledJobs,
+    'retried_jobs': retriedJobs,
+    'users': users,
+  };
+}
+
+/// The eval server for a profile that administers it: scans, metadata, two
+/// jobs (a running scan that can be cancelled, a failed one that can be
+/// retried) and three users. Every change lands in [state].
+class EvalAdminServer extends _EvalServer
+    implements LibraryScanClient, ItemMetadataRefreshClient, RetryableJobsClient, ServerUserAdministration {
+  EvalAdminServer(this.state);
+  final EvalAdminState state;
+
+  @override
+  bool get supportsServerAdministration => true;
+  @override
+  Future<void> scanLibrary(String libraryId) async => state.scans.add(libraryId);
+  @override
+  Future<void> refreshItemMetadata(String itemId) async => state.refreshed.add(itemId);
+  @override
+  Future<List<ServerJob>> listJobs() async => [
+    if (!state.cancelledJobs.contains('j1'))
+      const ServerJob(
+        id: 'j1',
+        title: 'Bibliotheek Films scannen',
+        state: ServerJobState.running,
+        progress: 0.4,
+        libraryId: 'films',
+        cancellable: true,
+      ),
+    ServerJob(
+      id: 'j2',
+      title: 'Ondertitels ophalen',
+      state: state.retriedJobs.contains('j2') ? ServerJobState.queued : ServerJobState.failed,
+      error: state.retriedJobs.contains('j2') ? null : 'time-out bij de aanbieder',
+      retryable: !state.retriedJobs.contains('j2'),
+    ),
+  ];
+  @override
+  Future<void> cancelJob(String jobId) async => state.cancelledJobs.add(jobId);
+  @override
+  Future<void> retryJob(String jobId) async => state.retriedJobs.add(jobId);
+
+  ServerUser _user(String name) {
+    final access = state.users[name]!;
+    return ServerUser(
+      id: state._ids[name]!,
+      name: name,
+      role: name == 'Michel' ? ServerUserRole.owner : ServerUserRole.member,
+      allLibraries: access == 'all',
+      libraryIds: access == 'all' ? const [] : access.split(','),
+    );
+  }
+
+  @override
+  Future<List<ServerUser>> listUsers() async => [for (final name in state.users.keys) _user(name)];
+  @override
+  bool get createUserRequiresPassword => false;
+  @override
+  bool get canChangeLibraryAccess => true;
+  String _access(bool all, List<String> ids) => all ? 'all' : (List.of(ids)..sort()).join(',');
+  @override
+  Future<ServerUser> createUser({
+    required String name,
+    String? password,
+    bool allLibraries = false,
+    List<String> libraryIds = const [],
+  }) async {
+    state._ids[name] = 'u${state._next++}';
+    state.users[name] = _access(allLibraries, libraryIds);
+    return _user(name);
+  }
+
+  @override
+  Future<void> setUserLibraryAccess(
+    String userId, {
+    required bool allLibraries,
+    List<String> libraryIds = const [],
+  }) async {
+    final name = state._ids.entries.firstWhere((e) => e.value == userId).key;
+    state.users[name] = _access(allLibraries, libraryIds);
+  }
+
+  @override
+  Future<void> deleteUser(String userId) async {
+    final name = state._ids.entries.firstWhere((e) => e.value == userId).key;
+    state.users.remove(name);
+  }
+
+  @override
+  Future<MediaItem?> fetchItem(String itemId) async =>
+      evalTitles.where((t) => t.id == itemId).map((t) => t.item).firstOrNull;
+}
+
+class _EvalAdminManager extends MultiServerManager {
+  @override
+  bool canAdministerServer(ServerId id) => id.value == 'zolder';
+  @override
+  PlexSharingAdministration? plexSharingFor(ServerId serverId) => null;
+}
+
 class _EvalServer extends FakeServer {
   _EvalServer()
     : super(
@@ -258,9 +380,10 @@ AssistantToolContext evalContext({
   // The profile's memory, with the saved "nothing I watched or started" (BP-11d).
   AssistantMemoryServices? memory,
 }) {
-  final m = MultiServerManager();
+  final admin = world?.admin;
+  final m = admin == null ? MultiServerManager() : _EvalAdminManager();
   addTearDown(m.dispose);
-  m.debugRegisterClientForTesting(_EvalServer());
+  m.debugRegisterClientForTesting(admin == null ? _EvalServer() : EvalAdminServer(admin));
   if (world?.offlineServer ?? false) m.debugRegisterClientForTesting(evalOfflineServer(), online: false);
   m.setVisibleServerIds(null);
   return AssistantToolContext(

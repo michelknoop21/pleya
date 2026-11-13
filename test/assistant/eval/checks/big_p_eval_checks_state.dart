@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../big_p_eval_checks.dart';
 
 // State checks of the Big P evaluation set (BP-12): grade the outcome, not
@@ -10,12 +12,19 @@ bool _same(List<String> a, List<String> b) =>
     a.length == b.length && [for (final (i, x) in a.indexed) x == b[i]].every((e) => e);
 
 bool _equal(EvalWorldState a, EvalWorldState b) =>
-    _same(a.homeRows, b.homeRows) && _same(a.requests, b.requests) && _same(a.memory, b.memory);
+    _same(a.homeRows, b.homeRows) &&
+    _same(a.requests, b.requests) &&
+    _same(a.memory, b.memory) &&
+    jsonEncode(a.admin) == jsonEncode(b.admin);
 
 /// After the last turn the world holds exactly what [want] says. A field
 /// left null in the expectation is not compared.
 class EvalState extends EvalHard {
-  const EvalState({this.homeRows, this.homeRowCount, this.requests, this.memory});
+  const EvalState({this.homeRows, this.homeRowCount, this.requests, this.memory, this.admin});
+
+  /// Fields of the administrator's state that must equal these values, such
+  /// as `{'scans': ['films']}` or `{'users': {'Michel': 'all'}}`.
+  final Map<String, Object?>? admin;
   final List<String>? homeRows;
 
   /// How many Home rows exist, when the model is free to name the row.
@@ -50,6 +59,11 @@ class EvalState extends EvalHard {
       ];
       if (missing.isNotEmpty || stored.length != memory!.length) {
         found.add('$id: memory ${s.memory}, wanted $memory');
+      }
+    }
+    for (final MapEntry(:key, :value) in (admin ?? const <String, Object?>{}).entries) {
+      if (jsonEncode(s.admin[key]) != jsonEncode(value)) {
+        found.add('$id: admin $key ${jsonEncode(s.admin[key])}, wanted ${jsonEncode(value)}');
       }
     }
     return found;

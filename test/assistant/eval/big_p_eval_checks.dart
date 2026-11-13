@@ -32,7 +32,16 @@ class EvalTurnOutcome {
 
 /// The eval world after a turn, as plain data: what Pleya changed.
 class EvalWorldState {
-  const EvalWorldState({this.homeRows = const [], this.requests = const [], this.memory = const []});
+  const EvalWorldState({
+    this.homeRows = const [],
+    this.requests = const [],
+    this.memory = const [],
+    this.admin = const {},
+  });
+
+  /// What an administrator changed: scans, refreshed, cancelled_jobs,
+  /// retried_jobs and users (see `EvalAdminState`). Empty without one.
+  final Map<String, Object?> admin;
 
   /// Names of the saved Home rows, in order.
   final List<String> homeRows;
@@ -43,7 +52,12 @@ class EvalWorldState {
   /// The asking profile's stored memory facts, as text.
   final List<String> memory;
 
-  Map<String, Object?> toJson() => {'home_rows': homeRows, 'requests': requests, 'memory': memory};
+  Map<String, Object?> toJson() => {
+    'home_rows': homeRows,
+    'requests': requests,
+    'memory': memory,
+    if (admin.isNotEmpty) 'admin': admin,
+  };
 }
 
 class EvalOutcome {

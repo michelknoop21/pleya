@@ -186,7 +186,11 @@ class EvalWorld {
     this.seerr,
     this.memory,
     this.memoryOfSecond = false,
+    this.admin,
   });
+
+  /// The asking profile administers the main server; changes land here.
+  final EvalAdminState? admin;
 
   /// The asking profile's personal source; overrides `personal: true`.
   final EvalProfile? profile;

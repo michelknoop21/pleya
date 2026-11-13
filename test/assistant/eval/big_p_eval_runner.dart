@@ -194,6 +194,8 @@ Future<EvalWorldState> evalWorldState(EvalWorld? world, EvalOutcome outcome) asy
         if (post.path == '/request') '${post.body['mediaType']}:${post.body['mediaId']}',
     ],
     memory: memory == null ? const [] : [for (final f in await memory.list()) f.value],
+    // A deep copy: the state object keeps changing over the turns.
+    admin: world?.admin == null ? const {} : (jsonDecode(jsonEncode(world!.admin!.toJson())) as Map).cast(),
   );
 }
 

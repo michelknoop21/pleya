@@ -9,6 +9,7 @@ import 'cases/big_p_eval_cases_memory.dart';
 import 'cases/big_p_eval_cases_recommend.dart';
 import 'cases/big_p_eval_cases_series.dart';
 import 'cases/big_p_eval_cases_admin.dart';
+import 'cases/big_p_eval_cases_manage.dart';
 import 'cases/big_p_eval_cases_tasks.dart';
 import 'cases/big_p_eval_cases_trakt_seerr.dart';
 
@@ -149,6 +150,7 @@ final bigPEvalCases = <EvalCase>[
   ...evalMemoryCases,
   ...evalTraktSeerrCases,
   ...evalTaskCases,
+  ...evalManageCases,
   ...evalAdminCases,
   ...evalContractCases,
 ];

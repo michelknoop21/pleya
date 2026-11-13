@@ -14,6 +14,10 @@ const evalNoDup = EvalNoDuplicates();
 /// without a yes, no title twice.
 const evalBase = <EvalHard>[evalFromFixture, evalMutation, evalNoDup];
 
+/// For a task the user confirms: cards from the catalogue and no title twice.
+/// The no-mutation rule does not apply; the state check takes its place.
+const evalNoMut = <EvalHard>[evalFromFixture, evalNoDup];
+
 /// A find_title call for [titles]; the first and last also serve as variants.
 Map<String, Object?> evalFindArgs(List<String> titles, {String? kind}) => {
   'candidates': [
