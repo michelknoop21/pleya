@@ -28,6 +28,9 @@ class EvalTurnOutcome {
 
   /// The same calls as one line each: tool, arguments, start of the answer.
   List<String> trace = const [];
+
+  /// The calls in full, with arguments, for the judge.
+  List<String> full = const [];
 }
 
 /// The eval world after a turn, as plain data: what Pleya changed.

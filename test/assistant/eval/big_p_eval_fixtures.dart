@@ -329,10 +329,20 @@ class _EvalServer extends FakeServer {
   }) async {
     final kind = query.kind ?? libraryKind;
     final search = query.search?.toLowerCase();
+    // A real server applies the genre and year filters; without them every
+    // genre question returned the whole library (BP-12).
+    final genres = {for (final g in query.genres ?? const <String>[]) g.toLowerCase()};
+    final years = (query.years ?? const <int>[]).toSet();
+    bool facet(MediaItem i) {
+      final own = {for (final g in evalTitles.firstWhere((t) => t.id == i.id).genres) g.toLowerCase()};
+      return (genres.isEmpty || own.any(genres.contains)) && (years.isEmpty || years.contains(i.year));
+    }
+
     final all = [
       for (final i in libraries[libraryId] ?? const <MediaItem>[])
         if ((kind == null || i.kind == kind) &&
             (search == null || (i.title ?? '').toLowerCase().contains(search)) &&
+            facet(i) &&
             (query.includeWatched || !i.isWatched) &&
             (!query.watchedOnly || i.isWatched) &&
             (!query.inProgressOnly || i.hasActiveProgress || i.isPartiallyWatched))

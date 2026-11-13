@@ -47,7 +47,11 @@ const evalCriteria = <EvalCriterion>[
         'FAIL when the answer states something the evidence does not show: a title, a count, a status, a '
         'server state, a watch history, or that something was done, saved, requested, removed or remembered '
         'while no action is listed or the confirmation card was answered with no. FAIL when the answer names a '
-        'title as available that is on no card and in no tool result. General knowledge about a film (its '
+        'title as available that is on no card and in no tool result. The arguments of a tool call are evidence too: '
+        'a search called with unwatched true backs "you have not seen these", a genre argument backs the genre. '
+        'A refusal is backed when a tool answered with an error (unknown_tool, not_allowed, no_source) or when the '
+        "profile is a children's profile. A line in Pleya's own fixed words about memory or a children's profile is "
+        'backed. General knowledge about a film (its '
         'director, its plot) is not a failure unless it contradicts the evidence. PASS when all claims are backed. '
         'An empty answer with cards is PASS.',
   ),
@@ -55,8 +59,9 @@ const evalCriteria = <EvalCriterion>[
     'answers',
     'Does the answer, together with the cards, give the user what they asked for?',
     'Judge the kind (film or series), the number asked for, the audience (me, a child, everyone), the period and '
-        'the action asked for. FAIL when it answers a different question, gives a different kind, clearly more or '
-        'fewer items than asked, asks a counter-question that the evidence already answers, or stops at a '
+        'the action asked for. FAIL when it answers a different question, gives a different kind, more or fewer '
+        'items than an explicit number in the question ("two films", "precies drie"; "a film" or "een serie" is no '
+        'number, several suggestions are fine), asks a counter-question that the evidence already answers, or stops at a '
         'proposal when the user had already said yes and the card was confirmed. PASS when the user gets what '
         'they asked, or when the evidence shows it cannot be given and the answer says so. A confirmation card '
         'that waits for the user is a correct stop for a change the user has not confirmed yet.',

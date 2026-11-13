@@ -46,6 +46,10 @@ class EvalMeter {
   /// answer, one line each, for the record.
   List<String> trace = const [];
 
+  /// The same calls in full for the judge: tool, arguments and the answer up
+  /// to 3000 characters.
+  List<String> full = const [];
+
   /// Reads the tool answers out of a chat request body.
   void observe(String body) {
     try {
@@ -64,6 +68,15 @@ class EvalMeter {
         }
       }
       tools = found;
+      full = [
+        for (final m in messages.cast<Map>())
+          if (m['role'] == 'tool')
+            () {
+              final id = '${m['tool_call_id']}';
+              final body = '${m['content']}';
+              return '${names[id] ?? '?'} ${argsOf[id] ?? ''} -> ${body.length > 3000 ? '${body.substring(0, 3000)}…' : body}';
+            }(),
+      ];
       trace = [
         for (final m in messages.cast<Map>())
           if (m['role'] == 'tool')
@@ -122,6 +135,7 @@ Future<EvalOutcome> runEvalCase(
     var errors = 0;
     meter.tools = const [];
     meter.trace = const [];
+    meter.full = const [];
     final callsBefore = meter.calls;
     final tokensBefore = meter.tokens;
     final watch = Stopwatch()..start();
@@ -159,6 +173,7 @@ Future<EvalOutcome> runEvalCase(
         ..tokens = meter.tokens - tokensBefore
         ..toolResults = meter.tools
         ..trace = meter.trace
+        ..full = meter.full
         ..latencyMs = watch.elapsedMilliseconds,
     );
     // Memory changes wait on a Pleya card after the answer (the controller
@@ -367,10 +382,7 @@ Map<String, Object?> evalRecord(EvalCase c, EvalOutcome o, {required String mode
           // What stands above the cards on screen: the answer without the
           // titles the cards already show (assistantCardsLead).
           'lead_shown': evalLead(t.result),
-          'tool_results': [
-            for (final r in t.toolResults)
-              '${r.tool} -> ${r.content.length > 3000 ? '${r.content.substring(0, 3000)}…' : r.content}',
-          ],
+          'tool_results': t.full,
           'displays': [for (final d in t.result.displays) evalDisplay(d)],
           'actions': [
             for (final a in t.result.actions) {'kind': a.kind.name, 'server': a.serverName, 'subject': a.subject},

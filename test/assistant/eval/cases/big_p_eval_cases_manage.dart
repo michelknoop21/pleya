@@ -116,7 +116,7 @@ final evalManageCases = <EvalCase>[
     world: _admin,
     turns: [
       EvalTurn(
-        'Het ophalen van ondertitels is mislukt, probeer het opnieuw',
+        'De servertaak Ondertitels ophalen is mislukt, start die taak opnieuw',
         confirm: EvalConfirm.yes,
         script: [
           _jobs,
