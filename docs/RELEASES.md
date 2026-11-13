@@ -47,6 +47,58 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 463 · 13 November 2026 · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: 483819c7ae2afd281c2e2bc900bff17b535f2664 -->
+
+Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
+
+### New
+
+- **Requests on iPhone open on a decision list.** Tiles at the top count what is waiting
+  for you, what is on its way and which issues are open. Below them the requests that need
+  your answer come first, oldest on top, with Approve and Decline on each row. You can tick
+  several and approve them in one go, or swipe: right approves, left asks before it
+  declines. The menu behind a row shows seasons, quality, who asked and whether the title
+  is already in Pleya.
+- **Issues read as a conversation.** An issue shows its replies as messages, with quick
+  answers that fill the reply field so you can still edit before sending.
+
+### Improved
+
+- **On Apple TV, Select on an episode plays it.** On a series page the press used to open
+  the episode page first when Episode Action was set to details. It now plays from the
+  season tab and from the rows on that page. The episode page is one long press away,
+  under View details. Everywhere else Episode Action works as before.
+
+### Fixed
+
+- **A film from Pleya Server keeps playing after a network drop.** On Apple TV build 462 a
+  film kept loading forever once the connection dropped 45 minutes in, because the player
+  reconnected with a sign-in that had expired after 15 minutes. The player now uses a
+  stream session that stays valid for as long as the film is open, also while paused.
+- **Artwork that failed to load is tried again.** A download that got stuck while the
+  device slept used to hold its place for good, and a failed image stayed empty. Downloads
+  now time out, and Pleya retries after 2 and 10 seconds and again when the app or a server
+  comes back.
+- **Cast photos for Pleya Server titles.** Pleya Server has no cast photos yet. If the same
+  title is also on Plex or Jellyfin, the detail page borrows the photos from there.
+- **A Pleya Server that is slow at start-up comes back.** One missed answer while the app
+  started used to hide the server for the whole session. Pleya now checks again after 10,
+  30 and 90 seconds.
+- **The Pleya Fly card on iPhone shows up when the Apple TV is playing.** The iPhone kept
+  comparing against the servers it knew at launch and missed the Apple TV when a server
+  signed in later. The card also follows the Receive Pleya Fly setting while Home is open.
+- **The focus ring on the player's play button is rounded.** On Apple TV the focused
+  button looked like a hard square because ring and button used different corners.
+
+### Notes
+
+- Worth checking on Apple TV: the play button ring in the player, Select on an episode,
+  and View details in the long-press menu of an episode card. None of these has been seen
+  on a simulator or a device yet.
+- Worth checking on iPhone: the Pleya Fly card while the Apple TV plays.
+
 ## 2.8.1 · build 462 · 11 November 2026 · iPhone, iPad, Apple TV and Mac
 
 <!-- commit: 8820ca925d46bb2faffecea791665afabf823447 -->
