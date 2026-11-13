@@ -3977,6 +3977,8 @@ class _TranslationsAssistantEndsNl extends TranslationsAssistantEndsEn {
 	@override String get providerTimeout => 'De AI-provider antwoordde niet op tijd.';
 	@override String get providerBadResponse => 'De AI-provider gaf een onverwacht antwoord.';
 	@override String get nothingChanged => 'Er is niets veranderd.';
+	@override String serverOffline({required Object name}) => '${name} is offline, daar kon ik niet zoeken.';
+	@override String serversOffline({required Object names}) => '${names} zijn offline, daar kon ik niet zoeken.';
 	@override String get modelMissing => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.';
 	@override String get sourceChanged => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.';
 	@override String get librariesLoading => 'De bibliotheken worden nog geladen. Probeer het zo opnieuw.';
@@ -7364,6 +7366,8 @@ extension on TranslationsNl {
 			'assistant.ends.providerTimeout' => 'De AI-provider antwoordde niet op tijd.',
 			'assistant.ends.providerBadResponse' => 'De AI-provider gaf een onverwacht antwoord.',
 			'assistant.ends.nothingChanged' => 'Er is niets veranderd.',
+			'assistant.ends.serverOffline' => ({required Object name}) => '${name} is offline, daar kon ik niet zoeken.',
+			'assistant.ends.serversOffline' => ({required Object names}) => '${names} zijn offline, daar kon ik niet zoeken.',
 			'assistant.ends.modelMissing' => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.',
 			'assistant.ends.sourceChanged' => 'Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.',
 			'assistant.ends.librariesLoading' => 'De bibliotheken worden nog geladen. Probeer het zo opnieuw.',

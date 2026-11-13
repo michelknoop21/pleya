@@ -124,6 +124,7 @@ final List<AssistantTool> _catalogTools = [
               },
             };
       final query = await _search(ctx, asked);
+      ctx.offlineSeen.addAll(query.serversOffline);
       final queries = _catalogQueries[ctx] ??= {};
       final queryId = 'q${queries.length + 1}';
       queries[queryId] = query;

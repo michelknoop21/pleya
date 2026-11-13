@@ -194,6 +194,10 @@ class AssistantToolContext {
   /// by [fresh].
   AssistantMemoryTurn memoryTurn = AssistantMemoryTurn();
 
+  /// Servers a search of this ask could not read because they were offline,
+  /// by name. The answer must say so; Pleya adds the line when it does not.
+  final Set<String> offlineSeen = {};
+
   /// The region whose age ratings count (`NL`); the device's by default.
   final String Function() region;
 

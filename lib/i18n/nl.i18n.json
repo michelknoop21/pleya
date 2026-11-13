@@ -3045,6 +3045,8 @@
       "providerTimeout": "De AI-provider antwoordde niet op tijd.",
       "providerBadResponse": "De AI-provider gaf een onverwacht antwoord.",
       "nothingChanged": "Er is niets veranderd.",
+      "serverOffline": "${name} is offline, daar kon ik niet zoeken.",
+      "serversOffline": "${names} zijn offline, daar kon ik niet zoeken.",
       "modelMissing": "Het gekozen model is er niet meer, kies een ander in Big P instellen.",
       "sourceChanged": "Je profiel of serververbinding is gewijzigd. Voer de controle opnieuw uit.",
       "librariesLoading": "De bibliotheken worden nog geladen. Probeer het zo opnieuw.",

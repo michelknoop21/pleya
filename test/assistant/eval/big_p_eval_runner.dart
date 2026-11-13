@@ -8,6 +8,7 @@ import 'package:pleya/assistant/assistant_memory.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/i18n/strings.g.dart';
 
 import 'package:pleya/profiles/household_kids_store.dart';
 
@@ -101,6 +102,9 @@ Future<EvalOutcome> runEvalCase(
   String region = 'NL',
 }) async {
   final outcome = EvalOutcome();
+  // Pleya's own lines (memory, an offline server) come out in the language
+  // of the set, as they do on a Dutch device.
+  await LocaleSettings.setLocale(AppLocale.nl);
   final world = await c.world?.call();
   final ctx = evalContext(
     kids: c.kids,

@@ -271,7 +271,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       ? 'An open year window cannot be replayed exactly by a Home row.'
       : addedWithin != null
       ? 'A window of days since added cannot be replayed by a Home row.'
-      : 'Text, person, minimum rating, sampled sort or mixed kinds cannot be replayed by a Home row.';
+      : 'Text, person, minimum rating, sampled sort or mixed kinds cannot be replayed by a Home row. '
+            'For a Home row, search again with one kind and only genre, years and a title, added or released sort.';
 
   final cutoff = addedWithin == null
       ? null
@@ -417,8 +418,10 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       serversOffline: offline,
       rowUnavailableReason: offset > 0
           ? 'A later page of a list cannot be a Home row; repeat the query without offset.'
-          : seenElsewhere > 0
-          ? 'Titles already in this profile\'s watch history are left out, which a Home row cannot repeat.'
+          : seenElsewhere > 0 || startedDropped > 0
+          // The model gave up on a row here; say what does make one.
+          ? 'Titles this profile watched or started are left out, which a Home row cannot repeat. '
+                'For a Home row, search again without unwatched.'
           : unavailableReason,
       coverage: coverage,
       checkCurrent: checkCurrent,

@@ -99,6 +99,22 @@ extension _AssistantResult on AssistantRun {
     // A children's profile keeps no memory: a typed "onthoud dat ..." gets
     // Pleya's own refusal, whatever the model said (BP-11h).
     final kidsRefusal = end == AssistantRunEnd.answered && turn.kidsTyped ? t.assistant.memory.kids : null;
+    // A search left out a server that was offline: a partial result is never
+    // shown as complete (DEC-142). The model is told to say so; where its
+    // answer names no such server, Pleya adds its own line.
+    if (end == AssistantRunEnd.answered && kidsRefusal == null && !_ctx.libraryDoctorMode && text.isNotEmpty) {
+      final lower = text.toLowerCase();
+      final unnamed = [
+        for (final name in _ctx.offlineSeen)
+          if (!lower.contains(name.toLowerCase())) name,
+      ];
+      if (unnamed.isNotEmpty && unnamed.length == _ctx.offlineSeen.length) {
+        final line = unnamed.length == 1
+            ? t.assistant.ends.serverOffline(name: unnamed.single)
+            : t.assistant.ends.serversOffline(names: unnamed.join(', '));
+        text = '$text\n$line';
+      }
+    }
     return AssistantRunResult(
       end: end,
       text:

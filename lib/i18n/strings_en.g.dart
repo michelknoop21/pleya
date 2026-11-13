@@ -9200,6 +9200,12 @@ class TranslationsAssistantEndsEn {
 	/// en: 'Nothing was changed.'
 	String get nothingChanged => 'Nothing was changed.';
 
+	/// en: '${name} is offline, so I could not search there.'
+	String serverOffline({required Object name}) => '${name} is offline, so I could not search there.';
+
+	/// en: '${names} are offline, so I could not search there.'
+	String serversOffline({required Object names}) => '${names} are offline, so I could not search there.';
+
 	/// en: 'The chosen model is gone. Pick another one in the Big P settings.'
 	String get modelMissing => 'The chosen model is gone. Pick another one in the Big P settings.';
 
@@ -13295,6 +13301,8 @@ extension on Translations {
 			'assistant.ends.providerTimeout' => 'The AI provider did not answer in time.',
 			'assistant.ends.providerBadResponse' => 'The AI provider gave an unexpected answer.',
 			'assistant.ends.nothingChanged' => 'Nothing was changed.',
+			'assistant.ends.serverOffline' => ({required Object name}) => '${name} is offline, so I could not search there.',
+			'assistant.ends.serversOffline' => ({required Object names}) => '${names} are offline, so I could not search there.',
 			'assistant.ends.modelMissing' => 'The chosen model is gone. Pick another one in the Big P settings.',
 			'assistant.ends.sourceChanged' => 'Your profile or server connection changed. Run the check again.',
 			'assistant.ends.librariesLoading' => 'The libraries are still loading. Try again in a moment.',
