@@ -760,6 +760,8 @@ class _TranslationsVideoControlsNl extends TranslationsVideoControlsEn {
 	@override String get lockRotation => 'Vergrendel rotatie';
 	@override String get unlockRotation => 'Ontgrendel rotatie';
 	@override String get timerActive => 'Timer actief';
+	@override String get playbackRateNormal => 'Normaal';
+	@override String sleepTimerActive({required Object remaining}) => 'Actief (${remaining})';
 	@override String playbackWillPauseIn({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}';
 	@override String get sleepTimerEndOfVideo => 'Einde van huidige video';
 	@override String get sleepTimerStopAtHeader => 'Stoppen bij';
@@ -5315,6 +5317,8 @@ extension on TranslationsNl {
 			'videoControls.lockRotation' => 'Vergrendel rotatie',
 			'videoControls.unlockRotation' => 'Ontgrendel rotatie',
 			'videoControls.timerActive' => 'Timer actief',
+			'videoControls.playbackRateNormal' => 'Normaal',
+			'videoControls.sleepTimerActive' => ({required Object remaining}) => 'Actief (${remaining})',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stoppen bij',
@@ -5799,10 +5803,10 @@ extension on TranslationsNl {
 			'libraries.sortLabels.userRating' => 'Gebruikersbeoordeling',
 			'libraries.sortLabels.lastPlayed' => 'Laatst afgespeeld',
 			'libraries.sortLabels.datePlayed' => 'Afspeeldatum',
-			'libraries.sortLabels.playCount' => 'Aantal afspelingen',
-			'libraries.sortLabels.productionYear' => 'Productiejaar',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.playCount' => 'Aantal afspelingen',
+			'libraries.sortLabels.productionYear' => 'Productiejaar',
 			'libraries.sortLabels.runtime' => 'Speelduur',
 			'libraries.sortLabels.officialRating' => 'Officiële beoordeling',
 			'libraries.sortLabels.premiereDate' => 'Premièredatum',
@@ -6313,10 +6317,10 @@ extension on TranslationsNl {
 			'performanceOverlay.avSync' => 'A/V-sync',
 			'performanceOverlay.dropped' => 'Gedropt',
 			'performanceOverlay.dvRpus' => 'DV RPU’s',
-			'performanceOverlay.dvRpuAverage' => 'DV RPU gem.',
-			'performanceOverlay.dvSampleAverage' => 'DV-sample gem.',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.dvRpuAverage' => 'DV RPU gem.',
+			'performanceOverlay.dvSampleAverage' => 'DV-sample gem.',
 			'performanceOverlay.maxLuma' => 'Max luma',
 			'performanceOverlay.minLuma' => 'Min luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
@@ -6827,10 +6831,10 @@ extension on TranslationsNl {
 			'nowWatching.directPlay' => 'Direct play',
 			'nowWatching.directStream' => 'Direct stream',
 			'nowWatching.transcode' => 'Transcoderen',
-			'nowWatching.paused' => 'Gepauzeerd',
-			'nowWatching.remaining' => ({required Object time}) => '${time} over',
 			_ => null,
 		} ?? switch (path) {
+			'nowWatching.paused' => 'Gepauzeerd',
+			'nowWatching.remaining' => ({required Object time}) => '${time} over',
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'Op je netwerk',
@@ -7341,10 +7345,10 @@ extension on TranslationsNl {
 			'assistant.memory.sync.keepServer' => 'Serverversie gebruiken',
 			'assistant.memory.sync.keepBoth' => 'Beide bewaren',
 			'assistant.memory.sync.deleted' => 'Verwijderd',
-			'assistant.memory.sync.select' => 'Delen',
-			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.memory.sync.select' => 'Delen',
+			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
 			'assistant.memory.sync.clearChanged' => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.',
 			'assistant.memory.sync.clearServer' => 'Deze serverherinneringen wissen',
@@ -7855,10 +7859,10 @@ extension on TranslationsNl {
 			'seerrIssues.loadFailed' => 'Meldingen ophalen uit Seerr is mislukt.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr heeft je wijziging niet bevestigd. Controleer het gesprek voordat je het opnieuw probeert.',
 			'seerrIssues.quickReplies' => 'Snel antwoorden',
-			'seerrIssues.quickLooking' => 'Ik kijk ernaar',
-			'seerrIssues.quickNewVersion' => 'Ik heb een nieuwe versie gevraagd',
 			_ => null,
 		} ?? switch (path) {
+			'seerrIssues.quickLooking' => 'Ik kijk ernaar',
+			'seerrIssues.quickNewVersion' => 'Ik heb een nieuwe versie gevraagd',
 			'seerrIssues.quickFixed' => 'Opgelost, probeer het opnieuw',
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'opgelost',

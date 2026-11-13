@@ -1767,6 +1767,12 @@ class TranslationsVideoControlsEn {
 	/// en: 'Timer Active'
 	String get timerActive => 'Timer Active';
 
+	/// en: 'Normal'
+	String get playbackRateNormal => 'Normal';
+
+	/// en: 'Active (${remaining})'
+	String sleepTimerActive({required Object remaining}) => 'Active (${remaining})';
+
 	/// en: 'Playback will pause in ${duration}'
 	String playbackWillPauseIn({required Object duration}) => 'Playback will pause in ${duration}';
 
@@ -11431,6 +11437,8 @@ extension on Translations {
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
 			'videoControls.timerActive' => 'Timer Active',
+			'videoControls.playbackRateNormal' => 'Normal',
+			'videoControls.sleepTimerActive' => ({required Object remaining}) => 'Active (${remaining})',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
@@ -11915,10 +11923,10 @@ extension on Translations {
 			'libraries.sortLabels.userRating' => 'User Rating',
 			'libraries.sortLabels.lastPlayed' => 'Last Played',
 			'libraries.sortLabels.datePlayed' => 'Date Played',
-			'libraries.sortLabels.playCount' => 'Play Count',
-			'libraries.sortLabels.productionYear' => 'Production Year',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.playCount' => 'Play Count',
+			'libraries.sortLabels.productionYear' => 'Production Year',
 			'libraries.sortLabels.runtime' => 'Runtime',
 			'libraries.sortLabels.officialRating' => 'Official Rating',
 			'libraries.sortLabels.premiereDate' => 'Premiere Date',
@@ -12429,10 +12437,10 @@ extension on Translations {
 			'performanceOverlay.avSync' => 'A/V Sync',
 			'performanceOverlay.dropped' => 'Dropped',
 			'performanceOverlay.dvRpus' => 'DV RPUs',
-			'performanceOverlay.dvRpuAverage' => 'DV RPU Avg',
-			'performanceOverlay.dvSampleAverage' => 'DV Sample Avg',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.dvRpuAverage' => 'DV RPU Avg',
+			'performanceOverlay.dvSampleAverage' => 'DV Sample Avg',
 			'performanceOverlay.maxLuma' => 'Max Luma',
 			'performanceOverlay.minLuma' => 'Min Luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
@@ -12943,10 +12951,10 @@ extension on Translations {
 			'pleyaShare.scanQrHint' => 'Point the camera at the QR code on the host device',
 			'pleyaShare.cameraPermissionDenied' => 'Camera access is needed to scan the QR code.',
 			'pleyaShare.connect' => 'Connect',
-			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
-			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
+			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
 			'pleyaShare.addFolder' => 'Add a local folder',
 			'pleyaShare.notificationTitle' => 'Sharing media',
@@ -13457,10 +13465,10 @@ extension on Translations {
 			'assistant.memory.sync.keepServer' => 'Use server version',
 			'assistant.memory.sync.keepBoth' => 'Keep both',
 			'assistant.memory.sync.deleted' => 'Removed',
-			'assistant.memory.sync.select' => 'Share',
-			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.memory.sync.select' => 'Share',
+			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
 			'assistant.memory.sync.clearChanged' => 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.',
 			'assistant.memory.sync.clearServer' => 'Erase these server memories',
@@ -13971,10 +13979,10 @@ extension on Translations {
 			'seerrIssues.loadFailed' => 'Could not load reports from Seerr.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
 			'seerrIssues.quickReplies' => 'Quick replies',
-			'seerrIssues.quickLooking' => 'Looking into it',
-			'seerrIssues.quickNewVersion' => 'I\'ve requested a new version',
 			_ => null,
 		} ?? switch (path) {
+			'seerrIssues.quickLooking' => 'Looking into it',
+			'seerrIssues.quickNewVersion' => 'I\'ve requested a new version',
 			'seerrIssues.quickFixed' => 'Fixed, please try again',
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'resolved',

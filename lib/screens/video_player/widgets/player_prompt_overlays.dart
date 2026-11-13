@@ -9,10 +9,12 @@ import '../../../media/media_item.dart';
 import '../../../providers/playback_state_provider.dart';
 import '../../../services/pip_service.dart';
 import '../../../utils/platform_detector.dart';
+import '../../../utils/tv_hig.dart';
 import '../../../watch_together/providers/watch_together_provider.dart';
 import '../../../watch_together/widgets/watch_together_overlay.dart';
 import '../../../widgets/app_icon.dart';
 import '../../../widgets/video_controls/player_chrome_controller.dart';
+import '../../../widgets/video_controls/player_corner_offset.dart';
 
 class VideoPlayerMacPipPlaceholder extends StatelessWidget {
   const VideoPlayerMacPipPlaceholder({super.key});
@@ -252,7 +254,9 @@ class VideoPlayerPlayNextOverlay extends StatelessWidget {
                                   const SizedBox(width: 4),
                                   const AppIcon(Symbols.play_arrow_rounded, fill: 1, size: 18),
                                 ] else
-                                  Text(t.videoControls.playNext),
+                                  // Ellipsis rather than an overflow where the
+                                  // card is narrowed beside the transport group.
+                                  Flexible(child: Text(t.videoControls.playNext, maxLines: 1, overflow: .ellipsis)),
                               ],
                             ),
                           ),
@@ -290,7 +294,11 @@ class _PlayNextEpisodeHeader extends StatelessWidget {
                     children: [
                       Text(
                         t.videoControls.nextEpisode,
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: .w500),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: TvHig.readable(context, 12),
+                          fontWeight: .w500,
+                        ),
                       ),
                       if (isShuffleActive) ...[
                         const SizedBox(width: 4),
@@ -304,14 +312,14 @@ class _PlayNextEpisodeHeader extends StatelessWidget {
               if (episode.parentIndex != null && episode.index != null)
                 Text(
                   'S${episode.parentIndex} E${episode.index} · ${episode.title}',
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: .w600),
+                  style: TextStyle(color: Colors.white, fontSize: TvHig.readable(context, 14), fontWeight: .w600),
                   maxLines: 2,
                   overflow: .ellipsis,
                 )
               else
                 Text(
                   episode.title!,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: .w600),
+                  style: TextStyle(color: Colors.white, fontSize: TvHig.readable(context, 14), fontWeight: .w600),
                   maxLines: 2,
                   overflow: .ellipsis,
                 ),
@@ -363,12 +371,16 @@ class VideoPlayerStillWatchingOverlay extends StatelessWidget {
                 children: [
                   Text(
                     t.videoControls.stillWatching,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: .w500),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: TvHig.readable(context, 12),
+                      fontWeight: .w500,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     t.videoControls.pausingIn(seconds: '$countdown'),
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: .w600),
+                    style: TextStyle(color: Colors.white, fontSize: TvHig.readable(context, 14), fontWeight: .w600),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -413,7 +425,9 @@ class VideoPlayerStillWatchingOverlay extends StatelessWidget {
                               children: [
                                 Text('$countdown'),
                                 const SizedBox(width: 4),
-                                Text(t.videoControls.continueWatching),
+                                Flexible(
+                                  child: Text(t.videoControls.continueWatching, maxLines: 1, overflow: .ellipsis),
+                                ),
                               ],
                             ),
                           ),
@@ -442,12 +456,16 @@ class _VideoPlayerPromptPosition extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: chromeController,
       builder: (context, controlsShown, child) {
+        final corner = playerCornerOffset(context, chromeController, controlsShown: controlsShown, shownFallback: 100);
         return AnimatedPositioned(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          right: 24,
-          bottom: controlsShown ? 100 : 24,
-          child: child!,
+          right: corner.right,
+          bottom: corner.bottom,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: corner.maxWidth),
+            child: child,
+          ),
         );
       },
       child: child,
@@ -462,6 +480,8 @@ class _VideoPlayerPromptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 320 at most; narrower where the corner leaves less room (a landscape
+    // phone with its transport group up).
     return Container(
       width: 320,
       padding: const EdgeInsets.all(16),

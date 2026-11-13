@@ -90,12 +90,12 @@ class _SettingsMenuItem extends StatelessWidget {
     final t = tokens(context);
     final valueWidget = Text(
       valueText,
-      style: TextStyle(color: isHighlighted ? Colors.amber : t.textMuted, fontSize: 14),
+      style: TextStyle(color: isHighlighted ? playerSheetAccent(context) : t.textMuted, fontSize: 14),
       overflow: allowValueOverflow ? TextOverflow.ellipsis : null,
     );
 
     return FocusableListTile(
-      leading: AppIcon(icon, fill: 1, color: isHighlighted ? Colors.amber : t.textMuted),
+      leading: AppIcon(icon, fill: 1, color: isHighlighted ? playerSheetAccent(context) : t.textMuted),
       title: Text(title),
       trailing: Row(
         mainAxisSize: .min,
@@ -131,9 +131,9 @@ class _SettingsToggleItem extends StatelessWidget {
         }
 
         return FocusableListTile(
-          leading: AppIcon(icon, fill: 1, color: value ? Colors.amber : tokens(context).textMuted),
+          leading: AppIcon(icon, fill: 1, color: value ? playerSheetAccent(context) : tokens(context).textMuted),
           title: Text(title),
-          trailing: Switch(value: value, onChanged: write, activeThumbColor: Colors.amber),
+          trailing: Switch(value: value, onChanged: write),
           onTap: () => write(!value),
         );
       },
@@ -449,10 +449,10 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
   }
 
   String _formatSleepTimer(SleepTimerService sleepTimer) {
-    if (!sleepTimer.isActive) return 'Off';
+    if (!sleepTimer.isActive) return t.common.off;
     final remaining = sleepTimer.remainingTime;
-    if (remaining == null) return 'Off';
-    return 'Active (${formatDurationWithSeconds(remaining)})';
+    if (remaining == null) return t.common.off;
+    return t.videoControls.sleepTimerActive(remaining: formatDurationWithSeconds(remaining));
   }
 
   String _formatZoomScale(double scale) => '${(scale * 100).round()}%';
@@ -691,7 +691,7 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
             leading: AppIcon(
               Symbols.blur_on,
               fill: 1,
-              color: widget.isAmbientLightingEnabled ? Colors.amber : tokens(context).textMuted,
+              color: widget.isAmbientLightingEnabled ? playerSheetAccent(context) : tokens(context).textMuted,
             ),
             title: Text(t.videoControls.ambientLighting),
             trailing: Switch(
@@ -700,7 +700,6 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
                 widget.onToggleAmbientLighting?.call();
                 OverlaySheetController.of(context).close();
               },
-              activeThumbColor: Colors.amber,
             ),
             onTap: () {
               widget.onToggleAmbientLighting?.call();
@@ -985,14 +984,14 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
             final presetName = preset.id == ShaderPreset.none.id ? t.common.off : preset.name;
 
             return FocusableListTile(
-              title: Text(presetName, style: TextStyle(color: isSelected ? Colors.amber : null)),
+              title: Text(presetName, style: TextStyle(color: isSelected ? playerSheetAccent(context) : null)),
               subtitle: _getShaderSubtitle(preset) != null
                   ? Text(_getShaderSubtitle(preset)!, style: TextStyle(color: tokens(context).textMuted, fontSize: 12))
                   : null,
               trailing: Row(
                 mainAxisSize: .min,
                 children: [
-                  if (isSelected) const AppIcon(Symbols.check_rounded, fill: 1, color: Colors.amber),
+                  if (isSelected) AppIcon(Symbols.check_rounded, fill: 1, color: playerSheetAccent(context)),
                   if (isCustom) ...[
                     if (isSelected) const SizedBox(width: 8),
                     GestureDetector(
@@ -1108,8 +1107,8 @@ class _VideoSettingsSheetState extends State<VideoSettingsSheet> {
       title: _getTitle(),
       icon: _getIcon(),
       iconColor: () {
-        if (isIconActive) return Colors.amber;
-        if (_currentView == _SettingsView.shader && isShaderActive) return Colors.amber;
+        if (isIconActive) return playerSheetAccent(context);
+        if (_currentView == _SettingsView.shader && isShaderActive) return playerSheetAccent(context);
         return null;
       }(),
       onBack: _currentView != _SettingsView.menu ? _navigateBack : null,

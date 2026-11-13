@@ -4,17 +4,19 @@ import 'package:pleya/widgets/app_icon.dart';
 import '../film_frame_palette.dart';
 import '../mobile_video_controls_glass.dart';
 
-/// A circular semi-transparent button used in the mobile video controls.
+/// A round button used in the mobile video controls.
 ///
-/// Renders an [AppIcon] inside an [IconButton] on a black circle with 50%
-/// opacity, or a glass circle when Liquid Glass is on. Disabled buttons grey
-/// out the icon.
+/// Renders an [AppIcon] inside an [IconButton] on the Filmbeeld disc
+/// ([kFilmDisc]), or a glass circle when Liquid Glass is on. Disabled buttons
+/// grey out the icon. [dimension], when set, fixes the outer size (mockup A:
+/// 68 pt play, 52 pt skip) instead of deriving it from the icon.
 class CircularControlButton extends StatelessWidget {
   final String semanticLabel;
   final IconData icon;
   final double iconSize;
   final VoidCallback? onPressed;
   final bool primary;
+  final double? dimension;
 
   const CircularControlButton({
     super.key,
@@ -23,6 +25,7 @@ class CircularControlButton extends StatelessWidget {
     required this.iconSize,
     this.onPressed,
     this.primary = false,
+    this.dimension,
   });
 
   @override
@@ -46,12 +49,18 @@ class CircularControlButton extends StatelessWidget {
           size: iconSize,
         ),
         iconSize: iconSize,
+        padding: dimension == null ? null : EdgeInsets.zero,
+        constraints: dimension == null ? null : BoxConstraints.tight(Size.square(dimension!)),
         onPressed: onPressed,
       ),
     );
     final filled = primary
         ? DecoratedBox(
-            decoration: BoxDecoration(color: kFilmPrimary, borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(
+              color: kFilmPrimary,
+              // Mockup A: a 24% corner on the play square.
+              borderRadius: BorderRadius.circular(dimension == null ? 16 : dimension! * 0.24),
+            ),
             child: button,
           )
         : null;
@@ -61,7 +70,7 @@ class CircularControlButton extends StatelessWidget {
       legacy:
           filled ??
           Container(
-            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+            decoration: const BoxDecoration(color: kFilmDisc, shape: BoxShape.circle),
             child: button,
           ),
     );

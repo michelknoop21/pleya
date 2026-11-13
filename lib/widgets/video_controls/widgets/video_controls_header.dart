@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/utils/formatters.dart';
 
+import 'package:material_symbols_icons/symbols.dart';
+
 import '../../../media/media_item.dart';
 import '../../../utils/layout_constants.dart';
 import '../../../utils/platform_detector.dart';
@@ -9,6 +11,9 @@ import '../../../i18n/strings.g.dart';
 import '../../../watch_together/widgets/watch_together_overlay.dart';
 import '../../../watch_together/providers/watch_together_provider.dart';
 import '../../app_bar_back_button.dart';
+import '../../app_icon.dart';
+import '../film_frame_palette.dart';
+import '../mobile_video_controls_glass.dart';
 import '../../pleya_fly/fly_follow_indicators.dart';
 
 /// Header layout style for video controls
@@ -62,11 +67,14 @@ class VideoControlsHeader extends StatelessWidget {
     return Row(
       children: [
         if (showsBack) ...[
-          AppBarBackButton(
-            style: BackButtonStyle.video,
-            semanticLabel: t.common.back,
-            onPressed: onBack ?? () => Navigator.of(context).pop(true),
-          ),
+          if (style == VideoHeaderStyle.filmFrame && PlatformDetector.isMobile(context))
+            _FilmFrameBackButton(onPressed: onBack ?? () => Navigator.of(context).pop(true))
+          else
+            AppBarBackButton(
+              style: BackButtonStyle.video,
+              semanticLabel: t.common.back,
+              onPressed: onBack ?? () => Navigator.of(context).pop(true),
+            ),
           const SizedBox(width: 16),
         ],
         if (showTitle)
@@ -112,6 +120,10 @@ class VideoControlsHeader extends StatelessWidget {
   Widget _buildMultiLineTitle(BuildContext context) {
     final titleSize = switch (style) {
       VideoHeaderStyle.filmFrame when PlatformDetector.isTV() => 30 * TvLayoutConstants.scaleOf(context),
+      // Mockup A: 28 pt landscape, 24 pt portrait (6.2cqw at 390), where the
+      // three header buttons leave a phone title about 123 pt.
+      VideoHeaderStyle.filmFrame when PlatformDetector.isMobile(context) =>
+        MediaQuery.orientationOf(context) == Orientation.portrait ? kFilmTitleSizePortrait : kFilmTitleSize,
       VideoHeaderStyle.filmFrame => 24.0,
       _ => 16.0,
     };
@@ -145,6 +157,40 @@ class VideoControlsHeader extends StatelessWidget {
           ),
         const FlySyncedWithLine(),
       ],
+    );
+  }
+}
+
+/// The back button of the phone and tablet player sits in the same disc as
+/// every other round player button (mockup A), at the same 46 pt.
+class _FilmFrameBackButton extends StatelessWidget {
+  const _FilmFrameBackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = SizedBox.square(
+      dimension: kFilmTarget,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        icon: const AppIcon(Symbols.arrow_back_rounded, fill: 1, color: Colors.white, size: 22),
+      ),
+    );
+    return Semantics(
+      label: t.common.back,
+      button: true,
+      excludeSemantics: true,
+      onTap: onPressed,
+      child: playerGlassSurface(
+        const CircleBorder(),
+        target,
+        legacy: DecoratedBox(
+          decoration: const BoxDecoration(color: kFilmDisc, shape: BoxShape.circle),
+          child: target,
+        ),
+      ),
     );
   }
 }

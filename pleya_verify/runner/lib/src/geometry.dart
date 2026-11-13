@@ -209,3 +209,17 @@ GeometryVerdict leftInset(GeoRect rect, GeoRect viewport, {required double expec
       ? GeometryVerdict.pass('left edge at $actual, within $tolerance of $expected', detail)
       : GeometryVerdict.fail('left edge at $actual, expected $expected (off by $delta)', detail);
 }
+
+/// At least [minGap] between the bottom of [rect] and the bottom of [viewport].
+///
+/// For a TV's title-safe band: the HIG keeps anything that must be read 60 pt
+/// clear of the bottom edge, which a set may overscan (DENS1, T1). A rect that
+/// reaches past the viewport has a negative gap and fails.
+GeometryVerdict minBottomGap(GeoRect rect, GeoRect viewport, {required double minGap}) {
+  final viewportBottom = viewport.top + viewport.height;
+  final gap = viewportBottom - (rect.top + rect.height);
+  final detail = <String, Object?>{'gap': gap, 'minGap': minGap, 'viewportHeight': viewport.height};
+  return gap >= minGap
+      ? GeometryVerdict.pass('bottom edge $gap above the viewport bottom, at least $minGap', detail)
+      : GeometryVerdict.fail('bottom edge only $gap above the viewport bottom, needs $minGap', detail);
+}

@@ -29,6 +29,7 @@ import '../sheets/video_settings_sheet.dart';
 import '../tv_info_panel/tv_panel_types.dart';
 import '../../../services/shader_service.dart';
 import '../mobile_video_controls_glass.dart';
+import '../film_frame_palette.dart';
 import '../video_control_button.dart';
 import 'deferred_subtitle_status.dart';
 import '../../pleya_fly_icon.dart';
@@ -198,7 +199,7 @@ class TrackChapterControls extends StatelessWidget {
     );
     if (filmFrameLayout == null) return button;
     final target = SizedBox.square(
-      dimension: 44,
+      dimension: kFilmTarget,
       child: IconTheme.merge(
         data: const IconThemeData(shadows: []),
         child: button,
@@ -208,7 +209,7 @@ class TrackChapterControls extends StatelessWidget {
       const CircleBorder(),
       target,
       legacy: DecoratedBox(
-        decoration: const BoxDecoration(color: Color(0x99081217), shape: BoxShape.circle),
+        decoration: const BoxDecoration(color: kFilmDisc, shape: BoxShape.circle),
         child: target,
       ),
     );
@@ -569,23 +570,11 @@ class TrackChapterControls extends StatelessWidget {
         }
 
         if (filmFrameLayout != null) {
+          // Mockup A: the footer is a centred group with the same 10 pt gap as
+          // the header, not spread over the full width on a landscape phone.
           return filmFrameLayout(
-            Row(mainAxisSize: .min, spacing: 4, children: headerButtons),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final size = MediaQuery.sizeOf(context);
-                final spread = size.width > size.height && size.height <= 500;
-                return SizedBox(
-                  width: spread && constraints.hasBoundedWidth ? constraints.maxWidth : null,
-                  child: Wrap(
-                    alignment: spread ? .spaceBetween : .center,
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: buttons,
-                  ),
-                );
-              },
-            ),
+            Row(mainAxisSize: .min, spacing: kFilmToolGap, children: headerButtons),
+            Wrap(alignment: .center, spacing: kFilmToolGap, runSpacing: kFilmToolGap, children: buttons),
           );
         }
         return IntrinsicHeight(
