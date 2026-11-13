@@ -183,6 +183,9 @@ class TranslationsAuthEn {
 	/// en: 'Connect to Jellyfin'
 	String get connectToJellyfin => 'Connect to Jellyfin';
 
+	/// en: 'Your own server. Pleya looks for it on your network.'
+	String get pleyaServerChoiceSubtitle => 'Your own server. Pleya looks for it on your network.';
+
 	/// en: 'Use Quick Connect'
 	String get useQuickConnect => 'Use Quick Connect';
 
@@ -203,6 +206,9 @@ class TranslationsAuthEn {
 
 	/// en: 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.'
 	String get chooseHowToSignInDescription => 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.';
+
+	/// en: 'Pleya connects to your Plex, Jellyfin or Pleya server. Pick one to get started.'
+	String get chooseHowToSignInDescriptionTv => 'Pleya connects to your Plex, Jellyfin or Pleya server. Pick one to get started.';
 
 	/// en: 'Using a Jellyfin server? Connect to Jellyfin instead'
 	String get usingJellyfinInstead => 'Using a Jellyfin server? Connect to Jellyfin instead';
@@ -5869,6 +5875,9 @@ class TranslationsAddServerEn {
 	/// en: 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.'
 	String get pleyaServerNoPasswordMethod => 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.';
 
+	/// en: 'A different server answers on this address than the one that was found. Check the address and try again.'
+	String get pleyaServerDiscoveryMismatch => 'A different server answers on this address than the one that was found. Check the address and try again.';
+
 	/// en: 'Connected to ${name}'
 	String pleyaServerConnected({required Object name}) => 'Connected to ${name}';
 
@@ -10605,6 +10614,7 @@ extension on Translations {
 			'auth.useBrowser' => 'Use browser',
 			'auth.or' => 'or',
 			'auth.connectToJellyfin' => 'Connect to Jellyfin',
+			'auth.pleyaServerChoiceSubtitle' => 'Your own server. Pleya looks for it on your network.',
 			'auth.useQuickConnect' => 'Use Quick Connect',
 			'auth.quickConnectInstructions' => 'Open Quick Connect in Jellyfin and enter this code.',
 			'auth.quickConnectWaiting' => 'Waiting for approval…',
@@ -10612,6 +10622,7 @@ extension on Translations {
 			'auth.quickConnectExpired' => 'Quick Connect expired. Try again.',
 			'auth.chooseHowToSignIn' => 'Choose how to sign in',
 			'auth.chooseHowToSignInDescription' => 'Pleya connects to your Plex or Jellyfin media server. Pick one to get started.',
+			'auth.chooseHowToSignInDescriptionTv' => 'Pleya connects to your Plex, Jellyfin or Pleya server. Pick one to get started.',
 			'auth.usingJellyfinInstead' => 'Using a Jellyfin server? Connect to Jellyfin instead',
 			'auth.tryAgain' => 'Try again',
 			'auth.plexTokenLabel' => 'Plex auth token',
@@ -11100,10 +11111,10 @@ extension on Translations {
 			'tooltips.shufflePlay' => 'Shuffle play',
 			'tooltips.playTrailer' => 'Play trailer',
 			'tooltips.markAsWatched' => 'Mark as watched',
-			'tooltips.markAsUnwatched' => 'Mark as unwatched',
-			'videoControls.audioLabel' => 'Audio',
 			_ => null,
 		} ?? switch (path) {
+			'tooltips.markAsUnwatched' => 'Mark as unwatched',
+			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Subtitles',
 			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
 			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
@@ -11614,10 +11625,10 @@ extension on Translations {
 			'libraries.sortLabels.random' => 'Random',
 			'libraries.sortLabels.dateShared' => 'Date Shared',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
-			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
-			'about.title' => 'About',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
+			'about.title' => 'About',
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -12128,10 +12139,10 @@ extension on Translations {
 			'performanceOverlay.speed' => 'Speed',
 			'performanceOverlay.player' => 'Player',
 			'performanceOverlay.memory' => 'Memory',
-			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'External Player',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.uiFps' => 'UI FPS',
+			'externalPlayer.title' => 'External Player',
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -12558,6 +12569,7 @@ extension on Translations {
 			'addServer.pleyaServerCreateOwner' => 'Create owner',
 			'addServer.pleyaServerPasswordTooShort' => 'Choose a password of at least 8 characters',
 			'addServer.pleyaServerNoPasswordMethod' => 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.',
+			'addServer.pleyaServerDiscoveryMismatch' => 'A different server answers on this address than the one that was found. Check the address and try again.',
 			'addServer.pleyaServerConnected' => ({required Object name}) => 'Connected to ${name}',
 			'addServer.borrowFromAnotherProfile' => 'Borrow from another profile',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Reuse another profile\'s connection. PIN-protected profiles require a PIN.',
@@ -12641,11 +12653,11 @@ extension on Translations {
 			'unifiedCatalog.seriesTitle' => 'Series',
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} sources',
 			'unifiedCatalog.allSources' => 'All sources',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.oneSource' => '1 source',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
 			'unifiedCatalog.oneSeason' => '1 season',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
@@ -13155,11 +13167,11 @@ extension on Translations {
 			'assistant.idle.ask' => 'Ask Big P',
 			'assistant.idle.examplesHeader' => 'For example',
 			'assistant.examples.tonight.0' => 'What in my library can I watch tonight?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
 			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
 			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',

@@ -61,8 +61,10 @@ class TvAuthView extends StatelessWidget {
     required this.state,
     required this.plexEnabled,
     required this.jellyfinEnabled,
+    required this.pleyaServerEnabled,
     required this.onPlexSelected,
     required this.onJellyfinSelected,
+    required this.onPleyaServerSelected,
   });
 
   final Widget brand;
@@ -70,8 +72,10 @@ class TvAuthView extends StatelessWidget {
   final TvAuthPanelState state;
   final bool plexEnabled;
   final bool jellyfinEnabled;
+  final bool pleyaServerEnabled;
   final VoidCallback onPlexSelected;
   final VoidCallback onJellyfinSelected;
+  final VoidCallback onPleyaServerSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +119,7 @@ class TvAuthView extends StatelessWidget {
                       ),
                       SizedBox(height: TvAuthLayout.headingGap * scale),
                       Text(
-                        t.auth.chooseHowToSignInDescription,
+                        t.auth.chooseHowToSignInDescriptionTv,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -141,6 +145,15 @@ class TvAuthView extends StatelessWidget {
                         enabled: jellyfinEnabled,
                         autofocus: !plexEnabled && jellyfinEnabled,
                         onSelected: onJellyfinSelected,
+                      ),
+                      SizedBox(height: TvAuthLayout.choiceGap * scale),
+                      _TvAuthChoiceRow(
+                        label: t.addServer.connectToPleyaServerCard,
+                        subtitle: t.auth.pleyaServerChoiceSubtitle,
+                        instance: 'pleya_server',
+                        enabled: pleyaServerEnabled,
+                        autofocus: !plexEnabled && !jellyfinEnabled && pleyaServerEnabled,
+                        onSelected: onPleyaServerSelected,
                       ),
                       const Spacer(),
                     ],

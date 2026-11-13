@@ -152,6 +152,7 @@ class _TranslationsAuthNl extends TranslationsAuthEn {
 	@override String get useBrowser => 'Gebruik browser';
 	@override String get or => 'of';
 	@override String get connectToJellyfin => 'Verbinden met Jellyfin';
+	@override String get pleyaServerChoiceSubtitle => 'Je eigen server. Pleya zoekt hem op je netwerk.';
 	@override String get useQuickConnect => 'Quick Connect gebruiken';
 	@override String get quickConnectInstructions => 'Open Quick Connect in Jellyfin en voer deze code in.';
 	@override String get quickConnectWaiting => 'Wachten op goedkeuring…';
@@ -159,6 +160,7 @@ class _TranslationsAuthNl extends TranslationsAuthEn {
 	@override String get quickConnectExpired => 'Quick Connect is verlopen. Probeer opnieuw.';
 	@override String get chooseHowToSignIn => 'Kies hoe je inlogt';
 	@override String get chooseHowToSignInDescription => 'Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.';
+	@override String get chooseHowToSignInDescriptionTv => 'Pleya verbindt met je Plex-, Jellyfin- of Pleya-server. Kies er een om te beginnen.';
 	@override String get tryAgain => 'Opnieuw proberen';
 	@override String get plexTokenLabel => 'Plex-authenticatietoken';
 	@override String get plexTokenHint => 'Voer je plex.tv-token in';
@@ -2128,6 +2130,7 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get pleyaServerCreateOwner => 'Eigenaar aanmaken';
 	@override String get pleyaServerPasswordTooShort => 'Kies een wachtwoord van minimaal 8 tekens';
 	@override String get pleyaServerNoPasswordMethod => 'Deze server accepteert geen inloggen met wachtwoord. Werk Pleya bij naar een versie die deze methode ondersteunt.';
+	@override String get pleyaServerDiscoveryMismatch => 'Op dit adres antwoordt een andere server dan de server die gevonden is. Controleer het adres en probeer het opnieuw.';
 	@override String pleyaServerConnected({required Object name}) => 'Verbonden met ${name}';
 	@override String get borrowFromAnotherProfile => 'Lenen van een ander profiel';
 	@override String get borrowFromAnotherProfileSubtitle => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.';
@@ -4671,6 +4674,7 @@ extension on TranslationsNl {
 			'auth.useBrowser' => 'Gebruik browser',
 			'auth.or' => 'of',
 			'auth.connectToJellyfin' => 'Verbinden met Jellyfin',
+			'auth.pleyaServerChoiceSubtitle' => 'Je eigen server. Pleya zoekt hem op je netwerk.',
 			'auth.useQuickConnect' => 'Quick Connect gebruiken',
 			'auth.quickConnectInstructions' => 'Open Quick Connect in Jellyfin en voer deze code in.',
 			'auth.quickConnectWaiting' => 'Wachten op goedkeuring…',
@@ -4678,6 +4682,7 @@ extension on TranslationsNl {
 			'auth.quickConnectExpired' => 'Quick Connect is verlopen. Probeer opnieuw.',
 			'auth.chooseHowToSignIn' => 'Kies hoe je inlogt',
 			'auth.chooseHowToSignInDescription' => 'Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.',
+			'auth.chooseHowToSignInDescriptionTv' => 'Pleya verbindt met je Plex-, Jellyfin- of Pleya-server. Kies er een om te beginnen.',
 			'auth.tryAgain' => 'Opnieuw proberen',
 			'auth.plexTokenLabel' => 'Plex-authenticatietoken',
 			'auth.plexTokenHint' => 'Voer je plex.tv-token in',
@@ -5165,10 +5170,10 @@ extension on TranslationsNl {
 			'tooltips.shufflePlay' => 'Willekeurig afspelen',
 			'tooltips.playTrailer' => 'Trailer afspelen',
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
-			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
-			'videoControls.audioLabel' => 'Audio',
 			_ => null,
 		} ?? switch (path) {
+			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
+			'videoControls.audioLabel' => 'Audio',
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
 			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
@@ -5679,10 +5684,10 @@ extension on TranslationsNl {
 			'libraries.sortLabels.random' => 'Willekeurig',
 			'libraries.sortLabels.dateShared' => 'Gedeeld op',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
-			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
-			'about.title' => 'Over',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
+			'about.title' => 'Over',
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -6193,10 +6198,10 @@ extension on TranslationsNl {
 			'performanceOverlay.speed' => 'Snelheid',
 			'performanceOverlay.player' => 'Speler',
 			'performanceOverlay.memory' => 'Geheugen',
-			'performanceOverlay.uiFps' => 'UI FPS',
-			'externalPlayer.title' => 'Externe speler',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.uiFps' => 'UI FPS',
+			'externalPlayer.title' => 'Externe speler',
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6393,6 +6398,7 @@ extension on TranslationsNl {
 			'addServer.pleyaServerCreateOwner' => 'Eigenaar aanmaken',
 			'addServer.pleyaServerPasswordTooShort' => 'Kies een wachtwoord van minimaal 8 tekens',
 			'addServer.pleyaServerNoPasswordMethod' => 'Deze server accepteert geen inloggen met wachtwoord. Werk Pleya bij naar een versie die deze methode ondersteunt.',
+			'addServer.pleyaServerDiscoveryMismatch' => 'Op dit adres antwoordt een andere server dan de server die gevonden is. Controleer het adres en probeer het opnieuw.',
 			'addServer.pleyaServerConnected' => ({required Object name}) => 'Verbonden met ${name}',
 			'addServer.borrowFromAnotherProfile' => 'Lenen van een ander profiel',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.',
@@ -6706,11 +6712,11 @@ extension on TranslationsNl {
 			'unifiedCatalog.seriesTitle' => 'Series',
 			'unifiedCatalog.sources' => ({required Object count}) => '${count} bronnen',
 			'unifiedCatalog.allSources' => 'Alle bronnen',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.oneSource' => '1 bron',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seizoenen',
 			'unifiedCatalog.oneSeason' => '1 seizoen',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titels',
 			'unifiedCatalog.oneTitle' => '1 titel',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titels geladen',
@@ -7220,11 +7226,11 @@ extension on TranslationsNl {
 			'assistant.idle.ask' => 'Vraag Big P',
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
 			'assistant.examples.tonight.0' => 'Wat uit mijn bibliotheek kan ik vanavond kijken?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.examples.tonight.1' => 'Kies een komedie uit mijn bibliotheek voor vanavond.',
 			'assistant.examples.tonight.2' => 'Zoek een spannende film in mijn bibliotheek voor vanavond.',
 			'assistant.examples.startSeries.0' => 'Welke serie in mijn bibliotheek kan ik vanavond beginnen?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Heb ik iets voor de kinderen?',
 			'assistant.examples.unwatched.0' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
 			'assistant.examples.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',

@@ -31,6 +31,7 @@ class PlexPinAuthShellScope {
     required this.activeBody,
     required this.startQr,
     required this.switchToJellyfin,
+    required this.abandonAttempt,
   });
 
   final PlexPinAuthVisualState state;
@@ -38,6 +39,10 @@ class PlexPinAuthShellScope {
   final Widget? activeBody;
   final VoidCallback startQr;
   final VoidCallback? switchToJellyfin;
+
+  /// Drops the running Plex attempt without going anywhere. For a shell that
+  /// opens another sign-in route itself, such as Pleya Server on Apple TV.
+  final VoidCallback abandonAttempt;
 }
 
 typedef PlexPinAuthShellBuilder = Widget Function(BuildContext context, PlexPinAuthShellScope scope);
@@ -278,11 +283,16 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
   void _switchToJellyfin() {
     final onSwitch = widget.onSwitchToJellyfin;
     if (onSwitch == null) return;
-    // Abandon the Plex attempt first. The parent pushes the Jellyfin route on
-    // top of this widget, so it stays alive and polling; a PIN claimed after
-    // the user walked away would fire `onTokenReceived` and navigate out from
-    // under whatever they are typing. Bumping the attempt id makes
-    // `shouldCancel` true and orphans any in-flight poll result.
+    _abandonAttempt();
+    onSwitch();
+  }
+
+  /// Abandons the Plex attempt. The parent pushes another sign-in route on
+  /// top of this widget, so it stays alive and polling; a PIN claimed after
+  /// the user walked away would fire `onTokenReceived` and navigate out from
+  /// under whatever they are typing. Bumping the attempt id makes
+  /// `shouldCancel` true and orphans any in-flight poll result.
+  void _abandonAttempt() {
     _attemptId++;
     setState(() {
       _isPolling = false;
@@ -290,7 +300,6 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
       _errorMessage = null;
       _timedOut = false;
     });
-    onSwitch();
   }
 
   /// Single rendering of the error state. On a timeout it's not just red text:
@@ -409,6 +418,7 @@ class _PlexPinAuthFlowState extends State<PlexPinAuthFlow> {
           activeBody: activeBody,
           startQr: () => _start(useQr: true),
           switchToJellyfin: widget.onSwitchToJellyfin == null ? null : _switchToJellyfin,
+          abandonAttempt: _abandonAttempt,
         ),
       );
     }

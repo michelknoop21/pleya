@@ -19,6 +19,7 @@
     "useBrowser": "Use browser",
     "or": "or",
     "connectToJellyfin": "Connect to Jellyfin",
+    "pleyaServerChoiceSubtitle": "Your own server. Pleya looks for it on your network.",
     "useQuickConnect": "Use Quick Connect",
     "quickConnectInstructions": "Open Quick Connect in Jellyfin and enter this code.",
     "quickConnectWaiting": "Waiting for approval…",
@@ -26,6 +27,7 @@
     "quickConnectExpired": "Quick Connect expired. Try again.",
     "chooseHowToSignIn": "Choose how to sign in",
     "chooseHowToSignInDescription": "Pleya connects to your Plex or Jellyfin media server. Pick one to get started.",
+    "chooseHowToSignInDescriptionTv": "Pleya connects to your Plex, Jellyfin or Pleya server. Pick one to get started.",
     "usingJellyfinInstead": "Using a Jellyfin server? Connect to Jellyfin instead",
     "tryAgain": "Try again",
     "plexTokenLabel": "Plex auth token",
@@ -2141,6 +2143,7 @@
     "pleyaServerCreateOwner": "Create owner",
     "pleyaServerPasswordTooShort": "Choose a password of at least 8 characters",
     "pleyaServerNoPasswordMethod": "This server does not accept a password sign-in. Update Pleya to a version that speaks its method.",
+    "pleyaServerDiscoveryMismatch": "A different server answers on this address than the one that was found. Check the address and try again.",
     "pleyaServerConnected": "Connected to ${name}",
     "borrowFromAnotherProfile": "Borrow from another profile",
     "borrowFromAnotherProfileSubtitle": "Reuse another profile's connection. PIN-protected profiles require a PIN."

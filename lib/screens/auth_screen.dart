@@ -35,6 +35,7 @@ import '../widgets/pleya_logo.dart';
 import 'auth/plex_pin_auth_flow.dart';
 import 'profile/profile_switch_screen.dart';
 import 'settings/add_jellyfin_screen.dart';
+import 'settings/add_pleya_server_screen.dart';
 import 'tv/tv_auth_view.dart';
 
 /// Recovery-oriented auth failure states. When set, the auth screen shows
@@ -48,6 +49,7 @@ class AuthScreen extends StatefulWidget {
     this.plexPinAuthServiceFactory,
     this.plexConnectAuthServiceFactory,
     this.jellyfinRoute,
+    this.pleyaServerRoute,
     this.plexPollTimeout = const Duration(minutes: 5),
   });
 
@@ -59,6 +61,9 @@ class AuthScreen extends StatefulWidget {
 
   @visibleForTesting
   final Future<bool?> Function(BuildContext context)? jellyfinRoute;
+
+  @visibleForTesting
+  final Future<bool?> Function(BuildContext context)? pleyaServerRoute;
 
   @visibleForTesting
   final Duration plexPollTimeout;
@@ -250,6 +255,16 @@ class _AuthScreenState extends State<AuthScreen> {
     unawaited(Navigator.pushReplacement(context, fadeRoute(const ProfileSessionScreen())));
   }
 
+  /// Apple TV only for now: the add screen looks for servers on the home
+  /// network, so nobody has to type an address with the remote (S26.9).
+  Future<void> _connectToPleyaServer() async {
+    final added =
+        await (widget.pleyaServerRoute?.call(context) ??
+            Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const AddPleyaServerScreen())));
+    if (!mounted || added != true) return;
+    unawaited(Navigator.pushReplacement(context, fadeRoute(const ProfileSessionScreen())));
+  }
+
   void _showDebugTokenDialog() {
     showDialog<void>(
       context: context,
@@ -292,8 +307,13 @@ class _AuthScreenState extends State<AuthScreen> {
               state: _appleTvPanelState(scope),
               plexEnabled: !blocked && !scope.busy,
               jellyfinEnabled: !blocked && !scope.busy,
+              pleyaServerEnabled: !blocked && !scope.busy,
               onPlexSelected: scope.startQr,
               onJellyfinSelected: scope.switchToJellyfin!,
+              onPleyaServerSelected: () {
+                scope.abandonAttempt();
+                unawaited(_connectToPleyaServer());
+              },
             );
           },
         ),
@@ -344,7 +364,7 @@ class _AuthScreenState extends State<AuthScreen> {
       children: [
         Text(t.auth.chooseHowToSignIn, style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 16),
-        Text(t.auth.chooseHowToSignInDescription, style: Theme.of(context).textTheme.bodyLarge),
+        Text(t.auth.chooseHowToSignInDescriptionTv, style: Theme.of(context).textTheme.bodyLarge),
       ],
     );
   }

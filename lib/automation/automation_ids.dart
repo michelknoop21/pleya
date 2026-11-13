@@ -116,6 +116,10 @@ class AutomationIds {
   /// One category on the TV settings page (A-24), in its visible order.
   static const String settingsCategory = 'settings.category';
 
+  /// A server found on the home network, on the add-Pleya-Server screen,
+  /// suffixed with the server id (`settings.discovered_server[<id>]`).
+  static const String settingsDiscoveredServer = 'settings.discovered_server';
+
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.
   static const String sidebarRail = 'sidebar.rail';
 
@@ -868,6 +872,7 @@ class AutomationIds {
     libraryPickerCard,
     settingsTile,
     settingsCategory,
+    settingsDiscoveredServer,
     mediaDetailEpisodeListItem,
     mediaDetailTab,
     mediaDetailAction,
@@ -1048,6 +1053,7 @@ class AutomationIds {
     {'id': myPleyaSectionContent, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionTile, 'role': 'grid.item', 'instanceable': true},
     {'id': settingsCategory, 'role': 'button', 'instanceable': true},
+    {'id': settingsDiscoveredServer, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
     {'id': myPleyaWatchlistItem, 'role': 'grid.item', 'instanceable': true},

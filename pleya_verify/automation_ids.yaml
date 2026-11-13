@@ -294,6 +294,9 @@ ids:
   - id: settings.category
     role: button
     instanceable: true
+  - id: settings.discovered_server
+    role: button
+    instanceable: true
   - id: my_pleya.chip
     role: button
     instanceable: true

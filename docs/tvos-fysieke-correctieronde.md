@@ -4864,3 +4864,12 @@ Referentie: `pleya-northstar-refs/2026-10-30/06-10.png`. Plan goedgekeurd door M
 | ID | Verzoek | Status | SHA | Bewijs / grens |
 | --- | --- | --- | --- | --- |
 | REQ-DISCOVERY-FILTERS | Michel: Aanvragen in alle bestaande apps uitbreiden met trending, jaar en binnenkort. | VERIFIED · INTERNAL RELEASE PENDING · HARDWARE OPEN | cf09cbc80 | Roadmap A-21. Gedeelde Seerr-discovery voor telefoon, tablet/desktop en TV; genre/jaar/provider/sortering combineren server-side met behoud bij paginering. Rating vraagt minimaal 100 stemmen; incompatibele bronwissels vragen bevestiging. Binnenkort gebruikt toekomstige primaire filmreleases/eerste uitzenddatums, geen regionale bioscoopagenda. Lokale gate inclusief harde linter/unused, 121 gerichte tests, vier scenariovalidaties en acht negatieve controles groen; product-/workflow-/fixreview zonder resterende bevindingen. Grote tekst schaalt mee met poster-/rij-/gridhoogte. Hosted native Verify 42109256011: macOS, iPhone en iPad PASS inclusief screenshots. TV-readiness volgt na herstel dezelfde laadvoorwaarde als de UI; native hercontrole 42113910680 op cf09cbc80 PASS, inclusief openen, Trending-selectie en focusherstel na Menu. Alle tvOS-smoke-/remote-/profielcontroles in die run PASS. Volledige kandidaat-CI wordt vóór merge gecontroleerd. Interne TestFlight-release en fysieke hardwareacceptatie blijven open; publieke beta blijft gepauzeerd. Android-debugbuild groen; Android TV-, Windows/Linux-runtime niet uitgevoerd. Bewijs: validatierapport REQ-DISCOVERY-FILTERS van 5 november 2026. |
+
+## S26.9: Pleya Server vinden op het thuisnetwerk, 13 november 2026
+
+Roadmap C-06 / S26.9, DEC-XXX (lokale ontdekking). Directe opdracht van Michel van 13 november 2026.
+
+| ID | Verzoek | Status | SHA | Bewijs / grens |
+| --- | --- | --- | --- | --- |
+| S269-TV-AANMELDEN | Michel: een lokale Pleya Server automatisch vinden, zodat je op de Apple TV geen adres hoeft te typen. Derde keuze "Pleya Server" op het aanmeldscherm; het toevoegscherm toont "Servers in je netwerk" en de afstandsbediening loopt adres, gevonden servers, Doorgaan. | GEBOUWD, HARDWARE OPEN | volgt bij de commit | Widgettests voor de derde rij, focusvolgorde, de route en een late Plex-claim; Linux-goldens `tv_auth_initial.png` en `tv_auth_qr.png` bijgewerkt. Pleya Verify niet gedraaid (geen tvOS-simulator in de cloudsessie); `tvos.auth.first-start` toetst de derde keuze. `HARDWARE ONLY`: of tvOS de UDP-broadcast doorlaat zonder multicast-entitlement. |
+

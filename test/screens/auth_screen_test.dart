@@ -60,6 +60,7 @@ void main() {
     Future<PlexAuthService> Function()? pinServiceFactoryOverride,
     Future<PlexAuthService> Function()? connectServiceFactoryOverride,
     Future<bool?> Function(BuildContext context)? jellyfinRoute,
+    Future<bool?> Function(BuildContext context)? pleyaServerRoute,
     VoidCallback? onConnectServiceCreate,
     ConnectionRegistry? connections,
     PlexHomeService? plexHome,
@@ -87,6 +88,7 @@ void main() {
       plexPinAuthServiceFactory: pinServiceFactory,
       plexConnectAuthServiceFactory: connectServiceFactory,
       jellyfinRoute: jellyfinRoute,
+      pleyaServerRoute: pleyaServerRoute,
       plexPollTimeout: plexPollTimeout,
     );
     if (connections != null && plexHome != null) {
@@ -234,6 +236,29 @@ void main() {
       expect(tester.binding.focusManager.primaryFocus?.debugLabel, t.auth.connectToJellyfin);
     });
 
+    testWidgets('DOWN twice and SELECT invokes the Pleya Server route exactly once', (tester) async {
+      var routeCalls = 0;
+      await pumpAuthScreen(
+        tester,
+        appleTv: true,
+        pleyaServerRoute: (_) async {
+          routeCalls++;
+          return false;
+        },
+      );
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(routeCalls, 1);
+      expect(find.byType(TvAuthView), findsOneWidget);
+      expect(tester.binding.focusManager.primaryFocus?.debugLabel, t.addServer.connectToPleyaServerCard);
+    });
+
     testWidgets('Jellyfin stays reachable during polling and a late Plex claim is ignored', (tester) async {
       final pollResponse = Completer<http.Response>();
       var routeCalls = 0;
@@ -266,6 +291,56 @@ void main() {
       await tester.pump();
       expect(find.byKey(const ValueKey('tv-auth-panel-qr')), findsOneWidget);
 
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(routeCalls, 1);
+      expect(find.byKey(const ValueKey('tv-auth-panel-initial')), findsOneWidget);
+
+      pollResponse.complete(
+        http.Response(jsonEncode({'authToken': 'late-token'}), 200, headers: {'content-type': 'application/json'}),
+      );
+      await tester.pump();
+
+      expect(connectServiceCreates, 1, reason: 'only the debug verify service was created; no token exchange started');
+      expect(find.byType(TvAuthView), findsOneWidget);
+      expect(tester.binding.takeException(), isNull);
+    });
+
+    testWidgets('Pleya Server stays reachable during polling and a late Plex claim is ignored', (tester) async {
+      final pollResponse = Completer<http.Response>();
+      var routeCalls = 0;
+      var connectServiceCreates = 0;
+      final client = MockClient((request) async {
+        if (request.method == 'POST') {
+          return http.Response(
+            jsonEncode({'id': 1, 'code': 'ABCD'}),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return pollResponse.future;
+      });
+      await pumpAuthScreen(
+        tester,
+        appleTv: true,
+        pinClient: client,
+        onConnectServiceCreate: () => connectServiceCreates++,
+        pleyaServerRoute: (_) async {
+          routeCalls++;
+          return false;
+        },
+      );
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('tv-auth-panel-qr')), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.select);

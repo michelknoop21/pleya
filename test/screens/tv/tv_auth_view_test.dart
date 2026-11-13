@@ -23,8 +23,10 @@ void main() {
     TvAuthPanelState state = TvAuthPanelState.initial,
     bool plexEnabled = true,
     bool jellyfinEnabled = true,
+    bool pleyaServerEnabled = true,
     VoidCallback? onPlexSelected,
     VoidCallback? onJellyfinSelected,
+    VoidCallback? onPleyaServerSelected,
   }) async {
     setGoldenSurfaceSize(tester);
     await tester.pumpWidget(
@@ -38,8 +40,10 @@ void main() {
             state: state,
             plexEnabled: plexEnabled,
             jellyfinEnabled: jellyfinEnabled,
+            pleyaServerEnabled: pleyaServerEnabled,
             onPlexSelected: onPlexSelected ?? () {},
             onJellyfinSelected: onJellyfinSelected ?? () {},
+            onPleyaServerSelected: onPleyaServerSelected ?? () {},
           ),
         ),
       ),
@@ -61,7 +65,9 @@ void main() {
     expect(half.panelSize, const Size(480, 370));
   });
 
-  testWidgets('owns exactly the Plex and Jellyfin choices beside one non-overlapping state panel', (tester) async {
+  testWidgets('owns exactly the Plex, Jellyfin and Pleya Server choices beside one non-overlapping state panel', (
+    tester,
+  ) async {
     await pumpView(tester, state: TvAuthPanelState.networkError);
 
     final left = find.byKey(const ValueKey('tv-auth-left-column'));
@@ -71,8 +77,9 @@ void main() {
     expect(find.text('PLEYA BRAND'), findsOneWidget);
     expect(find.text(t.auth.signInWithPlex), findsOneWidget);
     expect(find.text(t.auth.connectToJellyfin), findsOneWidget);
+    expect(find.text(t.addServer.connectToPleyaServerCard), findsOneWidget);
     expect(find.text('STATE CONTENT'), findsOneWidget);
-    expect(choices, findsNWidgets(2));
+    expect(choices, findsNWidgets(3));
 
     final leftRect = tester.getRect(left);
     final panelRect = tester.getRect(panel);
@@ -80,6 +87,7 @@ void main() {
     expect(tester.getRect(find.text('PLEYA BRAND')).right, lessThanOrEqualTo(leftRect.right));
     expect(tester.getRect(find.text(t.auth.signInWithPlex)).right, lessThan(panelRect.left));
     expect(tester.getRect(find.text(t.auth.connectToJellyfin)).right, lessThan(panelRect.left));
+    expect(tester.getRect(find.text(t.addServer.connectToPleyaServerCard)).right, lessThan(panelRect.left));
   });
 
   testWidgets('both columns and the full scaled choice focus rings stay inside the canonical viewport', (tester) async {
@@ -96,7 +104,7 @@ void main() {
     }
 
     final wrappers = tester.widgetList<FocusableWrapper>(find.byType(FocusableWrapper)).toList();
-    expect(wrappers, hasLength(2));
+    expect(wrappers, hasLength(3));
     for (final wrapper in wrappers) {
       final rect = tester.getRect(find.byWidget(wrapper));
       final focusedPaintRect = Rect.fromCenter(
@@ -133,12 +141,35 @@ void main() {
     expect((plexCalls, jellyfinCalls), (1, 1));
   });
 
+  testWidgets('DOWN from Jellyfin reaches Pleya Server, SELECT calls it once, and DOWN stops there', (tester) async {
+    var pleyaCalls = 0;
+    await pumpView(tester, onPleyaServerSelected: () => pleyaCalls++);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, t.addServer.connectToPleyaServerCard);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(pleyaCalls, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, t.addServer.connectToPleyaServerCard);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, t.auth.connectToJellyfin);
+  });
+
   testWidgets('disabled choices cannot receive focus or invoke their callback', (tester) async {
     var plexCalls = 0;
     var jellyfinCalls = 0;
     await pumpView(
       tester,
       jellyfinEnabled: false,
+      pleyaServerEnabled: false,
       onPlexSelected: () => plexCalls++,
       onJellyfinSelected: () => jellyfinCalls++,
     );
@@ -166,13 +197,24 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, t.auth.connectToJellyfin);
   });
 
-  testWidgets('the real choice renderowners publish only auth.choice[plex] and auth.choice[jellyfin]', (tester) async {
+  testWidgets('DOWN skips a disabled Jellyfin and lands on Pleya Server', (tester) async {
+    await pumpView(tester, jellyfinEnabled: false);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    expect(FocusManager.instance.primaryFocus?.debugLabel, t.addServer.connectToPleyaServerCard);
+  });
+
+  testWidgets('the real choice renderowners publish only auth.choice[plex], [jellyfin] and [pleya_server]', (
+    tester,
+  ) async {
     await pumpView(tester);
 
     final choices = tester.widgetList<FocusableWrapper>(find.byType(FocusableWrapper)).toList();
-    expect(choices, hasLength(2));
+    expect(choices, hasLength(3));
     expect(choices.map((choice) => choice.automationId), everyElement(AutomationIds.authChoice));
-    expect(choices.map((choice) => choice.automationInstance), containsAllInOrder(['plex', 'jellyfin']));
+    expect(choices.map((choice) => choice.automationInstance), ['plex', 'jellyfin', 'pleya_server']);
 
     for (final forbidden in ['Pleya Share', 'local folder', 'camera', 'text code', 'countdown']) {
       expect(find.textContaining(forbidden, findRichText: true), findsNothing);
@@ -210,6 +252,7 @@ void main() {
 
     expect(find.text(t.auth.signInWithPlex), findsOneWidget);
     expect(find.text(t.auth.connectToJellyfin), findsOneWidget);
+    expect(find.text(t.addServer.connectToPleyaServerCard), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -8,6 +8,8 @@ steps:
   - wait_until: {focused: "auth.choice[plex]", timeout: 15000}
   - assert: {id: "auth.choice[plex]", focused: true, insideViewport: true}
   - assert: {id: "auth.choice[jellyfin]", insideViewport: true}
+  # S26.9: Pleya Server is the third choice.
+  - assert: {id: "auth.choice[pleya_server]", insideViewport: true}
   - settle: 3500
   - snapshot: 00-first-start
   - press: select

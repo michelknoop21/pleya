@@ -13,10 +13,8 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../connection/connection.dart';
-import '../../focus/card_focus_scope.dart';
 import '../../focus/focusable_button.dart';
 import '../../focus/focusable_text_field.dart';
-import '../../focus/focusable_wrapper.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../profiles/active_profile_binder.dart';
@@ -32,6 +30,7 @@ import '../../services/storage_service.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/error_message_utils.dart';
 import '../../utils/platform_detector.dart';
+import '../../widgets/discovered_server_tile.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../profile/profile_switch_screen.dart';
 import 'async_form_state_mixin.dart';
@@ -657,8 +656,9 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
       Text(t.addServer.localServers, style: theme.textTheme.titleSmall),
       const SizedBox(height: 8),
       for (final server in _localServers) ...[
-        _DiscoveredJellyfinServerTile(
-          server: server,
+        DiscoveredServerTile(
+          name: server.name,
+          address: server.address,
           focusNode: _discoveredServerFocusNodes[server.id],
           onNavigateUp: () {
             final index = _localServers.indexOf(server);
@@ -741,78 +741,6 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _DiscoveredJellyfinServerTile extends StatelessWidget {
-  final DiscoveredJellyfinServer server;
-  final FocusNode? focusNode;
-  final VoidCallback? onNavigateUp;
-  final VoidCallback? onNavigateDown;
-  final VoidCallback? onTap;
-
-  const _DiscoveredJellyfinServerTile({
-    required this.server,
-    required this.focusNode,
-    required this.onNavigateUp,
-    required this.onNavigateDown,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return FocusableWrapper(
-      focusNode: focusNode,
-      disableScale: true,
-      // Border drawn by CardFocusBorder so it paints over the opaque Material.
-      mode: FocusIndicatorMode.delegated,
-      descendantsAreFocusable: false,
-      onSelect: onTap,
-      onNavigateUp: onNavigateUp,
-      onNavigateDown: onNavigateDown,
-      child: CardFocusBorder(
-        borderRadius: 12,
-        strokeAlign: BorderSide.strokeAlignInside,
-        child: Material(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  const AppIcon(Symbols.dns_rounded, fill: 1),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: .start,
-                      mainAxisSize: .min,
-                      children: [
-                        Text(server.name, style: theme.textTheme.titleSmall),
-                        const SizedBox(height: 2),
-                        Text(
-                          server.address,
-                          maxLines: 1,
-                          overflow: .ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

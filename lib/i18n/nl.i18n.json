@@ -20,6 +20,7 @@
     "useBrowser": "Gebruik browser",
     "or": "of",
     "connectToJellyfin": "Verbinden met Jellyfin",
+    "pleyaServerChoiceSubtitle": "Je eigen server. Pleya zoekt hem op je netwerk.",
     "useQuickConnect": "Quick Connect gebruiken",
     "quickConnectInstructions": "Open Quick Connect in Jellyfin en voer deze code in.",
     "quickConnectWaiting": "Wachten op goedkeuring…",
@@ -27,6 +28,7 @@
     "quickConnectExpired": "Quick Connect is verlopen. Probeer opnieuw.",
     "chooseHowToSignIn": "Kies hoe je inlogt",
     "chooseHowToSignInDescription": "Pleya verbindt met je Plex- of Jellyfin-mediaserver. Kies er een om te beginnen.",
+    "chooseHowToSignInDescriptionTv": "Pleya verbindt met je Plex-, Jellyfin- of Pleya-server. Kies er een om te beginnen.",
     "tryAgain": "Opnieuw proberen",
     "plexTokenLabel": "Plex-authenticatietoken",
     "plexTokenHint": "Voer je plex.tv-token in",
@@ -1905,6 +1907,7 @@
     "pleyaServerCreateOwner": "Eigenaar aanmaken",
     "pleyaServerPasswordTooShort": "Kies een wachtwoord van minimaal 8 tekens",
     "pleyaServerNoPasswordMethod": "Deze server accepteert geen inloggen met wachtwoord. Werk Pleya bij naar een versie die deze methode ondersteunt.",
+    "pleyaServerDiscoveryMismatch": "Op dit adres antwoordt een andere server dan de server die gevonden is. Controleer het adres en probeer het opnieuw.",
     "pleyaServerConnected": "Verbonden met ${name}",
     "borrowFromAnotherProfile": "Lenen van een ander profiel",
     "borrowFromAnotherProfileSubtitle": "Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN."

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../automation/automation_ids.dart';
 import '../../connection/connection.dart';
 import '../../exceptions/media_server_exceptions.dart';
 import '../../focus/focusable_button.dart';
@@ -18,6 +19,9 @@ import '../../profiles/profile_connection.dart';
 import '../../profiles/profile_registry.dart';
 import '../../services/pleya_server_auth_service.dart';
 import '../../services/pleya_server_device_identity.dart';
+import '../../services/pleya_server_lan_discovery_service.dart';
+import '../../utils/app_logger.dart';
+import '../../widgets/discovered_server_tile.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/loading_indicator_box.dart';
 import 'async_form_state_mixin.dart';
@@ -39,6 +43,9 @@ class AddPleyaServerScreen extends StatefulWidget {
 
   final PleyaServerAuthService Function()? _authServiceFactory;
 
+  /// Stands in for the UDP search in tests; null means the real one.
+  final FutureOr<List<DiscoveredPleyaServer>> Function()? _localDiscoveryFactory;
+
   // The field is private and Dart has no private named parameter, so an
   // initializing formal is not available here. dart_code_linter suggests one
   // anyway; the other add-server screens carry the same shape.
@@ -46,6 +53,7 @@ class AddPleyaServerScreen extends StatefulWidget {
     super.key,
     this.targetProfile,
     @visibleForTesting PleyaServerAuthService Function()? authServiceFactory,
+    @visibleForTesting this._localDiscoveryFactory,
   }) : _authServiceFactory = authServiceFactory;
 
   @override
@@ -66,11 +74,24 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
   final _passwordFocus = FocusNode(debugLabel: 'AddPleyaServer:Password');
   final _submitFocus = FocusNode(debugLabel: 'AddPleyaServer:Submit');
 
+  final _discoveredFocusNodes = <String, FocusNode>{};
+
   PleyaInfo? _info;
   String? _baseUrl;
+  List<DiscoveredPleyaServer> _localServers = const [];
+  bool _searchingLocalServers = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_discoverLocalServers());
+  }
 
   @override
   void dispose() {
+    for (final node in _discoveredFocusNodes.values) {
+      node.dispose();
+    }
     _urlFocus.dispose();
     _continueFocus.dispose();
     _changeServerFocus.dispose();
@@ -85,7 +106,49 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
 
   bool get _needsSetup => _info?.auth.setupRequired ?? false;
 
-  Future<void> _probe() async {
+  /// Looks for servers on the home network (protocol 5.1). Finding nothing is
+  /// the normal case: a server only answers when its operator switched that
+  /// on, and the address field works either way.
+  Future<void> _discoverLocalServers() async {
+    var servers = const <DiscoveredPleyaServer>[];
+    try {
+      final factory = widget._localDiscoveryFactory;
+      servers = factory != null ? await factory() : await PleyaServerLanDiscoveryService().discover();
+    } catch (e, st) {
+      appLogger.w('Add Pleya Server local discovery failed', error: e, stackTrace: st);
+    }
+    if (!mounted) return;
+    setState(() {
+      _localServers = servers;
+      _searchingLocalServers = false;
+      for (final server in servers) {
+        _discoveredFocusNodes.putIfAbsent(
+          server.id,
+          () => FocusNode(debugLabel: 'AddPleyaServer:Discovered:${server.id}'),
+        );
+      }
+    });
+  }
+
+  Future<void> _useDiscoveredServer(DiscoveredPleyaServer server) async {
+    if (busy) return;
+    _urlController.text = server.address;
+    await _probe(expectedServerId: server.id);
+  }
+
+  void _focusFirstDiscoveredOrContinue() {
+    final first = _localServers.isEmpty ? null : _discoveredFocusNodes[_localServers.first.id];
+    (first ?? _continueFocus).requestFocus();
+  }
+
+  void _focusLastDiscoveredOrUrl() {
+    final last = _localServers.isEmpty ? null : _discoveredFocusNodes[_localServers.last.id];
+    (last ?? _urlFocus).requestFocus();
+  }
+
+  /// [expectedServerId] is set when the address came from the network search:
+  /// the server that answers `/info` there has to be the one that was found.
+  Future<void> _probe({String? expectedServerId}) async {
     final typed = _urlController.text.trim();
     if (typed.isEmpty) {
       setErrorText(t.addServer.enterPleyaServerUrlError);
@@ -96,6 +159,12 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
       return (info: await _auth().probe(baseUrl), baseUrl: baseUrl);
     }, errorMapper: _describe);
     if (result == null || !mounted) return;
+    if (expectedServerId != null && result.info.serverId != expectedServerId) {
+      // A reply on the network proves nothing. This catches a mix-up or a
+      // stale answer before anyone types a password at the wrong server.
+      setErrorText(t.addServer.pleyaServerDiscoveryMismatch);
+      return;
+    }
     if (!result.info.auth.supportsPassword) {
       // The methods array is unknown-safe: a server may offer something this
       // build has never heard of. Saying so beats showing a password form that
@@ -294,15 +363,60 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
       enableSuggestions: false,
       enabled: !busy,
       textInputAction: TextInputAction.go,
+      onNavigateDown: _focusFirstDiscoveredOrContinue,
       onSubmitted: (_) => _probe(),
     ),
+    ..._localServersSection(theme),
     const SizedBox(height: 16),
     FocusableButton(
       focusNode: _continueFocus,
+      onNavigateUp: _focusLastDiscoveredOrUrl,
       onPressed: busy ? null : _probe,
       child: Text(t.addServer.pleyaServerFindServer),
     ),
   ];
+
+  List<Widget> _localServersSection(ThemeData theme) {
+    if (_searchingLocalServers) {
+      return [
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const LoadingIndicatorBox(size: 16),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                t.addServer.searchingLocalServers,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+              ),
+            ),
+          ],
+        ),
+      ];
+    }
+    if (_localServers.isEmpty) return const [];
+    return [
+      const SizedBox(height: 16),
+      Text(t.addServer.localServers, style: theme.textTheme.titleSmall),
+      const SizedBox(height: 8),
+      for (final (index, server) in _localServers.indexed) ...[
+        DiscoveredServerTile(
+          name: server.name,
+          address: server.address,
+          focusNode: _discoveredFocusNodes[server.id],
+          automationId: AutomationIds.settingsDiscoveredServer,
+          automationInstance: server.id,
+          onNavigateUp: () =>
+              (index == 0 ? _urlFocus : _discoveredFocusNodes[_localServers[index - 1].id])?.requestFocus(),
+          onNavigateDown: () =>
+              (index == _localServers.length - 1 ? _continueFocus : _discoveredFocusNodes[_localServers[index + 1].id])
+                  ?.requestFocus(),
+          onTap: busy ? null : () => unawaited(_useDiscoveredServer(server)),
+        ),
+        const SizedBox(height: 8),
+      ],
+    ];
+  }
 
   List<Widget> _credentialStep(ThemeData theme) => [
     Text(_baseUrl ?? '', style: theme.textTheme.bodyMedium),

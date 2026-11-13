@@ -69,7 +69,7 @@ void main() {
     // Refused, so the world may not change.
     const refused = {'create_home_row', 'request_title', 'forget_fact', 'cancel_job', 'remove_user', 'scan_library'};
     expect(no.containsAll(refused), isTrue, reason: 'refused: ${refused.difference(no)} missing');
-    final uncovered = mutating.difference(yes).difference(_open.keys.toSet()).difference({'remember_fact'});
+    final uncovered = mutating.where((n) => !yes.contains(n) && !_open.containsKey(n) && n != 'remember_fact').toSet();
     expect(uncovered, isEmpty, reason: 'mutations never carried out in a case');
   });
 
