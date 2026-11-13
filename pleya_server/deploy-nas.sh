@@ -62,7 +62,7 @@ echo "→ Pleya Web bouwen"
 ../pleya_web/scripts/build-into-server.sh
 
 echo "→ bronnen versturen naar $SSH_HOST:$REMOTE_DIR"
-COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml compose.test.yaml compose.hwaccel.yaml .dockerignore go.mod go.sum cmd internal \
+COPYFILE_DISABLE=1 tar czf - Dockerfile compose.yaml compose.test.yaml compose.hwaccel.yaml compose.lan.yaml .dockerignore go.mod go.sum cmd internal \
   | ssh "$SSH_HOST" "set -e
     mkdir -p $REMOTE_DIR
     incoming=\$(mktemp -d $REMOTE_DIR/.deploy-sources.XXXXXX)
@@ -92,6 +92,14 @@ if ssh "$SSH_HOST" "test -e /dev/dri/renderD128"; then
   echo "→ /dev/dri/renderD128 gevonden: hardwareversnelling aan"
 else
   echo "→ geen /dev/dri/renderD128: omzetten in software"
+fi
+
+# Vindbaar op het thuisnetwerk alleen als de operator daarvoor koos (S26.9).
+if ssh "$SSH_HOST" "grep -Eq '^PLEYA_SERVER_LAN=on[[:space:]]*\$' $REMOTE_DIR/.env 2>/dev/null"; then
+  COMPOSE_FILES="$COMPOSE_FILES -f compose.lan.yaml"
+  echo "→ PLEYA_SERVER_LAN=on: lokale ontdekking aan (UDP 48635)"
+else
+  echo "→ lokale ontdekking uit (zet PLEYA_SERVER_LAN=on in .env om hem aan te zetten)"
 fi
 
 echo "→ containers bouwen en starten"

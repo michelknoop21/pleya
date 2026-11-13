@@ -28,6 +28,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/config"
 	"github.com/edde746/plezy/pleya_server/internal/database"
 	"github.com/edde746/plezy/pleya_server/internal/diag"
+	"github.com/edde746/plezy/pleya_server/internal/discovery"
 	"github.com/edde746/plezy/pleya_server/internal/downloads"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/httpserver"
@@ -387,6 +388,28 @@ func run() int {
 			}
 		}()
 		defer metricsSrv.Close()
+	}
+
+	if cfg.DiscoveryAddr != "" {
+		finder, err := discovery.Listen(discovery.Options{
+			Addr:     cfg.DiscoveryAddr,
+			ServerID: serverID.String(),
+			Name:     func() string { return settingsCache.Current().ServerName() },
+			Port:     cfg.DiscoveryPort,
+			Log:      logging.Component(log, "discovery"),
+		})
+		if err != nil {
+			// Vindbaar zijn is gemak: zonder luisteraar werkt de server gewoon.
+			log.Warn("ontdekkingsluisteraar niet gestart", "addr", cfg.DiscoveryAddr, "error", err)
+		} else {
+			startup.Info("lokale ontdekking aan", slog.String("addr", cfg.DiscoveryAddr), slog.Int("port", cfg.DiscoveryPort))
+			go func() {
+				if err := finder.Serve(context.Background()); err != nil {
+					log.Warn("ontdekkingsluisteraar gestopt", "addr", cfg.DiscoveryAddr, "error", err)
+				}
+			}()
+			defer finder.Close()
+		}
 	}
 
 	serveErr := make(chan error, 1)

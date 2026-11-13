@@ -31,10 +31,16 @@ type Config struct {
 
 	// MetricsAddr is waar /metrics luistert. Leeg zet het uit. Standaard loopback:
 	// een publiek adres is een bewuste keuze van de operator.
-	MetricsAddr  string
-	ConfigDir    string
-	CacheDir     string
-	TranscodeDir string
+	MetricsAddr string
+	// DiscoveryAddr is waar de server oproepen van clients op het thuisnetwerk
+	// beantwoordt (UDP). Leeg zet het uit, en dat is de standaard.
+	// DiscoveryPort is de HTTP-poort die hij daarbij adverteert: de poort op de
+	// host, niet die in de container.
+	DiscoveryAddr string
+	DiscoveryPort int
+	ConfigDir     string
+	CacheDir      string
+	TranscodeDir  string
 
 	// TranscodeMaxSessions is het aantal gelijktijdige omzettingen (S18). 0 zet
 	// omzetten uit: de server levert dan alleen direct play. TranscodeRenderNode
@@ -204,6 +210,26 @@ func Load(getenv Getenv) (*Config, error) {
 		}
 	}
 	cfg.MetricsAddr = metricsAddr
+
+	// Lokale ontdekking (S26.9) staat standaard uit: de server is standaard
+	// alleen op loopback gepubliceerd en heeft op het thuisnetwerk dan niets te
+	// melden. compose.lan.yaml zet beide waarden.
+	discoveryAddr := strings.TrimSpace(valueOr(getenv, "PLEYA_SERVER_DISCOVERY_ADDR", "off"))
+	if strings.EqualFold(discoveryAddr, "off") {
+		discoveryAddr = ""
+	}
+	if discoveryAddr != "" {
+		if err := validateAddr(discoveryAddr); err != nil {
+			return nil, fmt.Errorf("PLEYA_SERVER_DISCOVERY_ADDR: %w", err)
+		}
+		raw := strings.TrimSpace(getenv("PLEYA_SERVER_DISCOVERY_PORT"))
+		port, err := strconv.Atoi(raw)
+		if err != nil || port < 1 || port > 65535 {
+			return nil, fmt.Errorf("PLEYA_SERVER_DISCOVERY_PORT: %q is geen poort; zet de HTTP-poort waarop clients de server bereiken", raw)
+		}
+		cfg.DiscoveryPort = port
+	}
+	cfg.DiscoveryAddr = discoveryAddr
 
 	cfg.MediaDirs = splitList(valueOr(getenv, "PLEYA_SERVER_MEDIA_DIRS", DefaultMediaDirs))
 	if len(cfg.MediaDirs) == 0 {

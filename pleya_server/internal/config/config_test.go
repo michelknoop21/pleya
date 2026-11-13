@@ -188,3 +188,34 @@ func TestLoadShutdownTimeout(t *testing.T) {
 		}
 	}
 }
+
+func TestDiscoveryIsOffUnlessAnAddressAndAPortAreGiven(t *testing.T) {
+	def, err := Load(env(map[string]string{"DATABASE_URL": validDSN}))
+	if err != nil || def.DiscoveryAddr != "" {
+		t.Fatalf("standaard hoort ontdekking uit te staan: %q, %v", def.DiscoveryAddr, err)
+	}
+	on, err := Load(env(map[string]string{
+		"DATABASE_URL": validDSN, "PLEYA_SERVER_DISCOVERY_ADDR": ":48635", "PLEYA_SERVER_DISCOVERY_PORT": "8832",
+	}))
+	if err != nil || on.DiscoveryAddr != ":48635" || on.DiscoveryPort != 8832 {
+		t.Fatalf("aan: %q %d, %v", on.DiscoveryAddr, on.DiscoveryPort, err)
+	}
+	off, err := Load(env(map[string]string{
+		"DATABASE_URL": validDSN, "PLEYA_SERVER_DISCOVERY_ADDR": "OFF", "PLEYA_SERVER_DISCOVERY_PORT": "8832",
+	}))
+	if err != nil || off.DiscoveryAddr != "" {
+		t.Fatalf("off: %q, %v", off.DiscoveryAddr, err)
+	}
+	for _, port := range []string{"", "0", "70000", "http"} {
+		if _, err := Load(env(map[string]string{
+			"DATABASE_URL": validDSN, "PLEYA_SERVER_DISCOVERY_ADDR": ":48635", "PLEYA_SERVER_DISCOVERY_PORT": port,
+		})); err == nil {
+			t.Errorf("poort %q hoort geweigerd te worden", port)
+		}
+	}
+	if _, err := Load(env(map[string]string{
+		"DATABASE_URL": validDSN, "PLEYA_SERVER_DISCOVERY_ADDR": "geen-poort", "PLEYA_SERVER_DISCOVERY_PORT": "8832",
+	})); err == nil {
+		t.Error("een adres zonder poort hoort geweigerd te worden")
+	}
+}

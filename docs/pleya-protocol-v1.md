@@ -264,6 +264,45 @@ setupscherm in plaats van het inlogscherm.
 vertakking op backend. Een server die een functie uitzet is voor de client hetzelfde als een server
 die hem nooit had.
 
+### 5.1 Vinden op het thuisnetwerk
+
+Buiten HTTP en buiten `openapi.yaml`; toegevoegd in het [venster van 13 november 2026](pleya-server-discovery-window.md). Een server doet hier alleen aan mee als de beheerder het aanzet.
+
+De client stuurt een UDP-broadcast naar poort **48635** met precies deze tekst, zonder regeleinde:
+
+```
+who is PleyaServer?
+```
+
+De server antwoordt rechtstreeks aan de afzender met één JSON-object van minder dan 512 bytes:
+
+```json
+{
+  "app": "pleya-server",
+  "v": 1,
+  "id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b",
+  "name": "Thuis",
+  "port": 8832,
+  "scheme": "http"
+}
+```
+
+| Veld | Betekenis |
+| --- | --- |
+| `app` | altijd `pleya-server`; een client slaat elk ander antwoord over |
+| `v` | versie van dit antwoord, nu `1`; een client slaat een onbekende versie over |
+| `id` | dezelfde waarde als `server.id` in `GET /info` |
+| `name` | de servernaam, alleen om de keuzelijst leesbaar te maken |
+| `port`, `scheme` | waarmee de client het adres bouwt, samen met het afzenderadres van het datagram |
+| `url` | optioneel; een volledig adres dat vóór `scheme` en `port` gaat |
+
+Regels:
+
+- De server antwoordt op niets anders dan de exacte oproep en begrenst het aantal antwoorden per afzender. Het antwoord is klein, zodat de luisteraar niet als versterker bruikbaar is.
+- Het antwoord geeft geen toegang en bewijst niets. De client haalt daarna `GET /info` op het gevonden adres en gaat alleen door als `server.id` gelijk is aan `id`. Inloggen verloopt zoals in hoofdstuk 6.
+- De servernaam staat in dit antwoord en niet in `/info`: wie het antwoord krijgt, zit op hetzelfde netwerk, en `/info` is ook van buiten bereikbaar.
+- Een client negeert onbekende velden.
+
 ---
 
 ## 6. Authenticatie

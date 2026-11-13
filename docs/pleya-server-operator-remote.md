@@ -46,6 +46,28 @@ Voor nginx, Caddy of Traefik op dezelfde machine:
 
 De server kent geen voorvoegsel en hoeft dat niet. Laat de proxy het voorvoegsel afstrippen en geef clients de volledige basis-URL mee, bijvoorbeeld `https://nas.example/media`. Clients plakken die basis vóór elk pad uit een antwoord, zoals `stream_url` en `file_url`. De test `TestRangeSurvivesTwoProxySetups/subpad` bewijst dit met een proxy op `/media`.
 
+## Vindbaar op het thuisnetwerk
+
+Standaard moet je in de app het adres van de server intypen. Met lokale ontdekking verschijnt de server vanzelf in het toevoegscherm van een toestel op hetzelfde netwerk. Het staat uit tot je het aanzet, omdat de server standaard alleen op loopback luistert.
+
+Zet in `.env`:
+
+```
+PLEYA_SERVER_LAN=on
+PLEYA_SERVER_BIND=0.0.0.0
+```
+
+`deploy-nas.sh` voegt dan `compose.lan.yaml` toe. Die publiceert UDP-poort 48635 en zet twee instellingen:
+
+| Omgevingsvariabele | Wat ze doet | Standaard |
+| --- | --- | --- |
+| `PLEYA_SERVER_DISCOVERY_ADDR` | waar de server op een oproep luistert; `off` zet het uit | `off` |
+| `PLEYA_SERVER_DISCOVERY_PORT` | de HTTP-poort die een toestel moet gebruiken, dus de poort op de host en niet 8080 in de container | geen, verplicht als ontdekking aan staat |
+
+Wat je ermee openzet: met `PLEYA_SERVER_BIND=0.0.0.0` is de server voor elk toestel op je netwerk bereikbaar over HTTP, en het wachtwoord gaat bij het inloggen onversleuteld over dat netwerk. Dat is hetzelfde als bij een ingetypt LAN-adres. Zet de poort niet door op de router. Het antwoord op een oproep bevat de servernaam, het server-id en de poort, en geeft geen toegang.
+
+Werkt het niet, controleer dan of de firewall van de NAS UDP 48635 doorlaat en of het toestel op hetzelfde netwerk zit; een gastnetwerk of een tweede VLAN laat een broadcast niet door. Het adresveld in de app blijft altijd werken.
+
 ## Metrics
 
 `GET /metrics` levert tekst in het Prometheus-formaat en bestaat alleen op de metrics-listener, nooit op de API-poort. Er staat geen authenticatie op: het adres is dus de beveiliging. Standaard is dat loopback binnen de container, wat van buiten niet bereikbaar is. Wil je het scrapen, zet dan `PLEYA_SERVER_METRICS_ADDR` op een privé-adres en publiceer die poort alleen naar je monitoringnetwerk.
