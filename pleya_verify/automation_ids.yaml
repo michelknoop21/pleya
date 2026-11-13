@@ -159,6 +159,9 @@ ids:
   - id: library.filter.more
     role: button
     instanceable: false
+  - id: library.filter.count
+    role: region
+    instanceable: false
   - id: library.more.manage
     role: button
     instanceable: false
@@ -170,9 +173,6 @@ ids:
     instanceable: true
   - id: library.maintenance.confirm
     role: button
-    instanceable: false
-  - id: library.filter.count
-    role: region
     instanceable: false
   - id: sheet.library_sort
     role: sheet
@@ -683,6 +683,9 @@ ids:
     instanceable: false
   - id: sheet.context_menu.item
     role: list.item
+    instanceable: true
+  - id: dialog.delete_media
+    role: button
     instanceable: true
   - id: sheet.library_actions
     role: sheet

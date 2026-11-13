@@ -800,6 +800,11 @@ class AutomationIds {
   /// order) already varies with the group's own state.
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
 
+  /// The two buttons of the "Verwijderen van server" confirmation, suffixed
+  /// `[confirm]` or `[cancel]`, so a scenario can prove that only the confirm
+  /// reaches the server.
+  static const String dialogDeleteMedia = 'dialog.delete_media';
+
   /// The TV library action sheet (LIB7, mockup 27 B). Its state lists the
   /// offered actions in order, so a scenario can prove that a non-owner gets
   /// only "Openen in catalogus" and "Verbergen" (the owner rule).
@@ -952,6 +957,7 @@ class AutomationIds {
     searchHistoryChip,
     sheetSourcePickerRow,
     sheetContextMenuItem,
+    dialogDeleteMedia,
     catalogHeader,
     catalogHeaderSearch,
     catalogChipSources,
@@ -1198,6 +1204,7 @@ class AutomationIds {
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
     {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
+    {'id': dialogDeleteMedia, 'role': 'button', 'instanceable': true},
     {'id': sheetLibraryActions, 'role': 'sheet', 'instanceable': false},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},

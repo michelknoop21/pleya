@@ -163,5 +163,21 @@ export const webOpsNl = {
   'admin.ops.err.finished': '{name} is al klaar, dus er valt niets af te breken. Laad opnieuw om te zien hoe het afliep.',
   'admin.ops.err.duplicate': 'Voor {name} staat al een gelijke taak in de wachtrij of in uitvoering. Wacht tot die klaar is en laad dan opnieuw.',
   'admin.ops.err.notCancellable': '{name} is nu niet te stoppen. Laad opnieuw om de stand te zien.',
-  'admin.ops.err.unavailable': 'De server kan nu niet bij zijn opslag. Controleer de schijf en probeer het daarna opnieuw.'
+  'admin.ops.err.unavailable': 'De server kan nu niet bij zijn opslag. Controleer de schijf en probeer het daarna opnieuw.',
+  // --- Bibliotheekonderhoud (C-05) -----------------------------------------
+  'admin.act.job.emptyTrash': 'Prullenbak legen is mislukt',
+  'admin.act.job.runningTitle.emptyTrash': 'Prullenbak van een bibliotheek legen',
+  'admin.lib.maint.title': 'Onderhoud',
+  'admin.lib.maint.refreshHelp': 'Haalt de metadata van elke film en serie opnieuw op. Velden die je zelf invulde of vastzette blijven staan.',
+  'admin.lib.maint.refresh': 'Metadata verversen',
+  'admin.lib.maint.trashHelp': 'Haalt titels en versies waarvan alle bestanden van de schijf verdwenen zijn uit de catalogus.',
+  'admin.lib.maint.trash': 'Prullenbak legen',
+  'admin.lib.maint.confirmTitle': 'Prullenbak van {name} legen?',
+  'admin.lib.maint.confirmBody': 'De server verwijdert uit {name} elke titel en elke versie waarvan alle bestanden als verdwenen gemarkeerd staan en echt van de schijf weg zijn, en daarna lege seizoenen en series. Bij die titels en versies gaan voor alle gebruikers mee: kijkstatus, geschiedenis, favorieten, waarderingen, taalkeuzes, downloads en plekken in lijsten en collecties, en wat je zelf aan metadata en artwork vastzette. Bestanden op schijf blijven onaangeroerd. Is een opslagroot niet te lezen of leeg, dan verwijdert hij niets. Dit is niet terug te draaien.',
+  'admin.lib.maint.confirm': 'Prullenbak legen',
+  'admin.lib.maint.refreshed': 'Aan de beurt voor een nieuwe metadataronde in {name}: {titles}. Die ronde loopt op de achtergrond.',
+  'admin.lib.maint.refreshedNone': 'In {name} staat geen titel klaar voor een nieuwe metadataronde. Afgewezen en onbesliste titels blijven buiten.',
+  'admin.lib.maint.emptied': 'De prullenbak van {name} wordt geleegd: {titles} gemarkeerd als verdwenen. De taak controleert de schijf eerst en kan er minder verwijderen. Volg hem bij Scans en taken.',
+  'admin.lib.maint.emptiedNone': 'In de prullenbak van {name} stond geen titel met alleen verdwenen bestanden. Losse versies waarvan alle bestanden weg zijn kan de taak nog verwijderen; volg hem bij Scans en taken.',
+  'admin.lib.maint.err.busy': 'Voor {name} staat al een scan of een prullenbaktaak in de wachtrij of hij loopt. Probeer het opnieuw als die klaar is.'
 } as const;

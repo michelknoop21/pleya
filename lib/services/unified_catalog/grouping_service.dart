@@ -331,6 +331,33 @@ UnifiedMediaGroup _buildMergedGroup(
   );
 }
 
+/// [group] without the copy [sourceKey], which its server just deleted; null
+/// when that was its only copy. The representative and the watch state are
+/// chosen again over what is left, by the same rules a merge uses, with the
+/// viewer's remembered source as the preference.
+UnifiedMediaGroup? groupWithoutSource(
+  UnifiedMediaGroup group,
+  String sourceKey, {
+  Set<String> preferredSourceKeys = const {},
+}) {
+  final kept = [
+    for (final source in group.sources)
+      if (source.sourceKey != sourceKey) source,
+  ];
+  if (kept.length == group.sources.length) return group;
+  if (kept.isEmpty) return null;
+  final preferredHere = kept.map((s) => s.sourceKey).where(preferredSourceKeys.contains).firstOrNull;
+  return UnifiedMediaGroup(
+    groupId: group.groupId,
+    identity: group.identity,
+    sources: kept,
+    representativeSourceKey: selectRepresentativeSource(kept),
+    watchState: selectRepresentativeWatchState({
+      for (final s in kept) s.sourceKey: s.item,
+    }, preferredSourceKey: preferredHere),
+  );
+}
+
 /// Hoofdstuk 11.9: content-derived and improvable, not assigned by a
 /// long-lived store — fase 1 has no provider/session yet (that arrives in
 /// fase 3's `UnifiedCatalogProvider`), so this is the deterministic default a

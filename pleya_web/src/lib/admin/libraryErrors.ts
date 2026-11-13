@@ -128,3 +128,17 @@ export function libraryProblem(error: unknown, name: string): LibraryProblem {
   const code = error instanceof TransportError ? 'client.transport' : 'client.unknown';
   return { code, message: describeError(error), wayOut: 'retry' };
 }
+
+/**
+ * Metadata verversen en prullenbak legen (`openapi.yaml`, refreshLibraryMetadata
+ * en emptyLibraryTrash): 404, 401, 500 en, alleen bij legen,
+ * `library.scan_in_progress` (409). Die laatste deelt de dedupe key met de
+ * scan, dus hij geldt ook voor een prullenbaktaak die al wacht; de zin noemt
+ * beide. De rest is dezelfde als bij bibliotheekbeheer.
+ */
+export function maintenanceProblem(error: unknown, name: string): LibraryProblem {
+  if (error instanceof ApiError && error.code === 'library.scan_in_progress') {
+    return { code: error.code, message: t('admin.lib.maint.err.busy', { name }), wayOut: 'activity' };
+  }
+  return libraryProblem(error, name);
+}

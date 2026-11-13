@@ -111,3 +111,27 @@ class _AutomationNodeState extends State<AutomationNode> {
   @override
   Widget build(BuildContext context) => widget.child;
 }
+
+/// Whether the remote is on the row [context] belongs to, for a node that
+/// has no `FocusNode` of its own to declare: the primary focus sits on a
+/// focusable around [context] (a label inside a focusable tile or button), or
+/// somewhere below it (a wrapper around a focusable row). A focused scope
+/// does not count: that is a panel with nothing in it chosen, not this row.
+/// Read at snapshot time, never during a build.
+bool automationRowHasFocus(BuildContext context) {
+  final primary = FocusManager.instance.primaryFocus;
+  if (primary == null || primary is FocusScopeNode || !context.mounted) return false;
+  final focusContext = primary.context;
+  if (focusContext is! Element) return false;
+  if (identical(focusContext, context)) return true;
+  var related = false;
+  bool find(Element element, BuildContext target) {
+    if (!identical(element, target)) return true;
+    related = true;
+    return false;
+  }
+
+  (context as Element).visitAncestorElements((element) => find(element, focusContext));
+  if (!related) focusContext.visitAncestorElements((element) => find(element, context));
+  return related;
+}

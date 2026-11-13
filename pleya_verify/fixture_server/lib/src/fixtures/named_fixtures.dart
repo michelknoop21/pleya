@@ -60,6 +60,10 @@ bool applyNamedFixture(
       server.resetCatalog();
       if (jellyfin != null) _applyCatalogScoresV1(jellyfin);
       return true;
+    case 'catalog.delete.v1':
+      if (jellyfin == null) return false;
+      _applyCatalogDeleteV1(server, jellyfin);
+      return true;
     case 'catalog.seasons.v1':
       _applyCatalogSeasonsV1(server);
       return true;
@@ -643,50 +647,77 @@ void _applyCatalogAlphabet500V1(PleyaFakeServer server) {
 /// backend whose protocol carries a release date, so Home's hero pool fills
 /// through the real mapper and aggregation and rotates over more than one slide.
 void _applyCatalogHeroRecentV1(JellyfinFakeServer jellyfin) {
-  jellyfin.movies
-    ..clear()
-    ..addAll(const [
-      JellyfinFakeMovie(id: 'hr-01', title: 'Northern Crossing', year: 2026, releasedDaysAgo: 10),
-      JellyfinFakeMovie(id: 'hr-02', title: 'Salt Harbour', year: 2026, releasedDaysAgo: 30),
-      JellyfinFakeMovie(id: 'hr-03', title: 'The Long Thaw', year: 2026, releasedDaysAgo: 60),
-    ]);
+  jellyfin.reset();
+  jellyfin.movies.addAll(const [
+    JellyfinFakeMovie(id: 'hr-01', title: 'Northern Crossing', year: 2026, releasedDaysAgo: 10),
+    JellyfinFakeMovie(id: 'hr-02', title: 'Salt Harbour', year: 2026, releasedDaysAgo: 30),
+    JellyfinFakeMovie(id: 'hr-03', title: 'The Long Thaw', year: 2026, releasedDaysAgo: 60),
+  ]);
 }
 
 void _applyCatalogScoresV1(JellyfinFakeServer jellyfin) {
-  jellyfin.movies
-    ..clear()
-    ..addAll(const [
-      JellyfinFakeMovie(
-        id: 'sc-01',
-        title: 'The Alabama Solution',
-        year: 2025,
-        criticRating: 100,
-        communityRating: 8.1,
-      ),
-      JellyfinFakeMovie(id: 'sc-02', title: 'Wasteman', year: 2025, criticRating: 100, communityRating: 7.4),
-      JellyfinFakeMovie(
-        id: 'sc-03',
-        title: 'How to Train Your Dragon',
-        year: 2010,
-        criticRating: 99,
-        communityRating: 8.1,
-      ),
-      JellyfinFakeMovie(id: 'sc-04', title: 'Inside Out', year: 2015, criticRating: 98, communityRating: 8.1),
-      JellyfinFakeMovie(
-        id: 'sc-05',
-        title: 'Mission: Impossible - Fallout',
-        year: 2018,
-        criticRating: 98,
-        communityRating: 7.7,
-      ),
-      JellyfinFakeMovie(id: 'sc-06', title: 'Catch Me If You Can', year: 2002, criticRating: 96, communityRating: 8.1),
-      JellyfinFakeMovie(id: 'sc-07', title: 'Ratatouille', year: 2007, criticRating: 96, communityRating: 7.8),
-      JellyfinFakeMovie(id: 'sc-08', title: 'Top Gun: Maverick', year: 2022, criticRating: 96, communityRating: 8.2),
-      JellyfinFakeMovie(id: 'sc-09', title: 'Project Hail Mary', year: 2026, criticRating: 95, communityRating: 8.4),
-      JellyfinFakeMovie(id: 'sc-10', title: 'The Invite', year: 2026, criticRating: 58, communityRating: 6.2),
-      JellyfinFakeMovie(id: 'sc-11', title: 'A Film Without Critics', year: 2024, communityRating: 5.5),
-      JellyfinFakeMovie(id: 'sc-12', title: 'B Film Without Scores', year: 2024),
-    ]);
+  jellyfin.reset();
+  jellyfin.movies.addAll(const [
+    JellyfinFakeMovie(id: 'sc-01', title: 'The Alabama Solution', year: 2025, criticRating: 100, communityRating: 8.1),
+    JellyfinFakeMovie(id: 'sc-02', title: 'Wasteman', year: 2025, criticRating: 100, communityRating: 7.4),
+    JellyfinFakeMovie(
+      id: 'sc-03',
+      title: 'How to Train Your Dragon',
+      year: 2010,
+      criticRating: 99,
+      communityRating: 8.1,
+    ),
+    JellyfinFakeMovie(id: 'sc-04', title: 'Inside Out', year: 2015, criticRating: 98, communityRating: 8.1),
+    JellyfinFakeMovie(
+      id: 'sc-05',
+      title: 'Mission: Impossible - Fallout',
+      year: 2018,
+      criticRating: 98,
+      communityRating: 7.7,
+    ),
+    JellyfinFakeMovie(id: 'sc-06', title: 'Catch Me If You Can', year: 2002, criticRating: 96, communityRating: 8.1),
+    JellyfinFakeMovie(id: 'sc-07', title: 'Ratatouille', year: 2007, criticRating: 96, communityRating: 7.8),
+    JellyfinFakeMovie(id: 'sc-08', title: 'Top Gun: Maverick', year: 2022, criticRating: 96, communityRating: 8.2),
+    JellyfinFakeMovie(id: 'sc-09', title: 'Project Hail Mary', year: 2026, criticRating: 95, communityRating: 8.4),
+    JellyfinFakeMovie(id: 'sc-10', title: 'The Invite', year: 2026, criticRating: 58, communityRating: 6.2),
+    JellyfinFakeMovie(id: 'sc-11', title: 'A Film Without Critics', year: 2024, communityRating: 5.5),
+    JellyfinFakeMovie(id: 'sc-12', title: 'B Film Without Scores', year: 2024),
+  ]);
+}
+
+/// Delete from server in Alle films and Alle series. The Jellyfin user is an
+/// administrator, so the app offers the delete there. Arrival is also on the
+/// Pleya fixture under the same TMDB number, so its card carries two sources
+/// and the delete row has to name the one server it removes from; Pleya Server
+/// has no delete, so that copy is never offered.
+void _applyCatalogDeleteV1(PleyaFakeServer server, JellyfinFakeServer jellyfin) {
+  const fixture = 'catalog.delete.v1';
+  server.resetCatalog();
+  final libraryId = _mintId(server, fixture, 'library', 'movies');
+  server.addLibrary(id: libraryId, title: 'Films', kind: 'movies', itemCount: 1);
+  final arrivalId = _mintId(server, fixture, 'movie', 'arrival');
+  server.addItem(
+    id: arrivalId,
+    kind: 'movie',
+    title: 'Arrival',
+    libraryId: libraryId,
+    year: 2016,
+    durationMs: 6960000,
+    posterId: _registerArtwork(server, arrivalId),
+    externalIds: {'tmdb': 329865},
+  );
+
+  jellyfin.reset();
+  jellyfin.administrator = true;
+  jellyfin.movies.addAll(const [
+    JellyfinFakeMovie(id: 'del-arrival', title: 'Arrival', year: 2016, tmdbId: 329865),
+    JellyfinFakeMovie(id: 'del-dune', title: 'Dune', year: 2021, tmdbId: 438631),
+    JellyfinFakeMovie(id: 'del-paddington', title: 'Paddington 2', year: 2017, tmdbId: 346648),
+  ]);
+  jellyfin.shows.addAll(const [
+    JellyfinFakeMovie(id: 'del-shrinking', title: 'Shrinking', year: 2023, tmdbId: 136311, type: 'Series'),
+    JellyfinFakeMovie(id: 'del-slow-horses', title: 'Slow Horses', year: 2022, tmdbId: 95480, type: 'Series'),
+  ]);
 }
 
 /// One show with four seasons of three episodes each, for the TV series

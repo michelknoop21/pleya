@@ -166,5 +166,21 @@ export const webOps = {
   'admin.ops.err.finished': '{name} has already finished, so there is nothing to stop. Reload to see where it ended up.',
   'admin.ops.err.duplicate': 'An identical job is already queued or running for {name}. Wait for it to finish, then reload.',
   'admin.ops.err.notCancellable': '{name} cannot be stopped now. Reload to see its state.',
-  'admin.ops.err.unavailable': 'The server cannot reach its storage right now. Check the disk, then try again.'
+  'admin.ops.err.unavailable': 'The server cannot reach its storage right now. Check the disk, then try again.',
+  // --- Bibliotheekonderhoud (C-05) -----------------------------------------
+  'admin.act.job.emptyTrash': 'Emptying the trash failed',
+  'admin.act.job.runningTitle.emptyTrash': 'Emptying a library trash',
+  'admin.lib.maint.title': 'Maintenance',
+  'admin.lib.maint.refreshHelp': 'Fetches metadata again for every movie and show. Fields you filled in or locked yourself stay as they are.',
+  'admin.lib.maint.refresh': 'Refresh metadata',
+  'admin.lib.maint.trashHelp': 'Removes titles and versions whose files are all gone from disk from the catalog.',
+  'admin.lib.maint.trash': 'Empty trash',
+  'admin.lib.maint.confirmTitle': 'Empty the trash of {name}?',
+  'admin.lib.maint.confirmBody': 'The server removes from {name} every title and every version whose files are all marked missing and are really gone from disk, then empty seasons and shows. For those titles and versions, every user loses: watch status, history, favorites, ratings, language choices, downloads and places in lists and collections, along with metadata and artwork you set or pinned yourself. Files on disk are not touched. If a storage root cannot be read or is empty, nothing is removed. This cannot be undone.',
+  'admin.lib.maint.confirm': 'Empty trash',
+  'admin.lib.maint.refreshed': 'Queued for a new metadata round in {name}: {titles}. The round runs in the background.',
+  'admin.lib.maint.refreshedNone': '{name} has no titles waiting for a new metadata round. Rejected and undecided titles stay out.',
+  'admin.lib.maint.emptied': 'The trash of {name} is being emptied: {titles} marked missing. The job checks the disk first and may remove fewer. Follow it under scans and jobs.',
+  'admin.lib.maint.emptiedNone': 'The trash of {name} had no titles with only missing files. The job can still remove single versions whose files are all gone; follow it under scans and jobs.',
+  'admin.lib.maint.err.busy': 'A scan or trash job for {name} is already queued or running. Try again once it has finished.'
 } as const;
