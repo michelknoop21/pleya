@@ -99,7 +99,9 @@ export interface LibraryFakeOptions {
   roots: StorageRoot[];
   scans?: Record<string, Scan>;
   /** "METHOD /pad" naar een vast antwoord, voor de foutpaden. */
-  fail?: Record<string, Response | (() => Response)>;
+  fail?: Record<string, Response | (() => Response | Promise<Response>)>;
+  /** Het aantal kandidaten in de prullenbak per bibliotheek-id (standaard 0). */
+  trash?: Record<string, number>;
 }
 
 export function libraryFake(options: LibraryFakeOptions) {
@@ -124,7 +126,7 @@ export function libraryFake(options: LibraryFakeOptions) {
     const failure = options.fail?.[`${method} ${path}`];
     if (failure) return typeof failure === 'function' ? failure() : failure.clone();
 
-    const match = path.match(/^\/libraries\/([^/]+)(\/scan|\/adopt|\/metadata-coverage)?$/);
+    const match = path.match(/^\/libraries\/([^/]+)(\/scan|\/adopt|\/metadata-coverage|\/refresh-metadata|\/empty-trash)?$/);
     if (method === 'GET' && path === '/libraries') return json({ items: state.libraries });
     if (method === 'GET' && path === '/storage/roots') return json({ roots: state.roots });
     if (method === 'GET' && path === '/scans') {
@@ -144,6 +146,13 @@ export function libraryFake(options: LibraryFakeOptions) {
       if (sub === '/scan' && method === 'POST') {
         state.scans[id!] = scan(id!, 'queued');
         return json(state.scans[id!], 202);
+      }
+      if (sub === '/refresh-metadata' && method === 'POST') {
+        return json({ items: current.item_count }, 202);
+      }
+      if (sub === '/empty-trash' && method === 'POST') {
+        const items = options.trash?.[id!] ?? 0;
+        return json({ items, job_id: `job-trash-${id}` }, 202);
       }
       if (sub === '/adopt' && method === 'POST') {
         Object.assign(current, { managed: 'db' });

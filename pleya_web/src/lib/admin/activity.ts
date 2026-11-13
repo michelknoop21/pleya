@@ -192,6 +192,7 @@ export function failedScanDetail(scan: Scan): string {
 const JOB_FAILED: Record<string, MessageKey> = {
   storage_recheck_roots: 'admin.act.job.recheck',
   artwork_cache_purge: 'admin.act.job.cachePurge',
+  empty_library_trash: 'admin.act.job.emptyTrash',
   download_digest: 'admin.act.job.digest',
   backup_create: 'admin.act.job.backupCreate',
   backup_verify: 'admin.act.job.backupVerify'
@@ -200,6 +201,7 @@ const JOB_FAILED: Record<string, MessageKey> = {
 const JOB_RUNNING: Record<string, MessageKey> = {
   storage_recheck_roots: 'admin.act.job.runningTitle.recheck',
   artwork_cache_purge: 'admin.act.job.runningTitle.cachePurge',
+  empty_library_trash: 'admin.act.job.runningTitle.emptyTrash',
   download_digest: 'admin.act.job.runningTitle.digest',
   backup_create: 'admin.act.job.runningTitle.backupCreate',
   backup_verify: 'admin.act.job.runningTitle.backupVerify'
