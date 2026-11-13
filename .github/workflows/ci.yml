@@ -249,8 +249,11 @@ jobs:
       contents: read
     # Vier shards naast elkaar: één `flutter test` over de hele map duurde op
     # 13 november 26 tot 28 minuten en bepaalde daarmee de wachttijd van elke PR.
-    # `flutter test` verdeelt de testbestanden zelf over de shards. Een shard
-    # die faalt laat de andere uitlopen, zodat één run alle falers toont.
+    # De verdeling gaat per bestand, niet met `--total-shards`: die vlag verdeelt
+    # losse tests, laadt in elke shard toch alle bestanden (17 minuten voor een
+    # kwart van de tests) en slaat tests over waar een latere test in hetzelfde
+    # bestand op leunt. Een shard die faalt laat de andere uitlopen, zodat één
+    # run alle falers toont.
     strategy:
       fail-fast: false
       matrix:
@@ -289,7 +292,11 @@ jobs:
         name: Run tests
         run: |
           if [ -d "test" ] && [ "$(find test -name '*_test.dart' | wc -l)" -gt 0 ]; then
-            flutter test --total-shards 4 --shard-index ${{ matrix.shard }}
+            # Gesorteerd en om en om verdeeld, zodat een zware map (goldens,
+            # screens) over alle vier de shards uitkomt.
+            find test -name '*_test.dart' | sort | awk 'NR % 4 == ${{ matrix.shard }}' > "$RUNNER_TEMP/shard.txt"
+            echo "shard ${{ matrix.shard }}: $(wc -l < "$RUNNER_TEMP/shard.txt") van $(find test -name '*_test.dart' | wc -l) testbestanden"
+            xargs flutter test < "$RUNNER_TEMP/shard.txt"
           else
             echo "No tests found, skipping test execution"
           fi

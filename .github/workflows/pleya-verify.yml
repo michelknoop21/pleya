@@ -207,18 +207,21 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 30
-    # Eén runner per scenario. Na elkaar op één runner duurden de drie op
-    # 13 november 28 minuten (509 s, 674 s en 328 s) en dat was de langste
-    # check van elke PR. Elk scenario bouwt nu zijn eigen app; het derde
-    # liftte eerder mee op de iOS-build van het tweede. Een scenario dat
-    # faalt laat de andere uitlopen, zoals de `always()` op de stappen deed.
+    # macOS en de iOS-simulator elk op een eigen runner. Na elkaar op één
+    # runner duurden de drie scenario's op 13 november 28 minuten (509 s, 674 s
+    # en 328 s) en dat was de langste check van elke PR. De twee iOS-scenario's
+    # blijven samen en in deze volgorde: los op een eigen runner faalde
+    # `ios.unified.artwork-fallback` op 13 november (PR #697) op zijn
+    # catalogus-assert, na `discover.layout` slaagt het. Of dat volgorde of
+    # timing op een koude simulator is, is niet uitgezocht.
     strategy:
       fail-fast: false
       matrix:
-        scenario:
-          - macos.smoke.boot
-          - discover.layout
-          - ios.unified.artwork-fallback
+        include:
+          - target: macos
+            scenarios: macos.smoke.boot
+          - target: ios-sim
+            scenarios: discover.layout ios.unified.artwork-fallback
     env:
       # The hosted runner has no Apple Development certificate, and the Debug
       # configuration of macos/Runner.xcodeproj asks for one ("No profiles for
@@ -276,15 +279,26 @@ jobs:
         run: dart pub get
 
       - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.apple != 'false' }}
-        name: Run the scenario
+        name: Run the scenarios (target ${{ matrix.target }})
         working-directory: pleya_verify/runner
-        run: dart run bin/verify.dart run ../scenarios/${{ matrix.scenario }}.yaml --json
+        env:
+          SCENARIOS: ${{ matrix.scenarios }}
+        # Elk scenario draait, ook als een eerder faalt; de stap faalt als er
+        # één faalde. Dat deden de losse stappen met `always()` eerder ook.
+        run: |
+          status=0
+          for scenario in $SCENARIOS; do
+            echo "::group::$scenario"
+            dart run bin/verify.dart run "../scenarios/$scenario.yaml" --json || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
 
       - if: ${{ always() && (needs.changes.result != 'success' || needs.changes.outputs.apple != 'false') }}
         name: Upload evidence bundles
         uses: actions/upload-artifact@v7
         with:
-          name: pleya-verify-${{ matrix.scenario }}-evidence-${{ github.run_id }}
+          name: pleya-verify-${{ matrix.target }}-evidence-${{ github.run_id }}
           # Only the per-run evidence bundles, not the isolated app-install
           # caches (`.build/pleya-verify/{macos,ios}-app/`) the drivers keep
           # around between runs: those are multi-hundred-MB build output,
