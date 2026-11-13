@@ -70,6 +70,7 @@ class PleyaPlaybackPlan {
     this.selectedAudioStreamId,
     this.maxVideoBitrateKbps,
     this.maxHeight,
+    this.startPositionMs,
   });
 
   final PleyaPlaybackSubtitle? subtitle;
@@ -95,6 +96,13 @@ class PleyaPlaybackPlan {
   final PleyaPlaybackReason reason;
   final List<PleyaPlaybackReason> reasons;
 
+  /// The stream's first timestamp, as the server measured it. The segments
+  /// carry title time, so this is where in the title the stream begins: a
+  /// player that rebases to zero adds it to its own time, a player that keeps
+  /// the timestamps (mpv with `rebase-start-time=no`, as here) adds nothing.
+  /// Present only when the request carried `start_position_ms`.
+  final int? startPositionMs;
+
   factory PleyaPlaybackPlan.fromJson(Map<String, dynamic> json) {
     final reasons = [for (final r in objectList(json['reasons'], 'reasons')) PleyaPlaybackReason.fromJson(r)];
     final reason = PleyaPlaybackReason.fromJson(obj(json['reason'], 'reason'));
@@ -115,6 +123,7 @@ class PleyaPlaybackPlan {
       sessionId: strOrNull(json, 'session_id'),
       reason: reason,
       reasons: reasons.isEmpty ? [reason] : reasons,
+      startPositionMs: integerOrNull(json, 'start_position_ms'),
     );
   }
 }

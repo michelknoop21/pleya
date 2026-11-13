@@ -200,6 +200,16 @@ void main() {
       },
     );
 
+    server.playbackStartPositionCapability = true;
+    await record('Info', 'GET', '/info');
+    await record(
+      'PlaybackPlan',
+      'POST',
+      '/playback/plan',
+      body: {'item_id': 'item-1', 'version_id': 'item-1-v1', 'start_position_ms': 70000},
+    );
+    server.playbackStartPositionCapability = false;
+
     for (final mode in ['off', 'external', 'burn']) {
       await record(
         'PlaybackPlan',

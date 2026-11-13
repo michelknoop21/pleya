@@ -164,9 +164,12 @@
     void subtitles.choose(subtitleId);
   }
 
+  // Positie in de film: een stream met een startpositie begint op `session.offset` en niet op nul.
+  const filmTime = () => session.offset + (video?.currentTime ?? 0);
+
   // Teardown empties the element, so a report after an error reads the last position that played.
   function samplePosition(): number {
-    if (video && session.phase === 'ready') lastPosition = resumeFloor.position(video.currentTime);
+    if (video && session.phase === 'ready') lastPosition = resumeFloor.position(filmTime());
     return lastPosition;
   }
 
@@ -189,6 +192,9 @@
     if (subtitles.error) poke();
   });
 
+  // De ondertitel staat in filmtijd; het element telt vanaf het begin van de stream.
+  $effect(() => subtitles.setOffset(session.offset));
+
   $effect(() => {
     if (session.phase === 'error') {
       progress?.finish(false);
@@ -208,11 +214,13 @@
     else video.pause();
   }
 
+  /** Zoeken in filmtijd. Vóór het begin van deze stream ligt niets: dat wordt een nieuw plan vanaf dat punt. */
   function seekTo(seconds: number): void {
     if (!video || session.phase !== 'ready') return;
-    const max = isHls ? seekLimit : total || video.duration;
+    if (seconds < session.offset) return start(Math.max(0, seconds));
+    const max = isHls ? seekLimit : total || session.offset + video.duration;
     resumeFloor.release();
-    video.currentTime = clamp(seconds, 0, Number.isFinite(max) ? max : seconds);
+    video.currentTime = Math.max(0, clamp(seconds, 0, Number.isFinite(max) ? max : seconds) - session.offset);
   }
 
   function setVolume(next: number): void {
@@ -243,7 +251,8 @@
   const here = () => (session.phase === 'ready' ? current : resumeAt);
 
   // Het menu: wisselen in de browser als het element de sporen draagt, anders een nieuw plan. Direct play
-  // hervat op de positie; een omzetting begint bij het begin, en het menu zegt dat erbij.
+  // hervat op de positie, en een omzetting ook als de server een startpositie kent; zonder begint hij
+  // bij het begin, en het menu zegt dat erbij.
   function pickAudio(index: number): void {
     if (audioSwitchable) return chooseAudio(index);
     if (!planAudioSelection || index === audioIndex) return;
@@ -317,7 +326,7 @@
     event.preventDefault();
     poke();
     if (action.kind === 'toggle') toggle();
-    else if (action.kind === 'seekBy') seekTo((video?.currentTime ?? 0) + action.seconds);
+    else if (action.kind === 'seekBy') seekTo(filmTime() + action.seconds);
     else if (action.kind === 'volumeBy') setVolume((video?.volume ?? 1) + action.delta);
     else if (action.kind === 'mute' && video) video.muted = !video.muted;
     else if (action.kind === 'fullscreen') void toggleFullscreen();
@@ -326,12 +335,13 @@
   function syncTime(): void {
     if (!video) return;
     samplePosition();
-    current = video.currentTime;
-    mediaDuration = video.duration;
+    const offset = session.offset;
+    current = filmTime();
+    mediaDuration = offset + video.duration;
     const b = video.buffered;
-    buffered = b.length ? b.end(b.length - 1) : 0;
+    buffered = b.length ? offset + b.end(b.length - 1) : 0;
     const s = video.seekable;
-    seekLimit = s.length ? s.end(s.length - 1) : 0;
+    seekLimit = s.length ? offset + s.end(s.length - 1) : 0;
     const q = infoOpen ? video.getVideoPlaybackQuality?.() : null;
     frames = q ? { dropped: q.droppedVideoFrames, total: q.totalVideoFrames } : null;
   }
@@ -430,7 +440,8 @@
         <p class="problem__text">{session.problem.message}</p>
         <div class="problem__actions">
           {#if session.problem.wayOut === 'retry'}
-            <button class="btn" type="button" onclick={() => start()}>{t('player.retry')}</button>
+            <!-- Verder waar het speelde; zonder gespeeld stuk waar de laatste start begon. -->
+            <button class="btn" type="button" onclick={() => start(lastPosition || resumeAt)}>{t('player.retry')}</button>
           {:else if session.problem.wayOut === 'login'}
             <button class="btn" type="button" onclick={onlogin}>{t('player.signIn')}</button>
           {/if}
@@ -465,6 +476,7 @@
           {audioIndex}
           audioSwitchable={audioSwitchable || planAudioSelection}
           audioReplans={!audioSwitchable && planAudioSelection}
+          replanFromStart={!session.startsAtPosition}
           onaudio={pickAudio}
           {rate}
           onrate={(next) => video && (video.defaultPlaybackRate = video.playbackRate = next)}

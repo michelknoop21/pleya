@@ -30,6 +30,7 @@ class PlaybackSourceResolver {
     String? sessionIdentifier,
     String? transcodeSessionId,
     bool? preferOffline,
+    bool startAtViewOffset = false,
   }) async {
     final reportingClient = _playbackClient(serverIdOrNull(metadata.serverId), offlineLibraryMode: offlineLibraryMode);
     final service = PlaybackInitializationService(client: reportingClient, database: database);
@@ -44,6 +45,7 @@ class PlaybackSourceResolver {
       selectSourceTracks: selectSourceTracks,
       sessionIdentifier: sessionIdentifier,
       transcodeSessionId: transcodeSessionId,
+      startAtViewOffset: startAtViewOffset,
     );
 
     final sourceKind = result.usesLocalMedia

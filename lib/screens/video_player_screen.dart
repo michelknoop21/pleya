@@ -192,27 +192,68 @@ class _PlaybackAttempt {
   bool get isCurrent => _owner._isCurrentPlaybackGeneration(generation, player);
 }
 
-class _PlaybackOpenTiming {
+@visibleForTesting
+class PlaybackOpenTiming {
   final Duration? mediaStart;
   final Duration timelineOffset;
   final Duration? timelineDuration;
 
-  const _PlaybackOpenTiming({this.mediaStart, required this.timelineOffset, this.timelineDuration});
+  /// The stream keeps the title's timestamps; see [Player.open].
+  final bool absoluteTimestamps;
+
+  const PlaybackOpenTiming({
+    this.mediaStart,
+    required this.timelineOffset,
+    this.timelineDuration,
+    this.absoluteTimestamps = false,
+  });
 }
 
-_PlaybackOpenTiming _playbackOpenTiming({
+/// [streamStart] is where a stream that keeps the title's timestamps begins
+/// (Pleya Server with `start_position_ms`). The player then reads title time
+/// directly: no offset, the resume point as an absolute start, and the title's
+/// duration, because the stream itself is only the rest of the film.
+@visibleForTesting
+PlaybackOpenTiming playbackOpenTiming({
   required MediaBackend backend,
   required bool isTranscoding,
   required Duration? resumePosition,
   required int? durationMs,
+  Duration? streamStart,
 }) {
+  if (streamStart != null) {
+    return PlaybackOpenTiming(
+      mediaStart: resumePosition,
+      timelineOffset: Duration.zero,
+      timelineDuration: durationMs == null ? null : Duration(milliseconds: durationMs),
+      absoluteTimestamps: true,
+    );
+  }
   final usesSourceOffsetTranscode = isTranscoding && backend == MediaBackend.plex;
-  return _PlaybackOpenTiming(
+  return PlaybackOpenTiming(
     mediaStart: usesSourceOffsetTranscode ? null : resumePosition,
     timelineOffset: usesSourceOffsetTranscode ? resumePosition ?? Duration.zero : Duration.zero,
     timelineDuration: isTranscoding && durationMs != null ? Duration(milliseconds: durationMs) : null,
   );
 }
+
+/// Every open of the screen goes through here, so all of [timing] reaches the
+/// player, including whether the stream keeps the title's timestamps.
+@visibleForTesting
+Future<void> openWithTiming(
+  Player player,
+  Media media,
+  PlaybackOpenTiming timing, {
+  required bool play,
+  List<SubtitleTrack>? externalSubtitles,
+}) => player.open(
+  media,
+  play: play,
+  externalSubtitles: externalSubtitles,
+  timelineOffset: timing.timelineOffset,
+  timelineDuration: timing.timelineDuration,
+  absoluteTimestamps: timing.absoluteTimestamps,
+);
 
 /// Height cap for the avfoundation VO's subtitle layer, `0` for no cap.
 ///
@@ -961,8 +1002,14 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
           serverManager: context.read<MultiServerProvider>().serverManager,
           database: context.read<AppDatabase>(),
         );
+        // A Pleya Server conversion starts where the player will: an explicit
+        // start (a handoff, a resume carried from another source) wins over the
+        // item's own offset, as it does in [resolveOpenResumePosition].
+        final explicitStart = widget.startPosition;
         _playbackDataFuture = playbackResolver.resolve(
-          metadata: _currentMetadata,
+          metadata: genericClient.backend == MediaBackend.pleyaServer && explicitStart != null
+              ? _currentMetadata.copyWith(viewOffsetMs: explicitStart.inMilliseconds)
+              : _currentMetadata,
           selectedMediaIndex: _effectiveSelectedMediaIndex,
           selectedMediaSourceId: _requestedMediaSourceId,
           offlineLibraryMode: false,
@@ -979,6 +1026,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
               : null,
           sessionIdentifier: _playbackSessionIdentifier,
           transcodeSessionId: _playbackTranscodeSessionId,
+          startAtViewOffset: currentPlayer.keepsAbsoluteTimestamps,
         );
         // If MPV setup below throws before `_startPlayback` awaits this,
         // tell Dart we've "handled" the future so it's not reported as an

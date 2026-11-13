@@ -27,6 +27,8 @@
     audioSwitchable: boolean;
     /** Een ander spoor loopt via een nieuw plan, net als een andere kwaliteit. */
     audioReplans: boolean;
+    /** Een nieuw plan begint bij het begin: de server kent geen startpositie. */
+    replanFromStart: boolean;
     onaudio: (index: number) => void;
     rate: number;
     onrate: (rate: number) => void;
@@ -114,7 +116,7 @@
         {choice.label}
       </button>
     {/each}
-    {#if page === 'quality' || (page === 'audio' && p.audioReplans)}
+    {#if p.replanFromStart && (page === 'quality' || (page === 'audio' && p.audioReplans))}
       <p class="note">{t('player.replanNote')}</p>
     {/if}
     {#if page === 'audio' && !p.audioSwitchable && p.audio.length > 1}

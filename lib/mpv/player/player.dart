@@ -73,6 +73,9 @@ abstract class Player {
   ///
   /// [media] - The media source to open.
   /// [play] - Whether to start playback immediately (default: true).
+  /// [absoluteTimestamps] - Keep the stream's own timestamps instead of moving
+  /// its first frame to zero; [Media.start] and [seek] are then absolute too.
+  /// Only for players where [keepsAbsoluteTimestamps] is true.
   Future<void> open(
     Media media, {
     bool play = true,
@@ -80,7 +83,14 @@ abstract class Player {
     List<SubtitleTrack>? externalSubtitles,
     Duration timelineOffset = Duration.zero,
     Duration? timelineDuration,
+    bool absoluteTimestamps = false,
   });
+
+  /// Whether [open] honours `absoluteTimestamps`. mpv does, per file, through
+  /// `rebase-start-time=no`, which also keeps external subtitles on the same
+  /// clock as the stream. ExoPlayer counts an HLS playlist from zero and has
+  /// not been measured with such a stream, so it says no.
+  bool get keepsAbsoluteTimestamps;
 
   /// Start or resume playback.
   Future<void> play();

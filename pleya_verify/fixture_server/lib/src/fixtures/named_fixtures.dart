@@ -192,6 +192,19 @@ bool applyNamedFixture(
           ((server.items.values.firstWhere((item) => item['kind'] == 'movie')['versions'] as List).first as Map)['id']
               as String;
       return true;
+    case 'playback.start-position.v1':
+      // On top of playback.app.v1: every film resumes at 70 s, and a plan that
+      // asks for it starts its stream at the segment holding 70 s (60.186 s).
+      server.playbackStartPositionCapability = true;
+      for (final item in server.items.values.where((item) => item['kind'] == 'movie')) {
+        item['user_state'] = {
+          'position_ms': 70000,
+          'watched': false,
+          'play_count': 0,
+          'updated_at': server.clock.now.toIso8601String(),
+        };
+      }
+      return true;
     case 'personal.app.v1':
     case 'personal.favorites.v1':
       server.personalCapability = true;

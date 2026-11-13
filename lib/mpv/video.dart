@@ -109,6 +109,9 @@ class _VideoState extends State<Video> {
       'subtitle_track_id': widget.player.state.track.subtitle?.id,
       'subtitle_title': widget.player.state.track.subtitle?.title,
       'external_subtitle_count': player.state.tracks.subtitle.where((track) => track.isExternal).length,
+      // Title time in tens of seconds: steady enough to assert while paused, and
+      // a resume at 70 s that came out at 0 or at 130 (offset added twice) differs.
+      'position_10s': player.state.position.inSeconds ~/ 10,
       'loudness': plan.mode.name,
       'loudness_gain_db': plan.programmeGainDb,
       'loudness_limit': plan.gainLimit.name,
