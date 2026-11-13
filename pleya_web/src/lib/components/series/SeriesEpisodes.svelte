@@ -4,9 +4,11 @@
   lijst zelf.
 
   Afleveringen komen uit `/items/{seizoen}/children` en worden per seizoen
-  opgehaald zodra het gekozen is. Een seizoen markeren bestaat niet als route:
-  het is de gewone kijkstatus-aanroep, één per aflevering en na elkaar. De knop
-  staat er daarom pas als alle afleveringen van het seizoen geladen zijn.
+  opgehaald zodra het gekozen is. Een seizoen markeren is met
+  `capabilities.watch_state_tree` één aanroep op het seizoen, die de server in
+  één transactie uitvoert; zonder die vlag de gewone kijkstatus-aanroep, één
+  per aflevering en na elkaar. De knop staat er pas als alle afleveringen van
+  het seizoen geladen zijn.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -86,6 +88,18 @@
     const active = signal;
     let written = 0;
     try {
+      if (session.capabilities?.watch_state_tree === true) {
+        // De stand vóór de aanroep: wisselt de kijker intussen van seizoen, dan
+        // telt de kop toch wat de server schreef.
+        const before = new Map(pager.items.map(episode => [episode.id, !!episode.user_state?.watched]));
+        const tree = await api.setTreeWatched(seasonId, watched);
+        for (const entry of tree.items) {
+          if (!before.has(entry.item_id)) continue;
+          if (before.get(entry.item_id) !== watched) written += 1;
+          if (!active?.aborted) patch(entry.item_id, { user_state: entry.state }, false);
+        }
+        return;
+      }
       for (const episode of episodes.filter(candidate => !!candidate.user_state?.watched !== watched)) {
         // Een aflevering die de kijker intussen los heeft gezet, telt al mee via haar eigen knop.
         if (!!pager.items.find(current => current.id === episode.id)?.user_state?.watched === watched) continue;

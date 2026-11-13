@@ -238,6 +238,16 @@ met 26).
 `POST /libraries/{id}/refresh-metadata` bestaan (17f, DEC-XXX). Een client zonder de vlag biedt op
 deze server alleen de scan aan.
 
+Drie vlaggen uit DEC-XXX (C-05, 13 november 2026). `capabilities.watch_state_tree` zegt dat
+`POST /items/{item_id}/watch-state` bestaat (14.1c); zonder de vlag markeert een client elke
+aflevering apart. `capabilities.item_metadata_refresh` zegt dat `POST /items/{item_id}/refresh-metadata`
+bestaat (17f). `capabilities.scan_schedule` zegt dat een bibliotheek voor klasse `admin`
+`next_scan_at` draagt (17f).
+
+`capabilities.media_delete` staat alleen aan als de beheerder het verwijderen van bestanden aanzette
+en minstens één mediaroot bij het opstarten schrijfbaar bleek (17h, DEC-XXX). Afwezig is false, en
+dan biedt een client verwijderen op deze server niet aan.
+
 `capabilities.mcp` staat aan zodra het MCP-endpoint beschikbaar is. Het register bepaalt welke gecontroleerde operaties beschikbaar zijn. Transport, toolargumenten en audit staan in [het MCP-hoofdstuk](pleya-protocol-mcp.md).
 Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
 dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
@@ -611,6 +621,9 @@ contract keurt ze af.
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
+| `library.delete_not_permitted` | 403 | nee | de bibliotheek is zichtbaar, maar de aanvrager is geen owner of admin met het recht `manage` (17h) |
+| `library.media_delete_unavailable` | 409 | nee | verwijderen staat uit (`details.reason` `disabled`), de opslag van het item is niet schrijfbaar gemount (`read_only`) of overlapt met die van een andere bibliotheek (`root_overlap`); er is niets gewist (17h) |
+| `library.media_delete_incomplete` | 409 | nee | een of meer bestanden bleven staan; `details` zegt wat wel en niet weg is (17h) |
 | `playback.file_corrupt` | 422 | nee | een omzetting mislukte en een tweede analyse van de bron ook: het bestand zelf is stuk (faalpad "kapot bestand", S25.5) |
 | `server.maintenance` | 503 | ja | de server zet een back-up terug en neemt niets aan tot hij herstart is (S25.3) |
 | `server.database_unavailable` | 503 | ja | de database is niet bereikbaar (faalpad "database weg", S25.5); een query die fout is blijft `server.internal` |
@@ -1281,6 +1294,32 @@ Het antwoord is ook hier de actuele toestand. `owned_by_this_session` zegt niet 
 die verwerft niets. Dat lees je aan het antwoord: bij `completed` aan `watched`, anders aan
 `position_ms`.
 
+### 14.1c Een seizoen of serie in één keer
+
+Onder `capabilities.watch_state_tree` (DEC-XXX), klasse `authenticated`.
+
+```
+POST /pleya/v1/items/{item_id}/watch-state
+{ "session_id": "0198f2d0-4444-7000-8000-000000000003", "explicit_action": "mark_watched" }
+```
+
+`explicit_action` is `mark_watched` of `mark_unwatched`; elke andere waarde, een ontbrekende
+`session_id` of een onbekend veld geeft `400 session.invalid`. De server zet het item zelf en elk
+seizoen en elke aflevering eronder in één transactie. Elk item gaat door dezelfde zes regels uit
+14.1a als een losse `POST /watch-state` met die handeling: de lease van een ander toestel telt niet,
+het eigendom gaat naar `session_id`, `revision` stijgt per item met één en er komt geen
+kijkgeschiedenis bij. Faalt één item, dan verandert er niets, ook niet aan de items die al aan de
+beurt waren geweest.
+
+Onder het item telt wat `GET /items/{item_id}/children` laat zien: een seizoen of aflevering met
+alleen bonusmateriaal blijft buiten. Een film, een aflevering en een serie zonder seizoenen zijn een
+boom van één. Een item buiten de bibliotheken van de aanvrager is `404`, hetzelfde antwoord als een
+item dat niet bestaat. Een seizoen of aflevering hoort altijd bij de bibliotheek van zijn serie, dus
+een boom is nooit half zichtbaar.
+
+Het antwoord is `{ "items": [ { "item_id", "state" } ] }`, het gevraagde item eerst, met de nieuwe
+`user_state` van elk item.
+
 ### 14.2 Lezen
 
 Twee wegen, en geen derde.
@@ -1515,17 +1554,21 @@ Per serie precies één aflevering, en nooit meer dan één. Welke, in drie stap
 1. **Wat meetelt.** Alleen afleveringen met een `item_index` in een seizoen met `item_index >= 1`.
    Specials (seizoen `item_index = 0`) en ongenummerde afleveringen tellen niet mee, niet als
    kandidaat en niet in stap 2. Wie een special kijkt schuift zijn serie dus niet op.
-2. **Het ankerpunt.** De hoogst genummerde aflevering van die serie waar deze identiteit kijkstatus
-   op heeft, geordend op `(seizoen, aflevering)`. Heeft een serie nergens kijkstatus, dan heeft zij
-   geen ankerpunt en staat zij niet in de hub. Een serie verschijnt hier dus nooit voordat er iets
-   mee gebeurd is.
+2. **Het ankerpunt.** De hoogst genummerde aflevering van die serie die deze identiteit gezien heeft
+   (`watched`) of waar zij aan begonnen is (`position_ms` groter dan nul), geordend op
+   `(seizoen, aflevering)`. Een aflevering die op ongezien staat telt niet mee, ook niet als zij
+   kijkstatus heeft: na `POST /items/{id}/watch-state` met `mark_unwatched` op een heel seizoen zou
+   de laatste aflevering anders het ankerpunt en de volgende zijn (DEC-XXX, drie servergaten).
+   Heeft een serie geen gezien of begonnen aflevering, dan heeft zij geen ankerpunt en staat zij
+   niet in de hub. Een serie verschijnt hier dus nooit voordat er iets mee gekeken is.
 3. **De keuze.** De laagst genummerde aflevering vanaf het ankerpunt die ongekeken is en waar niemand
    aan begonnen is: `watched` onwaar én `position_ms` nul. Is die er niet, dan is de serie uit en
    staat zij niet in de hub.
 
-Vanaf het ankerpunt en niet erna, zodat een aflevering die zojuist op `mark_unwatched` is gezet de
-volgende is in plaats van uit beide hubs te vallen. De eis dat er nog niet aan begonnen is houdt de
-twee hubs uit elkaar: **`continue_watching` en `next_up` leveren nooit hetzelfde item.** Een
+Een aflevering die op `mark_unwatched` is gezet en een gezien of begonnen voorganger heeft, is de
+volgende: het ankerpunt is dan die voorganger, en de op ongezien gezette aflevering is de eerste
+kandidaat erna. Heeft zij geen gezien of begonnen voorganger, dan heeft de serie geen ankerpunt en
+staat zij niet in de hub. De eis dat er nog niet aan begonnen is houdt de twee hubs uit elkaar: **`continue_watching` en `next_up` leveren nooit hetzelfde item.** Een
 halfgekeken aflevering staat in de eerste, haar opvolger in de tweede.
 
 Series onderling zijn aflopend geordend op de laatste kijkactiviteit binnen die serie, en niet op de
@@ -1563,7 +1606,8 @@ view  <  download  <  manage
 Eén waarde per `(gebruiker, bibliotheek)`, nooit drie losse vlaggen: `download` impliceert `view`,
 `manage` impliceert beide. `view` en `download` worden in deze fase gehandhaafd; `manage` wordt
 opgeslagen en teruggegeven, maar handhaaft pas iets zodra metadata-bewerken en bibliotheekbeheer
-bestaan (latere fasen).
+bestaan (latere fasen). Eén uitzondering: `DELETE /items/{id}` (17h) eist `manage` op de bibliotheek,
+en daarnaast de klasse `admin` (owner of admin). Een lid met `manage` mag dus nog steeds niets wissen.
 
 ### 16.3 De endpoints
 
@@ -1746,6 +1790,9 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 107 | `POST /companion/ticket` | een ticket over een ander | klasse `authenticated` en elke rol, maar het ticket gaat altijd over de aanvrager zelf (`sub` uit het accesstoken, geen doel in de aanvraag); een API-token krijgt `403` met `auth.scope_insufficient`; DEC-XXX |
 | 108 | `POST /libraries/{id}/empty-trash` | titels verwijderen waarvan de bestanden weg zijn, met hun kijkstatus | klasse `admin`, `404` voor de rest; botst met een wachtende of lopende scan van die bibliotheek (`409` `library.scan_in_progress`) (17f) |
 | 109 | `POST /libraries/{id}/refresh-metadata` | een providerronde over een hele bibliotheek | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f) |
+| 110 | `POST /items/{id}/watch-state` | kijkstatus van een hele serie in één aanvraag | klasse `authenticated` en elke rol, over de eigen kijkstatus; item buiten de bibliotheken van de aanvrager `404` zoals regel 12 (14.1c, DEC-XXX) |
+| 111 | `POST /items/{id}/refresh-metadata` | een providerronde over één titel | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f, DEC-XXX) |
+| 112 | `DELETE /items/{id}` | bestanden van de opslag wissen | klasse `admin` én recht `manage` op de bibliotheek: buiten zicht `404`, zichtbaar maar geen owner of admin met `manage` `403` `library.delete_not_permitted`; een API-token `403` `auth.scope_insufficient`; standaard uit (17h, DEC-XXX) |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2494,6 +2541,23 @@ locks en pins blijven staan. `items` is het aantal titels dat aan de beurt staat
 "analyseren": de scan analyseert elk nieuw of gewijzigd bestand al, en ffprobe op ongewijzigde bytes
 met dezelfde gepinde ffmpeg geeft hetzelfde antwoord.
 
+**Per titel en de volgende scan (DEC-XXX).** `POST /items/{id}/refresh-metadata`, onder
+`capabilities.item_metadata_refresh` en klasse `admin`, doet hetzelfde voor de film of serie waar het
+item onder valt. Een seizoen of aflevering haalt zijn gegevens uit de ronde van zijn serie, dus
+verversen loopt dan over de hele serie. Bij een serie gaan haar seizoenen en afleveringen mee voor
+de controle van hun `.nfo`. `items` telt alles wat aan de beurt staat: voor een serie met twee
+seizoenen en drie afleveringen is dat 6. Een afgewezen of onbesliste titel geeft `items: 0`.
+
+Onder `capabilities.scan_schedule` draagt elke bibliotheek voor klasse `admin` `next_scan_at`: het
+moment waarop de server de volgende periodieke scan in de wachtrij zet. `null` betekent dat er nu geen
+geplande scan bekend is: het effectieve interval is 0, of de planner heeft de bibliotheek nog niet
+gezien (de eerste 30 seconden na het opstarten of na het aanmaken). Een client toont dan geen tijd;
+het veld weglaten zou dat geval niet onderscheiden van een server zonder planner. Een root die niet gemount is verandert het
+moment niet: de scan wordt dan ingepland zoals altijd, en of hij slaagt staat daarna in `GET /scans`.
+Een opstartscan telt niet mee. De planning staat alleen in het geheugen van de server; na een
+herstart begint elke bibliotheek op nu plus haar interval, en na een gewijzigd interval volgt het
+veld binnen 30 seconden.
+
 ### 17g. Back-up, restore en faalpaden
 
 Onder `capabilities.backups`, alles klasse `admin` (venster 7, S25, RB-26). Een back-up is één tar in
@@ -2542,6 +2606,79 @@ is een back-up terugzetten.
 dat stuk is `playback.file_corrupt`. De laatste twee hebben dezelfde buitenkant; een tweede analyse
 van de bron beslist welke het is.
 
+### 17h. Een titel met zijn bestanden verwijderen
+
+`DELETE /items/{id}` haalt een film, serie, seizoen of aflevering uit de catalogus en wist de
+bestanden ervan van de opslag (DEC-XXX). Dat is anders dan `DELETE /libraries/{id}` (17e.3), dat
+alleen de database raakt. Het gedrag staat standaard uit, en een installatie die niets verandert
+houdt dus een server die nooit schrijft op de mediamount.
+
+**Aanzetten.** Twee dingen van de beheerder, en een meting van de server. De variabele
+`PLEYA_SERVER_ALLOW_MEDIA_DELETE=true`, en een mediamount zonder `:ro`. Bij het opstarten maakt de
+server in elke root uit `PLEYA_SERVER_MEDIA_DIRS` een leeg tijdelijk bestand aan en wist het meteen;
+alleen roots waar dat lukt komen in de lijst. Zonder variabele staat de functie uit
+(`library.media_delete_unavailable`, `details.reason` `disabled`). Met variabele maar zonder
+schrijfbare root, of voor een item waarvan de bibliotheekroot niet onder een gemeten root valt, is
+het `read_only`. In beide gevallen is er niets gewist. `capabilities.media_delete` is alleen waar
+als er minstens één schrijfbare root gemeten is.
+
+**Wie.** Een beheerder: de klasse `admin` (owner of admin) én het recht `manage` op de bibliotheek
+van het item. Owner en admin hebben `manage` altijd (16.2), dus in de praktijk beslist de rol. Buiten
+zicht is `404`; zichtbaar voor iemand die geen owner of admin is, ook een lid met `manage`, is `403`
+`library.delete_not_permitted`. Een API-token krijgt `403` `auth.scope_insufficient`, ook onder
+bereik `admin`: een agent of script wist geen bestanden.
+
+**Een scan in de rij.** Wacht of loopt er een scan van dezelfde bibliotheek, dan is het antwoord
+`409` `library.scan_in_progress` en is er niets gewist, net als bij het legen van de prullenbak (17f).
+Een scan die net na die controle begint wordt niet tegengehouden. Ziet hij een bestand nog vlak voor
+het wissen, dan kan er een item zonder bestand in de catalogus staan tot de volgende scan het als
+verdwenen markeert. Er gaat daarbij geen bestand of kijkstatus verloren die niet al weg moest.
+
+**Overlappende roots.** Valt de root van het item, met opgeloste symlinks, samen met of binnen de
+root van een andere opslaglocatie (of andersom), dan is het `409` `library.media_delete_unavailable`
+met `details.reason` `root_overlap`. Een bestand zou dan ook bij een andere bibliotheek kunnen horen.
+Naast de paden vergelijkt de server per bestand de mappen zelf (apparaat en inode): een andere root
+die een tweede bind-mount is van een map binnen deze root valt zo ook op. Niet gezien wordt een root
+die zelf binnen een andere ligt terwijl de paden dat niet tonen, en dezelfde share die twee keer los
+over het netwerk gekoppeld is.
+
+**Wat er gewist wordt.** Alleen wat de catalogus aan het item en alles eronder hing: de
+mediabestanden van elke versie, de losse ondertitels van die versies en de artwork van de items.
+Een bestand dat de scanner niet kende (een `.nfo`, een eigen notitie) blijft staan. Een map die door
+het wissen leeg raakt gaat mee tot aan de bibliotheekroot; een map waar nog iets in staat blijft, en
+een symlink naar een map ook.
+Mediabestanden gaan eerst. Blijft er één staan, dan blijven ook alle bijbestanden van het item
+staan (`media_kept`), zodat er geen titel zonder ondertitel of poster achterblijft.
+
+**De grens.** Het pad komt uit de database en wordt geopend binnen de bij het opstarten gemeten
+schrijfbare root, en daarbinnen vanaf de bibliotheekroot (`os.Root` in Go): een tussenliggende map
+die via een symlink naar buiten wijst, of een relatief pad met `..`, komt niet verder dan
+`outside_root`. Een bestand dat er niet is telt als gewist als de map van het bestand er is en gevuld
+is (iets anders wiste het net), of als de scanner het al als
+verdwenen had gemarkeerd; anders is het `remove_failed` en blijft de titel staan. Een bestand dat zelf een symlink is wordt niet gewist
+en zijn doel ook niet (`symlink`). Iets anders dan een gewoon bestand evenmin (`not_a_file`).
+
+**De database.** Na het wissen krijgen de gewiste bestanden de markering `missing_since`, en ruimt
+de server op langs hetzelfde pad als de prullenbak (17f): versies zonder aanwezig mediabestand, dan
+titels zonder versie met hun kijkstatus, geschiedenis, favorieten, waarderingen, downloads en
+lijstregels, en daarna de seizoenen en series die leeg raakten.
+
+**Halverwege fout.** Bleef er een bestand staan, dan is het antwoord `409`
+`library.media_delete_incomplete` met `details.removed_files`, `details.removed_items` en
+`details.failed` (pad relatief aan de bibliotheekroot en een reden). De database volgt precies wat
+er op schijf gebeurde: een versie waarvan een mediabestand bleef, blijft bestaan.
+
+**Lopende streams.** Omzettingen van de versies van het item stopt de server vóór het wissen. Een
+directe stream heeft geen sessie in het geheugen. Een range die al loopt, leest via de open
+bestandshandle uit tot het eind van dat bereik; pas de volgende range-aanvraag krijgt `404`, omdat
+de versie weg is.
+
+**Na het wissen.** De databasestap loopt los van de aanvraag: een client die ophangt nadat de
+bestanden weg zijn, laat de catalogus niet half staan.
+
+**Audit.** Elke poging die tot het wissen of tot de `read_only`-weigering komt schrijft een regel
+`deleteItem` met de aanvrager, het item en de aantallen.
+
 ---
 
 ## 18. Endpointoverzicht
@@ -2556,7 +2693,7 @@ van de bron beslist welke het is.
 | `POST /pleya/v1/auth/stream-session` | `authenticated` | nee |
 | `POST /pleya/v1/auth/logout` | `authenticated` | nee |
 | `GET /pleya/v1/server` | `authenticated` | nee |
-| `GET /pleya/v1/libraries` | `authenticated`; drie velden erbij voor `admin` | nee |
+| `GET /pleya/v1/libraries` | `authenticated`; vier velden erbij voor `admin` | nee |
 | `POST /pleya/v1/libraries` | `admin` | nee |
 | `PATCH /pleya/v1/libraries/{id}` | `admin` | nee |
 | `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
@@ -2566,6 +2703,7 @@ van de bron beslist welke het is.
 | `POST /pleya/v1/libraries/{id}/scan` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/empty-trash` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/refresh-metadata` | `admin` | nee |
+| `POST /pleya/v1/items/{id}/refresh-metadata` | `admin` | nee |
 | `GET /pleya/v1/scans` | `admin` | ja |
 | `GET /pleya/v1/scans/{id}` | `admin` | nee |
 | `GET /pleya/v1/jobs` | `admin` | ja |
@@ -2573,6 +2711,7 @@ van de bron beslist welke het is.
 | `POST /pleya/v1/jobs/{id}/retry` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
 | `GET /pleya/v1/items/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/items/{id}` | `admin` met recht `manage` (17h) | nee |
 | `GET /pleya/v1/items/{id}/children` | `authenticated` | ja |
 | `GET /pleya/v1/search` | `authenticated` | ja |
 | `GET /pleya/v1/hubs/{hub_id}` | `authenticated` | ja |
@@ -2581,6 +2720,7 @@ van de bron beslist welke het is.
 | `GET /pleya/v1/stream/{version_id}` | `authenticated`, streamtoken of streamsessie | nee |
 | `POST /pleya/v1/watch-state` | `authenticated` | nee |
 | `GET /pleya/v1/watch-state` | `authenticated` | ja |
+| `POST /pleya/v1/items/{id}/watch-state` | `authenticated` | nee |
 | `POST /pleya/v1/users` | `admin` | nee |
 | `GET /pleya/v1/users` | `authenticated`, gefilterd | nee |
 | `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf | nee |

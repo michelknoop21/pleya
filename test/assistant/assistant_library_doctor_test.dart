@@ -68,6 +68,8 @@ class _Server extends find.FakeServer implements LibraryScanClient, ItemMetadata
   @override
   bool get supportsServerAdministration => true;
   @override
+  bool get supportsItemMetadataRefresh => true;
+  @override
   Future<List<MediaLibrary>> fetchLibraries() async => [
     find.fakeLib('s', 'films'),
     find.fakeLib('s', 'series', kind: MediaKind.show),

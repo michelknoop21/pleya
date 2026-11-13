@@ -1554,6 +1554,27 @@ class TranslationsMediaMenuEn {
 	/// en: 'This includes all episodes and their files.'
 	String get deleteMultipleWarning => 'This includes all episodes and their files.';
 
+	/// en: 'Pleya Server erases the files from its storage. This cannot be undone.'
+	String get pleyaServerDeletesFiles => 'Pleya Server erases the files from its storage. This cannot be undone.';
+
+	/// en: 'File deletion is switched off on this Pleya Server. Nothing was deleted.'
+	String get pleyaDeletionDisabled => 'File deletion is switched off on this Pleya Server. Nothing was deleted.';
+
+	/// en: 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.'
+	String get pleyaDeletionReadOnly => 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.';
+
+	/// en: 'The folder of this title is also part of another library. Nothing was deleted.'
+	String get pleyaDeletionRootOverlap => 'The folder of this title is also part of another library. Nothing was deleted.';
+
+	/// en: 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.'
+	String get pleyaDeletionScanInProgress => 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.';
+
+	/// en: 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.'
+	String get pleyaDeletionStorageUnavailable => 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.';
+
+	/// en: 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}'
+	String pleyaDeletionIncomplete({required Object removed, required Object paths}) => 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}';
+
 	/// en: 'Media item deleted successfully'
 	String get mediaDeletedSuccessfully => 'Media item deleted successfully';
 
@@ -3020,6 +3041,9 @@ class TranslationsLibrariesEn {
 
 	/// en: 'Are you sure you want to scan "${title}"?'
 	String scanLibraryConfirm({required Object title}) => 'Are you sure you want to scan "${title}"?';
+
+	/// en: 'Next scheduled scan: ${time}.'
+	String nextScheduledScan({required Object time}) => 'Next scheduled scan: ${time}.';
 
 	/// en: 'Are you sure you want to analyze "${title}"?'
 	String analyzeLibraryConfirm({required Object title}) => 'Are you sure you want to analyze "${title}"?';
@@ -11352,6 +11376,13 @@ extension on Translations {
 			'mediaMenu.deleteFromServer' => 'Delete from server',
 			'mediaMenu.confirmDelete' => 'Delete this media and its files from your server?',
 			'mediaMenu.deleteMultipleWarning' => 'This includes all episodes and their files.',
+			'mediaMenu.pleyaServerDeletesFiles' => 'Pleya Server erases the files from its storage. This cannot be undone.',
+			'mediaMenu.pleyaDeletionDisabled' => 'File deletion is switched off on this Pleya Server. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionReadOnly' => 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionRootOverlap' => 'The folder of this title is also part of another library. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionScanInProgress' => 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.',
+			'mediaMenu.pleyaDeletionStorageUnavailable' => 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionIncomplete' => ({required Object removed, required Object paths}) => 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media item deleted successfully',
 			'mediaMenu.mediaFailedToDelete' => 'Failed to delete media item',
 			'mediaMenu.plexDeletionDisabled' => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.',
@@ -11378,6 +11409,8 @@ extension on Translations {
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, movie',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV show',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
+			_ => null,
+		} ?? switch (path) {
 			'accessibility.mediaCardSeason' => ({required Object title, required Object seasonInfo}) => '${title}, ${seasonInfo}',
 			'accessibility.mediaCardWatched' => 'watched',
 			'accessibility.mediaCardPartiallyWatched' => ({required Object percent}) => '${percent} percent watched',
@@ -11385,8 +11418,6 @@ extension on Translations {
 			'accessibility.tapToPlay' => 'Tap to play',
 			'tooltips.shufflePlay' => 'Shuffle play',
 			'tooltips.playTrailer' => 'Play trailer',
-			_ => null,
-		} ?? switch (path) {
 			'tooltips.markAsWatched' => 'Mark as watched',
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
@@ -11839,6 +11870,7 @@ extension on Translations {
 			'libraries.all' => 'All',
 			'libraries.clearAll' => 'Clear All',
 			'libraries.scanLibraryConfirm' => ({required Object title}) => 'Are you sure you want to scan "${title}"?',
+			'libraries.nextScheduledScan' => ({required Object time}) => 'Next scheduled scan: ${time}.',
 			'libraries.analyzeLibraryConfirm' => ({required Object title}) => 'Are you sure you want to analyze "${title}"?',
 			'libraries.refreshMetadataConfirm' => ({required Object title}) => 'Are you sure you want to refresh metadata for "${title}"?',
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Are you sure you want to empty trash for "${title}"?',
@@ -11891,6 +11923,8 @@ extension on Translations {
 			'libraries.sortLabels.userRating' => 'User Rating',
 			'libraries.sortLabels.lastPlayed' => 'Last Played',
 			'libraries.sortLabels.datePlayed' => 'Date Played',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.playCount' => 'Play Count',
 			'libraries.sortLabels.productionYear' => 'Production Year',
 			'libraries.sortLabels.runtime' => 'Runtime',
@@ -11899,8 +11933,6 @@ extension on Translations {
 			'libraries.sortLabels.startDate' => 'Start Date',
 			'libraries.sortLabels.airTime' => 'Air Time',
 			'libraries.sortLabels.studio' => 'Studio',
-			_ => null,
-		} ?? switch (path) {
 			'libraries.sortLabels.random' => 'Random',
 			'libraries.sortLabels.dateShared' => 'Date Shared',
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
@@ -12405,6 +12437,8 @@ extension on Translations {
 			'performanceOverlay.avSync' => 'A/V Sync',
 			'performanceOverlay.dropped' => 'Dropped',
 			'performanceOverlay.dvRpus' => 'DV RPUs',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.dvRpuAverage' => 'DV RPU Avg',
 			'performanceOverlay.dvSampleAverage' => 'DV Sample Avg',
 			'performanceOverlay.maxLuma' => 'Max Luma',
@@ -12413,8 +12447,6 @@ extension on Translations {
 			'performanceOverlay.maxFall' => 'MaxFALL',
 			'performanceOverlay.cacheUsed' => 'Cache Used',
 			'performanceOverlay.cacheLimit' => 'Cache Limit',
-			_ => null,
-		} ?? switch (path) {
 			'performanceOverlay.speed' => 'Speed',
 			'performanceOverlay.player' => 'Player',
 			'performanceOverlay.memory' => 'Memory',
@@ -12919,6 +12951,8 @@ extension on Translations {
 			'pleyaShare.scanQrHint' => 'Point the camera at the QR code on the host device',
 			'pleyaShare.cameraPermissionDenied' => 'Camera access is needed to scan the QR code.',
 			'pleyaShare.connect' => 'Connect',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
@@ -12927,8 +12961,6 @@ extension on Translations {
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
 			'pleyaShare.hostDescriptionAndroid' => 'Other Pleya devices on this network can browse, stream, and download your local folders. Sharing keeps running in the background with a notification.',
 			'pleyaShare.scanningSubnet' => 'Scanning the network…',
-			_ => null,
-		} ?? switch (path) {
 			'sourcePicker.playTitle' => 'Choose where to play',
 			'sourcePicker.detailsTitle' => 'Choose a source for the details',
 			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
@@ -13433,6 +13465,8 @@ extension on Translations {
 			'assistant.memory.sync.keepServer' => 'Use server version',
 			'assistant.memory.sync.keepBoth' => 'Keep both',
 			'assistant.memory.sync.deleted' => 'Removed',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.memory.sync.select' => 'Share',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
@@ -13441,8 +13475,6 @@ extension on Translations {
 			'assistant.memory.sync.clearEverywhere' => 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.providerLabel' => 'AI provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
@@ -13947,6 +13979,8 @@ extension on Translations {
 			'seerrIssues.loadFailed' => 'Could not load reports from Seerr.',
 			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
 			'seerrIssues.quickReplies' => 'Quick replies',
+			_ => null,
+		} ?? switch (path) {
 			'seerrIssues.quickLooking' => 'Looking into it',
 			'seerrIssues.quickNewVersion' => 'I\'ve requested a new version',
 			'seerrIssues.quickFixed' => 'Fixed, please try again',
@@ -13955,8 +13989,6 @@ extension on Translations {
 			'pleyaNotifications.pushTitle' => 'Push on this device',
 			'pleyaNotifications.pushExplanation' => 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.',
 			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaNotifications.pushOffline' => 'Changes will take effect when this device can reach the server again.',
 			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
 			'pleyaNotifications.title' => 'Notifications',

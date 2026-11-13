@@ -10,6 +10,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/ids.dart';
@@ -39,6 +40,8 @@ Future<PleyaServerClient> _pleya({
   required String role,
   bool administration = true,
   bool maintenance = false,
+  bool scanSchedule = false,
+  Duration librariesDelay = Duration.zero,
   List<String>? requests,
 }) async {
   final client = PleyaServerClient.create(
@@ -74,6 +77,7 @@ Future<PleyaServerClient> _pleya({
             'users': true,
             'administration': administration,
             'library_maintenance': maintenance,
+            'scan_schedule': scanSchedule,
           },
           'auth': {
             'methods': ['password'],
@@ -85,6 +89,20 @@ Future<PleyaServerClient> _pleya({
       if (path == '/libraries/lib-1/scan') return _json({'id': 'scan-1', 'state': 'queued'}, status: 202);
       if (path == '/libraries/lib-1/empty-trash') return _json({'items': 2, 'job_id': 'job-1'}, status: 202);
       if (path == '/libraries/lib-1/refresh-metadata') return _json({'items': 3}, status: 202);
+      if (path == '/libraries') {
+        await Future<void>.delayed(librariesDelay);
+        return _json({
+          'items': [
+            {
+              'id': 'lib-1',
+              'title': 'Films',
+              'kind': 'movies',
+              'item_count': 3,
+              'next_scan_at': '2026-11-13T18:00:00Z',
+            },
+          ],
+        });
+      }
       return _json(null, status: 404);
     }),
   );
@@ -276,6 +294,51 @@ void main() {
       await run(LibraryMaintenance.refreshMetadata);
 
       expect(requests, ['POST /libraries/lib-1/scan']);
+    });
+  });
+
+  group('scan confirmation', () {
+    // The app sets this up at start; the time is formatted in the locale.
+    setUpAll(() => initializeDateFormatting('en'));
+
+    final library = _library('srv-1', MediaBackend.pleyaServer);
+    final question = 'Are you sure you want to scan "Films"?';
+
+    test('a Pleya Server with scan_schedule adds the planned scan', () async {
+      // Wired the way MultiServerManager wires a registered client.
+      final client = await _pleya(role: 'owner', scanSchedule: true)
+        ..canAdministerServer = () => true;
+      final message = await scanConfirmation(client, library, is24Hour: true);
+      expect(message, startsWith(question));
+      expect(message, contains('Next scheduled scan: '));
+    });
+
+    test('choosing Scan again while the time is read asks once', () async {
+      final client = await _pleya(role: 'owner', scanSchedule: true, librariesDelay: const Duration(milliseconds: 500))
+        ..canAdministerServer = () => true;
+      final question = ScanQuestion();
+      final first = question.ask(client, library, is24Hour: true);
+      final second = question.ask(client, library, is24Hour: true);
+      expect(await second, isNull);
+      expect(await first, contains('Next scheduled scan: '));
+      // Once the first is answered, a later choice asks again.
+      expect(await question.ask(client, library, is24Hour: true), isNotNull);
+    });
+
+    test('a slow server does not hold the question up', () async {
+      final client = await _pleya(role: 'owner', scanSchedule: true, librariesDelay: const Duration(seconds: 6))
+        ..canAdministerServer = () => true;
+      final clock = Stopwatch()..start();
+      final message = await scanConfirmation(client, library, is24Hour: true);
+      expect(message, question);
+      expect(clock.elapsed, lessThan(const Duration(seconds: 4)));
+    });
+
+    test('a server that cannot say, or fails to, leaves the question as it was', () async {
+      expect(await scanConfirmation(await _pleya(role: 'owner'), library, is24Hour: true), question);
+      // The Jellyfin mock answers 404 on /ScheduledTasks: no error, no time.
+      expect(await scanConfirmation(_jellyfin(admin: true), library, is24Hour: true), question);
+      expect(await scanConfirmation(null, library, is24Hour: true), question);
     });
   });
 

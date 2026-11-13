@@ -6,6 +6,7 @@ import 'package:pleya/media/media_version.dart';
 import 'package:pleya/media/playback_report_metadata.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 import 'package:pleya/services/pleya_server_client.dart';
+import 'package:pleya/utils/watch_state_notifier.dart';
 
 import 'pleya_fake_server.dart';
 
@@ -586,6 +587,75 @@ void main() {
 
       expect(server.watchEvents, isEmpty);
       expect(server.requests.where((r) => r.contains('watch-state')), isEmpty);
+    });
+  });
+
+  group('marking a season or show', () {
+    MediaItem show(PleyaFakeServer fake) {
+      fake.addLibrary(id: 'lib-series', title: 'Series', kind: 'shows');
+      fake.addItem(id: 'show-1', kind: 'show', title: 'HIMYM', libraryId: 'lib-series');
+      fake.addItem(id: 'season-1', kind: 'season', title: 'Season 1', parentId: 'show-1', index: 1);
+      fake.addItem(id: 'ep-1', kind: 'episode', title: 'Slap Bet', parentId: 'season-1', index: 9);
+      fake.addItem(id: 'ep-2', kind: 'episode', title: 'Pineapple', parentId: 'season-1', index: 10);
+      return MediaItem(backend: MediaBackend.pleyaServer, kind: MediaKind.show, id: 'show-1', title: 'HIMYM');
+    }
+
+    test('with watch_state_tree a show is one request and every revision lands in the ledger', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true)..watchStateTreeCapability = true;
+      final item = show(server);
+      client = await connected(server);
+
+      await client.markWatched(item);
+
+      expect(server.watchTreeEvents.single.itemId, 'show-1');
+      expect(server.watchTreeEvents.single.body['explicit_action'], 'mark_watched');
+      expect(server.watchEvents, isEmpty);
+      // The next event on an episode claims the revision the tree answer gave it.
+      await client.reportPlaybackStarted(itemId: 'ep-1', position: Duration.zero);
+      expect(server.watchEvents.single['base_revision'], 1);
+    });
+
+    test('without the capability every episode is marked, then the show', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true);
+      final item = show(server);
+      client = await connected(server);
+
+      await client.markUnwatched(item);
+
+      expect(server.watchTreeEvents, isEmpty);
+      expect(server.watchEvents.map((e) => e['item_id']), ['ep-1', 'ep-2', 'season-1', 'show-1']);
+      expect(server.watchEvents.map((e) => e['explicit_action']).toSet(), {'mark_unwatched'});
+    });
+
+    test('a failure halfway announces what did land, then throws', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true)..watchStateFailingItems.add('ep-2');
+      final item = show(server);
+      client = await connected(server);
+      final announced = <String>[];
+      final caches = <String?>{};
+      final listening = WatchStateNotifier().stream.listen((event) {
+        announced.add(event.itemId);
+        caches.add(event.cacheServerId);
+      });
+      addTearDown(listening.cancel);
+
+      await expectLater(client.markWatched(item), throwsA(anything));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(announced, ['ep-1']);
+      // The same cache scope the caller announces with (watch_actions).
+      expect(caches, {client.scopedServerId});
+    });
+
+    test('a movie stays one event on /watch-state, with or without the capability', () async {
+      server = PleyaFakeServer(watchState: true, watchStateOwnership: true)..watchStateTreeCapability = true;
+      final item = movie(server);
+      client = await connected(server);
+
+      await client.markWatched(item);
+
+      expect(server.watchTreeEvents, isEmpty);
+      expect(server.watchEvents.single['item_id'], 'movie-1');
     });
   });
 

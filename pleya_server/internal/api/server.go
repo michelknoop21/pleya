@@ -127,6 +127,13 @@ type Options struct {
 	// setvergelijking zonder bestandssysteemaanroep, wat K rij 10 eist.
 	MediaRoots []string
 
+	// MediaDelete zijn de mediaroots die bij het opstarten schrijfbaar bleken,
+	// als PLEYA_SERVER_ALLOW_MEDIA_DELETE aan staat (DEC-XXX, media
+	// verwijderen). nil: de functie staat uit. Leeg maar niet nil: aangezet,
+	// maar geen enkele root is schrijfbaar. DELETE /items/{id} wist alleen
+	// onder een root uit deze lijst.
+	MediaDelete []string
+
 	// CacheDir is waar gecachede provider-afbeeldingen staan (0013). Leeg betekent
 	// dat er geen cache is en dat /artwork alleen afbeeldingen van schijf levert.
 	CacheDir string
@@ -143,6 +150,13 @@ type Options struct {
 	// OnMetadataChange wekt de metadata-ronde na een handmatige correctie. Nil is
 	// toegestaan: de ronde pakt de wijziging dan bij haar volgende tik op.
 	OnMetadataChange func()
+
+	// NextScanAt geeft het tijdstip van de volgende geplande scan van een
+	// bibliotheek, uit de planner in cmd/pleya-server (DEC-XXX, volgende scan).
+	// false betekent: er is geen geplande scan. Nil betekent dat deze server geen
+	// planner heeft; dan staat capabilities.scan_schedule uit en ontbreekt het
+	// veld next_scan_at.
+	NextScanAt func(libraryID id.ID) (time.Time, bool)
 
 	// MetadataProvider is the same configured provider used by the background runner.
 	MetadataProvider metadata.Provider
@@ -195,6 +209,10 @@ type FFprobeStatus struct {
 
 // Server is de router met zijn afhankelijkheden.
 type Server struct {
+	// Haken rond het wissen van bestanden (DEC-XXX), alleen voor tests: vóór en
+	// na het wissen op schijf. Nil doet niets.
+	beforeMediaRemove, afterMediaRemove func()
+
 	pins                       *artwork.Pins
 	opts                       Options
 	log                        *slog.Logger

@@ -135,3 +135,54 @@ func TestEffectiveScanIntervalPrefersTheLibrarySetting(t *testing.T) {
 		t.Fatalf("inherited interval = %s", got)
 	}
 }
+
+// TestScheduleMakesItsPlanVisible: de planner legt per bibliotheek het moment
+// van de volgende scan vast (DEC-XXX, volgende scan). Een bibliotheek met
+// interval 0 heeft geen planning; een opstartscan telt niet mee.
+func TestScheduleMakesItsPlanVisible(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+	hourly, err := store.CreateLibrary(ctx, "Elk uur", "movies", []string{"/media/uur"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inherits, err := store.CreateLibrary(ctx, "Erft nul", "movies", []string{"/media/nul"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hour := 3600
+	if _, err := store.UpdateLibrary(ctx, hourly.ID, catalog.LibraryUpdate{ScanIntervalSeconds: &hour, ScanIntervalSet: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	runner := jobs.New(jobs.Options{Pool: pool, Logger: log})
+	plan := &scanPlan{}
+	start := time.Now()
+	// Globaal interval 0: wie het erft, heeft geen planning.
+	go schedule(ctx, runner, store, 0, plan, log)
+
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if _, ok := plan.at(hourly.ID); ok || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	at, ok := plan.at(hourly.ID)
+	if !ok || at.Before(start.Add(time.Hour)) || at.After(time.Now().Add(time.Hour)) {
+		t.Fatalf("elk uur: %v %v, wil nu plus een uur", at, ok)
+	}
+	if _, ok := plan.at(inherits.ID); ok {
+		t.Fatal("een bibliotheek met interval 0 heeft een planning")
+	}
+	var queued int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM jobs`).Scan(&queued); err != nil || queued != 0 {
+		t.Fatalf("%d jobs (%v): plannen is nog geen scan", queued, err)
+	}
+}

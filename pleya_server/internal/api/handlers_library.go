@@ -51,7 +51,7 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 	for _, l := range libs {
 		var wire Library
 		if req.canAdminister() {
-			wire = adminLibraryWire(l)
+			wire = s.adminLibraryWire(l)
 		} else {
 			wire = Library{ID: l.ID.String(), Title: l.Title, Kind: l.Kind, ItemCount: l.ItemCount}
 		}
