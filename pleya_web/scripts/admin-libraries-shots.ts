@@ -21,6 +21,10 @@
  * de nieuwe submap worden opgenomen, met `-nieuwe-map` in de bestandsnaam. De
  * `POST /libraries` van Opslaan krijgt daar een gemockte weigering
  * (`storage.root_not_offered`, reden `overlaps_library`).
+ *
+ * Met daarnaast `PLEYA_SHOTS_ONDERHOUD=1` neemt hij in plaats daarvan het
+ * onderhoudspaneel van scherm 22 op (C-05): het paneel, de bevestiging van
+ * legen, de melding na legen en de zin bij `library.scan_in_progress` (Series).
  */
 import { chromium, type Page, type Route } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
@@ -33,6 +37,7 @@ const USER = process.env['PLEYA_E2E_USER'] ?? '';
 const PASS = process.env['PLEYA_E2E_PASS'] ?? '';
 const OUT = process.argv[2] ?? '../docs/qa/s10-libraries';
 const MOCK = process.env['PLEYA_SHOTS_MOCK'] === '1';
+const ONDERHOUD = process.env['PLEYA_SHOTS_ONDERHOUD'] === '1';
 const WIDTHS = [1920, 1440, 1280, 390, 320];
 const height = (w: number) => (w >= 1920 ? 1080 : 900);
 
@@ -106,6 +111,12 @@ if (MOCK) {
         400
       );
     }
+    if (request.method() === 'POST' && path === '/libraries/l1/empty-trash') {
+      return json(route, { items: 3, job_id: 'job-nep' }, 202);
+    }
+    if (request.method() === 'POST' && path === '/libraries/l2/empty-trash') {
+      return json(route, { error: { code: 'library.scan_in_progress', message: 'nagebootst', retryable: false } }, 409);
+    }
     if (request.method() !== 'GET') {
       blocked.push(`${request.method()} ${path}`);
       return route.abort();
@@ -115,7 +126,7 @@ if (MOCK) {
         return json(route, {
           protocol: { major: 1, feature_level: 1, profile: 'full' },
           server: { id: 'srv', setup_accepts_name: false },
-          capabilities: { browse: true, search: true, artwork: true, users: true, administration: true, sessions: true },
+          capabilities: { browse: true, search: true, artwork: true, users: true, administration: true, sessions: true, library_maintenance: true },
           auth: { methods: ['password'], setup_required: false }
         });
       case '/server':
@@ -175,7 +186,24 @@ async function shoot(
 
 const field = (p: Page) => p.getByRole('textbox', { name: t('admin.lib.new.label') });
 
-if (MOCK) {
+const legen = async (p: Page) => {
+  await p.getByRole('button', { name: t('admin.lib.maint.trash') }).click();
+  await p.getByRole('dialog').waitFor();
+  await p.waitForTimeout(300);
+};
+const bevestigLegen = async (p: Page) => {
+  await legen(p);
+  await p.getByRole('dialog').getByRole('button', { name: t('admin.lib.maint.confirm') }).click();
+  await p.getByRole('dialog').waitFor({ state: 'detached' });
+  await p.waitForTimeout(300);
+};
+
+if (MOCK && ONDERHOUD) {
+  await shoot('/admin/libraries/l1', 'bibliotheek-onderhoud');
+  await shoot('/admin/libraries/l1', 'bibliotheek-onderhoud-bevestigen', WIDTHS, legen);
+  await shoot('/admin/libraries/l1', 'bibliotheek-onderhoud-geleegd', WIDTHS, bevestigLegen);
+  await shoot('/admin/libraries/l2', 'bibliotheek-onderhoud-scan-loopt', WIDTHS, bevestigLegen);
+} else if (MOCK) {
   // Alle roots bezet, zoals op productie: het veld is de enige weg.
   await shoot('/admin/libraries/new', 'bibliotheek-nieuwe-map-leeg');
   await shoot('/admin/libraries/new', 'bibliotheek-nieuwe-map-toegevoegd', WIDTHS, async (p) => {
