@@ -9015,6 +9015,15 @@ class TranslationsAssistantStepsEn {
 	/// en: 'Cancelling request'
 	String get cancelRequest => 'Cancelling request';
 
+	/// en: 'Reading watchlist'
+	String get myWatchlist => 'Reading watchlist';
+
+	/// en: 'Adding to watchlist'
+	String get addToWatchlist => 'Adding to watchlist';
+
+	/// en: 'Removing from watchlist'
+	String get removeFromWatchlist => 'Removing from watchlist';
+
 	/// en: 'Finding the title'
 	String get findTitle => 'Finding the title';
 
@@ -9110,6 +9119,12 @@ class TranslationsAssistantActionsEn {
 
 	/// en: 'Request cancelled'
 	String get cancelRequest => 'Request cancelled';
+
+	/// en: 'Added to watchlist'
+	String get addToWatchlist => 'Added to watchlist';
+
+	/// en: 'Removed from watchlist'
+	String get removeFromWatchlist => 'Removed from watchlist';
 
 	/// en: 'Download started'
 	String get downloadEpisodes => 'Download started';
@@ -10259,6 +10274,12 @@ class TranslationsAssistantConfirmTitlesEn {
 
 	/// en: 'Cancel request'
 	String get cancelRequest => 'Cancel request';
+
+	/// en: 'Add to watchlist'
+	String get addToWatchlist => 'Add to watchlist';
+
+	/// en: 'Remove from watchlist'
+	String get removeFromWatchlist => 'Remove from watchlist';
 
 	/// en: 'Download episodes'
 	String get downloadEpisodes => 'Download episodes';
@@ -13273,6 +13294,9 @@ extension on Translations {
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
 			'assistant.steps.requestTitle' => 'Requesting title',
 			'assistant.steps.cancelRequest' => 'Cancelling request',
+			'assistant.steps.myWatchlist' => 'Reading watchlist',
+			'assistant.steps.addToWatchlist' => 'Adding to watchlist',
+			'assistant.steps.removeFromWatchlist' => 'Removing from watchlist',
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.recallMemory' => 'Checking your memory',
 			'assistant.steps.rememberFact' => 'Preparing a memory',
@@ -13307,6 +13331,8 @@ extension on Translations {
 			'assistant.actions.createCollection' => 'Collection created',
 			'assistant.actions.requestTitle' => 'Request sent',
 			'assistant.actions.cancelRequest' => 'Request cancelled',
+			'assistant.actions.addToWatchlist' => 'Added to watchlist',
+			'assistant.actions.removeFromWatchlist' => 'Removed from watchlist',
 			'assistant.actions.downloadEpisodes' => 'Download started',
 			'assistant.actions.downloadSubtitle' => 'Subtitle downloaded',
 			'assistant.actions.changePlayback' => 'Playback changed',
@@ -13324,6 +13350,8 @@ extension on Translations {
 			'assistant.confirm.titles.createCollection' => 'Create collection',
 			'assistant.confirm.titles.requestTitle' => 'Request title',
 			'assistant.confirm.titles.cancelRequest' => 'Cancel request',
+			'assistant.confirm.titles.addToWatchlist' => 'Add to watchlist',
+			'assistant.confirm.titles.removeFromWatchlist' => 'Remove from watchlist',
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
 			'assistant.confirm.titles.changePlayback' => 'Change playback',

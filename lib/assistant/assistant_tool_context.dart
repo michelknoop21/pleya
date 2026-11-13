@@ -57,6 +57,7 @@ class AssistantToolContext {
     this.catalog,
     this.insights,
     this.requests,
+    this.watchlist,
     this.media,
     this.playback,
     this.spoilers,
@@ -115,6 +116,7 @@ class AssistantToolContext {
     catalog: catalog,
     insights: insights,
     requests: requests,
+    watchlist: watchlist,
     media: media,
     playback: playback,
     spoilers: spoilers,
@@ -142,6 +144,9 @@ class AssistantToolContext {
   final AssistantCatalogServices? catalog;
   final AssistantInsightServices? insights;
   final AssistantRequestServices? requests;
+
+  /// The kijklijst of the active profile; null keeps its tools out of the run.
+  final AssistantWatchlistServices? watchlist;
   final AssistantMediaServices? media;
   final AssistantPlaybackServices? playback;
   final AssistantSpoilerServices? spoilers;

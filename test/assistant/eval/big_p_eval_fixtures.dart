@@ -319,6 +319,10 @@ class _EvalServer extends FakeServer {
   @override
   Future<HealthStatus> checkHealth() async => HealthStatus.online;
 
+  /// One title by its id, as a tool reads an item it showed before.
+  @override
+  Future<MediaItem?> fetchItem(String itemId) async => evalTitles.where((t) => t.id == itemId).firstOrNull?.item;
+
   /// The paged read search_catalog and find_media use, with the filters a
   /// real Jellyfin server applies (kind, search, watch state, paging).
   @override
@@ -428,6 +432,7 @@ AssistantToolContext evalContext({
     personal: world?.profile != null ? evalPersonalFor(world!.profile!) : (personal ? _evalPersonal() : null),
     trakt: world?.trakt,
     requests: world?.seerr == null ? null : AssistantRequestServices(client: () => world!.seerr!.client),
+    watchlist: world?.watchlist?.services,
     kidsAges: () async => kidsAges,
     householdKids: () async => householdKids,
     kidsProfile: () async => kids,

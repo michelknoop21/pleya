@@ -36,6 +36,8 @@ void main() {
       'task-cancel-request-yes',
       'task-home-row-rename-yes',
       'task-home-row-remove-yes',
+      'task-watchlist-add-yes',
+      'task-watchlist-remove-yes',
     ]) {
       final c = _case(id);
       expect(evalViolations(c, await _run(c)), isEmpty, reason: '$id as written');
@@ -51,6 +53,8 @@ void main() {
       'task-cancel-request-no',
       'task-home-row-rename-no',
       'task-home-row-remove-no',
+      'task-watchlist-add-no',
+      'task-watchlist-remove-no',
     ]) {
       final c = _case(id);
       expect(evalViolations(c, await _run(c)), isEmpty, reason: '$id as written');

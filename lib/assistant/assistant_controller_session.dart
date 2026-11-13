@@ -12,6 +12,7 @@ import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
+import '../providers/offline_mode_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
@@ -24,6 +25,7 @@ import '../services/trakt/trakt_sync_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../models/plex/plex_home_user.dart' show PlexHomeUser;
 import '../providers/trakt_account_provider.dart';
+import '../providers/watchlist_provider.dart';
 import '../profiles/household_kids_store.dart';
 import '../profiles/plex_home_service.dart';
 import 'current_user_binding.dart';
@@ -122,6 +124,8 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   final manager = context.read<MultiServerProvider>().serverManager;
   final activeProfile = context.read<ActiveProfileProvider>();
   final layout = context.read<HomeLayoutProvider?>();
+  final watchlist = context.read<WatchlistProvider?>();
+  final offlineMode = context.read<OfflineModeProvider?>();
   final libraries = context.read<LibrariesProvider?>();
   final hidden = context.read<HiddenLibrariesProvider?>();
   final seerr = context.read<SeerrProvider?>();
@@ -284,6 +288,16 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
         : AssistantTraktServices(
             blocked: traktBlock,
             watchlist: () => TraktSyncService.instance.library.watchlist(expectUser: traktUser),
+          ),
+    // The provider the kijklijst screen reads: what Big P changes shows there.
+    watchlist: watchlist == null
+        ? null
+        : AssistantWatchlistServices(
+            load: () => watchlist.ensureLoaded(offline: offlineMode?.isOffline ?? false),
+            entries: () => watchlist.entriesByRecentlyAdded,
+            add: (item) => watchlist.addToWatchlist(item, isOffline: offlineMode?.isOffline ?? false),
+            remove: (entry) => watchlist.removeFromWatchlist(entry, isOffline: offlineMode?.isOffline ?? false),
+            available: () => watchlist.repository?.sources.isNotEmpty ?? false,
           ),
     media: downloads == null
         ? null

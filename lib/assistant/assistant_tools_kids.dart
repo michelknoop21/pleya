@@ -67,6 +67,10 @@ const kidsToolPolicy = <String, KidsTool>{
   'spoiler_context': KidsTool.blocked,
   'my_watching': KidsTool.blocked,
   'trakt_watchlist': KidsTool.blocked,
+  // The kijklijst is the account's, not the child's: closed like Trakt's.
+  'my_watchlist': KidsTool.blocked,
+  'add_to_watchlist': KidsTool.blocked,
+  'remove_from_watchlist': KidsTool.blocked,
   'watch_stats': KidsTool.blocked,
   'compare_servers': KidsTool.blocked,
   'request_status': KidsTool.blocked,

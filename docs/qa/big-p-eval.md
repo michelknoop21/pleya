@@ -189,12 +189,14 @@ Wat er in het product is opgelost, elk met een test die zonder de fix faalt:
 
 Wat een fout in de meting was en daar is hersteld: de nepserver negeerde genre- en jaarfilters; de jury zag de argumenten van een toolaanroep niet; de vraag bij `man-retry-job` was dubbelzinnig.
 
-Twee fouten van de jury zelf, gevonden in ronde 3 en hersteld in de tool, nog niet opnieuw gejureerd:
+Twee fouten van de jury zelf, gevonden in ronde 3 en hersteld in de tool. Dezelfde ronde 3 opnieuw gejureerd geeft 66, 69, 69 en 69 van 80 (was 65, 67, 69 en 68):
 
 - Een geheugenkaart komt samen met het antwoord en wordt daarna beantwoord. De jury rekende "je kunt dit bevestigen op de kaart" fout omdat de kaart met nee was beantwoord (`task-forget-no`, `mem-forget-unknown-ref`).
 - Een verwijzing naar een instellingenpagina van Pleya telde als onbewezen (`trk-not-linked`, `rec-trending-no-source`); de toolbeschrijvingen dragen die verwijzing juist op.
 
 Wat de jury wel terecht lijkt te vinden en aan Michel is om te wegen, via de ijkset: het antwoord herhaalt titels die al op de kaarten staan (de meeste tone-fouten), een Engelse vraag krijgt een Nederlands antwoord (`disc-english`, zo ontworpen), en "nieuwe afleveringen van Bluey" eindigt in de vaste tekst "de diagnose blijft onbekend".
+
+Nieuwe tools na deze metingen, elk met eigen review en cases met ja en nee: `cancel_request` (BP-12t1), `list_home_rows`, `rename_home_row` en `remove_home_row` (BP-12t2), `my_watchlist`, `add_to_watchlist` en `remove_from_watchlist` (BP-12t3). De set telt daarmee 94 cases; de nieuwe cases zijn alleen gescript gedraaid, nog niet live.
 
 Tools: drie die nooit bereikt werden hebben nu nepdata en een case (`discover_request_titles`, `request_status`, `similar_titles`); de lijst zonder nepdata telt er nog tien. Nieuw is `cancel_request` (BP-12t1): je eigen aanvraag annuleren zolang die in behandeling is, met een eigen adversariële review.
 
@@ -212,9 +214,9 @@ Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met
 
 - `adm-search-with-offline-server` is met BP-11e een gewoon hard geval; de nulmeting is nog van vóór die fix, dus het live effect is niet gemeten.
 - De beheer- en huishoudcases (regel 2 en 7) bewijzen alleen de weigering zonder bevoegdheid; ze wachten op een inzichtenfixture.
-- De modeljury (BP-12) is gebouwd maar nog niet geijkt door Michel; ronde 3 is na de twee juryfixes niet opnieuw gejureerd.
+- De modeljury (BP-12) is gebouwd maar nog niet geijkt door Michel.
 - Tien tools hebben nog geen nepdata (`_open` in `big_p_eval_matrix_test.dart`).
-- Ontbrekende tools na `cancel_request`: Home-rij en collectie wijzigen, kijklijst, gezien markeren, beoordelen, afspelen starten, samen kijken breder. Gezien markeren, beoordelen en afspelen raken gedeelde afspeellogica en krijgen eerst een kort plan.
+- Ontbrekende tools na BP-12t1 tot en met BP-12t3: collectie wijzigen, gezien markeren, beoordelen, afspelen starten, samen kijken breder. Gezien markeren, beoordelen en afspelen raken gedeelde afspeellogica en krijgen eerst een kort plan.
 - De weergave is in ronde 3 niet opnieuw gemeten; de kinderprofieltak van `cancel_request` heeft geen test.
 - De ruis is gemeten met één herhaling op 400c6fd1; de vijfde meting is een andere code en dus geen derde run op dezelfde code.
 - `con-everyone-no-capability` (gemma) blijft 0 van 3 en vraagt een wijziging op tool- of resultaatniveau.

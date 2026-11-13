@@ -39,6 +39,7 @@ class EvalWorldState {
     this.homeRows = const [],
     this.requests = const [],
     this.cancelledRequests = const [],
+    this.watchlist = const [],
     this.memory = const [],
     this.admin = const {},
   });
@@ -56,6 +57,9 @@ class EvalWorldState {
   /// Seerr requests deleted, as their request id.
   final List<String> cancelledRequests;
 
+  /// Titles on the kijklijst, newest first.
+  final List<String> watchlist;
+
   /// The asking profile's stored memory facts, as text.
   final List<String> memory;
 
@@ -63,6 +67,7 @@ class EvalWorldState {
     'home_rows': homeRows,
     'requests': requests,
     if (cancelledRequests.isNotEmpty) 'cancelled_requests': cancelledRequests,
+    if (watchlist.isNotEmpty) 'watchlist': watchlist,
     'memory': memory,
     if (admin.isNotEmpty) 'admin': admin,
   };

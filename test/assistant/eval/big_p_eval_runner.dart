@@ -10,6 +10,7 @@ import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 
@@ -226,6 +227,7 @@ Future<EvalWorldState> evalWorldState(EvalWorld? world, EvalOutcome outcome) asy
       for (final post in world?.seerr?.posts ?? const <({String path, Map<String, Object?> body})>[])
         if (post.path == '/request') '${post.body['mediaType']}:${post.body['mediaId']}',
     ],
+    watchlist: [for (final e in world?.watchlist?.entries ?? const <WatchlistEntry>[]) e.item.title ?? ''],
     cancelledRequests: [
       for (final path in world?.seerr?.deletes ?? const <String>[])
         if (path.startsWith('/request/')) path.substring('/request/'.length),

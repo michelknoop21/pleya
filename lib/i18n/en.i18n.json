@@ -2958,6 +2958,9 @@
       "discoverRequestTitles": "Finding matching titles",
       "requestTitle": "Requesting title",
       "cancelRequest": "Cancelling request",
+      "myWatchlist": "Reading watchlist",
+      "addToWatchlist": "Adding to watchlist",
+      "removeFromWatchlist": "Removing from watchlist",
       "findTitle": "Finding the title",
       "recallMemory": "Checking your memory",
       "rememberFact": "Preparing a memory",
@@ -3004,6 +3007,8 @@
       "createCollection": "Collection created",
       "requestTitle": "Request sent",
       "cancelRequest": "Request cancelled",
+      "addToWatchlist": "Added to watchlist",
+      "removeFromWatchlist": "Removed from watchlist",
       "downloadEpisodes": "Download started",
       "downloadSubtitle": "Subtitle downloaded",
       "changePlayback": "Playback changed"
@@ -3024,6 +3029,8 @@
         "createCollection": "Create collection",
         "requestTitle": "Request title",
         "cancelRequest": "Cancel request",
+        "addToWatchlist": "Add to watchlist",
+        "removeFromWatchlist": "Remove from watchlist",
         "downloadEpisodes": "Download episodes",
         "downloadSubtitle": "Download subtitle",
         "changePlayback": "Change playback"

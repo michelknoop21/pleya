@@ -58,6 +58,8 @@ import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/home_custom_row_labels.dart';
+import '../media/watchlist_entry.dart';
+import '../services/watchlist_actions.dart';
 import '../services/tmdb/tmdb_client.dart' show TmdbAuthException, TmdbClient, TmdbException, TmdbKind;
 import 'assistant_age_gate.dart';
 import 'assistant_find_match.dart';
@@ -86,6 +88,7 @@ part 'assistant_tools_requests_state.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_requests_cancel.dart';
 part 'assistant_tools_home_rows.dart';
+part 'assistant_tools_watchlist.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_discover.dart';
 part 'assistant_tools_kids.dart';
@@ -161,6 +164,8 @@ enum AssistantActionKind {
   createCollection,
   requestTitle,
   cancelRequest,
+  addToWatchlist,
+  removeFromWatchlist,
   downloadEpisodes,
   downloadSubtitle,
   changePlayback,
@@ -383,6 +388,7 @@ final List<AssistantTool> assistantTools = [
   ..._adminTools,
   ..._catalogTools,
   ..._homeRowTools,
+  ..._watchlistTools,
   ..._recommendationTools,
   ..._insightTools,
   ..._requestTools,

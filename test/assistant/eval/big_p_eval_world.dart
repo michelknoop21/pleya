@@ -8,6 +8,9 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/watchlist_entry.dart';
+import 'package:pleya/media/watchlist_scope.dart';
+import 'package:pleya/services/watchlist_actions.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/models/trakt/trakt_ids.dart';
 import 'package:pleya/models/trakt/trakt_title.dart';
@@ -220,6 +223,48 @@ class EvalMemory {
 
 /// What a case adds around the fixture server. Every field is optional;
 /// the default is the plain fixture of `evalContext`.
+/// A kijklijst in memory that behaves as `WatchlistProvider` does towards
+/// Big P: newest first, an add goes to the front.
+class EvalWatchlist {
+  EvalWatchlist(List<String> titles)
+    : entries = [
+        for (final (i, title) in titles.indexed)
+          _entry(MediaItem(id: 'wl$i', backend: MediaBackend.plex, kind: MediaKind.movie, title: title)),
+      ];
+
+  final List<WatchlistEntry> entries;
+
+  /// What the next change answers; `added` or `removed` when null.
+  WatchlistOutcome? fail;
+
+  static const _scope = WatchlistScopeId(profileId: 'p', backend: MediaBackend.plex, accountId: 'a', userId: 'u');
+
+  static WatchlistEntry _entry(MediaItem item) => WatchlistEntry(
+    key: 'eval:${item.id}',
+    kind: item.kind,
+    item: item,
+    memberships: [WatchlistMembership(scope: _scope, remoteKey: item.id)],
+    availability: item.serverId != null ? WatchlistAvailability.available : WatchlistAvailability.unknown,
+    coverageComplete: item.serverId != null,
+  );
+
+  late final services = AssistantWatchlistServices(
+    load: () async {},
+    entries: () => List.unmodifiable(entries),
+    add: (item) async {
+      if (fail != null) return fail!;
+      entries.insert(0, _entry(item));
+      return WatchlistOutcome.added;
+    },
+    remove: (entry) async {
+      if (fail != null) return fail!;
+      entries.removeWhere((e) => e.key == entry.key);
+      return WatchlistOutcome.removed;
+    },
+    available: () => true,
+  );
+}
+
 class EvalWorld {
   const EvalWorld({
     this.profile,
@@ -230,7 +275,11 @@ class EvalWorld {
     this.memoryOfSecond = false,
     this.admin,
     this.homeRows = const [],
+    this.watchlist,
   });
+
+  /// The profile's kijklijst; null means no account keeps one.
+  final EvalWatchlist? watchlist;
 
   /// Names of the rows already saved on this profile's Home, in order.
   final List<String> homeRows;

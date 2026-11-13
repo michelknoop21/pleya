@@ -2958,6 +2958,9 @@
       "discoverRequestTitles": "Passende titels zoeken",
       "requestTitle": "Titel aanvragen",
       "cancelRequest": "Aanvraag annuleren",
+      "myWatchlist": "Kijklijst bekijken",
+      "addToWatchlist": "Op de kijklijst zetten",
+      "removeFromWatchlist": "Van de kijklijst halen",
       "findTitle": "Titel op beschrijving zoeken",
       "recallMemory": "Geheugen raadplegen",
       "rememberFact": "Herinnering klaarzetten",
@@ -3004,6 +3007,8 @@
       "createCollection": "Collectie aangemaakt",
       "requestTitle": "Aanvraag verstuurd",
       "cancelRequest": "Aanvraag geannuleerd",
+      "addToWatchlist": "Op de kijklijst gezet",
+      "removeFromWatchlist": "Van de kijklijst gehaald",
       "downloadEpisodes": "Download gestart",
       "downloadSubtitle": "Ondertitel gedownload",
       "changePlayback": "Afspelen aangepast"
@@ -3024,6 +3029,8 @@
         "createCollection": "Collectie maken",
         "requestTitle": "Titel aanvragen",
         "cancelRequest": "Aanvraag annuleren",
+        "addToWatchlist": "Op de kijklijst zetten",
+        "removeFromWatchlist": "Van de kijklijst halen",
         "downloadEpisodes": "Afleveringen downloaden",
         "downloadSubtitle": "Ondertitel downloaden",
         "changePlayback": "Afspelen aanpassen"

@@ -39,6 +39,9 @@ const _findPrimer = EvalCall('find_request_title', {
 /// Two rows already saved on Home.
 Future<EvalWorld> _rows() async => const EvalWorld(homeRows: ['Actie uit de jaren 90', 'Kerstfilms']);
 
+/// A kijklijst with two titles on it.
+Future<EvalWorld> _list() async => EvalWorld(watchlist: EvalWatchlist(['Dune', 'Arrival']));
+
 Future<EvalWorld> _memory() async => EvalWorld(memory: await EvalMemory.open(michelFacts: ['houdt van komedies']));
 Future<EvalWorld> _emptyMemory() async => EvalWorld(memory: await EvalMemory.open());
 
@@ -406,5 +409,103 @@ final evalTaskCases = <EvalCase>[
     hard: const [evalNoDup, EvalStateUnchanged(), EvalNoFalseSuccess()],
     scripted: const [EvalConfirmShown(1)],
     soft: const EvalSoft(firstTools: {'list_home_rows'}),
+  ),
+  // The kijklijst (BP-12t3): read it, add a library title, take one off.
+  EvalCase(
+    id: 'task-watchlist-read',
+    source: 'BP-12t3: wat staat er op mijn kijklijst',
+    world: _list,
+    turns: [
+      EvalTurn(
+        'Wat staat er op mijn kijklijst?',
+        script: [EvalCall('my_watchlist', {}), 'Op je kijklijst staan Dune en Arrival.'],
+      ),
+    ],
+    hard: const [evalNoDup, EvalStateUnchanged()],
+    soft: const EvalSoft(firstTools: {'my_watchlist'}),
+  ),
+  EvalCase(
+    id: 'task-watchlist-add-yes',
+    source: 'BP-12t3: een titel uit de bibliotheek op de kijklijst met een ja',
+    world: _list,
+    turns: [
+      EvalTurn(
+        'Zet Finding Nemo op mijn kijklijst',
+        confirm: EvalConfirm.yes,
+        script: [
+          EvalCall('find_media', {'server_id': 'zolder', 'query': 'Finding Nemo'}),
+          EvalCall('add_to_watchlist', {'server_id': 'zolder', 'item_id': 'm02'}),
+          'Finding Nemo staat op je kijklijst.',
+        ],
+      ),
+    ],
+    hard: const [
+      evalNoDup,
+      EvalActionDone('addToWatchlist'),
+      EvalState(watchlist: ['Finding Nemo', 'Dune', 'Arrival']),
+    ],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'find_media', 'search_catalog', 'find_title'}),
+  ),
+  EvalCase(
+    id: 'task-watchlist-add-no',
+    source: 'BP-12t3: toevoegen geweigerd, de kijklijst blijft gelijk',
+    world: _list,
+    turns: [
+      EvalTurn(
+        'Zet Finding Nemo op mijn kijklijst',
+        confirm: EvalConfirm.no,
+        script: [
+          EvalCall('find_media', {'server_id': 'zolder', 'query': 'Finding Nemo'}),
+          EvalCall('add_to_watchlist', {'server_id': 'zolder', 'item_id': 'm02'}),
+          'Finding Nemo staat niet op je kijklijst.',
+        ],
+      ),
+    ],
+    hard: const [evalNoDup, EvalStateUnchanged(), EvalNoFalseSuccess()],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'find_media', 'search_catalog', 'find_title'}),
+  ),
+  EvalCase(
+    id: 'task-watchlist-remove-yes',
+    source: 'BP-12t3: een titel van de kijklijst halen met een ja',
+    world: _list,
+    turns: [
+      EvalTurn(
+        'Haal Arrival van mijn kijklijst',
+        confirm: EvalConfirm.yes,
+        script: [
+          EvalCall('my_watchlist', {}),
+          EvalCall('remove_from_watchlist', {'entry_id': 'w2'}),
+          'Arrival is van je kijklijst gehaald.',
+        ],
+      ),
+    ],
+    hard: const [
+      evalNoDup,
+      EvalActionDone('removeFromWatchlist'),
+      EvalState(watchlist: ['Dune']),
+    ],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'my_watchlist'}),
+  ),
+  EvalCase(
+    id: 'task-watchlist-remove-no',
+    source: 'BP-12t3: verwijderen geweigerd, de titel blijft staan',
+    world: _list,
+    turns: [
+      EvalTurn(
+        'Haal Arrival van mijn kijklijst',
+        confirm: EvalConfirm.no,
+        script: [
+          EvalCall('my_watchlist', {}),
+          EvalCall('remove_from_watchlist', {'entry_id': 'w2'}),
+          'Arrival staat nog op je kijklijst.',
+        ],
+      ),
+    ],
+    hard: const [evalNoDup, EvalStateUnchanged(), EvalNoFalseSuccess()],
+    scripted: const [EvalConfirmShown(1)],
+    soft: const EvalSoft(firstTools: {'my_watchlist'}),
   ),
 ];

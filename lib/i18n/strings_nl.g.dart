@@ -3877,6 +3877,9 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get discoverRequestTitles => 'Passende titels zoeken';
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get cancelRequest => 'Aanvraag annuleren';
+	@override String get myWatchlist => 'Kijklijst bekijken';
+	@override String get addToWatchlist => 'Op de kijklijst zetten';
+	@override String get removeFromWatchlist => 'Van de kijklijst halen';
 	@override String get findTitle => 'Titel op beschrijving zoeken';
 	@override String get recallMemory => 'Geheugen raadplegen';
 	@override String get rememberFact => 'Herinnering klaarzetten';
@@ -3929,6 +3932,8 @@ class _TranslationsAssistantActionsNl extends TranslationsAssistantActionsEn {
 	@override String get createCollection => 'Collectie aangemaakt';
 	@override String get requestTitle => 'Aanvraag verstuurd';
 	@override String get cancelRequest => 'Aanvraag geannuleerd';
+	@override String get addToWatchlist => 'Op de kijklijst gezet';
+	@override String get removeFromWatchlist => 'Van de kijklijst gehaald';
 	@override String get downloadEpisodes => 'Download gestart';
 	@override String get downloadSubtitle => 'Ondertitel gedownload';
 	@override String get changePlayback => 'Afspelen aangepast';
@@ -4466,6 +4471,8 @@ class _TranslationsAssistantConfirmTitlesNl extends TranslationsAssistantConfirm
 	@override String get createCollection => 'Collectie maken';
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get cancelRequest => 'Aanvraag annuleren';
+	@override String get addToWatchlist => 'Op de kijklijst zetten';
+	@override String get removeFromWatchlist => 'Van de kijklijst halen';
 	@override String get downloadEpisodes => 'Afleveringen downloaden';
 	@override String get downloadSubtitle => 'Ondertitel downloaden';
 	@override String get changePlayback => 'Afspelen aanpassen';
@@ -7312,6 +7319,9 @@ extension on TranslationsNl {
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.cancelRequest' => 'Aanvraag annuleren',
+			'assistant.steps.myWatchlist' => 'Kijklijst bekijken',
+			'assistant.steps.addToWatchlist' => 'Op de kijklijst zetten',
+			'assistant.steps.removeFromWatchlist' => 'Van de kijklijst halen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.recallMemory' => 'Geheugen raadplegen',
 			'assistant.steps.rememberFact' => 'Herinnering klaarzetten',
@@ -7346,6 +7356,8 @@ extension on TranslationsNl {
 			'assistant.actions.createCollection' => 'Collectie aangemaakt',
 			'assistant.actions.requestTitle' => 'Aanvraag verstuurd',
 			'assistant.actions.cancelRequest' => 'Aanvraag geannuleerd',
+			'assistant.actions.addToWatchlist' => 'Op de kijklijst gezet',
+			'assistant.actions.removeFromWatchlist' => 'Van de kijklijst gehaald',
 			'assistant.actions.downloadEpisodes' => 'Download gestart',
 			'assistant.actions.downloadSubtitle' => 'Ondertitel gedownload',
 			'assistant.actions.changePlayback' => 'Afspelen aangepast',
@@ -7363,6 +7375,8 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.createCollection' => 'Collectie maken',
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
 			'assistant.confirm.titles.cancelRequest' => 'Aanvraag annuleren',
+			'assistant.confirm.titles.addToWatchlist' => 'Op de kijklijst zetten',
+			'assistant.confirm.titles.removeFromWatchlist' => 'Van de kijklijst halen',
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
 			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',
