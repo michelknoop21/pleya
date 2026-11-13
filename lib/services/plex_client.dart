@@ -2121,6 +2121,11 @@ class PlexClient
   }
 
   /// Get related hubs for a specific metadata item (collections, similar, "more from" director/actor)
+  /// Makes a list answer carry each title's provider numbers (`Guid` array),
+  /// so the unified pipeline recognises it on another server without a request
+  /// per title and without leaning on its name (`externalIdsCarriedBy`).
+  static const Map<String, dynamic> _carryGuids = {'includeGuids': 1};
+
   Future<List<PlexHubDto>> _getRelatedHubs(String ratingKey, {int count = 10}) async {
     try {
       final response = await retryTransientMediaServerCall(
@@ -2128,7 +2133,7 @@ class PlexClient
         attemptTimeouts: MediaServerTimeouts.libraryHubAttemptTimeouts,
         call: (timeout, abort) => _getWithFailover(
           '/hubs/metadata/$ratingKey/related',
-          queryParameters: {'count': count},
+          queryParameters: {'count': count, 'includeGuids': 1},
           timeout: timeout,
           abort: abort,
           allowEndpointFailover: false,
@@ -2160,8 +2165,14 @@ class PlexClient
     try {
       final hubSectionID = _librarySectionIdFromString(hubKey);
       final items = await _fetchAllPages(
-        (start, size, abort) =>
-            _fetchPaginatedList(hubKey, start: start, size: size, abort: abort, librarySectionID: hubSectionID),
+        (start, size, abort) => _fetchPaginatedList(
+          hubKey,
+          start: start,
+          size: size,
+          abort: abort,
+          librarySectionID: hubSectionID,
+          queryParameters: _carryGuids,
+        ),
       );
       return items.where(_isVideoMetadata).toList();
     } catch (e, st) {
@@ -2195,6 +2206,7 @@ class PlexClient
         size: rawPageSize,
         abort: abort,
         librarySectionID: hubSectionID,
+        queryParameters: _carryGuids,
       );
       rawTotal = result.totalSize;
       final rawItems = result.items;
@@ -2217,7 +2229,13 @@ class PlexClient
 
   /// Get playlist content by playlist ID, paginated.
   Future<_LibraryContentResult> _getPlaylist(String playlistId, {int? start, int? size, AbortController? abort}) =>
-      _fetchPaginatedList('/playlists/$playlistId/items', start: start, size: size, abort: abort);
+      _fetchPaginatedList(
+        '/playlists/$playlistId/items',
+        start: start,
+        size: size,
+        abort: abort,
+        queryParameters: _carryGuids,
+      );
 
   /// Fetch every page of a playlist's items. For callers that need the full list
   /// (downloads, sync rules, context-menu shuffle).
@@ -2643,6 +2661,7 @@ class PlexClient
     abort: abort,
     librarySectionID: _librarySectionIdFromString(librarySectionID),
     librarySectionTitle: librarySectionTitle,
+    queryParameters: _carryGuids,
   );
 
   /// Fetch every item in a collection (downloads, sync rules, context-menu shuffle).
