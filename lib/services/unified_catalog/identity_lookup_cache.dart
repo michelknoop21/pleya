@@ -53,7 +53,3 @@ Future<ExternalIds> fetchExternalIdsForIdentity(
     throw error;
   });
 }
-
-/// Drops every remembered answer of [manager], for a refresh the viewer asked
-/// for and for tests.
-void clearIdentityLookupCache(MultiServerManager manager) => _cacheOf[manager]?.clear();
