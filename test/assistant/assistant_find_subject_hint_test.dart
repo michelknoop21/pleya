@@ -7,13 +7,13 @@ import 'eval/big_p_eval_runner.dart';
 // model how to go on (BP-12, disc-keyword: gemma4:31b answered "nothing with
 // dinosaurs" with Jurassic Park in the library, 5 of 6 runs).
 
-Future<String> _lastFindAnswer(Map<String, Object?> args) async {
+Future<String> _lastFindAnswer(Map<String, Object?> args, {String tool = 'find_title'}) async {
   final c = EvalCase(
     id: 'subject-hint',
     source: 'test',
     hard: const [],
     turns: [
-      EvalTurn('Zoek iets met dinosaurussen', script: [EvalCall('find_title', args), 'Niets gevonden.']),
+      EvalTurn('Zoek iets met dinosaurussen', script: [EvalCall(tool, args), 'Niets gevonden.']),
     ],
   );
   final meter = EvalMeter();
@@ -48,5 +48,15 @@ void main() {
       'variants': ['een film die niet bestaat xyz'],
     });
     expect(answer, isNot(contains('"hint"')));
+  });
+
+  // ser-finished-show: "Heb ik Friends al helemaal gezien?" was answered yes
+  // from an empty unwatched search, while Friends is only started.
+  test('an empty unwatched search says it does not prove a title was finished', () async {
+    final empty = await _lastFindAnswer({'text': 'Friends', 'unwatched': true}, tool: 'search_catalog');
+    expect(empty, contains('"count":0'));
+    expect(empty, contains('merely started'));
+    final found = await _lastFindAnswer({'text': 'Friends'}, tool: 'search_catalog');
+    expect(found, isNot(contains('merely started')));
   });
 }

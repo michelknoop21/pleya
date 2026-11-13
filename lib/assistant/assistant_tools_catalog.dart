@@ -197,6 +197,12 @@ final List<AssistantTool> _catalogTools = [
         },
         // Only a query that used the seen filter says how it was built.
         if (args['unwatched'] == true) ...{
+          // "Have I finished X?" was answered yes from an empty unwatched
+          // search, while a started series is left out too (BP-12).
+          if (entries.isEmpty)
+            'note':
+                'Empty with unwatched only means: nothing unwatched. A title left out may be watched or merely '
+                'started; do not say it was watched to the end from this result.',
           if (ctx.personal?.seenIncludesTrakt() == true) 'seen_includes_trakt': true,
           if (ctx.personal?.seenTraktUnavailable() == true) 'seen_trakt_unavailable': true,
         },
