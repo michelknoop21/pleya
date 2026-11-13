@@ -7,6 +7,8 @@
 /// the session cache that keeps the extra lookups from repeating.
 library;
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -20,6 +22,7 @@ import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/unified_catalog/grouping_service.dart';
 import 'package:pleya/services/unified_catalog/identity_lookup_cache.dart';
 import 'package:pleya/services/unified_catalog/identity_resolver.dart';
@@ -110,6 +113,17 @@ class _CountingClient implements MediaServerClient {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _PleyaCountingClient extends _CountingClient implements PleyaServerClient {
+  _PleyaCountingClient(super.serverId, super.answer);
+
+  @override
+  Future<void> closeGracefully({Duration drainTimeout = Duration.zero}) async {}
+
+  // The manager wires its authority callbacks into a guarded client.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => invocation.isSetter ? null : super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -424,6 +438,42 @@ void main() {
       await fetchExternalIdsForIdentity(manager, 'srv-plex', 'show-1', now: () => clock);
 
       expect(client.calls, 2);
+    });
+
+    test('a slow server keeps a caller waiting once, then fails at once while the request still lands', () async {
+      var clock = DateTime(2026, 11, 13, 20);
+      final late = Completer<ExternalIds>();
+      client.answer = (_) => late.future;
+      const patience = Duration(milliseconds: 20);
+
+      await expectLater(
+        fetchExternalIdsForIdentity(manager, 'srv-plex', 'show-1', now: () => clock, patience: patience),
+        throwsA(isA<TimeoutException>()),
+      );
+      await expectLater(
+        fetchExternalIdsForIdentity(manager, 'srv-plex', 'show-2', now: () => clock, patience: patience),
+        throwsA(isA<TimeoutException>()),
+      );
+      expect(client.calls, 1, reason: 'the second title did not wait on, or ask, the slow server');
+
+      late.complete(const ExternalIds(tmdb: 71446));
+      final answered = await fetchExternalIdsForIdentity(manager, 'srv-plex', 'show-1', now: () => clock);
+      expect(answered.tmdb, 71446, reason: 'the request ran on and filled the cache');
+      expect(client.calls, 1);
+
+      clock = clock.add(identityLookupCooldown);
+      client.answer = (_) async => const ExternalIds(tmdb: 1399);
+      expect((await fetchExternalIdsForIdentity(manager, 'srv-plex', 'show-2', now: () => clock)).tmdb, 1399);
+    });
+
+    test('a Pleya Server answer is never remembered: its proof depends on the source of the moment', () async {
+      final pleya = _PleyaCountingClient('srv-pleya', (_) async => const ExternalIds(tmdb: 71446));
+      manager.debugRegisterClientForTesting(pleya);
+
+      await fetchExternalIdsForIdentity(manager, 'srv-pleya', 'show-1');
+      await fetchExternalIdsForIdentity(manager, 'srv-pleya', 'show-1');
+
+      expect(pleya.calls, 2);
     });
 
     test('a server without a client throws, so the item degrades to its guid', () async {
