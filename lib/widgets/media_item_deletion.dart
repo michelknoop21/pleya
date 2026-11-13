@@ -28,6 +28,7 @@ Future<bool> confirmAndDeleteMediaItem(
   required MediaItem item,
   required MediaServerClient Function() client,
   String? sourceName,
+  VoidCallback? onPartlyDeleted,
 }) async {
   final isMultipleMediaItems = item.kind == MediaKind.show || item.kind == MediaKind.season;
   final confirmed = await showDeleteConfirmation(
@@ -69,11 +70,15 @@ Future<bool> confirmAndDeleteMediaItem(
   } on MediaDeletionIncompleteException catch (e) {
     // Part of it is gone: say what stayed. The title only leaves the UI when the
     // server says it left the catalogue too; a title with a file left is still
-    // on the server. The caller refreshes its list either way.
+    // on the server. [onPartlyDeleted] lets the caller refresh what is left.
     appLogger.w(t.mediaMenu.mediaFailedToDelete, error: e);
     if (context.mounted) showErrorSnackBar(context, mediaDeletionFailureMessage(e, item.backend));
     final removed = incompleteDeletionRemovedTitle(e, item.kind);
-    if (removed) DeletionNotifier().notifyDeletedItem(item: item);
+    if (removed) {
+      DeletionNotifier().notifyDeletedItem(item: item);
+    } else {
+      onPartlyDeleted?.call();
+    }
     return removed;
   } catch (e) {
     appLogger.e(t.mediaMenu.mediaFailedToDelete, error: e);
