@@ -147,6 +147,11 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
             key: menuKey,
             item: item,
             onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+            // Select plays an episode of this series, so its menu is the way
+            // to the episode's own page, as on the season tab.
+            onViewDetails: item.isEpisode && item.grandparentId == _metadata.id
+                ? () => _tvDetailOpenEpisodePage(item, id)
+                : null,
             child: TvPersonCreditCard(
               item: item,
               width: cell.width,

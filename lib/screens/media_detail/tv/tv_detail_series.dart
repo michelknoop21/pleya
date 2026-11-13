@@ -112,6 +112,8 @@ extension _MediaDetailTvSeries on _MediaDetailScreenState {
   /// this page a second time (`tvDetailRouteId` tells the two apart by the
   /// episode in the id, so nothing discards the duplicate).
   void _tvDetailOpenEpisodePage(MediaItem episode, String sectionId) {
+    // The menu's sheet closes first; the page can be gone by then.
+    if (!mounted) return;
     unawaited(
       navigateToMediaItemDetails(
         context,

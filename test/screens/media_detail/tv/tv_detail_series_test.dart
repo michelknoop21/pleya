@@ -562,6 +562,12 @@ void main() {
       await _press(tester, LogicalKeyboardKey.enter);
       expect(played, ['e1-2']);
       expect(pages(tester), hasLength(1));
+
+      // The row card's own menu is the way to the episode page from here.
+      played.clear();
+      await viewDetails(tester, 'e1-2');
+      expect(played, isEmpty);
+      expect(pages(tester).map((page) => page.metadata.id), ['show', 'e1-2']);
     });
 
     test('the target of an episode opened on its own series is the episode, and only then', () {
