@@ -247,6 +247,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # Vier shards naast elkaar: één `flutter test` over de hele map duurde op
+    # 13 november 26 tot 28 minuten en bepaalde daarmee de wachttijd van elke PR.
+    # `flutter test` verdeelt de testbestanden zelf over de shards. Een shard
+    # die faalt laat de andere uitlopen, zodat één run alle falers toont.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     env:
       # Valt open: alleen een geslaagde `changes` met expliciet "false" zet dit
       # op false. Elke stap hieronder leest het; de job zelf draait altijd.
@@ -281,7 +289,7 @@ jobs:
         name: Run tests
         run: |
           if [ -d "test" ] && [ "$(find test -name '*_test.dart' | wc -l)" -gt 0 ]; then
-            flutter test
+            flutter test --total-shards 4 --shard-index ${{ matrix.shard }}
           else
             echo "No tests found, skipping test execution"
           fi

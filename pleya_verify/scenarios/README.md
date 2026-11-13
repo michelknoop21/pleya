@@ -52,8 +52,9 @@ commands above:
 
 - **`portable`** (Linux, required-candidate): `list scenarios --json` plus
   `validate` on every file here, no driver dispatch.
-- **`macos-verify`** (macOS): `macos.smoke.boot` and `discover.layout`
-  via `dart run bin/verify.dart run <scenario> --json`.
+- **`macos-verify`** (macOS): `macos.smoke.boot`, `discover.layout` and
+  `ios.unified.artwork-fallback`, each on its own runner, via
+  `dart run bin/verify.dart run <scenario> --json`.
 - **`tvos-verify`** (macOS, `workflow_dispatch`/`schedule` only, not
   required): `tvos.smoke.boot`.
 
