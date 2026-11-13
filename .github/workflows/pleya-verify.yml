@@ -200,7 +200,7 @@ jobs:
   # simulator die af en toe traag start hoort een product-PR niet te blokkeren;
   # de job blijft wel zichtbaar draaien. Zie ook DEC-083.
   macos-verify:
-    name: Verify - macOS + iOS simulator
+    name: Verify - macOS + iOS simulator (${{ matrix.target }})
     needs: changes
     if: ${{ !cancelled() }}
     runs-on: macos-26
