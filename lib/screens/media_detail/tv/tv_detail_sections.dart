@@ -89,7 +89,7 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
   Future<void> _openTvDetailItem(MediaItem item, String sectionId) async {
     SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
     if (item.isEpisode && item.grandparentId == _metadata.id) {
-      _tvDetailActivateEpisode(item, sectionId);
+      _tvDetailActivateEpisode(item);
       return;
     }
     await navigateToMediaItem(
@@ -147,6 +147,11 @@ extension _MediaDetailTvSections on _MediaDetailScreenState {
             key: menuKey,
             item: item,
             onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+            // Select plays an episode of this series, so its menu is the way
+            // to the episode's own page, as on the season tab.
+            onViewDetails: item.isEpisode && item.grandparentId == _metadata.id
+                ? () => _tvDetailOpenEpisodePage(item, id)
+                : null,
             child: TvPersonCreditCard(
               item: item,
               width: cell.width,

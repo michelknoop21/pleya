@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -161,6 +162,24 @@ void main() {
       await tester.pumpWidget(host(mounted: false, enabled: false));
       await tester.pumpWidget(host(mounted: true, enabled: true));
       expect(node.canRequestFocus, isTrue);
+    });
+
+    testWidgets('de focusring van de afspeelknop loopt concentrisch om de gevulde knop', (tester) async {
+      await pumpFilm(tester);
+      // The filled play/pause button is the only IconButton with its own shape.
+      final filled = find.byWidgetPredicate(
+        (w) => w is IconButton && w.style?.shape?.resolve(const {}) is RoundedRectangleBorder,
+      );
+      expect(filled, findsOneWidget);
+      final shape = tester.widget<IconButton>(filled).style!.shape!.resolve(const {})! as RoundedRectangleBorder;
+      final buttonRadius = (shape.borderRadius as BorderRadius).topLeft.x;
+      final wrapper = tester.widget<FocusableWrapper>(
+        find.ancestor(of: filled, matching: find.byType(FocusableWrapper)).first,
+      );
+
+      // The inside-aligned ring insets the button by its own width, so only a
+      // ring that is that much rounder follows the button's corners.
+      expect(wrapper.borderRadius, buttonRadius + FocusTheme.focusBorderWidth);
     });
   });
 }
