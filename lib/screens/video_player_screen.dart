@@ -107,6 +107,7 @@ import '../utils/orientation_helper.dart';
 import '../utils/platform_detector.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/snackbar_helper.dart';
+import 'package:path_provider/path_provider.dart';
 import '../utils/stream_buffer_sizing.dart';
 import '../utils/video_player_navigation.dart';
 import 'video_player/auto_play_countdown.dart';
@@ -234,6 +235,8 @@ int avfoundationOsdMaxHeight({required bool isAppleTV}) => isAppleTV ? 1080 : 0;
 /// kernel killed the foreground app on memory at panel open (PLR12, build 448,
 /// footprint 2.1 GB). 64 MiB is several seconds of a 4K remux, enough to ride
 /// out a LAN hiccup; the back buffer only serves short seeks backwards.
+const _tvDiskCache = bool.fromEnvironment('PLEYA_TV_DISK_CACHE');
+
 @visibleForTesting
 Map<String, String> appleTvDemuxerLimits({required bool isAppleTV, required int bufferSizeMB}) =>
     isAppleTV && bufferSizeMB == 0
@@ -1010,6 +1013,27 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
         bufferSizeMB: bufferSizeMB,
       ).entries) {
         await currentPlayer.setProperty(key, value);
+      }
+      // After the ceiling above: with the cache on disk the forward limit is
+      // the disk one. Off unless the build asks for it (not proven on tvOS).
+      if (_tvDiskCache && PlatformDetector.isAppleTV()) {
+        String? cacheDir;
+        try {
+          cacheDir = (await getTemporaryDirectory()).path;
+        } catch (e) {
+          appLogger.w('Disk cache: no temporary directory', error: e);
+        }
+        if (!mounted || player != currentPlayer) return;
+        final disk = appleTvDiskCacheProperties(
+          enabled: true,
+          isAppleTV: true,
+          bufferSizeMB: bufferSizeMB,
+          cacheDir: cacheDir,
+        );
+        appLogger.i('Disk cache: $disk');
+        for (final MapEntry(:key, :value) in disk.entries) {
+          await currentPlayer.setProperty(key, value);
+        }
       }
       if (Platform.isAndroid) {
         // Cap demuxer buffers based on device heap to prevent OOM crashes.

@@ -33,11 +33,54 @@ const mpvDefaultNetworkTimeoutSeconds = 60;
 /// byte while the cache still plays.
 const directPlayNetworkTimeoutSeconds = 10;
 
+/// The shortest read timeout: below this a slow first byte after a seek (a
+/// disk that spins up) would count as a dead connection.
+const minDirectPlayNetworkTimeoutSeconds = 4;
+
+/// The smallest forward cache an open runs with in auto mode: the Apple TV
+/// ceiling of `appleTvDemuxerLimits`. The timeout is sized to it on every
+/// platform, so a larger cache only adds margin.
+const assumedForwardCacheBytes = 64 * 1024 * 1024;
+
 /// The `network-timeout` for an open. Only direct play of a network file gets
-/// the short one: a transcode can keep a request waiting while the server
+/// a short one: a transcode can keep a request waiting while the server
 /// prepares its first segments, and live and local media keep mpv's default.
-int networkTimeoutSeconds({required bool isNetworkVod, required bool isTranscoding}) =>
-    isNetworkVod && !isTranscoding ? directPlayNetworkTimeoutSeconds : mpvDefaultNetworkTimeoutSeconds;
+///
+/// The cache must outlast the wait: at [bitrateKbps] the forward cache holds
+/// `cache / bitrate` seconds, and half of that is spent waiting, so the
+/// reconnect has the other half to deliver. 64 MiB at 26 Mbit/s is 20 s and
+/// keeps the ten seconds; at 80 Mbit/s it is 6.7 s and the wait drops to four.
+/// Without a bitrate the ten seconds stand.
+int networkTimeoutSeconds({
+  required bool isNetworkVod,
+  required bool isTranscoding,
+  int? bitrateKbps,
+  int cacheBytes = assumedForwardCacheBytes,
+}) {
+  if (!isNetworkVod || isTranscoding) return mpvDefaultNetworkTimeoutSeconds;
+  if (bitrateKbps == null || bitrateKbps <= 0) return directPlayNetworkTimeoutSeconds;
+  final cacheSeconds = cacheBytes * 8 / (bitrateKbps * 1000);
+  return (cacheSeconds / 2).floor().clamp(minDirectPlayNetworkTimeoutSeconds, directPlayNetworkTimeoutSeconds);
+}
+
+/// The forward cache when it lives on disk (512 MiB): minutes of a film
+/// instead of seconds, without the memory the 64 MiB ceiling protects.
+const appleTvDiskCacheBytes = 512 * 1024 * 1024;
+
+/// Demuxer cache on disk for Apple TV in auto buffer mode, off unless the
+/// build sets `PLEYA_TV_DISK_CACHE`. mpv writes packets to an unlinked file in
+/// [cacheDir] and keeps only an index in memory. Measured with mpv 0.37 on
+/// Linux (13 November 2026, 20 Mbit/s file, 30 s outage): 256 MiB on disk
+/// played through at 89 MB of process memory, the same in memory took 232 MB,
+/// and 16 MiB in memory buffered. Not yet proven on tvOS, hence the switch.
+Map<String, String> appleTvDiskCacheProperties({
+  required bool enabled,
+  required bool isAppleTV,
+  required int bufferSizeMB,
+  required String? cacheDir,
+}) => enabled && isAppleTV && bufferSizeMB == 0 && cacheDir != null && cacheDir.isNotEmpty
+    ? {'cache-on-disk': 'yes', 'demuxer-cache-dir': cacheDir, 'demuxer-max-bytes': '$appleTvDiskCacheBytes'}
+    : const {'cache-on-disk': 'no'};
 
 const minStreamRingBytes = 16 * 1024 * 1024;
 const maxStreamRingBytes = 128 * 1024 * 1024;

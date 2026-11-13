@@ -202,6 +202,7 @@ Het werkpakket is af als deze scenario's aantoonbaar werken, met echte apparaten
 - Zelfstandige modus maakt geen onverwachte centrale verbindingen.
 - Uitval van de centrale dienst volgt het vastgelegde gedrag voor bestaande toegang.
 - Metingen op de NAS tonen acceptabele starttijd, seekgedrag, buffering en belasting.
+- Een verbinding die buitenshuis kort stilvalt of wegvalt, geeft geen zichtbaar bufferen zolang de uitval binnen de buffer van de speler past; de speler verbindt zelf opnieuw op dezelfde positie (zie de roadmapnotitie bij log vcf49, 13 november 2026). Dit geldt voor elke route, ook de relay.
 
 Testaanpak: het daadwerkelijke verificatiegedrag per spelerstack, sleutelgrenzen (welke sleutel waar leeft) en weerstand tegen manipulatie. Geen testclaims die niet kunnen: de server kan bij gewone TLS niet zien of een client pint, en één test bewijst niet algemeen dat ontsleutelen onmogelijk is. Elke fix met negatieve controle; `scripts/ci_checks.sh` groen; UI-stappen met Pleya Verify en screenshotmanifest.
 

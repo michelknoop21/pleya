@@ -85,10 +85,40 @@ void main() {
       expect(directPlayNetworkTimeoutSeconds, lessThan(mpvDefaultNetworkTimeoutSeconds));
     });
 
+    test('the wait is half of what 64 MiB holds at the bitrate, between four and ten seconds', () {
+      int t(int kbps) => networkTimeoutSeconds(isNetworkVod: true, isTranscoding: false, bitrateKbps: kbps);
+      expect(t(8000), 10, reason: 'a light file keeps the ten seconds');
+      expect(t(26000), 10, reason: 'log vcf49: about 20 s of cache');
+      expect(t(40000), 6);
+      expect(t(60000), 4);
+      expect(t(80000), 4, reason: 'never below four: a seek may wait on a disk');
+      expect(networkTimeoutSeconds(isNetworkVod: true, isTranscoding: false, bitrateKbps: 0), 10);
+    });
+
+    test('a bitrate changes nothing for a transcode or local media', () {
+      expect(networkTimeoutSeconds(isNetworkVod: true, isTranscoding: true, bitrateKbps: 80000), 60);
+      expect(networkTimeoutSeconds(isNetworkVod: false, isTranscoding: false, bitrateKbps: 80000), 60);
+    });
+
     test('a transcode, live and local media keep the mpv default', () {
       expect(networkTimeoutSeconds(isNetworkVod: true, isTranscoding: true), 60);
       expect(networkTimeoutSeconds(isNetworkVod: false, isTranscoding: false), 60);
       expect(networkTimeoutSeconds(isNetworkVod: false, isTranscoding: true), 60);
+    });
+  });
+
+  group('appleTvDiskCacheProperties', () {
+    Map<String, String> p({bool enabled = true, bool tv = true, int mb = 0, String? dir = '/tmp/c'}) =>
+        appleTvDiskCacheProperties(enabled: enabled, isAppleTV: tv, bufferSizeMB: mb, cacheDir: dir);
+
+    test('on an Apple TV in auto mode with the switch on the cache goes to disk', () {
+      expect(p(), {'cache-on-disk': 'yes', 'demuxer-cache-dir': '/tmp/c', 'demuxer-max-bytes': '${512 * 1024 * 1024}'});
+    });
+
+    test('off without the switch, off the Apple TV, with a manual buffer or without a directory', () {
+      for (final off in [p(enabled: false), p(tv: false), p(mb: 100), p(dir: null), p(dir: '')]) {
+        expect(off, {'cache-on-disk': 'no'});
+      }
     });
   });
 }

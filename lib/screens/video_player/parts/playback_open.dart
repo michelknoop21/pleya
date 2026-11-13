@@ -612,7 +612,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     // carry a direct-play timeout into a transcode or a live stream.
     await player.setProperty(
       'network-timeout',
-      '${networkTimeoutSeconds(isNetworkVod: isNetworkVod, isTranscoding: isTranscoding)}',
+      '${networkTimeoutSeconds(isNetworkVod: isNetworkVod, isTranscoding: isTranscoding, bitrateKbps: selectedVersion?.bitrate)}',
     );
 
     int? ringBytes;
