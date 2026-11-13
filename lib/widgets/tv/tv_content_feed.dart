@@ -421,8 +421,9 @@ class TvContentFeedState extends State<TvContentFeed>
   ///
   /// **Not "the projection recomputes on its own" — that is true of Continue
   /// Watching alone, and this menu opens on every row, not only that one.**
-  /// `ContinueWatchingRow.onWatchStateChanged` reacts to every
-  /// [WatchStateEvent] and calls `refreshContinueWatching()`, whose own doc
+  /// `ContinueWatchingRow.onWatchStateChanged` reacts to every mark and to
+  /// the first and last progress report of a play (`ProgressRefreshGate`) and
+  /// calls `refreshContinueWatching()`, whose own doc
   /// says it "never refetches hubs" — by design, it is a background poll of
   /// one row, not a general invalidation. A markeer bekeken/onbekeken done
   /// from a Top Picks or Recently Released card is exactly the case that

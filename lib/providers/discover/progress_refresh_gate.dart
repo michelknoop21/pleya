@@ -32,6 +32,12 @@ class ProgressRefreshGate {
     }
     final now = _now();
     final last = _lastReport[key];
+    // A one-shot report (a mirrored copy, an external player) has no closing
+    // report to clear it, so what went quiet is dropped here.
+    if (_lastReport.length > 64) {
+      _lastReport.removeWhere((_, at) => now.difference(at) >= quietWindow);
+      _reportedWatched.retainAll(_lastReport.keys);
+    }
     _lastReport[key] = now;
     // Crossing the watched threshold changes what the row shows; once.
     if (event.isNowWatched == true && _reportedWatched.add(key)) return true;

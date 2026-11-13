@@ -49,7 +49,7 @@ ExternalIds? externalIdsCarriedBy(MediaItem item, {bool allowLegacyPleya = false
       // such a title only got compared when the other server gave it the very
       // same title (DEC-198 read it in the lookup, which a differing title
       // never reaches).
-      final legacy = externalIdsFromLegacyAgentGuid(item.guid);
+      final legacy = _wellFormed(externalIdsFromLegacyAgentGuid(item.guid));
       return legacy.hasAny ? legacy : fromArray;
     case MediaBackend.jellyfin:
       final ids = raw!['ProviderIds'];
@@ -61,4 +61,13 @@ ExternalIds? externalIdsCarriedBy(MediaItem item, {bool allowLegacyPleya = false
     case MediaBackend.local:
       return null;
   }
+}
+
+/// A legacy guid is free text from an old agent. Only an imdb value shaped
+/// like one (`tt` plus digits) becomes evidence; the numeric ids are parsed
+/// as integers already.
+ExternalIds _wellFormed(ExternalIds ids) {
+  final imdb = ids.imdb;
+  if (imdb == null || RegExp(r'^tt\d+$').hasMatch(imdb)) return ids;
+  return ExternalIds(tmdb: ids.tmdb, tvdb: ids.tvdb);
 }

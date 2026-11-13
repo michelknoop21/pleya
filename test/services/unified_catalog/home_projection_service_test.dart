@@ -868,6 +868,26 @@ void main() {
       expect(row.groups.single.sources, hasLength(2));
     });
 
+    test('a series under another title per server is one card: the lookup does not hang on the title', () async {
+      final onDeck = [
+        _episode('a1', serverId: 'a', show: 'La Casa de Papel', showId: 'show-a', lastViewedAt: 100),
+        _episode('b1', serverId: 'b', show: 'Money Heist', showId: 'show-b', lastViewedAt: 200),
+      ];
+      final asked = <String>[];
+      final service = HomeProjectionService(
+        fetchExternalIds: (serverId, targetId) async {
+          asked.add('$serverId:$targetId');
+          return const ExternalIds(tmdb: 71446);
+        },
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(1));
+      expect(row.groups.single.sources, hasLength(2));
+      expect(asked, unorderedEquals(['a:show-a', 'b:show-b']));
+    });
+
     test('a guid without a number whose lookup fails stays its own card', () async {
       final onDeck = [
         _movie('a1', serverId: 'a', title: 'Brothers', year: 2024, guid: 'plex://movie/5d776d1e96b655001fe2b1a4'),

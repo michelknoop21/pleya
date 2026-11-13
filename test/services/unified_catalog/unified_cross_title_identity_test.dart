@@ -18,6 +18,7 @@ import 'package:pleya/media/unified/carried_external_ids.dart';
 import 'package:pleya/media/unified/identity_evidence.dart';
 import 'package:pleya/media/unified/unified_media_group.dart';
 import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/unified_catalog/grouping_service.dart';
 import 'package:pleya/services/unified_catalog/identity_lookup_cache.dart';
@@ -86,10 +87,14 @@ Future<({List<UnifiedMediaGroup> groups, List<String> lookups})> _continueWatchi
 }
 
 class _CountingClient implements MediaServerClient {
-  _CountingClient(this._serverId, this.answer);
+  _CountingClient(this._serverId, this.answer, {this.onDeck = const []});
   final String _serverId;
   Future<ExternalIds> Function(String id) answer;
+  final List<MediaItem> onDeck;
   int calls = 0;
+
+  @override
+  Future<List<MediaItem>> fetchContinueWatching({int? count}) async => onDeck;
 
   @override
   ServerId get serverId => ServerId(_serverId);
@@ -177,6 +182,38 @@ void main() {
     });
   });
 
+  group('the production Verder kijken aggregation', () {
+    test('folds a series that carries another title per server, and asks each server once', () async {
+      MediaItem inProgress(MediaItem item) => item.copyWith(viewOffsetMs: 600000, durationMs: 2400000);
+      final plexClient = _CountingClient(
+        'srv-plex',
+        (_) async => const ExternalIds(tmdb: 71446),
+        onDeck: [inProgress(_episode('p-e8', show: 'La Casa de Papel', showId: 'p-show', server: 'srv-plex'))],
+      );
+      final otherClient = _CountingClient(
+        'srv-jf',
+        (_) async => const ExternalIds(tmdb: 71446),
+        onDeck: [
+          inProgress(
+            _episode('j-e8', show: 'Money Heist', showId: 'j-show', server: 'srv-jf', backend: MediaBackend.jellyfin),
+          ),
+        ],
+      );
+      final manager = MultiServerManager()
+        ..debugRegisterClientForTesting(plexClient)
+        ..debugRegisterClientForTesting(otherClient);
+      addTearDown(manager.dispose);
+      final service = DataAggregationService(manager);
+
+      final first = await service.getOnDeckFromAllServers();
+      final second = await service.getOnDeckFromAllServers();
+
+      expect(first.items, hasLength(1));
+      expect(second.items, hasLength(1));
+      expect([plexClient.calls, otherClient.calls], [1, 1], reason: 'the second refresh reads the session cache');
+    });
+  });
+
   group('continueWatchingLookupKeys', () {
     test('one server keeps the title bucket, so a single-server row asks nothing extra', () {
       final a = _episode('a', show: 'Harbourlight', showId: 's1', server: 'srv-plex');
@@ -257,6 +294,10 @@ void main() {
         },
       );
       expect(externalIdsCarriedBy(item)?.imdb, 'tt0111161');
+    });
+
+    test('an imdb value that is not shaped like one is no evidence', () {
+      expect(externalIdsCarriedBy(legacyPlex('com.plexapp.agents.imdb://local-4521?lang=en')), isNull);
     });
 
     test('an unmatched or modern guid carries nothing more than before', () {

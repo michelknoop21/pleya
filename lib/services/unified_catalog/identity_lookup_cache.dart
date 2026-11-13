@@ -25,10 +25,11 @@ final Expando<Map<String, _Entry>> _cacheOf = Expando('identityLookupCache');
 /// client. Throws when the server has no client or the lookup fails, so the
 /// caller degrades that one item to guid-only evidence.
 ///
-/// Not cached: a failed lookup (the next round retries it), and anything from
-/// a Pleya Server. Its answer is only proof together with the identity source
-/// the client reports at that moment (`canTrustStoredIdentity`), and the
-/// client already keeps its own short cache.
+/// Not cached: a failed lookup (the next round retries it), and a Pleya Server
+/// answer unless the server applies its numbers itself. Such an answer is only
+/// proof together with the identity source the client reports
+/// (`canTrustStoredIdentity`), so it is remembered under that client and that
+/// source: another client, or a server that stops applying, misses the cache.
 Future<ExternalIds> fetchExternalIdsForIdentity(
   MultiServerManager manager,
   String serverId,
@@ -37,10 +38,13 @@ Future<ExternalIds> fetchExternalIdsForIdentity(
 }) {
   final client = manager.getClient(ServerId(serverId));
   if (client == null) return Future.error(StateError('No client for server $serverId'));
-  if (client is PleyaServerClient) return client.fetchExternalIds(targetId);
+  var key = '$serverId:$targetId';
+  if (client is PleyaServerClient) {
+    if (client.externalIdentitySource != 'applied') return client.fetchExternalIds(targetId);
+    key = '$key:applied:${identityHashCode(client)}';
+  }
 
   final cache = _cacheOf[manager] ??= {};
-  final key = '$serverId:$targetId';
   final hit = cache[key];
   if (hit != null && now().difference(hit.storedAt) < identityLookupTtl) return hit.future;
 

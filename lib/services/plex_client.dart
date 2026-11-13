@@ -2120,12 +2120,12 @@ class PlexClient
     return [];
   }
 
-  /// Get related hubs for a specific metadata item (collections, similar, "more from" director/actor)
   /// Makes a list answer carry each title's provider numbers (`Guid` array),
   /// so the unified pipeline recognises it on another server without a request
   /// per title and without leaning on its name (`externalIdsCarriedBy`).
   static const Map<String, dynamic> _carryGuids = {'includeGuids': 1};
 
+  /// Get related hubs for a specific metadata item (collections, similar, "more from" director/actor)
   Future<List<PlexHubDto>> _getRelatedHubs(String ratingKey, {int count = 10}) async {
     try {
       final response = await retryTransientMediaServerCall(
