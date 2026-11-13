@@ -112,8 +112,10 @@ set +e
 # Eigen deadline: de gedeelde wachtrij begrenst sinds 12 november elke taak op
 # 30 minuten tenzij de aanroeper zelf een limiet kiest, en ziet `bash -c` niet als
 # fastlane. Drie platforms na elkaar duren onder load langer; build 463 werd zo
-# midden in de Mac-archive afgebroken.
-python3 "$ROOT/scripts/heavy_queue.py" run --run-timeout 7200 --label "testflight-$LANE" -- \
+# midden in de Mac-archive afgebroken. De idle-grens (standaard 5 minuten zonder
+# CPU) gaat ook omhoog: terwijl de lane op Apple's processing wacht om te koppelen
+# en de notes te zetten, pollt fastlane elke 30 s en doet verder niets.
+python3 "$ROOT/scripts/heavy_queue.py" run --run-timeout 7200 --idle-timeout 1200 --label "testflight-$LANE" -- \
   bash -c 'clean=$1; shift; if [[ "$clean" == "1" ]]; then flutter clean || exit $?; fi; exec fastlane "$@"' \
   -- "$DO_CLEAN" "$LANE" ${LANE_OPTS[@]+"${LANE_OPTS[@]}"}
 fastlane_status=$?

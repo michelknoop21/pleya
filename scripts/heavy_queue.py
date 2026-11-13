@@ -330,6 +330,10 @@ def main():
     run.add_argument('--label')
     run.add_argument('--wait-timeout', type=duration, default=7200)
     run.add_argument('--run-timeout', type=duration)
+    # Same flag as the shared runtime, which kills a task after this long without CPU activity
+    # (0 disables it). This wrapper has no idle watchdog, so here it never stops a task; it is
+    # accepted so a caller passes one set of flags to whichever queue the checkout routes to.
+    run.add_argument('--idle-timeout', type=duration)
     run.add_argument('--kill-after', type=duration, default=15)
     run.add_argument('command', nargs=argparse.REMAINDER)
     status = subs.add_parser('status')

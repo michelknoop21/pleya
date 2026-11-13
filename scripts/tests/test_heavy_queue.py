@@ -246,6 +246,12 @@ class HeavyQueueTest(unittest.TestCase):
         successor = self.start('after-timeout', 'pass')
         self.assertEqual(successor.wait(timeout=3), 0)
 
+    def test_idle_timeout_is_accepted_and_never_stops_a_quiet_task(self):
+        # testflight_release.sh passes the shared runtime's flags; this wrapper must take them.
+        holder = self.start('quiet-task', 'import time; time.sleep(.6)', '--run-timeout', '5s',
+                            '--idle-timeout', '.2s')
+        self.assertEqual(holder.wait(timeout=4), 0, holder.communicate()[1])
+
     def test_guardian_crash_does_not_release_while_its_worker_runs(self):
         marker = self.root / 'guardian-worker-started'
         done = self.root / 'guardian-worker-done'
