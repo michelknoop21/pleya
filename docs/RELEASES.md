@@ -63,9 +63,11 @@ Available to internal TestFlight testers on iPhone, iPad and Apple TV.
 - **Deleting on a Pleya Server erases the files.** Only the owner or an administrator sees the
   action, and only when the server has it switched on. If some files could not be removed, the
   message says how many went and the list refreshes; a title with a file left stays.
-- **Mark a whole season or series as watched in one go on a Pleya Server.** Older servers get
-  the same result one episode at a time, and a failure halfway says what did get marked.
-- **Refresh the metadata of one title** on Plex, Jellyfin, Emby and now a Pleya Server.
+- **Mark a whole season or series as watched or unwatched in one go on a Pleya Server.** Older
+  servers get the same result one episode at a time; if that stops halfway, the episodes already
+  marked show as marked.
+- **Big P can refresh the metadata of a single title on a Pleya Server**, as it already could on
+  Plex, Jellyfin and Emby.
 - **A scan shows when the next one is due** on a Pleya Server, Jellyfin and Emby. Plex does not
   report that time.
 
@@ -73,8 +75,7 @@ Available to internal TestFlight testers on iPhone, iPad and Apple TV.
 
 - **Resuming a converted title on a Pleya Server starts where you left off.** Switching
   quality or audio track halfway also continues from the same point instead of 0:00.
-  iPhone, iPad and Apple TV; Android still starts the conversion from the beginning.
-- **The iPhone player controls are tighter and easier to hit.** Play is larger, previous and
+- **The iPhone and iPad player controls are tighter and easier to hit.** Play is larger, previous and
   next sit next to it, the bottom row is centred, and the timeline has a round handle with a
   touch area across the times. A film with no neighbours shows no previous or next.
 - **The Apple TV player sits clear of the TV edge.** The transport row moved up out of the
@@ -88,7 +89,8 @@ Worth checking on hardware:
 - Apple TV: transport row clear of the bottom edge on your TV, text readable from the couch,
   one focus style along the row, sleep timer in two columns.
 - iPhone, portrait and landscape: player controls, the timeline handle, and the next-episode
-  card staying clear of the controls.
+  card staying clear of the controls. A swipe up that starts on the times now seeks instead of
+  opening the panel.
 - All Movies and All Series: "Delete from server" on Plex (owner), Jellyfin and Emby
   (administrator); on Apple TV through "Manage".
 - Pleya Server: delete a film, a season and the last episode of a season; mark a season as
