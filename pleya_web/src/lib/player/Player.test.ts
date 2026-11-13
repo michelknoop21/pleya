@@ -101,11 +101,11 @@ describe('spelerschil', () => {
     expect(onlogin).toHaveBeenCalled();
   });
 
-  it('opent de spoorkiezer met alleen WebVTT en laadt de gekozen ondertitel', async () => {
+  it('opent het ondertitelmenu met alleen WebVTT en laadt de gekozen ondertitel', async () => {
     const { api } = mount();
     await screen.findByRole('button', { name: '10 seconden vooruit' });
-    await fireEvent.click(screen.getByRole('button', { name: 'Audio en ondertitels' }));
-    const dialog = screen.getByRole('dialog', { name: 'Audio en ondertitels' });
+    await fireEvent.click(screen.getByRole('button', { name: 'Ondertitels' }));
+    const dialog = screen.getByRole('dialog', { name: 'Ondertitels' });
     expect(dialog).toHaveTextContent('1 ondertitel moet eerst omgezet worden');
     await fireEvent.click(screen.getByRole('radio', { name: 'Nederlands' }));
     await waitFor(() => expect(document.querySelector('track')).not.toBeNull());

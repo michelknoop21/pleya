@@ -5,8 +5,8 @@
   web.css (.card en verwanten) zoals specimen v3 ze toont.
 
   De kaart is een div; de link dekt beeld en bijschrift, en de acties liggen
-  als zuster boven het beeld. Zo staat er nooit een knop in een <a>, en blijft
-  de rest van het beeld gewoon de link.
+  als zuster boven het beeld (MediaCardActions). Zo staat er nooit een knop in
+  een <a>, en blijft de rest van het beeld gewoon de link.
 
   De kaart vult de breedte van zijn cel. Hoe breed die is (poster, of 1,78
   keer zo breed voor wide) bepaalt het raster of de rij eromheen.
@@ -18,7 +18,7 @@
   import type { Snippet } from 'svelte';
   import Artwork from './Artwork.svelte';
   import MediaCardBadges from './MediaCardBadges.svelte';
-  import CardMenu from './CardMenu.svelte';
+  import MediaCardActions from './MediaCardActions.svelte';
   import type { Item } from '../api/types';
   import {
     artworkAspect,
@@ -52,6 +52,11 @@
     subtitle?: string;
     /** Knoppen in de hover-overlay. Zonder snippet is er geen overlay. */
     actions?: Snippet;
+    /**
+     * Afspelen, gezien en favoriet naast het kaartmenu, bij hover en bij
+     * toetsenbordfocus. Home zet dit aan; elders blijft het menu alleen.
+     */
+    quickActions?: boolean;
   }
 
   let {
@@ -63,7 +68,8 @@
     isNew = false,
     artworkId: artworkOverride,
     subtitle: subtitleOverride,
-    actions
+    actions,
+    quickActions = false
   }: Props = $props();
 
   // De linknaam begint bij de titel; de tekens op het beeld zijn beschrijving.
@@ -72,9 +78,17 @@
   const artworkId = $derived(
     artworkOverride !== undefined ? artworkOverride : cardArtworkId(item, shape)
   );
-  const watched = $derived(isWatched(item));
-  const progress = $derived(itemProgress(item));
-  const subtitle = $derived(subtitleOverride ?? cardSubtitle(item));
+  // Wat de kijker op deze kaart wijzigt (gezien, favoriet) komt niet terug in
+  // de lijst van de ouder. De kaart houdt het bij per item, zodat een andere
+  // titel in dezelfde cel schoon begint.
+  let edit = $state<{ id: string; patch: Partial<Item> } | null>(null);
+  const current = $derived(edit?.id === item.id ? { ...item, ...edit.patch } : item);
+  const change = (patch: Partial<Item>) => {
+    edit = { id: item.id, patch: { ...(edit?.id === item.id ? edit.patch : {}), ...patch } };
+  };
+  const watched = $derived(isWatched(current));
+  const progress = $derived(itemProgress(current));
+  const subtitle = $derived(subtitleOverride ?? cardSubtitle(current));
 </script>
 
 <div class="card" data-kind={item.kind} data-shape={shape}>
@@ -122,7 +136,7 @@
       <div class="card__actions">{@render actions()}</div>
     </div>
   {/if}
-  <div class="card__add"><CardMenu {item} /></div>
+  <MediaCardActions item={current} {shape} quick={quickActions} titleId="{uid}-title" onchange={change} />
 </div>
 
 <style>
@@ -229,55 +243,6 @@
     .card__link:focus-visible .card__art {
       outline: var(--ring) solid CanvasText;
       outline-offset: 3px;
-    }
-  }
-
-  /*
-   * Het kaartmenu ligt rechtsboven op het beeld. Op een aanraakscherm staat hij er
-   * altijd, want daar is geen hover; met een muis verschijnt hij bij hover en bij
-   * toetsenbordfocus, zodat een rij kaarten rustig blijft.
-   */
-  .card__add {
-    position: absolute;
-    top: calc(var(--space-quarter) + 6px);
-    right: 6px;
-    z-index: 2;
-  }
-
-  .card__add :global(.more) {
-    position: relative;
-    width: 32px;
-    height: 32px;
-    background: color-mix(in srgb, var(--art-shade) 70%, transparent);
-    color: #fff;
-  }
-
-  .card__add :global(.more svg) {
-    width: 18px;
-    height: 18px;
-  }
-
-  /* Het raakvlak is 44, ook al tekent de knop 32. */
-  .card__add :global(.more)::after {
-    content: '';
-    position: absolute;
-    inset: -6px;
-  }
-
-  .card__add :global(.more:focus-visible) {
-    outline: var(--ring) solid #fff;
-    outline-offset: 1px;
-  }
-
-  @media (hover: hover) {
-    .card__add {
-      opacity: 0;
-      transition: opacity var(--dur-fast) var(--ease);
-    }
-
-    .card:hover .card__add,
-    .card__add:focus-within {
-      opacity: 1;
     }
   }
 

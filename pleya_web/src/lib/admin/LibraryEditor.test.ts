@@ -174,10 +174,10 @@ describe('scherm 22, toevoegen', () => {
   it('maakt een bibliotheek aan met POST en gaat terug naar de lijst', async () => {
     const server = setup();
     const name = await openEditor(null);
-    expect(screen.getByRole('button', { name: 'Toevoegen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Aanmaken zonder scan' })).toBeDisabled();
     await userEvent.type(name, 'Docu');
     await userEvent.click(screen.getByRole('checkbox', { name: /\/media\/vrij/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Toevoegen' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aanmaken zonder scan' }));
 
     await waitFor(() =>
       expect(server.writes()).toEqual([
@@ -191,12 +191,76 @@ describe('scherm 22, toevoegen', () => {
     expect(h.goto).toHaveBeenCalledWith('/admin/libraries?added=Docu');
   });
 
+  it('start bij Aanmaken en scannen na de POST een scan van de nieuwe bibliotheek', async () => {
+    const server = setup();
+    const name = await openEditor(null);
+    await userEvent.type(name, 'Docu');
+    await userEvent.click(screen.getByRole('radio', { name: 'Series' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /\/media\/vrij/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aanmaken en scannen' }));
+
+    await waitFor(() => expect(h.goto).toHaveBeenCalledWith('/admin/libraries?added=Docu&scan=queued'));
+    expect(server.writes()).toEqual([
+      {
+        method: 'POST',
+        path: '/libraries',
+        body: { title: 'Docu', kind: 'shows', root_paths: ['/media/vrij'], scan_on_start: true }
+      },
+      { method: 'POST', path: '/libraries/new1/scan', body: undefined }
+    ]);
+  });
+
+  it('gaat ook naar de lijst als alleen de scan mislukt, en zegt dat erbij', async () => {
+    setup({ 'POST /libraries/new1/scan': apiError('server.internal', 500) });
+    const name = await openEditor(null);
+    await userEvent.type(name, 'Docu');
+    await userEvent.click(screen.getByRole('checkbox', { name: /\/media\/vrij/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aanmaken en scannen' }));
+    await waitFor(() => expect(h.goto).toHaveBeenCalledWith('/admin/libraries?added=Docu&scan=failed'));
+  });
+
+  it('start geen scan als het aanmaken zelf geweigerd wordt (negatieve controle)', async () => {
+    const server = setup({ 'POST /libraries': apiError('library.slug_taken', 409) });
+    const name = await openEditor(null);
+    await userEvent.type(name, 'Films');
+    await userEvent.click(screen.getByRole('checkbox', { name: /\/media\/vrij/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aanmaken en scannen' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kies een andere naam');
+    expect(server.writes().map((w) => w.path)).toEqual(['/libraries']);
+    expect(h.goto).not.toHaveBeenCalled();
+  });
+
+  it('stuurt het gekozen scaninterval en scannen bij het opstarten mee', async () => {
+    const server = setup();
+    const name = await openEditor(null);
+    await userEvent.type(name, 'Docu');
+    await userEvent.click(screen.getByRole('checkbox', { name: /\/media\/vrij/ }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Scannen' }), '3600');
+    await userEvent.click(screen.getByRole('switch', { name: 'Scannen bij het opstarten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aanmaken zonder scan' }));
+    await waitFor(() =>
+      expect(server.writes()).toEqual([
+        {
+          method: 'POST',
+          path: '/libraries',
+          body: {
+            title: 'Docu',
+            kind: 'movies',
+            root_paths: ['/media/vrij'],
+            scan_on_start: false,
+            scan_interval_seconds: 3600
+          }
+        }
+      ])
+    );
+  });
+
   it('vraagt bij library.slug_taken om een andere naam', async () => {
     setup({ 'POST /libraries': apiError('library.slug_taken', 409) });
     const name = await openEditor(null);
     await userEvent.type(name, 'Films');
     await userEvent.click(screen.getByRole('checkbox', { name: /\/media\/vrij/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Toevoegen' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aanmaken zonder scan' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Kies een andere naam');
     expect(h.goto).not.toHaveBeenCalled();
   });
@@ -288,7 +352,7 @@ describe('nieuwe submap onder een aangeboden mount', () => {
     expect(screen.getByRole('checkbox', { name: /\/media\/Documentaires/ })).toBeChecked();
     expect(screen.getByText('nieuwe map, nog niet opgeslagen')).toBeInTheDocument();
     expect(field()).toHaveValue('');
-    await userEvent.click(screen.getByRole('button', { name: 'Toevoegen' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aanmaken zonder scan' }));
 
     await waitFor(() =>
       expect(server.writes()).toEqual([
@@ -337,7 +401,7 @@ describe('nieuwe submap onder een aangeboden mount', () => {
     await addFolder('/media/Weg');
     await userEvent.click(screen.getByRole('button', { name: 'Verwijder /media/Weg' }));
     expect(screen.queryByRole('checkbox', { name: /\/media\/Weg/ })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Toevoegen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Aanmaken zonder scan' })).toBeDisabled();
     expect(server.writes()).toEqual([]);
   });
 
@@ -387,7 +451,7 @@ describe('nieuwe submap onder een aangeboden mount', () => {
       const name = await openEditor(null);
       await userEvent.type(name, 'Docu');
       await addFolder('/media/Documentaires');
-      await userEvent.click(screen.getByRole('button', { name: 'Toevoegen' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Aanmaken zonder scan' }));
       return screen.findByRole('alert');
     }
 

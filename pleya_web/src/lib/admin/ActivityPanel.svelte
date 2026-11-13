@@ -1,18 +1,34 @@
 <!--
-  Activiteit op scherm 20: de laatste scans en de mislukte taken, nieuwste
-  eerst. Een lijst in een paneel en geen DataTable, omdat de northstar hier
-  geen kolomkop tekent. De knoppen afbreken en opnieuw horen bij scherm 25
-  (S10.3) en staan hier nog niet.
+  Taken en activiteit op het overzicht: de laatste scans en de mislukte taken,
+  nieuwste eerst. Een lijst in een paneel en geen DataTable, omdat het
+  doelbeeld hier geen kolomkop tekent.
+
+  Dezelfde twee handelingen als scherm 25: Afbreken bij een scan die wacht of
+  loopt (via zijn job, `POST /jobs/{id}/cancel`) en Nu opnieuw bij een mislukte
+  taak (`POST /jobs/{id}/retry`). Het paneel stuurt zelf niets; het overzicht
+  doet de aanvraag en toont de melding.
 -->
 <script lang="ts">
+  import AdminIcon from '../components/AdminIcon.svelte';
   import Panel from '../components/Panel.svelte';
   import StatusPill, { type PillTone } from '../components/StatusPill.svelte';
-  import type { Scan } from '../api/types';
+  import type { Job, Scan } from '../api/types';
   import { t, type MessageKey } from '../i18n';
   import { formatRelative } from '../util/format';
-  import { activity, countLabel, type ActivityEntry, type OverviewData } from './overview';
+  import { failedJobTitle, scanJob } from './activity';
+  import { activity, countLabel, libraryTitle, type ActivityEntry, type OverviewData } from './overview';
 
-  let { data }: { data: OverviewData } = $props();
+  interface Props {
+    data: OverviewData;
+    /** Jobs waarvoor nu een afbreekaanvraag loopt. */
+    stopping?: Record<string, boolean>;
+    /** Jobs waarvoor nu een nieuwe poging wordt aangevraagd. */
+    retrying?: Record<string, boolean>;
+    onstop?: (job: Job, name: string) => void;
+    onretry?: (job: Job, name: string) => void;
+  }
+
+  let { data, stopping = {}, retrying = {}, onstop = () => {}, onretry = () => {} }: Props = $props();
 
   const entries = $derived(activity(data));
 
@@ -68,12 +84,39 @@
               </p>
             {/if}
           </div>
-          {#if entry.kind === 'scan'}
-            {@const state = SCAN_STATE[entry.scan.state] ?? SCAN_STATE['queued']!}
-            <StatusPill tone={state.tone} label={t(state.label)} />
-          {:else}
-            <StatusPill tone="err" label={t('admin.state.failed')} />
-          {/if}
+          <div class="end">
+            {#if entry.kind === 'scan'}
+              {@const state = SCAN_STATE[entry.scan.state] ?? SCAN_STATE['queued']!}
+              {@const job = scanJob(data.jobs, entry.scan)}
+              {@const name = entryTitle(entry)}
+              <StatusPill tone={state.tone} label={t(state.label)} />
+              {#if job}
+                <button
+                  type="button"
+                  class="btn btn--secondary btn--sm"
+                  disabled={stopping[job.id] || job.cancel_requested_at !== null}
+                  aria-label={t('admin.act.running.stopNamed', { name })}
+                  onclick={() => onstop(job, name)}
+                >
+                  <AdminIcon name="stop" size={14} />{job.cancel_requested_at !== null || stopping[job.id]
+                    ? t('admin.act.running.stopping')
+                    : t('admin.act.running.stop')}
+                </button>
+              {/if}
+            {:else}
+              {@const name = failedJobTitle(entry.job, libraryTitle(data.libraries, entry.job.library_id))}
+              <StatusPill tone="err" label={t('admin.state.failed')} />
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                disabled={retrying[entry.job.id]}
+                aria-label={t('admin.act.failures.retryNamed', { name })}
+                onclick={() => onretry(entry.job, name)}
+              >
+                <AdminIcon name="refresh" size={14} />{t('admin.act.failures.retry')}
+              </button>
+            {/if}
+          </div>
         </li>
       {/each}
     </ul>
@@ -119,6 +162,14 @@
     min-width: 0;
   }
 
+  .end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
   .t {
     margin: 0;
     font-size: 15px;
@@ -135,5 +186,19 @@
 
   .s .mono {
     font-size: 12px;
+  }
+
+  /* Onder 900 staan status en knop onder de tekst, anders blijft er voor een
+     pad of foutmelding een kolom van een paar woorden over. */
+  @media (max-width: 899px) {
+    .row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .end {
+      justify-content: flex-start;
+    }
   }
 </style>

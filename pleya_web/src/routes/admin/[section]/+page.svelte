@@ -21,8 +21,8 @@
 
 {#if section?.id === 'overview'}
   <OverviewLoader>
-    {#snippet children(overview)}
-      <AdminOverview data={overview} />
+    {#snippet children(overview, reload)}
+      <AdminOverview data={overview} onreload={reload} />
     {/snippet}
   </OverviewLoader>
 {:else if section}

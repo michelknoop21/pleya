@@ -1,9 +1,14 @@
 <!--
-  Scherm 27: één gebruiker. Rol, bibliotheken, toestellen, account en
-  verwijderen, met Annuleren en Opslaan onderaan. Rol en rechten gaan in
-  één Opslaan, maar als twee aanvragen (`PATCH /users/{id}` eerst, dan
-  `PUT /users/{id}/permissions`), zodat de server de nieuwe rol kent als hij de
-  rechten toetst.
+  De pagina van één gebruiker (scherm 27, herzien): een kop met naam, rol en
+  toestellen, en drie tabs. Profiel draagt het account en het wachtwoord,
+  Toegang de rol en de bibliotheekrechten, Toestellen de sessies. Verwijderen
+  staat onder elke tab. Wachtwoord opnieuw instellen en Opslaan staan in de
+  kop; de eerste opent het formulier op de tab Profiel.
+
+  Rol en rechten gaan in één Opslaan, maar als twee aanvragen (`PATCH
+  /users/{id}` eerst, dan `PUT /users/{id}/permissions`), zodat de server de
+  nieuwe rol kent als hij de rechten toetst. Een tabwissel gooit niets weg: de
+  gekozen rol en rechten leven hier en niet in de tab.
 
   Bevestigen is hier geen versiering: een rol die rechten afneemt, en het
   vervangen van de rechtenlijst, gaan nooit zonder dialoog door. Het
@@ -12,7 +17,8 @@
   daarna dicht gaat, en na het opslaan laadt de sessie opnieuw.
 
   Weggelaten omdat het contract het niet draagt: aangemaakt op, hernoemen,
-  een uitgeschakelde staat voor een gebruiker, en een route om alle sessies in
+  een uitgeschakelde staat voor een gebruiker, een leeftijdsgrens of
+  kijktijden, rechten kopiëren van een ander, en een route om alle sessies in
   één keer in te trekken. Het toestellenwerk staat in UserDevices.
 -->
 <script lang="ts">
@@ -26,41 +32,45 @@
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import SkeletonPage from '../components/SkeletonPage.svelte';
   import StateView from '../components/StateView.svelte';
-  import StatusPill from '../components/StatusPill.svelte';
-  import { plural, t } from '../i18n';
+  import { t } from '../i18n';
   import { session } from '../stores/session.svelte';
-  import AdminPageHead from './AdminPageHead.svelte';
   import UserAccountPanel from './UserAccountPanel.svelte';
   import UserDeletePanel from './UserDeletePanel.svelte';
   import UserDevices from './UserDevices.svelte';
+  import UserHead from './UserHead.svelte';
   import UserPermissionsPanel from './UserPermissionsPanel.svelte';
   import UserProblemAlert from './UserProblemAlert.svelte';
   import UserRolePanel from './UserRolePanel.svelte';
+  import UserTabs from './UserTabs.svelte';
   import { userProblem, type UserProblem } from './userErrors';
   import {
     clampForRole,
-    deviceSessions,
     grantLines,
     grantsFrom,
     hasChanges,
     loadUserDetail,
+    parseTab,
     roleLabel,
     savePlan,
     seesEverything,
     type Grants,
     type SavePlan,
-    type UserDetail
+    type UserDetail,
+    type UserTab
   } from './users';
 
   interface Props {
     id: string;
     /** Naam van een gebruiker die net is aangemaakt (`?added=`). */
     added?: string | null;
+    /** De tab uit `?tab=`; zonder waarde Toegang. */
+    tab?: string | null;
   }
 
-  let { id, added = null }: Props = $props();
+  let { id, added = null, tab: tabParam = null }: Props = $props();
 
   const LIST = '/admin/users';
+  const FORM = 'user-access-form';
   const usersApi = $derived(adminUsersApi(session.client));
 
   let detail = $state<UserDetail | null>(null);
@@ -77,6 +87,8 @@
   let retry = $state<(() => void) | null>(null);
   let notice = $state<string | null>(null);
   let resetBusy = $state(false);
+  let resetOpen = $state(false);
+  let tab = $state<UserTab>('access');
 
   let saveOpen = $state(false);
   let deleteOpen = $state(false);
@@ -84,6 +96,10 @@
 
   $effect(() => {
     if (added) notice = t('admin.users.notice.added', { name: added });
+  });
+
+  $effect(() => {
+    tab = parseTab(tabParam);
   });
 
   $effect(() => {
@@ -102,7 +118,7 @@
     return () => controller.abort();
   });
 
-  // Een beperkte gebruiker kan geen Beheren dragen: een al gezet vinkje zakt
+  // Een beperkte gebruiker kan geen Beheren dragen: een al gekozen Beheren zakt
   // naar Downloaden zodra de rol Beperkt gekozen wordt.
   $effect(() => {
     grants = clampForRole(grants, chosen as Role);
@@ -123,7 +139,22 @@
       : null
   );
   const dirty = $derived(plan !== null && hasChanges(plan));
-  const deviceCount = $derived(detail?.sessions ? deviceSessions(detail.sessions).length : null);
+
+  function select(next: UserTab): void {
+    tab = next;
+    // Een melding met "Opnieuw proberen" hoort bij het paneel dat hem gaf; dat
+    // paneel bestaat na de wissel niet meer, dus de melding gaat mee weg.
+    problem = null;
+    retry = null;
+    // De query volgt de tab, zodat herladen op dezelfde tab blijft; `reset: false`
+    // houdt de scrollstand en de focus op de aangeklikte tab.
+    void goto(`?tab=${next}`, { replaceState: true, reset: false });
+  }
+
+  function openReset(): void {
+    resetOpen = true;
+    if (tab !== 'profile') select('profile');
+  }
 
   function fail(err: unknown, again: () => void): void {
     notice = null;
@@ -206,76 +237,80 @@
 </script>
 
 {#if user && detail}
-  <AdminPageHead
-    title={user.username}
-    crumbs={[
-      { label: t('admin.title'), href: '/admin' },
-      { label: t('admin.nav.users'), href: LIST },
-      { label: user.username }
-    ]}
-  >
-    {#snippet actions()}
-      {#if deviceCount !== null}
-        <StatusPill
-          variant="dot"
-          tone={deviceCount > 0 ? 'ok' : 'idle'}
-          label={deviceCount > 0
-            ? plural('admin.users.signedIn', deviceCount)
-            : t('admin.users.signedIn.none')}
+  <div class="page">
+    <UserHead
+      {user}
+      sessions={detail.sessions}
+      listHref={LIST}
+      canReset={user.role !== 'owner' || isSelf}
+      {dirty}
+      {saving}
+      onreset={openReset}
+      formId={FORM}
+    />
+
+    {#if notice}
+      <div class="msg"><Alert tone="info">{notice}</Alert></div>
+    {/if}
+    {#if problem}
+      <div class="msg">
+        <UserProblemAlert {problem} onretry={() => retry?.()} onreload={reload} />
+      </div>
+    {/if}
+
+    <UserTabs active={tab} onselect={select} />
+
+    <div class="body">
+      <!-- Alle drie de tabs blijven bestaan en worden verborgen: een lopende
+           intrekking of een open wachtwoordformulier overleeft zo een tabwissel. -->
+      <div class="pane" hidden={tab !== 'profile'}>
+        <UserAccountPanel
+          username={user.username}
+          canReset={user.role !== 'owner' || isSelf}
+          busy={resetBusy}
+          bind:open={resetOpen}
+          onreset={resetPassword}
         />
-      {/if}
-    {/snippet}
-  </AdminPageHead>
-
-  {#if notice}
-    <div class="msg"><Alert tone="info">{notice}</Alert></div>
-  {/if}
-  {#if problem}
-    <div class="msg">
-      <UserProblemAlert {problem} onretry={() => retry?.()} onreload={reload} />
-    </div>
-  {/if}
-
-  <div class="cols">
-    <form
-      class="main"
-      onsubmit={(e) => {
-        e.preventDefault();
-        requestSave();
-      }}
-    >
-      <UserRolePanel current={user.role} bind:chosen />
-      <UserPermissionsPanel
-        {name}
-        role={user.role === 'owner' ? 'owner' : (chosen as Role)}
-        libraries={detail.libraries}
-        bind:grants
-        bind:touched
-        {confirmedByServer}
-      />
-    </form>
-    <div class="side">
-      <UserDevices
-        {user}
-        sessions={detail.sessions}
-        {usersApi}
-        onsessions={(sessions) => {
-          if (detail) detail = { ...detail, sessions };
+      </div>
+      <!-- Het formulier geeft Enter op een keuze terug als opslaan; de knop
+           Opslaan in de kop hoort er via `form` bij. -->
+      <form
+        id={FORM}
+        class="pane"
+        hidden={tab !== 'access'}
+        novalidate
+        onsubmit={(e) => {
+          e.preventDefault();
+          requestSave();
         }}
-        onnotice={(text) => (notice = text)}
-        onproblem={(found, again) => {
-          notice = null;
-          problem = found;
-          retry = again;
-        }}
-        onclear={() => (problem = null)}
-      />
-      <UserAccountPanel
-        username={user.username}
-        canReset={user.role !== 'owner' || isSelf}
-        busy={resetBusy}
-        onreset={resetPassword}
-      />
+      >
+        <UserRolePanel current={user.role} bind:chosen />
+        <UserPermissionsPanel
+          {name}
+          role={user.role === 'owner' ? 'owner' : (chosen as Role)}
+          libraries={detail.libraries}
+          bind:grants
+          bind:touched
+          {confirmedByServer}
+        />
+      </form>
+      <div class="pane" hidden={tab !== 'devices'}>
+        <UserDevices
+          {user}
+          sessions={detail.sessions}
+          {usersApi}
+          onsessions={(sessions) => {
+            if (detail) detail = { ...detail, sessions };
+          }}
+          onnotice={(text) => (notice = text)}
+          onproblem={(found, again) => {
+            notice = null;
+            problem = found;
+            retry = again;
+          }}
+          onclear={() => (problem = null)}
+        />
+      </div>
       <UserDeletePanel
         username={user.username}
         blocked={user.role === 'owner' ? 'owner' : isSelf ? 'self' : null}
@@ -283,18 +318,6 @@
         bind:open={deleteOpen}
         onconfirm={() => void remove()}
       />
-    </div>
-    <div class="foot">
-      <a class="btn btn--ghost" href={LIST}>{t('dialog.cancel')}</a>
-      <button
-        type="button"
-        class="btn"
-        disabled={!dirty || saving}
-        aria-busy={saving ? 'true' : undefined}
-        onclick={requestSave}
-      >
-        {t('admin.users.action.save')}
-      </button>
     </div>
   </div>
 {:else if detail}
@@ -321,7 +344,9 @@
           from: roleLabel(user.role),
           to: roleLabel(plan.role ?? user.role)
         })
-      : undefined}
+      : plan.role
+        ? t('admin.users.save.raising', { name, from: roleLabel(user.role), to: roleLabel(plan.role) })
+        : undefined}
     confirmLabel={t('admin.users.save.confirm')}
     onconfirm={() => void apply()}
   >
@@ -347,27 +372,25 @@
     margin-bottom: 14px;
   }
 
-  .cols {
+  /* Eén kolom, begrensd: op 1920 staat een segmentkeuze anders een hele
+     schermbreedte van zijn bibliotheek af, en de knoppen in de kop van de naam. */
+  .page {
+    max-width: 1040px;
+  }
+
+  .body {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    align-items: start;
     gap: 14px;
   }
 
-  .main,
-  .side {
+  .pane {
     display: grid;
     gap: 14px;
-    min-width: 0;
+    margin: 0;
   }
 
-  .foot {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 6px;
+  .pane[hidden] {
+    display: none;
   }
 
   .dlg {
@@ -380,17 +403,5 @@
   ul.dlg {
     list-style: disc;
     padding-left: 20px;
-  }
-
-  @media (max-width: 1199px) {
-    .cols {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
-  @media (max-width: 899px) {
-    .foot .btn {
-      flex: 1 1 auto;
-    }
   }
 </style>

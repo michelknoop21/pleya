@@ -1,7 +1,7 @@
 import type { LibraryItemsQuery } from '../api/types';
 
-export type CatalogFilters = Pick<LibraryItemsQuery, 'genre' | 'year' | 'watch' | 'resolution'>;
-const KEYS = ['genre', 'year', 'watch', 'resolution'] as const;
+export type CatalogFilters = Pick<LibraryItemsQuery, 'genre' | 'year' | 'watch' | 'resolution' | 'audio_language' | 'content_rating'>;
+const KEYS = ['genre', 'year', 'watch', 'resolution', 'audio_language', 'content_rating'] as const;
 const WATCH = ['unwatched', 'in_progress', 'watched'] as const;
 const RESOLUTIONS = ['sd', 'hd', 'fhd', 'uhd'] as const;
 
@@ -11,6 +11,8 @@ export function parseCatalogFilters(params: Pick<URLSearchParams, 'get' | 'getAl
   const year = values('year');
   const watch = params.get('watch') || undefined;
   const resolution = values('resolution');
+  const audio_language = values('audio_language');
+  const content_rating = values('content_rating');
   if (year.some(value => !/^\d{4}$/.test(value) || Number(value) < 1800 || Number(value) > 2200)) throw new Error('Invalid catalog year');
   if (watch && !(WATCH as readonly string[]).includes(watch)) throw new Error('Invalid catalog watch state');
   if (resolution.some(value => !(RESOLUTIONS as readonly string[]).includes(value))) throw new Error('Invalid catalog resolution');
@@ -18,7 +20,9 @@ export function parseCatalogFilters(params: Pick<URLSearchParams, 'get' | 'getAl
     ...(genre.length ? { genre } : {}),
     ...(year.length ? { year } : {}),
     ...(watch ? { watch: watch as CatalogFilters['watch'] } : {}),
-    ...(resolution.length ? { resolution: resolution as CatalogFilters['resolution'] } : {})
+    ...(resolution.length ? { resolution: resolution as CatalogFilters['resolution'] } : {}),
+    ...(audio_language.length ? { audio_language } : {}),
+    ...(content_rating.length ? { content_rating } : {})
   };
 }
 
@@ -35,5 +39,6 @@ export function writeCatalogFilters(url: Pick<URL, 'href'>, filters: CatalogFilt
 }
 
 export function catalogFilterCount(filters: CatalogFilters): number {
-  return (filters.genre?.length ?? 0) + (filters.year?.length ?? 0) + (filters.resolution?.length ?? 0) + (filters.watch ? 1 : 0);
+  return (filters.genre?.length ?? 0) + (filters.year?.length ?? 0) + (filters.resolution?.length ?? 0)
+    + (filters.audio_language?.length ?? 0) + (filters.content_rating?.length ?? 0) + (filters.watch ? 1 : 0);
 }

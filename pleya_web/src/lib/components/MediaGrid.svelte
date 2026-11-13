@@ -16,9 +16,11 @@
     eagerCount?: number;
     label?: string;
     onHighlight?: (item: Item) => void;
+    /** Een eigen onderregel per kaart; `undefined` laat de gewone regel staan. */
+    subtitle?: (item: Item) => string | undefined;
   }
 
-  let { items, eagerCount = 12, label, onHighlight }: Props = $props();
+  let { items, eagerCount = 12, label, onHighlight, subtitle }: Props = $props();
 
   /**
    * Eén vorm voor het hele raster.
@@ -38,7 +40,7 @@
 <ul class="grid" aria-label={label}>
   {#each items as item, index (item.id)}
     <li data-item-id={item.id}>
-      <MediaCard {item} {shape} {onHighlight} eager={index < eagerCount} />
+      <MediaCard {item} {shape} {onHighlight} subtitle={subtitle?.(item)} eager={index < eagerCount} />
     </li>
   {/each}
 </ul>

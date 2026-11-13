@@ -161,8 +161,8 @@ const runCleanup = async (p: Page) => {
 await shoot('/admin/security', 'beveiliging-toestellen-nagebootst');
 await shoot('/admin/security', 'beveiliging-opruimen-nagebootst', openCleanup);
 await shoot('/admin/security', 'beveiliging-opruimen-mislukt-nagebootst', runCleanup);
-await shoot('/admin/users/u1', 'gebruiker-toestellen-nagebootst');
-await shoot('/admin/users/u1', 'gebruiker-opruimen-nagebootst', openCleanup);
+await shoot('/admin/users/u1?tab=devices', 'gebruiker-toestellen-nagebootst');
+await shoot('/admin/users/u1?tab=devices', 'gebruiker-opruimen-nagebootst', openCleanup);
 
 console.log(`toestel bij inloggen: ${loginDevice}`);
 console.log(`consolefouten: ${errors.length}`);
