@@ -170,6 +170,13 @@ final List<AssistantTool> _findTools = [
         ...cards.note,
         if (result.partial) 'partial': true,
         if (result.webSearched) 'web_searched': true,
+        // A subject search without candidates only reads plot summaries, and
+        // many libraries have few: the model then gave up on "dinosaurs"
+        // with Jurassic Park in the library (disc-keyword, BP-12).
+        if (cards.rows.isEmpty && args['subject'] == true && (args['candidates'] as List? ?? const []).isEmpty)
+          'hint':
+              'No plot summary matched. Call find_title once more with up to 5 well-known titles about this '
+              'subject in candidates; the ones in the library are returned.',
       }, display: AssistantTitleMatches(ctx, cards.display));
     },
   ),
