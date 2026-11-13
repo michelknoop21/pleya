@@ -514,6 +514,9 @@
     "plexDeletionDisabled": "Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.",
     "plexDeletionFilesNotRemovable": "Plex could not delete this. Check on the server that Plex is allowed to delete the files (folder permissions, drive available).",
     "plexDeletionRefusedUnknown": "Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).",
+    "deletionForbidden": "The server refused the delete: this account may not delete media there. Allow deletion for this account in the server settings (in Jellyfin and Emby: ‘Allow media deletion’) and try again.",
+    "plexDeletionForbidden": "Plex refused the delete: this account may not delete media on this server. Delete it from the account that owns the server.",
+    "deleteServerGone": "This item's server is not connected. Nothing was deleted.",
     "rate": "Rate",
     "playFromBeginning": "Play from Beginning",
     "playVersion": "Play Version..."

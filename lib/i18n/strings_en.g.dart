@@ -1569,6 +1569,15 @@ class TranslationsMediaMenuEn {
 	/// en: 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).'
 	String get plexDeletionRefusedUnknown => 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).';
 
+	/// en: 'The server refused the delete: this account may not delete media there. Allow deletion for this account in the server settings (in Jellyfin and Emby: ‘Allow media deletion’) and try again.'
+	String get deletionForbidden => 'The server refused the delete: this account may not delete media there. Allow deletion for this account in the server settings (in Jellyfin and Emby: ‘Allow media deletion’) and try again.';
+
+	/// en: 'Plex refused the delete: this account may not delete media on this server. Delete it from the account that owns the server.'
+	String get plexDeletionForbidden => 'Plex refused the delete: this account may not delete media on this server. Delete it from the account that owns the server.';
+
+	/// en: 'This item's server is not connected. Nothing was deleted.'
+	String get deleteServerGone => 'This item\'s server is not connected. Nothing was deleted.';
+
 	/// en: 'Rate'
 	String get rate => 'Rate';
 
@@ -11342,6 +11351,9 @@ extension on Translations {
 			'mediaMenu.plexDeletionDisabled' => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.',
 			'mediaMenu.plexDeletionFilesNotRemovable' => 'Plex could not delete this. Check on the server that Plex is allowed to delete the files (folder permissions, drive available).',
 			'mediaMenu.plexDeletionRefusedUnknown' => 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).',
+			'mediaMenu.deletionForbidden' => 'The server refused the delete: this account may not delete media there. Allow deletion for this account in the server settings (in Jellyfin and Emby: ‘Allow media deletion’) and try again.',
+			'mediaMenu.plexDeletionForbidden' => 'Plex refused the delete: this account may not delete media on this server. Delete it from the account that owns the server.',
+			'mediaMenu.deleteServerGone' => 'This item\'s server is not connected. Nothing was deleted.',
 			'mediaMenu.rate' => 'Rate',
 			'mediaMenu.playFromBeginning' => 'Play from Beginning',
 			'mediaMenu.playVersion' => 'Play Version...',
@@ -11367,11 +11379,11 @@ extension on Translations {
 			'accessibility.tapToPlay' => 'Tap to play',
 			'tooltips.shufflePlay' => 'Shuffle play',
 			'tooltips.playTrailer' => 'Play trailer',
+			_ => null,
+		} ?? switch (path) {
 			'tooltips.markAsWatched' => 'Mark as watched',
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Subtitles',
 			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
 			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
@@ -11881,11 +11893,11 @@ extension on Translations {
 			'libraries.sortLabels.studio' => 'Studio',
 			'libraries.sortLabels.random' => 'Random',
 			'libraries.sortLabels.dateShared' => 'Date Shared',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
 			'about.title' => 'About',
-			_ => null,
-		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -12395,11 +12407,11 @@ extension on Translations {
 			'performanceOverlay.cacheLimit' => 'Cache Limit',
 			'performanceOverlay.speed' => 'Speed',
 			'performanceOverlay.player' => 'Player',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.memory' => 'Memory',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'External Player',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -12909,11 +12921,11 @@ extension on Translations {
 			'pleyaShare.scanningSubnet' => 'Scanning the network…',
 			'sourcePicker.playTitle' => 'Choose where to play',
 			'sourcePicker.detailsTitle' => 'Choose a source for the details',
+			_ => null,
+		} ?? switch (path) {
 			'sourcePicker.availableOnOneServer' => 'Available on 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Available on ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server could not be checked',
-			_ => null,
-		} ?? switch (path) {
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers could not be checked',
 			'sourcePicker.checkingMoreSources' => 'Checking more sources…',
 			'sourcePicker.lastUsed' => 'Last used',
@@ -13423,11 +13435,11 @@ extension on Translations {
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
 			'assistant.mobile.setup' => 'Set up model',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
 			'assistant.mobile.listening' => 'Listening…',
 			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
@@ -13937,11 +13949,11 @@ extension on Translations {
 			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.',
 			'pleyaNotifications.pushOffline' => 'Changes will take effect when this device can reach the server again.',
 			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaNotifications.title' => 'Notifications',
 			'pleyaNotifications.subtitle' => 'Choose which updates to receive',
 			'pleyaNotifications.settings' => 'Notification preferences',
-			_ => null,
-		} ?? switch (path) {
 			'pleyaNotifications.enable' => 'Enable in-app notifications',
 			'pleyaNotifications.explanation' => 'Choose which updates to show in Pleya. All categories start turned off.',
 			'pleyaNotifications.disabled' => 'Notifications are off. Choose which updates to receive in preferences.',

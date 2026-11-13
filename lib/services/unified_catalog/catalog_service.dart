@@ -135,6 +135,11 @@ class UnifiedCatalogService {
   /// union-find bookkeeping.
   final List<MediaItem> _poppedItems = [];
 
+  /// Items their server deleted since the last reset. Kept as a filter rather
+  /// than removed from [_poppedItems]: a regroup in flight pairs evidence with
+  /// that list by index.
+  final Set<String> _deletedKeys = {};
+
   List<UnifiedMediaGroup> _groups = [];
   int _generation = 0;
 
@@ -227,6 +232,21 @@ class UnifiedCatalogService {
     return true;
   }
 
+  /// Drops [globalKey], deleted on its server, from the built groups and every
+  /// later regroup, without refetching a page. False when this merge never
+  /// popped it.
+  ///
+  /// ponytail: the library cursor keeps its offset while the server's list
+  /// moved up by one, so per delete one title of that library is missing from
+  /// the wall (never shown twice) until the next refresh starts over.
+  bool removeDeletedItem(String globalKey) {
+    if (!_poppedItems.any((item) => item.globalKey == globalKey)) return false;
+    _deletedKeys.add(globalKey);
+    final preferred = _preferredSourceKeys();
+    _groups = [for (final group in _groups) ?groupWithoutSource(group, globalKey, preferredSourceKeys: preferred)];
+    return true;
+  }
+
   /// Aborts every cursor's in-flight fetch without resetting any other
   /// state (E12, hoofdstuk 22's profile-switch contract: "annuleert
   /// requests"). The owner (`UnifiedCatalogProvider.dispose`) calls this
@@ -261,6 +281,7 @@ class UnifiedCatalogService {
     _cursors = [for (final library in libraries) UnifiedSourceCursor(library)];
     _runningRound = null;
     _poppedItems.clear();
+    _deletedKeys.clear();
     _externalIdCache.clear();
     _resolvableCache.clear();
     _evidenceCache.clear();
@@ -669,6 +690,7 @@ class UnifiedCatalogService {
     final candidates = <GroupingCandidate>[];
     for (var i = 0; i < _poppedItems.length; i++) {
       final item = _poppedItems[i];
+      if (_deletedKeys.contains(item.globalKey)) continue;
       final serverId = item.serverId;
       // UnifiedMediaSource.fromItem requires a resolvable server id — never
       // expected from a real library-page mapper, but a group is
