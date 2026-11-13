@@ -850,10 +850,34 @@ void main() {
       expect(row.groups.single.sources.map((s) => s.item.id), ['a1', 'b1']);
     });
 
-    test('a legacy guid whose lookup fails stays its own card', () async {
+    test('a legacy guid carries its own number, so a failed lookup no longer splits the film', () async {
       final onDeck = [
         _movie('a1', serverId: 'a', title: 'Brothers', year: 2024, guid: 'plex://movie/5d776d1e96b655001fe2b1a4'),
         _movie('b1', serverId: 'b', title: 'Brothers', year: 2024, guid: 'com.plexapp.agents.imdb://tt1817232?lang=en'),
+      ];
+      final service = HomeProjectionService(
+        fetchExternalIds: (serverId, targetId) async {
+          if (serverId == 'b') throw StateError('502');
+          return const ExternalIds(imdb: 'tt1817232');
+        },
+      );
+
+      final row = await service.projectContinueWatching(onDeck, title: 'Continue Watching');
+
+      expect(row.groups, hasLength(1), reason: 'the imdb number is in the guid itself');
+      expect(row.groups.single.sources, hasLength(2));
+    });
+
+    test('a guid without a number whose lookup fails stays its own card', () async {
+      final onDeck = [
+        _movie('a1', serverId: 'a', title: 'Brothers', year: 2024, guid: 'plex://movie/5d776d1e96b655001fe2b1a4'),
+        _movie(
+          'b1',
+          serverId: 'b',
+          title: 'Brothers',
+          year: 2024,
+          guid: 'com.plexapp.agents.hama://anidb-4521?lang=en',
+        ),
       ];
       final service = HomeProjectionService(
         fetchExternalIds: (serverId, targetId) async {

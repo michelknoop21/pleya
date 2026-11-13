@@ -82,11 +82,14 @@ class ResolvableItem {
   });
 
   /// The numbers the item's own list answer carried, when they describe the
-  /// item itself: the lookup target is the item and nothing narrows them.
+  /// item itself: no lookup target points at another id and nothing narrows
+  /// them. A caller that passes no target only declines the request; what the
+  /// item already holds is still its own (the assistant passes none for an
+  /// item with a stable guid, and lost a Plex item's tmdb number that way).
   ExternalIds? _carriedIds({required bool allowLegacyPleya}) {
     if (externalIdDiscriminator != null) return null;
     final target = externalIdTarget;
-    if (target == null || target.targetId != item.id) return null;
+    if (target != null && target.targetId != item.id) return null;
     return externalIdsCarriedBy(item, allowLegacyPleya: allowLegacyPleya);
   }
 

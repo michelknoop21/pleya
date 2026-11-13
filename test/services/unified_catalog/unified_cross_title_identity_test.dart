@@ -296,6 +296,58 @@ void main() {
     });
   });
 
+  group('a caller that declines the lookup', () {
+    test('still reads the numbers the item carries, so guid and number meet', () async {
+      final plex = MediaItem.plex(
+        id: 'p1',
+        kind: MediaKind.movie,
+        title: 'Léon',
+        year: 1994,
+        guid: 'plex://movie/5d7768296f4521001ea9c1a5',
+        serverId: 'srv-plex',
+        serverName: 'srv-plex',
+        raw: const {
+          'Guid': [
+            {'id': 'tmdb://101'},
+          ],
+        },
+      );
+      final jellyfin = MediaItem.jellyfin(
+        id: 'j1',
+        kind: MediaKind.movie,
+        title: 'Léon: The Professional',
+        year: 1995,
+        serverId: 'srv-jf',
+        serverName: 'srv-jf',
+        raw: const {
+          'ProviderIds': {'Tmdb': '101'},
+        },
+      );
+      final items = [plex, jellyfin];
+      final evidence =
+          await UnifiedIdentityResolver(
+            fetchExternalIds: (_, _) async => fail('the numbers are on the items'),
+          ).resolveEvidence([
+            for (final item in items)
+              // The assistant's shape: no target for an item with a stable guid.
+              ResolvableItem(
+                item: item,
+                identity: canonicalIdentityOf(item),
+                scope: 'movie',
+                externalIdTarget: normalizeStableGuid(item.guid) == null
+                    ? (serverId: item.serverId!, targetId: item.id)
+                    : null,
+              ),
+          ]);
+      final groups = groupUnifiedMediaSources([
+        for (final (i, item) in items.indexed)
+          GroupingCandidate(source: UnifiedMediaSource.fromItem(item), evidence: evidence[i]),
+      ]);
+
+      expect(groups, hasLength(1));
+    });
+  });
+
   group('fetchExternalIdsForIdentity', () {
     late MultiServerManager manager;
     late _CountingClient client;
