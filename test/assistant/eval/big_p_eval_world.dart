@@ -105,7 +105,38 @@ const evalTraktTitles = <TraktTitle>[
   TraktTitle(title: 'Severance', year: 2022, ids: TraktIds(trakt: 4, tmdb: 95396), isShow: true),
 ];
 
-/// A Seerr that knows Primer (film) and Severance (series) and nothing else.
+const _evalSciFi = <Map<String, Object?>>[
+  {
+    'id': 14337,
+    'mediaType': 'movie',
+    'title': 'Primer',
+    'releaseDate': '2004-10-08',
+    'originalLanguage': 'en',
+    'voteCount': 1500,
+    'voteAverage': 6.8,
+  },
+  {
+    'id': 220289,
+    'mediaType': 'movie',
+    'title': 'Coherence',
+    'releaseDate': '2013-09-19',
+    'originalLanguage': 'en',
+    'voteCount': 2600,
+    'voteAverage': 7.2,
+  },
+  {
+    'id': 17431,
+    'mediaType': 'movie',
+    'title': 'Moon',
+    'releaseDate': '2009-06-12',
+    'originalLanguage': 'en',
+    'voteCount': 5800,
+    'voteAverage': 7.6,
+  },
+];
+
+/// A Seerr that knows Primer (film) and Severance (series), a short list of
+/// science fiction to browse, and nothing else.
 FakeSeerr evalSeerr() => FakeSeerr()
   ..search['Primer'] = [
     {
@@ -127,6 +158,17 @@ FakeSeerr evalSeerr() => FakeSeerr()
       'voteCount': 4000,
     },
   ]
+  // Browsing without a title, and titles like Primer (BP-12).
+  ..lists['/genres/movie'] = [
+    {'id': 878, 'name': 'Science Fiction'},
+    {'id': 35, 'name': 'Comedy'},
+  ]
+  ..lists['/genres/tv'] = [
+    {'id': 10765, 'name': 'Sci-Fi & Fantasy'},
+  ]
+  ..details['/discover/movies'] = {'page': 1, 'totalPages': 1, 'results': _evalSciFi}
+  ..details['/movie/14337/recommendations'] = {'page': 1, 'totalPages': 1, 'results': _evalSciFi.sublist(1)}
+  ..details['/movie/14337/similar'] = {'page': 1, 'totalPages': 1, 'results': _evalSciFi.sublist(1)}
   ..details['/auth/me'] = {'id': 7, 'permissions': SeerrPermission.request}
   ..details['/request'] = {'id': 501, 'status': 1}
   ..details['/movie/14337'] = {'id': 14337, 'title': 'Primer', 'releaseDate': '2004-10-08'}

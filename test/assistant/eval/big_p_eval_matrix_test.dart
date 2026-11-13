@@ -12,7 +12,6 @@ import 'checks/big_p_eval_checks_state.dart';
 /// Tools without a case that can succeed, and what is missing for one.
 const _open = <String, String>{
   'create_collection': 'needs a collection store in the eval world',
-  'similar_titles': 'needs a TMDB or Seerr discover fixture',
   'compare_servers': 'needs a second online server in the eval world',
   'watch_stats': 'needs an insights fixture (history per user)',
   'diagnose_library': 'needs the library doctor fixture (duplicates, missing episodes)',
@@ -22,8 +21,6 @@ const _open = <String, String>{
   'diagnose_playback': 'needs an active player fixture',
   'change_playback': 'needs an active player fixture',
   'recommend_together': 'needs a Jellyfin admin fixture with two users',
-  'discover_request_titles': 'needs a Seerr discover fixture',
-  'request_status': 'needs Seerr requests in the eval world',
 };
 
 Set<String> _called() => {
@@ -73,5 +70,5 @@ void main() {
     expect(uncovered, isEmpty, reason: 'mutations never carried out in a case');
   });
 
-  test('the open list shrinks, it does not grow', () => expect(_open.length, lessThanOrEqualTo(13)));
+  test('the open list shrinks, it does not grow', () => expect(_open.length, lessThanOrEqualTo(10)));
 }

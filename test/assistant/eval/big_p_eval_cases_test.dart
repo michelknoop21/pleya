@@ -7,8 +7,8 @@ import 'big_p_eval_cases.dart';
 
 void main() {
   test('the set holds sixty-eight cases with unique ids and a source each', () {
-    expect(bigPEvalCases, hasLength(80));
-    expect({for (final c in bigPEvalCases) c.id}, hasLength(80));
+    expect(bigPEvalCases, hasLength(83));
+    expect({for (final c in bigPEvalCases) c.id}, hasLength(83));
     expect(bigPEvalCases.every((c) => c.source.isNotEmpty && c.turns.isNotEmpty), isTrue);
   });
 

@@ -174,6 +174,9 @@ class FakeSeerr {
   Map<String, List<Map<String, Object?>>> search = {};
   Map<String, Map<String, Object?>> details = {};
 
+  /// Answers that are a JSON list, such as `/genres/movie`.
+  Map<String, List<Object?>> lists = {};
+
   late final client = SeerrClient(
     SeerrSession(baseUrl: 'http://seerr.lan', authMode: SeerrAuthMode.apiKey, apiKey: 'k'),
     httpClient: MockClient((request) async {
@@ -195,6 +198,7 @@ class FakeSeerr {
           'results': search[request.url.queryParameters['query']] ?? [],
         });
       }
+      if (lists[path] case final list?) return jsonResponse(list);
       return jsonResponse(details[path] ?? {});
     }),
   );

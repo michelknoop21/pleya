@@ -187,4 +187,64 @@ final evalTaskCases = <EvalCase>[
       const EvalState(memory: ['komedies']),
     ],
   ),
+  // The request service without a title in mind, a status question and
+  // "something like": three tools no case reached before.
+  EvalCase(
+    id: 'req-discover-genre',
+    source: 'BP-12: bladeren in de aanvraagdienst op genre, zonder titel',
+    world: _seerr,
+    turns: [
+      EvalTurn(
+        'Ik wil een sciencefictionfilm aanvragen maar weet geen titel. Wat is er?',
+        script: [
+          EvalCall('discover_request_titles', {
+            'kind': 'movie',
+            'genres': ['Science Fiction'],
+          }),
+          'Deze drie kun je aanvragen.',
+        ],
+      ),
+    ],
+    // Request options are no library cards: the card checks do not apply.
+    hard: const [evalNoDup, EvalStateUnchanged()],
+    soft: const EvalSoft(firstTools: {'discover_request_titles'}),
+  ),
+  EvalCase(
+    id: 'req-status-not-requested',
+    source: 'BP-12: status van een aanvraag die er niet is, eerlijk zeggen',
+    world: _seerr,
+    turns: [
+      EvalTurn(
+        'Is Primer al aangevraagd?',
+        script: [
+          EvalCall('find_request_title', {
+            'titles': [
+              {'title': 'Primer', 'kind': 'movie'},
+            ],
+          }),
+          EvalCall('request_status', {'seerr_id': 'movie:14337'}),
+          'Nee, Primer is nog niet aangevraagd.',
+        ],
+      ),
+    ],
+    hard: const [evalFromFixture, evalNoDup, EvalStateUnchanged()],
+    soft: const EvalSoft(firstTools: {'find_request_title', 'find_title'}),
+  ),
+  EvalCase(
+    id: 'disc-similar-to-title',
+    source: 'BP-12: iets zoals een titel, uit de aanvraagdienst',
+    world: _seerr,
+    turns: [
+      EvalTurn(
+        'Geef me iets zoals Primer',
+        script: [
+          EvalCall('similar_titles', {'title': 'Primer'}),
+          'Deze twee lijken erop.',
+        ],
+      ),
+    ],
+    // The cards come from the request service, not from the catalogue.
+    hard: const [evalNoDup, EvalCardCount(min: 1), EvalStateUnchanged()],
+    soft: const EvalSoft(firstTools: {'similar_titles'}),
+  ),
 ];
