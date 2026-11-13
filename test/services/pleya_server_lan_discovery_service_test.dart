@@ -31,13 +31,14 @@ void main() {
       expect(server.name, 'Thuis');
     });
 
-    test('a url in the reply wins over the sender', () {
-      expect(parse(_valid({'url': 'https://nas.thuis.example:8443/'}))!.address, 'https://nas.thuis.example:8443');
-    });
-
-    test('an unusable url falls back to the sender', () {
-      expect(parse(_valid({'url': 'ftp://nas.thuis.example'}))!.address, 'http://192.168.1.20:8832');
-      expect(parse(_valid({'url': 'nas'}))!.address, 'http://192.168.1.20:8832');
+    test('a url in the reply never replaces the sender', () {
+      for (final url in [
+        'https://nas.thuis.example:8443/',
+        'http://192.168.1.20:8832@evil.example.com',
+        'https://evil.example.com/a/b?x=1#f',
+      ]) {
+        expect(parse(_valid({'url': url}))!.address, 'http://192.168.1.20:8832', reason: url);
+      }
     });
 
     test('skips another app and another version', () {

@@ -66,6 +66,8 @@ PLEYA_SERVER_BIND=0.0.0.0
 
 Wat je ermee openzet: met `PLEYA_SERVER_BIND=0.0.0.0` is de server voor elk toestel op je netwerk bereikbaar over HTTP, en het wachtwoord gaat bij het inloggen onversleuteld over dat netwerk. Dat is hetzelfde als bij een ingetypt LAN-adres. Zet de poort niet door op de router. Het antwoord op een oproep bevat de servernaam, het server-id en de poort, en geeft geen toegang.
 
+De UDP-poort ligt vast op 48635, want daar roepen de apps op. Zet `PLEYA_SERVER_LAN=on` dus op één stack per host en niet ook op een testinstance op dezelfde machine.
+
 Werkt het niet, controleer dan of de firewall van de NAS UDP 48635 doorlaat en of het toestel op hetzelfde netwerk zit; een gastnetwerk of een tweede VLAN laat een broadcast niet door. Het adresveld in de app blijft altijd werken.
 
 ## Metrics

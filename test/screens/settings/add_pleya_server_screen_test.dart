@@ -116,6 +116,12 @@ void main() {
     expect(find.text(t.addServer.pleyaServerDiscoveryMismatch), findsOneWidget);
     expect(find.text(t.addServer.signIn), findsNothing);
     expect(find.text(t.addServer.password), findsNothing);
+
+    // The wrong address is not left in the field for a second try.
+    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, isEmpty);
+    await tester.testTextInput.receiveAction(TextInputAction.go);
+    await tester.pumpAndSettle();
+    expect(find.text(t.addServer.signIn), findsNothing);
   });
 
   testWidgets('a typed address is not held to a found server id', (tester) async {

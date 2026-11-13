@@ -35,6 +35,9 @@ const (
 	replyVersion = 1
 )
 
+// maxSenders begrenst het register van afzenders.
+const maxSenders = 4096
+
 // Reply is het antwoord op de draad.
 type Reply struct {
 	App     string `json:"app"`
@@ -43,7 +46,6 @@ type Reply struct {
 	Name    string `json:"name"`
 	Port    int    `json:"port"`
 	Scheme  string `json:"scheme"`
-	URL     string `json:"url,omitempty"`
 }
 
 // Options beschrijft wat de luisteraar antwoordt.
@@ -59,10 +61,7 @@ type Options struct {
 	Port int
 	// Scheme is "http" of "https".
 	Scheme string
-	// URL is een volledig LAN-adres dat voor afzender plus poort gaat. Leeg in
-	// de gewone opstelling.
-	URL string
-	Log *slog.Logger
+	Log    *slog.Logger
 
 	// Limiet per afzender: Burst antwoorden per Window. Nul kiest 5 per 10 s.
 	Burst  int
@@ -80,6 +79,8 @@ type Listener struct {
 
 	mu   sync.Mutex
 	seen map[string][]time.Time
+	// pruned is wanneer het register voor het laatst is opgeschoond.
+	pruned time.Time
 }
 
 // Listen opent de UDP-poort. Het antwoorden begint met Serve.
@@ -161,7 +162,6 @@ func (l *Listener) reply() ([]byte, error) {
 			Name:    name,
 			Port:    l.opts.Port,
 			Scheme:  l.opts.Scheme,
-			URL:     l.opts.URL,
 		})
 		if err != nil {
 			return nil, err
@@ -186,6 +186,24 @@ func (l *Listener) allow(from net.Addr) bool {
 	now := l.opts.now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	// Het register groeit niet mee met vervalste afzenders: vol is vol. Een
+	// nieuwe afzender krijgt dan geen antwoord, en opschonen gebeurt hoogstens
+	// één keer per venster, zodat een stortvloed niet elk pakket het hele
+	// register laat doorlopen.
+	if _, known := l.seen[host]; !known && len(l.seen) >= maxSenders {
+		if now.Sub(l.pruned) < l.opts.Window {
+			return false
+		}
+		l.pruned = now
+		for k, v := range l.seen {
+			if len(v) == 0 || now.Sub(v[len(v)-1]) >= l.opts.Window {
+				delete(l.seen, k)
+			}
+		}
+		if len(l.seen) >= maxSenders {
+			return false
+		}
+	}
 	kept := l.seen[host][:0]
 	for _, t := range l.seen[host] {
 		if now.Sub(t) < l.opts.Window {
@@ -197,13 +215,5 @@ func (l *Listener) allow(from net.Addr) bool {
 		return false
 	}
 	l.seen[host] = append(kept, now)
-	// Het register groeit niet onbegrensd mee met vervalste afzenders.
-	if len(l.seen) > 4096 {
-		for k, v := range l.seen {
-			if len(v) == 0 || now.Sub(v[len(v)-1]) >= l.opts.Window {
-				delete(l.seen, k)
-			}
-		}
-	}
 	return true
 }

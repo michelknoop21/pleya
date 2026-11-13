@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -89,11 +90,10 @@ func TestStaysSilentOnAnythingElse(t *testing.T) {
 	}
 }
 
-func TestReplyStaysSmallAndCarriesAnOverride(t *testing.T) {
+func TestReplyStaysSmallAndCarriesTheScheme(t *testing.T) {
 	long := strings.Repeat("Zolder ", 200)
 	l := start(t, func(o *Options) {
 		o.Name = func() string { return long }
-		o.URL = "https://nas.thuis.lan:8833"
 		o.Scheme = "https"
 	})
 	raw := ask(t, l, Probe, time.Second)
@@ -107,16 +107,17 @@ func TestReplyStaysSmallAndCarriesAnOverride(t *testing.T) {
 	if err := json.Unmarshal(raw, &r); err != nil {
 		t.Fatal(err)
 	}
-	if r.URL != "https://nas.thuis.lan:8833" || r.Scheme != "https" || r.Name == "" || !strings.HasPrefix(long, r.Name) {
+	if strings.Contains(string(raw), `"url"`) || r.Scheme != "https" || r.Name == "" || !strings.HasPrefix(long, r.Name) {
 		t.Fatalf("antwoord %+v", r)
 	}
 }
 
 func TestNameIsReadPerReply(t *testing.T) {
-	name := "Zolder"
-	l := start(t, func(o *Options) { o.Name = func() string { return name } })
+	var name atomic.Value
+	name.Store("Zolder")
+	l := start(t, func(o *Options) { o.Name = func() string { return name.Load().(string) } })
 	_ = ask(t, l, Probe, time.Second)
-	name = "Kelder"
+	name.Store("Kelder")
 	var r Reply
 	if err := json.Unmarshal(ask(t, l, Probe, time.Second), &r); err != nil || r.Name != "Kelder" {
 		t.Fatalf("naam %q, fout %v", r.Name, err)
@@ -124,11 +125,12 @@ func TestNameIsReadPerReply(t *testing.T) {
 }
 
 func TestLimitsRepliesPerSender(t *testing.T) {
-	now := time.Unix(1_700_000_000, 0)
+	var clock atomic.Int64
+	clock.Store(1_700_000_000)
 	l := start(t, func(o *Options) {
 		o.Burst = 3
 		o.Window = 10 * time.Second
-		o.now = func() time.Time { return now }
+		o.now = func() time.Time { return time.Unix(clock.Load(), 0) }
 	})
 	for i := 0; i < 3; i++ {
 		if ask(t, l, Probe, time.Second) == nil {
@@ -138,7 +140,7 @@ func TestLimitsRepliesPerSender(t *testing.T) {
 	if raw := ask(t, l, Probe, 150*time.Millisecond); raw != nil {
 		t.Fatalf("vierde antwoord binnen het venster: %s", raw)
 	}
-	now = now.Add(11 * time.Second)
+	clock.Add(11)
 	if ask(t, l, Probe, time.Second) == nil {
 		t.Fatal("na het venster hoort er weer een antwoord te komen")
 	}
@@ -152,5 +154,36 @@ func TestListenRefusesWithoutIdentityOrPort(t *testing.T) {
 		if _, err := Listen(Options{Addr: "127.0.0.1:0", ServerID: "x", Port: port}); err == nil {
 			t.Errorf("poort %d hoort geweigerd te worden", port)
 		}
+	}
+}
+
+// Een stortvloed van vervalste afzenders vult het register tot de grens en
+// niet verder; een bekende afzender houdt zijn eigen teller.
+func TestSenderTableIsBounded(t *testing.T) {
+	var clock atomic.Int64
+	clock.Store(1_700_000_000)
+	l := start(t, func(o *Options) {
+		o.Window = 10 * time.Second
+		o.now = func() time.Time { return time.Unix(clock.Load(), 0) }
+	})
+	known := &net.UDPAddr{IP: net.IPv4(10, 0, 0, 1), Port: 1}
+	if !l.allow(known) {
+		t.Fatal("de eerste afzender hoort een antwoord te krijgen")
+	}
+	for i := 0; i < maxSenders+500; i++ {
+		l.allow(&net.UDPAddr{IP: net.IPv4(10, 1, byte(i>>8), byte(i)), Port: 1})
+	}
+	l.mu.Lock()
+	size := len(l.seen)
+	l.mu.Unlock()
+	if size > maxSenders {
+		t.Fatalf("register telt %d afzenders, grens %d", size, maxSenders)
+	}
+	if !l.allow(known) {
+		t.Fatal("een bekende afzender hoort binnen zijn limiet een antwoord te houden")
+	}
+	clock.Add(11)
+	if !l.allow(&net.UDPAddr{IP: net.IPv4(10, 9, 9, 9), Port: 1}) {
+		t.Fatal("na het venster hoort er weer plaats te zijn voor een nieuwe afzender")
 	}
 }

@@ -95,12 +95,22 @@ else
 fi
 
 # Vindbaar op het thuisnetwerk alleen als de operator daarvoor koos (S26.9).
-if ssh "$SSH_HOST" "grep -Eq '^PLEYA_SERVER_LAN=on[[:space:]]*\$' $REMOTE_DIR/.env 2>/dev/null"; then
-  COMPOSE_FILES="$COMPOSE_FILES -f compose.lan.yaml"
-  echo "→ PLEYA_SERVER_LAN=on: lokale ontdekking aan (UDP 48635)"
-else
-  echo "→ lokale ontdekking uit (zet PLEYA_SERVER_LAN=on in .env om hem aan te zetten)"
-fi
+# De uitkomst komt als tekst terug: een mislukte ssh mag niet lezen als "uit"
+# en de ontdekking stil uitzetten.
+LAN_CHOICE=$(ssh "$SSH_HOST" "if grep -Eq '^PLEYA_SERVER_LAN=on[[:space:]]*\$' $REMOTE_DIR/.env 2>/dev/null; then echo on; else echo off; fi")
+case "$LAN_CHOICE" in
+  on)
+    COMPOSE_FILES="$COMPOSE_FILES -f compose.lan.yaml"
+    echo "→ PLEYA_SERVER_LAN=on: lokale ontdekking aan (UDP 48635)"
+    ;;
+  off)
+    echo "→ lokale ontdekking uit (zet PLEYA_SERVER_LAN=on in .env om hem aan te zetten)"
+    ;;
+  *)
+    echo "✗ kon PLEYA_SERVER_LAN niet lezen op $SSH_HOST" >&2
+    exit 1
+    ;;
+esac
 
 echo "→ containers bouwen en starten"
 ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; cd $REMOTE_DIR && docker compose $COMPOSE_FILES up -d --build --remove-orphans"

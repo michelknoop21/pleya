@@ -8,11 +8,13 @@
 #
 # De UDP-poort staat op 0.0.0.0: een oproep is een broadcast en komt niet aan
 # op een poort die alleen aan één adres hangt. Het antwoord zegt alleen wie de
-# server is en op welke poort hij luistert; inloggen blijft nodig.
+# server is en op welke poort hij luistert; inloggen blijft nodig. De poort ligt
+# vast: clients roepen alleen op 48635. Zet dit dus op één stack per host aan,
+# niet ook op de testinstance.
 services:
   pleya-server:
     environment:
       PLEYA_SERVER_DISCOVERY_ADDR: ":48635"
       PLEYA_SERVER_DISCOVERY_PORT: "${PLEYA_SERVER_HOST_PORT:-8832}"
     ports:
-      - "0.0.0.0:${PLEYA_SERVER_DISCOVERY_HOST_PORT:-48635}:48635/udp"
+      - "0.0.0.0:48635:48635/udp"

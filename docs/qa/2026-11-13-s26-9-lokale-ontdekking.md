@@ -4,8 +4,8 @@ Roadmap: C-06 / S26.9. Venster: [`pleya-server-discovery-window.md`](../pleya-se
 
 ## Wat er is
 
-- **Server.** `pleya_server/internal/discovery`: luistert op UDP 48635, antwoordt alleen op `who is PleyaServer?`, begrenst per afzender, antwoord onder 512 bytes. Standaard uit (`PLEYA_SERVER_DISCOVERY_ADDR=off`); `PLEYA_SERVER_LAN=on` in `.env` voegt `compose.lan.yaml` toe.
-- **App.** `PleyaServerLanDiscoveryService` zoekt bij het openen van "Pleya Server toevoegen". Gevonden servers staan onder "Servers in je netwerk". Kiezen vult het adres in en haalt `/info` op; een ander `server.id` dan gevonden geeft een melding en geen inlogscherm. Het adresveld blijft.
+- **Server.** `pleya_server/internal/discovery`: luistert op UDP 48635, antwoordt alleen op `who is PleyaServer?`, begrenst per afzender, antwoord van hoogstens 512 bytes, begrensd register van afzenders. Standaard uit (`PLEYA_SERVER_DISCOVERY_ADDR=off`); `PLEYA_SERVER_LAN=on` in `.env` voegt `compose.lan.yaml` toe.
+- **App.** `PleyaServerLanDiscoveryService` zoekt bij het openen van "Pleya Server toevoegen". Gevonden servers staan onder "Servers in je netwerk". Kiezen vult het adres in en haalt `/info` op; een ander `server.id` dan gevonden geeft een melding, geen inlogscherm, en het adres gaat uit het veld. Het adres komt altijd van de afzender; een `url` in het antwoord wordt genegeerd. Het adresveld blijft.
 - **Apple TV.** Derde keuze "Verbinden met Pleya Server" op het aanmeldscherm. Een lopende Plex-poging wordt losgelaten voordat de route opent.
 - De tegel voor een gevonden server is gedeeld (`lib/widgets/discovered_server_tile.dart`); het Jellyfin-scherm gebruikt dezelfde.
 
@@ -16,7 +16,7 @@ Unified impact: alleen het koppelen van een Pleya Server. Plex, Jellyfin, Emby, 
 | Wat | Resultaat |
 | --- | --- |
 | `go test ./internal/discovery ./internal/config` | groen, echte UDP-socket; negatieve controle: zonder de controle op de oproeptekst antwoordt hij op alles en faalt de test |
-| `test/services/pleya_server_lan_discovery_service_test.dart` | 10 groen: adres uit de afzender, `url` gaat voor, vreemde `app` of `v` overgeslagen, ontdubbeld op id via een echte socket |
+| `test/services/pleya_server_lan_discovery_service_test.dart` | 10 groen: adres uit de afzender, een `url` verandert het adres niet, vreemde `app` of `v` overgeslagen, ontdubbeld op id via een echte socket |
 | `test/screens/settings/add_pleya_server_screen_test.dart` | 8 groen; negatieve controle: zonder de id-controle faalt "another server on the found address stops before sign-in" |
 | `test/screens/tv/tv_auth_view_test.dart`, `test/screens/auth_screen_test.dart` | groen; negatieve controle: zonder `abandonAttempt` faalt "Pleya Server stays reachable during polling and a late Plex claim is ignored" |
 | `test/screens/settings/add_jellyfin_screen_test.dart` | groen na het delen van de tegel |
@@ -34,6 +34,18 @@ Unified impact: alleen het koppelen van een Pleya Server. Plex, Jellyfin, Emby, 
 | Pleya Server toevoegen, TV met focus op een gevonden server | 1038x584 | `build/s269/add-pleya-server-tv.png` (niet in git) |
 
 Dit zijn Linux-renders uit widgettests. Ze bewaken compositie en zijn geen tvOS-beeld.
+
+## Review
+
+Onafhankelijke review van `3bbc52e` en `108c8f8`: geen Critical. Verwerkt:
+
+- **I-1** Een vrij `url`-veld kon een inlogpoging naar een host buiten het netwerk sturen. Het veld is geschrapt in client, server en protocol; test met drie vijandige waarden.
+- **I-2** Na een afwijkend id bleef het adres staan en ging Doorgaan zonder controle verder. Het veld wordt nu gewist; de test drukt daarna op Doorgaan.
+- **M-1** `go test -race` faalde op twee tests; ze gebruiken nu atomics. **M-2** Het register van afzenders is begrensd op 4096 en schoont hoogstens één keer per venster op; test met negatieve controle. **M-3** Een mislukte ssh leest niet meer als "uit". **M-4** De UDP-hostpoort ligt vast op 48635. **M-5** Documentatie gelijkgetrokken. **M-6** De NAS-controle toetst ook het afzenderadres.
+
+Niet opgelost, buiten deze wijziging: de reviewer zag in een losse proef dat een tik op "Doorgaan" na een foutmelding geen tweede zoekactie startte. Die code is ouder dan dit werk en de oorzaak is niet gevonden.
+
+De commit `108c8f8` loste ook een harde lintregel op in `test/assistant/eval/big_p_eval_matrix_test.dart`; dat hoort bij BP-12 en niet bij S26.9.
 
 ## Wat ontbreekt
 

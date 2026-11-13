@@ -2130,7 +2130,7 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get pleyaServerCreateOwner => 'Eigenaar aanmaken';
 	@override String get pleyaServerPasswordTooShort => 'Kies een wachtwoord van minimaal 8 tekens';
 	@override String get pleyaServerNoPasswordMethod => 'Deze server accepteert geen inloggen met wachtwoord. Werk Pleya bij naar een versie die deze methode ondersteunt.';
-	@override String get pleyaServerDiscoveryMismatch => 'Op dit adres antwoordt een andere server dan de server die gevonden is. Controleer het adres en probeer het opnieuw.';
+	@override String get pleyaServerDiscoveryMismatch => 'Op dit adres antwoordt een andere server dan de server die gevonden is. Typ het adres van je server zelf in.';
 	@override String pleyaServerConnected({required Object name}) => 'Verbonden met ${name}';
 	@override String get borrowFromAnotherProfile => 'Lenen van een ander profiel';
 	@override String get borrowFromAnotherProfileSubtitle => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.';
@@ -6398,7 +6398,7 @@ extension on TranslationsNl {
 			'addServer.pleyaServerCreateOwner' => 'Eigenaar aanmaken',
 			'addServer.pleyaServerPasswordTooShort' => 'Kies een wachtwoord van minimaal 8 tekens',
 			'addServer.pleyaServerNoPasswordMethod' => 'Deze server accepteert geen inloggen met wachtwoord. Werk Pleya bij naar een versie die deze methode ondersteunt.',
-			'addServer.pleyaServerDiscoveryMismatch' => 'Op dit adres antwoordt een andere server dan de server die gevonden is. Controleer het adres en probeer het opnieuw.',
+			'addServer.pleyaServerDiscoveryMismatch' => 'Op dit adres antwoordt een andere server dan de server die gevonden is. Typ het adres van je server zelf in.',
 			'addServer.pleyaServerConnected' => ({required Object name}) => 'Verbonden met ${name}',
 			'addServer.borrowFromAnotherProfile' => 'Lenen van een ander profiel',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN.',

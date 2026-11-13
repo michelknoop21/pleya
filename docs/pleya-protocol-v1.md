@@ -274,7 +274,7 @@ De client stuurt een UDP-broadcast naar poort **48635** met precies deze tekst, 
 who is PleyaServer?
 ```
 
-De server antwoordt rechtstreeks aan de afzender met één JSON-object van minder dan 512 bytes:
+De server antwoordt rechtstreeks aan de afzender met één JSON-object van hoogstens 512 bytes:
 
 ```json
 {
@@ -294,13 +294,13 @@ De server antwoordt rechtstreeks aan de afzender met één JSON-object van minde
 | `id` | dezelfde waarde als `server.id` in `GET /info` |
 | `name` | de servernaam, alleen om de keuzelijst leesbaar te maken |
 | `port`, `scheme` | waarmee de client het adres bouwt, samen met het afzenderadres van het datagram |
-| `url` | optioneel; een volledig adres dat vóór `scheme` en `port` gaat |
 
 Regels:
 
 - De server antwoordt op niets anders dan de exacte oproep en begrenst het aantal antwoorden per afzender. Het antwoord is klein, zodat de luisteraar niet als versterker bruikbaar is.
 - Het antwoord geeft geen toegang en bewijst niets. De client haalt daarna `GET /info` op het gevonden adres en gaat alleen door als `server.id` gelijk is aan `id`. Inloggen verloopt zoals in hoofdstuk 6.
 - De servernaam staat in dit antwoord en niet in `/info`: wie het antwoord krijgt, zit op hetzelfde netwerk, en `/info` is ook van buiten bereikbaar.
+- Het adres komt altijd van de afzender van het datagram. Geen veld in het antwoord kan een andere host aanwijzen: een antwoord op het netwerk zou een inlogpoging anders overal heen kunnen sturen. Een veld `url` is gereserveerd voor de TLS-stap van S26 en wordt tot die tijd genegeerd.
 - Een client negeert onbekende velden.
 
 ---

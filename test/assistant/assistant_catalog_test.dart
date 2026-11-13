@@ -870,6 +870,17 @@ void main() {
     expect(fine.containsKey('below_min_rating'), isFalse, reason: 'control: a result is left, nothing to explain');
   });
 
+  test('unwatched plus a minimum rating nothing reaches blames the rating, not the history (BP-12)', () async {
+    final (ctx, _, _, _) = await setUpCtx(
+      groups: [_group('m1', 'Alien'), _group('m2', 'Aliens'), _group('m3', 'Heat')],
+    );
+    final rated = await search(ctx, {'kind': 'movie', 'unwatched': true, 'min_rating': 7});
+    expect(rated['results'], isEmpty);
+    expect(rated['below_min_rating'], 3);
+    expect(rated['note'], contains('min_rating'));
+    expect(rated['note'], isNot(contains('nothing unwatched')));
+  });
+
   test(
     'min_rating: paging past the end says nothing about the rating, and watched titles are not counted (BP-11m)',
     () async {

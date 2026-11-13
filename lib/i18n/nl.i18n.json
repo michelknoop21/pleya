@@ -1907,7 +1907,7 @@
     "pleyaServerCreateOwner": "Eigenaar aanmaken",
     "pleyaServerPasswordTooShort": "Kies een wachtwoord van minimaal 8 tekens",
     "pleyaServerNoPasswordMethod": "Deze server accepteert geen inloggen met wachtwoord. Werk Pleya bij naar een versie die deze methode ondersteunt.",
-    "pleyaServerDiscoveryMismatch": "Op dit adres antwoordt een andere server dan de server die gevonden is. Controleer het adres en probeer het opnieuw.",
+    "pleyaServerDiscoveryMismatch": "Op dit adres antwoordt een andere server dan de server die gevonden is. Typ het adres van je server zelf in.",
     "pleyaServerConnected": "Verbonden met ${name}",
     "borrowFromAnotherProfile": "Lenen van een ander profiel",
     "borrowFromAnotherProfileSubtitle": "Hergebruik de verbinding van een ander profiel. PIN-beveiligde profielen vereisen een PIN."

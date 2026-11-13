@@ -79,8 +79,8 @@ class PleyaServerLanDiscoveryService {
   ///
   /// The address comes from [sender], the source of the datagram, plus the
   /// `scheme` and `port` in the reply: a server in a container does not know
-  /// its own LAN address. A `url` in the reply wins when it is a usable
-  /// http(s) address.
+  /// its own LAN address. Nothing in the reply can name another host: an
+  /// answer on the network could otherwise send a sign-in anywhere.
   static DiscoveredPleyaServer? parseDiscoveryResponse(List<int> data, InternetAddress sender) {
     if (data.isEmpty || data.length > maxReplyBytes) return null;
     try {
@@ -91,7 +91,7 @@ class PleyaServerLanDiscoveryService {
       final id = _text(decoded['id']);
       if (id == null) return null;
 
-      final address = _explicitUrl(decoded['url']) ?? _senderUrl(sender, decoded['scheme'], decoded['port']);
+      final address = _senderUrl(sender, decoded['scheme'], decoded['port']);
       if (address == null) return null;
 
       return DiscoveredPleyaServer(address: address, id: id, name: _text(decoded['name']) ?? 'Pleya Server');
@@ -104,14 +104,6 @@ class PleyaServerLanDiscoveryService {
     if (value is! String) return null;
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
-  }
-
-  static String? _explicitUrl(Object? value) {
-    final raw = _text(value);
-    if (raw == null) return null;
-    final uri = Uri.tryParse(raw);
-    if (uri == null || uri.host.isEmpty || (uri.scheme != 'http' && uri.scheme != 'https')) return null;
-    return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
   }
 
   static String? _senderUrl(InternetAddress sender, Object? scheme, Object? port) {

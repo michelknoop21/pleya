@@ -5875,8 +5875,8 @@ class TranslationsAddServerEn {
 	/// en: 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.'
 	String get pleyaServerNoPasswordMethod => 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.';
 
-	/// en: 'A different server answers on this address than the one that was found. Check the address and try again.'
-	String get pleyaServerDiscoveryMismatch => 'A different server answers on this address than the one that was found. Check the address and try again.';
+	/// en: 'A different server answers on this address than the one that was found. Type your server's address yourself.'
+	String get pleyaServerDiscoveryMismatch => 'A different server answers on this address than the one that was found. Type your server\'s address yourself.';
 
 	/// en: 'Connected to ${name}'
 	String pleyaServerConnected({required Object name}) => 'Connected to ${name}';
@@ -12569,7 +12569,7 @@ extension on Translations {
 			'addServer.pleyaServerCreateOwner' => 'Create owner',
 			'addServer.pleyaServerPasswordTooShort' => 'Choose a password of at least 8 characters',
 			'addServer.pleyaServerNoPasswordMethod' => 'This server does not accept a password sign-in. Update Pleya to a version that speaks its method.',
-			'addServer.pleyaServerDiscoveryMismatch' => 'A different server answers on this address than the one that was found. Check the address and try again.',
+			'addServer.pleyaServerDiscoveryMismatch' => 'A different server answers on this address than the one that was found. Type your server\'s address yourself.',
 			'addServer.pleyaServerConnected' => ({required Object name}) => 'Connected to ${name}',
 			'addServer.borrowFromAnotherProfile' => 'Borrow from another profile',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Reuse another profile\'s connection. PIN-protected profiles require a PIN.',

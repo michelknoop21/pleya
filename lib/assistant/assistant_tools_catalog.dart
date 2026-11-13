@@ -201,8 +201,15 @@ final List<AssistantTool> _catalogTools = [
           // search, while a started series is left out too (BP-12).
           if (entries.isEmpty)
             'note':
-                'Empty with unwatched only means: nothing unwatched. A title left out may be watched or merely '
-                'started; do not say it was watched to the end from this result.',
+                // "A good film for tonight" came back as "you have seen
+                // everything" while 36 unseen films merely had no score
+                // (BP-12): the rating emptied this result, not the history.
+                query.belowRating > 0
+                ? 'Empty because of min_rating, not because everything was watched: below_min_rating unwatched '
+                      'titles are under it or carry no rating at all. Do not say everything was seen; search again '
+                      'without min_rating.'
+                : 'Empty with unwatched only means: nothing unwatched. A title left out may be watched or merely '
+                      'started; do not say it was watched to the end from this result.',
           if (ctx.personal?.seenIncludesTrakt() == true) 'seen_includes_trakt': true,
           if (ctx.personal?.seenTraktUnavailable() == true) 'seen_trakt_unavailable': true,
         },

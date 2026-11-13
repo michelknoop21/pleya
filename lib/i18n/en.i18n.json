@@ -2143,7 +2143,7 @@
     "pleyaServerCreateOwner": "Create owner",
     "pleyaServerPasswordTooShort": "Choose a password of at least 8 characters",
     "pleyaServerNoPasswordMethod": "This server does not accept a password sign-in. Update Pleya to a version that speaks its method.",
-    "pleyaServerDiscoveryMismatch": "A different server answers on this address than the one that was found. Check the address and try again.",
+    "pleyaServerDiscoveryMismatch": "A different server answers on this address than the one that was found. Type your server's address yourself.",
     "pleyaServerConnected": "Connected to ${name}",
     "borrowFromAnotherProfile": "Borrow from another profile",
     "borrowFromAnotherProfileSubtitle": "Reuse another profile's connection. PIN-protected profiles require a PIN."

@@ -161,7 +161,10 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
     if (result == null || !mounted) return;
     if (expectedServerId != null && result.info.serverId != expectedServerId) {
       // A reply on the network proves nothing. This catches a mix-up or a
-      // stale answer before anyone types a password at the wrong server.
+      // stale answer before anyone types a password at the wrong server. The
+      // address goes too: left in the field, one press on Continue would
+      // probe it again without this check.
+      _urlController.clear();
       setErrorText(t.addServer.pleyaServerDiscoveryMismatch);
       return;
     }
