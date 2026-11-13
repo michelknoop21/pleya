@@ -55,19 +55,19 @@ Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
 
 ### New
 
-- **Requests on iPhone open on a decision list.** Tiles at the top count what is waiting
-  for you, what is on its way and which issues are open. Below them the requests that need
-  your answer come first, oldest on top, with Approve and Decline on each row. You can tick
-  several and approve them in one go, or swipe: right approves, left asks before it
-  declines. The menu behind a row shows seasons, quality, who asked and whether the title
-  is already in Pleya.
-- **Issues read as a conversation.** An issue shows its replies as messages, with quick
+- **Requests open on a decision list.** If you manage requests, tiles at the top count
+  what is waiting for you, what is on its way and, on iPhone and iPad, which reports are
+  open. Below them the requests that need your answer come first, oldest on top, with
+  Approve and Decline on each row. You can tick several and approve them in one go, or
+  swipe: right approves, left asks before it declines. The menu behind a row shows seasons,
+  quality, who asked and whether the title is already in Pleya.
+- **Reports read as a conversation.** A report shows its replies as messages, with quick
   answers that fill the reply field so you can still edit before sending.
 
 ### Improved
 
 - **On Apple TV, Select on an episode plays it.** On a series page the press used to open
-  the episode page first when Episode Action was set to details. It now plays from the
+  the episode page first when Episode Action was set to Open Details. It now plays from the
   season tab and from the rows on that page. The episode page is one long press away,
   under View details. Everywhere else Episode Action works as before.
 
@@ -86,11 +86,12 @@ Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
 - **A Pleya Server that is slow at start-up comes back.** One missed answer while the app
   started used to hide the server for the whole session. Pleya now checks again after 10,
   30 and 90 seconds.
-- **The Pleya Fly card on iPhone shows up when the Apple TV is playing.** The iPhone kept
-  comparing against the servers it knew at launch and missed the Apple TV when a server
-  signed in later. The card also follows the Receive Pleya Fly setting while Home is open.
-- **The focus ring on the player's play button is rounded.** On Apple TV the focused
-  button looked like a hard square because ring and button used different corners.
+- **The Pleya Fly card on iPhone should now show up while the Apple TV is playing.** The
+  iPhone kept comparing against the servers it knew at launch and missed the Apple TV when
+  a server signed in later. The card also follows the Receive Pleya Fly setting while Home
+  is open.
+- **The focus ring on the player's play button is rounded.** On Apple TV and Mac the
+  focused button looked like a hard square because ring and button used different corners.
 
 ### Notes
 
