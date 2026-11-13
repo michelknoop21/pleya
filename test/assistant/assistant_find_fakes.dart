@@ -168,6 +168,9 @@ class FakeSearch implements WebSearchClient {
 /// Overseerr behind fake HTTP.
 class FakeSeerr {
   final paths = <String>[];
+
+  /// Every POST as path and decoded JSON body, in order: what Pleya changed.
+  final posts = <({String path, Map<String, Object?> body})>[];
   Map<String, List<Map<String, Object?>>> search = {};
   Map<String, Map<String, Object?>> details = {};
 
@@ -176,6 +179,15 @@ class FakeSeerr {
     httpClient: MockClient((request) async {
       final path = request.url.path.replaceFirst('/api/v1', '');
       paths.add(path == '/search' ? 'search:${request.url.queryParameters['query']}' : path);
+      if (request.method == 'POST') {
+        Map<String, Object?> body;
+        try {
+          body = (jsonDecode(request.body) as Map).cast<String, Object?>();
+        } catch (_) {
+          body = const {};
+        }
+        posts.add((path: path, body: body));
+      }
       if (path == '/search') {
         return jsonResponse({
           'page': 1,

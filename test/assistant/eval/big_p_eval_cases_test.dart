@@ -2,13 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'big_p_eval_cases.dart';
 
-// The shape of the set itself (BP-11a2): sixty cases, each with a source and
+// The shape of the set itself (BP-11a2, BP-12): sixty-eight cases, each with a source and
 // at least one check of its own beyond the shared base.
 
 void main() {
-  test('the set holds sixty cases with unique ids and a source each', () {
-    expect(bigPEvalCases, hasLength(60));
-    expect({for (final c in bigPEvalCases) c.id}, hasLength(60));
+  test('the set holds sixty-eight cases with unique ids and a source each', () {
+    expect(bigPEvalCases, hasLength(68));
+    expect({for (final c in bigPEvalCases) c.id}, hasLength(68));
     expect(bigPEvalCases.every((c) => c.source.isNotEmpty && c.turns.isNotEmpty), isTrue);
   });
 

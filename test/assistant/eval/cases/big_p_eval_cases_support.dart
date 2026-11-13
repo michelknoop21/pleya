@@ -1,4 +1,5 @@
 export '../checks/big_p_eval_checks_extra.dart';
+export '../checks/big_p_eval_checks_state.dart';
 
 import '../big_p_eval_checks.dart';
 import '../checks/big_p_eval_checks_extra.dart';

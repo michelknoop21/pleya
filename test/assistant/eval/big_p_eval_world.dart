@@ -128,6 +128,7 @@ FakeSeerr evalSeerr() => FakeSeerr()
     },
   ]
   ..details['/auth/me'] = {'id': 7, 'permissions': SeerrPermission.request}
+  ..details['/request'] = {'id': 501, 'status': 1}
   ..details['/movie/14337'] = {'id': 14337, 'title': 'Primer', 'releaseDate': '2004-10-08'}
   ..details['/tv/95396'] = {
     'id': 95396,
@@ -150,8 +151,19 @@ class EvalMemory {
     await resetMemoryPrefs();
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    final michel = MemoryProfile(db, 'michel');
-    final sanne = MemoryProfile(db, 'sanne');
+    // Fixed ids, so a scripted model can name a fact's ref (its first eight
+    // characters): f0000001 for Michel's first fact, 50000001 for Sanne's.
+    var m = 0, s = 0;
+    final michel = MemoryProfile(
+      db,
+      'michel',
+      newId: () => 'f${(++m).toString().padLeft(7, '0')}-0000-4000-8000-000000000001',
+    );
+    final sanne = MemoryProfile(
+      db,
+      'sanne',
+      newId: () => '5${(++s).toString().padLeft(7, '0')}-0000-4000-8000-000000000002',
+    );
     for (final f in michelFacts) {
       await michel.store(f);
     }

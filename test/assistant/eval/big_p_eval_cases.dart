@@ -9,6 +9,7 @@ import 'cases/big_p_eval_cases_memory.dart';
 import 'cases/big_p_eval_cases_recommend.dart';
 import 'cases/big_p_eval_cases_series.dart';
 import 'cases/big_p_eval_cases_admin.dart';
+import 'cases/big_p_eval_cases_tasks.dart';
 import 'cases/big_p_eval_cases_trakt_seerr.dart';
 
 // The cases of the Big P evaluation set (BP-11a). Sources: the start
@@ -35,9 +36,16 @@ class EvalCall {
   final Map<String, Object?> args;
 }
 
+/// What the user answers on a confirmation card in a turn.
+enum EvalConfirm { no, yes }
+
 class EvalTurn {
-  const EvalTurn(this.prompt, {this.script = const []});
+  const EvalTurn(this.prompt, {this.script = const [], this.confirm = EvalConfirm.no});
   final String prompt;
+
+  /// The user's answer on every confirmation card of this turn. With
+  /// [EvalConfirm.yes] the action really runs against the eval world.
+  final EvalConfirm confirm;
 
   /// The scripted model's replies in order: an [EvalCall] or the closing
   /// text. Replies past the end repeat the last text.
@@ -140,6 +148,7 @@ final bigPEvalCases = <EvalCase>[
   ...evalFamilyCases,
   ...evalMemoryCases,
   ...evalTraktSeerrCases,
+  ...evalTaskCases,
   ...evalAdminCases,
   ...evalContractCases,
 ];

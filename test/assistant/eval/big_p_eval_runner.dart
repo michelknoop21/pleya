@@ -4,14 +4,20 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
+import 'package:pleya/assistant/assistant_memory.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
+import 'package:pleya/assistant/assistant_tools.dart';
 
 import 'package:pleya/profiles/household_kids_store.dart';
 
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
+
+import '../../widgets/big_p/fake_assistant_controller.dart';
 import 'big_p_eval_cases.dart';
 import 'big_p_eval_checks.dart';
 import 'big_p_eval_fixtures.dart';
+import 'big_p_eval_world.dart';
 
 // Runs one eval case through the real AssistantRun, turn by turn, with the
 // earlier turns as conversation, exactly as the controller replays them.
@@ -106,6 +112,7 @@ Future<EvalOutcome> runEvalCase(
     onSaveRow: outcome.savedRows.add,
   );
   final history = <AssistantTurn>[];
+  outcome.initial = await evalWorldState(world, outcome);
   for (final (i, turn) in c.turns.indexed) {
     final tools = <String>[];
     var errors = 0;
@@ -117,9 +124,18 @@ Future<EvalOutcome> runEvalCase(
     final run = AssistantRun(
       model: modelFor(i),
       context: ctx,
-      confirm: (_) async {
+      confirm: (action) async {
         outcome.confirms++;
-        return null;
+        final yes = turn.confirm == EvalConfirm.yes;
+        if (yes) outcome.confirmed++;
+        outcome.cards.add((
+          turn: i,
+          kind: action.kind.name,
+          subject: action.subject,
+          items: List.of(action.items),
+          yes: yes,
+        ));
+        return yes ? const AssistantConfirmation() : null;
       },
       entitlement: const _Entitled(),
       conversation: List.of(history),
@@ -141,9 +157,110 @@ Future<EvalOutcome> runEvalCase(
         ..trace = meter.trace
         ..latencyMs = watch.elapsedMilliseconds,
     );
+    // Memory changes wait on a Pleya card after the answer (the controller
+    // settles them); the user's answer of this turn decides them here.
+    for (final proposal in result.memoryProposals) {
+      outcome.confirms++;
+      final yes = turn.confirm == EvalConfirm.yes;
+      outcome.cards.add((
+        turn: i,
+        kind: 'memory_${proposal.kind.name}',
+        subject: proposal.target?.value ?? proposal.value ?? '',
+        items: const [],
+        yes: yes,
+      ));
+      if (yes) {
+        outcome.confirmed++;
+        final applied = await applyMemoryProposal(proposal);
+        outcome.memoryOutcomes.add(applied.code);
+      }
+    }
     history.add(AssistantTurn(question: turn.prompt, answer: result.text, kids: c.kids));
+    outcome.states.add(await evalWorldState(world, outcome));
   }
   return outcome;
+}
+
+/// The eval world as plain data: saved Home rows, Seerr requests sent and
+/// the asking profile's memory.
+Future<EvalWorldState> evalWorldState(EvalWorld? world, EvalOutcome outcome) async {
+  final memory = world?.memory == null
+      ? null
+      : (world!.memoryOfSecond ? world.memory!.sanne.service : world.memory!.michel.service);
+  return EvalWorldState(
+    homeRows: List.of(outcome.savedRows),
+    requests: [
+      for (final post in world?.seerr?.posts ?? const <({String path, Map<String, Object?> body})>[])
+        if (post.path == '/request') '${post.body['mediaType']}:${post.body['mediaId']}',
+    ],
+    memory: memory == null ? const [] : [for (final f in await memory.list()) f.value],
+  );
+}
+
+/// One display as plain data, enough to rebuild what the user sees.
+Map<String, Object?> evalDisplay(AssistantDisplay d) => switch (d) {
+  AssistantMediaGrid(:final entries) => {
+    'type': 'grid',
+    'cards': [
+      for (final e in entries) {'title': e.item.title ?? '', 'year': e.item.year, 'kind': e.item.kind.name},
+    ],
+  },
+  AssistantTitleMatches(:final matches) => {
+    'type': 'matches',
+    'cards': [
+      for (final m in matches)
+        {
+          'title': m.title,
+          'year': m.year,
+          'kind': m.kind,
+          'actionable': m.targets.isNotEmpty || m.request != null,
+          'requestable': m.request != null,
+        },
+    ],
+  },
+  AssistantRequestOptions(:final options) => {
+    'type': 'request_options',
+    'cards': [
+      for (final o in options) {'title': o.title, 'year': o.year, 'kind': o.kind, 'status': o.status},
+    ],
+  },
+  AssistantClarification(:final question, :final options) => {
+    'type': 'clarification',
+    'question': question,
+    'options': options,
+  },
+  _ => {'type': d.runtimeType.toString()},
+};
+
+/// The answer as the controller hands it to the panel for a plain result:
+/// a stored or refused memory line first, then the model's text.
+String evalShown(AssistantRunResult r) {
+  if (r.kidsAgesNeeded || r.householdKidsNeeded || r.ageFilterNotice) return '';
+  try {
+    return assistantMemoryAnswer(r, r.text);
+  } catch (_) {
+    return r.text; // translations not loaded in this runner
+  }
+}
+
+/// The line above the cards as the panel draws it for [r]: the real label
+/// code over a controller that holds this result.
+String evalLead(AssistantRunResult r) {
+  final shown = evalShown(r);
+  if (shown.isEmpty) return '';
+  final c = FakeAssistantController()
+    ..answer = shown
+    ..displays = List.of(r.displays)
+    ..actions = List.of(r.actions)
+    ..lastEnd = r.end
+    ..resultIsError = r.end != AssistantRunEnd.answered;
+  try {
+    return r.displays.isEmpty ? assistantHeadline(c) : assistantCardsLead(c);
+  } catch (_) {
+    return shown;
+  } finally {
+    c.dispose();
+  }
 }
 
 /// Every hard violation of [c] in [o].
@@ -206,6 +323,14 @@ Map<String, Object?> evalRecord(EvalCase c, EvalOutcome o, {required String mode
     'expect_fail': c.expectFail,
     'hard_ok': violations.isEmpty,
     'violations': violations,
+    'source': c.source,
+    'kids': c.kids,
+    'confirm_cards': [
+      for (final card in o.cards)
+        {'turn': card.turn, 'kind': card.kind, 'subject': card.subject, 'items': card.items, 'yes': card.yes},
+    ],
+    'state_before': o.initial.toJson(),
+    'memory_outcomes': o.memoryOutcomes,
     'turns': [
       for (final t in o.turns)
         {
@@ -230,6 +355,28 @@ Map<String, Object?> evalRecord(EvalCase c, EvalOutcome o, {required String mode
           'tokens': t.tokens,
           'latency_ms': t.latencyMs,
           'text': t.result.text,
+          // What the panel shows: the controller's own lines for the memory,
+          // then the model's text (assistant_controller_task.dart).
+          'answer_shown': evalShown(t.result),
+          // What stands above the cards on screen: the answer without the
+          // titles the cards already show (assistantCardsLead).
+          'lead_shown': evalLead(t.result),
+          'tool_results': [
+            for (final r in t.toolResults)
+              '${r.tool} -> ${r.content.length > 3000 ? '${r.content.substring(0, 3000)}…' : r.content}',
+          ],
+          'displays': [for (final d in t.result.displays) evalDisplay(d)],
+          'actions': [
+            for (final a in t.result.actions) {'kind': a.kind.name, 'server': a.serverName, 'subject': a.subject},
+          ],
+          'confirm': c.turns[o.turns.indexOf(t)].confirm.name,
+          'split_tasks': t.result.splitTasks.length,
+          'kids_ages_needed': t.result.kidsAgesNeeded,
+          'household_kids_needed': t.result.householdKidsNeeded,
+          'age_filter_notice': t.result.ageFilterNotice,
+          'memory_proposals': t.result.memoryProposals.length,
+          'memory_stored': [for (final f in t.result.memoryStored) f.value],
+          'state_after': o.states.length > o.turns.indexOf(t) ? o.states[o.turns.indexOf(t)].toJson() : null,
         },
     ],
   };

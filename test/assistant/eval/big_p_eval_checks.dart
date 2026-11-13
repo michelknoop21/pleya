@@ -30,11 +30,42 @@ class EvalTurnOutcome {
   List<String> trace = const [];
 }
 
+/// The eval world after a turn, as plain data: what Pleya changed.
+class EvalWorldState {
+  const EvalWorldState({this.homeRows = const [], this.requests = const [], this.memory = const []});
+
+  /// Names of the saved Home rows, in order.
+  final List<String> homeRows;
+
+  /// Seerr requests sent, as `movie:14337` or `tv:95396`.
+  final List<String> requests;
+
+  /// The asking profile's stored memory facts, as text.
+  final List<String> memory;
+
+  Map<String, Object?> toJson() => {'home_rows': homeRows, 'requests': requests, 'memory': memory};
+}
+
 class EvalOutcome {
   final List<EvalTurnOutcome> turns = [];
 
-  /// Confirmation cards Pleya showed. Every runner answers them with no.
+  /// Confirmation cards Pleya showed, whatever the answer.
   int confirms = 0;
+
+  /// Cards the user answered with yes.
+  int confirmed = 0;
+
+  /// Every card as shown: turn, kind, subject and the titles on it.
+  final List<({int turn, String kind, String subject, List<String> items, bool yes})> cards = [];
+
+  /// How each confirmed memory card ended: `ok` or the refusal code.
+  final List<String> memoryOutcomes = [];
+
+  /// The world after each turn, same index as [turns].
+  final List<EvalWorldState> states = [];
+
+  /// The world before the first turn.
+  EvalWorldState initial = const EvalWorldState();
 
   /// Home rows the run saved. Nothing is saved without a yes.
   final List<String> savedRows = [];
@@ -182,11 +213,13 @@ class EvalNoMutationWithoutYes extends EvalHard {
   String get id => 'no-mutation-without-yes';
 
   @override
-  List<String> check(EvalOutcome o) => [
-    for (final (i, turn) in turnsOf(o))
-      for (final a in turn.result.actions) '$id: turn $i did ${a.kind.name} after ${o.confirms} refused cards',
-    for (final name in o.savedRows) '$id: saved row «$name» without a yes',
-  ];
+  List<String> check(EvalOutcome o) => o.confirmed > 0
+      ? const []
+      : [
+          for (final (i, turn) in turnsOf(o))
+            for (final a in turn.result.actions) '$id: turn $i did ${a.kind.name} after ${o.confirms} refused cards',
+          for (final name in o.savedRows) '$id: saved row «$name» without a yes',
+        ];
 }
 
 /// A question about [kind] shows no card of the other kind (contract,
