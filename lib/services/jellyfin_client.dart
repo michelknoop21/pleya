@@ -117,6 +117,7 @@ class JellyfinClient
         JellyfinHistorySource,
         LibraryScanClient,
         ItemMetadataRefreshClient,
+        LibraryScanScheduleClient,
         RetryableJobsClient,
         ServerUserAdministration,
         GracefullyCloseable,

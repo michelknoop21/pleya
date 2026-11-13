@@ -39,7 +39,12 @@ class MobileLibraryFilterRow extends StatelessWidget {
 
   List<AppMenuEntry<_LibraryMoreAction>> _moreEntries() => [
     if (onManage != null)
-      AppMenuItem(value: _LibraryMoreAction.manage, icon: Symbols.edit_rounded, label: t.libraries.manageLibraries),
+      AppMenuItem(
+        value: _LibraryMoreAction.manage,
+        icon: Symbols.edit_rounded,
+        label: t.libraries.manageLibraries,
+        automationId: AutomationIds.libraryMoreManage,
+      ),
     AppMenuItem(value: _LibraryMoreAction.refresh, icon: Symbols.refresh_rounded, label: t.common.refresh),
   ];
 

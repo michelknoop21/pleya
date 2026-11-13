@@ -132,6 +132,15 @@ type Capabilities struct {
 	// een server zonder deze functie byte voor byte gelijk blijft.
 	MediaDelete bool `json:"media_delete,omitempty"`
 
+	// WatchStateTree (DEC-XXX, kijkstatus van een seizoen of serie). POST
+	// /items/{id}/watch-state markeert een item met alles eronder in één
+	// transactie. ItemMetadataRefresh (DEC-XXX, metadata per titel): POST
+	// /items/{id}/refresh-metadata bestaat voor klasse admin. ScanSchedule
+	// (DEC-XXX, volgende scan): Library draagt next_scan_at voor klasse admin.
+	WatchStateTree      bool `json:"watch_state_tree"`
+	ItemMetadataRefresh bool `json:"item_metadata_refresh"`
+	ScanSchedule        bool `json:"scan_schedule"`
+
 	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
 	// alleen de owner-rij. Een client die deze vlag ziet mag ervan uitgaan dat
@@ -278,6 +287,11 @@ type Library struct {
 	Managed             *string `json:"managed,omitempty"`
 	ScanIntervalSeconds **int   `json:"scan_interval_seconds,omitempty"`
 	ScanOnStart         *bool   `json:"scan_on_start,omitempty"`
+
+	// NextScanAt is het tijdstip van de volgende geplande scan, alleen voor
+	// klasse admin en alleen onder capabilities.scan_schedule (DEC-XXX, volgende
+	// scan). null betekent: er is geen geplande scan.
+	NextScanAt **string `json:"next_scan_at,omitempty"`
 }
 
 // LibraryList is het antwoord van GET /libraries.

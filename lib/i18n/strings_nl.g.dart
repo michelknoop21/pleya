@@ -1262,6 +1262,7 @@ class _TranslationsLibrariesNl extends TranslationsLibrariesEn {
 	@override String get all => 'Alles';
 	@override String get clearAll => 'Alles wissen';
 	@override String scanLibraryConfirm({required Object title}) => 'Weet je zeker dat je "${title}" wilt scannen?';
+	@override String nextScheduledScan({required Object time}) => 'Volgende geplande scan: ${time}.';
 	@override String analyzeLibraryConfirm({required Object title}) => 'Weet je zeker dat je "${title}" wilt analyseren?';
 	@override String refreshMetadataConfirm({required Object title}) => 'Weet je zeker dat je metadata wilt vernieuwen voor "${title}"?';
 	@override String emptyTrashConfirm({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?';
@@ -5745,6 +5746,7 @@ extension on TranslationsNl {
 			'libraries.all' => 'Alles',
 			'libraries.clearAll' => 'Alles wissen',
 			'libraries.scanLibraryConfirm' => ({required Object title}) => 'Weet je zeker dat je "${title}" wilt scannen?',
+			'libraries.nextScheduledScan' => ({required Object time}) => 'Volgende geplande scan: ${time}.',
 			'libraries.analyzeLibraryConfirm' => ({required Object title}) => 'Weet je zeker dat je "${title}" wilt analyseren?',
 			'libraries.refreshMetadataConfirm' => ({required Object title}) => 'Weet je zeker dat je metadata wilt vernieuwen voor "${title}"?',
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Weet je zeker dat je de prullenbak wilt legen voor "${title}"?',
@@ -5799,9 +5801,9 @@ extension on TranslationsNl {
 			'libraries.sortLabels.datePlayed' => 'Afspeeldatum',
 			'libraries.sortLabels.playCount' => 'Aantal afspelingen',
 			'libraries.sortLabels.productionYear' => 'Productiejaar',
-			'libraries.sortLabels.runtime' => 'Speelduur',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.runtime' => 'Speelduur',
 			'libraries.sortLabels.officialRating' => 'Officiële beoordeling',
 			'libraries.sortLabels.premiereDate' => 'Premièredatum',
 			'libraries.sortLabels.startDate' => 'Begindatum',
@@ -6313,9 +6315,9 @@ extension on TranslationsNl {
 			'performanceOverlay.dvRpus' => 'DV RPU’s',
 			'performanceOverlay.dvRpuAverage' => 'DV RPU gem.',
 			'performanceOverlay.dvSampleAverage' => 'DV-sample gem.',
-			'performanceOverlay.maxLuma' => 'Max luma',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.maxLuma' => 'Max luma',
 			'performanceOverlay.minLuma' => 'Min luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
 			'performanceOverlay.maxFall' => 'MaxFALL',
@@ -6827,9 +6829,9 @@ extension on TranslationsNl {
 			'nowWatching.transcode' => 'Transcoderen',
 			'nowWatching.paused' => 'Gepauzeerd',
 			'nowWatching.remaining' => ({required Object time}) => '${time} over',
-			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
 			_ => null,
 		} ?? switch (path) {
+			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'Op je netwerk',
 			'nowWatching.onWan' => 'Van buiten',
@@ -7341,9 +7343,9 @@ extension on TranslationsNl {
 			'assistant.memory.sync.deleted' => 'Verwijderd',
 			'assistant.memory.sync.select' => 'Delen',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
-			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
 			'assistant.memory.sync.clearChanged' => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.',
 			'assistant.memory.sync.clearServer' => 'Deze serverherinneringen wissen',
 			'assistant.memory.sync.clearEverywhere' => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.',
@@ -7855,9 +7857,9 @@ extension on TranslationsNl {
 			'seerrIssues.quickReplies' => 'Snel antwoorden',
 			'seerrIssues.quickLooking' => 'Ik kijk ernaar',
 			'seerrIssues.quickNewVersion' => 'Ik heb een nieuwe versie gevraagd',
-			'seerrIssues.quickFixed' => 'Opgelost, probeer het opnieuw',
 			_ => null,
 		} ?? switch (path) {
+			'seerrIssues.quickFixed' => 'Opgelost, probeer het opnieuw',
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'opgelost',
 			'pleyaNotifications.pushTitle' => 'Push op dit toestel',

@@ -37,6 +37,9 @@ class PleyaCapabilities {
     this.sessions = false,
     this.administration = false,
     this.libraryMaintenance = false,
+    this.watchStateTree = false,
+    this.itemMetadataRefresh = false,
+    this.scanSchedule = false,
     this.mediaDelete = false,
     this.mcp = false,
   });
@@ -145,6 +148,17 @@ class PleyaCapabilities {
   /// (chapter 17f, proposal). Without it a library offers only the scan.
   final bool libraryMaintenance;
 
+  /// `POST /items/{id}/watch-state` marks an item and everything below it in
+  /// one transaction (chapter 14.1c). Without it a season or show is marked
+  /// one episode at a time.
+  final bool watchStateTree;
+
+  /// `POST /items/{id}/refresh-metadata` exists for an admin (chapter 17f).
+  final bool itemMetadataRefresh;
+
+  /// `Library.next_scan_at` is on every library an admin reads (chapter 17f).
+  final bool scanSchedule;
+
   /// `DELETE /items/{id}` erases a title and its files from storage (chapter
   /// 17h). Only true when the server admin switched it on and a media root was
   /// measured writable at startup; absent means off.
@@ -187,6 +201,9 @@ class PleyaCapabilities {
     sessions: booleanOr(json, 'sessions', orElse: false),
     administration: booleanOr(json, 'administration', orElse: false),
     libraryMaintenance: booleanOr(json, 'library_maintenance', orElse: false),
+    watchStateTree: booleanOr(json, 'watch_state_tree', orElse: false),
+    itemMetadataRefresh: booleanOr(json, 'item_metadata_refresh', orElse: false),
+    scanSchedule: booleanOr(json, 'scan_schedule', orElse: false),
     mediaDelete: booleanOr(json, 'media_delete', orElse: false),
     mcp: booleanOr(json, 'mcp', orElse: false),
   );

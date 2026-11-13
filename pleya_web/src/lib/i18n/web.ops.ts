@@ -82,6 +82,8 @@ export const webOps = {
   'admin.act.sched.andOnStart': '{interval}, and at startup',
   'admin.act.sched.schedule': 'Schedule',
   'admin.act.sched.last': 'Last run',
+  'admin.act.sched.next': 'Next',
+  'admin.act.sched.noNext': 'Not planned',
   'admin.act.sched.runNamed': 'Run {name} now',
   'admin.act.sched.editNamed': 'Change the schedule of {name}',
   'admin.act.log.title': 'Log',

@@ -238,6 +238,12 @@ met 26).
 `POST /libraries/{id}/refresh-metadata` bestaan (17f, DEC-XXX). Een client zonder de vlag biedt op
 deze server alleen de scan aan.
 
+Drie vlaggen uit DEC-XXX (C-05, 13 november 2026). `capabilities.watch_state_tree` zegt dat
+`POST /items/{item_id}/watch-state` bestaat (14.1c); zonder de vlag markeert een client elke
+aflevering apart. `capabilities.item_metadata_refresh` zegt dat `POST /items/{item_id}/refresh-metadata`
+bestaat (17f). `capabilities.scan_schedule` zegt dat een bibliotheek voor klasse `admin`
+`next_scan_at` draagt (17f).
+
 `capabilities.media_delete` staat alleen aan als de beheerder het verwijderen van bestanden aanzette
 en minstens één mediaroot bij het opstarten schrijfbaar bleek (17h, DEC-XXX). Afwezig is false, en
 dan biedt een client verwijderen op deze server niet aan.
@@ -1288,6 +1294,32 @@ Het antwoord is ook hier de actuele toestand. `owned_by_this_session` zegt niet 
 die verwerft niets. Dat lees je aan het antwoord: bij `completed` aan `watched`, anders aan
 `position_ms`.
 
+### 14.1c Een seizoen of serie in één keer
+
+Onder `capabilities.watch_state_tree` (DEC-XXX), klasse `authenticated`.
+
+```
+POST /pleya/v1/items/{item_id}/watch-state
+{ "session_id": "0198f2d0-4444-7000-8000-000000000003", "explicit_action": "mark_watched" }
+```
+
+`explicit_action` is `mark_watched` of `mark_unwatched`; elke andere waarde, een ontbrekende
+`session_id` of een onbekend veld geeft `400 session.invalid`. De server zet het item zelf en elk
+seizoen en elke aflevering eronder in één transactie. Elk item gaat door dezelfde zes regels uit
+14.1a als een losse `POST /watch-state` met die handeling: de lease van een ander toestel telt niet,
+het eigendom gaat naar `session_id`, `revision` stijgt per item met één en er komt geen
+kijkgeschiedenis bij. Faalt één item, dan verandert er niets, ook niet aan de items die al aan de
+beurt waren geweest.
+
+Onder het item telt wat `GET /items/{item_id}/children` laat zien: een seizoen of aflevering met
+alleen bonusmateriaal blijft buiten. Een film, een aflevering en een serie zonder seizoenen zijn een
+boom van één. Een item buiten de bibliotheken van de aanvrager is `404`, hetzelfde antwoord als een
+item dat niet bestaat. Een seizoen of aflevering hoort altijd bij de bibliotheek van zijn serie, dus
+een boom is nooit half zichtbaar.
+
+Het antwoord is `{ "items": [ { "item_id", "state" } ] }`, het gevraagde item eerst, met de nieuwe
+`user_state` van elk item.
+
 ### 14.2 Lezen
 
 Twee wegen, en geen derde.
@@ -1522,17 +1554,21 @@ Per serie precies één aflevering, en nooit meer dan één. Welke, in drie stap
 1. **Wat meetelt.** Alleen afleveringen met een `item_index` in een seizoen met `item_index >= 1`.
    Specials (seizoen `item_index = 0`) en ongenummerde afleveringen tellen niet mee, niet als
    kandidaat en niet in stap 2. Wie een special kijkt schuift zijn serie dus niet op.
-2. **Het ankerpunt.** De hoogst genummerde aflevering van die serie waar deze identiteit kijkstatus
-   op heeft, geordend op `(seizoen, aflevering)`. Heeft een serie nergens kijkstatus, dan heeft zij
-   geen ankerpunt en staat zij niet in de hub. Een serie verschijnt hier dus nooit voordat er iets
-   mee gebeurd is.
+2. **Het ankerpunt.** De hoogst genummerde aflevering van die serie die deze identiteit gezien heeft
+   (`watched`) of waar zij aan begonnen is (`position_ms` groter dan nul), geordend op
+   `(seizoen, aflevering)`. Een aflevering die op ongezien staat telt niet mee, ook niet als zij
+   kijkstatus heeft: na `POST /items/{id}/watch-state` met `mark_unwatched` op een heel seizoen zou
+   de laatste aflevering anders het ankerpunt en de volgende zijn (DEC-XXX, drie servergaten).
+   Heeft een serie geen gezien of begonnen aflevering, dan heeft zij geen ankerpunt en staat zij
+   niet in de hub. Een serie verschijnt hier dus nooit voordat er iets mee gekeken is.
 3. **De keuze.** De laagst genummerde aflevering vanaf het ankerpunt die ongekeken is en waar niemand
    aan begonnen is: `watched` onwaar én `position_ms` nul. Is die er niet, dan is de serie uit en
    staat zij niet in de hub.
 
-Vanaf het ankerpunt en niet erna, zodat een aflevering die zojuist op `mark_unwatched` is gezet de
-volgende is in plaats van uit beide hubs te vallen. De eis dat er nog niet aan begonnen is houdt de
-twee hubs uit elkaar: **`continue_watching` en `next_up` leveren nooit hetzelfde item.** Een
+Een aflevering die op `mark_unwatched` is gezet en een gezien of begonnen voorganger heeft, is de
+volgende: het ankerpunt is dan die voorganger, en de op ongezien gezette aflevering is de eerste
+kandidaat erna. Heeft zij geen gezien of begonnen voorganger, dan heeft de serie geen ankerpunt en
+staat zij niet in de hub. De eis dat er nog niet aan begonnen is houdt de twee hubs uit elkaar: **`continue_watching` en `next_up` leveren nooit hetzelfde item.** Een
 halfgekeken aflevering staat in de eerste, haar opvolger in de tweede.
 
 Series onderling zijn aflopend geordend op de laatste kijkactiviteit binnen die serie, en niet op de
@@ -1754,6 +1790,8 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 107 | `POST /companion/ticket` | een ticket over een ander | klasse `authenticated` en elke rol, maar het ticket gaat altijd over de aanvrager zelf (`sub` uit het accesstoken, geen doel in de aanvraag); een API-token krijgt `403` met `auth.scope_insufficient`; DEC-XXX |
 | 108 | `POST /libraries/{id}/empty-trash` | titels verwijderen waarvan de bestanden weg zijn, met hun kijkstatus | klasse `admin`, `404` voor de rest; botst met een wachtende of lopende scan van die bibliotheek (`409` `library.scan_in_progress`) (17f) |
 | 109 | `POST /libraries/{id}/refresh-metadata` | een providerronde over een hele bibliotheek | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f) |
+| 110 | `POST /items/{id}/watch-state` | kijkstatus van een hele serie in één aanvraag | klasse `authenticated` en elke rol, over de eigen kijkstatus; item buiten de bibliotheken van de aanvrager `404` zoals regel 12 (14.1c, DEC-XXX) |
+| 111 | `POST /items/{id}/refresh-metadata` | een providerronde over één titel | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f, DEC-XXX) |
 | 112 | `DELETE /items/{id}` | bestanden van de opslag wissen | klasse `admin` én recht `manage` op de bibliotheek: buiten zicht `404`, zichtbaar maar geen owner of admin met `manage` `403` `library.delete_not_permitted`; een API-token `403` `auth.scope_insufficient`; standaard uit (17h, DEC-XXX) |
 
 
@@ -2503,6 +2541,23 @@ locks en pins blijven staan. `items` is het aantal titels dat aan de beurt staat
 "analyseren": de scan analyseert elk nieuw of gewijzigd bestand al, en ffprobe op ongewijzigde bytes
 met dezelfde gepinde ffmpeg geeft hetzelfde antwoord.
 
+**Per titel en de volgende scan (DEC-XXX).** `POST /items/{id}/refresh-metadata`, onder
+`capabilities.item_metadata_refresh` en klasse `admin`, doet hetzelfde voor de film of serie waar het
+item onder valt. Een seizoen of aflevering haalt zijn gegevens uit de ronde van zijn serie, dus
+verversen loopt dan over de hele serie. Bij een serie gaan haar seizoenen en afleveringen mee voor
+de controle van hun `.nfo`. `items` telt alles wat aan de beurt staat: voor een serie met twee
+seizoenen en drie afleveringen is dat 6. Een afgewezen of onbesliste titel geeft `items: 0`.
+
+Onder `capabilities.scan_schedule` draagt elke bibliotheek voor klasse `admin` `next_scan_at`: het
+moment waarop de server de volgende periodieke scan in de wachtrij zet. `null` betekent dat er nu geen
+geplande scan bekend is: het effectieve interval is 0, of de planner heeft de bibliotheek nog niet
+gezien (de eerste 30 seconden na het opstarten of na het aanmaken). Een client toont dan geen tijd;
+het veld weglaten zou dat geval niet onderscheiden van een server zonder planner. Een root die niet gemount is verandert het
+moment niet: de scan wordt dan ingepland zoals altijd, en of hij slaagt staat daarna in `GET /scans`.
+Een opstartscan telt niet mee. De planning staat alleen in het geheugen van de server; na een
+herstart begint elke bibliotheek op nu plus haar interval, en na een gewijzigd interval volgt het
+veld binnen 30 seconden.
+
 ### 17g. Back-up, restore en faalpaden
 
 Onder `capabilities.backups`, alles klasse `admin` (venster 7, S25, RB-26). Een back-up is één tar in
@@ -2638,7 +2693,7 @@ bestanden weg zijn, laat de catalogus niet half staan.
 | `POST /pleya/v1/auth/stream-session` | `authenticated` | nee |
 | `POST /pleya/v1/auth/logout` | `authenticated` | nee |
 | `GET /pleya/v1/server` | `authenticated` | nee |
-| `GET /pleya/v1/libraries` | `authenticated`; drie velden erbij voor `admin` | nee |
+| `GET /pleya/v1/libraries` | `authenticated`; vier velden erbij voor `admin` | nee |
 | `POST /pleya/v1/libraries` | `admin` | nee |
 | `PATCH /pleya/v1/libraries/{id}` | `admin` | nee |
 | `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
@@ -2648,6 +2703,7 @@ bestanden weg zijn, laat de catalogus niet half staan.
 | `POST /pleya/v1/libraries/{id}/scan` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/empty-trash` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/refresh-metadata` | `admin` | nee |
+| `POST /pleya/v1/items/{id}/refresh-metadata` | `admin` | nee |
 | `GET /pleya/v1/scans` | `admin` | ja |
 | `GET /pleya/v1/scans/{id}` | `admin` | nee |
 | `GET /pleya/v1/jobs` | `admin` | ja |
@@ -2664,6 +2720,7 @@ bestanden weg zijn, laat de catalogus niet half staan.
 | `GET /pleya/v1/stream/{version_id}` | `authenticated`, streamtoken of streamsessie | nee |
 | `POST /pleya/v1/watch-state` | `authenticated` | nee |
 | `GET /pleya/v1/watch-state` | `authenticated` | ja |
+| `POST /pleya/v1/items/{id}/watch-state` | `authenticated` | nee |
 | `POST /pleya/v1/users` | `admin` | nee |
 | `GET /pleya/v1/users` | `authenticated`, gefilterd | nee |
 | `GET /pleya/v1/users/me` | `authenticated`, altijd zichzelf | nee |

@@ -3036,6 +3036,9 @@ class TranslationsLibrariesEn {
 	/// en: 'Are you sure you want to scan "${title}"?'
 	String scanLibraryConfirm({required Object title}) => 'Are you sure you want to scan "${title}"?';
 
+	/// en: 'Next scheduled scan: ${time}.'
+	String nextScheduledScan({required Object time}) => 'Next scheduled scan: ${time}.';
+
 	/// en: 'Are you sure you want to analyze "${title}"?'
 	String analyzeLibraryConfirm({required Object title}) => 'Are you sure you want to analyze "${title}"?';
 
@@ -11859,6 +11862,7 @@ extension on Translations {
 			'libraries.all' => 'All',
 			'libraries.clearAll' => 'Clear All',
 			'libraries.scanLibraryConfirm' => ({required Object title}) => 'Are you sure you want to scan "${title}"?',
+			'libraries.nextScheduledScan' => ({required Object time}) => 'Next scheduled scan: ${time}.',
 			'libraries.analyzeLibraryConfirm' => ({required Object title}) => 'Are you sure you want to analyze "${title}"?',
 			'libraries.refreshMetadataConfirm' => ({required Object title}) => 'Are you sure you want to refresh metadata for "${title}"?',
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Are you sure you want to empty trash for "${title}"?',
@@ -11913,9 +11917,9 @@ extension on Translations {
 			'libraries.sortLabels.datePlayed' => 'Date Played',
 			'libraries.sortLabels.playCount' => 'Play Count',
 			'libraries.sortLabels.productionYear' => 'Production Year',
-			'libraries.sortLabels.runtime' => 'Runtime',
 			_ => null,
 		} ?? switch (path) {
+			'libraries.sortLabels.runtime' => 'Runtime',
 			'libraries.sortLabels.officialRating' => 'Official Rating',
 			'libraries.sortLabels.premiereDate' => 'Premiere Date',
 			'libraries.sortLabels.startDate' => 'Start Date',
@@ -12427,9 +12431,9 @@ extension on Translations {
 			'performanceOverlay.dvRpus' => 'DV RPUs',
 			'performanceOverlay.dvRpuAverage' => 'DV RPU Avg',
 			'performanceOverlay.dvSampleAverage' => 'DV Sample Avg',
-			'performanceOverlay.maxLuma' => 'Max Luma',
 			_ => null,
 		} ?? switch (path) {
+			'performanceOverlay.maxLuma' => 'Max Luma',
 			'performanceOverlay.minLuma' => 'Min Luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
 			'performanceOverlay.maxFall' => 'MaxFALL',
@@ -12941,9 +12945,9 @@ extension on Translations {
 			'pleyaShare.connect' => 'Connect',
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
-			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
 			_ => null,
 		} ?? switch (path) {
+			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
 			'pleyaShare.addFolder' => 'Add a local folder',
 			'pleyaShare.notificationTitle' => 'Sharing media',
 			'pleyaShare.notificationText' => 'Other Pleya devices can stream your local folders',
@@ -13455,9 +13459,9 @@ extension on Translations {
 			'assistant.memory.sync.deleted' => 'Removed',
 			'assistant.memory.sync.select' => 'Share',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
-			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
 			'assistant.memory.sync.clearChanged' => 'The server changed after you asked to erase memory. Review these facts and confirm erasing this server snapshot.',
 			'assistant.memory.sync.clearServer' => 'Erase these server memories',
 			'assistant.memory.sync.clearEverywhere' => 'Erase all memories for this profile and its linked Pleya Server account? Other connected devices receive the deletion when they reconnect.',
@@ -13969,9 +13973,9 @@ extension on Translations {
 			'seerrIssues.quickReplies' => 'Quick replies',
 			'seerrIssues.quickLooking' => 'Looking into it',
 			'seerrIssues.quickNewVersion' => 'I\'ve requested a new version',
-			'seerrIssues.quickFixed' => 'Fixed, please try again',
 			_ => null,
 		} ?? switch (path) {
+			'seerrIssues.quickFixed' => 'Fixed, please try again',
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'resolved',
 			'pleyaNotifications.pushTitle' => 'Push on this device',

@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const h = vi.hoisted(() => ({ goto: vi.fn(), admin: true, caps: {} as Record<string, boolean> }));
+const h = vi.hoisted(() => ({ goto: vi.fn(), refresh: vi.fn(), admin: true, caps: {} as Record<string, boolean> }));
+vi.mock('../api/admin', () => ({ adminApi: () => ({ refreshItemMetadata: h.refresh }) }));
 vi.mock('$app/navigation', () => ({ goto: h.goto }));
-vi.mock('../stores/session.svelte.js', () => ({ session: { get canAdminister() { return h.admin; }, get capabilities() { return h.caps; } } }));
+vi.mock('../stores/session.svelte.js', () => ({ session: { client: {}, get canAdminister() { return h.admin; }, get capabilities() { return h.caps; } } }));
 import ItemAdminMenu from './ItemAdminMenu.svelte';
 
 beforeEach(() => { h.goto.mockReset(); h.admin = true; h.caps = { metadata_overrides: true, artwork_choices: true }; });
@@ -31,5 +32,15 @@ describe('beheeringangen op het filmdetail', () => {
     render(ItemAdminMenu, { props: { item: { id: 'movie' } } });
     await fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
     expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+  });
+
+  it('ververst de metadata van de film met item_metadata_refresh en meldt het antwoord', async () => {
+    h.caps = { item_metadata_refresh: true };
+    h.refresh.mockResolvedValue({ items: 0 });
+    render(ItemAdminMenu, { props: { item: { id: 'movie' } } });
+    await fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await fireEvent.click(screen.getByRole('menuitem', { name: 'Refresh metadata' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Not refreshed');
+    expect(h.refresh).toHaveBeenCalledWith('movie');
   });
 });

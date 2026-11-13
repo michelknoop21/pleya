@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../automation/automation_node.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/focusable_tile_mixin.dart';
 import '../focus/input_mode_tracker.dart';
@@ -42,6 +43,10 @@ class AppMenuItem<T> extends AppMenuEntry<T> {
   final Color? stateLayerColor;
   final String? semanticLabel;
 
+  /// Pleya Verify id (and instance) for this entry; null declares nothing.
+  final String? automationId;
+  final String? automationInstance;
+
   const AppMenuItem({
     required this.value,
     this.label,
@@ -57,6 +62,8 @@ class AppMenuItem<T> extends AppMenuEntry<T> {
     this.foregroundColor,
     this.stateLayerColor,
     this.semanticLabel,
+    this.automationId,
+    this.automationInstance,
   }) : assert(label != null || child != null, 'AppMenuItem requires either label or child'),
        assert(subtitle == null || subtitleWidget == null, 'Provide subtitle or subtitleWidget, not both'),
        assert(icon == null || leading == null, 'Provide icon or leading, not both');
@@ -330,10 +337,15 @@ class _AppMenuListState<T> extends State<AppMenuList<T>> {
   }
 
   Widget _buildItem(AppMenuItem<T> item, {required bool initialFocusAssigned}) {
-    return AppMenuItemTile<T>(
-      item: item,
-      focusNode: initialFocusAssigned ? _initialFocusNode : null,
-      onPressed: item.enabled ? () => widget.onSelected(item.value) : null,
+    return AutomationNode(
+      id: item.automationId,
+      instance: item.automationInstance,
+      role: 'button',
+      child: AppMenuItemTile<T>(
+        item: item,
+        focusNode: initialFocusAssigned ? _initialFocusNode : null,
+        onPressed: item.enabled ? () => widget.onSelected(item.value) : null,
+      ),
     );
   }
 }

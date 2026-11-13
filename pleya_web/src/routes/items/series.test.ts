@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item } from '../../lib/api/types';
 
 const h = vi.hoisted(() => ({
-  item: vi.fn(), children: vi.fn(), hub: vi.fn(), watched: vi.fn(), favorite: vi.fn(),
+  item: vi.fn(), children: vi.fn(), hub: vi.fn(), watched: vi.fn(), favorite: vi.fn(), tree: vi.fn(), refresh: vi.fn(),
   caps: {} as Record<string, boolean>, admin: false, url: new URL('http://client.test/items/show')
 }));
 vi.mock('$app/state', () => ({ page: { params: { id: 'show' }, get url() { return h.url; } } }));
@@ -13,7 +13,11 @@ vi.mock('../../lib/stores/session.svelte.js', () => ({ session: {
   get canAdminister() { return h.admin; },
   get capabilities() { return h.caps; }
 } }));
-vi.mock('../../lib/api/personal', () => ({ personalApi: () => ({ setWatched: h.watched, setFavorite: h.favorite }) }));
+vi.mock('../../lib/api/personal', () => ({ personalApi: () => ({ setWatched: h.watched, setFavorite: h.favorite, setTreeWatched: h.tree }) }));
+vi.mock('../../lib/api/admin', async (original) => {
+  const actual = await original<typeof import('../../lib/api/admin')>();
+  return { ...actual, adminApi: (client: never) => ({ ...actual.adminApi(client), refreshItemMetadata: h.refresh }) };
+});
 import Detail from './[id]/+page.svelte';
 
 const at = '2026-10-29T12:00:00Z';
@@ -36,7 +40,7 @@ beforeEach(() => {
   h.caps = { playback_plan: true, watch_state: true, favorites: true };
   h.admin = false;
   h.url = new URL('http://client.test/items/show');
-  for (const mock of [h.item, h.children, h.hub, h.watched, h.favorite]) mock.mockReset();
+  for (const mock of [h.item, h.children, h.hub, h.watched, h.favorite, h.tree, h.refresh]) mock.mockReset();
   h.item.mockResolvedValue(structuredClone(show));
   h.children.mockImplementation(async (id: string) => ({ items: structuredClone(byParent[id] ?? []), next_cursor: null }));
   h.hub.mockImplementation(async (hub: string) => ({ items: hub === 'continue_watching' ? [{ ...episode(9, 1, { position_ms: 5 }), parent_id: 'other-season' }, structuredClone(byParent['s2']![1]!)] : [], next_cursor: null }));
@@ -93,6 +97,33 @@ describe('series detail', () => {
     await screen.findByRole('button', { name: 'Mark season as unwatched' });
     expect(h.watched.mock.calls.map(call => call[0])).toEqual(['s2e2', 's2e3']);
     expect(screen.getByText('4 of 5 episodes watched')).toBeInTheDocument();
+  });
+
+  it('marks a whole season in one request with watch_state_tree, and fills the episodes from the answer', async () => {
+    h.caps = { ...h.caps, watch_state_tree: true };
+    h.tree.mockImplementation(async (id: string, watched: boolean) => ({
+      items: [id, 's2e1', 's2e2', 's2e3'].map(itemId => ({ item_id: itemId, state: { position_ms: 0, watched, play_count: 1, updated_at: at } }))
+    }));
+    render(Detail);
+    await fireEvent.click(await screen.findByRole('button', { name: 'Mark season as watched' }));
+    await screen.findByRole('button', { name: 'Mark season as unwatched' });
+    expect(h.tree).toHaveBeenCalledExactlyOnceWith('s2', true);
+    expect(h.watched).not.toHaveBeenCalled();
+    expect(screen.getByText('3 watched · 0 in progress · 0 unwatched')).toBeInTheDocument();
+    expect(screen.getByText('4 of 5 episodes watched')).toBeInTheDocument();
+  });
+
+  it('counts a tree mark in the header even when the season changed while it ran', async () => {
+    h.caps = { ...h.caps, watch_state_tree: true };
+    let finish: (value: unknown) => void = () => {};
+    h.tree.mockImplementation((id: string, watched: boolean) => new Promise(resolve => {
+      finish = () => resolve({ items: [id, 's2e1', 's2e2', 's2e3'].map(itemId => ({ item_id: itemId, state: { position_ms: 0, watched, play_count: 1, updated_at: at } })) });
+    }));
+    render(Detail);
+    await fireEvent.click(await screen.findByRole('button', { name: 'Mark season as watched' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Season 1 · 2' }));
+    finish(undefined);
+    expect(await screen.findByText('4 of 5 episodes watched')).toBeInTheDocument();
   });
 
   it('stops marking at the first failure and says so', async () => {
@@ -171,5 +202,22 @@ describe('series detail', () => {
     expect(screen.getByRole('link', { name: 'Edit metadata' })).toHaveAttribute('href', '/admin/metadata/edit?item=show');
     expect(screen.getByRole('link', { name: 'Correct match' })).toHaveAttribute('href', '/admin/metadata/match?item=show');
     expect(screen.queryByRole('list', { name: 'Episodes' })).toBeNull();
+  });
+
+  it('refreshes the metadata of the series from the details tab, for an admin with item_metadata_refresh', async () => {
+    h.admin = true; h.caps = { ...h.caps, item_metadata_refresh: true };
+    h.refresh.mockResolvedValue({ items: 6 });
+    render(Detail);
+    await fireEvent.click(await screen.findByRole('tab', { name: 'Details and cast' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Refresh metadata' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('6 items queued');
+    expect(h.refresh).toHaveBeenCalledWith('show');
+  });
+
+  it('offers no metadata refresh without the capability', async () => {
+    h.admin = true;
+    render(Detail);
+    await fireEvent.click(await screen.findByRole('tab', { name: 'Details and cast' }));
+    expect(screen.queryByRole('button', { name: 'Refresh metadata' })).toBeNull();
   });
 });

@@ -205,6 +205,17 @@ bool applyNamedFixture(
     case 'server.owner.v1':
       server.usersCapability = true;
       return true;
+    case 'server.scan-schedule.v1':
+      // The owner, and a periodic scan planned on the first library: the scan
+      // question shows it (DEC-XXX, drie servergaten). Stacks on a catalog.
+      server.usersCapability = true;
+      server.scanScheduleCapability = true;
+      for (final (index, library) in server.libraries.indexed) {
+        library['next_scan_at'] = index == 0
+            ? server.clock.now.add(const Duration(minutes: 95)).toUtc().toIso8601String()
+            : null;
+      }
+      return true;
     case 'server.admin-jobs.v1':
       // The owner and one failed job to restart. Fixed timestamps, as everywhere
       // in a fixture: the restart's end counts once the watch has seen the job run.

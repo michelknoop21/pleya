@@ -1046,6 +1046,7 @@
     "all": "All",
     "clearAll": "Clear All",
     "scanLibraryConfirm": "Are you sure you want to scan \"${title}\"?",
+    "nextScheduledScan": "Next scheduled scan: ${time}.",
     "analyzeLibraryConfirm": "Are you sure you want to analyze \"${title}\"?",
     "refreshMetadataConfirm": "Are you sure you want to refresh metadata for \"${title}\"?",
     "emptyTrashConfirm": "Are you sure you want to empty trash for \"${title}\"?",
