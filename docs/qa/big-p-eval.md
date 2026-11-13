@@ -215,6 +215,8 @@ Maak één `EvalCase` in het gebied dat past (`test/assistant/eval/cases/`), met
 - `adm-search-with-offline-server` is met BP-11e een gewoon hard geval; de nulmeting is nog van vóór die fix, dus het live effect is niet gemeten.
 - De beheer- en huishoudcases (regel 2 en 7) bewijzen alleen de weigering zonder bevoegdheid; ze wachten op een inzichtenfixture.
 - De modeljury (BP-12) is gebouwd maar nog niet geijkt door Michel.
+- Een Jellyfin-titel wordt door `add_to_watchlist` altijd geweigerd: `watchlistKeyForItem` geeft zonder externe ids geen sleutel, en dezelfde weg in `WatchlistProvider.addToWatchlist` weigert hem ook. Gevonden in de review van BP-12t3, bestond al, niet aangepast.
+- De kijklijst komt via Big P als tekst terug, zonder kaarten. Een titel van de kijklijst halen en een Home-rij wijzigen vragen een bereikbare server op het profiel, hoewel de wijziging lokaal is.
 - Tien tools hebben nog geen nepdata (`_open` in `big_p_eval_matrix_test.dart`).
 - Ontbrekende tools na BP-12t1 tot en met BP-12t3: collectie wijzigen, gezien markeren, beoordelen, afspelen starten, samen kijken breder. Gezien markeren, beoordelen en afspelen raken gedeelde afspeellogica en krijgen eerst een kort plan.
 - De weergave is in ronde 3 niet opnieuw gemeten; de kinderprofieltak van `cancel_request` heeft geen test.

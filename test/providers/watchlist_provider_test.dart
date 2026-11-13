@@ -106,6 +106,19 @@ class _PendingSource extends _StubSource {
   }
 }
 
+/// A source that is down until [down] is cleared, and counts its fetches.
+class _FlakySource extends _StubSource {
+  _FlakySource({required super.entries}) : super(scope: plexScope);
+  bool down = true;
+  int fetches = 0;
+  @override
+  Future<List<WatchlistEntry>> fetch() async {
+    fetches++;
+    if (down) throw StateError('source down');
+    return entries;
+  }
+}
+
 class _PendingAddSource extends _StubSource {
   _PendingAddSource() : super(scope: plexScope);
   final started = Completer<void>();
@@ -824,6 +837,39 @@ void main() {
       final read = await assistantReadWatchlist(provider, offline: false);
       expect(read.failed, isFalse);
       expect(read.incomplete, isTrue);
+      expect(provider.entries, hasLength(1));
+    });
+
+    test('a source that was down is asked again on the next read, a complete list is not', () async {
+      final source = _FlakySource(entries: [entry()]);
+      final provider = providerWith(sources: [source]);
+      addTearDown(provider.dispose);
+
+      final first = await assistantReadWatchlist(provider, offline: false);
+      expect(first.incomplete, isTrue);
+      expect(provider.entries, isEmpty, reason: 'the only source did not answer');
+
+      source.down = false;
+      final second = await assistantReadWatchlist(provider, offline: false);
+      expect(second, (failed: false, incomplete: false, fromSnapshot: false));
+      expect(provider.entries, hasLength(1));
+
+      await assistantReadWatchlist(provider, offline: false);
+      expect(source.fetches, 2, reason: 'a complete list is not fetched again');
+    });
+
+    test('a snapshot read offline is refreshed once the device is online again', () async {
+      final source = _FlakySource(entries: [entry()])..down = false;
+      final provider = providerWith(sources: [source]);
+      addTearDown(provider.dispose);
+
+      final offline = await assistantReadWatchlist(provider, offline: true);
+      expect(offline.fromSnapshot, isTrue);
+      expect(source.fetches, 0);
+      expect(provider.entries, isEmpty, reason: 'no snapshot was stored yet');
+
+      final online = await assistantReadWatchlist(provider, offline: false);
+      expect(online.fromSnapshot, isFalse);
       expect(provider.entries, hasLength(1));
     });
 

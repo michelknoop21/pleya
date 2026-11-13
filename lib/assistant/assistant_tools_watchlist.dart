@@ -90,8 +90,11 @@ final List<AssistantTool> _watchlistTools = [
     run: (ctx, _, args) async {
       final services = _watchlist(ctx);
       final read = await services.read();
-      // No list at all is not an empty list.
-      if (read.failed && services.entries().isEmpty) throw const AssistantToolError('watchlist_unreachable');
+      // No list at all is not an empty list: a failed read, a source that
+      // did not answer, or an offline device without a stored list.
+      if ((read.failed || read.incomplete || read.fromSnapshot) && services.entries().isEmpty) {
+        throw const AssistantToolError('watchlist_unreachable');
+      }
       final wanted = args['title'] is String ? (args['title'] as String).trim().toLowerCase() : '';
       final kind = switch (args['kind']) {
         'movie' => MediaKind.movie,

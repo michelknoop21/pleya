@@ -96,8 +96,17 @@ void main() {
 
   test('a list that could not be read is an error, never an empty list', () async {
     list.entries.clear();
-    list.state = (failed: true, incomplete: false, fromSnapshot: false);
-    await expectLater(_tool('my_watchlist').run(ctx, null, const {}), _refuses('watchlist_unreachable'));
+    for (final state in [
+      (failed: true, incomplete: false, fromSnapshot: false),
+      (failed: false, incomplete: true, fromSnapshot: false),
+      (failed: false, incomplete: false, fromSnapshot: true),
+    ]) {
+      list.state = state;
+      await expectLater(_tool('my_watchlist').run(ctx, null, const {}), _refuses('watchlist_unreachable'));
+    }
+    list.state = (failed: false, incomplete: false, fromSnapshot: false);
+    final empty = await _tool('my_watchlist').run(ctx, null, const {}) as AssistantToolResult;
+    expect(empty.data['total'], 0, reason: 'a clean read of an empty list is an empty list');
   });
 
   test('a partial or stored list says so', () async {
