@@ -16,9 +16,12 @@ import 'package:pleya/assistant/assistant_tools.dart';
 // deliberate new baseline in the same change, with the reason in the commit.
 //
 // New baseline on 13 November 2026 (BP-12t1 and BP-12t2): 30386 characters,
-// 7597 tokens. Four tools came in that Big P could not do at all
-// (cancel_request, list_home_rows, rename_home_row, remove_home_row), with
-// their descriptions cut to the minimum first.
+// 7597 tokens. Of the 569 tokens over the old baseline, 354 are four tools
+// Big P could not do at all (cancel_request, list_home_rows, rename_home_row,
+// remove_home_row; measured as 30386 against 28971 characters without them),
+// with their descriptions cut first. The other 215 are growth since 16
+// October that stayed inside the old margin. A new baseline also resets the
+// margin: the ceiling goes from 7528 to 8097.
 
 const _baselineTokens = 7597;
 const _marginTokens = 500;

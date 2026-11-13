@@ -28,7 +28,8 @@ class AssistantCatalogServices {
   /// `create_home_row` out of the run.
   final Future<void> Function(HomeCustomRow row)? saveRow;
 
-  /// `HomeLayoutProvider.customRows` of the same profile, in Home's order.
+  /// `HomeLayoutProvider.customRows` of the same profile: the order they
+  /// were made in, newest first, which is not the order on Home.
   /// Null keeps the Home row tools out of the run.
   final List<HomeCustomRow> Function()? rows;
 

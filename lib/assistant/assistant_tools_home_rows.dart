@@ -4,8 +4,14 @@ part of 'assistant_tools.dart';
 // remove one. A row is only accepted by the ref this run showed for it, and
 // a change runs after a yes on the card, against the row as it is then.
 
-/// `r1`, `r2`, ... to the row as it was listed, per run.
+/// `r1`, `r2`, ... to the row as it was last listed, per run.
 final _shownHomeRows = Expando<Map<String, HomeCustomRow>>('shownHomeRows');
+
+/// The ref each row got, by the row's own id. A row keeps its ref for the
+/// whole run and no ref is handed out twice: a row made in between moves the
+/// positions, and a ref the model still holds must not come to mean another
+/// row.
+final _homeRowRefs = Expando<Map<String, String>>('homeRowRefs');
 
 bool _servesHomeRows(AssistantToolContext ctx, ServerId _) => ctx.catalog?.rows != null;
 
@@ -29,7 +35,9 @@ HomeCustomRow _currentHomeRow(AssistantCatalogServices catalog, HomeCustomRow li
   return now;
 }
 
-String _homeRowName(HomeCustomRow row) => clipText(row.name.isEmpty ? row.id : row.name, 64);
+/// The row as Home calls it: its own name, or the label of its filter when
+/// it was never named. Never the internal id, which nobody can check on a card.
+String _homeRowName(HomeCustomRow row) => clipText(homeCustomRowLabel(row), 64);
 
 final List<AssistantTool> _homeRowTools = [
   AssistantTool(
@@ -42,12 +50,15 @@ final List<AssistantTool> _homeRowTools = [
     run: (ctx, _, args) async {
       final catalog = _homeRowsCatalog(ctx);
       final shown = _shownHomeRows[ctx] ??= {};
+      final refs = _homeRowRefs[ctx] ??= {};
       final rows = catalog.rows!();
       return AssistantToolResult({
+        // The order they were made in, newest first: not the order on Home.
+        'order': 'newest_first',
         'rows': [
-          for (final (i, row) in rows.indexed)
+          for (final row in rows)
             () {
-              final ref = 'r${i + 1}';
+              final ref = refs[row.id] ??= 'r${refs.length + 1}';
               shown[ref] = row;
               return {
                 'row_id': ref,
@@ -81,8 +92,9 @@ final List<AssistantTool> _homeRowTools = [
         kind: AssistantActionKind.renameHomeRow,
         serverId: ctx.userServers.firstOrNull ?? (throw const AssistantToolError('no_servers')),
         serverName: '',
-        subject: _homeRowName(row),
-        items: [title],
+        // Old and new name together: the card has one line for the subject,
+        // and its list is headed "titles", which a new name is not.
+        subject: '${_homeRowName(row)} → $title',
         execute: ({password}) async {
           final now = _currentHomeRow(catalog, listed);
           await save(HomeCustomRow(id: now.id, kind: now.kind, name: title, preferences: now.preferences));

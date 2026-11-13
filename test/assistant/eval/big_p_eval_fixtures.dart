@@ -416,7 +416,8 @@ AssistantToolContext evalContext({
         if (at >= 0) {
           rowStore![at] = row;
         } else {
-          rowStore?.add(row);
+          // At the front, as `HomeLayoutProvider.saveCustomRow` does.
+          rowStore?.insert(0, row);
           onSaveRow?.call(row.name);
         }
       },

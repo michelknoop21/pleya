@@ -112,7 +112,9 @@ void homeRowTests() {
     final outcome = await _run(c);
     expect(evalViolations(c, outcome), isEmpty);
     final turn = (evalRecord(c, outcome, model: 's', attempt: 1)['turns'] as List).single as Map;
-    expect((turn['tool_results'] as List).every((r) => '$r'.contains('unknown_row_id')), isTrue, reason: '$turn');
+    final results = turn['tool_results'] as List;
+    expect(results, hasLength(2));
+    expect(results.every((r) => '$r'.contains('unknown_row_id')), isTrue, reason: '$turn');
     expect(turn['actions'], isEmpty);
   });
 }
