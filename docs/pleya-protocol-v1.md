@@ -238,6 +238,10 @@ met 26).
 `POST /libraries/{id}/refresh-metadata` bestaan (17f, DEC-XXX). Een client zonder de vlag biedt op
 deze server alleen de scan aan.
 
+`capabilities.media_delete` staat alleen aan als de beheerder het verwijderen van bestanden aanzette
+en minstens één mediaroot bij het opstarten schrijfbaar bleek (17h, DEC-XXX). Afwezig is false, en
+dan biedt een client verwijderen op deze server niet aan.
+
 `capabilities.mcp` staat aan zodra het MCP-endpoint beschikbaar is. Het register bepaalt welke gecontroleerde operaties beschikbaar zijn. Transport, toolargumenten en audit staan in [het MCP-hoofdstuk](pleya-protocol-mcp.md).
 Zolang hij uit staat draagt `Server.mcp` de vorm met `enabled: false`, en dat is een ander antwoord
 dan een afwezig object: het eerste zegt dat de laag bestaat en uit staat, het tweede dat deze server
@@ -611,6 +615,9 @@ contract keurt ze af.
 | `library.download_not_permitted` | 403 | nee | de bibliotheek is zichtbaar maar het recht `download` ontbreekt |
 | `library.download_not_ready` | 409 | ja | de download is nog `preparing`, probeer het zo opnieuw |
 | `library.download_changed` | 409 | nee | het bestand veranderde na het uitrekenen van de SHA-256, vraag een nieuwe download |
+| `library.delete_not_permitted` | 403 | nee | de bibliotheek is zichtbaar, maar de aanvrager is geen owner of admin met het recht `manage` (17h) |
+| `library.media_delete_unavailable` | 409 | nee | verwijderen staat uit (`details.reason` `disabled`), de opslag van het item is niet schrijfbaar gemount (`read_only`) of overlapt met die van een andere bibliotheek (`root_overlap`); er is niets gewist (17h) |
+| `library.media_delete_incomplete` | 409 | nee | een of meer bestanden bleven staan; `details` zegt wat wel en niet weg is (17h) |
 | `playback.file_corrupt` | 422 | nee | een omzetting mislukte en een tweede analyse van de bron ook: het bestand zelf is stuk (faalpad "kapot bestand", S25.5) |
 | `server.maintenance` | 503 | ja | de server zet een back-up terug en neemt niets aan tot hij herstart is (S25.3) |
 | `server.database_unavailable` | 503 | ja | de database is niet bereikbaar (faalpad "database weg", S25.5); een query die fout is blijft `server.internal` |
@@ -1563,7 +1570,8 @@ view  <  download  <  manage
 Eén waarde per `(gebruiker, bibliotheek)`, nooit drie losse vlaggen: `download` impliceert `view`,
 `manage` impliceert beide. `view` en `download` worden in deze fase gehandhaafd; `manage` wordt
 opgeslagen en teruggegeven, maar handhaaft pas iets zodra metadata-bewerken en bibliotheekbeheer
-bestaan (latere fasen).
+bestaan (latere fasen). Eén uitzondering: `DELETE /items/{id}` (17h) eist `manage` op de bibliotheek,
+en daarnaast de klasse `admin` (owner of admin). Een lid met `manage` mag dus nog steeds niets wissen.
 
 ### 16.3 De endpoints
 
@@ -1746,6 +1754,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 107 | `POST /companion/ticket` | een ticket over een ander | klasse `authenticated` en elke rol, maar het ticket gaat altijd over de aanvrager zelf (`sub` uit het accesstoken, geen doel in de aanvraag); een API-token krijgt `403` met `auth.scope_insufficient`; DEC-XXX |
 | 108 | `POST /libraries/{id}/empty-trash` | titels verwijderen waarvan de bestanden weg zijn, met hun kijkstatus | klasse `admin`, `404` voor de rest; botst met een wachtende of lopende scan van die bibliotheek (`409` `library.scan_in_progress`) (17f) |
 | 109 | `POST /libraries/{id}/refresh-metadata` | een providerronde over een hele bibliotheek | klasse `admin`, `404` voor de rest; afgewezen en onbesliste titels blijven buiten (17f) |
+| 112 | `DELETE /items/{id}` | bestanden van de opslag wissen | klasse `admin` én recht `manage` op de bibliotheek: buiten zicht `404`, zichtbaar maar geen owner of admin met `manage` `403` `library.delete_not_permitted`; een API-token `403` `auth.scope_insufficient`; standaard uit (17h, DEC-XXX) |
 
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
@@ -2542,6 +2551,79 @@ is een back-up terugzetten.
 dat stuk is `playback.file_corrupt`. De laatste twee hebben dezelfde buitenkant; een tweede analyse
 van de bron beslist welke het is.
 
+### 17h. Een titel met zijn bestanden verwijderen
+
+`DELETE /items/{id}` haalt een film, serie, seizoen of aflevering uit de catalogus en wist de
+bestanden ervan van de opslag (DEC-XXX). Dat is anders dan `DELETE /libraries/{id}` (17e.3), dat
+alleen de database raakt. Het gedrag staat standaard uit, en een installatie die niets verandert
+houdt dus een server die nooit schrijft op de mediamount.
+
+**Aanzetten.** Twee dingen van de beheerder, en een meting van de server. De variabele
+`PLEYA_SERVER_ALLOW_MEDIA_DELETE=true`, en een mediamount zonder `:ro`. Bij het opstarten maakt de
+server in elke root uit `PLEYA_SERVER_MEDIA_DIRS` een leeg tijdelijk bestand aan en wist het meteen;
+alleen roots waar dat lukt komen in de lijst. Zonder variabele staat de functie uit
+(`library.media_delete_unavailable`, `details.reason` `disabled`). Met variabele maar zonder
+schrijfbare root, of voor een item waarvan de bibliotheekroot niet onder een gemeten root valt, is
+het `read_only`. In beide gevallen is er niets gewist. `capabilities.media_delete` is alleen waar
+als er minstens één schrijfbare root gemeten is.
+
+**Wie.** Een beheerder: de klasse `admin` (owner of admin) én het recht `manage` op de bibliotheek
+van het item. Owner en admin hebben `manage` altijd (16.2), dus in de praktijk beslist de rol. Buiten
+zicht is `404`; zichtbaar voor iemand die geen owner of admin is, ook een lid met `manage`, is `403`
+`library.delete_not_permitted`. Een API-token krijgt `403` `auth.scope_insufficient`, ook onder
+bereik `admin`: een agent of script wist geen bestanden.
+
+**Een scan in de rij.** Wacht of loopt er een scan van dezelfde bibliotheek, dan is het antwoord
+`409` `library.scan_in_progress` en is er niets gewist, net als bij het legen van de prullenbak (17f).
+Een scan die net na die controle begint wordt niet tegengehouden. Ziet hij een bestand nog vlak voor
+het wissen, dan kan er een item zonder bestand in de catalogus staan tot de volgende scan het als
+verdwenen markeert. Er gaat daarbij geen bestand of kijkstatus verloren die niet al weg moest.
+
+**Overlappende roots.** Valt de root van het item, met opgeloste symlinks, samen met of binnen de
+root van een andere opslaglocatie (of andersom), dan is het `409` `library.media_delete_unavailable`
+met `details.reason` `root_overlap`. Een bestand zou dan ook bij een andere bibliotheek kunnen horen.
+Naast de paden vergelijkt de server per bestand de mappen zelf (apparaat en inode): een andere root
+die een tweede bind-mount is van een map binnen deze root valt zo ook op. Niet gezien wordt een root
+die zelf binnen een andere ligt terwijl de paden dat niet tonen, en dezelfde share die twee keer los
+over het netwerk gekoppeld is.
+
+**Wat er gewist wordt.** Alleen wat de catalogus aan het item en alles eronder hing: de
+mediabestanden van elke versie, de losse ondertitels van die versies en de artwork van de items.
+Een bestand dat de scanner niet kende (een `.nfo`, een eigen notitie) blijft staan. Een map die door
+het wissen leeg raakt gaat mee tot aan de bibliotheekroot; een map waar nog iets in staat blijft, en
+een symlink naar een map ook.
+Mediabestanden gaan eerst. Blijft er één staan, dan blijven ook alle bijbestanden van het item
+staan (`media_kept`), zodat er geen titel zonder ondertitel of poster achterblijft.
+
+**De grens.** Het pad komt uit de database en wordt geopend binnen de bij het opstarten gemeten
+schrijfbare root, en daarbinnen vanaf de bibliotheekroot (`os.Root` in Go): een tussenliggende map
+die via een symlink naar buiten wijst, of een relatief pad met `..`, komt niet verder dan
+`outside_root`. Een bestand dat er niet is telt als gewist als de map van het bestand er is en gevuld
+is (iets anders wiste het net), of als de scanner het al als
+verdwenen had gemarkeerd; anders is het `remove_failed` en blijft de titel staan. Een bestand dat zelf een symlink is wordt niet gewist
+en zijn doel ook niet (`symlink`). Iets anders dan een gewoon bestand evenmin (`not_a_file`).
+
+**De database.** Na het wissen krijgen de gewiste bestanden de markering `missing_since`, en ruimt
+de server op langs hetzelfde pad als de prullenbak (17f): versies zonder aanwezig mediabestand, dan
+titels zonder versie met hun kijkstatus, geschiedenis, favorieten, waarderingen, downloads en
+lijstregels, en daarna de seizoenen en series die leeg raakten.
+
+**Halverwege fout.** Bleef er een bestand staan, dan is het antwoord `409`
+`library.media_delete_incomplete` met `details.removed_files`, `details.removed_items` en
+`details.failed` (pad relatief aan de bibliotheekroot en een reden). De database volgt precies wat
+er op schijf gebeurde: een versie waarvan een mediabestand bleef, blijft bestaan.
+
+**Lopende streams.** Omzettingen van de versies van het item stopt de server vóór het wissen. Een
+directe stream heeft geen sessie in het geheugen. Een range die al loopt, leest via de open
+bestandshandle uit tot het eind van dat bereik; pas de volgende range-aanvraag krijgt `404`, omdat
+de versie weg is.
+
+**Na het wissen.** De databasestap loopt los van de aanvraag: een client die ophangt nadat de
+bestanden weg zijn, laat de catalogus niet half staan.
+
+**Audit.** Elke poging die tot het wissen of tot de `read_only`-weigering komt schrijft een regel
+`deleteItem` met de aanvrager, het item en de aantallen.
+
 ---
 
 ## 18. Endpointoverzicht
@@ -2573,6 +2655,7 @@ van de bron beslist welke het is.
 | `POST /pleya/v1/jobs/{id}/retry` | `admin` | nee |
 | `GET /pleya/v1/libraries/{id}/items` | `authenticated` | ja |
 | `GET /pleya/v1/items/{id}` | `authenticated` | nee |
+| `DELETE /pleya/v1/items/{id}` | `admin` met recht `manage` (17h) | nee |
 | `GET /pleya/v1/items/{id}/children` | `authenticated` | ja |
 | `GET /pleya/v1/search` | `authenticated` | ja |
 | `GET /pleya/v1/hubs/{hub_id}` | `authenticated` | ja |
@@ -2804,3 +2887,76 @@ geen stille andere afbeelding. Nieuw bewust kiezen geeft een nieuwe UUID/ETag.
 Ontpinnen herstelt de gewone bronladder. `pins.*.state=ready` betekent aanwezige
 gevalideerde cachebytes, `unavailable` houdt intentie en herstelbare fout zichtbaar.
 GET mag cache herstellen; PUT lokt na publicatie geen nieuwe netwerkcall uit.
+
+## A-21 Push naar een iOS-installatie
+
+De optionele vlag `capabilities.push_notifications` staat alleen aan bij een
+geconfigureerde APNs-provider. De app gebruikt een HTTPS-verbinding en vraagt
+expliciete iOS-toestemming voordat zij een token verstuurt. Beide categorieën
+beginnen uit. Een client bewaart per profiel en serveraccount een willekeurige
+installatie-UUID en stuurt die naar
+`PUT /users/me/push-installations/{installation_id}`. De gesloten body bevat
+`device_token` in hex, `environment` (sandbox of production), optioneel
+`locale` (en of nl) en `movies` en `episodes`. De server accepteert alleen
+zijn eigen APNs-omgeving en ten minste één gekozen categorie.
+
+PUT en DELETE vereisen een eigen sessiebearer. PUT is vervangend en behoudt
+de oorspronkelijke toestemmingstijd van categorieën die aan blijven.
+Een nieuwere sessie van hetzelfde account kan de registratie overnemen als
+zij hetzelfde toestel of APNs-token draagt. Een APNs-token hoort bij één
+registratie: een geslaagde PUT met hetzelfde token laat elke andere registratie
+met dat token vervallen, ook van een ander account op een gedeeld toestel.
+Maximaal acht registraties per sessie. DELETE met een id raakt alleen een
+registratie van de aanroepende sessie, is idempotent en geeft bij een onbekende
+of andere registratie ook 204. `DELETE /users/me/push-installations` zonder id trekt elke registratie
+van de aanroepende sessie in, en geen van een andere sessie of een ander account;
+ook zonder registraties 204. De app trekt push daarmee in, zodat zij niet hoeft
+bij te houden welke ids een sessie ooit registreerde. Een oudere server zonder
+die route antwoordt 404 of 405; de app trekt dan alleen de ids in die zij voor
+die verbinding bewaart. Die terugval is niet convergent: een ander id dat de
+sessie ooit registreerde blijft staan tot de sessie eindigt.
+
+De app houdt de stand convergent. Bewaard worden alleen de keuze per profiel en
+verbinding en het installatie-id voor de PUT. Voor elke Pleya-sessie op het
+toestel hoort op de server precies één registratie te staan als die sessie bij
+het actieve profiel hoort en dat profiel er push aanzette, en anders niets. De
+app schrijft die stand weg bij het starten, bij hervatten, als een server
+online komt, bij een profielwissel, na een gewijzigde keuze, en met een
+oplopende pauze zolang een poging mislukt; per sessie loopt één poging
+tegelijk. Een sessie krijgt alleen een intrekking als zij mogelijk iets houdt:
+de app markeert haar vóór elke PUT en wist die markering pas na een bevestigde
+intrekking. Een lege sessie van een ander profiel krijgt zo geen client en
+verbruikt geen refreshtoken, en kan dus idle worden. Had de laatste PUT op een
+sessie geen bekende uitkomst (een time-out of een antwoord zonder foutenvelop),
+dan kan hij nog na een intrekking landen; de markering blijft dan staan en de
+app trekt na twee minuten nog één keer in. Bij de eerste run na deze versie
+geldt elke bekende Pleya-sessie als gemarkeerd. Zonder actief profiel (de
+profielkiezer) maakt de app de gemarkeerde sessies één keer leeg, zonder nieuwe
+pogingen; wat dan nog gemarkeerd is, maakt de volgende profielkeuze leeg. Gebruikt een kinderprofiel dezelfde sessie als een ander profiel, dan
+gelden de bibliotheekrechten van dat account: de server kent geen profielen,
+alleen accounts, en de alerttekst is algemeen. Intrekken blijft mogelijk als de provider uit staat. Onbruikbare
+registraties geven 400 `session.invalid`. API-tokens geven 403
+`auth.scope_insufficient`. Alle antwoorden dragen `Cache-Control: no-store`.
+
+De server verstuurt alleen na controle van toestemming, sessie en bibliotheek.
+De alerttekst en de willekeurige aflever-ID bevatten geen titel of
+bibliotheeknaam. Een intrekking verwijdert wachtende afleveringen bij Pleya.
+De server vraagt APNs om niet-bezorgde alerts direct te laten verlopen.
+Nieuwe titels die tegelijk klaarstaan gaan per registratie als één alert, en
+een latere alert vervangt de vorige op het toestel.
+Een opt-out of rechtenwijziging die binnenkomt terwijl de server een alert aan
+APNs aanbiedt, houdt die ene alert niet meer tegen; dat venster duurt hoogstens
+8 seconden, de time-out van de APNs-aanvraag. Daarna verstuurt de server niets
+meer op basis van de oude stand.
+
+Verwijdert de app de laatste verwijzing naar een verbinding, dan trekt zij de
+registratie in en sluit zij de sessie af met `POST /auth/logout`. Dat geldt ook
+voor een profiel dat niet actief is, zoals bij het verwijderen van een heel
+profiel: de app gebruikt dan kort de opgeslagen verbinding van dat profiel. Kan het toestel
+de server op dat moment niet bereiken, dan blijven sessie en registratie op de
+server staan tot de gebruiker of een beheerder de sessie intrekt, of tot de
+sessieronde haar opruimt nadat de refreshlevensduur verstreken is. Tot dan kan
+het toestel nog alerts van die server krijgen. Gebruikt een ander profiel de
+verbinding nog, dan blijft de sessie bekend en maakt de volgende ronde haar leeg.
+Uitloggen in de app trekt push op elke Pleya-sessie in en sluit die sessies af,
+elk met dezelfde tijdsgrens.

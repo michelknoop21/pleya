@@ -14,7 +14,8 @@
   import { describeError } from '#lib/api/errors.js';
   import { SORT_OPTIONS, LEGACY_SORT_OPTIONS, isSortOption, type SortOption, type Facets } from '#lib/api/types.js';
   import { emptyPager, loadNext, type PagerState } from '#lib/util/paging.js';
-  import { formatCount } from '#lib/util/format.js';
+  import { formatCount, formatDuration, itemProgress } from '#lib/util/format.js';
+  import type { Item } from '#lib/api/types.js';
   import { plural, t } from '#lib/i18n/index.js';
 
   const libraryId = $derived(page.params['id'] ?? '');
@@ -81,13 +82,32 @@
   const countLabel = $derived.by(() => {
     const loaded = pager.items.length;
     const estimate = pager.totalEstimate;
+    if (estimate === null && !pager.done) return undefined;
+    if (loaded === 0) return undefined;
+    // Met een filter erop: hoeveel er overblijven van de hele bibliotheek.
+    const all = library?.item_count;
+    const shown = Math.max(estimate ?? 0, loaded);
+    if (catalogFilterCount(query.filters) > 0 && typeof all === 'number' && all >= shown) {
+      return t('libraries.countOf', { count: formatCount(shown), total: formatCount(all) });
+    }
     if (estimate !== null && estimate > loaded) {
       return plural('libraries.approximate', estimate, { count: formatCount(estimate) });
     }
-    if (estimate === null && !pager.done) return undefined;
-    if (loaded === 0) return undefined;
     return plural('libraries.itemCount', loaded, { count: formatCount(loaded) });
   });
+
+  // "21 van 128 getoond": alleen zolang er nog meer te laden valt en het totaal bekend is.
+  const shownLabel = $derived(
+    !pager.done && pager.totalEstimate !== null && pager.totalEstimate > pager.items.length
+      ? t('libraries.shownOf', { shown: formatCount(pager.items.length), total: formatCount(pager.totalEstimate) })
+      : null
+  );
+
+  // Een film zegt jaar en duur; wie halverwege is en al het andere houdt de gewone onderregel.
+  function movieSubtitle(item: Item): string | undefined {
+    if (item.kind !== 'movie' || itemProgress(item)) return undefined;
+    return [item.year, formatDuration(item.duration_ms)].filter(Boolean).join(' · ') || undefined;
+  }
 
   /**
    * Haalt de volgende pagina op.
@@ -236,7 +256,7 @@
   {:else}
     {#if pager.items.length > 0}
       <div>
-        <MediaGrid items={pager.items} label={library?.title ?? t('libraries.title')} />
+        <MediaGrid items={pager.items} label={library?.title ?? t('libraries.title')} subtitle={movieSubtitle} />
       </div>
     {/if}
 
@@ -253,6 +273,7 @@
           {t('common.retry')}
         </button>
       {:else if !pager.done}
+        {#if shownLabel}<p class="page__note">{shownLabel}</p>{/if}
         <button
           type="button"
           class="btn btn--secondary"
@@ -279,6 +300,11 @@
      vaste breedte naast de titel. */
   .page__sort {
     width: 100%;
+  }
+
+  /* De sortering is een pil, zoals de filters eronder. */
+  .page__sort :global(select) {
+    border-radius: var(--radius-pill);
   }
 
   @media (min-width: 900px) {

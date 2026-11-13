@@ -672,6 +672,9 @@ ids:
   - id: sheet.context_menu.item
     role: list.item
     instanceable: true
+  - id: dialog.delete_media
+    role: button
+    instanceable: true
   - id: sheet.library_actions
     role: sheet
     instanceable: false

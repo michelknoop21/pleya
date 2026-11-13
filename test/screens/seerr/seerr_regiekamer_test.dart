@@ -1,4 +1,4 @@
-// Regiekamer (DEC-XXX, mockups C1 and C2): count tiles, sections in decision
+// Regiekamer (DEC-203, mockups C1 and C2): count tiles, sections in decision
 // order, ticking several requests for one Goedkeuren, swipes, and the facts in
 // the menu behind a row.
 import 'dart:async';

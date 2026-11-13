@@ -11,6 +11,7 @@ import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../services/api_cache.dart';
+import 'image_cache_service.dart';
 import 'jellyfin_client.dart';
 import 'jellyfin_endpoint_discovery.dart';
 import 'local_folder_client.dart';
@@ -179,6 +180,7 @@ class MultiServerManager {
   /// Unlike [_unreachableSince] this one outlives a resume: it is cleared by a
   /// network change, a manual reconnect or a success only.
   final ReconnectBackoff _reconnectBackoff = ReconnectBackoff();
+  final Map<String, Timer> _offlineAddRetry = {};
 
   /// Get all registered server IDs (Plex + Jellyfin).
   ///
@@ -698,6 +700,7 @@ class MultiServerManager {
     _plexAccountByServer.remove(serverId);
     _serverStatus.remove(serverId);
     _authErrorServers.remove(serverId);
+    _offlineAddRetry.remove(serverId)?.cancel();
     _releaseGeneration(serverId);
     _statusController.add(Map.from(_serverStatus));
     appLogger.i('Removed server: $serverId');
@@ -945,6 +948,96 @@ class MultiServerManager {
   @visibleForTesting
   http.Client Function()? debugPleyaServerHttpClientFactory;
 
+  /// Writes a rotated Pleya token back only while the row is still there, in
+  /// one step. A short-lived client uses this, so it cannot bring back a
+  /// connection that was removed while it ran.
+  FutureOr<void> Function(PleyaServerConnection connection)? pleyaConnectionUpdateIfExists;
+
+  PleyaServerClient _createPleyaServerClient(
+    PleyaServerConnection connection, {
+    void Function(PleyaServerConnection updated)? onRotated,
+    bool persist = true,
+    bool onlyExisting = false,
+  }) => PleyaServerClient.create(
+    connection,
+    httpClientFactory: debugPleyaServerHttpClientFactory,
+    onConnectionUpdated: (updated) async {
+      onRotated?.call(updated);
+      final save = onlyExisting
+          ? pleyaConnectionUpdateIfExists ?? onPleyaServerConnectionUpdated
+          : onPleyaServerConnectionUpdated;
+      if (!persist || save == null) return;
+      try {
+        await Future.sync(() => save(updated));
+      } catch (e, st) {
+        appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
+      }
+    },
+  );
+
+  /// One queue per Pleya connection for its short-lived clients. Each turn
+  /// hands the connection it rotated to (or inherited) to the turn queued
+  /// right behind it; an empty queue keeps nothing. Binding never queues.
+  final _pleyaTurns = <String, Future<PleyaServerConnection?>>{};
+
+  PleyaServerClient? _boundPleyaClient(PleyaServerConnection connection) {
+    final bound = _clients[connection.serverId];
+    return bound is PleyaServerClient && bound.connection.id == connection.id ? bound : null;
+  }
+
+  /// Joins the queue for [id]: returns the turn to complete and what the
+  /// previous turn handed on.
+  Future<(Completer<PleyaServerConnection?>, PleyaServerConnection?)> _takePleyaTurn(String id) async {
+    final previous = _pleyaTurns[id];
+    final turn = Completer<PleyaServerConnection?>();
+    _pleyaTurns[id] = turn.future;
+    return (turn, previous == null ? null : await previous);
+  }
+
+  void _endPleyaTurn(String id, Completer<PleyaServerConnection?> turn, PleyaServerConnection? handOn) {
+    if (turn.isCompleted) return;
+    turn.complete(handOn);
+    if (identical(_pleyaTurns[id], turn.future)) _pleyaTurns.remove(id);
+  }
+
+  /// Runs [action] with a client for [connection]: the bound one when there is
+  /// one, otherwise a short-lived client that writes a rotated refresh token
+  /// back like a bound client does and is closed afterwards. For one-off
+  /// requests on behalf of a profile that is not active.
+  ///
+  /// Short-lived clients for one connection take turns, and a queued turn
+  /// starts from the token the turn before it rotated to: two clients
+  /// presenting the same refresh token count as reuse. Binding does not take
+  /// part; callers keep short-lived clients away from a connection the binder
+  /// is binding. [persist] false skips the write for a connection that is
+  /// being removed, so it cannot come back.
+  Future<T> withPleyaServerClient<T>(
+    PleyaServerConnection connection,
+    Future<T> Function(PleyaServerClient client) action, {
+    bool persist = true,
+  }) async {
+    if (_boundPleyaClient(connection) case final bound?) return action(bound);
+    final (turn, inherited) = await _takePleyaTurn(connection.id);
+    var handOn = inherited;
+    try {
+      // A binding may have finished while this call waited for its turn.
+      if (_boundPleyaClient(connection) case final bound?) return await action(bound);
+      final client = _createPleyaServerClient(
+        inherited ?? connection,
+        onRotated: (updated) => handOn = updated,
+        persist: persist,
+        onlyExisting: true,
+      );
+      try {
+        return await action(client);
+      } finally {
+        client.close();
+      }
+    } finally {
+      _endPleyaTurn(connection.id, turn, handOn);
+    }
+  }
+
   /// Add a Pleya Server connection as a media source.
   ///
   /// One endpoint, one identity, so this is closer to the Jellyfin path than to
@@ -956,19 +1049,7 @@ class MultiServerManager {
   /// re-auth banner rather than being hidden as offline.
   Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
     try {
-      final client = PleyaServerClient.create(
-        connection,
-        httpClientFactory: debugPleyaServerHttpClientFactory,
-        onConnectionUpdated: (updated) async {
-          final persist = onPleyaServerConnectionUpdated;
-          if (persist == null) return;
-          try {
-            await Future.sync(() => persist(updated));
-          } catch (e, st) {
-            appLogger.w('Failed to persist Pleya Server connection update', error: e, stackTrace: st);
-          }
-        },
-      );
+      final client = _createPleyaServerClient(connection);
       final serverId = connection.serverId;
       _wireServerAuthority(client, ServerId(serverId));
       // A role change moves what the profile may administer without any
@@ -988,11 +1069,48 @@ class MultiServerManager {
       if (_connectivitySubscription == null && healthy) {
         _startNetworkMonitoring();
       }
+      if (health == HealthStatus.offline) _scheduleOfflineAddRetry(serverId, client);
       return healthy;
     } catch (e, stackTrace) {
       appLogger.e('Failed to add Pleya Server ${connection.serverName}', error: e, stackTrace: stackTrace);
       return false;
     }
+  }
+
+  /// Waits between the probes of a server that did not answer while it was
+  /// being added.
+  @visibleForTesting
+  static List<Duration> offlineAddRetryDelays = const [
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+    Duration(seconds: 90),
+  ];
+
+  /// A server that did not answer while it was being added gets asked again
+  /// shortly after, without waiting for a resume or a network change. A start
+  /// is the busiest moment the app has, and one probe that times out there
+  /// says little about the server.
+  ///
+  /// A plain health probe, nothing more: no reconnect sweep (that would clear
+  /// the wait of every other server) and no auth retry, which stays reserved
+  /// for the user's own "reconnect" (see [retryPleyaServerAuth]).
+  void _scheduleOfflineAddRetry(String serverId, PleyaServerClient client, {int attempt = 0}) {
+    final delays = offlineAddRetryDelays;
+    if (attempt >= delays.length) return;
+    _offlineAddRetry[serverId]?.cancel();
+    _offlineAddRetry[serverId] = Timer(delays[attempt], () async {
+      _offlineAddRetry.remove(serverId);
+      bool stillWaiting() =>
+          identical(_clients[serverId], client) &&
+          _serverStatus[serverId] == false &&
+          !_authErrorServers.contains(serverId);
+      if (!stillWaiting()) return;
+      final generation = generationFor(ServerId(serverId));
+      final health = await client.checkHealth();
+      if (!stillWaiting() || !ownsGeneration(ServerId(serverId), generation)) return;
+      _applyHealth(ServerId(serverId), health);
+      if (health == HealthStatus.offline) _scheduleOfflineAddRetry(serverId, client, attempt: attempt + 1);
+    });
   }
 
   /// One real auth attempt for a Pleya Server whose session was rejected.
@@ -1024,6 +1142,7 @@ class MultiServerManager {
     final client = _clients.remove(connection.serverId);
     if (client != null) _closeClient(client);
     _serverStatus.remove(connection.serverId);
+    _offlineAddRetry.remove(connection.serverId)?.cancel();
     // A rejected session is what sends people to "disconnect" in the first
     // place, so this is the common path, not the edge: leave the id in
     // [_authErrorServers] and the re-auth bar keeps standing over a connection
@@ -1262,6 +1381,7 @@ class MultiServerManager {
       _serverStatus[serverId] = isOnline;
       _statusController.add(Map.from(_serverStatus));
       appLogger.d('Server $serverId status changed to: $isOnline');
+      if (isOnline) ArtworkReloadSignal.instance.requestReload();
     }
   }
 
@@ -1289,6 +1409,8 @@ class MultiServerManager {
         appLogger.w('Server $serverId auth rejected — token expired or revoked');
       } else {
         appLogger.d('Server $serverId status changed to: $isOnline');
+        // Posters that failed while this server was away get another attempt.
+        if (isOnline && prevOnline != true) ArtworkReloadSignal.instance.requestReload();
       }
     }
   }
@@ -1813,6 +1935,10 @@ class MultiServerManager {
   }
 
   Set<MediaServerClient> _detachAllClients() {
+    for (final timer in _offlineAddRetry.values) {
+      timer.cancel();
+    }
+    _offlineAddRetry.clear();
     _stopNetworkMonitoring();
     for (final timer in _reconnectDebounce.values) {
       timer.cancel();

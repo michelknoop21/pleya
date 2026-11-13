@@ -14,6 +14,13 @@ func (s *Server) SetPasswordVerifier(verify func(string, string, auth.Argon2Para
 	s.loginGuard.verify = verify
 }
 
+// SetMediaDeleteHooks zet de haken rond het wissen van bestanden, zodat een
+// test een share kan laten wegvallen of de aanvraag kan afbreken op precies
+// dat moment.
+func (s *Server) SetMediaDeleteHooks(before, after func()) {
+	s.beforeMediaRemove, s.afterMediaRemove = before, after
+}
+
 // SetLoginSlotWait vervangt de wachttijd op een plek, zodat een test er niet op hoeft te wachten.
 func (s *Server) SetLoginSlotWait(wait time.Duration) { s.loginGuard.slotWait = wait }
 

@@ -11,6 +11,7 @@ const noContent = (result: { response: Response; error?: unknown }) => result.re
 type FavoritesQuery = NonNullable<operations['listFavorites']['parameters']['query']>;
 type HistoryQuery = NonNullable<operations['getHistory']['parameters']['query']>;
 type RatingsQuery = NonNullable<operations['listRatings']['parameters']['query']>;
+type TrackPreferenceBody = operations['setTrackPreference']['requestBody']['content']['application/json'];
 
 export function personalApi(client: PleyaClient) {
   const generation = client.sessionGeneration;
@@ -70,6 +71,19 @@ export function personalApi(client: PleyaClient) {
       const params = { path: { item_id: itemId } };
       await client.request(async raw => noContent(await (rating === null ? raw.DELETE('/ratings/{item_id}', { params }) : raw.PUT('/ratings/{item_id}', { params, body: { rating } }))));
       assertAccount();
+    },
+    /** De voorkeur voor audio en ondertitels (`capabilities.track_preferences`). */
+    async trackPreference(itemId: string, signal?: AbortSignal) {
+      assertAccount();
+      const preference = await client.request(raw => raw.GET('/track-preferences/{item_id}', { params: { path: { item_id: itemId } }, signal }));
+      assertAccount();
+      return preference;
+    },
+    async setTrackPreference(itemId: string, body: TrackPreferenceBody) {
+      assertAccount();
+      const preference = await client.request(raw => raw.PUT('/track-preferences/{item_id}', { params: { path: { item_id: itemId } }, body }));
+      assertAccount();
+      return preference;
     },
     async setWatched(itemId: string, watched: boolean, durationMs?: number) {
       assertAccount();

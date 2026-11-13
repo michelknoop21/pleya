@@ -628,7 +628,9 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     super.didHaveMemoryPressure();
     // With the memory in use and flushed at once: on Apple TV a run ended
     // seconds after this line without a crash report (build 360).
-    logCheckpoint('System memory pressure, evicting image caches', warning: true);
+    // Flutter empties the image cache before observers run, so the cache
+    // numbers in this line are always zero; the download slots are not.
+    logCheckpoint('System memory pressure, evicting image caches ${artworkDownloadStats()}', warning: true);
     _evictImageCaches();
   }
 
@@ -767,6 +769,9 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         // Mirror server-side progress onto matched local files (the other
         // direction; local→server pushes happen at playback time).
         unawaited(LocalServerSyncBridge.instance?.syncMatchedItemsFromServer() ?? Future<void>.value());
+        // Artwork requests that were in flight during the suspend never call
+        // back on tvOS; abort them so their slots free up and failed tiles retry.
+        abortArtworkDownloadsFromBeforeSuspend();
         // Re-probe servers — mobile OS may have dropped TCP connections during doze/sleep.
         // On desktop, resumed fires on every window focus (alt-tab), so apply a cooldown
         // to avoid piling up network probes from rapid alt-tabbing.
@@ -774,6 +779,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
           unawaited(_probeAndReconnectAfterResume());
         }
       case AppLifecycleState.paused:
+        markArtworkDownloadsSuspended();
         unawaited(MemoryLogOutput.flush());
       case AppLifecycleState.detached:
         // Database is session-scoped and must survive suspend/resume.
@@ -851,6 +857,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
             _serverManager.onJellyfinConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             _serverManager.onPleyaShareConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             _serverManager.onPleyaServerConnectionUpdated = context.read<ConnectionRegistry>().upsert;
+            _serverManager.pleyaConnectionUpdateIfExists = context.read<ConnectionRegistry>().updateIfExists;
             SecureFolderService.instance.onConnectionUpdated = context.read<ConnectionRegistry>().upsert;
             return MultiServerProvider(_serverManager, _aggregationService);
           },

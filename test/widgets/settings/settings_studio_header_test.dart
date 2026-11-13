@@ -28,6 +28,7 @@ import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/optimized_media_image.dart';
+import 'package:pleya/widgets/hero_focus_crop.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
 import 'package:pleya/widgets/setting_tile.dart';
 import 'package:pleya/widgets/settings/settings_studio_header.dart';
@@ -98,6 +99,18 @@ void main() {
   );
 
   group('artwork', () {
+    testWidgets('iPhone Studio art reuses face-aware crop with an uncropped wide request', (tester) async {
+      await pump(
+        tester,
+        const Scaffold(body: SettingsStudioHeader(title: 'Settings')),
+        discover: _Discover(onDeckItems: [_film('face', art: '/art')]),
+      );
+      expect(find.byType(HeroFocusCrop), findsOneWidget);
+      final image = tester.widget<OptimizedMediaImage>(find.byType(OptimizedMediaImage));
+      expect(image.requestSize!.aspectRatio, closeTo(16 / 9, 0.001));
+      expect(image.requestSize!.width, greaterThan(tester.getSize(find.byType(HeroFocusCrop)).width));
+    }, variant: _iPhone);
+
     testWidgets('the first loaded item with a backdrop fills the panel', (tester) async {
       final discover = _Discover(
         onDeckItems: [

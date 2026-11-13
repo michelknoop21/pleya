@@ -1,8 +1,18 @@
+<!--
+  De filterregel boven het raster. Kijkstatus staat er als directe pillen; elke
+  andere groep (genre, jaar, kwaliteit, audio, kijkwijzer) is een pil die zijn
+  keuzes eronder openklapt. Een keuze geldt meteen, zonder aparte toepasknop:
+  de lijst eronder is het antwoord. Wat actief is staat als ingedrukte pil in
+  de regel en gaat met één druk weer weg.
+
+  Een groep zonder waarden in de facetten verschijnt niet. Zolang de facetten
+  laden zijn de groepen uit, maar actieve filters blijven te verwijderen.
+-->
 <script lang="ts">
   import Chips, { type ChipOption } from './Chips.svelte';
-  import ConfirmDialog from './ConfirmDialog.svelte';
   import type { Facets, FacetValue } from '../api/types';
   import { catalogFilterCount, type CatalogFilters } from '../util/catalogFilters';
+  import { formatLanguage } from '../util/format';
   import { t } from '../i18n';
 
   interface Props {
@@ -13,83 +23,151 @@
     onapply: (filters: CatalogFilters) => void;
   }
   let { filters, facets, loading = false, watchState = false, onapply }: Props = $props();
-  let open = $state(false);
-  let draft = $state<CatalogFilters>({});
-  const count = $derived(catalogFilterCount(filters));
-  type Key = keyof CatalogFilters;
-  type Resolution = NonNullable<CatalogFilters['resolution']>[number];
-  const quality: Record<Resolution, string> = { sd: 'SD', hd: 'HD', fhd: 'Full HD', uhd: '4K' };
-  const watchLabels = $derived({ unwatched: t('catalog.unwatched'), in_progress: t('catalog.inProgress'), watched: t('catalog.watched') });
 
-  function options(values: FacetValue[], selected: string[], label = (value: string) => value): ChipOption[] {
-    const entries = new Map<string, ChipOption>(values.filter(row => row.value).map(row => [row.value, { id: row.value, label: label(row.value), count: row.count }]));
-    for (const value of selected) if (!entries.has(value)) entries.set(value, { id: value, label: label(value), count: undefined });
+  type Group = Exclude<keyof CatalogFilters, 'watch'>;
+  type Watch = NonNullable<CatalogFilters['watch']>;
+  const uid = $props.id();
+  const quality: Record<string, string> = { sd: 'SD', hd: 'HD', fhd: 'Full HD', uhd: '4K' };
+  const plain = (value: string) => value;
+
+  let openKey = $state<Group | null>(null);
+  const openers: Partial<Record<Group, HTMLButtonElement>> = {};
+
+  const watchOptions = $derived<{ id: Watch | undefined; label: string }[]>([
+    { id: undefined, label: t('catalog.all') },
+    { id: 'unwatched', label: t('catalog.unwatched') },
+    { id: 'in_progress', label: t('catalog.inProgress') },
+    { id: 'watched', label: t('catalog.watched') }
+  ]);
+
+  function options(values: FacetValue[], selected: string[], text: (value: string) => string): ChipOption[] {
+    const entries = new Map<string, ChipOption>(values.filter(row => row.value).map(row => [row.value, { id: row.value, label: text(row.value), count: row.count }]));
+    for (const value of selected) if (!entries.has(value)) entries.set(value, { id: value, label: text(value), count: undefined });
     return [...entries.values()];
   }
 
-  const groups = $derived([
-    { key: 'genre' as const, label: t('catalog.genre'), options: options(facets?.genres ?? [], draft.genre ?? []) },
-    { key: 'year' as const, label: t('catalog.year'), options: options(facets?.years ?? [], draft.year ?? []) },
-    { key: 'resolution' as const, label: t('catalog.quality'), options: options(facets?.resolutions ?? [], draft.resolution ?? [], value => quality[value as Resolution] ?? value).map(option => ({ ...option, disabled: !Object.hasOwn(quality, option.id) })) },
-    ...(watchState && facets ? [{ key: 'watch' as const, label: t('catalog.watch'), options: [
-      { id: '', label: t('catalog.all'), count: facets.watch.unwatched + facets.watch.watched },
-      ...Object.entries(watchLabels).map(([id, label]) => ({ id, label, count: facets.watch[id as keyof typeof watchLabels] }))
-    ] }] : [])
-  ]);
-  const active = $derived([
-    ...(filters.genre ?? []).map(value => ({ key: 'genre' as const, value, label: value })),
-    ...(filters.year ?? []).map(value => ({ key: 'year' as const, value, label: value })),
-    ...(filters.resolution ?? []).map(value => ({ key: 'resolution' as const, value, label: quality[value] })),
-    ...(filters.watch ? [{ key: 'watch' as const, value: filters.watch, label: watchLabels[filters.watch] }] : [])
-  ].map(filter => ({ ...filter, id: `${filter.key}:${filter.value}` })));
+  const groups = $derived(([
+    { key: 'genre', label: t('catalog.genre'), values: facets?.genres, text: plain },
+    { key: 'year', label: t('catalog.year'), values: facets?.years, text: plain },
+    { key: 'resolution', label: t('catalog.quality'), values: facets?.resolutions, text: (value: string) => quality[value] ?? value },
+    { key: 'audio_language', label: t('item.audio'), values: facets?.audio_languages, text: (value: string) => formatLanguage(value) ?? value },
+    { key: 'content_rating', label: t('catalog.contentRating'), values: facets?.content_ratings, text: plain }
+  ] satisfies { key: Group; label: string; values: FacetValue[] | undefined; text: (value: string) => string }[]).map(group => {
+    const selected: string[] = filters[group.key] ?? [];
+    return {
+      ...group,
+      selected,
+      // Een kwaliteit die deze client niet kent is te zien maar niet te kiezen.
+      options: options(group.values ?? [], selected, group.text)
+        .map(option => group.key === 'resolution' ? { ...option, disabled: !Object.hasOwn(quality, option.id) } : option)
+    };
+  }).filter(group => group.options.length > 0));
+  const current = $derived(groups.find(group => group.key === openKey));
+  const active = $derived(groups.flatMap(group => group.selected.map(value => ({ key: group.key, value, label: `${group.label}: ${group.text(value)}` }))));
 
-  function edit(): void {
-    draft = { ...filters, genre: [...(filters.genre ?? [])], year: [...(filters.year ?? [])], resolution: [...(filters.resolution ?? [])] };
-    open = true;
+  function setGroup(key: Group, values: string[]): void {
+    const next: CatalogFilters = { ...filters };
+    delete next[key];
+    onapply(values.length ? { ...next, [key]: values } : next);
   }
-  function select(key: Key, values: string[]): void {
-    if (key === 'watch') draft = { ...draft, watch: (values[0] || undefined) as CatalogFilters['watch'] };
-    else if (key === 'resolution') draft = { ...draft, resolution: values as Resolution[] };
-    else draft = { ...draft, [key]: values };
+  function setWatch(watch: Watch | undefined): void {
+    const next: CatalogFilters = { ...filters };
+    delete next.watch;
+    onapply(watch ? { ...next, watch } : next);
   }
-  function remove(ids: string[]): void {
-    const removed = active.find(filter => !ids.includes(filter.id));
-    if (!removed) return;
-    const next = { ...filters };
-    if (removed.key === 'watch') delete next.watch;
-    else {
-      const remaining = filters[removed.key]?.filter(value => value !== removed.value) ?? [];
-      delete next[removed.key];
-      if (remaining.length) return onapply({ ...next, [removed.key]: remaining });
-    }
-    onapply(next);
+  function close(): void {
+    const key = openKey;
+    openKey = null;
+    if (key) openers[key]?.focus();
   }
 </script>
 
-<div class="filter-bar">
-  <button type="button" class="btn btn--secondary btn--sm" disabled={facets === null} aria-busy={loading} aria-haspopup="dialog" aria-expanded={open} onclick={edit}>
-    {t('catalog.filters')}{#if count > 0} <span aria-hidden="true">({count})</span>{/if}
-  </button>
+<svelte:window onkeydown={event => { if (openKey && event.key === 'Escape') close(); }} />
+
+<div class="filter-bar" aria-busy={loading}>
+  {#if watchState}
+    <div class="filter-set" role="group" aria-label={t('catalog.watch')}>
+      {#each watchOptions as option (option.id ?? '')}
+        <button type="button" class="pill" aria-pressed={filters.watch === option.id} onclick={() => setWatch(option.id)}>{option.label}</button>
+      {/each}
+    </div>
+    <span class="filter-rule" aria-hidden="true"></span>
+  {/if}
+  {#each groups as group (group.key)}
+    <button
+      type="button"
+      class="pill"
+      bind:this={openers[group.key]}
+      disabled={facets === null}
+      aria-expanded={openKey === group.key}
+      aria-controls="{uid}-panel"
+      onclick={() => (openKey = openKey === group.key ? null : group.key)}
+    >{group.label}</button>
+  {/each}
   {#if active.length}
-    <Chips label={t('catalog.activeFilters')} options={active} selected={active.map(filter => filter.id)} multiple onchange={remove} />
-    <button type="button" class="btn btn--secondary btn--sm" onclick={() => onapply({})}>{t('catalog.clear')}</button>
+    <div class="filter-set" role="group" aria-label={t('catalog.activeFilters')}>
+      {#each active as filter (`${filter.key}:${filter.value}`)}
+        <button
+          type="button"
+          class="pill"
+          aria-pressed="true"
+          onclick={() => setGroup(filter.key, (filters[filter.key] ?? []).filter(value => value !== filter.value))}
+        >{filter.label} <span aria-hidden="true">×</span></button>
+      {/each}
+    </div>
+  {/if}
+  {#if catalogFilterCount(filters) > 0}
+    <button type="button" class="filter-clear" onclick={() => onapply({})}>{t('catalog.clear')}</button>
   {/if}
 </div>
-<ConfirmDialog bind:open title={t('catalog.filters')} confirmLabel={t('catalog.apply')} danger={false} onconfirm={() => { onapply(draft); open = false; }}>
-  <p class="note">{t('catalog.countsNote')}</p>
-  {#each groups as group (group.key)}
-    {#if group.options.length}
-      <section class="filter-group">
-        <h3>{group.label}</h3>
-        <Chips label={group.label} options={group.options} selected={group.key === 'watch' ? [draft.watch ?? ''] : draft[group.key] ?? []} multiple={group.key !== 'watch'} onchange={values => select(group.key, values)} />
-      </section>
-    {/if}
-  {/each}
-</ConfirmDialog>
+<div id="{uid}-panel">
+  {#if current && facets !== null}
+    <div class="filter-panel">
+      <Chips label={current.label} options={current.options} selected={current.selected} multiple onchange={values => setGroup(current.key, values)} />
+      <p class="note">{t('catalog.countsNote')}</p>
+    </div>
+  {/if}
+</div>
 
 <style>
   .filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; min-width: 0; }
-  .filter-group { min-width: 0; margin-block: 16px; }
-  .filter-group h3 { margin: 0 0 4px; font-size: 14px; }
-  .note { color: var(--ink-2); font-size: 13px; margin: 0; }
+  .filter-set { display: contents; }
+  .filter-rule { width: 1px; height: 24px; margin: 0 6px; background: var(--hairline-strong); }
+  .pill {
+    min-height: var(--button-height);
+    padding: 0 16px;
+    border: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .pill[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .pill[aria-expanded='true'] { border-color: var(--ink); }
+  .pill:disabled { opacity: 0.5; cursor: default; }
+  .filter-clear {
+    min-height: var(--button-height);
+    margin-left: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font-size: 14px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .filter-panel { margin-bottom: 16px; padding: 12px 16px; border-radius: var(--radius-md); background: var(--panel); }
+  /* In het paneel lopen de keuzes over meer regels in plaats van te scrollen. */
+  .filter-panel :global(.chips) { flex-wrap: wrap; overflow: visible; }
+  .note { color: var(--ink-2); font-size: 13px; margin: 8px 0 0; }
+  @media (hover: hover) {
+    .pill:not(:disabled):not([aria-pressed='true']):hover { border-color: color-mix(in srgb, var(--text) 45%, transparent); }
+  }
+  @media (max-width: 899px) {
+    .pill { padding: 0 12px; }
+    .filter-rule { display: none; }
+  }
 </style>

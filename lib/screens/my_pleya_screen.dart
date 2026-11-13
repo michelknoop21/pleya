@@ -18,6 +18,8 @@ import '../services/account_ui_actions.dart';
 import '../services/seerr/seerr_client.dart';
 import '../utils/platform_detector.dart';
 import 'seerr/seerr_issues_screen.dart';
+import 'seerr/seerr_requests_screen.dart';
+import 'pleya_notifications_screen.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/offline_mode_provider.dart';
@@ -131,7 +133,10 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> with WidgetsBindingObserv
     final profile = active?.active;
     final seerr = context.watch<SeerrProvider?>();
     final issueClient = seerr?.client;
-    final showIssues = PlatformDetector.isHandheldIOS(context) && !TvDetectionService.isIOSAppOnMacSync();
+    final handheldIOS = PlatformDetector.isHandheldIOS(context);
+    final showIssues = handheldIOS && !TvDetectionService.isIOSAppOnMacSync();
+    // Push needs an iPhone or iPad: the iOS app on a Mac gets no Notificaties.
+    final showNotifications = handheldIOS && !TvDetectionService.isIOSAppOnMacSync();
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
     final watchlist = context.watch<WatchlistProvider?>();
     final downloads = context.watch<DownloadProvider?>();
@@ -188,6 +193,25 @@ class _MyPleyaScreenState extends State<MyPleyaScreen> with WidgetsBindingObserv
       ),
       row(TvMyPleyaSection.downloads, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
       row(TvMyPleyaSection.requests, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
+      // In arrival order, so a late row only appends and nothing above it
+      // moves under focus: Notificaties needs only the profile, Aanvragen
+      // beheren the Seerr session, Seerr-meldingen that session plus a probe.
+      if (showNotifications && active?.isBinding == false && profile != null)
+        _MyPleyaRow(
+          instance: 'notifications',
+          icon: Symbols.notifications_rounded,
+          title: t.pleyaNotifications.title,
+          subtitle: t.pleyaNotifications.subtitle,
+          onTap: () => _push(PleyaNotificationsScreen(profileId: profile.id)),
+        ),
+      if (handheldIOS && !isOffline && active?.isBinding == false && seerr?.canManageRequests == true)
+        _MyPleyaRow(
+          instance: 'manageRequests',
+          icon: Symbols.rule_rounded,
+          title: t.pleyaNotifications.manageRequestsTitle,
+          subtitle: t.pleyaNotifications.manageRequests,
+          onTap: () => _push(const SeerrRequestsScreen(reviewPending: true)),
+        ),
       if (showIssueRow && _issuesSupported)
         _MyPleyaRow(
           instance: 'seerrIssues',

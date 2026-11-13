@@ -52,9 +52,10 @@ func RevocationRetention(lifetimes ...time.Duration) time.Duration {
 // doen: het accesstoken, het streamtoken en de browserstreamsessie. Het
 // refreshtoken leest zijn sessie sowieso uit de database (RotateRefreshToken
 // joint op sessions.revoked_at), dus dat pad hangt hier niet van af. De maxima
-// zijn access 60 minuten, streamtoken 15 minuten en browserstreamsessie 120
-// minuten; de marge voorkomt een gat op precies die laatste grens.
-var DefaultRevocationRetention = RevocationRetention(60*time.Minute, 15*time.Minute, 120*time.Minute)
+// zijn access 60 minuten, streamtoken 15 minuten, artworktoken ArtworkTokenTTL
+// en browserstreamsessie 120 minuten; de marge voorkomt een gat op precies die
+// laatste grens.
+var DefaultRevocationRetention = RevocationRetention(60*time.Minute, 15*time.Minute, ArtworkTokenTTL, 120*time.Minute)
 
 // NewRevocations bouwt een leeg register. retain <= 0 neemt de standaard.
 func NewRevocations(retain time.Duration) *Revocations {

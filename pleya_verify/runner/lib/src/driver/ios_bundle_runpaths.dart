@@ -2,6 +2,19 @@ import 'dart:io';
 
 import 'simulator_boot.dart';
 
+/// Removes the app extensions from the copied Verify app. The Notification
+/// Service Extension (DEC-XXX) keeps `nl.michelknoop.pleya.NotificationService`,
+/// which no longer starts with the rewritten Verify bundle id, and Verify never
+/// receives push. Only a `PlugIns` folder inside the copy goes.
+void dropAppExtensions(Directory app) {
+  final plugIns = Directory('${app.path}/PlugIns');
+  if (!plugIns.existsSync()) return;
+  if (!plugIns.resolveSymbolicLinksSync().startsWith('${app.resolveSymbolicLinksSync()}/')) {
+    throw StateError('iOS Verify PlugIns escapes the copied app: ${plugIns.path}');
+  }
+  plugIns.deleteSync(recursive: true);
+}
+
 /// Prepare only the copied Verify app, never Xcode's original product.
 /// SwiftPM's absolute build runpath precedes the embedded frameworks on Xcode
 /// 27. A checkout in Documents then stalls dyld in a host privacy check before

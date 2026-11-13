@@ -26,6 +26,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/metadata"
 	"github.com/edde746/plezy/pleya_server/internal/metrics"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
+	"github.com/edde746/plezy/pleya_server/internal/push"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
 	"github.com/edde746/plezy/pleya_server/internal/watch"
@@ -33,6 +34,7 @@ import (
 
 // Options bundelt wat de HTTP-laag nodig heeft.
 type Options struct {
+	Push      *push.Service
 	Catalog   *catalog.Store
 	Auth      *auth.Store
 	Watch     *watch.Store
@@ -125,6 +127,13 @@ type Options struct {
 	// setvergelijking zonder bestandssysteemaanroep, wat K rij 10 eist.
 	MediaRoots []string
 
+	// MediaDelete zijn de mediaroots die bij het opstarten schrijfbaar bleken,
+	// als PLEYA_SERVER_ALLOW_MEDIA_DELETE aan staat (DEC-XXX, media
+	// verwijderen). nil: de functie staat uit. Leeg maar niet nil: aangezet,
+	// maar geen enkele root is schrijfbaar. DELETE /items/{id} wist alleen
+	// onder een root uit deze lijst.
+	MediaDelete []string
+
 	// CacheDir is waar gecachede provider-afbeeldingen staan (0013). Leeg betekent
 	// dat er geen cache is en dat /artwork alleen afbeeldingen van schijf levert.
 	CacheDir string
@@ -193,6 +202,10 @@ type FFprobeStatus struct {
 
 // Server is de router met zijn afhankelijkheden.
 type Server struct {
+	// Haken rond het wissen van bestanden (DEC-XXX), alleen voor tests: vóór en
+	// na het wissen op schijf. Nil doet niets.
+	beforeMediaRemove, afterMediaRemove func()
+
 	pins                       *artwork.Pins
 	opts                       Options
 	log                        *slog.Logger

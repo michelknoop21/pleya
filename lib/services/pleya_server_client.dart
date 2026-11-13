@@ -83,6 +83,7 @@ part 'pleya_server_client/parts/seam.dart';
 part 'pleya_server_client/parts/artwork.dart';
 part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
+part 'pleya_server_client/parts/stream_session.dart';
 part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/personal.dart';
 part 'pleya_server_client/parts/lists.dart';
@@ -90,6 +91,7 @@ part 'pleya_server_client/parts/memory.dart';
 part 'pleya_server_client/parts/downloads.dart';
 part 'pleya_server_client/parts/unsupported.dart';
 part 'pleya_server_client/parts/admin.dart';
+part 'pleya_server_client/parts/media_delete.dart';
 part 'pleya_server_client/parts/verify_detail.dart';
 part 'pleya_server_client/parts/companion.dart';
 
@@ -127,12 +129,14 @@ class PleyaServerClient
         _PleyaServerBrowseMethods,
         _PleyaServerSearchMethods,
         _PleyaServerArtworkMethods,
+        _PleyaServerStreamSessionMethods,
         _PleyaServerPlaybackMethods,
         _PleyaServerPersonalMethods,
         _PleyaServerListMethods,
         _PleyaServerDownloadMethods,
         _PleyaServerUnsupportedMethods,
         _PleyaServerAdminMethods,
+        _PleyaServerMediaDeleteMethods,
         _PleyaVerifyDetailMethods,
         ServerAuthorityGuard
     implements
@@ -227,6 +231,66 @@ class PleyaServerClient
   MemorySyncTransport assistantMemoryTransport({required bool Function() isCurrent}) =>
       _PleyaMemoryTransport(this, isCurrent);
 
+  bool get supportsSecurePush =>
+      wireCapabilities.pushNotifications && Uri.tryParse(connection.baseUrl)?.scheme == 'https';
+
+  Future<void> registerPushInstallation(
+    String id, {
+    required String token,
+    required String environment,
+    required String locale,
+    required bool movies,
+    required bool episodes,
+    String? contentKey,
+  }) async {
+    if (!supportsSecurePush || _offlineMode || _closed) {
+      throw StateError('Push registration unavailable');
+    }
+    await _adminSend(
+      'PUT',
+      '/users/me/push-installations/${Uri.encodeComponent(id)}',
+      followRedirects: false,
+      body: {
+        'device_token': token,
+        'environment': environment,
+        'locale': locale,
+        'movies': movies,
+        'episodes': episodes,
+        // The body is closed: only a server that announced the field gets it.
+        if (contentKey != null && wireCapabilities.pushRichContent) 'content_key': contentKey,
+      },
+    );
+  }
+
+  Future<void> removePushInstallation(String id) async {
+    if (_offlineMode || _closed) throw StateError('Push registration unavailable');
+    // A server without push routes answers `library.not_found`: there is no
+    // installation to withdraw, which is what the caller wanted.
+    await _adminSend('DELETE', '/users/me/push-installations/${Uri.encodeComponent(id)}', absentIsDone: true);
+  }
+
+  /// Withdraws every push installation of this session
+  /// (`DELETE /users/me/push-installations`), so no client-side record of ids
+  /// has to be complete. A server from before that route answers 404 or 405;
+  /// then only [knownIds] can be withdrawn, one by one, and any other id this
+  /// session once registered stays until the session ends.
+  Future<void> withdrawPush({List<String> knownIds = const []}) async {
+    if (_offlineMode || _closed) throw StateError('Push registration unavailable');
+    final missingRoute = await _adminSend('DELETE', '/users/me/push-installations', passStatuses: const {404, 405});
+    if (missingRoute == null) return;
+    for (final id in knownIds) {
+      await removePushInstallation(id);
+    }
+  }
+
+  /// Ends this session on the server (`POST /auth/logout`); its push
+  /// installations go with it. A server without sessions answers 404, which
+  /// the caller treats like any other failure.
+  Future<void> logout() async {
+    if (_offlineMode || _closed) throw StateError('Logout unavailable');
+    await _adminSend('POST', '/auth/logout');
+  }
+
   bool _offlineMode = false;
   bool _identityCapabilitiesKnown = false;
   @override
@@ -300,6 +364,11 @@ class PleyaServerClient
 
   /// The access token as a header, never as a query parameter.
   ///
+  /// The player uses this only when the server has no stream sessions or none
+  /// could be opened; otherwise [getPlaybackInitialization] hands it a stream
+  /// session cookie in [PlaybackInitializationResult.streamHeaders], which,
+  /// unlike this token, does not expire while the film plays.
+  ///
   /// mpv can set headers, so the stream token that exists for players that
   /// cannot stays out of this path: a credential that never enters a URL never
   /// enters a log, a referrer or a shell history either.
@@ -326,6 +395,7 @@ class PleyaServerClient
       held.timer.cancel();
     }
     _transcodeSessions.clear();
+    _releaseAllStreamSessions();
     _unregisterArtworkAuthorization();
     _http.close();
   }

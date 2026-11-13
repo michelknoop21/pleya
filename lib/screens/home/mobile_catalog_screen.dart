@@ -331,6 +331,10 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     anchorContext: cardContext,
     group: group,
     availabilityFor: _availabilityFor,
+    onChanged: () => unawaited(_catalog.refresh()),
+    onDeleted: (source) {
+      if (!_catalog.removeDeletedSource(source.sourceKey)) unawaited(_catalog.refresh());
+    },
   );
 
   /// "All sources" until something is excluded, then how many are left:

@@ -495,6 +495,73 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /users/me/push-installations:
+    delete:
+      tags: [users]
+      operationId: deletePushInstallations
+      summary: Trek alle opt-ins van deze sessie in.
+      description: |
+        Beschikbaar onder capabilities.push_notifications. Vereist de eigen
+        sessiebearer; een API-token krijgt 403. Verwijdert elke registratie van
+        de aanroepende sessie en geen enkele van een andere sessie of een ander
+        account. Idempotent: ook zonder registraties 204. Ondersteunende servers
+        laten dit ook toe als de APNs-bezorging uit staat.
+      responses:
+        "204": { description: De sessie heeft geen registratie meer. }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /users/me/push-installations/{installation_id}:
+    parameters:
+      - in: path
+        name: installation_id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [users]
+      operationId: putPushInstallation
+      summary: Registreer opt-in voor Apple-push op deze sessie.
+      description: |
+        Beschikbaar onder capabilities.push_notifications. Vereist de eigen
+        sessiebearer. De server accepteert zijn geconfigureerde APNs-omgeving.
+        Elke PUT vervangt het token en de gekozen categorieën. Een bestaande
+        registratie blijft gebonden aan het account. Alleen een nieuwere sessie van
+        hetzelfde account kan de registratie overnemen, als zij hetzelfde toestel
+        of hetzelfde APNs-token draagt. Een APNs-token hoort
+        bij één registratie: een geslaagde PUT met hetzelfde token laat elke andere
+        registratie met dat token vervallen, ook van een ander account. Geen categorie staat
+        standaard aan. Gebruik DELETE om alle push voor dit toestel uit te zetten.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushInstallation" }
+      responses:
+        "204": { description: Opt-in vastgelegd. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [users]
+      operationId: deletePushInstallation
+      summary: Trek de eigen opt-in in.
+      description: |
+        Vereist de eigen sessiebearer. Raakt alleen een registratie van de
+        aanroepende sessie; een afwezige registratie, of een van een andere sessie
+        of een ander account, wordt niet onderscheiden en blijft staan. Ondersteunende servers laten intrekking ook toe
+        als de APNs-bezorging uit staat.
+      responses:
+        "204": { description: Geen actieve registratie van deze sessie op dit id. }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /users/me/memory:
     get:
       tags: [users]
@@ -3216,6 +3283,59 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [administration]
+      operationId: deleteItem
+      summary: Verwijder een titel en wis zijn bestanden van de opslag.
+      description: |
+        Capability `media_delete` (DEC-XXX, media verwijderen, hoofdstuk 17h).
+        Een film, serie, seizoen of aflevering, met alles eronder. De server
+        wist de mediabestanden van elke versie en de bijbestanden die de
+        catalogus eraan hing (losse ondertitels, artwork); een bestand dat de
+        catalogus niet kende blijft staan, net als een map die daardoor niet
+        leeg raakt. Daarna ruimt hij de titel op langs het pad van de
+        prullenbak, met kijkstatus, geschiedenis en lijstregels.
+
+        Klasse `admin` (owner of admin) én recht `manage` op de bibliotheek:
+        buiten zicht `404`, zichtbaar voor iemand anders, ook een lid met
+        `manage`, `403` `library.delete_not_permitted`. Een API-token krijgt
+        `403` `auth.scope_insufficient`. Staat de functie uit, of valt de
+        opslag van het item niet onder een bij het opstarten schrijfbaar
+        gemeten mount, dan `409` `library.media_delete_unavailable` met
+        `details.reason` `disabled` of `read_only`, en is er niets gewist; een
+        root die met opgeloste symlinks overlapt met een andere opslaglocatie
+        geeft hetzelfde met `root_overlap`. Wacht of loopt er een scan van de
+        bibliotheek, dan `409` `library.scan_in_progress`, niets gewist.
+        Bleef een bestand staan, dan `409` `library.media_delete_incomplete`
+        met in `details` `removed_files`, `removed_items` en `failed`
+        (`path` relatief aan de bibliotheekroot, `reason` uit `outside_root`,
+        `symlink`, `not_a_file`, `remove_failed`, `media_kept`).
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: Alles is weg.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemDeleted" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403":
+          description: library.delete_not_permitted of auth.scope_insufficient.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.media_delete_unavailable, library.media_delete_incomplete of library.scan_in_progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503":
+          description: storage.unavailable, een root van het item is niet bereikbaar; niets gewist.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
 
   /items/{item_id}/children:
     get:
@@ -3417,6 +3537,15 @@ paths:
         het antwoord het origineel. Elke trede heeft een eigen sterke ETag. Een
         afgeleide maat is altijd `image/jpeg`. Een `width` buiten het bereik of
         zonder waarde levert het origineel.
+
+        Onder `capabilities.push_rich_content` accepteert deze route naast het
+        accesstoken ook het artworktoken uit een versleutelde pushmelding
+        (DEC-XXX). Dat token gaat als bearer-header mee, nooit in de URL, opent
+        alleen het artwork-id waarvoor het gemunt is en vervalt na hooguit 15
+        minuten. Binnen die tijd weigert de server het zodra de sessie is
+        ingetrokken. De bibliotheekrechten van de eigenaar gelden per
+        aanvraag. Een artworktoken voor een ander id is een 401. Een client
+        hoeft dit token nooit te lezen.
       parameters:
         - name: artwork_id
           in: path
@@ -3957,11 +4086,52 @@ components:
               type: boolean
               description: True zolang er nog geen eigenaar is aangemaakt.
 
+    PushInstallation:
+      type: object
+      additionalProperties: false
+      required: [device_token, environment]
+      anyOf:
+        - required: [movies]
+          properties:
+            movies: { const: true }
+        - required: [episodes]
+          properties:
+            episodes: { const: true }
+      properties:
+        device_token:
+          type: string
+          pattern: '^([0-9a-fA-F]{2}){1,256}$'
+          description: Het APNs-apparaattoken in hexadecimale vorm.
+        environment: { type: string, enum: [sandbox, production], x-unknown-safe: false }
+        locale: { type: string, enum: [en, nl], default: en, x-unknown-safe: false }
+        movies: { type: boolean, default: false }
+        episodes: { type: boolean, default: false }
+        content_key:
+          type: string
+          pattern: '^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$'
+          description: |
+            Alleen onder `capabilities.push_rich_content` (DEC-XXX). Een
+            willekeurige AES-256-sleutel van 32 bytes in standaard-base64, per
+            registratie door het toestel gemaakt. Met sleutel draagt een melding
+            naast de algemene tekst ook titel en posterverwijzing, versleuteld
+            met AES-GCM, gebonden aan installatie-id en notification_id; Apple
+            ziet alleen de algemene tekst. Elke PUT vervangt de
+            sleutel, dus een PUT zonder dit veld wist hem.
+
     Capabilities:
       type: object
       description: Altijd leidend boven feature_level.
       required: [browse, search, artwork, watch_state]
       properties:
+        push_notifications:
+          type: boolean
+          description: Opt-in push is beschikbaar wanneer dit veld true is. Afwezig betekent uit.
+        push_rich_content:
+          type: boolean
+          description: |
+            DEC-XXX. PushInstallation neemt `content_key` aan en GET
+            /artwork/{artwork_id} het artworktoken uit de versleutelde melding.
+            Afwezig betekent uit; stuur `content_key` dan niet, want de body is gesloten.
         assistant_memory:
           type: boolean
           default: false
@@ -4050,6 +4220,15 @@ components:
         artwork_cache_admin:
           type: boolean
           description: Optioneel; afwezig is false. Alleen true bij volledige geregistreerde stats-/purgeketen.
+        media_delete:
+          type: boolean
+          default: false
+          description: |
+            DEC-XXX (media verwijderen). `DELETE /items/{item_id}` wist een titel
+            met zijn bestanden. Alleen waar als de beheerder het aanzette
+            (`PLEYA_SERVER_ALLOW_MEDIA_DELETE`) en minstens één mediaroot bij het
+            opstarten schrijfbaar bleek. Afwezig is false: een client biedt
+            verwijderen op deze server dan niet aan.
         library_maintenance:
           type: boolean
           default: false
@@ -5790,6 +5969,19 @@ components:
         scan_id:
           allOf: [{ $ref: "#/components/schemas/Id" }]
           description: Alleen voor een scanjob die via POST /libraries/{id}/scan is gestart.
+    ItemDeleted:
+      type: object
+      required: [removed_files, removed_items]
+      additionalProperties: false
+      properties:
+        removed_files:
+          type: integer
+          minimum: 0
+          description: Gewiste bestanden, inclusief bijbestanden en bestanden die al weg waren.
+        removed_items:
+          type: integer
+          minimum: 0
+          description: Verwijderde films en afleveringen; lege seizoenen en series tellen niet mee.
     LibraryMaintenance:
       type: object
       required: [items]

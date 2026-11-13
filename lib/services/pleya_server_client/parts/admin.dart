@@ -313,6 +313,9 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     String path, {
     Map<String, dynamic>? body,
     Map<String, dynamic>? queryParameters,
+    bool followRedirects = true,
+    bool absentIsDone = false,
+    Set<int> passStatuses = const {},
   }) async {
     Future<MediaServerResponse> send() async {
       final headers = await _session.authHeaders();
@@ -321,7 +324,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
       return switch (method) {
         'GET' => _http.get(path, queryParameters: queryParameters, headers: headers, timeout: timeout),
         'POST' => _http.post(path, body: encoded, headers: headers, timeout: timeout),
-        'PUT' => _http.put(path, body: encoded, headers: headers, timeout: timeout),
+        'PUT' => _http.put(path, body: encoded, headers: headers, timeout: timeout, followRedirects: followRedirects),
         'PATCH' => _http.patch(path, body: encoded, headers: headers, timeout: timeout),
         'DELETE' => _http.delete(path, headers: headers, timeout: timeout),
         _ => throw ArgumentError.value(method, 'method'),
@@ -337,7 +340,17 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     if (status < 200 || status >= 300) {
       final code = PleyaError.tryParse(response.data)?.code;
       appLogger.d('PleyaServerClient: $method $path -> $status ${code ?? ''}');
+      // Only this request's own answer: a refresh that fails above throws
+      // before it gets here, whatever its status.
+      if (absentIsDone && status == 404 && code == 'library.not_found') return null;
+      if (passStatuses.contains(status)) return {'status': status};
       if (status == 401 || status == 403) {
+        // Pleya's own verdict carries an `auth.*` code; a proxy or captive
+        // portal in front of the server answers with a bare status. Both stay
+        // a [MediaServerAuthException] for every existing caller.
+        if (code != null && code.startsWith('auth.')) {
+          throw PleyaAuthRejectedException(code, code, statusCode: status);
+        }
         throw MediaServerAuthException(code ?? 'HTTP $status', statusCode: status);
       }
       throw MediaServerHttpException(

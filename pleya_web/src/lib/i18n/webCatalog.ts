@@ -24,4 +24,17 @@ export const webCatalog = {
   'catalog.newEpisodes': 'New episodes',
   'catalog.recentlyWatched': 'Recently watched',
   'catalog.chooseLibrary': 'Choose a library to browse its complete catalog.',
+  // Filmdetail (C-05).
+  'detail.endsAt': 'ends at {time}',
+  'detail.progress': 'Watched {percent}%',
+  'detail.moreActions': 'More actions',
+  'detail.chooseArtwork': 'Choose poster and background',
+  'detail.castCrew': 'Cast and crew',
+  'detail.actor': 'Actor',
+  'detail.file': 'File',
+  'detail.file.format': 'Format',
+  'detail.file.source': 'Source',
+  'detail.tracks.remembered': 'Your audio and subtitle choice is remembered for this title.',
+  'detail.tracks.once': 'Your audio and subtitle choice applies to the next playback only.',
+  'detail.tracks.notInBrowser': 'This subtitle needs conversion first and does not show in this browser yet.',
 };

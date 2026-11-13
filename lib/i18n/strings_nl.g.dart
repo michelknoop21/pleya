@@ -110,6 +110,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsLocalLibraryNl localLibrary = _TranslationsLocalLibraryNl._(_root);
 	@override late final _TranslationsSettingsStudioNl settingsStudio = _TranslationsSettingsStudioNl._(_root);
 	@override late final _TranslationsSeerrIssuesNl seerrIssues = _TranslationsSeerrIssuesNl._(_root);
+	@override late final _TranslationsPleyaNotificationsNl pleyaNotifications = _TranslationsPleyaNotificationsNl._(_root);
 }
 
 // Path: states
@@ -664,11 +665,21 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get deleteFromServer => 'Verwijderen van server';
 	@override String get confirmDelete => 'Deze media en bestanden van je server verwijderen?';
 	@override String get deleteMultipleWarning => 'Dit omvat alle afleveringen en hun bestanden.';
+	@override String get pleyaServerDeletesFiles => 'Pleya Server wist de bestanden van de opslag. Dat is niet terug te draaien.';
+	@override String get pleyaDeletionDisabled => 'Bestanden wissen staat uit op deze Pleya Server. Er is niets verwijderd.';
+	@override String get pleyaDeletionReadOnly => 'De opslag van deze titel is op Pleya Server alleen-lezen gekoppeld. Er is niets verwijderd.';
+	@override String get pleyaDeletionRootOverlap => 'De map van deze titel hoort ook bij een andere bibliotheek. Er is niets verwijderd.';
+	@override String get pleyaDeletionScanInProgress => 'Pleya Server scant deze bibliotheek. Er is niets verwijderd; probeer het na de scan opnieuw.';
+	@override String get pleyaDeletionStorageUnavailable => 'Pleya Server kan de opslag van deze titel nu niet bereiken. Er is niets verwijderd.';
+	@override String pleyaDeletionIncomplete({required Object removed, required Object paths}) => 'Niet alles is gewist: ${removed} bestanden weg. Deze bleven staan: ${paths}';
 	@override String get mediaDeletedSuccessfully => 'Media-item succesvol verwijderd';
 	@override String get mediaFailedToDelete => 'Verwijderen van media-item mislukt';
 	@override String get plexDeletionDisabled => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.';
 	@override String get plexDeletionFilesNotRemovable => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
 	@override String get plexDeletionRefusedUnknown => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
+	@override String get deletionForbidden => 'De server weigert het verwijderen: dit account mag daar geen media verwijderen. Sta verwijderen toe voor dit account in de serverinstellingen (in Jellyfin en Emby: ‘Verwijderen van media toestaan’) en probeer opnieuw.';
+	@override String get plexDeletionForbidden => 'Plex weigert het verwijderen: dit account mag op deze server geen media verwijderen. Verwijder het vanuit het account dat eigenaar is van de server.';
+	@override String get deleteServerGone => 'De server van dit item is niet verbonden. Er is niets verwijderd.';
 	@override String get rate => 'Beoordelen';
 	@override String get playFromBeginning => 'Afspelen vanaf het begin';
 	@override String get playVersion => 'Versie afspelen...';
@@ -2933,6 +2944,39 @@ class _TranslationsSeerrIssuesNl extends TranslationsSeerrIssuesEn {
 	@override String get quickFixed => 'Opgelost, probeer het opnieuw';
 	@override String get tileOpen => 'open';
 	@override String get tileResolved => 'opgelost';
+}
+
+// Path: pleyaNotifications
+class _TranslationsPleyaNotificationsNl extends TranslationsPleyaNotificationsEn {
+	_TranslationsPleyaNotificationsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get pushTitle => 'Push op dit toestel';
+	@override String get pushExplanation => 'Ontvang nieuwe aanwinsten van je eigen Pleya Server, ook als Pleya gesloten is. iOS vraagt toestemming zodra je een categorie aanzet.';
+	@override String pushOneAccount({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.';
+	@override String get pushOffline => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.';
+	@override String get pushPending => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.';
+	@override String get title => 'Notificaties';
+	@override String get subtitle => 'Kies welke updates je ontvangt';
+	@override String get settings => 'Notificatievoorkeuren';
+	@override String get enable => 'Notificaties in Pleya inschakelen';
+	@override String get explanation => 'Kies welke updates je in Pleya wilt zien. Alle categorieën staan standaard uit.';
+	@override String get disabled => 'Notificaties staan uit. Kies in de voorkeuren welke updates je wilt ontvangen.';
+	@override String get empty => 'Geen nieuwe updates.';
+	@override String get requests => 'Updates over mijn aanvragen';
+	@override String get reports => 'Updates over mijn meldingen';
+	@override String get movies => 'Nieuwe films in mijn bibliotheken';
+	@override String get episodes => 'Nieuwe afleveringen in mijn bibliotheken';
+	@override String get releases => 'Releasedatums van gevolgde films en series';
+	@override String get app => 'Nieuwe Pleya-versies';
+	@override String get manageRequests => 'Nieuwe aanvragen om te beoordelen';
+	@override String get manageRequestsTitle => 'Aanvragen beheren';
+	@override String get manageReports => 'Nieuwe gebruikersmeldingen';
+	@override String version({required Object version}) => 'Pleya ${version} is beschikbaar';
+	@override String get loadPartial => 'Sommige updates konden niet worden geladen.';
+	@override String get saveFailed => 'Je voorkeuren konden niet worden opgeslagen.';
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -5209,11 +5253,21 @@ extension on TranslationsNl {
 			'mediaMenu.deleteFromServer' => 'Verwijderen van server',
 			'mediaMenu.confirmDelete' => 'Deze media en bestanden van je server verwijderen?',
 			'mediaMenu.deleteMultipleWarning' => 'Dit omvat alle afleveringen en hun bestanden.',
+			'mediaMenu.pleyaServerDeletesFiles' => 'Pleya Server wist de bestanden van de opslag. Dat is niet terug te draaien.',
+			'mediaMenu.pleyaDeletionDisabled' => 'Bestanden wissen staat uit op deze Pleya Server. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionReadOnly' => 'De opslag van deze titel is op Pleya Server alleen-lezen gekoppeld. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionRootOverlap' => 'De map van deze titel hoort ook bij een andere bibliotheek. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionScanInProgress' => 'Pleya Server scant deze bibliotheek. Er is niets verwijderd; probeer het na de scan opnieuw.',
+			'mediaMenu.pleyaDeletionStorageUnavailable' => 'Pleya Server kan de opslag van deze titel nu niet bereiken. Er is niets verwijderd.',
+			'mediaMenu.pleyaDeletionIncomplete' => ({required Object removed, required Object paths}) => 'Niet alles is gewist: ${removed} bestanden weg. Deze bleven staan: ${paths}',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media-item succesvol verwijderd',
 			'mediaMenu.mediaFailedToDelete' => 'Verwijderen van media-item mislukt',
 			'mediaMenu.plexDeletionDisabled' => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.',
 			'mediaMenu.plexDeletionFilesNotRemovable' => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
 			'mediaMenu.plexDeletionRefusedUnknown' => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
+			'mediaMenu.deletionForbidden' => 'De server weigert het verwijderen: dit account mag daar geen media verwijderen. Sta verwijderen toe voor dit account in de serverinstellingen (in Jellyfin en Emby: ‘Verwijderen van media toestaan’) en probeer opnieuw.',
+			'mediaMenu.plexDeletionForbidden' => 'Plex weigert het verwijderen: dit account mag op deze server geen media verwijderen. Verwijder het vanuit het account dat eigenaar is van de server.',
+			'mediaMenu.deleteServerGone' => 'De server van dit item is niet verbonden. Er is niets verwijderd.',
 			'mediaMenu.rate' => 'Beoordelen',
 			'mediaMenu.playFromBeginning' => 'Afspelen vanaf het begin',
 			'mediaMenu.playVersion' => 'Versie afspelen...',
@@ -5232,6 +5286,8 @@ extension on TranslationsNl {
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, film',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV-serie',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
+			_ => null,
+		} ?? switch (path) {
 			'accessibility.mediaCardSeason' => ({required Object title, required Object seasonInfo}) => '${title}, ${seasonInfo}',
 			'accessibility.mediaCardWatched' => 'bekeken',
 			'accessibility.mediaCardPartiallyWatched' => ({required Object percent}) => '${percent} procent bekeken',
@@ -5242,8 +5298,6 @@ extension on TranslationsNl {
 			'tooltips.markAsWatched' => 'Markeer als gekeken',
 			'tooltips.markAsUnwatched' => 'Markeer als ongekeken',
 			'videoControls.audioLabel' => 'Audio',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Ondertitels',
 			'videoControls.subtitlesPreparing' => 'Ondertitels voorbereiden',
 			'videoControls.subtitlesPrepareFailed' => 'Ondertitels konden niet worden voorbereid',
@@ -5746,6 +5800,8 @@ extension on TranslationsNl {
 			'libraries.sortLabels.playCount' => 'Aantal afspelingen',
 			'libraries.sortLabels.productionYear' => 'Productiejaar',
 			'libraries.sortLabels.runtime' => 'Speelduur',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.officialRating' => 'Officiële beoordeling',
 			'libraries.sortLabels.premiereDate' => 'Premièredatum',
 			'libraries.sortLabels.startDate' => 'Begindatum',
@@ -5756,8 +5812,6 @@ extension on TranslationsNl {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Laatste afleveringsuitzending',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Datum laatst toegevoegde aflevering',
 			'about.title' => 'Over',
-			_ => null,
-		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source licenties',
 			'about.versionLabel' => ({required Object version}) => 'Versie ${version}',
 			'about.appDescription' => 'Een mooie Plex- en Jellyfin-client voor Flutter',
@@ -6260,6 +6314,8 @@ extension on TranslationsNl {
 			'performanceOverlay.dvRpuAverage' => 'DV RPU gem.',
 			'performanceOverlay.dvSampleAverage' => 'DV-sample gem.',
 			'performanceOverlay.maxLuma' => 'Max luma',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.minLuma' => 'Min luma',
 			'performanceOverlay.maxCll' => 'MaxCLL',
 			'performanceOverlay.maxFall' => 'MaxFALL',
@@ -6270,8 +6326,6 @@ extension on TranslationsNl {
 			'performanceOverlay.memory' => 'Geheugen',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'Externe speler',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Externe speler gebruiken',
 			'externalPlayer.useExternalPlayerDescription' => 'Open video\'s in een andere app',
 			'externalPlayer.selectPlayer' => 'Speler selecteren',
@@ -6774,6 +6828,8 @@ extension on TranslationsNl {
 			'nowWatching.paused' => 'Gepauzeerd',
 			'nowWatching.remaining' => ({required Object time}) => '${time} over',
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
+			_ => null,
+		} ?? switch (path) {
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'Op je netwerk',
 			'nowWatching.onWan' => 'Van buiten',
@@ -6784,8 +6840,6 @@ extension on TranslationsNl {
 			'sourcePicker.availableOnOneServer' => 'Beschikbaar op 1 server',
 			'sourcePicker.availableOnManyServers' => ({required Object count}) => 'Beschikbaar op ${count} servers',
 			'sourcePicker.oneServerUnchecked' => '1 server kon niet worden gecontroleerd',
-			_ => null,
-		} ?? switch (path) {
 			'sourcePicker.manyServersUnchecked' => ({required Object count}) => '${count} servers konden niet worden gecontroleerd',
 			'sourcePicker.checkingMoreSources' => 'Meer bronnen controleren…',
 			'sourcePicker.lastUsed' => 'Laatst gebruikt',
@@ -7288,6 +7342,8 @@ extension on TranslationsNl {
 			'assistant.memory.sync.select' => 'Delen',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Laatst bevestigd: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'Dit zou ${count} herinneringen op dit apparaat opslaan. Het maximum is 200; verwijder herinneringen voordat je koppelt.',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.memory.sync.clearChanged' => 'De server is gewijzigd nadat je om wissen vroeg. Bekijk deze feiten en bevestig het wissen van dit servergeheugen.',
 			'assistant.memory.sync.clearServer' => 'Deze serverherinneringen wissen',
 			'assistant.memory.sync.clearEverywhere' => 'Alle herinneringen van dit profiel en het gekoppelde Pleya Server-account wissen? Andere gekoppelde apparaten ontvangen de wisactie zodra ze weer verbinden.',
@@ -7298,8 +7354,6 @@ extension on TranslationsNl {
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
 			'assistant.mobile.setup' => 'Model instellen',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
 			'assistant.mobile.listening' => 'Ik luister…',
 			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
@@ -7802,8 +7856,34 @@ extension on TranslationsNl {
 			'seerrIssues.quickLooking' => 'Ik kijk ernaar',
 			'seerrIssues.quickNewVersion' => 'Ik heb een nieuwe versie gevraagd',
 			'seerrIssues.quickFixed' => 'Opgelost, probeer het opnieuw',
+			_ => null,
+		} ?? switch (path) {
 			'seerrIssues.tileOpen' => 'open',
 			'seerrIssues.tileResolved' => 'opgelost',
+			'pleyaNotifications.pushTitle' => 'Push op dit toestel',
+			'pleyaNotifications.pushExplanation' => 'Ontvang nieuwe aanwinsten van je eigen Pleya Server, ook als Pleya gesloten is. iOS vraagt toestemming zodra je een categorie aanzet.',
+			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'Op dit toestel gaat push van deze server naar één account. Nu is dat ${name}; aanzetten hier zet het daar uit.',
+			'pleyaNotifications.pushOffline' => 'Wijzigingen gaan in zodra dit toestel de server weer kan bereiken.',
+			'pleyaNotifications.pushPending' => 'De pushvoorkeuren konden niet worden bevestigd. Controleer de toestemming in iOS en probeer opnieuw.',
+			'pleyaNotifications.title' => 'Notificaties',
+			'pleyaNotifications.subtitle' => 'Kies welke updates je ontvangt',
+			'pleyaNotifications.settings' => 'Notificatievoorkeuren',
+			'pleyaNotifications.enable' => 'Notificaties in Pleya inschakelen',
+			'pleyaNotifications.explanation' => 'Kies welke updates je in Pleya wilt zien. Alle categorieën staan standaard uit.',
+			'pleyaNotifications.disabled' => 'Notificaties staan uit. Kies in de voorkeuren welke updates je wilt ontvangen.',
+			'pleyaNotifications.empty' => 'Geen nieuwe updates.',
+			'pleyaNotifications.requests' => 'Updates over mijn aanvragen',
+			'pleyaNotifications.reports' => 'Updates over mijn meldingen',
+			'pleyaNotifications.movies' => 'Nieuwe films in mijn bibliotheken',
+			'pleyaNotifications.episodes' => 'Nieuwe afleveringen in mijn bibliotheken',
+			'pleyaNotifications.releases' => 'Releasedatums van gevolgde films en series',
+			'pleyaNotifications.app' => 'Nieuwe Pleya-versies',
+			'pleyaNotifications.manageRequests' => 'Nieuwe aanvragen om te beoordelen',
+			'pleyaNotifications.manageRequestsTitle' => 'Aanvragen beheren',
+			'pleyaNotifications.manageReports' => 'Nieuwe gebruikersmeldingen',
+			'pleyaNotifications.version' => ({required Object version}) => 'Pleya ${version} is beschikbaar',
+			'pleyaNotifications.loadPartial' => 'Sommige updates konden niet worden geladen.',
+			'pleyaNotifications.saveFailed' => 'Je voorkeuren konden niet worden opgeslagen.',
 			_ => null,
 		};
 	}

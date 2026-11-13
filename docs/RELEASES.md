@@ -18,8 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### Fixed
-- macOS-pkg leesbaar voor iedereen, ook bij umask 077
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -48,8 +47,236 @@ under `Notes`.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
+## 2.8.1 · build 463 (Apple TV) and build 464 (iPhone, iPad and Mac) · 13 November 2026 · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: 483819c7ae2afd281c2e2bc900bff17b535f2664 -->
+
+Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
+
+### New
+
+- **Requests open on a decision list.** If you manage requests, tiles at the top count
+  what is waiting for you, what is on its way and, on iPhone and iPad, which reports are
+  open. Below them the requests that need your answer come first, oldest on top, with
+  Approve and Decline on each row. You can tick several and approve them in one go, or
+  swipe: right approves, left asks before it declines. The menu behind a row shows seasons,
+  quality, who asked and whether the title is already in Pleya.
+- **Reports read as a conversation.** A report shows its replies as messages, with quick
+  answers that fill the reply field so you can still edit before sending.
+
+### Improved
+
+- **On Apple TV, Select on an episode plays it.** On a series page the press used to open
+  the episode page first when Episode Action was set to Open Details. It now plays from the
+  season tab and from the rows on that page. The episode page is one long press away,
+  under View details. Everywhere else Episode Action works as before.
+
 ### Fixed
 
+- **A film from Pleya Server keeps playing after a network drop.** On Apple TV build 462 a
+  film kept loading forever once the connection dropped 45 minutes in, because the player
+  reconnected with a sign-in that had expired after 15 minutes. The player now uses a
+  stream session that stays valid for as long as the film is open, also while paused.
+- **Artwork that failed to load is tried again.** A download that got stuck while the
+  device slept used to hold its place for good, and a failed image stayed empty. Downloads
+  now time out, and Pleya retries after 2 and 10 seconds and again when the app or a server
+  comes back.
+- **Cast photos for Pleya Server titles.** Pleya Server has no cast photos yet. If the same
+  title is also on Plex or Jellyfin, the detail page borrows the photos from there.
+- **A Pleya Server that is slow at start-up comes back.** One missed answer while the app
+  started used to hide the server for the whole session. Pleya now checks again after 10,
+  30 and 90 seconds.
+- **The Pleya Fly card on iPhone should now show up while the Apple TV is playing.** The
+  iPhone kept comparing against the servers it knew at launch and missed the Apple TV when
+  a server signed in later. The card also follows the Receive Pleya Fly setting while Home
+  is open.
+- **The focus ring on the player's play button is rounded.** On Apple TV and Mac the
+  focused button looked like a hard square because ring and button used different corners.
+
+### Notes
+
+- Worth checking on Apple TV: the play button ring in the player, Select on an episode,
+  and View details in the long-press menu of an episode card. None of these has been seen
+  on a simulator or a device yet.
+- Worth checking on iPhone: the Pleya Fly card while the Apple TV plays.
+
+## 2.8.1 · build 462 · 11 November 2026 · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: 8820ca925d46bb2faffecea791665afabf823447 -->
+
+Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
+
+### Fixed
+
+- **Catalog posters can fall back to another source.** If the selected source has no
+  poster, cannot provide its image URL or fails to load it, All Movies and All Shows try
+  the other sources already identified as the same title. This works in either direction
+  between Pleya Server and the other connected servers. Playback and watch progress keep
+  their existing source selection.
+- **Movie bonus folders stay out of the ordinary film list after a scan.** Pleya Server
+  recognizes Featurettes, Extras, Trailers and Samples subfolders while retaining their
+  files, item identity and watch history.
+
+### Notes
+
+- Pleya Server titles with an ambiguous match still need an owner or administrator
+  to confirm the correct title before their sources can share artwork.
+
+## 2.8.1 · build 461 · 10 November 2026 · iPhone, iPad, Apple TV and Mac
+
+<!-- commit: a277fe84edea1f84c174dcdd3e060b4258ed84bf -->
+
+Available to internal TestFlight testers on iPhone, iPad, Apple TV and Mac.
+
+### Fixed
+
+- **Continue Watching compares sources with and without a year in the title.** A series
+  such as Brothers and Brothers (2026) can now be compared on its provider IDs before the
+  app decides whether the cards belong together. Titles alone still never merge.
+- **Resume and Next Episode use the same shared watch state.** A completed copy is reconciled
+  with other copies before it leaves the row, so an older position cannot undo a newer finish.
+  Active rewatch progress stays available.
+- **Pleya Fly discovery can recover after an iPhone network socket closes.** A failed listener
+  is cleared so the existing retry can find the Apple TV again after the app resumes.
+
+### Improved
+
+- **Folder-style years disappear from displayed titles.** The separate year and original server
+  metadata stay available.
+- **iPhone player controls use more of the landscape screen.** Compact transport and footer
+  actions spread across the available safe width.
+- **The mobile hero shows a Watched label.** Settings artwork reuses the existing iOS face crop.
+- **Library management is reachable from All Movies and All Shows.** Artwork, metadata and Plex
+  matching use the selected source and existing owner or administrator permissions.
+
+### Notes
+
+- The proposed new Apple TV player design is a separate draft, not a replacement player in
+  this build. Physical validation of the Fly card, the reported fully watched American Hostage
+  season and the two Brothers sources remains open.
+
+## 2.8.1 · build 460 · 10 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: c731d4ef1f795b6bf824fd7989423ccc78abe3b4 -->
+
+### New
+
+- **Movie and episode alerts can show the title and poster on iPhone and iPad.**
+  This needs the updated Pleya Server, notifications enabled for that server, and iOS
+  notification permission.
+
+### Notes
+
+- iOS preview settings control what appears on the lock screen. If the poster cannot load,
+  the title remains; content that cannot be opened falls back to the general Pleya alert.
+- Apple TV includes the recent offline-index changes: two titles scan at a time and the saved
+  index is decoded row by row. These changes have not been measured on a physical Apple TV.
+- Worth checking: receive a new-title alert with the app closed, expand it to see the poster,
+  and confirm that opting out stops new alerts. Title and poster on a physical iPhone remain
+  to be confirmed for this build.
+
+## 2.8.1 · build 459 · 10 November 2026 · Apple TV
+
+<!-- commit: a9c1a175aca43399be04b095b14c398d16c0fc4c -->
+
+### Improved
+
+- **An offline index scan gets in the way of scrolling less.** Build 457 scanned four titles at
+  a time. On the older Apple TV, Alle films then missed 5 percent of its frames in two
+  measurements during a rescan, against 2 percent on build 455. The Apple TV now scans two
+  titles at a time. iPhone, iPad and Mac keep four.
+- **Loading the offline index takes less memory.** At start each index file was read whole and
+  turned into one large structure before the entries were made from it. It is now read in
+  small blocks, one entry at a time. In a test on a Mac with made-up entries, loading an index
+  the size of the one on the older Apple TV peaked at 81 to 83 MB instead of 160 MB.
+
+### Notes
+
+- Neither change has been measured on an Apple TV yet. Build 457 peaked at 359 MB of memory on
+  the older Apple TV, 9 MB over the target of 350 MB. Whether this build stays under it is open.
+- A full sync can take longer than on build 457, where it took 164 seconds: the Apple TV now
+  scans two titles at a time instead of four.
+- Worth checking on the older Apple TV, with the offline index already on: Instellingen >
+  Bibliotheken > Nu synchroniseren, then scroll Alle films for a minute while the scan runs.
+
+## 2.8.1 · build 458 · 10 November 2026 · Mac
+
+<!-- commit: 3eff12fc4ad99b6b325d5c683ff8c5bc3c81faef -->
+
+### Improved
+
+- **The offline index scans faster**, as in build 457: four titles at a time, and a Pleya Server
+  scan no longer asks again for a show or season it already received.
+
+### Notes
+
+- This is the first Mac build since 453. It brings everything listed for builds 455, 456 and
+  457 to the Mac, apart from notifications, which are on iPhone and iPad only.
+- Worth checking: nothing in this build has been checked on a Mac yet. Play something from each
+  server you use and open a video file from Finder with Pleya.
+
+## 2.8.1 · build 457 · 10 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: abcb4bb386c24adc9232c9f0434fe079441295d0 -->
+
+### New
+
+- **Notifications from your own Pleya Server on iPhone and iPad.** Under My Pleya > Notificaties
+  you choose per server whether you want a notification for new films or new episodes. iOS asks
+  for permission only when you switch one on. The notification says that something new arrived,
+  without a title, and several new items at once arrive as one notification. Only the profile
+  that is active on the device gets them; switching profile or signing out stops them for the
+  profile you left.
+
+### Improved
+
+- **The offline index scans faster.** Every library now scans four titles at a time instead of
+  one after the other, and a Pleya Server scan no longer asks the server again for a show or
+  season it already received in a list.
+
+### Notes
+
+- Notifications need a Pleya Server that has been updated for them. Until your server has that
+  update, the Notificaties switches do not appear.
+- The Mac build of these changes is 458.
+- Worth checking: on iPhone, switch on notifications for new films once the server is updated,
+  add a film to a library, and see that one notification arrives. Then switch to another
+  profile and check that no further notifications for the first profile arrive.
+- Worth checking: a full offline index sync on the older Apple TV, and how long it takes.
+
+## 2.8.1 · build 456 · 9 November 2026 · iPhone, iPad and Apple TV
+
+<!-- commit: 031401ee51b5351e78594aeea4d4b05369f73416 -->
+
+### New
+
+- **Seerr reports on iPhone.** When your Seerr account may see reports, My Pleya shows a
+  Meldingen row. It lists open, resolved and your own reports, opens one with its conversation,
+  and lets you reply. An account that may manage reports can resolve or reopen one. A change
+  Seerr does not confirm is shown as unconfirmed.
+
+### Improved
+
+- **New player controls.** The title and quality line sit in the bottom block next to the
+  timeline, with one set of colours for the play button, timeline and buffer. On iPhone and
+  iPad play and skip sit in the middle, settings and tracks in the row above them.
+- **Requests on Apple TV has a new overview**, and the Series and Films pages on Apple TV get a
+  smaller header. On iPhone the Requests list and title page are more compact.
+- **The offline index loads with less memory.** The index file is now read and decoded in the
+  background instead of first being copied into the app's main memory.
+
+### Fixed
+
+- **One card per title in Continue Watching.** Two servers that hold the same film could show it
+  as two cards when one Plex library names it differently from the other, or when a library
+  still uses the old Plex agent. A title is now one card when its IMDb, TMDB or TVDB number
+  proves it is the same film or series. Titles without such a number stay apart: a matching
+  name, poster or year is not proof.
+- **On Apple TV the line under Continue Watching describes the card the remote is on**,
+  also after Home reloads in the background, and no longer jumps back to a poster while "Alle"
+  has focus.
+- **A swipe on the Siri Remote no longer jumps through a playing film.** While a film plays, a
+  horizontal swipe shows the controls. Swipe scrubbing still works when the film is paused.
 - **The Meenemen card now shows up on the iPhone.** The Apple TV announces a player from the
   moment it opens, before it can say what plays. A phone that asked in those first seconds got
   no answer and never asked that Apple TV again, so the card on Home stayed away for the whole
@@ -58,9 +285,14 @@ under `Notes`.
 
 ### Notes
 
+- Worth checking: Continue Watching on the Apple TV. If one title still shows twice, turn on
+  debug logging in the settings, open Home, and upload a log. The log now says why two cards
+  stayed apart, without naming the title.
 - Worth checking: start a film on the Apple TV with Pleya open on Home on the iPhone. The
   "Speelt op" card should appear within about fifteen seconds once the film plays, or half a
   minute later if the Apple TV took long to start it; then tap Meenemen.
+- Worth checking: swipe left and right on the remote during playback, then pause and swipe.
+- Not on Mac in this build.
 
 ## 2.8.1 · build 455 · 9 November 2026 · Apple TV
 

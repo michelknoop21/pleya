@@ -39,7 +39,15 @@ func TestClassifyAuxiliaryVideo(t *testing.T) {
 		{"shows", "../Show/Extras/preview.mkv", ""},
 		{"shows", "/Show/Extras/preview.mkv", ""},
 		{"shows", "Show/../Extras/preview.mkv", ""},
-		{"movies", "Film/Extras/Making Of.mkv", ""},
+		{"movies", "Film/Extras/Making Of.mkv", "extras"},
+		{"movies", "American Pie Presents - Beta House (2007)/Robin Hood (2010)/Featurettes/Menu Art.mkv", "extras"},
+		{"movies", "American Pie Presents - Beta House (2007)/Robin Hood (2010)/Featurettes/Art of Nottingham/Behind-the-scenes photos.mkv", "extras"},
+		{"movies", "Film/Trailers/Trailer.mkv", "trailer"},
+		{"movies", "Film/Samples/Sample.mkv", "sample"},
+		{"movies", "Featurettes/Featurettes (2001).mkv", ""},
+		{"movies", "Extras (2005)/Extras (2005).mkv", ""},
+		{"movies", "Film/Featurettes of Life/Film.mkv", ""},
+		{"movies", "Movie (2026).mkv", ""},
 		{"books", "Book/Extras/preview.mkv", ""},
 	}
 	for _, tc := range cases {

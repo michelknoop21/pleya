@@ -39,6 +39,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
+	"github.com/edde746/plezy/pleya_server/internal/push"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
@@ -258,6 +259,19 @@ func run() int {
 
 	workers := &sync.WaitGroup{}
 	workers.Add(5)
+	apns, err := push.OpenAPNs(cfg.APNsConfig, cfg.ConfigDir)
+	if err != nil {
+		startup.Warn("push uitgeschakeld", "error", err.Error())
+	}
+	pushService := push.New(pool, apns)
+	pushService.Items, pushService.Signer = catalogStore, signer
+	if pushService.Enabled() {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			pushService.Run(workCtx, logging.Component(log, "push"))
+		}()
+	}
 	var metadataProvider metadata.Provider
 	metadataName := catalog.SourceNFO
 	if cfg.TMDBKey != "" {
@@ -313,7 +327,7 @@ func run() int {
 		defer workers.Done()
 		scheduleSessionSweep(workCtx, authStore, revocations,
 			func() time.Duration { return settingsCache.Current().RefreshTokenTTL() },
-			logging.Component(log, "housekeeping"))
+			pushService, logging.Component(log, "housekeeping"))
 	}()
 
 	transcoder := startTranscoder(ctx, cfg, pool, logging.Component(log, "transcode"), startup)
@@ -326,6 +340,7 @@ func run() int {
 	restarted := make(chan error, 1)
 	reg := &metrics.Registry{}
 	apiServer := api.New(api.Options{
+		Push:               pushService,
 		Backups:            backups,
 		BeforeRestore:      func() { stopWork(); workers.Wait() },
 		AfterRestore:       func(err error) { restarted <- err },
@@ -339,6 +354,7 @@ func run() int {
 		Downloads:          downloadStore,
 		Metrics:            reg,
 		MediaRoots:         cfg.MediaDirs,
+		MediaDelete:        mediaDeleteRoots(cfg, log),
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
 		MetadataProvider:   metadataProvider,
@@ -490,6 +506,29 @@ func reportMedia(cfg *config.Config, log *slog.Logger) {
 			log.Info("mediamount gereed", slog.Any("mount", info))
 		}
 	}
+}
+
+// mediaDeleteRoots meet bij het opstarten waar DELETE /items/{id} mag wissen
+// (DEC-XXX, media verwijderen). Zonder PLEYA_SERVER_ALLOW_MEDIA_DELETE nil: de
+// functie bestaat dan niet. Met de variabele en geen enkele schrijfbare root
+// een lege, niet-nil lijst: aangezet, maar de mounts staan op :ro.
+func mediaDeleteRoots(cfg *config.Config, log *slog.Logger) []string {
+	if !cfg.AllowMediaDelete {
+		return nil
+	}
+	writable, readOnly := catalog.WritableRoots(cfg.MediaDirs)
+	for _, dir := range readOnly {
+		log.Warn("media verwijderen staat aan, maar deze mediaroot is niet schrijfbaar; hier wist de server niets",
+			slog.String("dir", dir))
+	}
+	for _, dir := range writable {
+		log.Warn("media verwijderen staat aan: een beheerder kan bestanden onder deze root wissen",
+			slog.String("dir", dir))
+	}
+	if writable == nil {
+		writable = []string{}
+	}
+	return writable
 }
 
 // runHealthcheck is het subcommando dat de container-HEALTHCHECK aanroept. De

@@ -31,6 +31,11 @@ String _redactSensitiveData(String message) {
     RegExp(r'([?&]stream_token=)([^&\s"]+)'),
     (match) => '${match.group(1)}[REDACTED]',
   );
+  // A stream session's secret travels as a cookie named after the session.
+  redacted = redacted.replaceAllMapped(
+    RegExp(r'(pleya_ss_[A-Za-z0-9-]+=)([^;,\s"]+)'),
+    (match) => '${match.group(1)}[REDACTED]',
+  );
 
   // A Pleya Server connection id is `pleyaServer.<serverId>.<userId>`; the
   // server id is public, the user id stays out of a log (DEC-XXX).

@@ -61,6 +61,10 @@ const (
 	auditEmptyLibraryTrash      = "emptyLibraryTrash"
 	auditRefreshLibraryMetadata = "refreshLibraryMetadata"
 
+	// Een titel met zijn bestanden wissen (DEC-XXX) is niet terug te draaien:
+	// wie het deed, welke titel en wat er wel en niet weg is.
+	auditDeleteItem = "deleteItem"
+
 	// Omzetsessies (S18.5). De lijst schrijft niets weg.
 	auditStopTranscodeSession = "stopTranscodeSession"
 

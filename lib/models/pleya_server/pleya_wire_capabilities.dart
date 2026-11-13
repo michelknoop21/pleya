@@ -19,6 +19,8 @@ class PleyaCapabilities {
     this.playlists = false,
     this.itemActivity = false,
     this.assistantMemory = false,
+    this.pushNotifications = false,
+    this.pushRichContent = false,
     this.transcode = false,
     this.downloads = false,
     this.liveTv = false,
@@ -35,6 +37,7 @@ class PleyaCapabilities {
     this.sessions = false,
     this.administration = false,
     this.libraryMaintenance = false,
+    this.mediaDelete = false,
     this.mcp = false,
   });
 
@@ -78,6 +81,11 @@ class PleyaCapabilities {
   /// `/users/me/activity-sharing`, which always come together.
   final bool itemActivity;
   final bool assistantMemory;
+  final bool pushNotifications;
+
+  /// DEC-XXX: the push PUT takes `content_key`, so a notification can carry
+  /// the sealed title and poster. Without it the body must not carry the key.
+  final bool pushRichContent;
   final bool transcode;
   final bool downloads;
   final bool liveTv;
@@ -136,6 +144,11 @@ class PleyaCapabilities {
   /// `POST /libraries/{id}/empty-trash` and `/refresh-metadata` exist
   /// (chapter 17f, proposal). Without it a library offers only the scan.
   final bool libraryMaintenance;
+
+  /// `DELETE /items/{id}` erases a title and its files from storage (chapter
+  /// 17h). Only true when the server admin switched it on and a media root was
+  /// measured writable at startup; absent means off.
+  final bool mediaDelete;
   final bool mcp;
 
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
@@ -156,6 +169,8 @@ class PleyaCapabilities {
     playlists: booleanOr(json, 'playlists', orElse: false),
     itemActivity: booleanOr(json, 'item_activity', orElse: false),
     assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
+    pushNotifications: booleanOr(json, 'push_notifications', orElse: false),
+    pushRichContent: booleanOr(json, 'push_rich_content', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),
     liveTv: booleanOr(json, 'live_tv', orElse: false),
@@ -172,6 +187,7 @@ class PleyaCapabilities {
     sessions: booleanOr(json, 'sessions', orElse: false),
     administration: booleanOr(json, 'administration', orElse: false),
     libraryMaintenance: booleanOr(json, 'library_maintenance', orElse: false),
+    mediaDelete: booleanOr(json, 'media_delete', orElse: false),
     mcp: booleanOr(json, 'mcp', orElse: false),
   );
 }

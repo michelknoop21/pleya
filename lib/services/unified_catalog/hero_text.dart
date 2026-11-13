@@ -40,5 +40,5 @@ String heroMetaLineFor(UnifiedMediaGroup group) {
 /// episode falling back to its show's name.
 String heroTitleFor(UnifiedMediaGroup group) {
   final item = group.representativeSource.item;
-  return item.kind == MediaKind.episode ? (item.grandparentTitle ?? item.displayTitle) : item.displayTitle;
+  return item.displayTitle;
 }

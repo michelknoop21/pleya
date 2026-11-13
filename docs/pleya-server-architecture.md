@@ -1294,6 +1294,11 @@ Fase 11 hardent dit: rate limiting op de auth-endpoints, een expliciete lijst va
 authenticatie bereikbaar is, gedrag bij traag netwerk, en een test die aantoont dat range-requests
 door de gekozen proxy heen intact blijven.
 
+**Afwijking voor het thuisnetwerk, 12 november 2026.** Michel besloot dat de binary op een tweede,
+optionele listener TLS mag termineren, gepubliceerd op het LAN-adres van de NAS, met een certificaat
+dat buiten de binary wordt aangevraagd: [DEC-XXX (TLS-listener thuisnetwerk)](DECISIONS.md),
+roadmap C-07. Geen NAT-traversal, geen relay en geen certificaatuitgifte in de binary blijven gelden.
+
 ---
 
 ## 16. Security en dreigingsmodel
@@ -1323,6 +1328,7 @@ controle, niet erna.
 | Beschadigd mediabestand dat ffprobe laat crashen | ffprobe draait als kindproces met timeout; een crash markeert het bestand en stopt de scan niet |
 | Een provider-API die HTML terugstuurt | providerantwoorden landen in de kandidatenlaag en worden gevalideerd voordat er iets canoniek wordt |
 | Uploaden van bestanden | bestaat niet in v1; alle mounts zijn read-only |
+| Bestanden wissen via `DELETE /items/{id}` | standaard uit; alleen met `PLEYA_SERVER_ALLOW_MEDIA_DELETE`, een mount zonder `:ro` die bij het opstarten schrijfbaar gemeten is, owner of admin met recht `manage` en een gewone sessie (geen API-token); paden uit de database, geopend vanaf de opgeloste bibliotheekroot, symlinks worden niet gevolgd en niet gewist ([DEC-XXX](DECISIONS.md), media verwijderen) |
 | Log met inhoud | paden en titels worden in logs afgekort en tokens nooit gelogd |
 
 Het publieke `/info`-antwoord draagt bewust geen servernaam, versie of buildnummer; die staan achter
@@ -1503,7 +1509,11 @@ de server maakt zijn eigen schema aan bij de eerste start.
 Configuratie via omgevingsvariabelen met een klein bestand als alternatief, en één principe: de
 server start met alleen een databaseverbinding en een bibliotheekpad, en al het andere heeft een
 werkende default. Mounts zijn read-only, en dat is geen aanbeveling maar de gedocumenteerde
-verwachting waar het dreigingsmodel op steunt.
+verwachting waar het dreigingsmodel op steunt. Er is één bewuste uitzondering, en die staat
+standaard uit: een beheerder die `PLEYA_SERVER_ALLOW_MEDIA_DELETE` zet en een mediamount zonder `:ro`
+koppelt, laat de server titels met hun bestanden wissen (DEC-XXX, media verwijderen). Op zo'n
+installatie kan een overgenomen beheeraccount mediabestanden vernietigen; een read-only mount sluit
+dat uit, en daarom blijft read-only de standaard.
 
 Updates: schemaversie in de binary, migraties bij het opstarten, en een weigering te starten als de
 database nieuwer is dan de binary. Terugrollen naar een oudere binary vraagt een back-up, zoals in
@@ -3091,6 +3101,8 @@ een sessie en een levenscyclus. fMP4 en HLS op het transcode-pad, geen DASH.
 **DEC-037: Pleya Server bouwt geen eigen NAT-traversal of relay.** Het architectuurbesluit is dat de
 server correct werkt achter HTTPS en achter een omgekeerde proxy; hoe die proxy tot stand komt is een
 deploymentrecept en staat in de documentatie, niet in de binary.
+Voor het thuisnetwerk is daar op 12 november 2026 bewust van afgeweken: de binary mag op een tweede,
+optionele listener TLS termineren, zie DEC-XXX (TLS-listener thuisnetwerk) en hoofdstuk 15.
 
 `DEC-119` tot en met `DEC-126` **zijn geschreven** op 24 augustus 2026, bij het ontwerpen van fase 9,
 en sluiten alle blokkerende gaten van het PS-9-ontwerp: het rollen- en rechtenmodel (DEC-119), de

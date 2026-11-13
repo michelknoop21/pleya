@@ -82,6 +82,9 @@ extension _SyncRun on LocalLibraryProvider {
             await LocalLibrarySync(
               store: store,
               stats: stats,
+              rootConcurrency: PlatformDetector.isAppleTV()
+                  ? LocalLibrarySync.appleTvRootConcurrency
+                  : LocalLibrarySync.defaultRootConcurrency,
               mayContinue: space,
               onCheckpoint: () {
                 if (!valid()) return;

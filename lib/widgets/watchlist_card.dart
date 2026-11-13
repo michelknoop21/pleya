@@ -12,6 +12,7 @@ import '../focus/card_focus_scope.dart';
 import 'media_card_grid_layout.dart';
 import 'pressable.dart';
 import 'focusable_media_card.dart';
+import '../services/image_cache_service.dart';
 
 /// One title on the kijklijst.
 ///
@@ -299,6 +300,9 @@ class _WatchlistPoster extends StatelessWidget {
           ? const _PosterPlaceholder()
           : CachedNetworkImage(
               imageUrl: url,
+              // The shared artwork cache: bounded downloads with a timeout, instead of
+              // the package default that waits on a dead socket forever.
+              cacheManager: PlexImageCacheManager.instance,
               fit: BoxFit.cover,
               placeholder: (context, _) => const _PosterPlaceholder(),
               errorBuilder: (context, _, _) => const _PosterPlaceholder(),

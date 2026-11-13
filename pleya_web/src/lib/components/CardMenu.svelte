@@ -18,11 +18,11 @@
   import ConfirmDialog from './ConfirmDialog.svelte';
   import VersionPanel from './VersionPanel.svelte';
 
-  let { item }: { item: Item } = $props();
+  let { item, onchange }: { item: Item; onchange?: (patch: Partial<Item>) => void } = $props();
 
-  // De kaart kent zijn item alleen uit de lijst; wat hier verandert houden we lokaal bij.
-  let favorite = $state<boolean | undefined>();
-  let watched = $state<boolean | undefined>();
+  // De kaart die het menu draagt houdt de wijziging bij en geeft het item bijgewerkt
+  // terug; zonder zo'n ouder onthoudt het menu haar zelf.
+  let local = $state<Partial<Item>>({});
   let full = $state<Item | null>(null);
   let infoOpen = $state(false);
   let unlinkOpen = $state(false);
@@ -31,8 +31,10 @@
 
   const caps = $derived(session.capabilities);
   const playable = $derived(item.kind === 'movie' || item.kind === 'episode');
-  const isFavorite = $derived(favorite ?? !!item.favorite);
-  const isWatched = $derived(watched ?? !!item.user_state?.watched);
+  const current = $derived({ ...item, ...local });
+  const isFavorite = $derived(!!current.favorite);
+  const isWatched = $derived(!!current.user_state?.watched);
+  const changed = (patch: Partial<Item>) => (onchange ? onchange(patch) : (local = { ...local, ...patch }));
   const admin = $derived(session.canAdminister && (item.kind === 'movie' || item.kind === 'show'));
   const query = $derived(`?item=${encodeURIComponent(item.id)}`);
 
@@ -68,8 +70,7 @@
         label: t(isWatched ? 'personal.markUnwatched' : 'personal.markWatched'),
         onselect: () => void run(async () => {
           const next = !isWatched;
-          await personalApi(session.client).setWatched(item.id, next, item.duration_ms ?? undefined);
-          watched = next;
+          changed({ user_state: await personalApi(session.client).setWatched(item.id, next, item.duration_ms ?? undefined) });
         })
       });
     }
@@ -79,7 +80,7 @@
         onselect: () => void run(async () => {
           const next = !isFavorite;
           await personalApi(session.client).setFavorite(item.id, next);
-          favorite = next;
+          changed({ favorite: next });
         })
       });
     }

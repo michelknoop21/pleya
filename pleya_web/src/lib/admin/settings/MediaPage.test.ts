@@ -87,7 +87,7 @@ describe('scherm 28, media en streaming', () => {
   it('zegt dat een variabele niet gezet is in plaats van een waarde te verzinnen', async () => {
     setup({ environment: [] });
     render(MediaPage);
-    await screen.findByText('Analyse');
+    await screen.findByRole('heading', { name: 'Analyse' });
     expect(screen.getAllByText(/niet ingesteld, standaard van de server/)).toHaveLength(2);
   });
 
@@ -192,5 +192,22 @@ describe('scherm 28, media en streaming', () => {
     setup({ fail: { 'GET /settings': () => apiError('server.internal', 500) } });
     render(MediaPage);
     expect(await screen.findByRole('button', { name: /opnieuw/i })).toBeInTheDocument();
+  });
+
+  it('zegt bovenaan dat omzetten alleen te lezen is en wijst de onderdelen aan', async () => {
+    setup();
+    render(MediaPage);
+    expect(await screen.findByText('Omzetten is hier alleen te lezen')).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Onderdelen' });
+    expect(within(nav).getByRole('link', { name: /Lopende sessies · \d+/ })).toHaveAttribute(
+      'href',
+      '/admin/media/transcode'
+    );
+    expect(within(nav).getByRole('link', { name: 'Omzetten' })).toHaveAttribute('href', '#omzetten');
+    // Geen bewerkveld voor omzetten: het paneel heeft geen keuzelijst, schakelaar of tekstvak.
+    const panel = screen.getByRole('region', { name: 'Transcoderen' });
+    expect(within(panel).queryByRole('combobox')).toBeNull();
+    expect(within(panel).queryByRole('switch')).toBeNull();
+    expect(within(panel).queryByRole('textbox')).toBeNull();
   });
 });

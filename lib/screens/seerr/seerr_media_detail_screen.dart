@@ -44,6 +44,7 @@ import '../../widgets/state_view.dart';
 import '../media_detail_screen.dart';
 import 'seerr_phone.dart';
 import 'seerr_requests_screen.dart';
+import '../../services/image_cache_service.dart';
 
 part 'seerr_media_detail_parts.dart';
 

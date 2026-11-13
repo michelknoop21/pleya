@@ -14,10 +14,10 @@
  * staan tot de time-out van een minuut.
  *
  * Kijkstatus volgt de werkelijke media-events in Player via WatchProgress.
- * Browserkeuzes voor plan-audio/kwaliteit zijn nog niet aangesloten.
+ * De audiokeuze gaat als `audio_stream_id` mee en een kwaliteitslimiet als `quality`.
  */
 import type { Capabilities } from '../api/types';
-import type { DeviceCapabilities } from './types';
+import type { DeviceCapabilities, PlaybackQuality } from './types';
 import type { HlsSupport } from './capabilities';
 import {
   absolute,
@@ -59,6 +59,10 @@ export interface PlayerTarget {
   versionId: string | null;
   /** Hervatpositie in seconden. */
   startAt?: number;
+  /** Een expliciet gekozen audiospoor; alleen met `playback_audio_selection` en een versie. */
+  audioStreamId?: string;
+  /** Een kwaliteitslimiet uit het instellingenmenu; alleen met `playback_quality`. */
+  quality?: PlaybackQuality;
 }
 
 /** Zoekt naar het hervatpunt zodra de bron bekend is; een groeiende omzetting heeft geen duur en wel `seekable`. */
@@ -117,15 +121,17 @@ export class PlayerSession {
         plan = await api.plan({
           item_id: target.itemId,
           ...(target.versionId ? { version_id: target.versionId } : {}),
+          ...(target.versionId && target.audioStreamId ? { audio_stream_id: target.audioStreamId } : {}),
+          ...(target.quality && server.playback_quality === true ? { quality: target.quality } : {}),
           capabilities: caps
         });
-        // Een plan met een sessie wordt meteen vastgehouden, ook als de speler
-        // al weg is: dan ruimt `release` hem hieronder direct op.
-        if (plan.session_id) this.#hold.hold(plan.session_id);
+        // Eerst verouderd, dan pas vasthouden: `hold` stopt de vorige sessie, en
+        // na twee snelle keuzes is dat de sessie van de start die wel speelt.
         if (stale()) {
-          if (plan.session_id) this.#hold.release(false);
+          if (plan.session_id) api.stop(plan.session_id, false);
           return;
         }
+        if (plan.session_id) this.#hold.hold(plan.session_id);
       }
       if (!plan && !target.versionId) throw new DeliveryError('client.no_version');
 

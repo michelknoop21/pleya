@@ -188,6 +188,7 @@ class IosSimulatorDriver implements VerificationDriver {
       throw StateError('cp of the app bundle failed (exit ${copy.exitCode}): ${copy.stderr}');
     }
 
+    dropAppExtensions(isolatedAppDir);
     final infoPlist = File('${isolatedAppDir.path}/Info.plist');
     final rewrite = await _run('plutil', ['-replace', 'CFBundleIdentifier', '-string', verifyBundleId, infoPlist.path]);
     if (rewrite.exitCode != 0) {

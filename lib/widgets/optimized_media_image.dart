@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
@@ -268,6 +269,14 @@ class OptimizedMediaImage extends StatelessWidget {
   @visibleForTesting
   static void Function(String url)? debugResolvedUrlObserver;
 
+  /// Replaces the network provider, so a test can make a download fail and
+  /// then succeed without a server. [debugImageBuilder] cannot do that: it
+  /// returns before any provider exists.
+  ///
+  /// Null in production; nothing in `lib/` ever assigns it.
+  @visibleForTesting
+  static ImageProvider<Object> Function(String url, String cacheKey)? debugNetworkProviderBuilder;
+
   /// The disk cache key for [imageUrl].
   ///
   /// Public because anything that *warms* the cache has to produce a key that
@@ -445,49 +454,58 @@ class OptimizedMediaImage extends StatelessWidget {
           : owner?.artworkCacheKey(client!.serverId, imageUrl, baseCacheKey) ?? baseCacheKey,
     );
 
-    final provider = CachedNetworkImageProvider(
-      imageUrl,
-      cacheKey: effectiveCacheKey,
-      cacheManager: context.read<LocalLibraryProvider?>()?.artworkCache ?? PlexImageCacheManager.instance,
-      headers: const {'User-Agent': 'Pleya'},
-    );
-
-    final image = Image(
-      image: ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider),
-      width: width,
-      height: height,
-      fit: fit,
-      filterQuality: filterQuality,
-      alignment: alignment,
-      errorBuilder: (context, error, stackTrace) {
-        _imageFailureCount++;
-        final now = DateTime.now();
-        if (now.difference(_lastFailureLog) >= _logInterval) {
-          appLogger.w('Image load failed ($_imageFailureCount since last log): $error');
-          _imageFailureCount = 0;
-          _lastFailureLog = now;
-        }
-        if (errorWidget != null) {
-          return errorWidget!(context, imageUrl, error);
-        }
-        return _buildErrorWidget(context, error);
-      },
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded) return child;
-        // Reduced tier: swap in directly — each in-flight fade is a tile-sized
-        // saveLayer, and grid scrolling runs many of them concurrently.
-        // TV: the AnimatedSwitcher is a paint-time swap that defers compositing
-        // under the rail's reveal transform, leaving lazy rows blank until an
-        // L/R nudge. A plain child-swap dirties the RenderImage and composites
-        // correctly under the transform.
-        if (DevicePerformance.isReduced || PlatformDetector.isTV()) {
-          return frame != null ? child : _buildPlaceholder(context, imageUrl);
-        }
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: frame != null ? child : _buildPlaceholder(context, imageUrl),
+    final ImageProvider<Object> provider =
+        debugNetworkProviderBuilder?.call(imageUrl, effectiveCacheKey) ??
+        CachedNetworkImageProvider(
+          imageUrl,
+          cacheKey: effectiveCacheKey,
+          cacheManager: context.read<LocalLibraryProvider?>()?.artworkCache ?? PlexImageCacheManager.instance,
+          headers: const {'User-Agent': 'Pleya'},
         );
-      },
+
+    final resized = ResizeImage.resizeIfNeeded(null, memHeight > 0 ? memHeight : null, provider);
+    final image = _ArtworkRetry(
+      identity: (imageUrl, effectiveCacheKey),
+      provider: resized,
+      builder: (context, imageKey, reportError) => Image(
+        key: imageKey,
+        image: resized,
+        width: width,
+        height: height,
+        fit: fit,
+        filterQuality: filterQuality,
+        alignment: alignment,
+        errorBuilder: (context, error, stackTrace) {
+          reportError(error);
+          _imageFailureCount++;
+          final now = DateTime.now();
+          if (now.difference(_lastFailureLog) >= _logInterval) {
+            appLogger.w('Image load failed ($_imageFailureCount since last log): $error');
+            _imageFailureCount = 0;
+            _lastFailureLog = now;
+          }
+          if (errorWidget != null) {
+            return errorWidget!(context, imageUrl, error);
+          }
+          return _buildErrorWidget(context, error);
+        },
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          // Reduced tier: swap in directly — each in-flight fade is a tile-sized
+          // saveLayer, and grid scrolling runs many of them concurrently.
+          // TV: the AnimatedSwitcher is a paint-time swap that defers compositing
+          // under the rail's reveal transform, leaving lazy rows blank until an
+          // L/R nudge. A plain child-swap dirties the RenderImage and composites
+          // correctly under the transform.
+          if (DevicePerformance.isReduced || PlatformDetector.isTV()) {
+            return frame != null ? child : _buildPlaceholder(context, imageUrl);
+          }
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: frame != null ? child : _buildPlaceholder(context, imageUrl),
+          );
+        },
+      ),
     );
     return _VisibleArtworkRegistration(
       epoch: context.select<LocalLibraryProvider?, int>((owner) => owner?.artworkRegistrationEpoch ?? 0),
@@ -547,6 +565,146 @@ class OptimizedMediaImage extends StatelessWidget {
 
 /// No layout or paint change. The lease lives exactly as long as this mounted
 /// network image, and equal rebuilds keep one registration.
+/// Delays before a failed image is tried again on its own. Two attempts: one
+/// for a blip, one for a server that needed a moment. After that the tile
+/// waits for [ArtworkReloadSignal].
+@visibleForTesting
+List<Duration> artworkRetryDelays = const [Duration(seconds: 2), Duration(seconds: 10)];
+
+/// Gives a failed network image another chance.
+///
+/// Flutter's [Image] keeps its error until its provider changes, and the
+/// provider for one URL compares equal on every rebuild. A failure therefore
+/// stuck for as long as the tile lived: one dropped connection left a poster on
+/// its fallback until the page was left and opened again.
+///
+/// The retry loads the picture off screen and only then gives the [Image] a
+/// new key. What the tile shows meanwhile stays put, and that matters:
+/// `UnifiedMediaImage` draws another server's poster as the error widget, and
+/// swapping the [Image] before the retry had an answer would replace that
+/// working poster with a placeholder for as long as the retry took.
+class _ArtworkRetry extends StatefulWidget {
+  const _ArtworkRetry({required this.identity, required this.provider, required this.builder});
+
+  /// Changes when the widget is asked for a different picture.
+  final Object identity;
+  final ImageProvider<Object> provider;
+  final Widget Function(BuildContext context, Key imageKey, void Function(Object error) reportError) builder;
+
+  @override
+  State<_ArtworkRetry> createState() => _ArtworkRetryState();
+}
+
+class _ArtworkRetryState extends State<_ArtworkRetry> {
+  int _generation = 0;
+  int _automaticRetries = 0;
+  bool _failed = false;
+  Timer? _timer;
+  ImageStream? _probe;
+  ImageStreamListener? _probeListener;
+
+  @override
+  void initState() {
+    super.initState();
+    ArtworkReloadSignal.instance.addListener(_onReloadSignal);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ArtworkRetry oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.identity != widget.identity) {
+      _timer?.cancel();
+      _stopProbe();
+      _automaticRetries = 0;
+      _failed = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _stopProbe();
+    ArtworkReloadSignal.instance.removeListener(_onReloadSignal);
+    super.dispose();
+  }
+
+  /// A 4xx answer is the server saying this picture does not exist for us.
+  /// Asking again gives the same answer, so only the reload signal retries it.
+  static bool _isPermanent(Object error) {
+    if (error is! HttpExceptionWithStatus) return false;
+    return error.statusCode >= 400 && error.statusCode < 500 && error.statusCode != 408 && error.statusCode != 429;
+  }
+
+  // Called from the image's errorBuilder, so during build: it only records and
+  // schedules, it never rebuilds.
+  void _reportError(Object error) {
+    if (_failed) return;
+    _failed = true;
+    _scheduleRetry(error);
+  }
+
+  void _scheduleRetry(Object error) {
+    if (_isPermanent(error) || _automaticRetries >= artworkRetryDelays.length) return;
+    _timer?.cancel();
+    _timer = Timer(artworkRetryDelays[_automaticRetries], () {
+      _automaticRetries++;
+      _startProbe();
+    });
+  }
+
+  void _onReloadSignal() {
+    if (!_failed) return;
+    if (_probe != null) {
+      // A retry is already under way. If it was the last automatic one and it
+      // fails (a resume aborts it in the same breath as this signal), the tile
+      // would wait for the next signal. Give it its attempts back instead.
+      _automaticRetries = 0;
+      return;
+    }
+    _timer?.cancel();
+    _automaticRetries = 0;
+    _startProbe();
+  }
+
+  void _startProbe() {
+    if (!mounted || _probe != null) return;
+    final stream = widget.provider.resolve(createLocalImageConfiguration(context));
+    final listener = ImageStreamListener(
+      (info, _) {
+        _stopProbe();
+        if (!mounted) {
+          info.dispose();
+          return;
+        }
+        // The picture is in the image cache now, so the new Image finds it at
+        // once. This handle keeps it alive until that Image has taken hold.
+        setState(() {
+          _failed = false;
+          _generation++;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => info.dispose());
+      },
+      onError: (error, _) {
+        _stopProbe();
+        if (mounted) _scheduleRetry(error);
+      },
+    );
+    _probe = stream;
+    _probeListener = listener;
+    stream.addListener(listener);
+  }
+
+  void _stopProbe() {
+    final listener = _probeListener;
+    if (listener != null) _probe?.removeListener(listener);
+    _probe = null;
+    _probeListener = null;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, ValueKey(_generation), _reportError);
+}
+
 class _VisibleArtworkRegistration extends StatefulWidget {
   const _VisibleArtworkRegistration({
     required this.owner,

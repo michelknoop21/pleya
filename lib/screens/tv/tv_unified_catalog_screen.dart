@@ -53,6 +53,8 @@
 /// filter session wander off to a different catalog on the next LEFT press.
 library;
 
+import '../../services/unified_catalog/unified_management_menu.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show setEquals;
@@ -68,6 +70,7 @@ import '../../media/library_query.dart';
 import '../../media/media_backend.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../media/unified/unified_media_source.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../mixins/refreshable.dart';
 import '../../navigation/main_screen_scope.dart';
@@ -316,6 +319,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       unawaited(_applyQuery());
     }
     _scheduleRestore();
+    if (_focusAfterDelete != null) WidgetsBinding.instance.addPostFrameCallback((_) => _landFocusAfterDelete());
     if (_wantsEntryFocus) {
       // After the frame this rebuild produces: the grid's `State` only exists
       // once it has been built, and an entry focus asked for before the first
@@ -443,6 +447,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   /// applied in the same call: asking the provider what participates today
   /// would evaluate the new genre filter against yesterday's backends.
   Future<void> _applyQuery({bool startIfNeeded = false}) {
+    _focusAfterDelete = null;
     _appliedLibraryKeys = _knownLibraryKeys;
     final selection = _preferences.filters;
     final participating = widget.catalog.eligibleLibraries.where(selection.selects);
@@ -598,6 +603,24 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
       group: group,
       availabilityFor: (source) => unifiedSourceAvailability(source, health),
       isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+      extraAction:
+          unifiedManagementChoices(
+            context,
+            group,
+            isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+          ).isEmpty
+          ? null
+          : (
+              // "Beheren": the sheet behind it also holds the delete.
+              label: t.mediaMenu.manage,
+              onSelected: () => showUnifiedManagementMenu(
+                context,
+                group,
+                isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
+                onChanged: () => unawaited(widget.catalog.refresh()),
+                onDeleted: (source) => _onSourceDeleted(group, source),
+              ),
+            ),
       onNavigate: (action) => switch (action) {
         UnifiedNavigationAction.playOrResume => _activate(
           group,
@@ -614,6 +637,61 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
         UnifiedNavigationAction.changeSource => _changeSourceFromCatalogMenu(group),
       },
     );
+  }
+
+  /// A card the remote stood on lost a copy to "Verwijderen van server". The
+  /// card leaves in place when that was its only copy, and the remote moves to
+  /// the card that takes its place (the next one, or the one before at the
+  /// end). [_focusAfterDelete] asks again on the next catalog changes, because
+  /// a restart of the catalog (the offline index's fail-closed reload) can
+  /// rebuild the grid first; like [_jumpToLetter] it gives up as soon as the
+  /// viewer moved on, and after [_restoreAttempts] tries.
+  void _onSourceDeleted(UnifiedMediaGroup group, UnifiedMediaSource source) {
+    final groups = widget.catalog.snapshot.groups;
+    final index = groups.indexWhere((g) => g.groupId == group.groupId);
+    final target = group.sources.length > 1
+        ? group.groupId
+        : index >= 0 && index + 1 < groups.length
+        ? groups[index + 1].groupId
+        : index > 0
+        ? groups[index - 1].groupId
+        : null;
+    _focusedGroupId = target;
+    _focusAfterDelete = target;
+    _focusAfterDeleteAttempts = 0;
+    if (!widget.catalog.removeDeletedSource(source.sourceKey)) unawaited(widget.catalog.refresh());
+  }
+
+  String? _focusAfterDelete;
+  int _focusAfterDeleteAttempts = 0;
+
+  void _landFocusAfterDelete() {
+    final target = _focusAfterDelete;
+    if (!mounted || target == null) return;
+    // Late content may not take the remote back: another card, the header, the
+    // filters or the top bar chosen in the meantime wins.
+    if (_focusedGroupId != target || _remoteIsElsewhere() || ++_focusAfterDeleteAttempts > _restoreAttempts) {
+      _focusAfterDelete = null;
+      return;
+    }
+    if (_gridKey.currentState?.focusItem(target) ?? false) _focusAfterDelete = null;
+  }
+
+  /// The remote is on something outside the grid. A scope holding the focus
+  /// is nobody's choice (that is where focus falls when the grid is rebuilt).
+  bool _remoteIsElsewhere() {
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null || primary is FocusScopeNode) return false;
+    final gridContext = _gridKey.currentContext;
+    final focusContext = primary.context;
+    if (gridContext == null || focusContext is! Element) return true;
+    var inGrid = identical(focusContext, gridContext);
+    focusContext.visitAncestorElements((element) {
+      if (!identical(element, gridContext)) return true;
+      inGrid = true;
+      return false;
+    });
+    return !inGrid;
   }
 
   /// The hoofdstuk 12.8 fan-out, built once per profile.
@@ -1064,6 +1142,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
   Future<void> _chooseFromPanel(UnifiedCatalogPreferences next) async {
     setState(() => _railExpanded = false);
     _focusedGroupId = null;
+    _focusAfterDelete = null;
     _entryOnFirstCard = true;
     _wantsEntryFocus = true;
     if (_scrollController.hasClients) _scrollController.jumpTo(0);

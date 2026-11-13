@@ -69,6 +69,7 @@ class PlaybackSourceResolver {
         client: reportingClient,
         sourceKind: sourceKind,
         sessionIdentifier: sessionIdentifier,
+        resultHeaders: result.streamHeaders,
       ),
     );
   }
@@ -77,10 +78,11 @@ class PlaybackSourceResolver {
     required MediaServerClient? client,
     required PlaybackSourceKind sourceKind,
     String? sessionIdentifier,
+    Map<String, String>? resultHeaders,
   }) {
     if (client == null || sourceKind == PlaybackSourceKind.localFile) return null;
 
-    final headers = Map<String, String>.from(client.streamHeaders);
+    final headers = Map<String, String>.from(resultHeaders ?? client.streamHeaders);
     if (client.backend == MediaBackend.plex && sessionIdentifier != null) {
       headers['X-Plex-Session-Identifier'] = sessionIdentifier;
     }

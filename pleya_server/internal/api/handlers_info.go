@@ -25,15 +25,20 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			SetupAcceptsName: s.opts.Settings != nil && s.opts.Settings.HasStore(),
 		},
 		Capabilities: Capabilities{
-			AssistantMemory: s.opts.Memory != nil,
-			Browse:          true,
-			Search:          true,
-			Artwork:         true,
+			// DEC-XXX: rijke push hangt aan dezelfde schakelaar als push zelf.
+			PushNotifications: s.opts.Push.Enabled(),
+			PushRichContent:   s.opts.Push.Enabled(),
+			AssistantMemory:   s.opts.Memory != nil,
+			Browse:            true,
+			Search:            true,
+			Artwork:           true,
 			// ArtworkSizes: de ladder bestaat zodra ffmpeg en een cachemap er zijn.
 			ArtworkSizes:      s.opts.Artwork.Available(),
 			ArtworkCacheAdmin: s.artworkCacheAdminAvailable(),
 			// LibraryMaintenance: legen gaat via de wachtrij, net als de scan.
 			LibraryMaintenance: s.opts.Jobs != nil,
+			// MediaDelete: aangezet en een schrijfbare root gemeten (DEC-XXX).
+			MediaDelete: len(s.opts.MediaDelete) > 0,
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
 			// ExternalIDLookup: de filterparameter external_id en het itemveld bestaan.

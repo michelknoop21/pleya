@@ -166,7 +166,24 @@ func (s *Store) EmptyTrash(ctx context.Context, libraryID id.ID, gone func(root,
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	removed, err := pruneVersions(ctx, tx, libraryID, versions)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return removed, nil
+}
 
+// pruneVersions verwijdert binnen tx de versies uit versions waarvan elk
+// mediabestand als verdwenen gemarkeerd staat, daarna de films en afleveringen
+// die zo zonder versie raakten, en de seizoenen en series die daardoor leeg
+// werden. De cascade neemt kijkstatus, geschiedenis, favorieten, waarderingen,
+// downloads en lijstregels mee. Het antwoord is het aantal verwijderde films en
+// afleveringen. EmptyTrash en het verwijderen van een titel met zijn bestanden
+// (DEC-XXX, media verwijderen) delen dit pad, zodat er één verwijderlogica is.
+func pruneVersions(ctx context.Context, tx pgx.Tx, libraryID id.ID, versions []id.ID) (int64, error) {
 	// De voorwaarde opnieuw in de DELETE zelf: wat sinds het lezen terugkwam
 	// blijft staan.
 	items, err := collectIDs(ctx, tx, `
@@ -205,9 +222,6 @@ func (s *Store) EmptyTrash(ctx context.Context, libraryID id.ID, gone func(root,
 		  AND NOT EXISTS (SELECT 1 FROM media_items c WHERE c.parent_id = s.id)`,
 		libraryID, append(shows, parents...)); err != nil {
 		return 0, fmt.Errorf("lege series verwijderen: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
 	}
 	return int64(len(parents)), nil
 }

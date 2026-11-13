@@ -15,6 +15,18 @@ void main() {
     expect(hasPackageFrameworkRunpath(command('/usr/lib/swift'), packagePath), isFalse);
   });
 
+  test('drops the app extensions from the copied Verify app only', () {
+    final temp = Directory.systemTemp.createTempSync('ios-verify-plugins-');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final app = Directory('${temp.path}/Runner.app')..createSync();
+    Directory('${app.path}/PlugIns/NotificationService.appex').createSync(recursive: true);
+    File('${app.path}/Runner').writeAsStringSync('binary');
+    dropAppExtensions(app);
+    expect(Directory('${app.path}/PlugIns').existsSync(), isFalse);
+    expect(File('${app.path}/Runner').existsSync(), isTrue);
+    dropAppExtensions(app);
+  });
+
   test(
     'rejects a copied-code symlink escaping the app before invoking any tool',
     () async {

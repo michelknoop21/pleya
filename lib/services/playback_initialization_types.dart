@@ -97,6 +97,19 @@ class PlaybackInitializationResult {
   /// Effective media version after backend clamping/fallback.
   final int selectedMediaIndex;
 
+  /// The headers the player sends for [videoUrl] and [externalSubtitles],
+  /// when they differ from the client's [MediaServerClient.streamHeaders].
+  /// Null means the client default applies.
+  final Map<String, String>? streamHeaders;
+
+  /// Keeps what the backend needs alive while this result is in the player,
+  /// such as a stream credential through a long pause. The player calls
+  /// [hold] when it takes the result and [release] when the result leaves it,
+  /// whether or not a stop report goes out. A result the player never takes
+  /// holds nothing. Both are idempotent and touch only this result.
+  final void Function()? hold;
+  final void Function()? release;
+
   /// True when [videoUrl] points at a downloaded/local copy. This is a media
   /// source detail, not a statement about whether server reporting is possible.
   bool get usesLocalMedia => isOffline;
@@ -121,6 +134,9 @@ class PlaybackInitializationResult {
     this.playSessionId,
     this.playMethod,
     this.selectedMediaIndex = 0,
+    this.streamHeaders,
+    this.hold,
+    this.release,
   });
 }
 

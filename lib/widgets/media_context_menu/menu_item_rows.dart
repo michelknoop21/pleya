@@ -8,6 +8,7 @@ extension on MediaContextMenuState {
     required MediaBackend? itemBackend,
     required MediaServerClient? mediaClient,
     required bool isAdmin,
+    required bool canDeleteMedia,
     required bool canManageCollections,
   }) {
     final mediaKind = mediaItem.kind;
@@ -105,7 +106,7 @@ extension on MediaContextMenuState {
 
     final isVideoKind = mediaItem.isVideoContent;
 
-    if (widget.isInContinueWatching && isVideoKind) {
+    if ((widget.isInContinueWatching || widget.onViewDetails != null) && isVideoKind) {
       menuActions.add(MediaMenuAction(value: 'details', icon: Symbols.info_rounded, label: t.mediaMenu.viewDetails));
     }
 
@@ -290,11 +291,12 @@ extension on MediaContextMenuState {
       );
     }
 
-    // Delete media item (for episodes, movies, shows, and seasons), admin
-    // only. Backend-neutral: routed through `MediaServerClient.deleteMediaItem`,
-    // which both Plex and Jellyfin implement (DELETE /library/metadata/{id}
-    // and DELETE /Items/{id} respectively).
-    if (isAdmin &&
+    // Delete media item (for episodes, movies, shows, and seasons), for whoever
+    // may delete there (`canDeleteMedia`). Backend-neutral: routed through
+    // `MediaServerClient.deleteMediaItem`, which Plex, Jellyfin and Pleya
+    // Server implement (DELETE /library/metadata/{id}, DELETE /Items/{id} and
+    // DELETE /items/{id} respectively).
+    if (canDeleteMedia &&
         (mediaKind == MediaKind.episode ||
             mediaKind == MediaKind.movie ||
             mediaKind == MediaKind.show ||

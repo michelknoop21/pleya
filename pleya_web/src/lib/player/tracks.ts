@@ -7,6 +7,8 @@ export interface TrackOption {
   id: string;
   label: string;
   isDefault: boolean;
+  /** Bij een ondertitel: het formaat en waar hij vandaan komt ("SRT · los bestand"). */
+  note?: string;
 }
 
 function label(
@@ -37,7 +39,8 @@ export function subtitleOptions(version: Version | undefined, embedded = false):
       ],
       i
     ),
-    isDefault: s.is_default ?? false
+    isDefault: s.is_default ?? false,
+    note: `${s.format.toUpperCase()} · ${t(s.is_external ? 'player.subtitleExternal' : 'player.subtitleEmbedded')}`
   }));
   return { usable, skipped: all.length - usable.length };
 }

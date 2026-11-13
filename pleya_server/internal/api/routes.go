@@ -102,6 +102,9 @@ func (s *Server) routeTable() []route {
 		// Bibliotheekonderhoud (DEC-XXX, matrixregels 108 en 109).
 		{"POST " + p + "/libraries/{library_id}/empty-trash", s.authenticated(s.handleEmptyLibraryTrash)},
 		{"POST " + p + "/libraries/{library_id}/refresh-metadata", s.authenticated(s.handleRefreshLibraryMetadata)},
+		// Een titel met zijn bestanden wissen (DEC-XXX, matrixregel 112).
+		// Standaard uit; recht manage op de bibliotheek, in de handler.
+		{"DELETE " + p + "/items/{item_id}", s.authenticated(s.handleDeleteItem)},
 		{"GET " + p + "/scans", s.authenticated(s.handleListScans)},
 		{"GET " + p + "/scans/{scan_id}", s.authenticated(s.handleGetScan)},
 		{"GET " + p + "/jobs", s.authenticated(s.handleListJobs)},
@@ -140,6 +143,9 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/playback/sessions/{session_id}/{file}", s.streamAuthorized(s.handlePlaybackFile)},
 
 		// BP-08b: alleen het eigen account, uitsluitend een sessiebearer.
+		{"PUT " + p + "/users/me/push-installations/{installation_id}", s.authenticated(s.handlePushInstallation)},
+		{"DELETE " + p + "/users/me/push-installations/{installation_id}", s.authenticated(s.handlePushInstallation)},
+		{"DELETE " + p + "/users/me/push-installations", s.authenticated(s.handlePushInstallations)},
 		{"GET " + p + "/users/me/memory", s.authenticated(s.handleGetMemory)},
 		{"PUT " + p + "/users/me/memory", s.authenticated(s.handlePutMemory)},
 		{"POST " + p + "/users/me/memory/clear", s.authenticated(s.handleClearMemory)},
@@ -214,7 +220,7 @@ func (s *Server) routeTable() []route {
 		{"GET " + p + "/hubs/{hub_id}", s.authenticated(s.handleHub)},
 		{"GET " + p + "/artwork/cache", s.authenticated(s.handleArtworkCacheStats)},
 		{"DELETE " + p + "/artwork/cache", s.authenticated(s.handleArtworkCachePurge)},
-		{"GET " + p + "/artwork/{artwork_id}", s.authenticated(s.handleArtwork)},
+		{"GET " + p + "/artwork/{artwork_id}", s.artworkAuthenticated(s.handleArtwork)},
 		{"POST " + p + "/watch-state", s.authenticated(s.handleWatchStateReport)},
 		{"GET " + p + "/watch-state", s.authenticated(s.handleWatchStateList)},
 

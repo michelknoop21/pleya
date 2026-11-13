@@ -13,6 +13,7 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
 import '../media/media_server_client.dart';
+import '../media/server_administration.dart';
 import '../metadata_edit/metadata_edit_adapters.dart';
 import '../media/media_version.dart';
 import '../services/plex_client.dart';
@@ -51,10 +52,9 @@ import '../screens/media_detail_screen.dart';
 import '../screens/metadata_edit_screen.dart';
 import '../utils/smart_deletion_handler.dart';
 import '../utils/video_player_navigation.dart';
-import '../utils/deletion_notifier.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/file_info_bottom_sheet.dart';
-import 'media_deletion_failure_message.dart';
+import 'media_item_deletion.dart';
 import '../widgets/overlay_sheet.dart';
 import '../widgets/rating_bottom_sheet.dart';
 import '../i18n/strings.g.dart';
@@ -97,6 +97,12 @@ class MediaContextMenu extends StatefulWidget {
   /// [onShare] the menu shares the item itself, anchored to this widget.
   final VoidCallback? onShare;
   final VoidCallback? onRequest;
+
+  /// Opens the item's own page. When non-null a "View details" item is added to
+  /// the menu and runs this instead of the default navigation. The TV series
+  /// page passes it for its episode cards: Select there always plays, so the
+  /// menu is the way to the episode's own page.
+  final VoidCallback? onViewDetails;
   final Widget child;
   final bool isInContinueWatching;
   final String? collectionId; // The collection ID if displaying within a collection
@@ -123,6 +129,7 @@ class MediaContextMenu extends StatefulWidget {
     this.onPlayTrailer,
     this.onShare,
     this.onRequest,
+    this.onViewDetails,
     required this.child,
     this.isInContinueWatching = false,
     this.collectionId,

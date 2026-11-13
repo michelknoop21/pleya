@@ -913,6 +913,22 @@ identity graph of union-find gebruiken: alle sterke tokens verzamelen; component
 gedeeld sterk bewijs; voor merge controleren of geen namespaceconflict ontstaat; conflicts als
 ambiguous registreren; ambigu component niet samenvoegen.
 
+Een conflict is een verschil in een providernummer: IMDb, TMDB of TVDB. De guid telt sinds DEC-198
+(één kaart per bewezen titel) bij een film of serie niet als conflictbron; bij een aflevering wel,
+omdat twee afleveringsvolgordes één `s1e2` aan twee afleveringen kunnen geven. Hij verbindt nog
+wel, maar een andere guid splitst geen film of serie: twee Plex-bibliotheken noemen dezelfde film met `plex://movie/…` en met
+`com.plexapp.agents.imdb://tt…`, en dat verschil zegt iets over de bibliotheek, niet over de film.
+Elke kaart uit een gesplitst component krijgt haar eigen `group:source:<sourceKey>`; de kleinste
+token-sleutel gaf de losse kaarten één gedeelde id, en in een rij dus één focusnode.
+
+**Bevinding (9 november 2026).** Op de Apple TV stond Brothers twee keer in Verder kijken. De code
+toonde twee manieren waarop een bewezen film twee kaarten werd: een guid-verschil splitste het
+component, en een Plex-bibliotheek op een oude agent leverde bij de opzoeking geen nummer op, omdat
+`PlexClient.fetchExternalIds` alleen de `Guid`-array las. Welke van de twee de foto verklaart, is
+niet bewezen. Verder kijken schrijft daarom een debugregel per titelemmer die meer dan één kaart
+blijft (bronsleutel, backend, soort, token-namespaces en of hun waarden gelijk zijn; geen titel,
+geen providernummer), zodat een volgende log-upload het echte geval laat zien.
+
 ### 11.6 Fallback op titel en jaar
 
 Alleen toegestaan wanneer: kind exact gelijk is; normalized title exact gelijk is; beide jaren bekend
