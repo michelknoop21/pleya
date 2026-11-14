@@ -2,6 +2,8 @@
 /// and when the next section is asked for.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -349,20 +351,40 @@ void main() {
   });
 
   test('body ink holds 4.5:1 over the worst artwork, in both themes', () {
-    const worst = [Color(0xFFFFFFFF), Color(0xFF000000), Color(0xFF808080)];
-    for (final artwork in worst) {
-      final dark = TvDetailLayout.worstCaseContrast(
-        ink: const Color(0xFFFFFFFF),
-        scrim: const Color(0xFF101010),
-        artwork: artwork,
-      );
-      final light = TvDetailLayout.worstCaseContrast(
-        ink: const Color(0xFF101010),
-        scrim: const Color(0xFFFFFFFF),
-        artwork: artwork,
-      );
-      expect(dark, greaterThanOrEqualTo(4.5), reason: 'dark on $artwork');
-      expect(light, greaterThanOrEqualTo(4.5), reason: 'light on $artwork');
+    const steps = [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0];
+    const lightBg = Color(0xFFF7F7F8);
+    for (final r in steps) {
+      for (final g in steps) {
+        for (final b in steps) {
+          final artwork = Color.from(alpha: 1, red: r, green: g, blue: b);
+          final dark = TvDetailLayout.worstCaseContrast(
+            ink: const Color(0xFFFFFFFF),
+            floor: TvDetailLayout.backdropDarkFloor,
+            artwork: artwork,
+          );
+          final light = TvDetailLayout.worstCaseContrast(
+            ink: const Color(0xFF101010),
+            floor: TvDetailLayout.luma(lightBg),
+            artwork: artwork,
+          );
+          expect(dark, greaterThanOrEqualTo(4.5), reason: 'dark on $artwork');
+          expect(light, greaterThanOrEqualTo(4.5), reason: 'light on $artwork');
+        }
+      }
     }
+  });
+
+  // 06/07 and 03/04: the page is a coloured wash. A black veil at 0.6 kept 0.4 of
+  // the hue and turned a warm poster black-brown.
+  test('the backdrop keeps the hue of the artwork and lifts a dark poster', () {
+    double chroma(Color c) => [c.r, c.g, c.b].reduce(math.max) - [c.r, c.g, c.b].reduce(math.min);
+    const blue = Color(0xFF3C5AC8);
+    final washed = TvDetailLayout.backdropColor(blue, floor: TvDetailLayout.backdropDarkFloor);
+    expect(chroma(washed), greaterThanOrEqualTo(chroma(blue) * 0.65));
+    expect(washed.b, greaterThan(washed.r));
+
+    const darkBrown = Color(0xFF3C281E);
+    final lifted = TvDetailLayout.backdropColor(darkBrown, floor: TvDetailLayout.backdropDarkFloor);
+    expect(TvDetailLayout.luma(lifted), greaterThan(TvDetailLayout.luma(darkBrown) * 0.9));
   });
 }

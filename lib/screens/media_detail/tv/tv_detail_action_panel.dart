@@ -216,14 +216,18 @@ class _RowState extends State<_Row> {
                         constraints: BoxConstraints(maxWidth: 200 * pt),
                         child: label,
                       ),
-                      SizedBox(width: 16 * pt),
+                      SizedBox(width: TvDetailLayout.panelValueGap * pt),
                       Expanded(
                         child: Text(
                           value,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
-                          style: TextStyle(color: muted, fontSize: TvHig.caption2 * pt, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: TvDetailLayout.panelValueSize * pt,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],

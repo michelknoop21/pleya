@@ -280,6 +280,42 @@ void main() {
     expect(_row(tester, 'subtitles').value, 'Off');
   });
 
+  // 12 on a title in progress: one mark, the one the round button does not do,
+  // and no restart row beside the round restart button.
+  testWidgets('a title in progress offers what the round buttons do not, once', (tester) async {
+    await pumpDetail(tester, _Client(_movie(offset: 1800000), fileInfo: _tracks()));
+    expect(find.byWidgetPredicate((w) => w is Focus && w.focusNode?.debugLabel == 'detail_restart'), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is Focus && w.focusNode?.debugLabel == 'detail_watched'), findsOneWidget);
+    await openPanel(tester);
+
+    final rows = _rows(tester).toList();
+    expect(rows, contains('unwatch'), reason: 'clearing the position is only here');
+    expect(rows, isNot(contains('watch')), reason: 'the round button marks it watched');
+    expect(rows, isNot(contains('play_from_beginning')), reason: 'the round button restarts it');
+  });
+
+  testWidgets('a watched title in progress keeps Mark as watched in the panel', (tester) async {
+    final rewatch = _movie(offset: 1800000).copyWith(viewCount: 1);
+    expect(rewatch.isWatched, isTrue);
+    await pumpDetail(tester, _Client(rewatch, fileInfo: _tracks()));
+    await openPanel(tester);
+
+    final rows = _rows(tester).toList();
+    expect(rows, contains('watch'));
+    expect(rows, isNot(contains('unwatch')), reason: 'the round button marks it unwatched');
+  });
+
+  testWidgets('a value is set smaller and heavier than its label, as in 12', (tester) async {
+    await pumpDetail(tester, _Client(_movie(), fileInfo: _tracks()));
+    await openPanel(tester);
+
+    final value = tester.widget<Text>(
+      find.descendant(of: find.byType(TvDetailActionPanel), matching: find.text('English (EAC3 5.1)')),
+    );
+    expect(value.style!.fontSize, closeTo(20 * _pt, 0.01));
+    expect(value.style!.fontWeight, FontWeight.w600);
+  });
+
   testWidgets('no row without something to choose: a file without tracks has no track rows', (tester) async {
     await pumpDetail(tester, _Client(_movie()));
     await openPanel(tester);
@@ -421,6 +457,7 @@ void main() {
 
     final top = _rows(tester).toSet();
     expect(top, contains('manage'));
+    expect(top.toList().indexOf('manage'), lessThan(top.toList().indexOf('fileinfo')), reason: '12: Beheren first');
     for (var i = 0; i < top.toList().indexOf('manage'); i++) {
       await _press(tester, LogicalKeyboardKey.arrowDown);
     }

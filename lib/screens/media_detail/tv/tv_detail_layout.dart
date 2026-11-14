@@ -63,6 +63,15 @@ abstract final class TvDetailLayout {
   static const double actionSize = 64;
   static const double actionGap = 32;
   static const double progressRingSize = 32;
+
+  /// The pill of 06: a smaller ring and type than the round buttons carry,
+  /// a little more room after the text than before the ring.
+  static const double pillRingSize = 28;
+  static const double pillPaddingStart = 18;
+  static const double pillPaddingEnd = 22;
+
+  /// The glyph in a round button, as large as 06 draws it.
+  static const double actionIconSize = 34;
   static const double techLabelHeight = 40;
   static const double techLabelGap = 16;
 
@@ -110,6 +119,11 @@ abstract final class TvDetailLayout {
   static const double panelLabelInset = 71;
   static const double panelValueInset = 24;
 
+  /// A row's value, set smaller and heavier than its label as 12 does. A whole
+  /// audio track, "Engels (EAC3 5.1 + Atmos)", fits on one line beside it.
+  static const double panelValueSize = 20;
+  static const double panelValueGap = 12;
+
   /// In logical pixels. Heavy enough that no shape of the artwork survives, only
   /// its colours: at 34 a dark edge in the picture still read as an edge.
   static const double backdropBlur = 110;
@@ -118,10 +132,45 @@ abstract final class TvDetailLayout {
   /// to see of the rest, and it keeps a full 4K still out of memory.
   static const Size backdropDecodeSize = Size(96, 54);
 
-  /// Scrim over the blurred artwork. The smallest alpha at which body ink holds
-  /// 4.5:1 over the worst artwork a title can bring, in either theme: see
-  /// [worstCaseContrast].
-  static const double scrimAlpha = 0.60;
+  /// How much of the artwork's brightness and of its colour the backdrop
+  /// keeps. The old black scrim at 0.6 kept 0.4 of both, and dark artwork came
+  /// out black-brown. These keep less light and more hue, the largest pair at
+  /// which body ink still holds 4.5:1 over any artwork, see [worstCaseContrast].
+  static const double backdropLight = 0.30;
+  static const double backdropColour = 0.70;
+
+  /// In the dark theme the brightness is pulled towards this grey and not
+  /// towards black, so a dark poster still leaves a colour (06's deep blue).
+  static const double backdropDarkFloor = 40 / 255;
+
+  // Rec. 709 weights, applied to the sRGB values as the colour matrix sees them.
+  static const double _wr = 0.2126, _wg = 0.7152, _wb = 0.0722;
+
+  /// The weighted brightness of [c], 0 to 1.
+  static double luma(Color c) => _wr * c.r + _wg * c.g + _wb * c.b;
+
+  /// The backdrop's colour matrix: brightness pulled towards [floor] (0 to 1),
+  /// the colour around it kept at [backdropColour].
+  static List<double> backdropMatrix({required double floor}) {
+    const k = backdropLight, s = backdropColour;
+    final offset = (1 - k) * floor * 255;
+    List<double> row(int i) => [
+      (i == 0 ? s : 0) + (k - s) * _wr,
+      (i == 1 ? s : 0) + (k - s) * _wg,
+      (i == 2 ? s : 0) + (k - s) * _wb,
+      0,
+      offset,
+    ];
+    return [...row(0), ...row(1), ...row(2), 0, 0, 0, 1, 0];
+  }
+
+  /// [artwork] as [backdropMatrix] draws it.
+  static Color backdropColor(Color artwork, {required double floor}) {
+    final m = backdropMatrix(floor: floor);
+    double channel(int i) =>
+        ((m[i * 5] * artwork.r + m[i * 5 + 1] * artwork.g + m[i * 5 + 2] * artwork.b) + m[i * 5 + 4] / 255).clamp(0, 1);
+    return Color.from(alpha: 1, red: channel(0), green: channel(1), blue: channel(2));
+  }
 
   static double leftMargin(double width) => width * leftMarginFraction;
 
@@ -143,12 +192,11 @@ abstract final class TvDetailLayout {
     bottomSafeMargin: 0,
   );
 
-  /// The contrast of [ink] over [scrim] at [scrimAlpha] on [artwork], the
-  /// measurement behind the alpha above.
-  static double worstCaseContrast({required Color ink, required Color scrim, required Color artwork}) {
-    final over = Color.alphaBlend(scrim.withValues(alpha: scrimAlpha), artwork);
+  /// The contrast of [ink] over [artwork] once [backdropMatrix] has drawn it,
+  /// the measurement behind [backdropLight] and [backdropColour].
+  static double worstCaseContrast({required Color ink, required double floor, required Color artwork}) {
     final a = ink.computeLuminance();
-    final b = over.computeLuminance();
+    final b = backdropColor(artwork, floor: floor).computeLuminance();
     return ((a > b ? a : b) + 0.05) / ((a > b ? b : a) + 0.05);
   }
 

@@ -85,7 +85,8 @@ extension _MediaDetailTvMoreActions on _MediaDetailScreenState {
     MediaContextMenuState menu,
     BuildContext menuContext,
   ) {
-    final actions = menu.menuActions(menuContext);
+    final skipped = _tvDetailPanelSkipped(menu.menuActions(menuContext).map((action) => action.value).toSet());
+    final actions = menu.menuActions(menuContext).where((action) => !skipped.contains(action.value));
     final manage = actions.where((action) => _tvDetailManageActions.contains(action.value)).toList();
     final general = actions.where((action) => !_tvDetailManageActions.contains(action.value)).toList();
     int rank(MediaMenuAction action) {
@@ -94,6 +95,9 @@ extension _MediaDetailTvMoreActions on _MediaDetailScreenState {
     }
 
     final ordered = [...general]..sort((a, b) => rank(a).compareTo(rank(b)));
+    // 12 lists Beheren above Bestandsinformatie, the last row of the menu.
+    final fileInfo = ordered.where((action) => action.value == 'fileinfo').toList();
+    ordered.removeWhere((action) => action.value == 'fileinfo');
     final audio = _detailAudioTracks.where((track) => track.id == _selectedDetailAudioTrackId).firstOrNull;
     final subtitle = _detailSubtitleTracks.where((track) => track.id == _selectedDetailSubtitleTrackId).firstOrNull;
     final hasTracks = _detailAudioTarget != null && !_tvDetailSeasonHasNoEpisode(_tvDetailOpenItem);
@@ -135,7 +139,24 @@ extension _MediaDetailTvMoreActions on _MediaDetailScreenState {
             );
           },
         ),
+      for (final action in fileInfo) _tvDetailMenuRow(sheetContext, menu, menuContext, action),
     ];
+  }
+
+  /// What the round buttons under the synopsis already do, so the panel does
+  /// not offer it a second time (12).
+  ///
+  /// A title in progress gets both marks from the menu, and they differ: one
+  /// finishes it, the other clears the position. The round button does
+  /// whichever flips [MediaItem.isWatched]; the panel keeps the other one, so
+  /// both stay one press away. Afspelen vanaf het begin leaves only when the
+  /// round restart button is on the row.
+  Set<String> _tvDetailPanelSkipped(Set<String> offered) {
+    final open = _tvDetailOpenItem;
+    return {
+      if (offered.containsAll(const ['watch', 'unwatch'])) open.isWatched ? 'unwatch' : 'watch',
+      if (_tvDetailShowsRestart(open)) 'play_from_beginning',
+    };
   }
 
   /// Bronnen on a unified title: the picker the source line under the actions
