@@ -69,6 +69,8 @@ class DeployEnvReadersTest(unittest.TestCase):
             ("lan_without_bind", "prod", None, [], [], False),
             ("lan_loopback_bind", "prod", None, [], [], False),
             ("lan_with_bind", "prod", None, [], [], True),
+            ("lan_quoted_loopback", "prod", None, [], [], False),
+            ("lan_ipv6_loopback", "prod", None, [], [], False),
         ]
         for name, instance, root, backups, ports, accepted in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
@@ -104,6 +106,10 @@ class DeployEnvReadersTest(unittest.TestCase):
                     values.append("PLEYA_SERVER_LAN=on")
                 if name == "lan_loopback_bind":
                     values.append("PLEYA_SERVER_BIND=127.0.0.1")
+                if name == "lan_quoted_loopback":
+                    values.append('PLEYA_SERVER_BIND="127.0.0.1"')
+                if name == "lan_ipv6_loopback":
+                    values.append("PLEYA_SERVER_BIND=[::1]")
                 if name == "lan_with_bind":
                     values.append("PLEYA_SERVER_BIND=0.0.0.0")
                 (remote / ".env").write_text("\n".join(values) + "\n")

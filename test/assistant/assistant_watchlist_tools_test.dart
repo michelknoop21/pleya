@@ -149,6 +149,18 @@ void main() {
     expect(list.reads, 2, reason: 'the next ask reads again');
   });
 
+  test('after a change that did not go through, the next read of the ask reads again', () async {
+    await _list(ctx);
+    expect(list.reads, 1);
+    list.fail = WatchlistOutcome.partiallyFailed;
+    final remove = await _tool('remove_from_watchlist').run(ctx, null, {'entry_id': 'w1'}) as AssistantPendingAction;
+    await remove.execute();
+    list.state = (failed: false, incomplete: true, fromSnapshot: false);
+    final result = await _tool('my_watchlist').run(ctx, null, const {}) as AssistantToolResult;
+    expect(list.reads, 2);
+    expect(result.data['incomplete'], isTrue);
+  });
+
   test('without a list the tools are not on offer', () {
     final none = evalContext(kids: false);
     for (final name in ['my_watchlist', 'add_to_watchlist', 'remove_from_watchlist']) {

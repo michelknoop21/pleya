@@ -61,6 +61,22 @@ void main() {
     expect(assistantNamesOffline('Plex: niet bereikbaar.\nDe rest werkte.', 'Plex'), isTrue);
   });
 
+  test('the usual ways to say a server could not be reached count, in both languages', () {
+    for (final said in [
+      'kelder kon ik niet bereiken.',
+      'kelder reageert niet.',
+      'De server kelder is down.',
+      "I couldn't reach kelder.",
+      "kelder isn't reachable right now.",
+      'kelder was niet beschikbaar.',
+      'Ik kon kelder niet doorzoeken. Die server is offline.',
+    ]) {
+      expect(assistantNamesOffline(said, 'kelder'), isTrue, reason: said);
+    }
+    expect(assistantNamesOffline('nas.local is offline.', 'nas.local'), isTrue);
+    expect(assistantNamesOffline('Uit kelder: Heat. Zolder werkte gewoon. Daarna niets.', 'kelder'), isFalse);
+  });
+
   test('two offline servers where the answer names one: the other still gets its line', () async {
     final text = await _answer('Uit zolder: Heat. Bovenkamer is offline, daar kon ik niet zoeken.', second: true);
     expect(text, contains('kelder is offline, daar kon ik niet zoeken.'));

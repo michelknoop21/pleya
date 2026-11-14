@@ -178,7 +178,11 @@ final List<AssistantTool> _watchlistTools = [
         execute: ({password}) async {
           if (ctx.userClient(id) != client) throw const AssistantToolError('not_allowed');
           final outcome = await _watchlist(ctx).add(item);
-          if (outcome != WatchlistOutcome.added) return _watchlistRefusal(outcome);
+          if (outcome != WatchlistOutcome.added) {
+            // The list may have been read again and come back partial.
+            _watchlistRead[ctx] = null;
+            return _watchlistRefusal(outcome);
+          }
           return {'status': 'on_watchlist', 'title': subject};
         },
       );
@@ -214,7 +218,10 @@ final List<AssistantTool> _watchlistTools = [
         execute: ({password}) async {
           // The entry as it is now: its memberships may have changed.
           final outcome = await services.remove(current());
-          if (outcome != WatchlistOutcome.removed) return _watchlistRefusal(outcome);
+          if (outcome != WatchlistOutcome.removed) {
+            _watchlistRead[ctx] = null;
+            return _watchlistRefusal(outcome);
+          }
           return {'status': 'off_watchlist', 'title': subject};
         },
       );

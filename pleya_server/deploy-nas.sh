@@ -70,6 +70,8 @@ esac
 # compose.lan.yaml kan die bind niet vervangen, compose voegt poorten samen.
 if [ "$LAN_CHOICE" = on ]; then
   LAN_BIND=$(ssh "$SSH_HOST" "grep -E '^PLEYA_SERVER_BIND=' $REMOTE_DIR/.env | tail -n 1 | cut -d= -f2-" 2>/dev/null)
+  # Compose haalt aanhalingstekens en spaties weg; de controle doet dat ook.
+  LAN_BIND=$(printf '%s' "$LAN_BIND" | tr -d "\"' \t\r[]")
   case "$LAN_BIND" in
     ''|127.*|localhost|::1)
       echo "✗ PLEYA_SERVER_LAN=on vraagt PLEYA_SERVER_BIND op het LAN-adres van de NAS of 0.0.0.0 in .env (nu: ${LAN_BIND:-niet gezet}) — zie docs/pleya-server-operator-remote.md" >&2

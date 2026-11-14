@@ -372,6 +372,10 @@ class PlayerAndroid extends PlayerBase {
         return (state.duration.inMilliseconds / 1000.0).toString();
       case 'seekable':
         return state.seekable ? 'yes' : 'no';
+      // The forward buffer set at init, which a fallback to mpv runs with:
+      // the opener sizes its read timeout to it.
+      case 'demuxer-max-bytes':
+        return _bufferSizeBytes?.toString();
       case 'dv-conversion-mode':
         final stats = await getStats();
         final mode = stats['dvConversionDebugMode'];

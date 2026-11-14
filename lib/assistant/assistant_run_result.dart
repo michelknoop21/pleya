@@ -4,18 +4,37 @@ part of 'assistant_run.dart';
 
 /// Words that say a server could not be reached, in the languages Big P
 /// answers in.
-const _offlineWords = ['offline', 'niet bereikbaar', 'onbereikbaar', 'unreachable', 'not reachable'];
+const _offlineWords = [
+  'offline',
+  'niet bereikbaar',
+  'onbereikbaar',
+  'niet bereiken',
+  'niet beschikbaar',
+  'reageert niet',
+  'unreachable',
+  'not reachable',
+  "isn't reachable",
+  "couldn't reach",
+  'could not reach',
+  'unavailable',
+  'not available',
+  ' down',
+];
 
 /// Whether [text] says that [server] was offline: its name as a whole word in
-/// a sentence that also says it could not be reached. A plain mention does not
-/// count: a server called "Films" is named in "Films voor vanavond" without a
-/// word about its being offline.
+/// a sentence that, together with the next one, also says it could not be
+/// reached. A plain mention does not count: a server called "Films" is named
+/// in "Films voor vanavond" without a word about its being offline. A dot
+/// inside a name (`nas.local`) does not end a sentence.
 bool assistantNamesOffline(String text, String server) {
   final name = server.trim().toLowerCase();
   if (name.isEmpty) return false;
   final word = RegExp('(^|[^\\p{L}\\p{N}])${RegExp.escape(name)}(\$|[^\\p{L}\\p{N}])', unicode: true);
-  for (final sentence in text.toLowerCase().split(RegExp(r'[.!?\n]'))) {
-    if (word.hasMatch(sentence) && _offlineWords.any(sentence.contains)) return true;
+  final sentences = text.toLowerCase().split(RegExp(r'[.!?](?=\s|$)|\n'));
+  for (final (i, sentence) in sentences.indexed) {
+    if (!word.hasMatch(sentence)) continue;
+    final around = i + 1 < sentences.length ? '$sentence ${sentences[i + 1]}' : sentence;
+    if (_offlineWords.any(around.contains)) return true;
   }
   return false;
 }

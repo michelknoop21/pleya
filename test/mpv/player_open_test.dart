@@ -159,6 +159,25 @@ void main() {
       );
     });
 
+    // Code review of 14 November 2026: the opener sizes its read timeout to
+    // this value, and a fallback to mpv runs with it.
+    test('ExoPlayer reports the forward buffer it was given', () async {
+      await _withMockChannels(
+        methodChannelName: 'com.pleya/exo_player',
+        eventChannelName: 'com.pleya/exo_player/events',
+        testBody: () async {
+          final player = PlayerAndroid();
+          try {
+            expect(await player.getProperty('demuxer-max-bytes'), isNull);
+            await player.setProperty('demuxer-max-bytes', '${32 * 1024 * 1024}');
+            expect(await player.getProperty('demuxer-max-bytes'), '${32 * 1024 * 1024}');
+          } finally {
+            await player.dispose();
+          }
+        },
+      );
+    });
+
     test('ExoPlayer clears stale Dart track state before opening new media', () async {
       await _withMockChannels(
         methodChannelName: 'com.pleya/exo_player',
