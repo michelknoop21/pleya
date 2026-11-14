@@ -617,7 +617,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
                 context,
                 group,
                 isOffline: context.read<OfflineModeProvider?>()?.isOffline ?? false,
-                onChanged: () => unawaited(widget.catalog.refresh()),
+                onChanged: () => unawaited(widget.catalog.refreshInPlace()),
                 onDeleted: (source) => _onSourceDeleted(group, source),
               ),
             ),
@@ -659,7 +659,7 @@ class _TvUnifiedCatalogScreenState extends State<TvUnifiedCatalogScreen> impleme
     _focusedGroupId = target;
     _focusAfterDelete = target;
     _focusAfterDeleteAttempts = 0;
-    if (!widget.catalog.removeDeletedSource(source.sourceKey)) unawaited(widget.catalog.refresh());
+    if (!widget.catalog.removeDeletedSource(source.sourceKey)) unawaited(widget.catalog.refreshInPlace());
   }
 
   String? _focusAfterDelete;

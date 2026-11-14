@@ -174,6 +174,11 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
   /// reorder path, and the pull-to-refresh / explicit-retry entry point.
   Future<void> refresh() => _restart();
 
+  /// Herlaadt na een keuze in het kaartmenu (bekeken, verwijderen) zonder het
+  /// raster te legen: de zichtbare kaarten en hun volgorde blijven staan, dus
+  /// geen skeleton en de scrollpositie blijft waar hij was.
+  Future<void> refreshInPlace() => _restart(retainVisible: _snapshot.groups.isNotEmpty);
+
   /// Takes one copy its server just deleted off the wall, in place: no
   /// restart, no skeleton, the other cards keep their positions, and a title
   /// with another copy keeps its card. False when this merge never had it.

@@ -331,9 +331,9 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     anchorContext: cardContext,
     group: group,
     availabilityFor: _availabilityFor,
-    onChanged: () => unawaited(_catalog.refresh()),
+    onChanged: () => unawaited(_catalog.refreshInPlace()),
     onDeleted: (source) {
-      if (!_catalog.removeDeletedSource(source.sourceKey)) unawaited(_catalog.refresh());
+      if (!_catalog.removeDeletedSource(source.sourceKey)) unawaited(_catalog.refreshInPlace());
     },
   );
 
