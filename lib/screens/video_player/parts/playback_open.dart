@@ -608,11 +608,16 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     } else {
       await player.setProperty('stream-lavf-o', '');
     }
+    // Sized to the cache this player really has (set at init, before any
+    // open): Android and a manual buffer can hold far less than 64 MiB.
+    final cacheBytes = isNetworkVod && !isTranscoding
+        ? await readForwardCacheBytes(() => player.getProperty('demuxer-max-bytes'))
+        : assumedForwardCacheBytes;
     // Always written, like the tunings around it: a reused player must not
     // carry a direct-play timeout into a transcode or a live stream.
     await player.setProperty(
       'network-timeout',
-      '${networkTimeoutSeconds(isNetworkVod: isNetworkVod, isTranscoding: isTranscoding, bitrateKbps: selectedVersion?.bitrate)}',
+      '${networkTimeoutSeconds(isNetworkVod: isNetworkVod, isTranscoding: isTranscoding, bitrateKbps: selectedVersion?.bitrate, cacheBytes: cacheBytes)}',
     );
 
     int? ringBytes;

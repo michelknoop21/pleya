@@ -37,10 +37,42 @@ const directPlayNetworkTimeoutSeconds = 10;
 /// disk that spins up) would count as a dead connection.
 const minDirectPlayNetworkTimeoutSeconds = 4;
 
-/// The smallest forward cache an open runs with in auto mode: the Apple TV
-/// ceiling of `appleTvDemuxerLimits`. The timeout is sized to it on every
-/// platform, so a larger cache only adds margin.
+/// The forward cache assumed when the player cannot say what it has: the
+/// Apple TV ceiling of `appleTvDemuxerLimits`. The opener reads the real
+/// `demuxer-max-bytes` first, because a cache can be smaller: 32 MiB on an
+/// Android device with 256 MB heap or less, and a manual buffer can go lower.
 const assumedForwardCacheBytes = 64 * 1024 * 1024;
+
+/// The forward cache a player really has, from [read] (the player's
+/// `demuxer-max-bytes`). A player that cannot say, or says something
+/// unreadable, gets [assumedForwardCacheBytes].
+Future<int> readForwardCacheBytes(Future<String?> Function() read) async {
+  try {
+    return parseMpvByteSize(await read()) ?? assumedForwardCacheBytes;
+  } catch (_) {
+    return assumedForwardCacheBytes;
+  }
+}
+
+/// A byte size as mpv reports it for an option such as `demuxer-max-bytes`.
+/// mpv 0.37 answers with plain bytes (`67108864`), also for a value set as
+/// `64MiB`; a suffix is read as well in case a build formats it. Null for
+/// anything else, so the caller falls back to [assumedForwardCacheBytes].
+int? parseMpvByteSize(String? raw) {
+  final text = raw?.trim();
+  if (text == null || text.isEmpty) return null;
+  final plain = int.tryParse(text);
+  if (plain != null) return plain > 0 ? plain : null;
+  final match = RegExp(r'^(\d+(?:\.\d+)?)\s*([KMG])i?B?$', caseSensitive: false).firstMatch(text);
+  if (match == null) return null;
+  final unit = switch (match.group(2)!.toUpperCase()) {
+    'K' => 1024,
+    'M' => 1024 * 1024,
+    _ => 1024 * 1024 * 1024,
+  };
+  final bytes = (double.parse(match.group(1)!) * unit).round();
+  return bytes > 0 ? bytes : null;
+}
 
 /// The `network-timeout` for an open. Only direct play of a network file gets
 /// a short one: a transcode can keep a request waiting while the server

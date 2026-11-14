@@ -12,6 +12,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:os_media_controls/os_media_controls.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -107,7 +108,6 @@ import '../utils/orientation_helper.dart';
 import '../utils/platform_detector.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/snackbar_helper.dart';
-import 'package:path_provider/path_provider.dart';
 import '../utils/stream_buffer_sizing.dart';
 import '../utils/video_player_navigation.dart';
 import 'video_player/auto_play_countdown.dart';
@@ -227,6 +227,10 @@ _PlaybackOpenTiming _playbackOpenTiming({
 @visibleForTesting
 int avfoundationOsdMaxHeight({required bool isAppleTV}) => isAppleTV ? 1080 : 0;
 
+/// Apple TV demuxer cache on disk instead of in memory, for a private build
+/// that sets `PLEYA_TV_DISK_CACHE` (see `appleTvDiskCacheProperties`).
+const _tvDiskCache = bool.fromEnvironment('PLEYA_TV_DISK_CACHE');
+
 /// Demuxer limits for Apple TV in auto buffer mode ([bufferSizeMB] `0`),
 /// empty elsewhere and for an explicit buffer size, which the user chose.
 ///
@@ -235,8 +239,6 @@ int avfoundationOsdMaxHeight({required bool isAppleTV}) => isAppleTV ? 1080 : 0;
 /// kernel killed the foreground app on memory at panel open (PLR12, build 448,
 /// footprint 2.1 GB). 64 MiB is several seconds of a 4K remux, enough to ride
 /// out a LAN hiccup; the back buffer only serves short seeks backwards.
-const _tvDiskCache = bool.fromEnvironment('PLEYA_TV_DISK_CACHE');
-
 @visibleForTesting
 Map<String, String> appleTvDemuxerLimits({required bool isAppleTV, required int bufferSizeMB}) =>
     isAppleTV && bufferSizeMB == 0
