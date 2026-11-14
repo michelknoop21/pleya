@@ -181,10 +181,18 @@ class UnifiedCatalogProvider extends ChangeNotifier with DisposableChangeNotifie
 
   /// Takes one copy its server just deleted off the wall, in place: no
   /// restart, no skeleton, the other cards keep their positions, and a title
-  /// with another copy keeps its card. False when this merge never had it.
+  /// with another copy keeps its card. False when neither the merge nor the
+  /// wall had it.
+  ///
+  /// The wall is asked as well as the merge: a restart that is still running
+  /// (the offline index answers a delete with one) has already emptied the
+  /// merge, and a refresh that keeps the visible cards would then keep the
+  /// deleted one too, as a card that opens a title that is gone.
   bool removeDeletedSource(String globalKey) {
-    final service = _service;
-    if (isDisposed || service == null || !service.removeDeletedItem(globalKey)) return false;
+    if (isDisposed) return false;
+    final merged = _service?.removeDeletedItem(globalKey) ?? false;
+    final shown = _snapshot.groups.any((group) => group.sources.any((source) => source.sourceKey == globalKey));
+    if (!merged && !shown) return false;
     _snapshot = UnifiedCatalogSnapshot(
       groups: [
         for (final group in _snapshot.groups)
