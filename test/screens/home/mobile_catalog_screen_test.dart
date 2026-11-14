@@ -59,6 +59,7 @@ class _FakeLibraryClient implements MediaServerClient {
   bool shouldThrow = false;
   int fetchCalls = 0;
   Future<void>? laterPageWait;
+  Future<void>? everyPageWait;
   bool failLaterPages = false;
 
   @override
@@ -85,6 +86,7 @@ class _FakeLibraryClient implements MediaServerClient {
   }) async {
     fetchCalls++;
     if (shouldThrow) throw StateError('offline');
+    await everyPageWait;
     if (query.offset >= 50) {
       await laterPageWait;
       if (failLaterPages) throw StateError('later page unavailable');
@@ -782,6 +784,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('a menu choice refreshes in place: no skeleton, and the scroll offset stays (A-07)', (tester) async {
+    client.itemsByLibrary['A'] = [
+      for (var i = 0; i < 120; i++) _movie('menu$i', title: 'Film ${i.toString().padLeft(3, '0')}', serverId: 's1'),
+    ];
+    await pumpCatalog(tester, width: 600);
+    await settle(tester);
+    final scroll = tester.widget<CustomScrollView>(find.byType(CustomScrollView)).controller!;
+    scroll.jumpTo(600);
+    await settle(tester);
+    final before = scroll.offset;
+    expect(before, greaterThan(0));
+    final order = catalogs.movies.snapshot.groups.map((g) => g.groupId).toList();
+
+    // De server antwoordt pas als de test het zegt, zoals een echte
+    // netwerkronde: zonder die pauze is een harde herstart al klaar voordat
+    // er een frame met het skeleton getekend wordt.
+    final gate = Completer<void>();
+    addTearDown(() {
+      if (!gate.isCompleted) gate.complete();
+    });
+    client.everyPageWait = gate.future;
+
+    // Wat de onChanged van het lang-indrukken-menu doet na bekeken,
+    // verwijderen of een andere wijziging (MobileCatalogScreen._openQuickMenu).
+    unawaited(catalogs.movies.refreshInPlace());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(CatalogSkeletonGrid), findsNothing, reason: 'the grid is never swapped for the skeleton');
+    expect(scroll.hasClients, isTrue);
+    expect(scroll.offset, before, reason: 'the offset holds while the refresh is in flight');
+
+    gate.complete();
+    await settle(tester);
+    await settle(tester);
+
+    expect(find.byType(CatalogSkeletonGrid), findsNothing);
+    expect(find.byType(CustomScrollView), findsOneWidget);
+    expect(scroll.offset, before);
+    expect(catalogs.movies.snapshot.groups.take(order.length).map((g) => g.groupId), order);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('a 450-title catalogue remains reachable through all pages', (tester) async {
     client.itemsByLibrary['A'] = [
