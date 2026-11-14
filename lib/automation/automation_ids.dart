@@ -117,7 +117,7 @@ class AutomationIds {
   static const String settingsCategory = 'settings.category';
 
   /// A server found on the home network, on the add-Pleya-Server screen,
-  /// suffixed with the server id (`settings.discovered_server[<id>]`).
+  /// suffixed with its address (`settings.discovered_server[http://192.168.1.20:8832]`).
   static const String settingsDiscoveredServer = 'settings.discovered_server';
 
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.

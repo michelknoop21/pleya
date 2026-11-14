@@ -65,6 +65,10 @@ class DeployEnvReadersTest(unittest.TestCase):
             ("missing_index", "prod", None, [], [], False),
             ("fresh_deploy", "prod", None, [], [], True),
             ("failed_extract_fresh", "prod", None, [], [], False),
+            # S26.9: ontdekking aan met de server op loopback stopt vóór de build.
+            ("lan_without_bind", "prod", None, [], [], False),
+            ("lan_loopback_bind", "prod", None, [], [], False),
+            ("lan_with_bind", "prod", None, [], [], True),
         ]
         for name, instance, root, backups, ports, accepted in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
@@ -72,7 +76,7 @@ class DeployEnvReadersTest(unittest.TestCase):
                 server = work / "server"
                 server.mkdir()
                 shutil.copyfile(SOURCE, server / "deploy-nas.sh")
-                for filename in ("Dockerfile", "compose.yaml", "compose.test.yaml", "compose.hwaccel.yaml",
+                for filename in ("Dockerfile", "compose.yaml", "compose.test.yaml", "compose.hwaccel.yaml", "compose.lan.yaml",
                                  ".dockerignore", "go.mod", "go.sum", "cmd/main.go",
                                  "internal/web/dist/index.html", "internal/web/dist/new.js"):
                     target = server / filename
@@ -96,6 +100,12 @@ class DeployEnvReadersTest(unittest.TestCase):
                                "PLEYA_SERVER_NETWORK=pleya-server-test_default"]
                 values += ["PLEYA_SERVER_BACKUP_HOST=" + value for value in backups]
                 values += ["PLEYA_SERVER_HOST_PORT=" + value for value in ports]
+                if name.startswith("lan_"):
+                    values.append("PLEYA_SERVER_LAN=on")
+                if name == "lan_loopback_bind":
+                    values.append("PLEYA_SERVER_BIND=127.0.0.1")
+                if name == "lan_with_bind":
+                    values.append("PLEYA_SERVER_BIND=0.0.0.0")
                 (remote / ".env").write_text("\n".join(values) + "\n")
                 original_env = (remote / ".env").read_bytes()
                 dist = remote / "internal/web/dist"

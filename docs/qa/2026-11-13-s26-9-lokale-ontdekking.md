@@ -48,6 +48,17 @@ Niet opgelost, buiten deze wijziging: de reviewer zag in een losse proef dat een
 
 De commit `108c8f8` loste ook een harde lintregel op in `test/assistant/eval/big_p_eval_matrix_test.dart`; dat hoort bij BP-12 en niet bij S26.9.
 
+## Code-review van 14 november 2026
+
+Op de hele branch (`origin/main...HEAD`); voor S26.9 vier punten, alle verwerkt met een test die zonder de fix faalt:
+
+- Een tijdelijke leesfout op de UDP-socket stopte de luisteraar tot een herstart. `Serve` stopt nu alleen bij sluiten of einde van de context, en logt een andere fout hoogstens één keer per minuut.
+- De app ontdubbelde gevonden servers op het id dat het antwoord opgaf; een kopie die eerst antwoordde verborg de echte server. Ontdubbelen gebeurt nu op adres, de id-controle per adres blijft.
+- `deploy-nas.sh` zette ontdekking aan terwijl `PLEYA_SERVER_BIND` op loopback stond. De deploy weigert dat nu, vóór er iets naar de NAS gaat.
+- `_connectToJellyfin` en `_connectToPleyaServer` delen één helper.
+
+Niet gedaan: de Pleya-ontdekking en de Jellyfin-ontdekking samenvoegen in één helper. Er verandert geen gedrag door, en het raakt de Jellyfin- en Emby-ontdekking met hun eigen tests.
+
 ## Wat ontbreekt
 
 - **Pleya Verify is niet gedraaid.** De cloudsessie heeft geen macOS, iOS- of tvOS-simulator. `tvos.auth.first-start` toetst nu ook `auth.choice[pleya_server]`; `tvos.settings.add-pleya-server` is niet uitgebreid, omdat de nepserver geen UDP-antwoord geeft.

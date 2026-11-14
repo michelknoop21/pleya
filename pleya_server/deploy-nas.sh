@@ -53,6 +53,31 @@ if ! ssh "$SSH_HOST" "cd $REMOTE_DIR && test -d '$BACKUP_HOST'" 2>/dev/null; the
   exit 1
 fi
 
+# Vindbaar op het thuisnetwerk alleen als de operator daarvoor koos (S26.9).
+# Hier, voor er iets naar de NAS gaat: een weigering laat de draaiende server
+# staan. De uitkomst komt als tekst terug, zodat een mislukte ssh niet leest
+# als "uit" en de ontdekking stil uitzet.
+LAN_CHOICE=$(ssh "$SSH_HOST" "if grep -Eq '^PLEYA_SERVER_LAN=on[[:space:]]*\$' $REMOTE_DIR/.env 2>/dev/null; then echo on; else echo off; fi")
+case "$LAN_CHOICE" in
+  on|off) ;;
+  *)
+    echo "✗ kon PLEYA_SERVER_LAN niet lezen op $SSH_HOST" >&2
+    exit 1
+    ;;
+esac
+# Ontdekking adverteert de HTTP-poort. Luistert die alleen op loopback, dan
+# wijst elke gevonden server naar een poort die niemand op het netwerk bereikt;
+# compose.lan.yaml kan die bind niet vervangen, compose voegt poorten samen.
+if [ "$LAN_CHOICE" = on ]; then
+  LAN_BIND=$(ssh "$SSH_HOST" "grep -E '^PLEYA_SERVER_BIND=' $REMOTE_DIR/.env | tail -n 1 | cut -d= -f2-" 2>/dev/null)
+  case "$LAN_BIND" in
+    ''|127.*|localhost|::1)
+      echo "✗ PLEYA_SERVER_LAN=on vraagt PLEYA_SERVER_BIND op het LAN-adres van de NAS of 0.0.0.0 in .env (nu: ${LAN_BIND:-niet gezet}) — zie docs/pleya-server-operator-remote.md" >&2
+      exit 1
+      ;;
+  esac
+fi
+
 echo "→ Pleya Web bouwen"
 # De frontend wordt hier gebouwd en gaat als bundel mee in de tar. De NAS bouwt
 # wel de Go-binary zelf, want hij is amd64 en de ontwikkelmachine meestal niet;
@@ -94,23 +119,12 @@ else
   echo "→ geen /dev/dri/renderD128: omzetten in software"
 fi
 
-# Vindbaar op het thuisnetwerk alleen als de operator daarvoor koos (S26.9).
-# De uitkomst komt als tekst terug: een mislukte ssh mag niet lezen als "uit"
-# en de ontdekking stil uitzetten.
-LAN_CHOICE=$(ssh "$SSH_HOST" "if grep -Eq '^PLEYA_SERVER_LAN=on[[:space:]]*\$' $REMOTE_DIR/.env 2>/dev/null; then echo on; else echo off; fi")
-case "$LAN_CHOICE" in
-  on)
-    COMPOSE_FILES="$COMPOSE_FILES -f compose.lan.yaml"
-    echo "→ PLEYA_SERVER_LAN=on: lokale ontdekking aan (UDP 48635)"
-    ;;
-  off)
-    echo "→ lokale ontdekking uit (zet PLEYA_SERVER_LAN=on in .env om hem aan te zetten)"
-    ;;
-  *)
-    echo "✗ kon PLEYA_SERVER_LAN niet lezen op $SSH_HOST" >&2
-    exit 1
-    ;;
-esac
+if [ "$LAN_CHOICE" = on ]; then
+  COMPOSE_FILES="$COMPOSE_FILES -f compose.lan.yaml"
+  echo "→ PLEYA_SERVER_LAN=on: lokale ontdekking aan (UDP 48635)"
+else
+  echo "→ lokale ontdekking uit (zet PLEYA_SERVER_LAN=on in .env om hem aan te zetten)"
+fi
 
 echo "→ containers bouwen en starten"
 ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; cd $REMOTE_DIR && docker compose $COMPOSE_FILES up -d --build --remove-orphans"

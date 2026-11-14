@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -185,5 +186,43 @@ func TestSenderTableIsBounded(t *testing.T) {
 	clock.Add(11)
 	if !l.allow(&net.UDPAddr{IP: net.IPv4(10, 9, 9, 9), Port: 1}) {
 		t.Fatal("na het venster hoort er weer plaats te zijn voor een nieuwe afzender")
+	}
+}
+
+// flakyConn laat de eerste lezing mislukken zonder de socket te sluiten.
+type flakyConn struct {
+	net.PacketConn
+	failed atomic.Bool
+}
+
+func (c *flakyConn) ReadFrom(b []byte) (int, net.Addr, error) {
+	if c.failed.CompareAndSwap(false, true) {
+		return 0, nil, errors.New("tijdelijke fout")
+	}
+	return c.PacketConn.ReadFrom(b)
+}
+
+// Een tijdelijke leesfout zet de ontdekking niet stil (code-review van 14
+// november 2026).
+func TestKeepsAnsweringAfterAReadError(t *testing.T) {
+	opts := Options{Addr: "127.0.0.1:0", ServerID: "01a016ee-dd33-7000-a1fc-b68096e1bd2f", Port: 8832}
+	l, err := Listen(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	flaky := &flakyConn{PacketConn: l.conn}
+	l.conn = flaky
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- l.Serve(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
+	if ask(t, l, Probe, 2*time.Second) == nil {
+		t.Fatal("na een leesfout hoort de luisteraar door te gaan")
+	}
+	if !flaky.failed.Load() {
+		t.Fatal("de leesfout is nooit opgetreden, dan bewijst de test niets")
 	}
 }

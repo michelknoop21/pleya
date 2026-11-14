@@ -116,20 +116,38 @@ func (l *Listener) Addr() net.Addr { return l.conn.LocalAddr() }
 // Close stopt de luisteraar; Serve keert dan terug.
 func (l *Listener) Close() error { return l.conn.Close() }
 
+// readRetry is de pauze na een leesfout die de socket niet sloot.
+const readRetry = 100 * time.Millisecond
+
 // Serve beantwoordt oproepen tot ctx eindigt of Close wordt aangeroepen.
+//
+// Een andere leesfout stopt de luisteraar niet: op een niet-verbonden
+// UDP-socket kan een ICMP-melding of een vol buffer één lezing laten mislukken,
+// en daarna zou elke oproep tot een herstart onbeantwoord blijven. De fout
+// wordt hoogstens één keer per minuut gelogd.
 func (l *Listener) Serve(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		_ = l.conn.Close()
 	}()
 	buf := make([]byte, 256)
+	var warned time.Time
 	for {
 		n, from, err := l.conn.ReadFrom(buf)
 		if err != nil {
 			if ctx.Err() != nil || errors.Is(err, net.ErrClosed) {
 				return nil
 			}
-			return err
+			if l.opts.Log != nil && time.Since(warned) >= time.Minute {
+				warned = time.Now()
+				l.opts.Log.Warn("ontdekking: lezen mislukt, ga door", "error", err)
+			}
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(readRetry):
+			}
+			continue
 		}
 		if !l.opts.AnswerAnything && string(buf[:n]) != Probe {
 			continue

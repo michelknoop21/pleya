@@ -202,6 +202,10 @@ Tools: drie die nooit bereikt werden hebben nu nepdata en een case (`discover_re
 
 IJken: `build/big_p_eval/big-p-ijkset.html` toont 25 antwoorden uit ronde 3 zonder het oordeel van de jury; de antwoorden van Michel gaan terug in `ijkset.jsonl` en `--agreement` rekent de overeenkomst per criterium uit. Pas daarna telt de jury als maat.
 
+### Code-review van 14 november 2026
+
+Drie punten op Big P, verwerkt met een test die zonder de fix faalt: een find_title-kaart volgt nu een aanvraag of annulering in dezelfde vraag; de offline-regel telt een server pas als genoemd wanneer zijn naam als heel woord in een zin met een offline-woord staat, en vult elke niet genoemde server aan; de kijklijst wordt hoogstens één keer per vraag opnieuw geladen.
+
 ## HTTP-probleem in de live test
 
 De eerste twee pogingen tot een nulmeting gaven bij gemma 180 van 180 en bij glm 68 van 180 runs een providerfout. De oorzaak lag niet bij Ollama: zodra de geheugenfixtures de Flutter-testbinding starten, beantwoordt die elk HTTP-verzoek met een lege 400. De live test zet daarom voor elke poging `HttpOverrides.global = null` terug. Het record bevat sindsdien `http_error` (status en begin van het antwoord) bij een niet-200.

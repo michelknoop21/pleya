@@ -244,23 +244,17 @@ class _AuthScreenState extends State<AuthScreen> {
     _showDebugTokenDialog();
   }
 
-  Future<void> _connectToJellyfin() async {
-    final added =
-        await (widget.jellyfinRoute?.call(context) ??
-            Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const AddJellyfinScreen())));
-    if (!mounted || added != true) return;
-    // The connection persisted and the manager registered the client; move
-    // straight to the main screen. [MainScreen] reads the active client
-    // from the server provider, so no client argument is needed here.
-    unawaited(Navigator.pushReplacement(context, fadeRoute(const ProfileSessionScreen())));
-  }
+  Future<void> _connectToJellyfin() => _connectVia(widget.jellyfinRoute, (_) => const AddJellyfinScreen());
 
   /// Apple TV only for now: the add screen looks for servers on the home
   /// network, so nobody has to type an address with the remote (S26.9).
-  Future<void> _connectToPleyaServer() async {
-    final added =
-        await (widget.pleyaServerRoute?.call(context) ??
-            Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const AddPleyaServerScreen())));
+  Future<void> _connectToPleyaServer() => _connectVia(widget.pleyaServerRoute, (_) => const AddPleyaServerScreen());
+
+  /// Opens an add-server screen ([route] in tests) and, once it saved a
+  /// connection, moves straight to the main screen. [MainScreen] reads the
+  /// active client from the server provider, so no client is passed on.
+  Future<void> _connectVia(Future<bool?> Function(BuildContext context)? route, WidgetBuilder screen) async {
+    final added = await (route?.call(context) ?? Navigator.push<bool>(context, MaterialPageRoute(builder: screen)));
     if (!mounted || added != true) return;
     unawaited(Navigator.pushReplacement(context, fadeRoute(const ProfileSessionScreen())));
   }

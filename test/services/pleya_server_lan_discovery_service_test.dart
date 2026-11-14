@@ -88,6 +88,42 @@ void main() {
     expect(sorted.map((s) => s.id), ['a', 'b', 'c']);
   });
 
+  // Code review of 14 November 2026: deduplicating on the claimed id let a
+  // copy that answered first hide the real server.
+  test('discover keeps two servers that claim the same id from two addresses', () async {
+    final own = await _ownIPv4();
+    if (own == null) {
+      markTestSkipped('no non-loopback IPv4 interface');
+      return;
+    }
+    final probe = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+    final copy = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+    final sub = probe.listen((event) {
+      if (event != RawSocketEvent.read) return;
+      Datagram? d;
+      while ((d = probe.receive()) != null) {
+        // The real one answers from the probed socket, the copy from another
+        // port with the same id and another advertised port.
+        probe.send(_reply(_valid({'port': 8832})), d!.address, d.port);
+        copy.send(_reply(_valid({'port': 9999})), d.address, d.port);
+      }
+    });
+    addTearDown(() async {
+      await sub.cancel();
+      probe.close();
+      copy.close();
+    });
+
+    final found = await PleyaServerLanDiscoveryService().discover(
+      responseWindow: const Duration(milliseconds: 300),
+      broadcastAddress: own,
+      port: probe.port,
+    );
+
+    expect(found.map((s) => s.address).toSet(), {'http://${own.address}:8832', 'http://${own.address}:9999'});
+    expect(found.every((s) => s.id == 'srv-1'), isTrue);
+  });
+
   // The real socket path, against a stand-in that answers like the server
   // does. Sent to this machine's own address because a test may not broadcast
   // onto whatever network the machine happens to be on.

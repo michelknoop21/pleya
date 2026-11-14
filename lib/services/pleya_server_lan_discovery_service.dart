@@ -45,7 +45,10 @@ class PleyaServerLanDiscoveryService {
       socketSet.listen((datagram) {
         final server = parseDiscoveryResponse(datagram.data, datagram.address);
         if (server == null) return;
-        discovered.putIfAbsent(server.id, () => server);
+        // By address, not by the id a reply claims: a second responder that
+        // copies a server's id must not hide the real one. Both stay in the
+        // list, each with its own address, and the id check runs per address.
+        discovered.putIfAbsent(server.address, () => server);
       }, debugLabel: 'Pleya Server LAN discovery');
 
       final packet = utf8.encode(discoveryMessage);

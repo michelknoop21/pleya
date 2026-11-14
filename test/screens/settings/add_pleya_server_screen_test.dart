@@ -153,16 +153,32 @@ void main() {
 
     expect(focused(), 'AddPleyaServer:Url');
     await press(LogicalKeyboardKey.arrowDown);
-    expect(focused(), 'AddPleyaServer:Discovered:srv-1');
+    expect(focused(), 'AddPleyaServer:Discovered:http://192.168.1.20:8832');
     await press(LogicalKeyboardKey.arrowDown);
-    expect(focused(), 'AddPleyaServer:Discovered:srv-2');
+    expect(focused(), 'AddPleyaServer:Discovered:http://192.168.1.30:8832');
     await press(LogicalKeyboardKey.arrowDown);
     expect(focused(), 'AddPleyaServer:Continue');
     await press(LogicalKeyboardKey.arrowUp);
-    expect(focused(), 'AddPleyaServer:Discovered:srv-2');
+    expect(focused(), 'AddPleyaServer:Discovered:http://192.168.1.30:8832');
     await press(LogicalKeyboardKey.arrowUp);
     await press(LogicalKeyboardKey.arrowUp);
     expect(focused(), 'AddPleyaServer:Url');
+  });
+
+  testWidgets('two addresses that claim the same id are both listed and both reachable', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    const copy = DiscoveredPleyaServer(address: 'http://192.168.1.66:8832', id: 'srv-1', name: 'Thuis');
+    await tester.pumpWidget(_screen(found: const [_home, copy]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('http://192.168.1.20:8832'), findsOneWidget);
+    expect(find.text('http://192.168.1.66:8832'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'AddPleyaServer:Discovered:http://192.168.1.20:8832');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'AddPleyaServer:Discovered:http://192.168.1.66:8832');
   });
 
   testWidgets('TV: select on a found server goes to sign-in', (tester) async {

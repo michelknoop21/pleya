@@ -123,8 +123,8 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
       _searchingLocalServers = false;
       for (final server in servers) {
         _discoveredFocusNodes.putIfAbsent(
-          server.id,
-          () => FocusNode(debugLabel: 'AddPleyaServer:Discovered:${server.id}'),
+          server.address,
+          () => FocusNode(debugLabel: 'AddPleyaServer:Discovered:${server.address}'),
         );
       }
     });
@@ -137,12 +137,12 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
   }
 
   void _focusFirstDiscoveredOrContinue() {
-    final first = _localServers.isEmpty ? null : _discoveredFocusNodes[_localServers.first.id];
+    final first = _localServers.isEmpty ? null : _discoveredFocusNodes[_localServers.first.address];
     (first ?? _continueFocus).requestFocus();
   }
 
   void _focusLastDiscoveredOrUrl() {
-    final last = _localServers.isEmpty ? null : _discoveredFocusNodes[_localServers.last.id];
+    final last = _localServers.isEmpty ? null : _discoveredFocusNodes[_localServers.last.address];
     (last ?? _urlFocus).requestFocus();
   }
 
@@ -414,13 +414,15 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
         DiscoveredServerTile(
           name: server.name,
           address: server.address,
-          focusNode: _discoveredFocusNodes[server.id],
+          focusNode: _discoveredFocusNodes[server.address],
           automationId: AutomationIds.settingsDiscoveredServer,
-          automationInstance: server.id,
+          automationInstance: server.address,
           onNavigateUp: () =>
-              (index == 0 ? _urlFocus : _discoveredFocusNodes[_localServers[index - 1].id])?.requestFocus(),
+              (index == 0 ? _urlFocus : _discoveredFocusNodes[_localServers[index - 1].address])?.requestFocus(),
           onNavigateDown: () =>
-              (index == _localServers.length - 1 ? _continueFocus : _discoveredFocusNodes[_localServers[index + 1].id])
+              (index == _localServers.length - 1
+                      ? _continueFocus
+                      : _discoveredFocusNodes[_localServers[index + 1].address])
                   ?.requestFocus(),
           onTap: busy ? null : () => unawaited(_useDiscoveredServer(server)),
         ),
