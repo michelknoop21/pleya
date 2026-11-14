@@ -25,7 +25,7 @@ import 'scroll_crown_gear.dart';
 /// On other phones it follows the drag as a direct scrollbar.
 /// It appears when the view scrolls or its resting spot is touched and fades
 /// [hideDelay] after the last activity. Teeth turn with the drag and tick
-/// through [CrownRatchet]. On other phones the gear follows the finger,
+/// through [CrownRatchet]; ordinary scrolling turns them too, without ticks. On other phones the gear follows the finger,
 /// mapping the rail directly onto the full content range. After an edge touch
 /// those phones allow grabbing anywhere along the rail until the crown hides.
 ///
@@ -76,6 +76,10 @@ class ScrollCrown extends StatefulWidget {
 
   /// Diagnostic observer for calibration; never changes the drag calculation.
   final ValueChanged<Map<String, Object>>? onDragSample;
+
+  /// Wheel travel per pixel of ordinary scrolling: one tooth per 280 px of
+  /// content, close to the fixed wheel's own drag ratio on a phone.
+  static const double scrollTurnRatio = 1 / 40;
 
   /// Content shorter than this many viewports gets no crown.
   static const double minContentScreens = 2.0;
@@ -203,6 +207,14 @@ class _ScrollCrownState extends State<ScrollCrown> {
     }
   }
 
+  /// The held drag put the content against its end: the fixed wheel by
+  /// turning down into it, the travelling gear with the finger at the rail's
+  /// bottom.
+  bool get _holdsEnd =>
+      _dragging &&
+      _followingEnd &&
+      (_fixedCrown || (_fingerY != null && _fingerY! >= _railHeight - ScrollCrownGear.height / 2));
+
   bool _isOurs(int depth, ScrollMetrics metrics) => depth == 0 && metrics.axis == Axis.vertical;
 
   bool _onMetrics(ScrollMetricsNotification notification) {
@@ -210,21 +222,11 @@ class _ScrollCrownState extends State<ScrollCrown> {
     final wasEligible = _eligible;
     _position = _positionFrom(notification.context) ?? _position;
     _metrics = _combinedMetrics(notification.metrics);
-    if (_dragging &&
-        _followingEnd &&
-        _fingerY != null &&
-        _fingerY! >= _railHeight - ScrollCrownGear.height / 2 &&
-        _metrics!.extentAfter > 0.5) {
+    if (_holdsEnd && _metrics!.extentAfter > 0.5) {
       // A lazy list can discover its final extent only after the edge jump.
       SchedulerBinding.instance.addPostFrameCallback((_) {
         final position = _position;
-        if (mounted &&
-            _dragging &&
-            _followingEnd &&
-            _fingerY != null &&
-            _fingerY! >= _railHeight - ScrollCrownGear.height / 2 &&
-            position != null &&
-            position.hasContentDimensions) {
+        if (mounted && _holdsEnd && position != null && position.hasContentDimensions) {
           _jumpTo(_combinedMetrics(position).maxScrollExtent);
         }
       });
@@ -244,7 +246,13 @@ class _ScrollCrownState extends State<ScrollCrown> {
       return false;
     }
     _touchActivated = false;
-    _update(() => _fingerY = null);
+    final turn = prefersReducedMotion(context)
+        ? 0.0
+        : CrownRatchet.phaseFor((notification.scrollDelta ?? 0) * ScrollCrown.scrollTurnRatio);
+    _update(() {
+      _fingerY = null;
+      _phase += turn;
+    });
     _show();
     return false;
   }
@@ -373,7 +381,11 @@ class _ScrollCrownState extends State<ScrollCrown> {
             maxExtent: metrics.maxScrollExtent,
           );
     _jumpTo(target);
-    _followingEnd = !_fixedCrown && _combinedMetrics(position).extentAfter <= 0.5;
+    // The fixed wheel has no rail position to tell an end reached by this
+    // drag from one it merely started at: only a downward turn counts.
+    final turn = details.delta.dy;
+    _followingEnd =
+        _combinedMetrics(position).extentAfter <= 0.5 && (!_fixedCrown || turn > 0 || (turn == 0 && _followingEnd));
     final rail = _railContext?.findRenderObject();
     setState(() {
       _fingerY = rail is RenderBox ? rail.globalToLocal(details.globalPosition).dy : details.localPosition.dy;

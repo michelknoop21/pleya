@@ -152,8 +152,119 @@ void main() {
     await tester.dragFrom(const Offset(_edgeX, 180), const Offset(0, -50));
     await tester.pumpAndSettle();
     expect(rig.controller.offset, greaterThan(0));
-    expect(rig.teeth, isEmpty);
-    expect(_phase(tester), 0);
+    expect(rig.teeth, isEmpty, reason: 'ordinary scrolling never ticks');
+    expect(_phase(tester), greaterThan(0), reason: 'the wheel turns along, the way a downward crown drag turns it');
+  });
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets('ordinary scrolling turns the $platform wheel without ticks, but not under reduce motion', (
+      tester,
+    ) async {
+      tester.view.physicalSize = _screen;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      for (final reduceMotion in [false, true]) {
+        final rig = _Rig();
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(rig.host(rows: 400, platform: platform, reduceMotion: reduceMotion));
+        await tester.pump();
+        rig.controller.jumpTo(280);
+        await tester.pump();
+        expect(_visible(tester), isTrue);
+        expect(
+          _phase(tester),
+          reduceMotion ? 0 : closeTo(ScrollCrownPainter.toothAngle, 1e-9),
+          reason: 'one tooth per 280 px',
+        );
+        rig.controller.jumpTo(0);
+        await tester.pump();
+        expect(_phase(tester), closeTo(0, 1e-9), reason: 'scrolling back turns it back');
+        expect(rig.teeth, isEmpty);
+      }
+    });
+  }
+
+  testWidgets('held iOS wheel follows a lazily growing list from the end it reached', (tester) async {
+    final rig = _Rig();
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(rig.host(rows: 40, platform: TargetPlatform.iOS));
+    await tester.pump();
+    final centre = tester.getCenter(_gear).dy;
+    final gesture = await _start(tester, rig, Offset(_edgeX, centre));
+    rig.now += const Duration(milliseconds: 50);
+    await gesture.moveBy(const Offset(0, 300), timeStamp: rig.now);
+    await tester.pump();
+    expect(rig.controller.offset, rig.controller.position.maxScrollExtent);
+    for (final rows in [80, 120]) {
+      rig.rowCount.value = rows; // a page loads while the wheel is held
+      await tester.pumpAndSettle();
+      expect(rig.controller.position.maxScrollExtent, greaterThan((rows - 10) * 100.0));
+      expect(rig.controller.offset, rig.controller.position.maxScrollExtent);
+    }
+    // Turning back stops it, also when the next page arrives.
+    rig.now += const Duration(milliseconds: 50);
+    await gesture.moveBy(const Offset(0, -6), timeStamp: rig.now);
+    await tester.pump();
+    final turnedBack = rig.controller.offset;
+    expect(turnedBack, lessThan(rig.controller.position.maxScrollExtent));
+    rig.rowCount.value = 160;
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, turnedBack);
+    // Back down to the end, then release: loading no longer moves the list.
+    rig.now += const Duration(milliseconds: 50);
+    await gesture.moveBy(const Offset(0, 300), timeStamp: rig.now);
+    await tester.pump();
+    expect(rig.controller.offset, rig.controller.position.maxScrollExtent);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    final released = rig.controller.offset;
+    rig.rowCount.value = 200;
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, released, reason: 'loading after release must not take over scrolling');
+  });
+
+  testWidgets('held iOS wheel does not follow loading when the drag never reached the end', (tester) async {
+    final rig = _Rig();
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(rig.host(rows: 40, platform: TargetPlatform.iOS));
+    await tester.pump();
+    final centre = tester.getCenter(_gear).dy;
+    final partial = await _start(tester, rig, Offset(_edgeX, centre));
+    rig.now += const Duration(milliseconds: 50);
+    await partial.moveBy(const Offset(0, 24), timeStamp: rig.now);
+    await tester.pump();
+    final before = rig.controller.offset;
+    expect(before, lessThan(rig.controller.position.maxScrollExtent));
+    rig.rowCount.value = 80;
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, before);
+    await partial.up();
+    await tester.pumpAndSettle();
+    // Resting at the end and gripping the wheel, or turning it up, is not
+    // reaching the end with this drag.
+    // A list away from its end only learns its new length on the next scroll.
+    for (var i = 0; i < 2; i++) {
+      rig.controller.jumpTo(rig.controller.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+    }
+    final atEnd = rig.controller.offset;
+    expect(atEnd, greaterThan(7000));
+    expect(rig.controller.position.extentAfter, 0);
+    final held = await _start(tester, rig, Offset(_edgeX, centre));
+    rig.now += const Duration(milliseconds: 50);
+    await held.moveBy(const Offset(0, -.01), timeStamp: rig.now);
+    await tester.pump();
+    final turnedUp = rig.controller.offset;
+    expect(turnedUp, inExclusiveRange(atEnd - .5, atEnd), reason: 'still within the end tolerance');
+    rig.rowCount.value = 120;
+    await tester.pumpAndSettle();
+    expect(rig.controller.offset, turnedUp);
+    await held.up();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('iOS wheel stays at screen centre as the nested header collapses', (tester) async {
