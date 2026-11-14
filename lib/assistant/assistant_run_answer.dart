@@ -496,10 +496,32 @@ extension _AssistantAnswer on AssistantRun {
             year: o.year,
             facts: o.facts,
           );
+    // A find_title card carries the same option, and shows its status too.
+    AssistantTitleMatch markMatch(AssistantTitleMatch m) {
+      final request = m.request;
+      if (request == null || after(request) == null) return m;
+      return AssistantTitleMatch(
+        matchId: m.matchId,
+        title: m.title,
+        kind: m.kind,
+        confidence: m.confidence,
+        targets: m.targets,
+        year: m.year,
+        request: mark(request),
+        series: m.series,
+        season: m.season,
+        episode: m.episode,
+        snippet: m.snippet,
+        facts: m.facts,
+      );
+    }
+
     for (var i = 0; i < _displays.length; i++) {
       final d = _displays[i];
       if (d is AssistantRequestOptions) {
         _displays[i] = AssistantRequestOptions(d.context, [for (final o in d.options) mark(o)]);
+      } else if (d is AssistantTitleMatches) {
+        _displays[i] = AssistantTitleMatches(d.context, [for (final m in d.matches) markMatch(m)]);
       }
     }
   }

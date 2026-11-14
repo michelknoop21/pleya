@@ -402,6 +402,9 @@ AssistantToolContext evalContext({
   addTearDown(m.dispose);
   m.debugRegisterClientForTesting(admin == null ? _EvalServer() : EvalAdminServer(admin));
   if (world?.offlineServer ?? false) m.debugRegisterClientForTesting(evalOfflineServer(), online: false);
+  if (world?.secondOfflineServer ?? false) {
+    m.debugRegisterClientForTesting(evalOfflineServer('bovenkamer'), online: false);
+  }
   m.setVisibleServerIds(null);
   return AssistantToolContext(
     servers: m,

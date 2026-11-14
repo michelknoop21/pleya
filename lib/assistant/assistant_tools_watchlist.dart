@@ -46,6 +46,11 @@ class AssistantWatchlistServices {
 final _watchlistRefs = Expando<Map<String, String>>('watchlistRefs');
 final _watchlistShown = Expando<Map<String, String>>('watchlistShown');
 
+/// The read of this run. A list with a source that is down is read anew on
+/// every read; once per question is enough, the next calls use the list as
+/// it stands.
+final _watchlistRead = Expando<AssistantWatchlistRead>('watchlistRead');
+
 bool _servesWatchlist(AssistantToolContext ctx, ServerId? _) => ctx.watchlist?.available() ?? false;
 
 AssistantWatchlistServices _watchlist(AssistantToolContext ctx) {
@@ -89,7 +94,7 @@ final List<AssistantTool> _watchlistTools = [
     serves: _servesWatchlist,
     run: (ctx, _, args) async {
       final services = _watchlist(ctx);
-      final read = await services.read();
+      final read = _watchlistRead[ctx] ??= await services.read();
       // No list at all is not an empty list: a failed read, a source that
       // did not answer, or an offline device without a stored list.
       if ((read.failed || read.incomplete || read.fromSnapshot) && services.entries().isEmpty) {

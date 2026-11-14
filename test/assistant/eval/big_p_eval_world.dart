@@ -86,8 +86,8 @@ const evalOfflineTitles = <(String, String, int)>[
 
 /// A second library server that is registered but offline: its libraries
 /// cannot be read, and Big P must say so rather than skip it.
-FakeServer evalOfflineServer() => _OfflineServer(
-  'kelder',
+FakeServer evalOfflineServer([String id = 'kelder']) => _OfflineServer(
+  id,
   libraries: {
     'films': [
       for (final (id, title, year) in evalOfflineTitles)
@@ -254,8 +254,14 @@ class EvalWatchlist {
   /// Item ids no source takes.
   final unsupported = <String>{};
 
+  /// How often a read was asked for.
+  int reads = 0;
+
   late final services = AssistantWatchlistServices(
-    read: () async => state,
+    read: () async {
+      reads++;
+      return state;
+    },
     entries: () => List.unmodifiable(entries),
     keyFor: (item) => unsupported.contains(item.id) ? null : 'eval:${item.id}',
     add: (item) async {
@@ -276,6 +282,7 @@ class EvalWorld {
   const EvalWorld({
     this.profile,
     this.offlineServer = false,
+    this.secondOfflineServer = false,
     this.trakt,
     this.seerr,
     this.memory,
@@ -299,6 +306,9 @@ class EvalWorld {
 
   /// Register the second server, offline.
   final bool offlineServer;
+
+  /// A third server, also offline, called bovenkamer.
+  final bool secondOfflineServer;
   final AssistantTraktServices? trakt;
   final FakeSeerr? seerr;
   final EvalMemory? memory;

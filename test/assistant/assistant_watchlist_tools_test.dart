@@ -102,10 +102,11 @@ void main() {
       (failed: false, incomplete: false, fromSnapshot: true),
     ]) {
       list.state = state;
-      await expectLater(_tool('my_watchlist').run(ctx, null, const {}), _refuses('watchlist_unreachable'));
+      // Each state is its own ask: a read is kept for the rest of an ask.
+      await expectLater(_tool('my_watchlist').run(ctx.fresh(), null, const {}), _refuses('watchlist_unreachable'));
     }
     list.state = (failed: false, incomplete: false, fromSnapshot: false);
-    final empty = await _tool('my_watchlist').run(ctx, null, const {}) as AssistantToolResult;
+    final empty = await _tool('my_watchlist').run(ctx.fresh(), null, const {}) as AssistantToolResult;
     expect(empty.data['total'], 0, reason: 'a clean read of an empty list is an empty list');
   });
 
@@ -115,7 +116,7 @@ void main() {
     expect(result.data['incomplete'], isTrue);
     expect(result.data['from_snapshot'], isTrue);
     list.state = (failed: true, incomplete: false, fromSnapshot: false);
-    final stale = await _tool('my_watchlist').run(ctx, null, const {}) as AssistantToolResult;
+    final stale = await _tool('my_watchlist').run(ctx.fresh(), null, const {}) as AssistantToolResult;
     expect(stale.data['incomplete'], isTrue, reason: 'a failed refresh over an older list');
     expect(stale.data['total'], 2);
   });
@@ -135,6 +136,17 @@ void main() {
     final again = await _tool('add_to_watchlist').run(ctx, _zolder, {'item_id': 'm02'}) as AssistantToolResult;
     expect(again.data['status'], 'already_on_watchlist');
     expect(list.entries, hasLength(3));
+  });
+
+  test('a list with a source down is read once per ask, not on every call', () async {
+    list.state = (failed: false, incomplete: true, fromSnapshot: false);
+    await _list(ctx);
+    await _list(ctx, {'kind': 'movie'});
+    await _list(ctx, {'title': 'dune'});
+    expect(list.reads, 1);
+    final next = ctx.fresh();
+    await _list(next);
+    expect(list.reads, 2, reason: 'the next ask reads again');
   });
 
   test('without a list the tools are not on offer', () {

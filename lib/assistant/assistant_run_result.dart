@@ -2,6 +2,24 @@ part of 'assistant_run.dart';
 
 // How an ask ends: the result the controller gets, and the split plans.
 
+/// Words that say a server could not be reached, in the languages Big P
+/// answers in.
+const _offlineWords = ['offline', 'niet bereikbaar', 'onbereikbaar', 'unreachable', 'not reachable'];
+
+/// Whether [text] says that [server] was offline: its name as a whole word in
+/// a sentence that also says it could not be reached. A plain mention does not
+/// count: a server called "Films" is named in "Films voor vanavond" without a
+/// word about its being offline.
+bool assistantNamesOffline(String text, String server) {
+  final name = server.trim().toLowerCase();
+  if (name.isEmpty) return false;
+  final word = RegExp('(^|[^\\p{L}\\p{N}])${RegExp.escape(name)}(\$|[^\\p{L}\\p{N}])', unicode: true);
+  for (final sentence in text.toLowerCase().split(RegExp(r'[.!?\n]'))) {
+    if (word.hasMatch(sentence) && _offlineWords.any(sentence.contains)) return true;
+  }
+  return false;
+}
+
 extension _AssistantResult on AssistantRun {
   AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
     text = assistantPlainDashes(text);
@@ -110,12 +128,11 @@ extension _AssistantResult on AssistantRun {
     // shown as complete (DEC-142). The model is told to say so; where its
     // answer names no such server, Pleya adds its own line.
     if (end == AssistantRunEnd.answered && kidsRefusal == null && !_ctx.libraryDoctorMode && text.isNotEmpty) {
-      final lower = text.toLowerCase();
       final unnamed = [
         for (final name in _ctx.offlineSeen)
-          if (!lower.contains(name.toLowerCase())) name,
+          if (!assistantNamesOffline(text, name)) name,
       ];
-      if (unnamed.isNotEmpty && unnamed.length == _ctx.offlineSeen.length) {
+      if (unnamed.isNotEmpty) {
         final line = unnamed.length == 1
             ? t.assistant.ends.serverOffline(name: unnamed.single)
             : t.assistant.ends.serversOffline(names: unnamed.join(', '));
