@@ -16,6 +16,9 @@ name: Goldens - Regenerate
 # the whole point of a golden is that a person looked at it.
 
 on:
+  push:
+    branches: [fix/tvos-detail-northstar-polish]
+    paths: [.github/workflows/goldens.yml]
   workflow_dispatch:
     inputs:
       targets:
@@ -56,7 +59,7 @@ jobs:
         # input is a string a person types, and interpolating it into shell
         # source would let it be something other than a list of paths.
         env:
-          TARGETS: ${{ inputs.targets }}
+          TARGETS: ${{ github.event_name == 'push' && 'test/goldens/tv_detail_source_line_golden_test.dart' || inputs.targets }}
         run: |
           targets="$TARGETS"
           if [ -z "$targets" ]; then targets="test/goldens"; fi
