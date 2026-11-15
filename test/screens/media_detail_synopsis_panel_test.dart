@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/screens/media_detail/tv/tv_detail_hero_widgets.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -52,7 +54,12 @@ void main() {
     durationMs: 14 * 60 * 1000,
   );
 
-  Future<void> pumpDetail(WidgetTester tester, MediaItem metadata, {Size size = const Size(1280, 720)}) async {
+  Future<void> pumpDetail(
+    WidgetTester tester,
+    MediaItem metadata, {
+    Size size = const Size(1280, 720),
+    bool dark = true,
+  }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -63,7 +70,7 @@ void main() {
       TranslationProvider(
         child: MaterialApp(
           builder: withNoticeLayer(),
-          theme: monoTheme(dark: true),
+          theme: monoTheme(dark: dark),
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: metadata)),
         ),
       ),
@@ -108,6 +115,52 @@ void main() {
     readMore.requestFocus();
     await tester.pump();
     expect(readMore.hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets('light synopsis focus stays visible without moving the text and returns after Menu', (tester) async {
+    await pumpDetail(tester, movie(summary: longSummary), dark: false);
+    final synopsis = find.byType(TvDetailSynopsis);
+    final text = find.descendant(of: synopsis, matching: find.text(longSummary));
+    final play = focusNodeWithLabel(tester, 'play_button');
+    play.requestFocus();
+    await tester.pump();
+    final before = tester.getRect(text);
+
+    FocusRingBorder border() {
+      final container = tester.widget<Container>(
+        find.descendant(
+          of: synopsis,
+          matching: find.byWidgetPredicate((w) => w is Container && w.foregroundDecoration is ShapeDecoration),
+        ),
+      );
+      final decoration = container.foregroundDecoration! as ShapeDecoration;
+      return decoration.shape as FocusRingBorder;
+    }
+
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(focusNodeWithLabel(tester, 'detail_read_more').hasPrimaryFocus, isTrue);
+    expect(tester.getRect(text), before);
+    final background = Theme.of(tester.element(synopsis)).scaffoldBackgroundColor;
+    final indicator = Color.alphaBlend(border().separator.color, background);
+    final a = background.computeLuminance();
+    final b = indicator.computeLuminance();
+    expect(((a > b ? a : b) + 0.05) / ((a > b ? b : a) + 0.05), greaterThanOrEqualTo(3));
+    expect(border().separator.width, greaterThan(0));
+
+    await press(tester, LogicalKeyboardKey.select);
+    expect(find.text(t.discover.overview), findsOneWidget);
+    await press(tester, LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(focusNodeWithLabel(tester, 'detail_read_more').hasPrimaryFocus, isTrue);
+    expect(border().separator.color.a, greaterThan(0));
+
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(play.hasPrimaryFocus, isTrue);
+    expect(border().ring.color.a, 0);
+    expect(border().separator.color.a, 0);
+    expect(tester.getRect(text), before);
   });
 
   testWidgets('a short synopsis has no Read more action, and UP from the action row stays put', (tester) async {

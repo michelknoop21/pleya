@@ -227,6 +227,11 @@ class TvDetailSynopsis extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: FocusTheme.getAnimationDuration(context),
                   decoration: FocusTheme.focusBackgroundDecoration(isFocused: focused, borderRadius: 16 * pt),
+                  // The white platter alone disappears on a light backdrop.
+                  // Keep the approved dark treatment and reuse the light ring.
+                  foregroundDecoration: FocusTheme.needsContrastSeparator(context)
+                      ? FocusTheme.focusDecoration(context, isFocused: focused, borderRadius: 16 * pt)
+                      : null,
                 ),
               ),
               lines,
