@@ -54,6 +54,34 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Validate PR 661 detail integration and negative control
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter test test/screens/media_detail/tv/ test/screens/media_detail_synopsis_panel_test.dart
+          target=lib/screens/media_detail/tv/tv_detail_hero_widgets.dart
+          cp "$target" "$RUNNER_TEMP/pr661-hero-widgets.dart"
+          trap 'cp "$RUNNER_TEMP/pr661-hero-widgets.dart" "$target"' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/screens/media_detail/tv/tv_detail_hero_widgets.dart')
+          source = path.read_text()
+          start = source.index('                  // The white platter alone disappears on a light backdrop.')
+          end = source.index('                      : null,', start) + len('                      : null,')
+          path.write_text(source[:start] + source[end:])
+          PY
+          if flutter test test/screens/media_detail_synopsis_panel_test.dart --plain-name 'light synopsis focus stays visible without moving the text and returns after Menu' > "$RUNNER_TEMP/pr661-negative.log" 2>&1; then
+            cat "$RUNNER_TEMP/pr661-negative.log"
+            echo "Negative control unexpectedly passed"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/pr661-negative.log"
+          grep -Eq 'Too few elements|No element' "$RUNNER_TEMP/pr661-negative.log"
+          echo "Negative control failed as expected: no visible light focus decoration"
+          cp "$RUNNER_TEMP/pr661-hero-widgets.dart" "$target"
+          trap - EXIT
+
       - name: Update goldens
         # Through the environment rather than `${{ }}` in the script body: the
         # input is a string a person types, and interpolating it into shell
