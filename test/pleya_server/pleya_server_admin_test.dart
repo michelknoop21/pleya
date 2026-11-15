@@ -24,6 +24,7 @@ void main() {
     http.Response Function(http.Request request) answer, {
     bool admin = true,
     bool administration = true,
+    Map<String, bool> capabilities = const {},
   }) {
     sent = [];
     final c = PleyaServerClient.create(
@@ -56,6 +57,7 @@ void main() {
               'artwork': true,
               'watch_state': true,
               'administration': administration,
+              ...capabilities,
             },
             'auth': {
               'methods': ['password'],
@@ -104,6 +106,53 @@ void main() {
       for (final call in calls) {
         await expectLater(call(), throwsA(isA<MediaServerAuthException>()));
       }
+      expect(sent, isEmpty);
+    });
+  });
+
+  group('one title and the next scan', () {
+    test('refreshItemMetadata posts the item route and follows its capability', () async {
+      final c = client(
+        (_) => json(const {'items': 6}, status: 202),
+        capabilities: const {'item_metadata_refresh': true},
+      );
+      await c.refreshCapabilities();
+      expect(c.supportsItemMetadataRefresh, isTrue);
+      await c.refreshItemMetadata('show-1');
+      expect(sent.last, ('POST /items/show-1/refresh-metadata', null));
+
+      final old = client((_) => json(null));
+      await old.refreshCapabilities();
+      expect(old.supportsItemMetadataRefresh, isFalse);
+    });
+
+    test('nextLibraryScan reads next_scan_at, and null where there is none', () async {
+      final c = client(
+        (_) => json({
+          'items': [
+            {
+              'id': 'lib-1',
+              'title': 'Films',
+              'kind': 'movies',
+              'item_count': 3,
+              'next_scan_at': '2026-11-13T18:00:00Z',
+            },
+            {'id': 'lib-2', 'title': 'Series', 'kind': 'shows', 'item_count': 1, 'next_scan_at': null},
+          ],
+        }),
+        capabilities: const {'scan_schedule': true},
+      );
+      await c.refreshCapabilities();
+      expect(await c.nextLibraryScan('lib-1'), DateTime.utc(2026, 11, 13, 18));
+      expect(await c.nextLibraryScan('lib-2'), isNull);
+      expect(sent.last.$1, 'GET /libraries');
+    });
+
+    test('a server without scan_schedule answers null without asking', () async {
+      final c = client((_) => json(null));
+      await c.refreshCapabilities();
+      sent.clear();
+      expect(await c.nextLibraryScan('lib-1'), isNull);
       expect(sent, isEmpty);
     });
   });

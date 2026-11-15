@@ -61,9 +61,11 @@ class TrackSheet extends StatelessWidget {
           icon = Symbols.subtitles_rounded;
         }
 
+        // A short sheet: one row of "Off" should not open a full-height panel.
         return BaseVideoControlSheet(
           title: title,
           icon: icon,
+          shrinkWrap: true,
           child: StreamBuilder<TrackSelection>(
             stream: player.streams.track,
             initialData: player.state.track,
@@ -113,8 +115,16 @@ class TrackSheet extends StatelessWidget {
                   crossAxisAlignment: .start,
                   children: [
                     Expanded(child: FocusTraversalGroup(child: audioColumnFor(selection, true))),
-                    VerticalDivider(width: 1, color: Theme.of(context).dividerColor),
-                    Expanded(child: FocusTraversalGroup(child: subtitleColumnFor(selection, true))),
+                    // A border, not a VerticalDivider: the divider would stretch
+                    // the shrink-wrapped row to the full sheet height.
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: BorderDirectional(start: BorderSide(color: Theme.of(context).dividerColor)),
+                        ),
+                        child: FocusTraversalGroup(child: subtitleColumnFor(selection, true)),
+                      ),
+                    ),
                   ],
                 );
               }
@@ -165,10 +175,12 @@ class _SourceAudioColumnState extends State<_SourceAudioColumn> {
     _initialScroll.maybeScrollTo(selectedIndex);
 
     return Column(
+      mainAxisSize: .min,
       children: [
         if (widget.showHeader) SheetColumnHeader(label: t.videoControls.audioLabel),
-        Expanded(
+        Flexible(
           child: ListView.builder(
+            shrinkWrap: true,
             controller: _initialScroll.controller,
             itemCount: widget.tracks.length,
             itemBuilder: (context, index) {
@@ -228,11 +240,13 @@ class _SourceSubtitleColumnState extends State<_SourceSubtitleColumn> {
     _initialScroll.maybeScrollTo(selectedIndex);
 
     return Column(
+      mainAxisSize: .min,
       children: [
         if (widget.showHeader) SheetColumnHeader(label: t.videoControls.subtitlesLabel),
         if (widget.trackControlsState.deferredSubtitles case final loader?) DeferredSubtitleNote(loader: loader),
-        Expanded(
+        Flexible(
           child: ListView.builder(
+            shrinkWrap: true,
             controller: _initialScroll.controller,
             itemCount: widget.tracks.length + 1,
             itemBuilder: (context, index) {
@@ -316,9 +330,10 @@ class _AudioColumnState extends State<_AudioColumn> {
     _initialScroll.maybeScrollTo(selectedIndex);
 
     return Column(
+      mainAxisSize: .min,
       children: [
         if (widget.showHeader) SheetColumnHeader(label: t.videoControls.audioLabel),
-        Expanded(
+        Flexible(
           // The rendering mode belongs on the selected track and nowhere else:
           // it says what the system is doing with *this* track right now, so
           // it has to follow route changes rather than be baked into the list.
@@ -326,6 +341,7 @@ class _AudioColumnState extends State<_AudioColumn> {
             stream: AppleAudioSessionService.instance.routeChanges,
             initialData: AppleAudioSessionService.instance.lastKnown,
             builder: (context, routeSnapshot) => ListView.builder(
+              shrinkWrap: true,
               controller: _initialScroll.controller,
               itemCount: widget.tracks.length,
               itemBuilder: (context, index) {
@@ -423,10 +439,12 @@ class _SubtitleColumnState extends State<_SubtitleColumn> {
     _initialScroll.maybeScrollTo(selectedIndex);
 
     return Column(
+      mainAxisSize: .min,
       children: [
         if (widget.showHeader) SheetColumnHeader(label: t.videoControls.subtitlesLabel),
-        Expanded(
+        Flexible(
           child: ListView.builder(
+            shrinkWrap: true,
             controller: _initialScroll.controller,
             itemCount: itemCount,
             itemBuilder: (context, index) {

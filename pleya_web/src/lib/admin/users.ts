@@ -142,26 +142,19 @@ export function grantsFrom(items: LibraryPermission[]): Grants {
   return Object.fromEntries(items.map((p) => [p.library_id, p.permission]));
 }
 
-/** Een trede is aangevinkt als de toegekende trede er minstens zo hoog is (de ladder). */
-export function isGranted(grants: Grants, libraryId: string, rung: Rung): boolean {
-  const have = grants[libraryId];
-  return have !== undefined && LADDER[have] >= LADDER[rung];
+/** Wat de segmentkeuze per bibliotheek aanbiedt: de ladder uit DEC-119 plus geen recht. */
+export type Level = Rung | 'none';
+
+/** Een beperkte gebruiker krijgt Beheren niet aangeboden; de server weigert het ook. */
+export function levelsFor(role: Role): Level[] {
+  return role === 'restricted' ? ['none', 'view', 'download'] : ['none', ...RUNGS];
 }
 
-/**
- * Een vinkje zetten of weghalen volgens de ladder uit DEC-119: downloaden
- * impliceert kijken, beheren impliceert beide. Wie een lagere trede weghaalt
- * haalt de hogere ook weg.
- */
-export function toggleGrant(grants: Grants, libraryId: string, rung: Rung, checked: boolean): Grants {
+/** Het niveau van één bibliotheek zetten; `none` haalt de bibliotheek uit de lijst. */
+export function setGrant(grants: Grants, libraryId: string, level: Level): Grants {
   const next = { ...grants };
-  if (checked) {
-    next[libraryId] = rung;
-    return next;
-  }
-  const below = RUNGS.filter((r) => LADDER[r] < LADDER[rung]).pop();
-  if (below) next[libraryId] = below;
-  else delete next[libraryId];
+  if (level === 'none') delete next[libraryId];
+  else next[libraryId] = level;
   return next;
 }
 
@@ -175,7 +168,7 @@ export function clampForRole(grants: Grants, role: Role): Grants {
   ) as Grants;
 }
 
-/** De body van `PUT /users/{id}/permissions`: alleen bibliotheken die nog bestaan en een vinkje hebben. */
+/** De body van `PUT /users/{id}/permissions`: alleen bibliotheken die nog bestaan en een niveau hebben. */
 export function permissionsBody(grants: Grants, libraries: Library[]): LibraryPermission[] {
   return libraries.flatMap((l) => {
     const rung = grants[l.id];
@@ -183,7 +176,7 @@ export function permissionsBody(grants: Grants, libraries: Library[]): LibraryPe
   });
 }
 
-export function rungLabel(rung: Rung): string {
+export function rungLabel(rung: Level): string {
   return t(`admin.users.perm.${rung}` as MessageKey);
 }
 
@@ -196,6 +189,16 @@ export function grantLines(grants: Grants, libraries: Library[]): string[] {
   });
 }
 
+// --- De tabs van scherm 27 -------------------------------------------------
+
+export const USER_TABS = ['profile', 'access', 'devices'] as const;
+export type UserTab = (typeof USER_TABS)[number];
+
+/** De tab uit `?tab=`; zonder of met een onbekende waarde is dat Toegang. */
+export function parseTab(value: string | null | undefined): UserTab {
+  return USER_TABS.find((tab) => tab === value) ?? 'access';
+}
+
 // --- Opslaan van het scherm 27 ---------------------------------------------
 
 export interface SavePlan {
@@ -205,7 +208,8 @@ export interface SavePlan {
   permissions: LibraryPermission[] | null;
   /** Neemt deze wijziging rechten af? */
   lowering: boolean;
-  /** Vraagt dit plan om een bevestiging? */
+  /** Vraagt dit plan om een bevestiging? Elke rol- of rechtenwijziging: Opslaan staat
+   *  in de kop en is dus ook bereikbaar vanaf een tab die de wijziging niet toont. */
   needsConfirm: boolean;
 }
 
@@ -225,7 +229,7 @@ export function savePlan(input: {
       ? permissionsBody(clampForRole(input.grants, finalRole), input.libraries)
       : null;
   const lowering = role !== null && isLowering(input.current, role);
-  return { role, permissions, lowering, needsConfirm: lowering || permissions !== null };
+  return { role, permissions, lowering, needsConfirm: role !== null || permissions !== null };
 }
 
 export function hasChanges(plan: SavePlan): boolean {

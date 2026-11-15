@@ -87,6 +87,22 @@ class ConnectionRegistry {
     appLogger.d('ConnectionRegistry: upserted ${connection.kind.id}/${connection.id}');
   }
 
+  /// The ids of every stored Pleya Server row, whether or not it decodes.
+  Future<List<String>> pleyaServerIds() async {
+    final rows = await (_db.select(_db.connections)..where((t) => t.kind.equals(ConnectionKind.pleyaServer.id))).get();
+    return [for (final row in rows) row.id];
+  }
+
+  /// Whether a row with [id] is stored, whether or not it still decodes.
+  Future<bool> exists(String id) async =>
+      await (_db.select(_db.connections)..where((t) => t.id.equals(id))).getSingleOrNull() != null;
+
+  /// [upsert], but only while the row is still there, in one transaction: a
+  /// late write cannot bring back a connection that was removed meanwhile.
+  Future<void> updateIfExists(Connection connection) => _db.transaction(() async {
+    if (await exists(connection.id)) await upsert(connection);
+  });
+
   /// Remove a stored connection. If the removed row was the default, the
   /// oldest remaining connection (if any) becomes default.
   Future<void> remove(String id) async {

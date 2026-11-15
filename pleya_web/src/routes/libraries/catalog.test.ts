@@ -4,7 +4,7 @@ const h = vi.hoisted(() => ({ items: vi.fn(), facets: vi.fn(), filters: true, wa
 vi.mock('$app/state', () => ({ page: { params: {id:'lib'}, get url() {return h.url;}, state: {} } }));
 vi.mock('$app/navigation', () => ({goto: h.goto}));
 vi.mock('../../lib/stores/session.svelte.js', () => ({ session: {
-  library: () => ({id:'lib',title:'Films',kind:'movies'}),
+  library: () => ({id:'lib',title:'Films',kind:'movies',item_count:461}),
   get capabilities() { return {filters:h.filters,watch_state:h.watch}; },
   client: {libraryItems:h.items, libraryFacets:h.facets}
 } }));
@@ -24,6 +24,15 @@ describe('public library catalog', () => {
     expect(h.facets).toHaveBeenCalledWith('lib',expect.any(AbortSignal));
     expect(await screen.findByText('No titles match these filters.')).toBeInTheDocument();
     expect(screen.getByRole('combobox',{name:'Sort'}).querySelectorAll('option')).toHaveLength(10);
+  });
+  it('counts what a filter leaves of the library and gives a film its year and duration', async () => {
+    h.url=new URL('http://client.test/libraries/lib?genre=Drama');
+    h.items.mockResolvedValue({items:[{id:'m',kind:'movie',title:'Fixture film',year:2024,duration_ms:8_340_000,added_at:'2026-10-29T12:00:00Z'}],next_cursor:'more',total_estimate:128});
+    render(Catalog);
+    expect(await screen.findByText('128 of 461')).toBeInTheDocument();
+    expect(screen.getByText('2024 · 2h 19m')).toBeInTheDocument();
+    expect(screen.getByText(/^1 of 128 shown/)).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'Load more'})).toBeInTheDocument();
   });
   it('uses only legacy requests and sort choices on an old server', async () => {
     h.filters=false; render(Catalog);

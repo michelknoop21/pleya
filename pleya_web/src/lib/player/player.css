@@ -1,7 +1,7 @@
 /*
- * De spelerschil uit mockup 50 (docs/assets/pleya-web-northstar/50-speler@1600.jpg
- * en @393.jpg). Globaal geladen door Player.svelte; elke regel begint met
- * `.player` zodat niets daarbuiten geraakt wordt.
+ * De spelerschil volgens het doelbeeld Kijken-speler (bediening, menu's, kaart
+ * "volgende aflevering" en slotscherm). Globaal geladen door Player.svelte; elke
+ * regel begint met `.player` zodat niets daarbuiten geraakt wordt.
  *
  * web: de speler is in elk thema donker, zoals de TV-speler. Wit op beeld is
  * daarom hier een vaste kleur en geen --ink, dat op het lichte thema #111 is.
@@ -51,16 +51,17 @@
   background: linear-gradient(rgba(0, 0, 0, 0.62), transparent);
 }
 
+.player__video--cover {
+  object-fit: cover;
+}
+
 .player .top,
-.player .bottom__controls,
-.player .center--controls {
+.player .bottom__controls {
   transition: opacity var(--dur-slow) var(--ease);
 }
 
 .player--idle .top,
 .player--idle .bottom__controls,
-.player--idle .center--controls,
-.player--idle .center--controls > *,
 .player--idle .scrim {
   opacity: 0;
   pointer-events: none;
@@ -84,6 +85,14 @@
   pointer-events: none;
 }
 
+.player .caption--small {
+  font-size: clamp(13px, 1.8vw, 22px);
+}
+
+.player .caption--large {
+  font-size: clamp(20px, 3.2vw, 40px);
+}
+
 .player .caption--low {
   position: absolute;
   grid-area: 1 / 1 / -1 / 2;
@@ -103,14 +112,6 @@
   padding: 22px var(--player-inset) 0;
 }
 
-.player .film {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: var(--space);
-  margin-bottom: 8px;
-}
-
 .player .film__text {
   flex: 1 1 auto;
   min-width: 0;
@@ -118,9 +119,8 @@
 
 .player .film__title {
   margin: 0;
-  font-size: clamp(20px, 2.7vw, 38px);
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: -0.035em;
   line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -129,8 +129,8 @@
 
 .player .film__meta {
   margin: 2px 0 0;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.86);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -168,7 +168,7 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
-/* --- Midden: tien terug, afspelen, tien vooruit. ------------------------ */
+/* --- Midden: de laadstaat en de foutstaat. ------------------------------- */
 .player .center {
   position: absolute;
   inset: 0;
@@ -183,26 +183,6 @@
 
 .player .center > * {
   pointer-events: auto;
-}
-
-.player .center--controls {
-  flex-direction: row;
-  gap: 40px;
-}
-
-.player .round--side {
-  width: 52px;
-  height: 52px;
-  background: rgba(0, 0, 0, 0.38);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-}
-
-.player .round--main {
-  width: 74px;
-  height: 74px;
-  background: var(--player-primary);
-  color: var(--player-primary-ink);
-  border-radius: 16px;
 }
 
 .player .center__text {
@@ -302,7 +282,7 @@
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.72) 38px);
 }
 
-/* Smal: inset 16, kop zonder chips, een kleinere middenrij (mockup 50 op 393). */
+/* Smal: inset 16 en een kop zonder chips. */
 @media (max-width: 899px) {
   .player {
     --player-inset: 16px;
@@ -313,25 +293,6 @@
   .player .top {
     padding-top: calc(16px + env(safe-area-inset-top, 0px));
     gap: var(--space);
-  }
-  .player .center--controls {
-    gap: 28px;
-  }
-}
-
-@media (max-width: 379px) {
-  .player .center--controls {
-    gap: 18px;
-  }
-  .player .round--main {
-    width: 64px;
-    height: 64px;
-  }
-}
-
-@media (max-height: 440px) {
-  .player .center--controls {
-    grid-area: 1 / 1 / 2 / 2;
   }
 }
 
@@ -388,4 +349,90 @@
 
 @keyframes player-toast-in {
   from { opacity: 0; }
+}
+
+/*
+ * --- Slotscherm (doelbeeld Kijken-speler-slot). Het beeld krimpt naar een
+ * tegel linksboven en loopt door; de rest van het scherm is van de route.
+ * De speler is zelf de scrollende laag, zodat de tegel met de inhoud meeschuift.
+ */
+.player--end {
+  --tile-w: 400px;
+  --tile-h: 225px;
+  --tile-top: calc(92px + env(safe-area-inset-top, 0px));
+  --player-inset: 48px;
+  overflow-y: auto;
+  background: #141414;
+  cursor: auto;
+}
+
+.player--end .top,
+.player--end .bottom:not([hidden]),
+.player--end .scrim,
+.player--end .player-toast {
+  display: none;
+}
+
+.player--end .player__video {
+  inset: var(--tile-top) auto auto var(--player-inset);
+  width: var(--tile-w);
+  height: var(--tile-h);
+  border-radius: 14px;
+}
+
+.player .end {
+  /* De gedeelde componenten lezen de thematokens; het slotscherm is in elk thema donker. */
+  color-scheme: dark;
+  --bg: #141414;
+  --surface: #1f1f1f;
+  --surface-elevated: #2f2f2f;
+  --outline: rgba(255, 255, 255, 0.122);
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.702);
+  --skeleton: rgba(255, 255, 255, 0.07);
+  position: relative;
+  min-height: 100%;
+  padding: calc(28px + env(safe-area-inset-top, 0px)) var(--player-inset) 28px;
+  color: #fff;
+}
+
+.player .end__tile {
+  position: absolute;
+  top: var(--tile-top);
+  left: var(--player-inset);
+  width: var(--tile-w);
+  height: var(--tile-h);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.player .end__summary {
+  min-height: var(--tile-h);
+  margin: 20px 0 0 calc(var(--tile-w) + 40px);
+}
+
+/* De rij loopt tot de schermrand door en lijnt zijn eerste kaart uit op de tegel. */
+.player .end__rail {
+  --inset: var(--player-inset);
+  margin: 36px calc(-1 * var(--player-inset)) 0;
+}
+
+@media (max-width: 899px) {
+  .player--end {
+    --player-inset: 16px;
+    /* cqw en niet vw: een scrollbalk telt bij vw mee en duwt de tegel dan uit de marge. */
+    container-type: inline-size;
+    --tile-w: calc(100cqw - 32px);
+    --tile-h: calc((100cqw - 32px) * 9 / 16);
+    --tile-top: calc(72px + env(safe-area-inset-top, 0px));
+  }
+
+  .player .end {
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  }
+
+  .player .end__summary {
+    min-height: 0;
+    margin: calc(var(--tile-h) + 32px) 0 0;
+  }
 }

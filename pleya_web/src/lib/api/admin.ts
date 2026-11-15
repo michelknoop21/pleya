@@ -15,6 +15,7 @@ import type {
   CreateLibraryRequest,
   Job,
   Library,
+  LibraryMaintenance,
   MetadataCoverage,
   Scan,
   StorageRoot,
@@ -94,9 +95,36 @@ export function adminApi(client: PleyaClient) {
         )
       ).items[0] ?? null,
 
+    /**
+     * `POST /items/{id}/refresh-metadata` (`capabilities.item_metadata_refresh`):
+     * de film of serie van het item staat weer aan de beurt voor de
+     * metadataronde. `items` telt wat aan de beurt staat, 0 bij een afgewezen
+     * of onbesliste titel.
+     */
+    refreshItemMetadata: (itemId: string): Promise<{ items: number }> =>
+      client.request((raw) =>
+        raw.POST('/items/{item_id}/refresh-metadata', { params: { path: { item_id: itemId } } })
+      ),
+
     startScan: (libraryId: string): Promise<Scan> =>
       client.request((raw) =>
         raw.POST('/libraries/{library_id}/scan', { params: { path: { library_id: libraryId } } })
+      ),
+
+    /** `items` is het aantal titels dat nu aan de beurt staat. */
+    refreshLibraryMetadata: (libraryId: string): Promise<LibraryMaintenance> =>
+      client.request((raw) =>
+        raw.POST('/libraries/{library_id}/refresh-metadata', {
+          params: { path: { library_id: libraryId } }
+        })
+      ),
+
+    /** `items` is het aantal kandidaten bij de aanvraag; de job kan er minder verwijderen. */
+    emptyLibraryTrash: (libraryId: string): Promise<LibraryMaintenance> =>
+      client.request((raw) =>
+        raw.POST('/libraries/{library_id}/empty-trash', {
+          params: { path: { library_id: libraryId } }
+        })
       ),
 
     createLibrary: (body: CreateLibraryRequest): Promise<Library> =>

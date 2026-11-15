@@ -377,4 +377,53 @@ void main() {
       expect(plexAfterSwitch.idLookups, isEmpty);
     });
   });
+
+  group('a copy deleted from its server', () {
+    const query = UnifiedCatalogQuery(kind: MediaKind.show);
+
+    UnifiedCatalogService service(_Client plex, _Client jellyfin, {int groupsPerPage = 20}) => UnifiedCatalogService(
+      query: query,
+      libraries: [_library('srv-plex', MediaBackend.plex), _library('srv-jf', MediaBackend.jellyfin)],
+      clientFor: (id) => {'srv-plex': plex, 'srv-jf': jellyfin}[id.value],
+      groupsPerPage: groupsPerPage,
+    );
+
+    test('one copy of two goes: the card stays, with one source and that one as representative', () async {
+      final plex = _Client(MediaBackend.plex, [_plexShow('p1', 'Severance', 2022, tmdb: 95396)]);
+      final jellyfin = _Client(MediaBackend.jellyfin, [_jellyfinShow('j1', 'Severance', 2022, tmdb: 95396)]);
+      final catalog = service(plex, jellyfin);
+      final before = await _drain(catalog);
+      expect(before.groups.single.sources, hasLength(2));
+
+      expect(catalog.removeDeletedItem('srv-plex:p1'), isTrue);
+      final group = catalog.snapshot.groups.single;
+      expect(group.hasMultipleSources, isFalse, reason: 'no "2 bronnen" badge any more');
+      expect(group.representativeSource.sourceKey, 'srv-jf:j1');
+      expect(group.watchState.representativeSourceKey, 'srv-jf:j1');
+    });
+
+    test('the only copy goes: the card goes', () async {
+      final plex = _Client(MediaBackend.plex, [
+        _plexShow('p1', 'Severance', 2022, tmdb: 95396),
+        _plexShow('p2', 'Silo', 2023, tmdb: 125988),
+      ]);
+      final catalog = service(plex, _Client(MediaBackend.jellyfin, const []));
+      await _drain(catalog);
+      expect(catalog.removeDeletedItem('srv-plex:p2'), isTrue);
+      expect(catalog.snapshot.groups.map((g) => g.representativeSource.item.title), ['Severance']);
+      expect(catalog.removeDeletedItem('srv-plex:unknown'), isFalse);
+    });
+
+    test('a page loaded after the delete does not bring the deleted copy back', () async {
+      final plex = _Client(MediaBackend.plex, [
+        for (var i = 0; i < 6; i++) _plexShow('p$i', 'Show $i', 2000 + i, tmdb: 1000 + i),
+      ]);
+      final catalog = service(plex, _Client(MediaBackend.jellyfin, const []), groupsPerPage: 2);
+      await catalog.loadMore();
+      final first = catalog.snapshot.groups.first.representativeSource.sourceKey;
+      expect(catalog.removeDeletedItem(first), isTrue);
+      final after = await _drain(catalog);
+      expect(after.groups.expand((g) => g.sources).map((s) => s.sourceKey), isNot(contains(first)));
+    });
+  });
 }

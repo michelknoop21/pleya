@@ -10,6 +10,9 @@ const all: Capabilities = {
   metadata_search: false,
   metadata_overrides: false,
   library_maintenance: false,
+  watch_state_tree: false,
+  item_metadata_refresh: false,
+  scan_schedule: false,
   artwork_choices: false,
   assistant_memory: false,
   browse: true,
@@ -21,6 +24,7 @@ const all: Capabilities = {
   playback_plan: false,
   playback_quality: false,
   playback_audio_selection: false,
+  playback_start_position: false,
   embedded_subtitles: false,
   playback_subtitles: false,
   history: false,
@@ -45,6 +49,7 @@ const all: Capabilities = {
   cookie_auth: false,
   cookie_upgrade: false,
   administration: false,
+  media_delete: false,
   mcp: false
 };
 

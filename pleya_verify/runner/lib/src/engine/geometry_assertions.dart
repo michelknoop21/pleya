@@ -11,6 +11,7 @@
 /// ```yaml
 /// - assert: {id: discover.hero, insideViewport: true}
 /// - assert: {id: discover.hero.play, minimumTapTarget: 44}
+/// - assert: {id: player.play_pause, minBottomGap: 60}
 /// - assert: {id: discover.hero, notOverlapping: sidebar.rail}
 /// - assert: {id: library.grid, below: library.filters}
 /// - assert: {id: discover.continue_watching, peeksAbove: nav.bar}
@@ -25,7 +26,7 @@ library;
 import '../geometry.dart';
 
 /// Unary predicates: subject rect only.
-const Set<String> unaryGeometryPredicates = {'insideViewport', 'minimumTapTarget', 'leftInset'};
+const Set<String> unaryGeometryPredicates = {'insideViewport', 'minimumTapTarget', 'leftInset', 'minBottomGap'};
 
 /// Binary predicates: subject rect against a second node named by id.
 const Set<String> binaryGeometryPredicates = {
@@ -149,6 +150,11 @@ GeometryVerdict _evaluateUnary(String predicate, Object? value, GeoRect subject,
         );
       }
       throw GeometryAssertionException('leftInset needs a number or {expected, tolerance}, got: $value');
+    case 'minBottomGap':
+      // `minBottomGap: 60`: the subject ends at least that far above the
+      // bottom of the viewport, in the viewport's own units.
+      if (value is num) return minBottomGap(subject, _viewportRect(viewport), minGap: value.toDouble());
+      throw GeometryAssertionException('minBottomGap needs a number, got: $value');
     default:
       throw GeometryAssertionException('unary geometry predicate not implemented: $predicate');
   }

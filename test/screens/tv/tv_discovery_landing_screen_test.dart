@@ -33,6 +33,7 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/media/unified/unified_media_hub.dart';
 import 'package:pleya/providers/tv_discovery_landing_provider.dart';
 import 'package:pleya/screens/tv/tv_discovery_landing_screen.dart';
+import 'package:pleya/screens/tv/tv_shell_frame.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -111,6 +112,16 @@ void main() {
   });
 
   tearDownAll(() => TvDetectionService.debugSetAppleTVOverride(null));
+
+  testWidgets('a landing in the TV shell leaves the top margin to the navigation', (tester) async {
+    await pumpLanding(tester, inShell: true);
+    final list = find.descendant(
+      of: find.byType(TvDiscoveryLandingScreen),
+      matching: find.byWidgetPredicate((widget) => widget is ListView && widget.scrollDirection == Axis.vertical),
+    );
+    expect((tester.widget<ListView>(list).padding! as EdgeInsets).top, 0);
+    expect(find.byType(TvViewAllAction), findsOneWidget);
+  });
 
   testWidgets('a catalog push+pop restores the action focus and the rail\'s remembered tile', (tester) async {
     resetSharedPreferencesForTest();
@@ -657,6 +668,7 @@ pumpLanding(
   /// SYS-1a's shell hook. Null (the default) exercises the standalone fallback
   /// a golden or a plain mount uses; LAND6 needs the shell path itself.
   VoidCallback? onOpenAll,
+  bool inShell = false,
 }) async {
   resetSharedPreferencesForTest();
   SettingsService.resetForTesting();
@@ -707,6 +719,15 @@ pumpLanding(
   }
 
   setGoldenSurfaceSize(tester);
+  final screen = TvDiscoveryLandingScreen(
+    title: title ?? t.unifiedCatalog.moviesTitle,
+    allTitle: allTitle ?? t.unifiedCatalog.discovery.allMovies,
+    viewAllSemanticLabel: t.unifiedCatalog.discovery.semantics.viewAllMovies,
+    automationSurface: 'movies',
+    railsOf: railsOf ?? (landing) => landing.movieRails,
+    buildAllScreen: () => const Scaffold(body: Center(child: Text('All Movies'))),
+    onOpenAll: onOpenAll,
+  );
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -719,17 +740,7 @@ pumpLanding(
           debugShowCheckedModeBanner: false,
           theme: monoTheme(dark: true),
           home: InputModeTracker(
-            child: Scaffold(
-              body: TvDiscoveryLandingScreen(
-                title: title ?? t.unifiedCatalog.moviesTitle,
-                allTitle: allTitle ?? t.unifiedCatalog.discovery.allMovies,
-                viewAllSemanticLabel: t.unifiedCatalog.discovery.semantics.viewAllMovies,
-                automationSurface: 'movies',
-                railsOf: railsOf ?? (landing) => landing.movieRails,
-                buildAllScreen: () => const Scaffold(body: Center(child: Text('All Movies'))),
-                onOpenAll: onOpenAll,
-              ),
-            ),
+            child: Scaffold(body: inShell ? TvShellSurface(child: screen) : screen),
           ),
         ),
       ),

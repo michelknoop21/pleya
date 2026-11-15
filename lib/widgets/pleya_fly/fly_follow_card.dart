@@ -31,7 +31,13 @@ import 'fly_follow_indicators.dart';
 /// The Meenemen card on iPhone Home (A-23e, 45-h). It shows only while an
 /// Apple TV in the Home plays something; one tap and this phone follows it.
 class FlyFollowHomeCard extends StatefulWidget {
-  const FlyFollowHomeCard({super.key});
+  const FlyFollowHomeCard({super.key, this.receiveSupported = pleyaFlyReceiveSupported, this.createPuller});
+
+  /// Tests stand in for an iPhone, and for the puller with its transport.
+  @visibleForTesting
+  final bool Function() receiveSupported;
+  @visibleForTesting
+  final FlyFollowPuller Function()? createPuller;
 
   @override
   State<FlyFollowHomeCard> createState() => _FlyFollowHomeCardState();
@@ -39,18 +45,48 @@ class FlyFollowHomeCard extends StatefulWidget {
 
 class _FlyFollowHomeCardState extends State<FlyFollowHomeCard> {
   FlyFollowPuller? _puller;
+  ValueNotifier<bool>? _enabled;
 
   @override
   void initState() {
     super.initState();
-    if (!pleyaFlyReceiveSupported()) return;
+    if (!widget.receiveSupported()) return;
+    final settings = SettingsService.instanceOrNull;
+    if (settings != null) {
+      _followSetting(settings);
+    } else {
+      unawaited(SettingsService.getInstance().then(_followSetting));
+    }
+  }
+
+  /// The card follows the setting while Home stays mounted: switched on later,
+  /// the puller starts then, not at the next mount.
+  void _followSetting(SettingsService settings) {
+    if (!mounted) return;
+    _enabled = settings.listenable(SettingsService.enablePleyaFlyReceive)..addListener(_onEnabledChanged);
+    _onEnabledChanged();
+  }
+
+  void _onEnabledChanged() {
     // Pleya Fly off on this phone: no card either.
-    final enabled = SettingsService.instanceOrNull?.read(SettingsService.enablePleyaFlyReceive) ?? false;
-    if (!enabled) return;
+    final enabled = _enabled?.value ?? false;
+    if (enabled == (_puller != null)) return;
+    setState(() {
+      if (enabled) {
+        _puller = (widget.createPuller ?? _createPuller)();
+        unawaited(_puller!.start());
+      } else {
+        _puller?.dispose();
+        _puller = null;
+      }
+    });
+  }
+
+  FlyFollowPuller _createPuller() {
     final companion = context.read<CompanionRemoteProvider>();
     final multiServer = context.read<MultiServerProvider>();
     final watchTogether = context.read<WatchTogetherProvider>();
-    _puller = FlyFollowPuller(
+    return FlyFollowPuller(
       transport: CompanionRemoteFollowTransport(
         companion,
         ensureCrypto: () => mounted ? ensureCompanionRemoteCrypto(context) : Future.value(false),
@@ -73,11 +109,11 @@ class _FlyFollowHomeCardState extends State<FlyFollowHomeCard> {
         );
       },
     );
-    unawaited(_puller!.start());
   }
 
   @override
   void dispose() {
+    _enabled?.removeListener(_onEnabledChanged);
     _puller?.dispose();
     super.dispose();
   }

@@ -10,6 +10,7 @@ type S = components['schemas'];
 export type DeviceCapabilities = S['DeviceCapabilities'];
 export type CapabilityStrings = S['CapabilityStrings'];
 export type PlaybackPlan = S['PlaybackPlan'];
+export type PlaybackQuality = S['PlaybackQuality'];
 export type PlaybackPlanRequest = S['PlaybackPlanRequest'];
 export type PlaybackReason = S['PlaybackReason'];
 export type StreamSession = S['StreamSession'];

@@ -53,6 +53,8 @@ type InfoAuth struct {
 
 // Capabilities is wat deze server werkelijk aanbiedt, en is altijd leidend.
 type Capabilities struct {
+	PushNotifications      bool `json:"push_notifications,omitempty"`
+	PushRichContent        bool `json:"push_rich_content,omitempty"`
 	PlaybackSubtitles      bool `json:"playback_subtitles"`
 	EmbeddedSubtitles      bool `json:"embedded_subtitles"`
 	AssistantMemory        bool `json:"assistant_memory"`
@@ -62,9 +64,12 @@ type Capabilities struct {
 	WatchState             bool `json:"watch_state"`
 	PlaybackQuality        bool `json:"playback_quality"`
 	PlaybackAudioSelection bool `json:"playback_audio_selection"`
-	PlaybackPlan           bool `json:"playback_plan"`
-	Transcode              bool `json:"transcode"`
-	Downloads              bool `json:"downloads"`
+	// PlaybackStartPosition: POST /playback/plan kent start_position_ms en een
+	// omzetting begint daar.
+	PlaybackStartPosition bool `json:"playback_start_position"`
+	PlaybackPlan          bool `json:"playback_plan"`
+	Transcode             bool `json:"transcode"`
+	Downloads             bool `json:"downloads"`
 	// Backups (venster 7, S25). Aan zodra de back-upservice en de wachtrij er
 	// zijn: GET/POST /backups, GET /backups/{id} en de hersteltest en restore
 	// eronder bestaan dan voor klasse admin.
@@ -124,6 +129,20 @@ type Capabilities struct {
 	// /libraries/{id}/empty-trash en /refresh-metadata bestaan; legen vraagt de
 	// wachtrij, net als de scan.
 	LibraryMaintenance bool `json:"library_maintenance"`
+	// MediaDelete (DEC-XXX, media verwijderen). Aan als de beheerder het
+	// verwijderen aanzette en minstens één mediaroot bij het opstarten
+	// schrijfbaar bleek. Weggelaten als het uit staat, zodat het antwoord van
+	// een server zonder deze functie byte voor byte gelijk blijft.
+	MediaDelete bool `json:"media_delete,omitempty"`
+
+	// WatchStateTree (DEC-XXX, kijkstatus van een seizoen of serie). POST
+	// /items/{id}/watch-state markeert een item met alles eronder in één
+	// transactie. ItemMetadataRefresh (DEC-XXX, metadata per titel): POST
+	// /items/{id}/refresh-metadata bestaat voor klasse admin. ScanSchedule
+	// (DEC-XXX, volgende scan): Library draagt next_scan_at voor klasse admin.
+	WatchStateTree      bool `json:"watch_state_tree"`
+	ItemMetadataRefresh bool `json:"item_metadata_refresh"`
+	ScanSchedule        bool `json:"scan_schedule"`
 
 	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
 	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
@@ -271,6 +290,11 @@ type Library struct {
 	Managed             *string `json:"managed,omitempty"`
 	ScanIntervalSeconds **int   `json:"scan_interval_seconds,omitempty"`
 	ScanOnStart         *bool   `json:"scan_on_start,omitempty"`
+
+	// NextScanAt is het tijdstip van de volgende geplande scan, alleen voor
+	// klasse admin en alleen onder capabilities.scan_schedule (DEC-XXX, volgende
+	// scan). null betekent: er is geen geplande scan.
+	NextScanAt **string `json:"next_scan_at,omitempty"`
 }
 
 // LibraryList is het antwoord van GET /libraries.

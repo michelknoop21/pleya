@@ -48,6 +48,9 @@ class FocusedScrollScaffold extends StatefulWidget {
   /// stays out of the focus order, as the bar's did. Null keeps the plain bar.
   final Widget? header;
 
+  /// Replacement for the standard sliver bar on a screen with its own chrome.
+  final Widget? sliverAppBar;
+
   const FocusedScrollScaffold({
     super.key,
     required this.title,
@@ -57,6 +60,7 @@ class FocusedScrollScaffold extends StatefulWidget {
     this.automaticallyImplyLeading = true,
     this.onBackPressed,
     this.header,
+    this.sliverAppBar,
   });
 
   @override
@@ -99,12 +103,14 @@ class _FocusedScrollScaffoldState extends State<FocusedScrollScaffold> {
         child: CustomScrollView(
           slivers: [
             ExcludeFocus(
-              child: CustomAppBar(
-                title: widget.title,
-                pinned: widget.pinned,
-                actions: widget.actions,
-                automaticallyImplyLeading: widget.automaticallyImplyLeading,
-              ),
+              child:
+                  widget.sliverAppBar ??
+                  CustomAppBar(
+                    title: widget.title,
+                    pinned: widget.pinned,
+                    actions: widget.actions,
+                    automaticallyImplyLeading: widget.automaticallyImplyLeading,
+                  ),
             ),
             ...widget.slivers,
           ],

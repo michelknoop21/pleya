@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../utils/layout_constants.dart';
 import '../../../utils/platform_detector.dart';
+import '../../../utils/tv_hig.dart';
 import '../../tv/tv_unified_layout.dart';
 import '../film_frame_palette.dart';
 
@@ -77,14 +78,21 @@ class PlayerToastIndicator extends StatelessWidget {
                         text,
                         maxLines: 2,
                         overflow: .ellipsis,
-                        style: TextStyle(color: Colors.white, fontSize: 14 * scale, fontWeight: .bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: TvHig.readable(context, 14 * scale),
+                          fontWeight: .bold,
+                        ),
                       ),
                       if (detail case final detail?)
                         Text(
                           detail,
                           maxLines: 2,
                           overflow: .ellipsis,
-                          style: TextStyle(color: const Color(0xFFC9D7DB), fontSize: 12.5 * scale),
+                          style: TextStyle(
+                            color: const Color(0xFFC9D7DB),
+                            fontSize: TvHig.readable(context, 12.5 * scale),
+                          ),
                         ),
                     ],
                   ),

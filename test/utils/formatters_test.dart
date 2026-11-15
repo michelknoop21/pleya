@@ -139,6 +139,12 @@ void main() {
       expect(formatPlaybackRate(0.996, normalAtOne: true), 'Normal');
     });
 
+    test('"Normal" follows the app language (DENS1)', () async {
+      await LocaleSettings.setLocale(AppLocale.nl);
+      addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+      expect(formatPlaybackRate(1.0, normalAtOne: true), 'Normaal');
+    });
+
     test('just outside epsilon renders numeric', () {
       expect(formatPlaybackRate(1.006, normalAtOne: true), '1.01x');
       expect(formatPlaybackRate(0.994, normalAtOne: true), '0.99x');

@@ -38,13 +38,6 @@ steps:
   - settle: 2500
   - snapshot: 01-requests-opened
 
-  # Put the remote on the field from the top navigation side, the way a
-  # viewer arrives: UP from the content reaches the field first.
-  - press: down
-  - settle: 500
-  - press: up
-  - settle: 500
-  - press: up
   - wait_until: {focused: seerr.search.field, timeout: 5000}
   - snapshot: 02-field-focused
 
@@ -55,9 +48,22 @@ steps:
   - assert: {id: seerr.search.inbox, focused: false}
   - snapshot: 03-content-after-down
 
-  # UP back to the field (through the first shelf's heading action).
+  # LEFT from the first poster, then DOWN reaches the action in the sidebar.
+  - press: left
+  - wait_until: {focused: "tv.catalog.rail.row[discover.category.0]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "tv.catalog.rail.row[discover.show_all]", timeout: 5000}
+  - assert: {id: "tv.catalog.rail.row[discover.show_all]", insideViewport: true}
+  - snapshot: 03b-show-all-focused
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[discover]", timeout: 8000}
+  - settle: 600
+  - snapshot: 03c-expanded-category
   - press: up
-  - settle: 300
+  - wait_until: {focused: seerr.search.field, timeout: 5000}
+  - press: menu
+  - wait_until: {focused: "tv.catalog.rail.row[discover.show_all]", timeout: 8000}
+  - press: right
   - press: up
   - wait_until: {focused: seerr.search.field, timeout: 5000}
 
@@ -65,6 +71,7 @@ steps:
   - press: up
   - settle: 500
   - assert: {id: seerr.search.field, focused: false}
+  - assert: {id: seerr.search.field, below: nav.bar}
   - snapshot: 04-topnav-after-up
   - press: down
   - wait_until: {focused: seerr.search.field, timeout: 5000}

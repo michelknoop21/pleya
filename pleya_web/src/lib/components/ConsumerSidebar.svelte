@@ -3,10 +3,13 @@
   import Wordmark from './Wordmark.svelte';
   import type { NavItem } from './navItems';
   import { t } from '../i18n';
+  import { formatCount } from '../util/format';
   let { items, activeId, showSearch = false, searchActive = false, showAdmin = false, showFavorites = false, favoritesActive = false, compact = $bindable(false) }: {
     items: NavItem[]; activeId: string | null; showSearch?: boolean; searchActive?: boolean;
     showAdmin?: boolean; showFavorites?: boolean; favoritesActive?: boolean; compact?: boolean;
   } = $props();
+  // De linknaam blijft het slot; het aantal titels hangt er als beschrijving aan.
+  const uid = $props.id();
 </script>
 
 <aside class="consumer-sidebar" class:consumer-sidebar--compact={compact}>
@@ -26,7 +29,7 @@
     {/each}
     <div class="consumer-sidebar__label">{t('libraries.title')}</div>
     {#each ['films', 'series', 'books'].flatMap(id => items.filter(item => item.id === id)) as item (item.id)}
-      <a href={item.href} aria-label={item.label} aria-current={item.id === activeId ? 'page' : undefined}><NavIcon name={item.icon} /><span>{item.label}</span></a>
+      <a href={item.href} aria-label={item.label} aria-describedby={item.count === undefined ? undefined : `${uid}-${item.id}`} aria-current={item.id === activeId ? 'page' : undefined}><NavIcon name={item.icon} /><span>{item.label}</span>{#if item.count !== undefined}<span class="consumer-sidebar__count" id="{uid}-{item.id}">{formatCount(item.count)}</span>{/if}</a>
     {/each}
     {#if items.some(item => item.id !== 'my')}<a href="/libraries" aria-label={t('libraries.title')}><NavIcon name="library" /><span>{t('libraries.title')}</span></a>{/if}
     {#if showFavorites}<a href="/server/favorites" aria-label={t('personal.favorites')} aria-current={favoritesActive ? 'page' : undefined}><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h12v18l-6-4-6 4z" /></svg><span>{t('personal.favorites')}</span></a>{/if}
@@ -45,6 +48,7 @@
   nav a:hover { color: var(--ink); background: var(--fill); }
   nav a[aria-current] { background: var(--ink); color: var(--bg); font-weight: 600; }
   .consumer-sidebar__label { margin: 24px 12px 6px; font-size: 11px; color: var(--ink-3); }
+  .consumer-sidebar__count { margin-left: auto; font-size: 12px; font-weight: 400; opacity: 0.62; }
   .consumer-sidebar__mark { display: none; }
   .consumer-sidebar--compact { width: 72px; padding-inline: 9px; }
   .consumer-sidebar--compact .consumer-sidebar__brand { flex-direction: column; gap: 12px; }

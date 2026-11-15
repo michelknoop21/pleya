@@ -42,6 +42,13 @@ class PlaybackInitializationOptions {
   /// for Plex transcode.
   final String? transcodeSessionId;
 
+  /// The player keeps a stream's own timestamps (mpv with
+  /// `rebase-start-time=no`), so a conversion may start at
+  /// [MediaItem.viewOffsetMs] and still report positions in the title. A
+  /// player that counts from zero leaves this false and gets a stream from
+  /// the start, as before.
+  final bool startAtViewOffset;
+
   const PlaybackInitializationOptions({
     required this.metadata,
     required this.selectedMediaIndex,
@@ -52,6 +59,7 @@ class PlaybackInitializationOptions {
     this.selectSourceTracks,
     this.sessionIdentifier,
     this.transcodeSessionId,
+    this.startAtViewOffset = false,
   });
 }
 
@@ -97,6 +105,25 @@ class PlaybackInitializationResult {
   /// Effective media version after backend clamping/fallback.
   final int selectedMediaIndex;
 
+  /// The headers the player sends for [videoUrl] and [externalSubtitles],
+  /// when they differ from the client's [MediaServerClient.streamHeaders].
+  /// Null means the client default applies.
+  final Map<String, String>? streamHeaders;
+
+  /// Keeps what the backend needs alive while this result is in the player,
+  /// such as a stream credential through a long pause. The player calls
+  /// [hold] when it takes the result and [release] when the result leaves it,
+  /// whether or not a stop report goes out. A result the player never takes
+  /// holds nothing. Both are idempotent and touch only this result.
+  final void Function()? hold;
+  final void Function()? release;
+
+  /// Where in the title the stream's first frame lies, when the backend started
+  /// a conversion there and its segments keep the title's timestamps. The
+  /// player then opens with absolute timestamps, and a seek before this point
+  /// needs a new stream. Null for a stream that starts at zero.
+  final Duration? streamStart;
+
   /// True when [videoUrl] points at a downloaded/local copy. This is a media
   /// source detail, not a statement about whether server reporting is possible.
   bool get usesLocalMedia => isOffline;
@@ -121,6 +148,10 @@ class PlaybackInitializationResult {
     this.playSessionId,
     this.playMethod,
     this.selectedMediaIndex = 0,
+    this.streamHeaders,
+    this.hold,
+    this.release,
+    this.streamStart,
   });
 }
 

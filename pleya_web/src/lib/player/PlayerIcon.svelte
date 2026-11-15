@@ -16,7 +16,10 @@
     | 'tracks'
     | 'fullscreen'
     | 'fullscreen-exit'
-    | 'close';
+    | 'close'
+    | 'next'
+    | 'settings'
+    | 'pip';
 </script>
 
 <script lang="ts">
@@ -58,5 +61,15 @@
     <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
   {:else if name === 'close'}
     <path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="m6 6 12 12M18 6 6 18" />
+  {:else if name === 'next'}
+    <path fill="currentColor" d="M5 5v14l10-7zM17 5h2.5v14H17z" />
+  {:else if name === 'settings'}
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
+    </g>
+  {:else if name === 'pip'}
+    <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+    <rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" />
   {/if}
 </svg>

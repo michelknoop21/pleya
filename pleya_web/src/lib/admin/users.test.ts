@@ -11,14 +11,15 @@ import { userProblem } from './userErrors';
 import {
   clampForRole,
   grantLines,
-  isGranted,
+  levelsFor,
   isLowering,
   lastActiveText,
   librariesText,
   passwordProblem,
   permissionsBody,
   savePlan,
-  toggleGrant,
+  parseTab,
+  setGrant,
   type Grants
 } from './users';
 import { library, userSession } from './userFake';
@@ -54,19 +55,23 @@ describe('rollen', () => {
 });
 
 describe('de rechtenladder', () => {
-  it('zet bij downloaden ook kijken, en bij beheren alles', () => {
-    let grants: Grants = toggleGrant({}, 'l1', 'download', true);
-    expect(isGranted(grants, 'l1', 'view')).toBe(true);
-    expect(isGranted(grants, 'l1', 'download')).toBe(true);
-    expect(isGranted(grants, 'l1', 'manage')).toBe(false);
-    grants = toggleGrant(grants, 'l1', 'manage', true);
-    expect(isGranted(grants, 'l1', 'download')).toBe(true);
+  it('zet één niveau per bibliotheek, en geen recht haalt de bibliotheek uit de lijst', () => {
+    let grants: Grants = setGrant({}, 'l1', 'download');
+    expect(grants).toEqual({ l1: 'download' });
+    grants = setGrant(grants, 'l1', 'manage');
+    expect(grants).toEqual({ l1: 'manage' });
+    expect(setGrant(grants, 'l1', 'none')).toEqual({});
   });
 
-  it('haalt bij het weghalen van kijken de hogere treden ook weg', () => {
-    const grants = toggleGrant({ l1: 'manage' }, 'l1', 'view', false);
-    expect(grants).toEqual({});
-    expect(toggleGrant({ l1: 'manage' }, 'l1', 'download', false)).toEqual({ l1: 'view' });
+  it('biedt een beperkte gebruiker geen beheren aan', () => {
+    expect(levelsFor('member')).toEqual(['none', 'view', 'download', 'manage']);
+    expect(levelsFor('restricted')).toEqual(['none', 'view', 'download']);
+  });
+
+  it('leest de tab uit de query en valt terug op toegang', () => {
+    expect(parseTab('devices')).toBe('devices');
+    expect(parseTab(null)).toBe('access');
+    expect(parseTab('kinderbeveiliging')).toBe('access');
   });
 
   it('klemt een beperkte gebruiker van beheren naar downloaden en laat anderen met rust', () => {
@@ -78,7 +83,7 @@ describe('de rechtenladder', () => {
     expect(clampForRole(clean, 'restricted')).toBe(clean);
   });
 
-  it('stuurt alleen bibliotheken mee die bestaan en een vinkje hebben', () => {
+  it('stuurt alleen bibliotheken mee die bestaan en een niveau hebben', () => {
     const body = permissionsBody({ l1: 'download', gone: 'view' }, libs);
     expect(body).toEqual([{ library_id: 'l1', permission: 'download' }]);
     expect(grantLines({ l1: 'download' }, libs)).toEqual(['Films: kijken, downloaden']);
@@ -98,9 +103,9 @@ describe('het opslagplan', () => {
     expect(plan).toMatchObject({ role: 'member', lowering: true, needsConfirm: true });
   });
 
-  it('vraagt niet om bevestiging bij een rol die rechten geeft', () => {
+  it('vraagt ook om bevestiging bij een rol die rechten geeft', () => {
     const plan = savePlan({ ...base, chosen: 'admin' });
-    expect(plan).toMatchObject({ role: 'admin', lowering: false, needsConfirm: false });
+    expect(plan).toMatchObject({ role: 'admin', lowering: false, needsConfirm: true });
   });
 
   it('schrijft rechten alleen als het paneel is aangeraakt, en dan altijd na bevestiging', () => {

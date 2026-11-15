@@ -234,6 +234,40 @@ void main() {
   });
 
   group('the existing artwork pipeline', () {
+    testWidgets('warms the alternate poster with its owning source when representative has none', (tester) async {
+      final context = await _context(tester);
+      final precache = _RecordingPrecache();
+      final requestedServers = <String>[];
+      final prefetcher = UnifiedArtworkPrefetcher(
+        clientFor: (id) {
+          requestedServers.add(id);
+          return null;
+        },
+        precache: precache.call,
+      );
+      addTearDown(prefetcher.dispose);
+      final primary = _group(1, thumbPath: null, serverId: 'a');
+      final alternate = _group(1, serverId: 'b');
+      final joined = UnifiedMediaGroup(
+        groupId: primary.groupId,
+        identity: primary.identity,
+        sources: [...primary.sources, ...alternate.sources],
+        representativeSourceKey: primary.representativeSourceKey,
+        watchState: primary.watchState,
+      );
+      prefetcher.prefetchAround(
+        context: context,
+        groups: [joined],
+        firstVisibleIndex: 0,
+        lastVisibleIndex: 0,
+        posterSize: _poster,
+      );
+      await tester.pump();
+      expect(precache.requests, hasLength(1));
+      expect(requestedServers, ['b']);
+      expect(joined.representativeSource.serverId.value, 'a');
+    });
+
     testWidgets('URLs are the sized ones MediaImageHelper builds for a poster', (tester) async {
       final context = await _context(tester);
       final precache = _RecordingPrecache();

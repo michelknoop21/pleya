@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Item, Library } from '../lib/api/types';
 
@@ -86,6 +86,20 @@ describe('Home uses the current server capabilities and libraries', () => {
     expect(screen.getByRole('heading', { name: 'Recently added · Series' })).toBeInTheDocument();
     expect(h.hub).toHaveBeenCalledWith('recently_added', { library_id: 'movies', limit: 24 }, expect.any(AbortSignal));
     expect(screen.getByRole('link', { name: 'Play' })).toHaveAttribute('href', '/items/Hero/play');
+  });
+
+  it('orders the rows and gives every Home card its quick actions, continue watching as wide cards', async () => {
+    const { container } = render(Home);
+    await screen.findByRole('heading', { name: 'Continue watching' });
+    expect([...container.querySelectorAll('.rail__title')].map((el) => el.textContent)).toEqual([
+      'Continue watching', 'Next episodes', 'Recently added · Films', 'Recently added · Series'
+    ]);
+    const rails = [...container.querySelectorAll('.rail')];
+    expect(rails[0]!.querySelector('.card')).toHaveAttribute('data-shape', 'wide');
+    for (const [rail, title] of [[rails[0]!, 'Resume me'], [rails[1]!, 'Next episode'], [rails[2]!, 'movies'], [rails[3]!, 'shows']] as const) {
+      expect(within(rail as HTMLElement).getByRole('link', { name: `Play ${title}` })).toHaveAttribute('href', `/items/${encodeURIComponent(title)}/play`);
+      expect(within(rail as HTMLElement).getByRole('button', { name: 'Mark watched' })).toBeInTheDocument();
+    }
   });
 
   it('does not request personal routes on an old server', async () => {

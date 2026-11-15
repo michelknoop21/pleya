@@ -9,6 +9,7 @@ class PleyaCapabilities {
     this.playbackPlan = false,
     this.playbackQuality = false,
     this.playbackAudioSelection = false,
+    this.playbackStartPosition = false,
     this.embeddedSubtitles = false,
     this.playbackSubtitles = false,
     this.history = false,
@@ -19,6 +20,8 @@ class PleyaCapabilities {
     this.playlists = false,
     this.itemActivity = false,
     this.assistantMemory = false,
+    this.pushNotifications = false,
+    this.pushRichContent = false,
     this.transcode = false,
     this.downloads = false,
     this.liveTv = false,
@@ -35,6 +38,10 @@ class PleyaCapabilities {
     this.sessions = false,
     this.administration = false,
     this.libraryMaintenance = false,
+    this.watchStateTree = false,
+    this.itemMetadataRefresh = false,
+    this.scanSchedule = false,
+    this.mediaDelete = false,
     this.mcp = false,
   });
 
@@ -58,6 +65,11 @@ class PleyaCapabilities {
   final bool playbackPlan;
   final bool playbackQuality;
   final bool playbackAudioSelection;
+
+  /// `POST /playback/plan` takes `start_position_ms` and a conversion starts
+  /// there (DEC-XXX, startpositie in het afspeelplan). The request body is
+  /// closed, so the field goes out only behind this flag.
+  final bool playbackStartPosition;
   final bool embeddedSubtitles;
   final bool playbackSubtitles;
 
@@ -78,6 +90,11 @@ class PleyaCapabilities {
   /// `/users/me/activity-sharing`, which always come together.
   final bool itemActivity;
   final bool assistantMemory;
+  final bool pushNotifications;
+
+  /// DEC-XXX: the push PUT takes `content_key`, so a notification can carry
+  /// the sealed title and poster. Without it the body must not carry the key.
+  final bool pushRichContent;
   final bool transcode;
   final bool downloads;
   final bool liveTv;
@@ -136,6 +153,22 @@ class PleyaCapabilities {
   /// `POST /libraries/{id}/empty-trash` and `/refresh-metadata` exist
   /// (chapter 17f, proposal). Without it a library offers only the scan.
   final bool libraryMaintenance;
+
+  /// `POST /items/{id}/watch-state` marks an item and everything below it in
+  /// one transaction (chapter 14.1c). Without it a season or show is marked
+  /// one episode at a time.
+  final bool watchStateTree;
+
+  /// `POST /items/{id}/refresh-metadata` exists for an admin (chapter 17f).
+  final bool itemMetadataRefresh;
+
+  /// `Library.next_scan_at` is on every library an admin reads (chapter 17f).
+  final bool scanSchedule;
+
+  /// `DELETE /items/{id}` erases a title and its files from storage (chapter
+  /// 17h). Only true when the server admin switched it on and a media root was
+  /// measured writable at startup; absent means off.
+  final bool mediaDelete;
   final bool mcp;
 
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
@@ -146,6 +179,7 @@ class PleyaCapabilities {
     playbackPlan: booleanOr(json, 'playback_plan', orElse: false),
     playbackQuality: booleanOr(json, 'playback_quality', orElse: false),
     playbackAudioSelection: booleanOr(json, 'playback_audio_selection', orElse: false),
+    playbackStartPosition: booleanOr(json, 'playback_start_position', orElse: false),
     embeddedSubtitles: booleanOr(json, 'embedded_subtitles', orElse: false),
     playbackSubtitles: booleanOr(json, 'playback_subtitles', orElse: false),
     history: booleanOr(json, 'history', orElse: false),
@@ -156,6 +190,8 @@ class PleyaCapabilities {
     playlists: booleanOr(json, 'playlists', orElse: false),
     itemActivity: booleanOr(json, 'item_activity', orElse: false),
     assistantMemory: booleanOr(json, 'assistant_memory', orElse: false),
+    pushNotifications: booleanOr(json, 'push_notifications', orElse: false),
+    pushRichContent: booleanOr(json, 'push_rich_content', orElse: false),
     transcode: booleanOr(json, 'transcode', orElse: false),
     downloads: booleanOr(json, 'downloads', orElse: false),
     liveTv: booleanOr(json, 'live_tv', orElse: false),
@@ -172,6 +208,10 @@ class PleyaCapabilities {
     sessions: booleanOr(json, 'sessions', orElse: false),
     administration: booleanOr(json, 'administration', orElse: false),
     libraryMaintenance: booleanOr(json, 'library_maintenance', orElse: false),
+    watchStateTree: booleanOr(json, 'watch_state_tree', orElse: false),
+    itemMetadataRefresh: booleanOr(json, 'item_metadata_refresh', orElse: false),
+    scanSchedule: booleanOr(json, 'scan_schedule', orElse: false),
+    mediaDelete: booleanOr(json, 'media_delete', orElse: false),
     mcp: booleanOr(json, 'mcp', orElse: false),
   );
 }

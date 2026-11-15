@@ -1,6 +1,9 @@
 import 'package:flutter/widgets.dart';
 
+import 'dart:math' as math;
+
 import 'layout_constants.dart';
+import 'platform_detector.dart';
 
 /// Apple's tvOS Human Interface Guidelines sizes, in points on the 1920x1080 pt
 /// canvas a TV presents, and the conversion to Flutter logical pixels.
@@ -31,7 +34,16 @@ abstract final class TvHig {
   static const double caption1Leading = 32;
 
   static const double minButton = 56;
+
+  /// The bottom of the title-safe area: nothing that must be read sits in the
+  /// 60 pt band above the bottom edge, which a TV may overscan.
+  static const double titleSafeBottom = 60;
   static const double itemSpacing = 40;
+
+  /// [size] on a TV, raised to the 23 pt floor ([caption2]) where it falls
+  /// below it; [size] untouched everywhere else.
+  static double readable(BuildContext context, double size) =>
+      PlatformDetector.isTV() ? math.max(size, caption2 * of(context)) : size;
 
   /// Logical pixels per HIG point for [context]'s TV panel.
   static double of(BuildContext context) =>

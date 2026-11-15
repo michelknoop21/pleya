@@ -23,6 +23,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/navigation/sidebar_focus_coordinator.dart';
 import 'package:pleya/navigation/tv/tv_content_focus_authority.dart';
 import 'package:pleya/navigation/tv/tv_destination.dart';
@@ -111,6 +112,28 @@ class FakeLibraryClient implements MediaServerClient {
 
   @override
   Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.plex;
+
+  /// Ids removed through [deleteMediaItem]; the item leaves [items] as it
+  /// leaves a real library.
+  final List<String> deleted = [];
+
+  /// Runs as the server removes the item: a test hangs the offline index's
+  /// fail-closed catalog restart on it.
+  void Function()? onDelete;
+
+  @override
+  Future<bool> deleteMediaItem(MediaItem item) async {
+    onDelete?.call();
+    deleted.add(item.id);
+    items = [
+      for (final candidate in items)
+        if (candidate.id != item.id) candidate,
+    ];
+    return true;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -240,6 +263,12 @@ class _HostState extends State<_Host> {
   );
 }
 
+/// The owner of every server: the management rows, delete included, show up.
+class _OwnerManager extends MultiServerManager {
+  @override
+  bool canManageServerMetadata(ServerId serverId) => true;
+}
+
 class FullBleedHarness {
   FullBleedHarness._(this.coordinator, this.multiServer, this.catalog, this.client);
 
@@ -255,7 +284,11 @@ class FullBleedHarness {
     tearDownAll(() => TvDetectionService.debugSetAppleTVOverride(null));
   }
 
-  static Future<FullBleedHarness> create(List<MediaItem> items, {MediaKind kind = MediaKind.movie}) async {
+  static Future<FullBleedHarness> create(
+    List<MediaItem> items, {
+    MediaKind kind = MediaKind.movie,
+    bool owner = false,
+  }) async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
     await SettingsService.getInstance();
@@ -265,7 +298,7 @@ class FullBleedHarness {
 
     final coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
     final client = FakeLibraryClient(items);
-    final manager = MultiServerManager()..debugRegisterClientForTesting(client);
+    final manager = (owner ? _OwnerManager() : MultiServerManager())..debugRegisterClientForTesting(client);
     final multiServer = MultiServerProvider(manager, DataAggregationService(manager));
     final libraries = LibrariesProvider()
       ..debugSetLibraries([

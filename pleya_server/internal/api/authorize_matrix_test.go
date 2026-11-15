@@ -94,6 +94,9 @@ const (
 	// (S23): 403 met library.download_not_permitted, geen 404.
 	notPermitted
 	memoryDenied
+	// deleteNotPermitted: de bibliotheek is zichtbaar maar het recht manage
+	// ontbreekt (DEC-XXX): 403 met library.delete_not_permitted, geen 404.
+	deleteNotPermitted
 )
 
 func (o outcome) String() string {
@@ -102,6 +105,8 @@ func (o outcome) String() string {
 		return "answers"
 	case notPermitted:
 		return "notPermitted"
+	case deleteNotPermitted:
+		return "deleteNotPermitted"
 	}
 	return "refused"
 }
@@ -362,6 +367,21 @@ func matrixProbes() []matrixProbe {
 		{row: 109, name: "POST /libraries/{id}/refresh-metadata", method: http.MethodPost,
 			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/refresh-metadata" },
 			body: noBody, ok: http.StatusAccepted, expect: adminSurface()},
+		// Metadata per titel (DEC-XXX): dezelfde ronde als regel 109, voor de
+		// film of serie van één item.
+		{row: 111, name: "POST /items/{id}/refresh-metadata", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/refresh-metadata" },
+			body: noBody, ok: http.StatusAccepted, expect: adminSurface()},
+		// Regel 112: een titel met zijn bestanden wissen (DEC-XXX). In de
+		// matrixomgeving staat de functie uit, dus owner en admin komen tot de
+		// 409 library.media_delete_unavailable en er gaat niets weg; member en
+		// restricted zien de film wel, maar zonder manage: 403, zoals downloaden.
+		{row: 112, name: "DELETE /items/{id}", method: http.MethodDelete,
+			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID },
+			body: noBody, ok: http.StatusConflict,
+			expect: map[string]outcome{
+				roleOwner: answers, roleAdmin: answers, roleMember: deleteNotPermitted, roleRestricted: deleteNotPermitted,
+			}},
 		{row: 34, name: "GET /scans", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/scans"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 		{row: 35, name: "GET /scans/{id}", method: http.MethodGet,
@@ -602,6 +622,14 @@ func matrixProbes() []matrixProbe {
 			path: fixedPath("/pleya/v1/users/me/activity-sharing"),
 			body: func(*matrixFixture) any { return map[string]bool{"share_activity": true} },
 			ok:   http.StatusOK, expect: everyRole()},
+		// Regel 110: een item met alles eronder markeren (DEC-XXX). Over de
+		// eigen kijkstatus; member en restricted hebben leesrecht op de film.
+		{row: 110, name: "POST /items/{id}/watch-state", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/items/" + f.itemID + "/watch-state" },
+			body: func(*matrixFixture) any {
+				return map[string]string{"session_id": "matrix", "explicit_action": "mark_watched"}
+			},
+			ok: http.StatusOK, expect: everyRole()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
@@ -779,6 +807,10 @@ func TestAuthorizationMatrixRolesOnEveryRouteOfS1(t *testing.T) {
 				case notPermitted:
 					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "library.download_not_permitted") {
 						t.Fatalf("gaf %d, wil 403 library.download_not_permitted: %s", rec.Code, rec.Body.String())
+					}
+				case deleteNotPermitted:
+					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "library.delete_not_permitted") {
+						t.Fatalf("gaf %d, wil 403 library.delete_not_permitted: %s", rec.Code, rec.Body.String())
 					}
 				case memoryDenied:
 					if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "memory.not_permitted") {

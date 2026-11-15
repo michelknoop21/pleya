@@ -10,7 +10,7 @@ import type { Capabilities } from '../api/types';
 import type { HlsCtor, HlsErrorData, HlsLike } from './hlsEngine';
 import type { PlaybackApi } from './playbackApi';
 import type { PlayerDeps } from './playerSession.svelte';
-import type { PlaybackPlan } from './types';
+import type { PlaybackPlan, PlaybackPlanRequest } from './types';
 
 export const ACCESS_TOKEN = 'geheim-accesstoken-123';
 export const STREAM_TOKEN = 'kort-streamtoken-456';
@@ -57,7 +57,7 @@ export interface FakeApi extends PlaybackApi {
 
 export function fakeApi(
   opts: {
-    plan?: () => Promise<PlaybackPlan>;
+    plan?: (body: PlaybackPlanRequest) => Promise<PlaybackPlan>;
     heartbeat?: () => Promise<true>;
     streamSession?: () => Promise<{ stream_session_id: string; expires_at: string }>;
   } = {}
@@ -69,7 +69,7 @@ export function fakeApi(
     heartbeats: [],
     plan: vi.fn(async (body) => {
       api.calls.push(`plan ${body.item_id}`);
-      return opts.plan ? opts.plan() : plan();
+      return opts.plan ? opts.plan(body) : plan();
     }),
     streamSession: vi.fn(async (versionId: string) => {
       api.calls.push(`stream-session ${versionId}`);
@@ -87,6 +87,8 @@ export function fakeApi(
     }),
     stop: vi.fn((id: string, keepalive: boolean) => {
       api.stops.push({ id, keepalive });
+      api.calls.push(`stop ${id}`);
+      return Promise.resolve();
     }),
     bearer: vi.fn(async () => ACCESS_TOKEN),
     subtitleText: vi.fn(async () => 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHallo\n')

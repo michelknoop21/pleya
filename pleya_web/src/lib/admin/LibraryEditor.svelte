@@ -8,9 +8,14 @@
   `library.config_managed`. De uitweg die het contract wel kent is overnemen
   in beheer (`POST /libraries/{id}/adopt`); daarna is alles te wijzigen.
 
-  Opslaan stuurt alleen wat veranderd is. Metadata verversen en het paneel
-  Toegang uit de northstar staan er niet: daar is geen route voor (er is geen
-  verversroute, en de rechten van een gebruiker zijn alleen te schrijven).
+  Toevoegen volgt het doelbeeld: genummerde stappen (soort, naam, mappen),
+  Geavanceerd, en twee knoppen. De server scant een nieuwe bibliotheek niet uit
+  zichzelf, dus "Aanmaken en scannen" is `POST /libraries` gevolgd door
+  `POST /libraries/{id}/scan`. Lukt alleen die scan niet, dan bestaat de
+  bibliotheek wel: de lijst meldt dat en biedt daar Nu scannen.
+
+  Opslaan stuurt alleen wat veranderd is. Het paneel Toegang uit de northstar
+  staat er niet: de rechten van een gebruiker zijn alleen te schrijven.
 -->
 <script lang="ts">
   import { goto } from '$app/navigation';
@@ -26,6 +31,9 @@
   import { session } from '../stores/session.svelte';
   import AdminPageHead from './AdminPageHead.svelte';
   import LibraryDeletePanel from './LibraryDeletePanel.svelte';
+  import LibraryMaintenancePanel from './LibraryMaintenancePanel.svelte';
+  import LibraryNewAdvanced from './LibraryNewAdvanced.svelte';
+  import LibraryNewIntro from './LibraryNewIntro.svelte';
   import LibraryProblemAlert from './LibraryProblemAlert.svelte';
   import LibraryRootsPanel from './LibraryRootsPanel.svelte';
   import LibrarySettingsPanel from './LibrarySettingsPanel.svelte';
@@ -104,7 +112,7 @@
     attempt += 1;
   }
 
-  async function save(event?: SubmitEvent): Promise<void> {
+  async function save(event?: SubmitEvent, withScan = true): Promise<void> {
     event?.preventDefault();
     if (!canSave) return;
     problem = null;
@@ -112,7 +120,13 @@
     try {
       if (creating) {
         const created = await api.createLibrary(createBody(form));
-        await goto(`${LIST}?added=${encodeURIComponent(created.title)}`);
+        const scan = withScan
+          ? await api.startScan(created.id).then(
+              () => '&scan=queued',
+              () => '&scan=failed'
+            )
+          : '';
+        await goto(`${LIST}?added=${encodeURIComponent(created.title)}${scan}`);
         return;
       }
       if (!library) return;
@@ -123,7 +137,7 @@
       form = { ...original, roots: [...original.roots] };
       notice = t('admin.lib.notice.saved', { name: updated.title });
     } catch (err) {
-      fail(err, () => void save());
+      fail(err, () => void save(undefined, withScan));
     } finally {
       saving = false;
     }
@@ -227,22 +241,40 @@
        eigen formulier in de dialoog, en formulieren nesten mag niet. -->
   <div class="cols" class:cols--single={!library}>
     <form class="main" id={formId} onsubmit={(e) => void save(e)}>
-      <LibrarySettingsPanel
-        bind:form
-        currentKind={library?.kind ?? null}
-        itemCount={library?.item_count ?? 0}
-        {readonly}
-      />
+      {#if library}
+        <LibrarySettingsPanel
+          bind:form
+          currentKind={library.kind}
+          itemCount={library.item_count}
+          {readonly}
+        />
+      {:else}
+        <LibraryNewIntro bind:form />
+      {/if}
       <LibraryRootsPanel
         roots={detail.roots}
         bind:selected={form.roots}
         libraryId={library?.id ?? null}
+        step={library ? undefined : 3}
         {readonly}
       />
+      {#if !library}<LibraryNewAdvanced bind:form />{/if}
     </form>
     {#if library}
       <div class="side">
         <LibraryStatusPanel {library} scan={detail.scan} coverage={detail.coverage} />
+        <LibraryMaintenancePanel
+          {library}
+          onnotice={(text) => {
+            problem = null;
+            notice = text;
+          }}
+          onproblem={(found, again) => {
+            notice = null;
+            problem = found;
+            retry = again;
+          }}
+        />
         {#if !readonly}
           <LibraryDeletePanel
             {library}
@@ -255,6 +287,16 @@
     {/if}
     <div class="foot">
       <a class="btn btn--ghost" href={LIST}>{t('dialog.cancel')}</a>
+      {#if creating}
+        <button
+          type="button"
+          class="btn btn--secondary"
+          disabled={!canSave}
+          onclick={() => void save(undefined, false)}
+        >
+          {t('admin.lib.form.createOnly')}
+        </button>
+      {/if}
       {#if !readonly}
         <button
           type="submit"

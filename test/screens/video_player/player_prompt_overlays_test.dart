@@ -200,13 +200,101 @@ void main() {
     // binding's pending-timer invariant stays green.
     chromeController.cancelAutoHide();
   });
+
+  // DENS1 review I3: with the chrome up on a landscape iPhone the 320 card
+  // covered the transport group (SE: card from x 323, play at 299..367).
+  for (final (name, size, padding) in [
+    ('iPhone SE', const Size(667, 375), EdgeInsets.zero),
+    ('iPhone 18 Pro Max', const Size(956, 440), const EdgeInsets.only(left: 62, right: 62, bottom: 21)),
+  ]) {
+    testWidgets('the next-episode card stays right of the transport group on a landscape $name', (tester) async {
+      PipService().isPipActive.value = false;
+      tester.view.physicalSize = size * 3;
+      tester.view.devicePixelRatio = 3;
+      tester.view.padding = FakeViewPadding(
+        left: padding.left * 3,
+        right: padding.right * 3,
+        bottom: padding.bottom * 3,
+      );
+      addTearDown(tester.view.reset);
+      final chrome = PlayerChromeController()..setBottomChromeFraction(0.3);
+      final cancel = FocusNode();
+      final confirm = FocusNode();
+      addTearDown(chrome.dispose);
+      addTearDown(cancel.dispose);
+      addTearDown(confirm.dispose);
+      await tester.pumpWidget(
+        _wrapPrompt(
+          VideoPlayerPlayNextOverlay(
+            visible: true,
+            nextEpisode: _episode(),
+            autoPlayCountdown: -1,
+            cancelFocusNode: cancel,
+            confirmFocusNode: confirm,
+            chromeController: chrome,
+            onCancel: () {},
+            onPlayNext: () {},
+          ),
+          platform: TargetPlatform.iOS,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final card = tester.getRect(find.text('S1 E2 · Episode 2'));
+      final cardBox = tester.getRect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration! as BoxDecoration).color == Colors.black.withValues(alpha: 0.9),
+        ),
+      );
+      // Transport group: 52 + 18 + 68 + 18 + 52, centred.
+      final groupRight = size.width / 2 + 34 + 18 + 52;
+      expect(cardBox.left, greaterThanOrEqualTo(groupRight), reason: 'card from ${cardBox.left}');
+      expect(card.right, lessThanOrEqualTo(size.width));
+      expect(tester.takeException(), isNull);
+      chrome.cancelAutoHide();
+    });
+  }
+
+  // Re-review Important 1: the narrowed corner applies to "still watching"
+  // too, and "9 Doorgaan" did not fit its half of the card on an SE.
+  testWidgets('still watching fits beside the transport group on a landscape iPhone SE', (tester) async {
+    PipService().isPipActive.value = false;
+    tester.view.physicalSize = const Size(667, 375) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final chrome = PlayerChromeController()..setBottomChromeFraction(0.3);
+    final pause = FocusNode();
+    final resume = FocusNode();
+    addTearDown(chrome.dispose);
+    addTearDown(pause.dispose);
+    addTearDown(resume.dispose);
+    await tester.pumpWidget(
+      _wrapPrompt(
+        VideoPlayerStillWatchingOverlay(
+          visible: true,
+          countdown: 29,
+          pauseFocusNode: pause,
+          continueFocusNode: resume,
+          chromeController: chrome,
+          onPause: () {},
+          onContinue: () {},
+        ),
+        platform: TargetPlatform.iOS,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    chrome.cancelAutoHide();
+  });
 }
 
-Widget _wrapPrompt(Widget child) {
+Widget _wrapPrompt(Widget child, {TargetPlatform? platform}) {
   return ChangeNotifierProvider(
     create: (_) => PlaybackStateProvider(),
     child: MaterialApp(
-      theme: monoTheme(dark: true),
+      theme: monoTheme(dark: true).copyWith(platform: platform),
       home: Scaffold(body: Stack(children: [child])),
     ),
   );

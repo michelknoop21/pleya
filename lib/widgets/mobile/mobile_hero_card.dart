@@ -15,6 +15,7 @@ import '../../media/media_item.dart';
 import '../../media/media_item_types.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../services/unified_catalog/hero_text.dart';
+import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/home_hero_layout.dart';
 import '../../utils/media_image_helper.dart' show ImageType;
@@ -345,11 +346,25 @@ class _MobileHeroSlide extends StatelessWidget {
                   ).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               const SizedBox(height: 6),
-              Text(
-                metaLine,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      metaLine,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (group.watchState.isWatched && !group.watchState.hasActiveProgress)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        '✓ ${t.discover.watched}',
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                ],
               ),
               if (item.summary != null && item.summary!.isNotEmpty && !(hideSpoilers && item.shouldHideSpoiler)) ...[
                 const SizedBox(height: 6),

@@ -200,6 +200,7 @@ class FixtureHttpServer {
         server.reset();
         seerr.reset();
         tautulli.reset();
+        jellyfin.reset();
         await _json(request, {'ok': true});
       case '/__verify/requests':
         final since = int.tryParse(request.uri.queryParameters['since'] ?? '') ?? 0;
@@ -315,6 +316,17 @@ class FixtureHttpServer {
           count: (body['count'] as num?)?.toInt() ?? 1,
         );
         await _json(request, {'ok': true});
+      case '/__verify/jellyfin_deletes':
+        // An assertion, not a mutation: answers ok only when the app sent
+        // exactly these `DELETE /Items/{id}` requests, in this order, so a
+        // `fixture_mutate` step fails the scenario on any other set.
+        final body = await _readJsonBody(request);
+        final expected = [for (final id in (body['items'] as List? ?? const [])) '$id'];
+        final matches =
+            expected.length == jellyfin.deletes.length &&
+            [for (var i = 0; i < expected.length; i++) expected[i] == jellyfin.deletes[i]].every((m) => m);
+        if (!matches) request.response.statusCode = HttpStatus.conflict;
+        await _json(request, {'ok': matches, 'deletes': jellyfin.deletes, 'expected': expected});
       case '/__verify/echo':
         // Test-support only: hands the caller's own body back verbatim
         // (merged under `ok: true`). Nothing in this fixture reads or

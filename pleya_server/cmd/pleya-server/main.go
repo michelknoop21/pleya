@@ -39,6 +39,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/mounts"
 	"github.com/edde746/plezy/pleya_server/internal/personal"
+	"github.com/edde746/plezy/pleya_server/internal/push"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/settings"
 	"github.com/edde746/plezy/pleya_server/internal/transcode"
@@ -256,8 +257,23 @@ func run() int {
 	// opruimronde in housekeeping, zodat de bewaartermijn op één plek staat.
 	auditStore := audit.NewStore(pool)
 
+	// De planning van de periodieke scans, zichtbaar in GET /libraries.
+	plan := &scanPlan{}
 	workers := &sync.WaitGroup{}
 	workers.Add(5)
+	apns, err := push.OpenAPNs(cfg.APNsConfig, cfg.ConfigDir)
+	if err != nil {
+		startup.Warn("push uitgeschakeld", "error", err.Error())
+	}
+	pushService := push.New(pool, apns)
+	pushService.Items, pushService.Signer = catalogStore, signer
+	if pushService.Enabled() {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			pushService.Run(workCtx, logging.Component(log, "push"))
+		}()
+	}
 	var metadataProvider metadata.Provider
 	metadataName := catalog.SourceNFO
 	if cfg.TMDBKey != "" {
@@ -271,7 +287,7 @@ func run() int {
 	go func() { defer workers.Done(); runner.Run(workCtx) }()
 	go func() {
 		defer workers.Done()
-		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, logging.Component(log, "scanner"))
+		schedule(workCtx, runner, catalogStore, cfg.ScanInterval, plan, logging.Component(log, "scanner"))
 	}()
 	go func() {
 		defer workers.Done()
@@ -313,7 +329,7 @@ func run() int {
 		defer workers.Done()
 		scheduleSessionSweep(workCtx, authStore, revocations,
 			func() time.Duration { return settingsCache.Current().RefreshTokenTTL() },
-			logging.Component(log, "housekeeping"))
+			pushService, logging.Component(log, "housekeeping"))
 	}()
 
 	transcoder := startTranscoder(ctx, cfg, pool, logging.Component(log, "transcode"), startup)
@@ -326,6 +342,7 @@ func run() int {
 	restarted := make(chan error, 1)
 	reg := &metrics.Registry{}
 	apiServer := api.New(api.Options{
+		Push:               pushService,
 		Backups:            backups,
 		BeforeRestore:      func() { stopWork(); workers.Wait() },
 		AfterRestore:       func(err error) { restarted <- err },
@@ -339,8 +356,10 @@ func run() int {
 		Downloads:          downloadStore,
 		Metrics:            reg,
 		MediaRoots:         cfg.MediaDirs,
+		MediaDelete:        mediaDeleteRoots(cfg, log),
 		CacheDir:           cfg.CacheDir,
 		OnMetadataChange:   onScanned,
+		NextScanAt:         plan.at,
 		MetadataProvider:   metadataProvider,
 		Artwork:            resizer,
 		Jobs:               runner,
@@ -492,6 +511,29 @@ func reportMedia(cfg *config.Config, log *slog.Logger) {
 	}
 }
 
+// mediaDeleteRoots meet bij het opstarten waar DELETE /items/{id} mag wissen
+// (DEC-XXX, media verwijderen). Zonder PLEYA_SERVER_ALLOW_MEDIA_DELETE nil: de
+// functie bestaat dan niet. Met de variabele en geen enkele schrijfbare root
+// een lege, niet-nil lijst: aangezet, maar de mounts staan op :ro.
+func mediaDeleteRoots(cfg *config.Config, log *slog.Logger) []string {
+	if !cfg.AllowMediaDelete {
+		return nil
+	}
+	writable, readOnly := catalog.WritableRoots(cfg.MediaDirs)
+	for _, dir := range readOnly {
+		log.Warn("media verwijderen staat aan, maar deze mediaroot is niet schrijfbaar; hier wist de server niets",
+			slog.String("dir", dir))
+	}
+	for _, dir := range writable {
+		log.Warn("media verwijderen staat aan: een beheerder kan bestanden onder deze root wissen",
+			slog.String("dir", dir))
+	}
+	if writable == nil {
+		writable = []string{}
+	}
+	return writable
+}
+
 // runHealthcheck is het subcommando dat de container-HEALTHCHECK aanroept. De
 // runtime-image bevat geen curl, en een volledige toolset toevoegen om één GET
 // te doen is niet in verhouding.
@@ -545,7 +587,7 @@ func startTranscoder(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool
 		startup.Info("omzetten met hardwareversnelling", slog.String("accel", string(hw.Accel)), slog.String("node", hw.Node))
 	}
 	m, err := transcode.New(transcode.Options{
-		FFmpegPath: cfg.FFmpegPath, Dir: cfg.TranscodeDir, Max: cfg.TranscodeMaxSessions,
+		FFmpegPath: cfg.FFmpegPath, FFprobePath: cfg.FFprobePath, Dir: cfg.TranscodeDir, Max: cfg.TranscodeMaxSessions,
 		HW: hw.Accel, RenderNode: hw.Node, HWReason: hw.Reason, Recorder: transcode.NewStore(pool), Log: log,
 	})
 	if err != nil {

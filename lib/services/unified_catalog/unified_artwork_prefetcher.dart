@@ -59,6 +59,7 @@
 library;
 
 import 'dart:io';
+import 'unified_artwork_sources.dart';
 import 'package:provider/provider.dart';
 import '../../providers/local_library_provider.dart';
 import 'dart:collection';
@@ -384,7 +385,10 @@ class UnifiedArtworkPrefetcher {
     required UnifiedArtworkPathResolver pathOf,
     required UnifiedArtworkImageTypeResolver typeOf,
   }) {
-    final source = group.representativeSource;
+    final source = unifiedArtworkSources(
+      group,
+    ).where((source) => (pathOf(source.item) ?? '').trim().isNotEmpty).firstOrNull;
+    if (source == null) return null;
     final thumbPath = pathOf(source.item);
     if (thumbPath == null || thumbPath.isEmpty) return null;
     final imageType = typeOf(source.item);

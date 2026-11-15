@@ -17,6 +17,15 @@ describe('consumer navigation',()=>{
   expect(screen.getByRole('link',{name:'My Pleya'})).not.toHaveAttribute('aria-current');
   expect(container.querySelectorAll('[aria-current=page]')).toHaveLength(1);
  });
+ it('shows the title count the libraries response carries, and none without it',()=>{
+  const counted=navItems({browse:true},[{id:'a',kind:'movies',item_count:461},{id:'b',kind:'movies',item_count:5},{id:'c',kind:'shows',item_count:1297},{id:'d',kind:'books'}]);
+  render(ConsumerSidebar,{items:counted,activeId:'home'});
+  const films=screen.getByRole('link',{name:'Films'});
+  expect(films).toHaveTextContent('466');expect(films).toHaveAccessibleDescription('466');
+  expect(screen.getByRole('link',{name:'Series'})).toHaveTextContent('1,297');
+  expect(screen.getByRole('link',{name:'Books'}).textContent).toBe('Books');
+  expect(screen.getByRole('link',{name:'Home'}).textContent).toBe('Home');
+ });
  it('does not expose unsupported search, favorites or administration',()=>{
   render(ConsumerSidebar,{items:navItems(null,[]),activeId:'my'});
   expect(screen.queryByRole('link',{name:'Search'})).toBeNull();

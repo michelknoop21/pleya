@@ -1781,7 +1781,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _buildHeroItemContent(BuildContext context, MediaItem heroItem, double heroHeight) {
     final heroClient = _getMediaClientForItem(heroItem);
     final isEpisode = heroItem.isEpisode;
-    final showName = heroItem.grandparentTitle ?? heroItem.displayTitle;
+    final showName = heroItem.displayTitle;
     final screenWidth = MediaQuery.sizeOf(context).width;
     // TV never reaches this builder: `_buildDiscoverContent` returns
     // `_buildTvContent` (the fase-8 `TvContentFeed`) before the hero sliver is

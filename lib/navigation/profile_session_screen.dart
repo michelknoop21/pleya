@@ -35,6 +35,7 @@ import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../profiles/plex_home_service.dart';
 import '../profiles/plex_self_account.dart';
+import '../connection/connection_registry.dart';
 import '../profiles/profile_connection_registry.dart';
 import '../providers/now_watching_provider.dart';
 import '../providers/trakt_account_provider.dart';
@@ -58,6 +59,7 @@ import '../services/recommendations/personalized_rows_builder.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/recommendations/tautulli_history_importer.dart';
 import '../services/recommendations/tautulli_import_binding.dart';
+import '../services/pleya_push_notifications.dart';
 import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../services/tautulli/tautulli_server_binding.dart';
@@ -634,6 +636,31 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // per profile and lazy, so nothing runs until that screen opens.
               ChangeNotifierProvider(create: assistantMemoryHostForSession),
               Provider(create: assistantMemoryOverviewWriterForSession),
+              if (activeId != null && defaultTargetPlatform == TargetPlatform.iOS && !PlatformDetector.isTV())
+                ChangeNotifierProvider(
+                  lazy: false,
+                  create: (context) {
+                    final servers = context.read<MultiServerProvider>();
+                    final network = context.read<OfflineModeProvider?>();
+                    final profileConnections = context.read<ProfileConnectionRegistry>();
+                    return PleyaPushNotifications(
+                      activeId,
+                      activeProfile,
+                      servers,
+                      sessions: context.read<ConnectionRegistry>().listPleyaServers,
+                      rowExists: context.read<ConnectionRegistry>().exists,
+                      storedSessionIds: context.read<ConnectionRegistry>().pleyaServerIds,
+                      profileSessions: (profileId) async => {
+                        for (final row in await profileConnections.listForProfile(profileId)) row.connectionId,
+                      },
+                      reach: (connection, action) async {
+                        // Offline a short-lived client only spends time failing.
+                        if (network?.isOffline ?? false) throw StateError('Offline');
+                        await servers.serverManager.withPleyaServerClient(connection, action);
+                      },
+                    );
+                  },
+                ),
               // Big P's place on iPhone and iPad only (V4): no Android,
               // desktop, TV or the iOS app on a Mac.
               if (defaultTargetPlatform == TargetPlatform.iOS &&

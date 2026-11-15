@@ -12,6 +12,35 @@ const int logUploadMaxBytes = 900 * 1024;
 /// [logUploadMaxBytes] no matter how large the dropped part turns out to be.
 const int _noticeBudget = 200;
 
+/// How many of the newest lines keep their remote-input debug lines when a log
+/// is over the limit. A report about the Siri Remote is about the last minute.
+const int logUploadRemoteInputTail = 1500;
+
+final RegExp _remoteInputDebugLine = RegExp(r'\[DEBUG\] (AppleTvRemoteTouchService:|TextInputDiag )');
+
+/// Thins a log that is too large before anything is cut off its start.
+///
+/// Every press on the Siri Remote writes about ten debug lines, so an evening
+/// of browsing filled the whole upload with them and pushed out the start of
+/// the session (log s5jok: 1795 of 5621 lines, and 2 MB dropped). Older
+/// remote-input lines go first; the newest [keepTailLines] lines are untouched.
+String thinRemoteInputLines(String entries, {int keepTailLines = logUploadRemoteInputTail}) {
+  final lines = entries.split('\n');
+  final protectedFrom = lines.length - keepTailLines;
+  if (protectedFrom <= 0) return entries;
+  final kept = <String>[];
+  var dropped = 0;
+  for (var i = 0; i < lines.length; i++) {
+    if (i < protectedFrom && _remoteInputDebugLine.hasMatch(lines[i])) {
+      dropped++;
+    } else {
+      kept.add(lines[i]);
+    }
+  }
+  if (dropped == 0) return entries;
+  return '[thinned: $dropped older remote-input debug lines left out to fit the upload limit]\n${kept.join('\n')}';
+}
+
 /// Builds the body for a log upload, clipped to what the relay accepts.
 ///
 /// Drops the oldest entries rather than the newest: whatever went wrong
@@ -21,8 +50,12 @@ const int _noticeBudget = 200;
 String buildLogUploadBody({required String header, required String entries, int maxBytes = logUploadMaxBytes}) {
   final prefix = header.isEmpty ? '' : '$header\n---\n';
   final prefixBytes = utf8.encode(prefix).length;
-  final entryBytes = utf8.encode(entries);
+  var entryBytes = utf8.encode(entries);
 
+  if (prefixBytes + entryBytes.length <= maxBytes) return '$prefix$entries';
+
+  entries = thinRemoteInputLines(entries);
+  entryBytes = utf8.encode(entries);
   if (prefixBytes + entryBytes.length <= maxBytes) return '$prefix$entries';
 
   final allowed = maxBytes - prefixBytes - _noticeBudget;

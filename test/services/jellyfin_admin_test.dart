@@ -85,6 +85,68 @@ void main() {
       expect(requests.single.url.queryParameters.containsKey('Recursive'), isFalse);
     });
 
+    test('nextLibraryScan is the interval after the last library scan ended', () async {
+      final ended = DateTime.now().toUtc().subtract(const Duration(hours: 1));
+      routes['GET /ScheduledTasks'] = (_) => _json([
+        {
+          'Id': 't0',
+          'Key': 'CleanTranscodeFolder',
+          'LastExecutionResult': {'EndTimeUtc': '2026-11-13T00:00:00Z'},
+        },
+        {
+          'Id': 't1',
+          'Key': 'RefreshLibrary',
+          'LastExecutionResult': {'EndTimeUtc': ended.toIso8601String()},
+          'Triggers': [
+            // Twelve hours in ticks of 100 ns, Jellyfin's default.
+            {'Type': 'IntervalTrigger', 'IntervalTicks': 432000000000},
+            {'Type': 'DailyTrigger', 'TimeOfDayTicks': 108000000000},
+          ],
+        },
+      ]);
+      expect(await client(emby: false).nextLibraryScan('lib-1'), ended.add(const Duration(hours: 12)));
+    });
+
+    test('nextLibraryScan is null for a daily trigger, a task that never ran, or none at all', () {
+      expect(
+        jellyfinNextLibraryScan([
+          {
+            'Key': 'RefreshLibrary',
+            'LastExecutionResult': {'EndTimeUtc': '2026-11-13T06:00:00Z'},
+            'Triggers': [
+              {'Type': 'DailyTrigger', 'TimeOfDayTicks': 108000000000},
+            ],
+          },
+        ]),
+        isNull,
+      );
+      expect(
+        jellyfinNextLibraryScan([
+          {
+            'Key': 'RefreshLibrary',
+            'Triggers': [
+              {'Type': 'IntervalTrigger', 'IntervalTicks': 432000000000},
+            ],
+          },
+        ]),
+        isNull,
+      );
+      expect(jellyfinNextLibraryScan(const []), isNull);
+      // A moment already past says nothing about when the task comes.
+      expect(
+        jellyfinNextLibraryScan([
+          {
+            'Key': 'RefreshLibrary',
+            'LastExecutionResult': {'EndTimeUtc': '2026-11-13T06:00:00Z'},
+            'Triggers': [
+              {'Type': 'IntervalTrigger', 'IntervalTicks': 432000000000},
+            ],
+          },
+        ], now: DateTime.utc(2026, 11, 14)),
+        isNull,
+      );
+    });
+
     test('listJobs maps scheduled tasks and drops hidden ones', () async {
       routes['GET /ScheduledTasks'] = (_) => _json([
         {'Id': 't1', 'Name': 'Scan', 'State': 'Running', 'CurrentProgressPercentage': 42.0},
@@ -330,6 +392,20 @@ void main() {
   });
 
   group('Emby', () {
+    test('nextLibraryScan reads the same RefreshLibrary task', () async {
+      final ended = DateTime.now().toUtc().subtract(const Duration(hours: 1));
+      routes['GET /ScheduledTasks'] = (_) => _json([
+        {
+          'Key': 'RefreshLibrary',
+          'LastExecutionResult': {'EndTimeUtc': ended.toIso8601String()},
+          'Triggers': [
+            {'Type': 'IntervalTrigger', 'IntervalTicks': 432000000000},
+          ],
+        },
+      ]);
+      expect(await client(emby: true).nextLibraryScan('lib-1'), ended.add(const Duration(hours: 12)));
+    });
+
     test('listPlayedItemsOf takes /Users/{id}/Items: Emby /Items has no user parameter', () async {
       routes['GET /Users/u2/Items'] = (_) => _json({'Items': <Object>[]});
       await client(emby: true).listPlayedItemsOf('u2');

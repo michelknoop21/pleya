@@ -30,6 +30,7 @@ import '../utils/external_ids.dart';
 import '../utils/stored_identity_trust.dart';
 import '../media/unified/carried_external_ids.dart';
 import '../utils/media_image_helper.dart';
+import '../utils/platform_detector.dart';
 
 part 'local_library_provider/visible_artwork.dart';
 part 'local_library_provider/reads.dart';

@@ -1,110 +1,103 @@
 <!--
-  Nu aan het kijken op scherm 20, uit `GET /stream-sessions`: wie, op welk
-  toestel, welk item en hoe ver. Die lijst kent alleen streams via de browser;
-  wat een app buiten de browser afspeelt, staat er niet in. Seizoen en
-  aflevering ("S2 · A3") en de afspeelmodus haalt dit paneel niet op: dat zou
-  per regel een extra aanvraag zijn (`GET /items/{id}`). Daaronder de
-  omzetsessies uit `GET /transcode-sessions`, zodra er een omzetter is.
+  Nu aan het kijken, het eerste blok van het overzicht: een kaart per kijker.
+  Eerst de browserstreams uit `GET /stream-sessions` (direct play), dan de
+  omzetsessies uit `GET /transcode-sessions`, oudste eerst. De twee lijsten
+  delen geen sleutel waarmee een omzetsessie aan een titel te hangen is, dus
+  elke regel van de server is één kaart; zie ViewerCard.
+
+  De streamlijst kent alleen de browser. Wat een app direct afspeelt staat er
+  niet in, en de lege staat zegt dat.
 -->
 <script lang="ts">
-  import AdminIcon from '../components/AdminIcon.svelte';
-  import Panel from '../components/Panel.svelte';
-  import StatusPill from '../components/StatusPill.svelte';
-  import { knownDeviceName } from '../auth/device';
   import { t } from '../i18n';
-  import { streamProgress, type OverviewData } from './overview';
+  import { countLabel, type OverviewData } from './overview';
+  import { sortedSessions } from './transcode/transcode';
+  import ViewerCard from './ViewerCard.svelte';
 
-  let { data }: { data: OverviewData } = $props();
+  interface Props {
+    data: OverviewData;
+    /** Omzetsessies waarvoor nu een stopaanvraag loopt. */
+    stopping?: Record<string, boolean>;
+    onstop?: (id: string, name: string) => void;
+  }
+
+  let { data, stopping = {}, onstop }: Props = $props();
+
+  const uid = $props.id();
+  const sessions = $derived(sortedSessions(data.transcode.items));
+  const total = $derived(data.streams.length + sessions.length);
+  const summary = $derived(
+    [
+      countLabel('admin.watching.viewers', total),
+      ...(sessions.length > 0 ? [countLabel('admin.watching.conversions', sessions.length)] : [])
+    ].join(' · ')
+  );
 </script>
 
-<Panel>
-  {#snippet title()}{t('admin.watching.title')}{/snippet}
-  {#if data.streams.length === 0}
+<section class="watching" aria-labelledby={`${uid}-title`}>
+  <div class="head">
+    <h3 class="title" id={`${uid}-title`}>{t('admin.watching.title')}</h3>
+    {#if total > 0}
+      <p class="count">{summary}</p>
+    {/if}
+  </div>
+  {#if total === 0}
     <p class="empty">{t('admin.watching.empty')}</p>
   {:else}
-    <ul class="list">
+    <div class="cards">
       {#each data.streams as stream (stream.id)}
-        {@const progress = streamProgress(stream)}
-        <li class="row">
-          <AdminIcon name="tv" size={22} />
-          <div class="body">
-            <p class="t">
-              {stream.username} · {knownDeviceName(stream.device_name) ?? t('admin.watching.unknownDevice')}
-            </p>
-            <p class="s">{stream.item_title}</p>
-          </div>
-          {#if progress !== null}
-            <StatusPill tone="run" label={`${progress}%`} />
-          {/if}
-        </li>
+        <ViewerCard {stream} />
       {/each}
-    </ul>
+      {#each sessions as session (session.id)}
+        <ViewerCard {session} users={data.users} stopping={stopping[session.id]} {onstop} />
+      {/each}
+    </div>
   {/if}
-  {#if data.transcode.max_sessions > 0}
-    <p class="foot">
-      {t('admin.watching.transcode', {
-        count: data.transcode.items.length,
-        max: data.transcode.max_sessions,
-        accel: data.transcode.hardware.accel
-      })}
-    </p>
-  {/if}
-</Panel>
+</section>
 
 <style>
-  .empty,
-  .foot {
+  .watching {
+    min-width: 0;
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 16px;
+    margin-bottom: 10px;
+  }
+
+  .title {
     margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .count {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .empty {
+    margin: 0;
+    padding: 16px 18px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-panel);
+    background: var(--panel);
     font-size: 14px;
     color: var(--ink-3);
   }
 
-  .foot {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--hairline);
-    font-size: 13px;
-  }
-
-  .list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .row {
-    display: flex;
-    align-items: center;
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
     gap: 14px;
-    padding: 8px 0;
-  }
-
-  .row + .row {
-    border-top: 1px solid var(--hairline);
-  }
-
-  .body {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .t,
-  .s {
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .t {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--ink);
-  }
-
-  .s {
-    margin-top: 2px;
-    font-size: 13px;
-    color: var(--ink-3);
   }
 </style>

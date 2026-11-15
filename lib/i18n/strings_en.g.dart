@@ -110,6 +110,8 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsFlyFollowEn flyFollow = TranslationsFlyFollowEn.internal(_root);
 	late final TranslationsLocalLibraryEn localLibrary = TranslationsLocalLibraryEn.internal(_root);
 	late final TranslationsSettingsStudioEn settingsStudio = TranslationsSettingsStudioEn.internal(_root);
+	late final TranslationsSeerrIssuesEn seerrIssues = TranslationsSeerrIssuesEn.internal(_root);
+	late final TranslationsPleyaNotificationsEn pleyaNotifications = TranslationsPleyaNotificationsEn.internal(_root);
 }
 
 // Path: states
@@ -1552,6 +1554,27 @@ class TranslationsMediaMenuEn {
 	/// en: 'This includes all episodes and their files.'
 	String get deleteMultipleWarning => 'This includes all episodes and their files.';
 
+	/// en: 'Pleya Server erases the files from its storage. This cannot be undone.'
+	String get pleyaServerDeletesFiles => 'Pleya Server erases the files from its storage. This cannot be undone.';
+
+	/// en: 'File deletion is switched off on this Pleya Server. Nothing was deleted.'
+	String get pleyaDeletionDisabled => 'File deletion is switched off on this Pleya Server. Nothing was deleted.';
+
+	/// en: 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.'
+	String get pleyaDeletionReadOnly => 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.';
+
+	/// en: 'The folder of this title is also part of another library. Nothing was deleted.'
+	String get pleyaDeletionRootOverlap => 'The folder of this title is also part of another library. Nothing was deleted.';
+
+	/// en: 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.'
+	String get pleyaDeletionScanInProgress => 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.';
+
+	/// en: 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.'
+	String get pleyaDeletionStorageUnavailable => 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.';
+
+	/// en: 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}'
+	String pleyaDeletionIncomplete({required Object removed, required Object paths}) => 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}';
+
 	/// en: 'Media item deleted successfully'
 	String get mediaDeletedSuccessfully => 'Media item deleted successfully';
 
@@ -1566,6 +1589,15 @@ class TranslationsMediaMenuEn {
 
 	/// en: 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).'
 	String get plexDeletionRefusedUnknown => 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).';
+
+	/// en: 'The server refused the delete: this account may not delete media there. Allow deletion for this account in the server settings (in Jellyfin and Emby: ‘Allow media deletion’) and try again.'
+	String get deletionForbidden => 'The server refused the delete: this account may not delete media there. Allow deletion for this account in the server settings (in Jellyfin and Emby: ‘Allow media deletion’) and try again.';
+
+	/// en: 'Plex refused the delete: this account may not delete media on this server. Delete it from the account that owns the server.'
+	String get plexDeletionForbidden => 'Plex refused the delete: this account may not delete media on this server. Delete it from the account that owns the server.';
+
+	/// en: 'This item's server is not connected. Nothing was deleted.'
+	String get deleteServerGone => 'This item\'s server is not connected. Nothing was deleted.';
 
 	/// en: 'Rate'
 	String get rate => 'Rate';
@@ -1734,6 +1766,12 @@ class TranslationsVideoControlsEn {
 
 	/// en: 'Timer Active'
 	String get timerActive => 'Timer Active';
+
+	/// en: 'Normal'
+	String get playbackRateNormal => 'Normal';
+
+	/// en: 'Active (${remaining})'
+	String sleepTimerActive({required Object remaining}) => 'Active (${remaining})';
 
 	/// en: 'Playback will pause in ${duration}'
 	String playbackWillPauseIn({required Object duration}) => 'Playback will pause in ${duration}';
@@ -3003,6 +3041,9 @@ class TranslationsLibrariesEn {
 
 	/// en: 'Are you sure you want to scan "${title}"?'
 	String scanLibraryConfirm({required Object title}) => 'Are you sure you want to scan "${title}"?';
+
+	/// en: 'Next scheduled scan: ${time}.'
+	String nextScheduledScan({required Object time}) => 'Next scheduled scan: ${time}.';
 
 	/// en: 'Are you sure you want to analyze "${title}"?'
 	String analyzeLibraryConfirm({required Object title}) => 'Are you sure you want to analyze "${title}"?';
@@ -5473,6 +5514,8 @@ class TranslationsSeerrEn {
 
 	/// en: 'That request is no longer in your own list. It may have been handled or removed.'
 	String get requestNotInOwnList => 'That request is no longer in your own list. It may have been handled or removed.';
+
+	late final TranslationsSeerrCockpitEn cockpit = TranslationsSeerrCockpitEn.internal(_root);
 }
 
 // Path: tautulli
@@ -7063,6 +7106,183 @@ class TranslationsSettingsStudioEn {
 	String get activeProfile => 'Active profile';
 }
 
+// Path: seerrIssues
+class TranslationsSeerrIssuesEn {
+	TranslationsSeerrIssuesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Reports'
+	String get title => 'Reports';
+
+	/// en: 'Problems reported with films and series'
+	String get subtitle => 'Problems reported with films and series';
+
+	/// en: 'Open'
+	String get open => 'Open';
+
+	/// en: 'Resolved'
+	String get resolved => 'Resolved';
+
+	/// en: 'My reports'
+	String get mine => 'My reports';
+
+	/// en: 'No reports in this view.'
+	String get empty => 'No reports in this view.';
+
+	/// en: 'Load more'
+	String get loadMore => 'Load more';
+
+	/// en: 'Video'
+	String get video => 'Video';
+
+	/// en: 'Audio'
+	String get audio => 'Audio';
+
+	/// en: 'Subtitles'
+	String get subtitles => 'Subtitles';
+
+	/// en: 'Other'
+	String get other => 'Other';
+
+	/// en: 'Season $number'
+	String seasonNumber({required Object number}) => 'Season ${number}';
+
+	/// en: 'Episode $number'
+	String episodeNumber({required Object number}) => 'Episode ${number}';
+
+	/// en: 'Report #$number'
+	String number({required Object number}) => 'Report #${number}';
+
+	/// en: 'Unknown user'
+	String get unknownAuthor => 'Unknown user';
+
+	/// en: 'Write a reply'
+	String get reply => 'Write a reply';
+
+	/// en: 'Post reply'
+	String get sendReply => 'Post reply';
+
+	/// en: 'Mark as resolved'
+	String get resolve => 'Mark as resolved';
+
+	/// en: 'Reopen report'
+	String get reopen => 'Reopen report';
+
+	/// en: 'Reports are unavailable for this account.'
+	String get unavailable => 'Reports are unavailable for this account.';
+
+	/// en: 'This server does not support reports.'
+	String get serverUnsupported => 'This server does not support reports.';
+
+	/// en: 'Could not load reports from Seerr.'
+	String get loadFailed => 'Could not load reports from Seerr.';
+
+	/// en: 'Seerr did not confirm your change. Check the conversation before trying again.'
+	String get changeUnconfirmed => 'Seerr did not confirm your change. Check the conversation before trying again.';
+
+	/// en: 'Quick replies'
+	String get quickReplies => 'Quick replies';
+
+	/// en: 'Looking into it'
+	String get quickLooking => 'Looking into it';
+
+	/// en: 'I've requested a new version'
+	String get quickNewVersion => 'I\'ve requested a new version';
+
+	/// en: 'Fixed, please try again'
+	String get quickFixed => 'Fixed, please try again';
+
+	/// en: 'open'
+	String get tileOpen => 'open';
+
+	/// en: 'resolved'
+	String get tileResolved => 'resolved';
+}
+
+// Path: pleyaNotifications
+class TranslationsPleyaNotificationsEn {
+	TranslationsPleyaNotificationsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Push on this device'
+	String get pushTitle => 'Push on this device';
+
+	/// en: 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.'
+	String get pushExplanation => 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.';
+
+	/// en: 'On this device, push from this server goes to one account. It now goes to $name; turning it on here turns it off there.'
+	String pushOneAccount({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.';
+
+	/// en: 'Changes will take effect when this device can reach the server again.'
+	String get pushOffline => 'Changes will take effect when this device can reach the server again.';
+
+	/// en: 'Push preferences could not be confirmed. Check iOS notification permission and try again.'
+	String get pushPending => 'Push preferences could not be confirmed. Check iOS notification permission and try again.';
+
+	/// en: 'Notifications'
+	String get title => 'Notifications';
+
+	/// en: 'Choose which updates to receive'
+	String get subtitle => 'Choose which updates to receive';
+
+	/// en: 'Notification preferences'
+	String get settings => 'Notification preferences';
+
+	/// en: 'Enable in-app notifications'
+	String get enable => 'Enable in-app notifications';
+
+	/// en: 'Choose which updates to show in Pleya. All categories start turned off.'
+	String get explanation => 'Choose which updates to show in Pleya. All categories start turned off.';
+
+	/// en: 'Notifications are off. Choose which updates to receive in preferences.'
+	String get disabled => 'Notifications are off. Choose which updates to receive in preferences.';
+
+	/// en: 'No new updates.'
+	String get empty => 'No new updates.';
+
+	/// en: 'My request updates'
+	String get requests => 'My request updates';
+
+	/// en: 'My report updates'
+	String get reports => 'My report updates';
+
+	/// en: 'New films in my libraries'
+	String get movies => 'New films in my libraries';
+
+	/// en: 'New episodes in my libraries'
+	String get episodes => 'New episodes in my libraries';
+
+	/// en: 'Release dates for followed films and series'
+	String get releases => 'Release dates for followed films and series';
+
+	/// en: 'New Pleya versions'
+	String get app => 'New Pleya versions';
+
+	/// en: 'New requests to review'
+	String get manageRequests => 'New requests to review';
+
+	/// en: 'Manage requests'
+	String get manageRequestsTitle => 'Manage requests';
+
+	/// en: 'New reports from users'
+	String get manageReports => 'New reports from users';
+
+	/// en: 'Pleya $version is available'
+	String version({required Object version}) => 'Pleya ${version} is available';
+
+	/// en: 'Some updates could not be loaded.'
+	String get loadPartial => 'Some updates could not be loaded.';
+
+	/// en: 'Your preferences could not be saved.'
+	String get saveFailed => 'Your preferences could not be saved.';
+}
+
 // Path: settings.displayMaxResolutionOptions
 class TranslationsSettingsDisplayMaxResolutionOptionsEn {
 	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
@@ -7859,6 +8079,99 @@ class TranslationsVideoSettingsAudioPrioritiesEn {
 
 	/// en: 'Original Dolby Atmos'
 	String get originalDolby => 'Original Dolby Atmos';
+}
+
+// Path: seerr.cockpit
+class TranslationsSeerrCockpitEn {
+	TranslationsSeerrCockpitEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Waiting on you'
+	String get waitingOnYou => 'Waiting on you';
+
+	/// en: 'Waiting for approval'
+	String get waitingForApproval => 'Waiting for approval';
+
+	/// en: 'On the way'
+	String get inProgress => 'On the way';
+
+	/// en: 'Handled'
+	String get handled => 'Handled';
+
+	/// en: 'oldest first'
+	String get oldestFirst => 'oldest first';
+
+	/// en: 'waiting on you'
+	String get tilePending => 'waiting on you';
+
+	/// en: 'on the way'
+	String get tileInProgress => 'on the way';
+
+	/// en: 'open reports'
+	String get tileIssues => 'open reports';
+
+	/// en: 'Approve ${n}'
+	String approveSelected({required Object n}) => 'Approve ${n}';
+
+	/// en: '${n} approved'
+	String approvedMany({required Object n}) => '${n} approved';
+
+	/// en: '${ok} approved, ${failed} not'
+	String approvedSome({required Object ok, required Object failed}) => '${ok} approved, ${failed} not';
+
+	/// en: 'Swipe right to approve, left to decline'
+	String get swipeHint => 'Swipe right to approve, left to decline';
+
+	/// en: 'Decline this request?'
+	String get declineConfirm => 'Decline this request?';
+
+	/// en: 'Select ${title}'
+	String select({required Object title}) => 'Select ${title}';
+
+	/// en: '${n}d'
+	String ageDays({required Object n}) => '${n}d';
+
+	/// en: '${n}h'
+	String ageHours({required Object n}) => '${n}h';
+
+	/// en: '${n}m'
+	String ageMinutes({required Object n}) => '${n}m';
+
+	/// en: 'Seasons'
+	String get factSeasons => 'Seasons';
+
+	/// en: 'Quality'
+	String get factQuality => 'Quality';
+
+	/// en: 'Requested'
+	String get factRequested => 'Requested';
+
+	/// en: 'Already in Pleya'
+	String get factInPleya => 'Already in Pleya';
+
+	/// en: '${name}'s limit'
+	String factLimit({required Object name}) => '${name}\'s limit';
+
+	/// en: '${used} of ${limit} used'
+	String limitUsed({required Object used, required Object limit}) => '${used} of ${limit} used';
+
+	/// en: 'Standard'
+	String get qualityStandard => 'Standard';
+
+	/// en: 'Not yet'
+	String get inPleyaNo => 'Not yet';
+
+	/// en: 'Partly'
+	String get inPleyaPartly => 'Partly';
+
+	/// en: 'Yes'
+	String get inPleyaYes => 'Yes';
+
+	/// en: 'To check'
+	String get toCheck => 'To check';
 }
 
 // Path: trackers.services
@@ -11063,11 +11376,21 @@ extension on Translations {
 			'mediaMenu.deleteFromServer' => 'Delete from server',
 			'mediaMenu.confirmDelete' => 'Delete this media and its files from your server?',
 			'mediaMenu.deleteMultipleWarning' => 'This includes all episodes and their files.',
+			'mediaMenu.pleyaServerDeletesFiles' => 'Pleya Server erases the files from its storage. This cannot be undone.',
+			'mediaMenu.pleyaDeletionDisabled' => 'File deletion is switched off on this Pleya Server. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionReadOnly' => 'The storage of this title is mounted read-only on Pleya Server. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionRootOverlap' => 'The folder of this title is also part of another library. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionScanInProgress' => 'Pleya Server is scanning this library. Nothing was deleted; try again after the scan.',
+			'mediaMenu.pleyaDeletionStorageUnavailable' => 'Pleya Server cannot reach the storage of this title right now. Nothing was deleted.',
+			'mediaMenu.pleyaDeletionIncomplete' => ({required Object removed, required Object paths}) => 'Not everything was deleted: ${removed} files removed. These stayed: ${paths}',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media item deleted successfully',
 			'mediaMenu.mediaFailedToDelete' => 'Failed to delete media item',
 			'mediaMenu.plexDeletionDisabled' => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.',
 			'mediaMenu.plexDeletionFilesNotRemovable' => 'Plex could not delete this. Check on the server that Plex is allowed to delete the files (folder permissions, drive available).',
 			'mediaMenu.plexDeletionRefusedUnknown' => 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).',
+			'mediaMenu.deletionForbidden' => 'The server refused the delete: this account may not delete media there. Allow deletion for this account in the server settings (in Jellyfin and Emby: ‘Allow media deletion’) and try again.',
+			'mediaMenu.plexDeletionForbidden' => 'Plex refused the delete: this account may not delete media on this server. Delete it from the account that owns the server.',
+			'mediaMenu.deleteServerGone' => 'This item\'s server is not connected. Nothing was deleted.',
 			'mediaMenu.rate' => 'Rate',
 			'mediaMenu.playFromBeginning' => 'Play from Beginning',
 			'mediaMenu.playVersion' => 'Play Version...',
@@ -11086,6 +11409,8 @@ extension on Translations {
 			'accessibility.mediaCardMovie' => ({required Object title}) => '${title}, movie',
 			'accessibility.mediaCardShow' => ({required Object title}) => '${title}, TV show',
 			'accessibility.mediaCardEpisode' => ({required Object title, required Object episodeInfo}) => '${title}, ${episodeInfo}',
+			_ => null,
+		} ?? switch (path) {
 			'accessibility.mediaCardSeason' => ({required Object title, required Object seasonInfo}) => '${title}, ${seasonInfo}',
 			'accessibility.mediaCardWatched' => 'watched',
 			'accessibility.mediaCardPartiallyWatched' => ({required Object percent}) => '${percent} percent watched',
@@ -11096,8 +11421,6 @@ extension on Translations {
 			'tooltips.markAsWatched' => 'Mark as watched',
 			'tooltips.markAsUnwatched' => 'Mark as unwatched',
 			'videoControls.audioLabel' => 'Audio',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.subtitlesLabel' => 'Subtitles',
 			'videoControls.subtitlesPreparing' => 'Preparing subtitles',
 			'videoControls.subtitlesPrepareFailed' => 'Subtitles could not be prepared',
@@ -11114,6 +11437,8 @@ extension on Translations {
 			'videoControls.lockRotation' => 'Lock rotation',
 			'videoControls.unlockRotation' => 'Unlock rotation',
 			'videoControls.timerActive' => 'Timer Active',
+			'videoControls.playbackRateNormal' => 'Normal',
+			'videoControls.sleepTimerActive' => ({required Object remaining}) => 'Active (${remaining})',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
@@ -11545,6 +11870,7 @@ extension on Translations {
 			'libraries.all' => 'All',
 			'libraries.clearAll' => 'Clear All',
 			'libraries.scanLibraryConfirm' => ({required Object title}) => 'Are you sure you want to scan "${title}"?',
+			'libraries.nextScheduledScan' => ({required Object time}) => 'Next scheduled scan: ${time}.',
 			'libraries.analyzeLibraryConfirm' => ({required Object title}) => 'Are you sure you want to analyze "${title}"?',
 			'libraries.refreshMetadataConfirm' => ({required Object title}) => 'Are you sure you want to refresh metadata for "${title}"?',
 			'libraries.emptyTrashConfirm' => ({required Object title}) => 'Are you sure you want to empty trash for "${title}"?',
@@ -11597,6 +11923,8 @@ extension on Translations {
 			'libraries.sortLabels.userRating' => 'User Rating',
 			'libraries.sortLabels.lastPlayed' => 'Last Played',
 			'libraries.sortLabels.datePlayed' => 'Date Played',
+			_ => null,
+		} ?? switch (path) {
 			'libraries.sortLabels.playCount' => 'Play Count',
 			'libraries.sortLabels.productionYear' => 'Production Year',
 			'libraries.sortLabels.runtime' => 'Runtime',
@@ -11610,8 +11938,6 @@ extension on Translations {
 			'libraries.sortLabels.latestEpisodeAirDate' => 'Latest Episode Air Date',
 			'libraries.sortLabels.lastEpisodeDateAdded' => 'Last Episode Date Added',
 			'about.title' => 'About',
-			_ => null,
-		} ?? switch (path) {
 			'about.openSourceLicenses' => 'Open Source Licenses',
 			'about.versionLabel' => ({required Object version}) => 'Version ${version}',
 			'about.appDescription' => 'A beautiful Plex and Jellyfin client for Flutter',
@@ -12111,6 +12437,8 @@ extension on Translations {
 			'performanceOverlay.avSync' => 'A/V Sync',
 			'performanceOverlay.dropped' => 'Dropped',
 			'performanceOverlay.dvRpus' => 'DV RPUs',
+			_ => null,
+		} ?? switch (path) {
 			'performanceOverlay.dvRpuAverage' => 'DV RPU Avg',
 			'performanceOverlay.dvSampleAverage' => 'DV Sample Avg',
 			'performanceOverlay.maxLuma' => 'Max Luma',
@@ -12124,8 +12452,6 @@ extension on Translations {
 			'performanceOverlay.memory' => 'Memory',
 			'performanceOverlay.uiFps' => 'UI FPS',
 			'externalPlayer.title' => 'External Player',
-			_ => null,
-		} ?? switch (path) {
 			'externalPlayer.useExternalPlayer' => 'Use External Player',
 			'externalPlayer.useExternalPlayerDescription' => 'Open videos in another app',
 			'externalPlayer.selectPlayer' => 'Select Player',
@@ -12413,6 +12739,34 @@ extension on Translations {
 			'seerr.filterUnsupportedBySource' => 'Requests cannot filter on this status, so no list is shown under that name.',
 			'seerr.railScope' => 'Scope',
 			'seerr.requestNotInOwnList' => 'That request is no longer in your own list. It may have been handled or removed.',
+			'seerr.cockpit.waitingOnYou' => 'Waiting on you',
+			'seerr.cockpit.waitingForApproval' => 'Waiting for approval',
+			'seerr.cockpit.inProgress' => 'On the way',
+			'seerr.cockpit.handled' => 'Handled',
+			'seerr.cockpit.oldestFirst' => 'oldest first',
+			'seerr.cockpit.tilePending' => 'waiting on you',
+			'seerr.cockpit.tileInProgress' => 'on the way',
+			'seerr.cockpit.tileIssues' => 'open reports',
+			'seerr.cockpit.approveSelected' => ({required Object n}) => 'Approve ${n}',
+			'seerr.cockpit.approvedMany' => ({required Object n}) => '${n} approved',
+			'seerr.cockpit.approvedSome' => ({required Object ok, required Object failed}) => '${ok} approved, ${failed} not',
+			'seerr.cockpit.swipeHint' => 'Swipe right to approve, left to decline',
+			'seerr.cockpit.declineConfirm' => 'Decline this request?',
+			'seerr.cockpit.select' => ({required Object title}) => 'Select ${title}',
+			'seerr.cockpit.ageDays' => ({required Object n}) => '${n}d',
+			'seerr.cockpit.ageHours' => ({required Object n}) => '${n}h',
+			'seerr.cockpit.ageMinutes' => ({required Object n}) => '${n}m',
+			'seerr.cockpit.factSeasons' => 'Seasons',
+			'seerr.cockpit.factQuality' => 'Quality',
+			'seerr.cockpit.factRequested' => 'Requested',
+			'seerr.cockpit.factInPleya' => 'Already in Pleya',
+			'seerr.cockpit.factLimit' => ({required Object name}) => '${name}\'s limit',
+			'seerr.cockpit.limitUsed' => ({required Object used, required Object limit}) => '${used} of ${limit} used',
+			'seerr.cockpit.qualityStandard' => 'Standard',
+			'seerr.cockpit.inPleyaNo' => 'Not yet',
+			'seerr.cockpit.inPleyaPartly' => 'Partly',
+			'seerr.cockpit.inPleyaYes' => 'Yes',
+			'seerr.cockpit.toCheck' => 'To check',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
@@ -12597,6 +12951,8 @@ extension on Translations {
 			'pleyaShare.scanQrHint' => 'Point the camera at the QR code on the host device',
 			'pleyaShare.cameraPermissionDenied' => 'Camera access is needed to scan the QR code.',
 			'pleyaShare.connect' => 'Connect',
+			_ => null,
+		} ?? switch (path) {
 			'pleyaShare.pairFailed' => 'Pairing failed. Check the code and try again.',
 			'pleyaShare.paired' => ({required Object name}) => 'Connected to ${name}',
 			'pleyaShare.pairUnreachable' => 'Host not reachable. Check the address and network.',
@@ -12638,8 +12994,6 @@ extension on Translations {
 			'unifiedCatalog.oneSource' => '1 source',
 			'unifiedCatalog.seasons' => ({required Object count}) => '${count} seasons',
 			'unifiedCatalog.oneSeason' => '1 season',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.titleCount' => ({required Object count}) => '${count} titles',
 			'unifiedCatalog.oneTitle' => '1 title',
 			'unifiedCatalog.titlesLoaded' => ({required Object count}) => '${count} titles loaded',
@@ -13111,6 +13465,8 @@ extension on Translations {
 			'assistant.memory.sync.keepServer' => 'Use server version',
 			'assistant.memory.sync.keepBoth' => 'Keep both',
 			'assistant.memory.sync.deleted' => 'Removed',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.memory.sync.select' => 'Share',
 			'assistant.memory.sync.lastConfirmed' => ({required Object time}) => 'Last confirmed: ${time}',
 			'assistant.memory.sync.importLimit' => ({required Object count}) => 'This would store ${count} memories on this device. The limit is 200; remove memories before connecting.',
@@ -13152,8 +13508,6 @@ extension on Translations {
 			'assistant.examples.tonight.1' => 'Pick a comedy from my library for tonight.',
 			'assistant.examples.tonight.2' => 'Find an exciting movie in my library for tonight.',
 			'assistant.examples.startSeries.0' => 'Which series in my library can I start tonight?',
-			_ => null,
-		} ?? switch (path) {
 			'assistant.examples.forKids.0' => 'Do I have something for the kids?',
 			'assistant.examples.unwatched.0' => 'Which films in my library have I not seen yet?',
 			'assistant.examples.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
@@ -13601,6 +13955,61 @@ extension on Translations {
 			'settingsStudio.controls' => 'Controls',
 			'settingsStudio.diagnostics' => 'Diagnostics',
 			'settingsStudio.activeProfile' => 'Active profile',
+			'seerrIssues.title' => 'Reports',
+			'seerrIssues.subtitle' => 'Problems reported with films and series',
+			'seerrIssues.open' => 'Open',
+			'seerrIssues.resolved' => 'Resolved',
+			'seerrIssues.mine' => 'My reports',
+			'seerrIssues.empty' => 'No reports in this view.',
+			'seerrIssues.loadMore' => 'Load more',
+			'seerrIssues.video' => 'Video',
+			'seerrIssues.audio' => 'Audio',
+			'seerrIssues.subtitles' => 'Subtitles',
+			'seerrIssues.other' => 'Other',
+			'seerrIssues.seasonNumber' => ({required Object number}) => 'Season ${number}',
+			'seerrIssues.episodeNumber' => ({required Object number}) => 'Episode ${number}',
+			'seerrIssues.number' => ({required Object number}) => 'Report #${number}',
+			'seerrIssues.unknownAuthor' => 'Unknown user',
+			'seerrIssues.reply' => 'Write a reply',
+			'seerrIssues.sendReply' => 'Post reply',
+			'seerrIssues.resolve' => 'Mark as resolved',
+			'seerrIssues.reopen' => 'Reopen report',
+			'seerrIssues.unavailable' => 'Reports are unavailable for this account.',
+			'seerrIssues.serverUnsupported' => 'This server does not support reports.',
+			'seerrIssues.loadFailed' => 'Could not load reports from Seerr.',
+			'seerrIssues.changeUnconfirmed' => 'Seerr did not confirm your change. Check the conversation before trying again.',
+			'seerrIssues.quickReplies' => 'Quick replies',
+			_ => null,
+		} ?? switch (path) {
+			'seerrIssues.quickLooking' => 'Looking into it',
+			'seerrIssues.quickNewVersion' => 'I\'ve requested a new version',
+			'seerrIssues.quickFixed' => 'Fixed, please try again',
+			'seerrIssues.tileOpen' => 'open',
+			'seerrIssues.tileResolved' => 'resolved',
+			'pleyaNotifications.pushTitle' => 'Push on this device',
+			'pleyaNotifications.pushExplanation' => 'Receive new library additions from your own Pleya Server, even when Pleya is closed. iOS asks for permission the first time you turn a category on.',
+			'pleyaNotifications.pushOneAccount' => ({required Object name}) => 'On this device, push from this server goes to one account. It now goes to ${name}; turning it on here turns it off there.',
+			'pleyaNotifications.pushOffline' => 'Changes will take effect when this device can reach the server again.',
+			'pleyaNotifications.pushPending' => 'Push preferences could not be confirmed. Check iOS notification permission and try again.',
+			'pleyaNotifications.title' => 'Notifications',
+			'pleyaNotifications.subtitle' => 'Choose which updates to receive',
+			'pleyaNotifications.settings' => 'Notification preferences',
+			'pleyaNotifications.enable' => 'Enable in-app notifications',
+			'pleyaNotifications.explanation' => 'Choose which updates to show in Pleya. All categories start turned off.',
+			'pleyaNotifications.disabled' => 'Notifications are off. Choose which updates to receive in preferences.',
+			'pleyaNotifications.empty' => 'No new updates.',
+			'pleyaNotifications.requests' => 'My request updates',
+			'pleyaNotifications.reports' => 'My report updates',
+			'pleyaNotifications.movies' => 'New films in my libraries',
+			'pleyaNotifications.episodes' => 'New episodes in my libraries',
+			'pleyaNotifications.releases' => 'Release dates for followed films and series',
+			'pleyaNotifications.app' => 'New Pleya versions',
+			'pleyaNotifications.manageRequests' => 'New requests to review',
+			'pleyaNotifications.manageRequestsTitle' => 'Manage requests',
+			'pleyaNotifications.manageReports' => 'New reports from users',
+			'pleyaNotifications.version' => ({required Object version}) => 'Pleya ${version} is available',
+			'pleyaNotifications.loadPartial' => 'Some updates could not be loaded.',
+			'pleyaNotifications.saveFailed' => 'Your preferences could not be saved.',
 			_ => null,
 		};
 	}

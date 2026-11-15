@@ -62,6 +62,15 @@ Zeven beeldmappen onder `docs/assets/tvos-unified/`, en ze zijn niet gelijkwaard
 | **Alle films en Alle series op Apple TV, vol in beeld** | `pleya-northstar-refs/2026-10-30-set2/` (`01.png` tot en met `03.png`, buiten de repo op de SSD) | **actief voor de route `_openTvCompleteCatalog`**, A-06c; vervangt A06B-WIDTH1, de rail van mockup 28 (DEC-093) en de vaste topnavigatie uit 10.2b en 33.5/33.6 voor alleen die route. Afwijkingen per punt in de pariteitscheck | [`docs/design-audits/tvos-catalog-2026-10/PARITEITSCHECK.md`](design-audits/tvos-catalog-2026-10/PARITEITSCHECK.md), besluit DEC-170 |
 | `src/` | HTML-bron | waar de beelden uit gerenderd worden | `build.mjs` en `tv.css` |
 
+### Aanvragen, meldingen en notificaties (alle platforms)
+
+Deze twee sets staan buiten `docs/assets/tvos-unified/` en tekenen TV, telefoon, tablet en desktop. Elke set heeft een eigen `src/gen.mjs`.
+
+| Map | Families | Rol | Autoriteit |
+|---|---|---|---|
+| `docs/assets/requests-2.0/` | 1 tot en met 8 | goedgekeurd, A-20 (8 oktober 2026) | [`requests-2.0/README.md`](assets/requests-2.0/README.md) |
+| `docs/assets/requests-2.1-meldingen/` | 9 tot en met 12 | **voorstel**, niet goedgekeurd en niet bindend; vult Requests 2.0 aan. Probleem melden (familie 10) wacht op een besluit van Michel | [`requests-2.1-meldingen/README.md`](assets/requests-2.1-meldingen/README.md), afwijkingen van de app in `AFWIJKINGEN.md` |
+
 ### Statusautoriteit
 
 Een PNG of oude README kan nog `candidate` of `kandidaat` zeggen terwijl de set later formeel

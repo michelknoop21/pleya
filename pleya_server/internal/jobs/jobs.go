@@ -362,6 +362,13 @@ func scanRecord(row pgx.Row) (Record, error) {
 	return rec, err
 }
 
+// InFlight zegt of er werk met deze dedupeKey wacht of loopt.
+func (r *Runner) InFlight(ctx context.Context, dedupeKey string) (bool, error) {
+	var busy bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM jobs WHERE dedupe_key = $1 AND state IN ('pending', 'running'))`, dedupeKey).Scan(&busy)
+	return busy, err
+}
+
 // Get leest één job.
 func (r *Runner) Get(ctx context.Context, jobID id.ID) (Record, error) {
 	return scanRecord(r.pool.QueryRow(ctx, `SELECT `+recordColumns+` FROM jobs WHERE id = $1`, jobID))

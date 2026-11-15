@@ -52,4 +52,27 @@ void main() {
 
     expect(body, isNot(contains('entries')));
   });
+
+  test('an oversized log loses its old remote-input lines before it loses its start', () {
+    final remote = StringBuffer();
+    for (var i = 0; i < 12000; i++) {
+      remote.writeln(
+        '[18:53:27.723] [DEBUG] AppleTvRemoteTouchService: native press=right(3) phase=0 uipress=$i ${'x' * 60}',
+      );
+      remote.writeln('[18:53:27.724] [DEBUG] TextInputDiag FocusableWrapper: node=null received key=$i ${'x' * 60}');
+    }
+    final entries =
+        '[18:00:00.000] [INFO] session start\n$remote'
+        '[20:11:35.631] [WARNING] System memory pressure\n'
+        '[20:12:10.797] [DEBUG] AppleTvRemoteTouchService: the press the report is about\n';
+    expect(utf8.encode(entries).length, greaterThan(logUploadMaxBytes));
+
+    final body = buildLogUploadBody(header: 'Pleya v2.8.1', entries: entries);
+
+    expect(utf8.encode(body).length, lessThanOrEqualTo(logUploadMaxBytes));
+    expect(body, contains('session start'), reason: 'the start of the session survives');
+    expect(body, contains('older remote-input debug lines left out'));
+    expect(body, contains('System memory pressure'));
+    expect(body, endsWith('the press the report is about\n'), reason: 'the newest remote lines stay');
+  });
 }

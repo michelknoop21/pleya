@@ -15,9 +15,9 @@
 </svelte:head>
 
 <OverviewLoader>
-  {#snippet children(data)}
+  {#snippet children(data, reload)}
     {#if viewport.wide}
-      <AdminOverview {data} />
+      <AdminOverview {data} onreload={reload} />
     {:else}
       <AdminIndex {data} />
     {/if}

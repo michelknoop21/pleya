@@ -1,7 +1,8 @@
 <!--
-  De spoorkiezer: audio en ondertitels als twee groepen keuzerondjes. Wat de
+  Het ondertitelmenu van het doelbeeld Kijken-speler-menu: uit of een spoor,
+  met erachter het formaat en waar het vandaan komt, en de tekstgrootte. Wat de
   browser of het contract niet kan leveren staat erbij als zin, niet als een
-  knop die niets doet (zie `tracks.ts`).
+  knop die niets doet (zie `tracks.ts`). Audio staat in het instellingenmenu.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
@@ -10,14 +11,14 @@
   import PlayerIcon from './PlayerIcon.svelte';
   import type { TrackOption } from './tracks';
 
+  export type SubtitleSize = 'small' | 'normal' | 'large';
+
   interface Props {
-    audio: TrackOption[];
-    audioIndex: number;
-    audioSwitchable: boolean;
-    onaudio: (index: number) => void;
     subtitles: TrackOption[];
     subtitleId: string | null;
     skippedSubtitles: number;
+    size: SubtitleSize;
+    onsize: (size: SubtitleSize) => void;
     error?: string | null;
     loading?: boolean;
     preparing?: boolean;
@@ -27,13 +28,11 @@
   }
 
   let {
-    audio,
-    audioIndex,
-    audioSwitchable,
-    onaudio,
     subtitles,
     subtitleId,
     skippedSubtitles,
+    size,
+    onsize,
     error = null,
     loading = false,
     preparing = false,
@@ -51,35 +50,14 @@
   });
 </script>
 
-<div class="menu" aria-busy={loading} role="dialog" aria-label={t('player.tracks')} bind:this={panel}>
-  <div class="menu__head">
-    <h2 class="menu__title">{t('player.tracks')}</h2>
-    <button class="menu__close" type="button" aria-label={t('player.closeMenu')} onclick={onclose}>
-      <PlayerIcon name="close" size={18} />
-    </button>
-  </div>
-
-  <fieldset class="group">
-    <legend class="group__title">{t('item.audio')}</legend>
-    {#each audio as option, i (option.id)}
-      <label class="row">
-        <input
-          type="radio"
-          name="player-audio"
-          checked={i === audioIndex}
-          disabled={!audioSwitchable && i !== audioIndex}
-          onchange={() => onaudio(i)}
-        />
-        <span>{option.label}</span>
-      </label>
-    {/each}
-    {#if !audioSwitchable && audio.length > 1}
-      <p class="note">{t('player.audioFixed')}</p>
-    {/if}
-  </fieldset>
-
-  <fieldset class="group">
-    <legend class="group__title">{t('player.subtitles')}</legend>
+<div class="menu" aria-busy={loading} role="dialog" aria-label={t('player.subtitles')} bind:this={panel}>
+  <div class="group" role="radiogroup" aria-label={t('player.subtitles')}>
+    <div class="menu__head">
+      <h2 class="group__title">{t('player.subtitles')}</h2>
+      <button class="menu__close" type="button" aria-label={t('player.closeMenu')} onclick={onclose}>
+        <PlayerIcon name="close" size={18} />
+      </button>
+    </div>
     {#if loading}<p class="note" role="status">{preparing ? t('player.subtitlePreparing') : t('loading')}</p>{/if}
     {#if error}
       <p class="note" role="alert">{error}</p>
@@ -101,10 +79,12 @@
         <input
           type="radio"
           name="player-subtitles"
+          aria-label={option.label}
           checked={subtitleId === option.id}
           onchange={() => onsubtitle(option.id)}
         />
         <span>{option.label}</span>
+        {#if option.note}<span class="row__note">{option.note}</span>{/if}
       </label>
     {/each}
     {#if subtitles.length === 0 && skippedSubtitles === 0}
@@ -113,7 +93,15 @@
     {#if skippedSubtitles > 0}
       <p class="note">{plural('player.subtitlesSkipped', skippedSubtitles)}</p>
     {/if}
-  </fieldset>
+  </div>
+  <div class="size" role="group" aria-label={t('player.subtitleSize')}>
+    <span class="size__label">{t('player.subtitleSize')}</span>
+    {#each ['small', 'normal', 'large'] as const as option (option)}
+      <button class="size__btn" type="button" aria-pressed={size === option} onclick={() => onsize(option)}>
+        {t(`player.subtitleSize.${option}`)}
+      </button>
+    {/each}
+  </div>
 </div>
 
 <style>
@@ -139,9 +127,51 @@
     justify-content: space-between;
   }
 
-  .menu__title {
-    margin: 0;
-    font-size: 16px;
+  .row__note {
+    margin-left: auto;
+    padding-left: var(--space);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .size {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: var(--space-half);
+    padding-top: var(--space);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .size__label {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .size__btn {
+    min-height: var(--touch-target);
+    min-width: 52px;
+    padding: 0 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  @media (max-width: 379px) {
+    .size__label {
+      flex-basis: 100%;
+    }
+  }
+
+  .size__btn[aria-pressed='true'] {
+    background: #fff;
+    border-color: #fff;
+    color: #111;
     font-weight: 700;
   }
 
@@ -157,15 +187,12 @@
   }
 
   .group {
-    margin: var(--space) 0 0;
-    padding: 0;
-    border: 0;
     min-width: 0;
   }
 
   .group__title {
-    padding: 0;
-    margin-bottom: var(--space-half);
+    margin: 0;
+    font-weight: 400;
     font-size: var(--text-caps-size);
     letter-spacing: var(--text-caps-track);
     text-transform: uppercase;

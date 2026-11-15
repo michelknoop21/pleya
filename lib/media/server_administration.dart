@@ -45,9 +45,29 @@ abstract interface class LibraryTrashClient implements ServerAdministrationClien
   Future<void> emptyLibraryTrash(String libraryId);
 }
 
+/// Whether `MediaServerClient.deleteMediaItem` can work on this server right
+/// now. Only a backend whose delete depends on a server switch implements it
+/// (a Pleya Server without the `media_delete` capability answers false); Plex
+/// and Jellyfin decide on their side and report a refusal as an error.
+abstract interface class MediaDeletionGate {
+  bool get supportsMediaDeletion;
+}
+
 /// Re-read metadata for one item (a film, a series) from its providers.
 abstract interface class ItemMetadataRefreshClient implements ServerAdministrationClient {
+  /// False where this server cannot do it right now (a Pleya Server without
+  /// the `item_metadata_refresh` capability).
+  bool get supportsItemMetadataRefresh;
+
   Future<void> refreshItemMetadata(String itemId);
+}
+
+/// When the server will next scan a library on its own schedule.
+///
+/// Null means the server reports no such moment: scheduled scans are off, or
+/// the backend does not expose the time (Plex keeps only the interval).
+abstract interface class LibraryScanScheduleClient implements ServerAdministrationClient {
+  Future<DateTime?> nextLibraryScan(String libraryId);
 }
 
 enum ServerJobState { queued, running, succeeded, failed, cancelled, unknown }

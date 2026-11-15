@@ -20,7 +20,7 @@ import (
 // herstart opnieuw draaien. Het register van back-ups en hersteltests hoort bij
 // de map en niet bij het moment van de dump (zie het pakketcommentaar). De
 // tabellen zelf gaan wel mee, alleen hun inhoud niet.
-var transientTables = []string{"jobs", "backups", "backup_restore_tests"}
+var transientTables = []string{"jobs", "backups", "backup_restore_tests", "push_installations", "push_deliveries"}
 
 // pgEnv is de omgeving voor pg_dump en psql: de verbindingsgegevens van de pool,
 // naar een gekozen database. Het wachtwoord gaat in PGPASSWORD en nooit op de

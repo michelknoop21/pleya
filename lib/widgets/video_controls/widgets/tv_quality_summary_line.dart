@@ -5,6 +5,7 @@ import '../../../i18n/strings.g.dart';
 import '../../../mpv/mpv.dart';
 import '../../../utils/language_codes.dart';
 import '../../../utils/player_utils.dart';
+import '../../../utils/tv_hig.dart';
 import '../../app_icon.dart';
 
 /// The TV OSD's persistent quality line under the title (mockup 18):
@@ -103,7 +104,7 @@ class _TvQualitySummaryLineState extends State<TvQualitySummaryLine> {
               ),
               child: Text(
                 widget.isTranscoding ? t.nowWatching.transcode : t.nowWatching.directPlay,
-                style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: .w600),
+                style: TextStyle(color: Colors.white70, fontSize: TvHig.readable(context, 11), fontWeight: .w600),
               ),
             ),
           ],

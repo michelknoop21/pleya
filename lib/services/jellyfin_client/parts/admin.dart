@@ -48,6 +48,8 @@ mixin _JellyfinAdminMethods {
 
   bool get supportsServerAdministration => true;
 
+  bool get supportsItemMetadataRefresh => true;
+
   bool get createUserRequiresPassword => false;
 
   /// A metadata-only refresh: finds new and removed files without touching
@@ -86,6 +88,22 @@ mixin _JellyfinAdminMethods {
 
   /// Emby requires a `BaseRefreshRequest` body; Jellyfin takes none.
   Map<String, dynamic>? get _embyRefreshBody => connection.isEmby ? const <String, dynamic>{} : null;
+
+  /// The next run of the server-wide library scan task (`RefreshLibrary` in
+  /// `GET /ScheduledTasks`, the same on Jellyfin and Emby). Only an interval
+  /// trigger yields a moment: it fires its interval after the last run ended
+  /// (`LastExecutionResult.EndTimeUtc + IntervalTicks`). A daily or weekly
+  /// trigger is in the server's local time, which the API does not give, so
+  /// those, a task that never ran, and a task without triggers answer null.
+  /// The task covers every library, so [libraryId] does not narrow it.
+  Future<DateTime?> nextLibraryScan(String libraryId) async {
+    assertCanAdministerServer();
+    final response = await _http.get('/ScheduledTasks');
+    throwIfHttpError(response);
+    final data = response.data;
+    if (data is! List) return null;
+    return jellyfinNextLibraryScan(data.whereType<Map<String, dynamic>>());
+  }
 
   Future<List<ServerJob>> listJobs() async {
     assertCanAdministerServer();
@@ -529,4 +547,25 @@ extension JellyfinParticipantEvidence on JellyfinClient {
 
   /// Jellyfin writes one GUID with or without dashes, in either case.
   bool sameUserId(String a, String b) => _folderKey(a) == _folderKey(b);
+}
+
+/// See [_JellyfinAdminMethods.nextLibraryScan].
+/// A moment already past is null too: the task is due or running, and showing
+/// a time that has gone by says nothing about when it comes.
+DateTime? jellyfinNextLibraryScan(Iterable<Map<String, dynamic>> tasks, {DateTime? now}) {
+  final task = tasks.where((t) => t['Key'] == 'RefreshLibrary').firstOrNull;
+  final last = DateTime.tryParse(
+    (task?['LastExecutionResult'] as Map<String, dynamic>?)?['EndTimeUtc'] as String? ?? '',
+  );
+  final triggers = task?['Triggers'];
+  if (last == null || triggers is! List) return null;
+  DateTime? next;
+  for (final trigger in triggers.whereType<Map<String, dynamic>>()) {
+    final ticks = trigger['IntervalTicks'];
+    if (trigger['Type'] != 'IntervalTrigger' || ticks is! int || ticks <= 0) continue;
+    final at = last.toUtc().add(Duration(microseconds: ticks ~/ 10));
+    if (next == null || at.isBefore(next)) next = at;
+  }
+  if (next == null || next.isBefore(now ?? DateTime.now())) return null;
+  return next;
 }

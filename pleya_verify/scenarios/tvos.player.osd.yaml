@@ -6,7 +6,8 @@ target: tvos-sim
 # What this proves:
 #   1. the player opens with its controls up and play/pause focused, and Select
 #      on it really pauses (`player.play_pause.state.playing` mirrors the icon);
-#   2. the title block, the timeline and the title-safe rect are on screen;
+#   2. the title block, the timeline and the title-safe rect are on screen, and
+#      the transport row ends at least 60 pt above the bottom edge (DENS1);
 #   3. on Apple TV a paused bar stays up: six seconds later play/pause still
 #      has focus (PLR-REMOTE-UX1; before, it vanished after five);
 #   4. Menu with the controls up hides them (focus leaves play/pause) and does
@@ -50,6 +51,11 @@ steps:
   - assert: {id: player.timeline, below: player.title}
   - assert: {id: player.settings_button, present: false}
   - assert: {id: player.tracks_button, insideViewport: true, sameRow: player.play_pause}
+  # DENS1 T1: the transport row stays out of the 60 pt overscan band at the
+  # bottom (HIG title-safe); before, it ended about 30 pt above the edge. 59.5:
+  # half a point for the float round trip through the 1.85 scale.
+  - assert: {id: player.play_pause, minBottomGap: 59.5}
+  - assert: {id: player.tracks_button, minBottomGap: 59.5}
   - snapshot: 01-osd-paused
 
   # A paused bar on Apple TV stays: it used to hide five seconds after the pause.

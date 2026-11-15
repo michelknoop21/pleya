@@ -166,7 +166,24 @@ func (s *Store) EmptyTrash(ctx context.Context, libraryID id.ID, gone func(root,
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	removed, err := pruneVersions(ctx, tx, libraryID, versions)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return removed, nil
+}
 
+// pruneVersions verwijdert binnen tx de versies uit versions waarvan elk
+// mediabestand als verdwenen gemarkeerd staat, daarna de films en afleveringen
+// die zo zonder versie raakten, en de seizoenen en series die daardoor leeg
+// werden. De cascade neemt kijkstatus, geschiedenis, favorieten, waarderingen,
+// downloads en lijstregels mee. Het antwoord is het aantal verwijderde films en
+// afleveringen. EmptyTrash en het verwijderen van een titel met zijn bestanden
+// (DEC-XXX, media verwijderen) delen dit pad, zodat er één verwijderlogica is.
+func pruneVersions(ctx context.Context, tx pgx.Tx, libraryID id.ID, versions []id.ID) (int64, error) {
 	// De voorwaarde opnieuw in de DELETE zelf: wat sinds het lezen terugkwam
 	// blijft staan.
 	items, err := collectIDs(ctx, tx, `
@@ -205,9 +222,6 @@ func (s *Store) EmptyTrash(ctx context.Context, libraryID id.ID, gone func(root,
 		  AND NOT EXISTS (SELECT 1 FROM media_items c WHERE c.parent_id = s.id)`,
 		libraryID, append(shows, parents...)); err != nil {
 		return 0, fmt.Errorf("lege series verwijderen: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
 	}
 	return int64(len(parents)), nil
 }
@@ -250,4 +264,51 @@ func (s *Store) RequeueLibraryMetadata(ctx context.Context, libraryID id.ID) (in
 		return 0, fmt.Errorf("metadata opnieuw inplannen: %w", err)
 	}
 	return n, nil
+}
+
+// RequeueItemMetadata is RequeueLibraryMetadata voor één titel (DEC-XXX,
+// metadata per titel). De titel is de film of serie waar het item onder valt:
+// een seizoen of aflevering haalt zijn gegevens uit de ronde van zijn serie,
+// dus verversen loopt altijd over de hele serie. Bij een serie gaan haar
+// seizoenen en afleveringen mee voor de sidecarcontrole (.nfo per seizoen en
+// aflevering); hun providergegevens komen met de ronde van de serie zelf.
+// Dezelfde uitzondering als bij de bibliotheek: een afgewezen of onbesliste
+// titel blijft buiten, en dan is het antwoord 0.
+//
+// ErrNotFound als het item niet bestaat.
+func (s *Store) RequeueItemMetadata(ctx context.Context, itemID id.ID) (int64, error) {
+	var n *int64
+	err := s.pool.QueryRow(ctx, `
+		WITH target AS (
+		    SELECT coalesce(gp.id, p.id, i.id) AS id
+		    FROM media_items i
+		    LEFT JOIN media_items p ON p.id = i.parent_id
+		    LEFT JOIN media_items gp ON gp.id = p.parent_id
+		    WHERE i.id = $1
+		), due AS (
+		    UPDATE media_items i SET sidecar_checked_at = NULL
+		    WHERE i.id IN (SELECT id FROM target) AND i.kind IN ('movie', 'show')
+		      AND NOT EXISTS (SELECT 1 FROM metadata_candidates c
+		                      WHERE c.item_id = i.id AND c.state IN ('rejected', 'ambiguous'))
+		    RETURNING i.id
+		), below AS (
+		    UPDATE media_items d SET sidecar_checked_at = NULL
+		    WHERE d.parent_id IN (SELECT id FROM due)
+		       OR d.parent_id IN (SELECT s.id FROM media_items s WHERE s.parent_id IN (SELECT id FROM due))
+		    RETURNING d.id
+		), requeued AS (
+		    UPDATE metadata_candidates c
+		    SET next_attempt_at = now(),
+		        updated_at = GREATEST(c.updated_at + interval '1 microsecond', clock_timestamp())
+		    WHERE c.item_id IN (SELECT id FROM due) AND c.state IN ('matched', 'unmatched', 'failed')
+		)
+		SELECT CASE WHEN EXISTS (SELECT 1 FROM target)
+		            THEN (SELECT count(*) FROM due) + (SELECT count(*) FROM below) END`, itemID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("metadata van een titel opnieuw inplannen: %w", err)
+	}
+	if n == nil {
+		return 0, ErrNotFound
+	}
+	return *n, nil
 }

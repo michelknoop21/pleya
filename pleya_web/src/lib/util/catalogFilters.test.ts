@@ -21,4 +21,10 @@ describe('catalog filter URL ownership', () => {
     expect(catalogFilterCount(parseCatalogFilters(clear.searchParams))).toBe(0);
     expect(clear.searchParams.get('sort')).toBe('-year');
   });
+  it('carries audio language and content rating through the URL like the other groups', () => {
+    const url = writeCatalogFilters(new URL('http://client.test/libraries/lib'), {audio_language:['nld','eng'],content_rating:['16']});
+    const filters = parseCatalogFilters(url.searchParams);
+    expect(filters).toEqual({audio_language:['nld','eng'],content_rating:['16']});
+    expect(catalogFilterCount(filters)).toBe(3);
+  });
 });

@@ -1,8 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/utils/tv_hig.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -25,6 +30,8 @@ import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart
 
 import '../test_helpers/prefs.dart';
 import '../test_helpers/watch_together_fakes.dart';
+
+import '../test_helpers/golden.dart';
 
 /// PNL2 / AUD1 / AUD2 / PNL1 / STR1 (DEC-101). Every test here was written
 /// against the panel as it stood before mockup 33 and is red there: the pills
@@ -79,6 +86,26 @@ void main() {
     final h = await _pumpPanel(tester);
     expect(find.text('Information'), findsOneWidget);
     expect(h.focusedPill(), 'information');
+  });
+
+  // DENS1 T6: shadows paint in list order, so with the white ring last it
+  // covered the dark 2 px gap and the focused pill read as one white blob.
+  testWidgets('the focused pill keeps its dark gap inside the white ring (DENS1 T6)', (tester) async {
+    final h = await _pumpPanel(tester, trackInputMode: true);
+    // The ring only shows in remote mode: a key press puts the tracker there.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(h.focusedPill(), 'information');
+    final shadows = tester
+        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
+        .map((c) => c.decoration)
+        .whereType<BoxDecoration>()
+        .map((d) => d.boxShadow)
+        .firstWhere((s) => s != null && s.length == 2)!;
+    expect(shadows.first.color, Colors.white);
+    expect(shadows.first.spreadRadius, greaterThan(shadows.last.spreadRadius));
   });
 
   testWidgets('Select on a pill opens the tab and lands on its first row (PNL2)', (tester) async {
@@ -347,7 +374,12 @@ void main() {
       final title = tester.widget<Text>(find.text('Zoom'));
       expect(
         title.style?.fontSize,
-        closeTo(TvSourcePickerLayout.rowPrimaryFontSize * scale, 0.01),
+        // DENS1: the ladder, held at the HIG's 23 pt floor (23 logical on the
+        // canonical canvas, where one logical pixel is one point).
+        closeTo(
+          math.max(TvSourcePickerLayout.rowPrimaryFontSize * scale, TvHig.caption2 * viewSize.height / 1080),
+          0.01,
+        ),
         reason: 'the row label is hoofdstuk 8.3s row-primary tier, not a number of its own',
       );
 
@@ -365,6 +397,33 @@ void main() {
   // pixel values, so "the panel is on the shared ladder" was not yet true and
   // the measurement above could not tell. This one reads the Info tab's own
   // title, which stood at a hardcoded 22 whatever the display was.
+  // DENS1 review M3: the 23 pt floor makes the quieter lines larger, so a
+  // single-line row must still fit its Dutch text on the Apple TV panel.
+  for (final request in [TvInfoPanelRequest.video, TvInfoPanelRequest.information]) {
+    testWidgets(
+      'no single-line Dutch label is cut off on ${request == TvInfoPanelRequest.video ? "Video" : "Info"} (DENS1 M3)',
+      (tester) async {
+        await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
+        addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+        await tester.runAsync(loadAppFontsForGoldens);
+        _panelFontFamily = 'Inter';
+        addTearDown(() => _panelFontFamily = null);
+        if (request == TvInfoPanelRequest.video) {
+          await _pumpFullVideoTab(tester, viewSize: const Size(1038, 584));
+        } else {
+          await _pumpPanel(tester, viewSize: const Size(1038, 584));
+        }
+        await tester.pumpAndSettle();
+        final cut = <String>[
+          for (final element in find.byType(RichText).evaluate())
+            if ((element.renderObject! as RenderParagraph).didExceedMaxLines)
+              (element.widget as RichText).text.toPlainText(),
+        ];
+        expect(cut, isEmpty);
+      },
+    );
+  }
+
   testWidgets('the Information tab follows the same ladder (PLR7)', (tester) async {
     final h = await _pumpPanel(tester, viewSize: const Size(1038, 584));
     expect(h.focusedPill(), 'information');
@@ -532,6 +591,10 @@ class _Harness {
   }
 }
 
+/// The real app font for a test that measures text width; the test font
+/// draws every glyph a full em wide.
+String? _panelFontFamily;
+
 Future<_Harness> _pumpPanel(
   WidgetTester tester, {
   TvInfoPanelRequest initial = TvInfoPanelRequest.information,
@@ -541,6 +604,7 @@ Future<_Harness> _pumpPanel(
   bool ambientSupported = false,
   TrackControlsState? trackControlsState,
   Size viewSize = const Size(1920, 1080),
+  bool trackInputMode = false,
 }) async {
   final player = _PanelPlayer();
   addTearDown(player.dispose);
@@ -550,6 +614,8 @@ Future<_Harness> _pumpPanel(
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
+      theme: ThemeData(fontFamily: _panelFontFamily),
+      builder: trackInputMode ? (context, child) => InputModeTracker(child: child!) : null,
       home: Scaffold(
         body: SizedBox(
           width: viewSize.width,

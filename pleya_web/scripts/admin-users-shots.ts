@@ -132,14 +132,24 @@ async function shoot(
   }
 }
 
-const tick = (p: Page, library: string, rung: string) =>
-  p.getByRole('checkbox', { name: `${library}, ${rung}` }).check();
+const choose = (p: Page, library: string, level: string) =>
+  p
+    .getByRole('radiogroup', { name: t('admin.users.perm.groupNamed', { library }) })
+    .getByRole('radio', { name: level })
+    .check({ force: true });
 
 await shoot('/admin/users', 'gebruikers-nagebootst');
-await shoot('/admin/users/u2', 'gebruiker-nagebootst');
+await shoot('/admin/users/u2', 'gebruiker-toegang-nagebootst');
+await shoot('/admin/users/u2?tab=profile', 'gebruiker-profiel-nagebootst');
+await shoot('/admin/users/u2?tab=devices', 'gebruiker-toestellen-nagebootst');
+await shoot('/admin/users/u2', 'gebruiker-rechten-gekozen-nagebootst', async (p) => {
+  await choose(p, 'Films', t('admin.users.perm.download'));
+  await choose(p, 'Series', t('admin.users.perm.view'));
+  await p.waitForTimeout(300);
+});
 await shoot('/admin/users/u2', 'gebruiker-rechten-opslaan-nagebootst', async (p) => {
-  await tick(p, 'Films', t('admin.users.perm.download'));
-  await tick(p, 'Series', t('admin.users.perm.view'));
+  await choose(p, 'Films', t('admin.users.perm.download'));
+  await choose(p, 'Series', t('admin.users.perm.view'));
   await p.getByRole('button', { name: t('admin.users.action.save') }).click();
   await p.waitForTimeout(300);
 });

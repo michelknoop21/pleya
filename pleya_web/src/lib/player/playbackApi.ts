@@ -18,9 +18,11 @@ export interface PlaybackApi {
   /**
    * Stopt een omzetsessie. Met `keepalive` overleeft de aanvraag het sluiten
    * van de pagina. `sendBeacon` kan dat niet: die kent alleen POST en geen
-   * Authorization-header, en dit is een DELETE die een bearer vraagt.
+   * Authorization-header, en dit is een DELETE die een bearer vraagt. De
+   * belofte lost op als de server antwoordde of de aanvraag mislukte; een nieuw
+   * plan wacht daarop, anders telt de oude sessie nog mee voor de limiet.
    */
-  stop(sessionId: string, keepalive: boolean): void;
+  stop(sessionId: string, keepalive: boolean): Promise<void>;
   /** Een geldig accesstoken voor hls.js, zo nodig eerst ververst. */
   bearer(): Promise<string | null>;
   /**
@@ -88,7 +90,7 @@ export function playbackApi(
       )),
 
     stop(sessionId, keepalive) {
-      if (generation !== client.sessionGeneration) return;
+      if (generation !== client.sessionGeneration) return Promise.resolve();
       // Synchroon gestart, zonder middleware ertussen: in `pagehide` is er
       // geen garantie dat een aanvraag na een await nog vertrekt. Is het
       // token net verlopen, dan ruimt de server de sessie na een minuut
@@ -97,7 +99,7 @@ export function playbackApi(
       const access = client.tokens.accessToken;
       if (access) headers.set('Authorization', `Bearer ${access}`);
       const url = `${client.baseUrl}/playback/sessions/${encodeURIComponent(sessionId)}`;
-      void fetchImpl(url, { method: 'DELETE', headers, keepalive }).catch(() => undefined);
+      return fetchImpl(url, { method: 'DELETE', headers, keepalive }).then(() => undefined, () => undefined);
     },
 
     bearer: () => owned(() => client.bearer()),

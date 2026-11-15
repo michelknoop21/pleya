@@ -30,6 +30,7 @@ class PlaybackSourceResolver {
     String? sessionIdentifier,
     String? transcodeSessionId,
     bool? preferOffline,
+    bool startAtViewOffset = false,
   }) async {
     final reportingClient = _playbackClient(serverIdOrNull(metadata.serverId), offlineLibraryMode: offlineLibraryMode);
     final service = PlaybackInitializationService(client: reportingClient, database: database);
@@ -44,6 +45,7 @@ class PlaybackSourceResolver {
       selectSourceTracks: selectSourceTracks,
       sessionIdentifier: sessionIdentifier,
       transcodeSessionId: transcodeSessionId,
+      startAtViewOffset: startAtViewOffset,
     );
 
     final sourceKind = result.usesLocalMedia
@@ -69,6 +71,7 @@ class PlaybackSourceResolver {
         client: reportingClient,
         sourceKind: sourceKind,
         sessionIdentifier: sessionIdentifier,
+        resultHeaders: result.streamHeaders,
       ),
     );
   }
@@ -77,10 +80,11 @@ class PlaybackSourceResolver {
     required MediaServerClient? client,
     required PlaybackSourceKind sourceKind,
     String? sessionIdentifier,
+    Map<String, String>? resultHeaders,
   }) {
     if (client == null || sourceKind == PlaybackSourceKind.localFile) return null;
 
-    final headers = Map<String, String>.from(client.streamHeaders);
+    final headers = Map<String, String>.from(resultHeaders ?? client.streamHeaders);
     if (client.backend == MediaBackend.plex && sessionIdentifier != null) {
       headers['X-Plex-Session-Identifier'] = sessionIdentifier;
     }

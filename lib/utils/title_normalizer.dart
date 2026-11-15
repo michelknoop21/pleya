@@ -15,3 +15,7 @@ String normalizeTitleForMatching(String? title) {
   t = t.replaceAll(RegExp(r'[^a-z0-9]+'), '');
   return t;
 }
+
+/// A folder-style year suffix is metadata, not part of the visible title.
+/// Raw backend fields and standalone numeric titles remain untouched.
+String titleWithoutYearSuffix(String title) => title.trim().replaceFirst(RegExp(r'\s*\(\d{4}\)$'), '').trim();

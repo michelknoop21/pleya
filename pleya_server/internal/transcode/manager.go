@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -54,6 +56,10 @@ type Session struct {
 	StartedAt time.Time
 	LastBeat  time.Time
 	State     State
+	// StartMs is het eerste tijdstempel van de stream, en omdat de segmenten
+	// filmtijd dragen de positie in de film waar hij begint: gemeten aan het
+	// eerste segment, niet overgenomen uit de aanvraag.
+	StartMs int64
 }
 
 // Params is wat Start nodig heeft. De uitvoermap kiest de manager zelf.
@@ -74,6 +80,8 @@ type Recorder interface {
 // Options zijn de instellingen van een Manager.
 type Options struct {
 	FFmpegPath string
+	// FFprobePath meet waar een omzetting met een startpositie werkelijk begint.
+	FFprobePath string
 	// Dir is de transcodemap; elke sessie krijgt een eigen submap.
 	Dir string
 	// Max is het aantal gelijktijdige sessies; 0 betekent geen enkele.
@@ -148,6 +156,9 @@ func New(o Options) (*Manager, error) {
 	}
 	if o.FFmpegPath == "" {
 		o.FFmpegPath = "ffmpeg"
+	}
+	if o.FFprobePath == "" {
+		o.FFprobePath = "ffprobe"
 	}
 	if err := os.MkdirAll(o.Dir, 0o750); err != nil {
 		return nil, fmt.Errorf("transcodemap: %w", err)
@@ -284,7 +295,37 @@ func (m *Manager) startWith(ctx context.Context, p Params, hw HWAccel) (Session,
 		_ = m.Stop(sid)
 		return Session{}, err
 	}
+	if job.StartMs > 0 {
+		start, err := m.measureStart(ctx, dir)
+		if err != nil {
+			// Zonder meting weet niemand welke positie de speler meldt, en een
+			// verkeerde positie komt in de kijkstatus terecht.
+			_ = m.Stop(sid)
+			return Session{}, fmt.Errorf("%w: startpositie niet te meten: %v", ErrFailed, err)
+		}
+		m.mu.Lock()
+		r.s.StartMs = start
+		m.mu.Unlock()
+	}
 	return m.snapshot(r), nil
+}
+
+// measureStart leest uit het initsegment en het eerste segment op welke tijd
+// van de film de stream begint. ffmpeg kiest bij een gekopieerd spoor het
+// keyframe vóór de gevraagde positie, en waar dat ligt staat alleen in de uitvoer.
+func (m *Manager) measureStart(ctx context.Context, dir string) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, m.o.FFprobePath, "-v", "error", "-show_entries", "format=start_time", "-of", "csv=p=0",
+		"concat:"+filepath.Join(dir, InitName)+"|"+filepath.Join(dir, fmt.Sprintf(SegmentPattern, 0))).Output()
+	if err != nil {
+		return 0, err
+	}
+	sec, err := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+	if err != nil || sec < 0 {
+		return 0, fmt.Errorf("onleesbare starttijd %q", strings.TrimSpace(string(out)))
+	}
+	return int64(math.Round(sec * 1000)), nil
 }
 
 func (m *Manager) wait(r *running, cmd *exec.Cmd, stderr *tailBuffer) {

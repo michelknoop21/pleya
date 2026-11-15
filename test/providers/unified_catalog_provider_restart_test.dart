@@ -286,6 +286,40 @@ void main() {
     expect(seen, everyElement(greaterThanOrEqualTo(before.groups.length)));
   });
 
+  test('a delete that lands while an in-place refresh runs still takes the card off the wall', () async {
+    final gone = catalog.snapshot.groups.first.sources.first;
+    final gate = Completer<void>();
+    client.pageGate = gate;
+    addTearDown(() {
+      if (!gate.isCompleted) gate.complete();
+    });
+    client.pageEntered = Completer<void>();
+    final refresh = catalog.refreshInPlace();
+    await client.pageEntered!.future.timeout(const Duration(seconds: 2));
+    // The server no longer has it, and the restarted merge never saw it.
+    client.rows = [
+      for (var i = 1; i < 120; i++)
+        MediaItem(
+          id: 'a$i',
+          backend: MediaBackend.plex,
+          kind: MediaKind.movie,
+          title: 'T ${i.toString().padLeft(3, '0')}',
+          year: 2000,
+          serverId: 'nas',
+          serverName: 'nas',
+        ),
+    ];
+
+    expect(catalog.removeDeletedSource(gone.sourceKey), isTrue);
+    bool shown() => catalog.snapshot.groups.any((g) => g.sources.any((s) => s.sourceKey == gone.sourceKey));
+    expect(shown(), isFalse);
+    gate.complete();
+    await refresh;
+    await settle();
+    expect(catalog.snapshot.isComplete, isFalse, reason: 'the prefix is partial, which is when old cards are kept');
+    expect(shown(), isFalse);
+  });
+
   test('failed background refresh retains authorized groups without automatic retry', () async {
     final before = catalog.snapshot;
     client.fetched.clear();

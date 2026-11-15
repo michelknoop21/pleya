@@ -49,18 +49,30 @@ extension DatagramSocketListen on RawDatagramSocket {
   StreamSubscription<RawSocketEvent> listenDatagrams(
     void Function(Datagram datagram) onDatagram, {
     required String debugLabel,
+    void Function()? onSocketClosed,
   }) {
     return listen(
       (event) {
+        if (event == RawSocketEvent.closed) {
+          onSocketClosed?.call();
+          return;
+        }
         if (event != RawSocketEvent.read) return;
-        Datagram? datagram;
-        while ((datagram = receive()) != null) {
-          onDatagram(datagram!);
+        try {
+          Datagram? datagram;
+          while ((datagram = receive()) != null) {
+            onDatagram(datagram!);
+          }
+        } on SocketException catch (e, st) {
+          appLogger.w('$debugLabel datagram receive failed', error: e, stackTrace: st);
+          onSocketClosed?.call();
         }
       },
       onError: (Object e, StackTrace st) {
         appLogger.w('$debugLabel datagram socket error', error: e, stackTrace: st);
+        onSocketClosed?.call();
       },
+      onDone: onSocketClosed,
     );
   }
 }

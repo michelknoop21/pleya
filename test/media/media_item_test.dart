@@ -543,6 +543,30 @@ void main() {
   });
 
   group('MediaItem.displayTitle', () {
+    for (final backend in MediaBackend.values) {
+      for (final kind in [MediaKind.movie, MediaKind.show, MediaKind.episode, MediaKind.season]) {
+        test('$backend $kind omits folder year in display while preserving source metadata', () {
+          final item = MediaItem(
+            id: 'brothers',
+            backend: backend,
+            kind: kind,
+            title: 'Brothers (2026)',
+            grandparentTitle: kind == MediaKind.episode || kind == MediaKind.season ? 'Brothers (2026)' : null,
+            year: 2026,
+          );
+          expect(item.displayTitle, 'Brothers');
+          expect(item.title, 'Brothers (2026)');
+          expect(item.year, 2026);
+          expect(item.toJson()['title'], 'Brothers (2026)');
+        });
+      }
+    }
+    test('real numeric titles and non-year qualifiers stay intact', () {
+      for (final title in ['1917', '2001: A Space Odyssey', 'Brothers (US)', 'The (2026) Show']) {
+        expect(_movie(title: title).displayTitle, title);
+      }
+    });
+
     test('episode prefers grandparent (show) title', () {
       final ep = MediaItem(
         id: 'e1',

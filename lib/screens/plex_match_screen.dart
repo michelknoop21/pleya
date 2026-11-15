@@ -29,8 +29,9 @@ import '../widgets/skeletons.dart';
 /// On success, pops `true` so the caller can refresh its view.
 class PlexMatchScreen extends StatefulWidget {
   final MediaItem metadata;
+  final PlexClient? expectedClient;
 
-  const PlexMatchScreen({super.key, required this.metadata});
+  const PlexMatchScreen({super.key, required this.metadata, this.expectedClient});
 
   @override
   State<PlexMatchScreen> createState() => _PlexMatchScreenState();
@@ -38,6 +39,7 @@ class PlexMatchScreen extends StatefulWidget {
 
 class _PlexMatchScreenState extends State<PlexMatchScreen> with ControllerDisposerMixin {
   late final PlexClient _client;
+  bool _hasSource = false;
   late final TextEditingController _nameController = createTextEditingController(text: widget.metadata.title);
   late final TextEditingController _yearController = createTextEditingController(
     text: widget.metadata.year?.toString() ?? '',
@@ -62,7 +64,11 @@ class _PlexMatchScreenState extends State<PlexMatchScreen> with ControllerDispos
   @override
   void initState() {
     super.initState();
-    _client = context.getPlexClientWithFallback(serverIdOrNull(widget.metadata.serverId));
+    final serverId = serverIdOrNull(widget.metadata.serverId);
+    final client = serverId == null ? null : context.tryGetMediaClientForServer(serverId);
+    if (client is! PlexClient || (widget.expectedClient != null && !identical(client, widget.expectedClient))) return;
+    _client = client;
+    _hasSource = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (InputModeTracker.isKeyboardMode(context)) {
@@ -123,6 +129,11 @@ class _PlexMatchScreenState extends State<PlexMatchScreen> with ControllerDispos
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasSource)
+      return FocusedScrollScaffold(
+        title: Text(t.matchScreen.fixMatch),
+        slivers: [SliverFillRemaining(child: Center(child: Text(t.errors.noClientAvailable)))],
+      );
     return FocusedScrollScaffold(
       title: Text(_isUnmatched ? t.matchScreen.match : t.matchScreen.fixMatch),
       slivers: [

@@ -521,13 +521,13 @@ func TestHubNextUpWalksTheSeries(t *testing.T) {
 	}
 }
 
-// TestHubNextUpReturnsAnEpisodeMarkedUnwatched is het geval waarvoor de regel
-// "vanaf het ankerpunt" bestaat in plaats van "erna".
+// TestHubNextUpReturnsAnEpisodeMarkedUnwatched: een aflevering die na een
+// gezien voorganger op ongezien is gezet, is de volgende.
 //
 // mark_unwatched zet watched op onwaar en de positie op nul. Zo'n aflevering is
-// meteen het hoogst genummerde ankerpunt van zijn serie, dus met "strikt erna"
-// zou hij zichzelf uitsluiten: hij valt uit continue_watching omdat de positie
-// nul is, en uit next_up omdat hij het anker is.
+// geen ankerpunt (hoofdstuk 15, stap 2); het anker is haar gezien voorganger,
+// en zij is de eerste kandidaat erna. Zonder gezien of begonnen voorganger had
+// de serie geen anker en stond zij niet in next_up.
 func TestHubNextUpReturnsAnEpisodeMarkedUnwatched(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())

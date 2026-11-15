@@ -172,6 +172,10 @@ def ensure_build_number(platform)
 end
 
 def upload_beta(extra = {})
+  # upload_to_testflight valt voor `ipa` terug op de laatste gym-export in de
+  # lane context. In `beta` is dat bij de Mac-upload de tvOS-ipa, die na zijn
+  # eigen upload al is opgeruimd, dus de pkg-upload faalde op een ipa-pad.
+  Actions.lane_context.delete(SharedValues::IPA_OUTPUT_PATH) if extra.key?(:pkg)
   upload_to_testflight({
     api_key: asc_api_key,
     skip_waiting_for_build_processing: true,

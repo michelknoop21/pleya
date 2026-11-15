@@ -6,13 +6,13 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
-import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
-import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../utils/isolate_helper.dart';
 import '../download_artwork_helpers.dart';
 import 'index_row.dart';
+import 'local_library_decode.dart';
+import 'scan_diagnostics.dart';
 
 /// Durable, device-local storage belonging to exactly one Pleya profile.
 /// Artwork is separate from the bounded transient image cache and downloads.
@@ -173,40 +173,22 @@ class LocalLibraryStore {
       await _removeContent();
       return;
     }
+    final watch = Stopwatch()..start();
+    var files = 0, fileBytes = 0;
     await for (final entity in directory.list()) {
       if (entity is! File || !entity.path.endsWith('.json') || !entity.uri.pathSegments.last.startsWith('library-'))
         continue;
-      final text = await entity.readAsString();
-      final snapshot = await tryIsolateRun(() {
-        final data = jsonDecode(text) as Map<String, dynamic>;
-        final raw = data['library'] as Map<String, dynamic>;
-        final library = MediaLibrary(
-          id: raw['id'] as String,
-          backend: MediaBackend.values.byName(raw['backend'] as String),
-          title: raw['title'] as String,
-          kind: MediaKind.fromString(raw['kind'] as String),
-          serverId: raw['serverId'] as String,
-          serverName: raw['serverName'] as String?,
-        );
-        final rows = <String, MediaItem>{};
-        for (final value in data['items'] as List) {
-          final item = MediaItem.fromJson(value as Map<String, dynamic>);
-          rows[item.globalKey] = item;
-        }
-        return (
-          library: library,
-          rows: rows,
-          completed: DateTime.tryParse(data['completed'] as String? ?? ''),
-          scanned: DateTime.tryParse(data['scanned'] as String? ?? ''),
-          scannedUpdatedAt: data['scannedUpdatedAt'] as int?,
-        );
-      });
+      final path = entity.path;
+      files++;
+      fileBytes += await entity.length();
+      final snapshot = await tryIsolateRun(() => decodeLibraryFile(path));
       _libraries[snapshot.library.globalKey] = snapshot.library;
       _items[snapshot.library.globalKey] = snapshot.rows;
       if (snapshot.completed != null) _completed[snapshot.library.globalKey] = snapshot.completed!;
       if (snapshot.scanned case final at?)
         _lastScan[snapshot.library.globalKey] = (at: at, updatedAt: snapshot.scannedUpdatedAt);
     }
+    logLoadStats(files: files, bytes: fileBytes, ms: watch.elapsedMilliseconds);
     final posters = Directory('${directory.path}/posters');
     if (await posters.exists()) {
       await for (final entity in posters.list()) {

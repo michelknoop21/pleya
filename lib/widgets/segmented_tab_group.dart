@@ -8,7 +8,11 @@ import '../theme/mono_tokens.dart';
 class SegmentedTabGroup extends StatelessWidget {
   final List<Widget> children;
 
-  const SegmentedTabGroup({super.key, required this.children});
+  /// Draws the hairline around the group. The Regiekamer filter row sits under
+  /// count tiles that carry no outline either, so it goes without.
+  final bool outlined;
+
+  const SegmentedTabGroup({super.key, required this.children, this.outlined = true});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +23,7 @@ class SegmentedTabGroup extends StatelessWidget {
       decoration: BoxDecoration(
         color: tk.surface,
         borderRadius: BorderRadius.circular(tk.radiusMd),
-        border: Border.all(color: tk.outline.withValues(alpha: 0.7)),
+        border: outlined ? Border.all(color: tk.outline.withValues(alpha: 0.7)) : null,
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );

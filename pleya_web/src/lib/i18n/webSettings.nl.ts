@@ -33,6 +33,13 @@ export const webSettingsNl = {
   'admin.set.err.sessionGone': '{name} is al uitgelogd. Laad de lijst opnieuw om de huidige toestellen te zien.',
   'admin.set.err.transcodeGone': 'De sessie van {name} is al afgelopen. Laad opnieuw om te zien wat er nu draait.',
 
+  'admin.media.lede': 'Wat de server doet als een toestel een bestand niet zelf kan afspelen.',
+  'admin.media.readonly.title': 'Omzetten is hier alleen te lezen',
+  'admin.media.readonly.body': 'De server kent geen instelling voor omzetten. Het maximum aantal omzettingen komt uit de omgeving van de container en de hardwareversnelling meet de server bij het opstarten; wijzigen kan alleen daar. De drie waarden onder Afspelen in de browser zijn wel instellingen en sla je hier op.',
+  'admin.media.nav.playback': 'Afspelen',
+  'admin.media.nav.transcode': 'Omzetten',
+  'admin.media.nav.sessions': 'Lopende sessies · {count}',
+  'admin.media.nav.downloads': 'Downloads',
   'admin.media.streams.title': 'Afspelen in de browser',
   'admin.media.streams.max': 'Streamsessies per gebruiker',
   'admin.media.streams.maxValue': '{count} tegelijk',

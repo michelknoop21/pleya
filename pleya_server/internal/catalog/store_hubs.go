@@ -116,16 +116,20 @@ func (s *Store) ContinueWatching(ctx context.Context, q HubQuery) (Page, error) 
 //     kijkstatus van deze identiteit ernaast. Specials (seizoen 0) en
 //     ongenummerde afleveringen vallen hier al af, en dus zowel als kandidaat
 //     als als ankerpunt: wie een special kijkt schuift zijn serie niet op.
-//  2. anchor is per serie de hoogst genummerde aflevering waar deze identiteit
-//     kijkstatus op heeft. Een serie zonder enige kijkactiviteit heeft geen
+//  2. anchor is per serie de hoogst genummerde aflevering die deze identiteit
+//     gezien heeft of waar zij aan begonnen is. Een rij die op ongezien staat
+//     telt niet: na een markering van een heel seizoen op ongezien (DEC-XXX,
+//     drie servergaten) zou de laatste aflevering anders het anker en
+//     daarmee de volgende zijn. Een serie zonder enige kijkactiviteit heeft geen
 //     anker en verschijnt dus niet in de hub.
 //  3. candidate is per serie de laagst genummerde aflevering vanaf het anker die
 //     ongekeken is en waar niemand aan begonnen is.
 //
-// Vanaf het anker en niet erna: een aflevering die op mark_unwatched is gezet
-// staat op watched = false met positie nul, en die hoort de volgende te zijn.
-// Strikt erna zou hem uit beide hubs laten vallen. De positie-eis houdt de
-// scheiding met ContinueWatching intact: een halfgekeken aflevering staat daar,
+// Het anker is altijd gezien of begonnen en een kandidaat nooit, dus "vanaf"
+// en "na" het anker geven hetzelfde. Een aflevering op mark_unwatched met een
+// gezien of begonnen voorganger is daarmee de volgende; zonder zo'n
+// voorganger heeft de serie geen anker. De positie-eis houdt de scheiding met
+// ContinueWatching intact: een halfgekeken aflevering staat daar,
 // zijn opvolger staat hier, en nooit dezelfde in allebei.
 //
 // De ordening tussen series is max(updated_at) over alle aangeraakte
@@ -170,11 +174,9 @@ func (s *Store) NextUp(ctx context.Context, q HubQuery) (Page, error) {
 			WHERE %s
 		),
 		anchor AS (
-			SELECT DISTINCT ON (show_id)
-			       show_id, season_index, episode_index,
-			       max(touched_at) OVER (PARTITION BY show_id) AS activity_at
-			FROM ep
-			WHERE touched_at IS NOT NULL
+			SELECT DISTINCT ON (show_id) show_id, season_index, episode_index, activity_at
+			FROM (SELECT ep.*, max(touched_at) OVER (PARTITION BY show_id) AS activity_at FROM ep) touched
+			WHERE touched_at IS NOT NULL AND (watched OR position_ms > 0)
 			ORDER BY show_id, season_index DESC, episode_index DESC
 		),
 		candidate AS (

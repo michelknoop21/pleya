@@ -209,6 +209,16 @@ const (
 	CodeDownloadNotReady     = "library.download_not_ready"
 	CodeDownloadChanged      = "library.download_changed"
 
+	// Een titel met zijn bestanden verwijderen (DEC-XXX, media verwijderen).
+	// Niet toegestaan is een 403 omdat de bibliotheek wel zichtbaar is, zoals
+	// bij downloaden. Niet beschikbaar is een 409 met details.reason disabled
+	// (de beheerder zette het niet aan) of read_only (de root van dit item valt
+	// niet onder een schrijfbare mount); er is dan niets gewist. Onvolledig is
+	// een 409 met in details wat wel en niet weg is.
+	CodeMediaDeleteNotPermitted = "library.delete_not_permitted"
+	CodeMediaDeleteUnavailable  = "library.media_delete_unavailable"
+	CodeMediaDeleteIncomplete   = "library.media_delete_incomplete"
+
 	CodeStorageUnavailable = "storage.unavailable"
 	CodeStorageFull        = "storage.full"
 
@@ -359,6 +369,9 @@ var errorTable = map[string]struct {
 	CodeDownloadNotPermitted:     {http.StatusForbidden, false},
 	CodeDownloadNotReady:         {http.StatusConflict, true},
 	CodeDownloadChanged:          {http.StatusConflict, false},
+	CodeMediaDeleteNotPermitted:  {http.StatusForbidden, false},
+	CodeMediaDeleteUnavailable:   {http.StatusConflict, false},
+	CodeMediaDeleteIncomplete:    {http.StatusConflict, false},
 
 	CodeStorageUnavailable:    {http.StatusServiceUnavailable, true},
 	CodeStorageFull:           {http.StatusInsufficientStorage, false},

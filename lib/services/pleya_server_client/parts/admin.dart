@@ -70,7 +70,13 @@ typedef PleyaWatchedTitle = ({
 /// alone: `GET /scans` lists the same work again with file counters, and a
 /// second source would show every scan twice.
 mixin _PleyaServerAdminMethods on _PleyaServerRequests
-    implements LibraryScanClient, LibraryTrashClient, RetryableJobsClient, ServerUserAdministration {
+    implements
+        LibraryScanClient,
+        LibraryTrashClient,
+        ItemMetadataRefreshClient,
+        LibraryScanScheduleClient,
+        RetryableJobsClient,
+        ServerUserAdministration {
   MediaServerHttpClient get _http;
 
   void assertCanAdministerServer();
@@ -96,6 +102,35 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
 
   @override
   bool get supportsLibraryTrash => wireCapabilities.libraryMaintenance;
+
+  @override
+  bool get supportsItemMetadataRefresh => wireCapabilities.itemMetadataRefresh;
+
+  /// `POST /items/{id}/refresh-metadata`: the film or show the item belongs
+  /// to goes back into the metadata round, a show with its seasons and
+  /// episodes. Callers check [supportsItemMetadataRefresh] first.
+  @override
+  Future<void> refreshItemMetadata(String itemId) async {
+    assertCanAdministerServer();
+    await _adminSend('POST', '/items/${adminPathSegment(itemId)}/refresh-metadata');
+  }
+
+  /// `Library.next_scan_at` from `GET /libraries`, which an admin reads with
+  /// the planned moment of the next periodic scan. Null without
+  /// `scan_schedule`, for a library without a planned scan, and for one the
+  /// answer does not list.
+  @override
+  Future<DateTime?> nextLibraryScan(String libraryId) async {
+    if (!wireCapabilities.scanSchedule) return null;
+    assertCanAdministerServer();
+    final json = await _adminSend('GET', '/libraries');
+    final items = json?['items'];
+    if (items is! List) return null;
+    for (final library in items.whereType<Map<String, dynamic>>()) {
+      if (library['id'] == libraryId) return DateTime.tryParse(library['next_scan_at'] as String? ?? '');
+    }
+    return null;
+  }
 
   /// `POST /libraries/{id}/empty-trash`: a server job removes the titles whose
   /// files are marked missing and are gone from disk. Refused (409) while a
@@ -313,6 +348,9 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     String path, {
     Map<String, dynamic>? body,
     Map<String, dynamic>? queryParameters,
+    bool followRedirects = true,
+    bool absentIsDone = false,
+    Set<int> passStatuses = const {},
   }) async {
     Future<MediaServerResponse> send() async {
       final headers = await _session.authHeaders();
@@ -321,7 +359,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
       return switch (method) {
         'GET' => _http.get(path, queryParameters: queryParameters, headers: headers, timeout: timeout),
         'POST' => _http.post(path, body: encoded, headers: headers, timeout: timeout),
-        'PUT' => _http.put(path, body: encoded, headers: headers, timeout: timeout),
+        'PUT' => _http.put(path, body: encoded, headers: headers, timeout: timeout, followRedirects: followRedirects),
         'PATCH' => _http.patch(path, body: encoded, headers: headers, timeout: timeout),
         'DELETE' => _http.delete(path, headers: headers, timeout: timeout),
         _ => throw ArgumentError.value(method, 'method'),
@@ -337,7 +375,17 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     if (status < 200 || status >= 300) {
       final code = PleyaError.tryParse(response.data)?.code;
       appLogger.d('PleyaServerClient: $method $path -> $status ${code ?? ''}');
+      // Only this request's own answer: a refresh that fails above throws
+      // before it gets here, whatever its status.
+      if (absentIsDone && status == 404 && code == 'library.not_found') return null;
+      if (passStatuses.contains(status)) return {'status': status};
       if (status == 401 || status == 403) {
+        // Pleya's own verdict carries an `auth.*` code; a proxy or captive
+        // portal in front of the server answers with a bare status. Both stay
+        // a [MediaServerAuthException] for every existing caller.
+        if (code != null && code.startsWith('auth.')) {
+          throw PleyaAuthRejectedException(code, code, statusCode: status);
+        }
         throw MediaServerAuthException(code ?? 'HTTP $status', statusCode: status);
       }
       throw MediaServerHttpException(

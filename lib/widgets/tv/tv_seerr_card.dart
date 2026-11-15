@@ -42,6 +42,7 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_catalog_card.dart';
 import 'tv_unified_layout.dart';
+import '../../services/image_cache_service.dart';
 
 /// A TMDB title on Ontdekken or in a Seerr search result.
 class TvSeerrMediaCard extends StatelessWidget {
@@ -263,6 +264,9 @@ class TvSeerrArtwork extends StatelessWidget {
     return TvCatalogArtworkFill(
       child: CachedNetworkImage(
         imageUrl: url,
+        // The shared artwork cache: bounded downloads with a timeout, instead of
+        // the package default that waits on a dead socket forever.
+        cacheManager: PlexImageCacheManager.instance,
         fit: BoxFit.cover,
         // No fade: the grid builds every card at once, so a per-card animation
         // turns opening the page into twelve things moving, and hoofdstuk 10.2b

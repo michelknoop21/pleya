@@ -72,15 +72,30 @@ func purgeStreamSessionsOnce(ctx context.Context, store sessionSweeper, now time
 	return purged
 }
 
+type pushPurger interface {
+	PurgeRevoked(ctx context.Context) (int64, error)
+}
+
 // scheduleSessionSweep draait de ronde meteen bij het opstarten en daarna
 // elke dag op het vaste tijdstip. Het opstarten wacht er niet op: deze functie
 // draait in haar eigen goroutine.
+//
+// De pushregistraties van ingetrokken sessies gaan in dezelfde ronde weg, ook
+// als push uit staat: de wachtrij van push ruimt alleen op zolang APNs aan is.
 func scheduleSessionSweep(ctx context.Context, store sessionSweeper, revocations sessionRevoker,
-	ttl func() time.Duration, log *slog.Logger) {
+	ttl func() time.Duration, pushes pushPurger, log *slog.Logger) {
 	round := func() {
 		now := time.Now().UTC()
 		sweepSessionsOnce(ctx, store, revocations, ttl, now, log)
 		purgeStreamSessionsOnce(ctx, store, now, log)
+		if pushes == nil {
+			return
+		}
+		if n, err := pushes.PurgeRevoked(ctx); err != nil {
+			log.Warn("pushregistraties opruimen mislukt", slog.String("error", err.Error()))
+		} else if n > 0 {
+			log.Info("pushregistraties van ingetrokken sessies opgeruimd", slog.Int64("count", n), slog.String("source", "system"))
+		}
 	}
 	round()
 	for {

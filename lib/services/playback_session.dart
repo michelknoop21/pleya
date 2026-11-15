@@ -53,6 +53,14 @@ class PlaybackSession {
 
   PlaybackInitializationResult get result => context.result;
 
+  /// The player takes [next] over from [previous]: [next] starts what the
+  /// backend keeps alive for it, unless the player is already gone (an open
+  /// that was in flight during dispose), and [previous] ends its own.
+  static void handOver({PlaybackSession? previous, required PlaybackSession next, required bool playerAlive}) {
+    if (playerAlive) next.result.hold?.call();
+    if (previous != null && !identical(previous.result, next.result)) previous.result.release?.call();
+  }
+
   MediaItem get metadata => context.metadata;
 
   MediaServerClient? get reportingClient => context.reportingClient;

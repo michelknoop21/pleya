@@ -52,7 +52,7 @@ void main() {
 
     final line = frameTimingLine(FrameTimingSummary.of([1000], [1000]));
 
-    expect(line, contains('posterPath=7 cards=42'));
+    expect(line, matches(RegExp(r'posterPath=7 cards=42 rss=\d+/\d+MB$')));
     expect(ScanDiagnostics.cardBuilds, 0);
     expect(ScanDiagnostics.posterPathCalls, 0);
   });

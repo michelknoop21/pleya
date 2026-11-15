@@ -653,7 +653,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required bool isTranscoding,
     required bool isLocalMedia,
     required MediaVersion? selectedVersion,
-    required _PlaybackOpenTiming timing,
+    required PlaybackOpenTiming timing,
     Map<String, String>? headers,
     required bool play,
     List<SubtitleTrack>? externalSubtitlesAtOpen,
@@ -671,12 +671,12 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     // streams keep native seekability detection.
     await player.setProperty('force-seekable', isTranscoding ? 'yes' : 'no');
     if (shouldContinue != null && !shouldContinue()) return false;
-    await player.open(
+    await openWithTiming(
+      player,
       Media(videoUrl, start: timing.mediaStart, headers: headers),
+      timing,
       play: play,
       externalSubtitles: externalSubtitlesAtOpen,
-      timelineOffset: timing.timelineOffset,
-      timelineDuration: timing.timelineDuration,
     );
     onOpened?.call();
     if (shouldContinue != null && !shouldContinue()) return true;

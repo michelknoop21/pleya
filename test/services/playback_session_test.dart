@@ -56,6 +56,48 @@ void main() {
     });
   });
 
+  group('handing the stream credential over on commit', () {
+    PlaybackSession session(String itemId, List<String> log) => PlaybackSession.fromContext(
+      PlaybackContext(
+        metadata: MediaItem(id: itemId, backend: MediaBackend.pleyaServer, kind: MediaKind.movie, serverId: 'srv'),
+        result: PlaybackInitializationResult(
+          availableVersions: const [],
+          videoUrl: 'u',
+          hold: () => log.add('hold $itemId'),
+          release: () => log.add('release $itemId'),
+        ),
+        sourceKind: PlaybackSourceKind.remoteDirect,
+        reportingMode: PlaybackReportingMode.online,
+      ),
+      requestedQualityPreset: TranscodeQualityPreset.original,
+    );
+
+    test('the next item holds and the previous one releases', () {
+      final log = <String>[];
+      PlaybackSession.handOver(previous: session('a', log), next: session('b', log), playerAlive: true);
+      expect(log, ['hold b', 'release a']);
+    });
+
+    test('a commit after dispose holds nothing', () {
+      final log = <String>[];
+      PlaybackSession.handOver(next: session('b', log), playerAlive: false);
+      expect(log, isEmpty);
+    });
+
+    test('a new result for the same item ends the old one too, so it cannot linger', () {
+      final log = <String>[];
+      PlaybackSession.handOver(previous: session('a', log), next: session('a', log), playerAlive: true);
+      expect(log, ['hold a', 'release a']);
+    });
+
+    test('committing the same result again does not release it', () {
+      final log = <String>[];
+      final same = session('a', log);
+      PlaybackSession.handOver(previous: same, next: same, playerAlive: true);
+      expect(log, ['hold a']);
+    });
+  });
+
   group('PlaybackSession.fromContext', () {
     test('keeps the requested preset when no fallback occurred', () {
       final session = PlaybackSession.fromContext(

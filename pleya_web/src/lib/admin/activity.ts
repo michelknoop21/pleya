@@ -9,6 +9,7 @@
  * `POST /jobs/{id}/cancel`, gevonden met `job.scan_id`.
  */
 import type { AdminApi } from '../api/admin';
+import { ApiError } from '../api/errors';
 import type { PleyaClient } from '../api/client';
 import type { Job, Library, Scan, StorageRoot } from '../api/types';
 import type { PillTone } from '../components/StatusPill.svelte';
@@ -191,6 +192,7 @@ export function failedScanDetail(scan: Scan): string {
 const JOB_FAILED: Record<string, MessageKey> = {
   storage_recheck_roots: 'admin.act.job.recheck',
   artwork_cache_purge: 'admin.act.job.cachePurge',
+  empty_library_trash: 'admin.act.job.emptyTrash',
   download_digest: 'admin.act.job.digest',
   backup_create: 'admin.act.job.backupCreate',
   backup_verify: 'admin.act.job.backupVerify'
@@ -199,6 +201,7 @@ const JOB_FAILED: Record<string, MessageKey> = {
 const JOB_RUNNING: Record<string, MessageKey> = {
   storage_recheck_roots: 'admin.act.job.runningTitle.recheck',
   artwork_cache_purge: 'admin.act.job.runningTitle.cachePurge',
+  empty_library_trash: 'admin.act.job.runningTitle.emptyTrash',
   download_digest: 'admin.act.job.runningTitle.digest',
   backup_create: 'admin.act.job.runningTitle.backupCreate',
   backup_verify: 'admin.act.job.runningTitle.backupVerify'
@@ -235,7 +238,10 @@ export interface ScanPlan {
   running: Library[];
 }
 
-export function planScanAll(data: ActivityData): ScanPlan {
+/** Wat een scanplan nodig heeft; het overzicht (20) draagt dezelfde drie lijsten. */
+type ScanSource = Pick<ActivityData, 'libraries' | 'roots' | 'scans'>;
+
+export function planScanAll(data: ScanSource): ScanPlan {
   const plan: ScanPlan = { start: [], skipped: [], running: [] };
   for (const library of data.libraries) {
     const roots = rootsOf(data.roots, library.id);
@@ -245,6 +251,36 @@ export function planScanAll(data: ActivityData): ScanPlan {
     else plan.start.push(library);
   }
   return plan;
+}
+
+export interface ScanAllResult {
+  /** De zin voor de melding: wat in de wachtrij kwam, wat al liep, wat is overgeslagen. */
+  message: string;
+  /** De eerste echte weigering, met de bibliotheek waar het om ging. */
+  firstError: { err: unknown; library: Library } | null;
+}
+
+/**
+ * Alles scannen: `POST /libraries/{id}/scan` per bibliotheek uit het plan. Een
+ * 409 (`library.scan_in_progress`) telt als "stond al in de wachtrij" en niet
+ * als fout. Gedeeld door scherm 25 en de kop van het overzicht.
+ */
+export async function scanAll(api: Pick<AdminApi, 'startScan'>, data: ScanSource): Promise<ScanAllResult> {
+  const plan = planScanAll(data);
+  let queued = 0;
+  let already = plan.running.length;
+  let firstError: ScanAllResult['firstError'] = null;
+  const results = await Promise.allSettled(plan.start.map((l) => api.startScan(l.id)));
+  for (const [i, result] of results.entries()) {
+    if (result.status === 'fulfilled') queued += 1;
+    else if (result.reason instanceof ApiError && result.reason.code === 'library.scan_in_progress')
+      already += 1;
+    else if (!firstError) firstError = { err: result.reason, library: plan.start[i]! };
+  }
+  const parts = [t('admin.act.scanAll.result', { queued })];
+  if (already > 0) parts.push(t('admin.act.scanAll.running', { count: already }));
+  if (plan.skipped.length > 0) parts.push(t('admin.act.scanAll.skipped', { count: plan.skipped.length }));
+  return { message: parts.join(' '), firstError };
 }
 
 // --- Geschiedenis ---------------------------------------------------------

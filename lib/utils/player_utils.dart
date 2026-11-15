@@ -44,6 +44,12 @@ Duration clampSeekPosition(Player player, Duration position) {
   return position;
 }
 
+/// A conversion that started later in the title has no frames before its
+/// [streamStart]; mpv stops a seek there at the first frame. Such a seek asks
+/// the server for a new stream from [target] instead, as the web player does.
+bool seekNeedsNewStream({required Duration? streamStart, required Duration target}) =>
+    streamStart != null && target < streamStart;
+
 /// Plex MKV-over-HTTP transcodes are only native-seeked inside ranges the
 /// player reports as locally seekable. Anything outside those ranges needs a
 /// server-offset transcode restart.

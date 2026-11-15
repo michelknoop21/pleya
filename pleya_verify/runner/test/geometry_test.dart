@@ -51,6 +51,12 @@ GeometryVerdict _dispatch(String function, Map<String, Object?> args) {
         _rect(args['b'] as Map<String, Object?>),
         tolerance: tolerance == null ? 1.0 : (tolerance as num).toDouble(),
       );
+    case 'minBottomGap':
+      return minBottomGap(
+        _rect(args['rect'] as Map<String, Object?>),
+        _rect(args['viewport'] as Map<String, Object?>),
+        minGap: (args['minGap'] as num).toDouble(),
+      );
     default:
       throw ArgumentError('unknown geometry function in cases.json: $function');
   }

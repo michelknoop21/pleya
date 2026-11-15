@@ -509,6 +509,16 @@
       "note": "vrijgegeven expliciete kwaliteit en audiokeuze"
     },
     {
+      "file": "playback_plan_start_request.json",
+      "schema": "PlaybackPlanRequest",
+      "note": "startpositie voor een omzetting, achter playback_start_position"
+    },
+    {
+      "file": "playback_plan_start.json",
+      "schema": "PlaybackPlan",
+      "note": "de stream begint op het keyframe vóór de gevraagde positie"
+    },
+    {
       "file": "collection.json",
       "schema": "Collection",
       "note": "S19: de eigenaar ziet shared_with; item_count en artwork zijn per kijker"

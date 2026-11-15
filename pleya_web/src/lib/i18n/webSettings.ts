@@ -37,6 +37,13 @@ export const webSettings = {
   'admin.set.err.transcodeGone': 'The session of {name} has already ended. Reload to see what is running now.',
 
   // Media en streaming (28).
+  'admin.media.lede': 'What the server does when a device cannot play a file by itself.',
+  'admin.media.readonly.title': 'Transcoding is read-only here',
+  'admin.media.readonly.body': 'The server has no setting for transcoding. The maximum number of transcodes comes from the container environment and the server measures hardware acceleration at startup; change them there. The three values under Playback in the browser are settings and you save them here.',
+  'admin.media.nav.playback': 'Playback',
+  'admin.media.nav.transcode': 'Transcoding',
+  'admin.media.nav.sessions': 'Running sessions · {count}',
+  'admin.media.nav.downloads': 'Downloads to apps',
   'admin.media.streams.title': 'Playing in the browser',
   'admin.media.streams.max': 'Stream sessions per user',
   'admin.media.streams.maxValue': '{count} at once',

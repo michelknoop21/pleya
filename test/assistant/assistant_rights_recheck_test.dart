@@ -51,6 +51,8 @@ class _Admin extends find.FakeServer
   @override
   bool get supportsServerAdministration => true;
   @override
+  bool get supportsItemMetadataRefresh => true;
+  @override
   Future<List<ServerJob>> listJobs() async {
     onRead?.call();
     return const [ServerJob(id: 'j1', title: 'Scan', state: ServerJobState.running, cancellable: true)];

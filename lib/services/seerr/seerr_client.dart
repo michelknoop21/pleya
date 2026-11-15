@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 
+import '../../models/seerr/seerr_issue.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../models/seerr/seerr_request.dart';
 import '../../utils/app_logger.dart';
@@ -12,6 +13,7 @@ import 'seerr_types.dart';
 export 'seerr_types.dart';
 
 part 'seerr_client_requests.dart';
+part 'seerr_client_issues.dart';
 
 /// HTTP client for one Jellyseerr / Overseerr server, bound to a [SeerrSession].
 ///
@@ -20,13 +22,18 @@ part 'seerr_client_requests.dart';
 /// http` has no cookie jar, so we track it ourselves; on a 401 we silently
 /// re-authenticate (Plex token or stored local credentials) and retry once.
 class SeerrClient {
-  SeerrClient(this._session, {this.onSessionUpdated, this.plexTokenProvider, http.Client? httpClient})
-    : _http = MediaServerHttpClient(
-        client: httpClient,
-        baseUrl: '${SeerrConstants.normalizeBaseUrl(_session.baseUrl)}${SeerrConstants.apiPrefix}',
-        connectTimeout: SeerrConstants.requestTimeout,
-        receiveTimeout: SeerrConstants.requestTimeout,
-      );
+  SeerrClient(
+    this._session, {
+    this.onSessionUpdated,
+    this.plexTokenProvider,
+    http.Client? httpClient,
+    this.issueProbeTtl = SeerrConstants.issueProbeTtl,
+  }) : _http = MediaServerHttpClient(
+         client: httpClient,
+         baseUrl: '${SeerrConstants.normalizeBaseUrl(_session.baseUrl)}${SeerrConstants.apiPrefix}',
+         connectTimeout: SeerrConstants.requestTimeout,
+         receiveTimeout: SeerrConstants.requestTimeout,
+       );
 
   SeerrSession _session;
   final MediaServerHttpClient _http;
@@ -38,10 +45,15 @@ class SeerrClient {
   /// Supplies the current Plex token for silent re-auth in plex mode.
   final Future<String?> Function()? plexTokenProvider;
 
+  /// How long a 404 on the issue route is remembered; see [supportsIssues].
+  final Duration issueProbeTtl;
+
   SeerrSession get session => _session;
 
   Map<String, dynamic>? _cachedStatus;
   DateTime? _statusFetchedAt;
+  Future<bool>? _issuesSupported;
+  DateTime? _issuesUnsupportedAt;
 
   /// Title/year/artwork per `mediaType:tmdbId`, so paging through the request
   /// list and switching filters never refetches the same title. Bounded by the

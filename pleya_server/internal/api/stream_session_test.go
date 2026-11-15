@@ -1,10 +1,12 @@
 package api_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
@@ -332,5 +334,51 @@ func TestStreamSessionNeedsAnExistingVersion(t *testing.T) {
 		map[string]string{"version_id": "0198f2a1-7c3e-7b21-9f44-1c2d3e4f5a6b"})
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("onbekende versie gaf %d", rec.Code)
+	}
+}
+
+// TestStreamSessionForANativePlayer legt vast waar de native speler op leunt.
+// mpv krijgt zijn headers één keer en herhaalt ze bij elke reconnect, dus een
+// accesstoken van vijftien minuten in die headers maakt elke reconnect daarna
+// een 401, ook naast een geldige sessie: de bearer gaat vóór ss. De app stuurt
+// daarom alleen de sessie. En een HEAD zonder bytes verlengt de sessie net als
+// een range-aanvraag, zodat een gepauzeerde speler hem kan vasthouden.
+func TestStreamSessionForANativePlayer(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+	grease := e.findMovie("Grease")
+	versionID := grease.Versions[0].ID
+
+	session, cookie := e.openStreamSession(versionID, http.StatusOK)
+	path := "/pleya/v1/stream/" + versionID + "?ss=" + session.StreamSessionID
+
+	claims, err := e.signer.Verify(e.access, auth.TokenAccess)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expired, _, err := e.signer.Mint(claims.Subject, claims.Sid, auth.TokenAccess, -time.Minute, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := e.do(http.MethodGet, path, nil, asUser(expired), withCookie(cookie)); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("verlopen bearer naast een geldige sessie gaf %d; dan mag de app hem toch meesturen", rec.Code)
+	}
+
+	if _, err := e.pool.Exec(context.Background(),
+		`UPDATE stream_sessions SET expires_at = now() + interval '1 minute' WHERE id = $1`,
+		session.StreamSessionID); err != nil {
+		t.Fatal(err)
+	}
+	if rec := e.do(http.MethodHead, path, nil, withoutAuth, withCookie(cookie)); rec.Code != http.StatusOK {
+		t.Fatalf("HEAD met sessie gaf %d", rec.Code)
+	}
+	var left float64
+	if err := e.pool.QueryRow(context.Background(),
+		`SELECT extract(epoch FROM expires_at - now())::float8 FROM stream_sessions WHERE id = $1`,
+		session.StreamSessionID).Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if left < (10 * time.Minute).Seconds() {
+		t.Fatalf("HEAD verlengde de sessie niet: nog %.0f s", left)
 	}
 }

@@ -57,7 +57,7 @@ class TvContinueWatchingCard extends StatelessWidget {
     final scale = TvLayoutConstants.scaleOf(context);
     final tk = tokens(context);
     final item = group.representativeSource.item;
-    final title = item.isEpisode ? (item.grandparentTitle ?? item.displayTitle) : item.displayTitle;
+    final title = item.displayTitle;
     final status = continueWatchingStatusLine(continueWatchingItemOf(group));
     // A title with no wide artwork still gets its picture, not a grey tile.
     final widePath = discoveryWideArtPath(item);

@@ -1,0 +1,1622 @@
+{
+ "set": "Requests 2.1 meldingen en notificaties (voorstel onder A-20/A-21)",
+ "status": "Voorstel, nog niet goedgekeurd. Aanvulling op de goedgekeurde set Requests 2.0 (A-20, 8 oktober 2026); Probleem melden is nieuwe scope en wacht op een besluit van Michel",
+ "generated": "2026-11-09",
+ "images": [
+  {
+   "file": "tv/mk-tv-9A-open-meldingen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9A"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9B-filter-opgelost.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9B"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9C-mijn-meldingen-leeg.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9C"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9D-niet-beschikbaar-op-deze-server.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9D"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9E-fout-bij-ophalen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9E"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9F-detail-met-gesprek.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9F"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9G-reactie-typen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9G"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9H-reactie-niet-bevestigd.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9H"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9I-opgelost-heropenen-mogelijk.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9I"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-9J-9K-meldingen-afhandelen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9J",
+    "9K"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-10A-ingang-op-de-titelpagina.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Probleem melden",
+   "panels": [
+    "10A"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-10B-ingang-in-de-speler.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Probleem melden",
+   "panels": [
+    "10B"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-10C-10D-probleem-melden.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Probleem melden",
+   "panels": [
+    "10C",
+    "10D"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-10E-10F-probleem-melden.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Probleem melden",
+   "panels": [
+    "10E",
+    "10F"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-10G-10H-probleem-melden.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Probleem melden",
+   "panels": [
+    "10G",
+    "10H"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-10I-10I-probleem-melden.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Probleem melden",
+   "panels": [
+    "10I"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-11A-notificatiecentrum.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Notificaties",
+   "panels": [
+    "11A"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-11B-leeg-alles-staat-uit.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Notificaties",
+   "panels": [
+    "11B"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-11C-voorkeuren-per-categorie.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Notificaties",
+   "panels": [
+    "11C"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-11E-push-geweigerd.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Notificaties",
+   "panels": [
+    "11E"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-11F-voorbeelden-van-push.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Notificaties",
+   "panels": [
+    "11F"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-11G-server-zonder-push.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Notificaties",
+   "panels": [
+    "11G"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-11D-11D-notificaties.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Notificaties",
+   "panels": [
+    "11D"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-12A-mijn-pleya-met-meldingen-en-notificaties.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ingangen",
+   "panels": [
+    "12A"
+   ]
+  },
+  {
+   "file": "tv/mk-tv-12B-aanvragen-met-snelkoppeling-naar-meldingen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ingangen",
+   "panels": [
+    "12B"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-9A-9D-meldingen-afhandelen.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9A",
+    "9B",
+    "9C",
+    "9D"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-9E-9H-meldingen-afhandelen.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9E",
+    "9F",
+    "9G",
+    "9H"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-9I-9K-meldingen-afhandelen.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9I",
+    "9J",
+    "9K"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-10A-10D-probleem-melden.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Probleem melden",
+   "panels": [
+    "10A",
+    "10B",
+    "10C",
+    "10D"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-10E-10H-probleem-melden.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Probleem melden",
+   "panels": [
+    "10E",
+    "10F",
+    "10G",
+    "10H"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-10I-10I-probleem-melden.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Probleem melden",
+   "panels": [
+    "10I"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-11A-11D-notificaties.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Notificaties",
+   "panels": [
+    "11A",
+    "11B",
+    "11C",
+    "11D"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-11E-11G-notificaties.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Notificaties",
+   "panels": [
+    "11E",
+    "11F",
+    "11G"
+   ]
+  },
+  {
+   "file": "phone/mk-ph-12A-12B-ingangen.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Ingangen",
+   "panels": [
+    "12A",
+    "12B"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9A-open-meldingen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9A"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9B-filter-opgelost.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9B"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9C-mijn-meldingen-leeg.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9C"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9D-niet-beschikbaar-op-deze-server.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9D"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9E-fout-bij-ophalen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9E"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9F-detail-met-gesprek.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9F"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9G-reactie-typen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9G"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9H-reactie-niet-bevestigd.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9H"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9I-opgelost-heropenen-mogelijk.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9I"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-9J-9K-meldingen-afhandelen.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9J",
+    "9K"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-10A-ingang-op-de-titelpagina.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Probleem melden",
+   "panels": [
+    "10A"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-10B-ingang-in-de-speler.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Probleem melden",
+   "panels": [
+    "10B"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-10C-10E-probleem-melden.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Probleem melden",
+   "panels": [
+    "10C",
+    "10D",
+    "10E"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-10F-10H-probleem-melden.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Probleem melden",
+   "panels": [
+    "10F",
+    "10G",
+    "10H"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-10I-10I-probleem-melden.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Probleem melden",
+   "panels": [
+    "10I"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-11A-notificatiecentrum.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Notificaties",
+   "panels": [
+    "11A"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-11B-leeg-alles-staat-uit.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Notificaties",
+   "panels": [
+    "11B"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-11C-voorkeuren-per-categorie.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Notificaties",
+   "panels": [
+    "11C"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-11E-push-geweigerd.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Notificaties",
+   "panels": [
+    "11E"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-11F-voorbeelden-van-push.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Notificaties",
+   "panels": [
+    "11F"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-11G-server-zonder-push.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Notificaties",
+   "panels": [
+    "11G"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-11D-11D-notificaties.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Notificaties",
+   "panels": [
+    "11D"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-12A-mijn-pleya-met-meldingen-en-notificaties.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ingangen",
+   "panels": [
+    "12A"
+   ]
+  },
+  {
+   "file": "tablet/mk-tb-12B-aanvragen-met-snelkoppeling-naar-meldingen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ingangen",
+   "panels": [
+    "12B"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9A-open-meldingen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9A"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9B-filter-opgelost.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9B"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9C-mijn-meldingen-leeg.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9C"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9D-niet-beschikbaar-op-deze-server.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9D"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9E-fout-bij-ophalen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9E"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9F-detail-met-gesprek.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9F"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9G-reactie-typen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9G"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9H-reactie-niet-bevestigd.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9H"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9I-opgelost-heropenen-mogelijk.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9I"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-9J-9K-meldingen-afhandelen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Meldingen afhandelen",
+   "panels": [
+    "9J",
+    "9K"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-10A-ingang-op-de-titelpagina.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Probleem melden",
+   "panels": [
+    "10A"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-10B-ingang-in-de-speler.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Probleem melden",
+   "panels": [
+    "10B"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-10C-10E-probleem-melden.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Probleem melden",
+   "panels": [
+    "10C",
+    "10D",
+    "10E"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-10F-10H-probleem-melden.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Probleem melden",
+   "panels": [
+    "10F",
+    "10G",
+    "10H"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-10I-10I-probleem-melden.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Probleem melden",
+   "panels": [
+    "10I"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-11A-notificatiecentrum.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Notificaties",
+   "panels": [
+    "11A"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-11B-leeg-alles-staat-uit.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Notificaties",
+   "panels": [
+    "11B"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-11C-voorkeuren-per-categorie.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Notificaties",
+   "panels": [
+    "11C"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-11E-push-geweigerd.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Notificaties",
+   "panels": [
+    "11E"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-11F-voorbeelden-van-push.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Notificaties",
+   "panels": [
+    "11F"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-11G-server-zonder-push.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Notificaties",
+   "panels": [
+    "11G"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-11D-11D-notificaties.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Notificaties",
+   "panels": [
+    "11D"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-12A-mijn-pleya-met-meldingen-en-notificaties.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ingangen",
+   "panels": [
+    "12A"
+   ]
+  },
+  {
+   "file": "desktop/mk-dk-12B-aanvragen-met-snelkoppeling-naar-meldingen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ingangen",
+   "panels": [
+    "12B"
+   ]
+  }
+ ],
+ "states": [
+  {
+   "code": "9A",
+   "family": "Meldingen afhandelen",
+   "state": "Open meldingen",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Zelfde lijsttaal als 7B: rij in een kaart, statusstip, type en plek in één regel. PR #654 heeft de lijst, deze vorm is nieuw",
+   "TV": {
+    "file": "tv/mk-tv-9A-open-meldingen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9A-9D-meldingen-afhandelen.jpg",
+    "panel": "9A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9A-open-meldingen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9A-open-meldingen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9B",
+   "family": "Meldingen afhandelen",
+   "state": "Filter Opgelost",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Opgelost blijft leesbaar; aantallen uit hetzelfde bereik",
+   "TV": {
+    "file": "tv/mk-tv-9B-filter-opgelost.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9A-9D-meldingen-afhandelen.jpg",
+    "panel": "9B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9B-filter-opgelost.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9B-filter-opgelost.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9C",
+   "family": "Meldingen afhandelen",
+   "state": "Mijn meldingen leeg",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Leeg is geen fout: legt uit waar je een probleem meldt",
+   "TV": {
+    "file": "tv/mk-tv-9C-mijn-meldingen-leeg.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9A-9D-meldingen-afhandelen.jpg",
+    "panel": "9C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9C-mijn-meldingen-leeg.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9C-mijn-meldingen-leeg.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9D",
+   "family": "Meldingen afhandelen",
+   "state": "Niet beschikbaar op deze server",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Server te oud of geen recht: geen Opnieuw-knop, wel wat de beheerder moet doen",
+   "TV": {
+    "file": "tv/mk-tv-9D-niet-beschikbaar-op-deze-server.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9A-9D-meldingen-afhandelen.jpg",
+    "panel": "9D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9D-niet-beschikbaar-op-deze-server.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9D-niet-beschikbaar-op-deze-server.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9E",
+   "family": "Meldingen afhandelen",
+   "state": "Fout bij ophalen",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Alleen een echte fout krijgt Opnieuw proberen; een streepje is geen nul",
+   "TV": {
+    "file": "tv/mk-tv-9E-fout-bij-ophalen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9E-9H-meldingen-afhandelen.jpg",
+    "panel": "9E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9E-fout-bij-ophalen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9E-fout-bij-ophalen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9F",
+   "family": "Meldingen afhandelen",
+   "state": "Detail met gesprek",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Titel, plek en type bovenaan; afspelen vanaf de gemelde aflevering; gesprek als berichten",
+   "TV": {
+    "file": "tv/mk-tv-9F-detail-met-gesprek.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9E-9H-meldingen-afhandelen.jpg",
+    "panel": "9F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9F-detail-met-gesprek.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9F-detail-met-gesprek.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9G",
+   "family": "Meldingen afhandelen",
+   "state": "Reactie typen",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Plaatsen wordt pas actief met tekst; op TV via het systeemtoetsenbord",
+   "TV": {
+    "file": "tv/mk-tv-9G-reactie-typen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9E-9H-meldingen-afhandelen.jpg",
+    "panel": "9G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9G-reactie-typen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9G-reactie-typen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9H",
+   "family": "Meldingen afhandelen",
+   "state": "Reactie niet bevestigd",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Uitkomst onbekend: eerst het gesprek verversen, niet blind opnieuw plaatsen. Zelfde patroon als 4I en 8J",
+   "TV": {
+    "file": "tv/mk-tv-9H-reactie-niet-bevestigd.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9E-9H-meldingen-afhandelen.jpg",
+    "panel": "9H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9H-reactie-niet-bevestigd.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9H-reactie-niet-bevestigd.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9I",
+   "family": "Meldingen afhandelen",
+   "state": "Opgelost, heropenen mogelijk",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Gebeurtenis in het gesprek; Heropenen vervangt Markeren als opgelost",
+   "TV": {
+    "file": "tv/mk-tv-9I-opgelost-heropenen-mogelijk.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9I-9K-meldingen-afhandelen.jpg",
+    "panel": "9I",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9I-opgelost-heropenen-mogelijk.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9I-opgelost-heropenen-mogelijk.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "9J",
+   "family": "Meldingen afhandelen",
+   "state": "Oplossen bevestigen",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Veilige knop in focus op TV; zegt wie een notificatie krijgt",
+   "TV": {
+    "file": "tv/mk-tv-9J-9K-meldingen-afhandelen.jpg",
+    "panel": "9J",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9I-9K-meldingen-afhandelen.jpg",
+    "panel": "9J",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9J-9K-meldingen-afhandelen.jpg",
+    "panel": "9J",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9J-9K-meldingen-afhandelen.jpg",
+    "panel": "9J",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "9K",
+   "family": "Meldingen afhandelen",
+   "state": "Acties via de drie puntjes",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Zelfde menu als 8A: titel, afspelen, reageren, oplossen",
+   "TV": {
+    "file": "tv/mk-tv-9J-9K-meldingen-afhandelen.jpg",
+    "panel": "9K",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-9I-9K-meldingen-afhandelen.jpg",
+    "panel": "9K",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-9J-9K-meldingen-afhandelen.jpg",
+    "panel": "9K",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-9J-9K-meldingen-afhandelen.jpg",
+    "panel": "9K",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "10A",
+   "family": "Probleem melden",
+   "state": "Ingang op de titelpagina",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Telefoon: ronde actieknop Melden naast Kijklijst. TV en desktop: knop in de knoppenrij",
+   "TV": {
+    "file": "tv/mk-tv-10A-ingang-op-de-titelpagina.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10A-10D-probleem-melden.jpg",
+    "panel": "10A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10A-ingang-op-de-titelpagina.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10A-ingang-op-de-titelpagina.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "10B",
+   "family": "Probleem melden",
+   "state": "Ingang in de speler",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Menu tijdens het kijken; tijdstip en audiotrack gaan automatisch mee",
+   "TV": {
+    "file": "tv/mk-tv-10B-ingang-in-de-speler.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10A-10D-probleem-melden.jpg",
+    "panel": "10B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10B-ingang-in-de-speler.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10B-ingang-in-de-speler.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "10C",
+   "family": "Probleem melden",
+   "state": "Type kiezen",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Vier Seerr-typen met een voorbeeld per type, zodat niemand hoeft te raden",
+   "TV": {
+    "file": "tv/mk-tv-10C-10D-probleem-melden.jpg",
+    "panel": "10C",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10A-10D-probleem-melden.jpg",
+    "panel": "10C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10C-10E-probleem-melden.jpg",
+    "panel": "10C",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10C-10E-probleem-melden.jpg",
+    "panel": "10C",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "10D",
+   "family": "Probleem melden",
+   "state": "Serie: seizoen en aflevering",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Vooraf ingevuld uit de speler; hele serie kan ook",
+   "TV": {
+    "file": "tv/mk-tv-10C-10D-probleem-melden.jpg",
+    "panel": "10D",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10A-10D-probleem-melden.jpg",
+    "panel": "10D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10C-10E-probleem-melden.jpg",
+    "panel": "10D",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10C-10E-probleem-melden.jpg",
+    "panel": "10D",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "10E",
+   "family": "Probleem melden",
+   "state": "Toelichting",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Optioneel tekstvak; zegt wat er automatisch meegaat",
+   "TV": {
+    "file": "tv/mk-tv-10E-10F-probleem-melden.jpg",
+    "panel": "10E",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10E-10H-probleem-melden.jpg",
+    "panel": "10E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10C-10E-probleem-melden.jpg",
+    "panel": "10E",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10C-10E-probleem-melden.jpg",
+    "panel": "10E",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "10F",
+   "family": "Probleem melden",
+   "state": "Verstuurd",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Verder kijken is de hoofdknop; de melding blijft vindbaar",
+   "TV": {
+    "file": "tv/mk-tv-10E-10F-probleem-melden.jpg",
+    "panel": "10F",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10E-10H-probleem-melden.jpg",
+    "panel": "10F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10F-10H-probleem-melden.jpg",
+    "panel": "10F",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10F-10H-probleem-melden.jpg",
+    "panel": "10F",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "10G",
+   "family": "Probleem melden",
+   "state": "Al gemeld door iemand anders",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Eerst naar de bestaande melding, apart melden kan nog",
+   "TV": {
+    "file": "tv/mk-tv-10G-10H-probleem-melden.jpg",
+    "panel": "10G",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10E-10H-probleem-melden.jpg",
+    "panel": "10G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10F-10H-probleem-melden.jpg",
+    "panel": "10G",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10F-10H-probleem-melden.jpg",
+    "panel": "10G",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "10H",
+   "family": "Probleem melden",
+   "state": "Geen recht om te melden",
+   "role": "profiel zonder recht",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Noemt het Seerr-recht en wie het kan aanzetten",
+   "TV": {
+    "file": "tv/mk-tv-10G-10H-probleem-melden.jpg",
+    "panel": "10H",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10E-10H-probleem-melden.jpg",
+    "panel": "10H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10F-10H-probleem-melden.jpg",
+    "panel": "10H",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10F-10H-probleem-melden.jpg",
+    "panel": "10H",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "10I",
+   "family": "Probleem melden",
+   "state": "Versturen mislukt, tekst blijft",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Er is niets gemeld; herstel is één knop",
+   "TV": {
+    "file": "tv/mk-tv-10I-10I-probleem-melden.jpg",
+    "panel": "10I",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-10I-10I-probleem-melden.jpg",
+    "panel": "10I",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-10I-10I-probleem-melden.jpg",
+    "panel": "10I",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-10I-10I-probleem-melden.jpg",
+    "panel": "10I",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "11A",
+   "family": "Notificaties",
+   "state": "Notificatiecentrum",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Per dag gegroepeerd; rode stip is ongelezen; tikken opent de plek van de update",
+   "TV": {
+    "file": "tv/mk-tv-11A-notificatiecentrum.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-11A-11D-notificaties.jpg",
+    "panel": "11A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-11A-notificatiecentrum.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-11A-notificatiecentrum.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "11B",
+   "family": "Notificaties",
+   "state": "Leeg, alles staat uit",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Opt-in: leeg betekent hier meestal dat er niets aanstaat",
+   "TV": {
+    "file": "tv/mk-tv-11B-leeg-alles-staat-uit.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-11A-11D-notificaties.jpg",
+    "panel": "11B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-11B-leeg-alles-staat-uit.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-11B-leeg-alles-staat-uit.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "11C",
+   "family": "Notificaties",
+   "state": "Voorkeuren per categorie",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Categorieën uit de WIP-branch; Beheer alleen voor de beheerder; alles standaard uit",
+   "TV": {
+    "file": "tv/mk-tv-11C-voorkeuren-per-categorie.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-11A-11D-notificaties.jpg",
+    "panel": "11C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-11C-voorkeuren-per-categorie.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-11C-voorkeuren-per-categorie.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "11D",
+   "family": "Notificaties",
+   "state": "Uitleg voor de systeemvraag",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Pleya legt uit voordat iOS vraagt; op TV eerlijk dat er geen systeemmeldingen zijn",
+   "TV": {
+    "file": "tv/mk-tv-11D-11D-notificaties.jpg",
+    "panel": "11D",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-11A-11D-notificaties.jpg",
+    "panel": "11D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-11D-11D-notificaties.jpg",
+    "panel": "11D",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-11D-11D-notificaties.jpg",
+    "panel": "11D",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "11E",
+   "family": "Notificaties",
+   "state": "Push geweigerd",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Voorkeuren blijven werken in de app; de weg naar de instellingen staat erbij",
+   "TV": {
+    "file": "tv/mk-tv-11E-push-geweigerd.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-11E-11G-notificaties.jpg",
+    "panel": "11E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-11E-push-geweigerd.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-11E-push-geweigerd.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "11F",
+   "family": "Notificaties",
+   "state": "Voorbeelden van push",
+   "role": "aanvrager en beheerder",
+   "kind": "scherm",
+   "versusSource": "deels op een open branch, niet op main",
+   "intent": "Vier soorten berichten; TV alleen in de app, zonder focus te pakken",
+   "TV": {
+    "file": "tv/mk-tv-11F-voorbeelden-van-push.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-11E-11G-notificaties.jpg",
+    "panel": "11F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-11F-voorbeelden-van-push.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-11F-voorbeelden-van-push.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "11G",
+   "family": "Notificaties",
+   "state": "Server zonder push",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Capability ontbreekt: schakelaar uit, de rest werkt in de app",
+   "TV": {
+    "file": "tv/mk-tv-11G-server-zonder-push.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-11E-11G-notificaties.jpg",
+    "panel": "11G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-11G-server-zonder-push.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-11G-server-zonder-push.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "12A",
+   "family": "Ingangen",
+   "state": "Mijn Pleya met Meldingen en Notificaties",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "De twee nieuwe ingangen naast Aanvragen, met teller en een nieuw-label uit de merkgradiënt",
+   "TV": {
+    "file": "tv/mk-tv-12A-mijn-pleya-met-meldingen-en-notificaties.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-12A-12B-ingangen.jpg",
+    "panel": "12A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-12A-mijn-pleya-met-meldingen-en-notificaties.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-12A-mijn-pleya-met-meldingen-en-notificaties.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "12B",
+   "family": "Ingangen",
+   "state": "Aanvragen met snelkoppeling naar Meldingen",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Beheerder ziet open meldingen boven de aanvraaglijst; TV als filterchip",
+   "TV": {
+    "file": "tv/mk-tv-12B-aanvragen-met-snelkoppeling-naar-meldingen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/mk-ph-12A-12B-ingangen.jpg",
+    "panel": "12B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/mk-tb-12B-aanvragen-met-snelkoppeling-naar-meldingen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/mk-dk-12B-aanvragen-met-snelkoppeling-naar-meldingen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  }
+ ]
+}

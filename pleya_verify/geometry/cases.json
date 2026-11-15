@@ -76,6 +76,8 @@
     {"function": "sameColumn", "description": "custom smaller tolerance rejects a delta the default would allow", "args": {"a": {"x": 0, "y": 0, "width": 50, "height": 50}, "b": {"x": 0.6, "y": 0, "width": 50, "height": 50}, "tolerance": 0.5}, "expectOk": false},
     {"function": "peeksAbove", "description": "a row starting exactly the minimum above the bar", "args": {"a": {"x": 0, "y": 640, "width": 800, "height": 300}, "b": {"x": 0, "y": 700, "width": 800, "height": 80}}, "expectOk": true},
     {"function": "peeksAbove", "description": "one point short of the minimum", "args": {"a": {"x": 0, "y": 641, "width": 800, "height": 300}, "b": {"x": 0, "y": 700, "width": 800, "height": 80}}, "expectOk": false},
-    {"function": "peeksAbove", "description": "a row far under the fold, which below alone lets through", "args": {"a": {"x": 0, "y": 1200, "width": 800, "height": 300}, "b": {"x": 0, "y": 700, "width": 800, "height": 80}}, "expectOk": false}
+    {"function": "peeksAbove", "description": "a row far under the fold, which below alone lets through", "args": {"a": {"x": 0, "y": 1200, "width": 800, "height": 300}, "b": {"x": 0, "y": 700, "width": 800, "height": 80}}, "expectOk": false},
+    {"function": "minBottomGap", "description": "TV transport row exactly 60 pt above the bottom edge", "args": {"rect": {"x": 342, "y": 922, "width": 89, "height": 98}, "viewport": {"x": 0, "y": 0, "width": 1920, "height": 1080}, "minGap": 60}, "expectOk": true},
+    {"function": "minBottomGap", "description": "TV transport row 29.5 pt above the bottom edge, inside the overscan band (audit, 13 November)", "args": {"rect": {"x": 342, "y": 952.4, "width": 98.1, "height": 98.1}, "viewport": {"x": 0, "y": 0, "width": 1920, "height": 1080}, "minGap": 60}, "expectOk": false}
 ]
 }

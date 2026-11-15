@@ -20,6 +20,11 @@ export class PlayerSubtitles {
   caption = $state('');
 
   #controller: AbortController | null = null;
+  /** Seconden in de film waar de stream begint; de cues schuiven zoveel terug. */
+  #offset = 0;
+  /** Hoeveel de cues van een spoor al verschoven zijn. */
+  #shifted = new WeakMap<TextTrack, number>();
+  #track: TextTrack | null = null;
   #revoke: (() => void) | null = null;
   /** Vóór dit moment geeft de server voor `failedId` zijn bewaarde fout terug. */
   #retryAt = 0;
@@ -92,8 +97,33 @@ export class PlayerSubtitles {
     const track = (event.currentTarget as HTMLTrackElement).track;
     if (!track) return;
     if (track.mode !== 'hidden') track.mode = 'hidden';
+    this.#track = track;
+    // Na `load` zijn de cues net uit het bestand gelezen en nog niet verschoven.
+    if (event.type === 'load') this.#shifted.delete(track);
+    this.#align(track);
     this.caption = cueText(track.activeCues as ArrayLike<VTTCue> | null);
   };
+
+  /**
+   * Een stream met een startpositie telt vanaf zijn eigen nul, de cues vanaf het
+   * begin van de film. Ze schuiven met de offset mee, ook bij een nieuw plan op
+   * een ander punt met hetzelfde spoor.
+   */
+  setOffset(offset: number): void {
+    this.#offset = offset;
+    if (this.#track) this.#align(this.#track);
+  }
+
+  #align(track: TextTrack): void {
+    const delta = this.#offset - (this.#shifted.get(track) ?? 0);
+    if (delta === 0 || !track.cues?.length) return;
+    for (let i = 0; i < track.cues.length; i++) {
+      const cue = track.cues[i]!;
+      cue.startTime -= delta;
+      cue.endTime -= delta;
+    }
+    this.#shifted.set(track, this.#offset);
+  }
 
   abort(): void {
     this.#controller?.abort();

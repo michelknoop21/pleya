@@ -50,9 +50,7 @@ steps:
   # it opened from a Home rail: 3 + 3 + 1), and the first two rows each carry
   # their own instance in the tree, wired to sheet.context_menu.item exactly
   # as the mobile variant already does for the same two ids. Row 6, "Home
-  # aanpassen", is not part of this wiring: it renders inline without a
-  # navRow/writeRow call and so has no instance of its own, which row_count
-  # still counts.
+  # aanpassen", carries instance 6 as well (the trailing extra row).
   - assert: {id: sheet.context_menu, insideViewport: true}
   - assert: {id: sheet.context_menu, state: {row_count: 7}}
   - assert: {id: "sheet.context_menu.item[0]", insideViewport: true}

@@ -140,6 +140,7 @@ class PlaybackInitializationService {
     SourceTrackSelector? selectSourceTracks,
     String? sessionIdentifier,
     String? transcodeSessionId,
+    bool startAtViewOffset = false,
   }) async {
     // A file the system handed over has no server and no download row.
     if (isOpenedFile(metadata)) return openedFilePlayback(metadata);
@@ -182,6 +183,7 @@ class PlaybackInitializationService {
           selectSourceTracks: selectSourceTracks,
           sessionIdentifier: sessionIdentifier,
           transcodeSessionId: transcodeSessionId,
+          startAtViewOffset: startAtViewOffset,
         ),
       );
     } catch (e) {

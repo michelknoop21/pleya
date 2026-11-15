@@ -162,6 +162,18 @@ ids:
   - id: library.filter.count
     role: region
     instanceable: false
+  - id: library.more.manage
+    role: button
+    instanceable: false
+  - id: library.manage.options
+    role: button
+    instanceable: true
+  - id: library.maintenance.action
+    role: button
+    instanceable: true
+  - id: library.maintenance.confirm
+    role: button
+    instanceable: false
   - id: sheet.library_sort
     role: sheet
     instanceable: false
@@ -606,6 +618,12 @@ ids:
   - id: requests.list.more
     role: button
     instanceable: true
+  - id: requests.list.tile
+    role: button
+    instanceable: true
+  - id: requests.list.bulk_approve
+    role: button
+    instanceable: false
   - id: requests.list.state
     role: region
     instanceable: true
@@ -615,6 +633,12 @@ ids:
   - id: requests.detail.action
     role: button
     instanceable: true
+  - id: seerr.issues.item
+    role: list.item
+    instanceable: true
+  - id: seerr.issues.status_action
+    role: button
+    instanceable: false
   - id: landing.header
     role: region
     instanceable: true
@@ -659,6 +683,9 @@ ids:
     instanceable: false
   - id: sheet.context_menu.item
     role: list.item
+    instanceable: true
+  - id: dialog.delete_media
+    role: button
     instanceable: true
   - id: sheet.library_actions
     role: sheet

@@ -12,6 +12,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
+	"github.com/edde746/plezy/pleya_server/internal/push"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
 
@@ -114,25 +115,31 @@ func TestScheduleSessionSweepRunsAtStartup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Push staat uit (geen APNs), en toch hoort de registratie van de dode sessie weg.
+	if _, err := pool.Exec(ctx, `INSERT INTO push_installations (id, session_id, device_token, environment, locale, movies_since)
+		VALUES ($1, $2, 'aabb', 'sandbox', 'nl', now())`, id.New(), dead); err != nil {
+		t.Fatal(err)
+	}
 
 	done := make(chan struct{})
 	go func() {
 		scheduleSessionSweep(ctx, store, auth.NewRevocations(0),
-			func() time.Duration { return 30 * 24 * time.Hour }, slog.New(slog.DiscardHandler))
+			func() time.Duration { return 30 * 24 * time.Hour }, push.New(pool, nil), slog.New(slog.DiscardHandler))
 		close(done)
 	}()
 
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		var revoked bool
-		if err := pool.QueryRow(ctx, `SELECT revoked_at IS NOT NULL FROM sessions WHERE id = $1`, dead).Scan(&revoked); err != nil {
+		var revoked, registered bool
+		if err := pool.QueryRow(ctx, `SELECT revoked_at IS NOT NULL, EXISTS (SELECT 1 FROM push_installations WHERE session_id = $1)
+			FROM sessions WHERE id = $1`, dead).Scan(&revoked, &registered); err != nil {
 			t.Fatal(err)
 		}
-		if revoked {
+		if revoked && !registered {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("de opstartronde trok de dode sessie niet binnen vijf seconden in")
+			t.Fatalf("na vijf seconden: ingetrokken=%v, pushregistratie nog aanwezig=%v", revoked, registered)
 		}
 		<-time.After(50 * time.Millisecond)
 	}

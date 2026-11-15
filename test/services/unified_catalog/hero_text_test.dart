@@ -79,6 +79,11 @@ void main() {
   });
 
   group('heroTitleFor', () {
+    test('folder year suffix is hidden for a series episode', () {
+      final episode = _movie(kind: MediaKind.episode, title: 'On the Road', grandparentTitle: 'Brothers (2026)');
+      expect(heroTitleFor(_group(episode)), 'Brothers');
+    });
+
     test('a film or show uses its own title', () {
       expect(heroTitleFor(_group(_movie(title: 'Dune'))), 'Dune');
     });

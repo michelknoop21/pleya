@@ -149,18 +149,10 @@ class DataAggregationService {
     // Filter out items from hidden libraries
     List<MediaItem> filteredOnDeck = filterHiddenLibraryItems(allOnDeck, hiddenLibraryKeys);
 
-    // Watched movies without active progress don't belong in Continue
-    // Watching — some servers keep them in the hub while scrobble processing
-    // settles, and out-of-band watches (another client) land here too.
-    // Movies only: a series row is the server's next-episode substitution.
-    filteredOnDeck = filteredOnDeck
-        .where((item) => item.kind != MediaKind.movie || item.isUnwatchedOrInProgress)
-        .toList();
-
     // Sort by most recently viewed, falling back to addedAt for unwatched items.
     // Same key as JellyfinClient's continue-watching merge (MediaItem.recencySortKey)
     // so per-server and cross-server ordering can't drift apart.
-    filteredOnDeck.sort((a, b) => b.recencySortKey.compareTo(a.recencySortKey));
+    filteredOnDeck.sort(_compareContinueWatchingRecency);
 
     filteredOnDeck = await _deduplicateContinueWatching(filteredOnDeck);
 
@@ -321,7 +313,7 @@ class DataAggregationService {
   /// newly-online servers: same recency ordering and cross-server identity
   /// dedup as [getOnDeckFromAllServers], applied to the union.
   Future<List<MediaItem>> mergeContinueWatching(List<MediaItem> existing, List<MediaItem> fresh, {int? limit}) async {
-    final combined = [...existing, ...fresh]..sort((a, b) => b.recencySortKey.compareTo(a.recencySortKey));
+    final combined = [...existing, ...fresh]..sort(_compareContinueWatchingRecency);
     final deduped = orderContinueWatching(await _deduplicateContinueWatching(combined), itemOf: (item) => item);
     return limit != null && limit < deduped.length ? deduped.sublist(0, limit) : deduped;
   }
@@ -338,19 +330,10 @@ class DataAggregationService {
   /// bucket key only ever decides which items are worth an external-id fetch,
   /// same as before.
   Future<List<MediaItem>> _deduplicateContinueWatching(List<MediaItem> items) async {
-    if (items.length < 2) return items;
+    if (items.length < 2) return items.where(isContinueWatchingEligible).toList();
 
-    final duplicateBuckets = <String>{};
-    final bucketCounts = <String, int>{};
-    for (final item in items) {
-      final bucket = continueWatchingBucketKey(item);
-      if (bucket == null) continue;
-      final count = (bucketCounts[bucket] ?? 0) + 1;
-      bucketCounts[bucket] = count;
-      if (count > 1) duplicateBuckets.add(bucket);
-    }
-    if (duplicateBuckets.isEmpty) return items;
-
+    // Even unique title buckets can share a carried ID or exact episode GUID.
+    // Preserve all sources until that strong evidence and watch state resolve.
     final resolver = UnifiedIdentityResolver(
       trustStoredIdentity: (item) => canTrustStoredIdentity(
         item,
@@ -412,20 +395,26 @@ class DataAggregationService {
       candidates.add(GroupingCandidate(source: source, evidence: evidence[i]));
     }
     final groups = oneContinueWatchingCardPerSeries(
-      groupUnifiedMediaSources(candidates, allowWeakFallback: false),
+      groupUnifiedMediaSources(
+        candidates,
+        allowWeakFallback: false,
+      ).where((group) => isContinueWatchingEligible(continueWatchingItemOf(group))).toList(),
       evidenceBySourceKey,
     );
 
-    // `sources` preserves candidates' original (recency-sorted) order, so the
-    // first source in each group is the one with the highest recency —
-    // exactly the representative this method has always projected. Grouped
-    // representatives and the set-aside malformed rows are merged back by
-    // original index, so nothing silently changes position.
+    // Keep group order stable, but return the same concrete watch-state holder
+    // that passed eligibility. An artwork/first source may be a completed copy
+    // beside an active rewatch within the timestamp reliability margin.
     final resultByIndex = <int, MediaItem>{
-      for (final group in groups) originalIndexOf[group.sources.first.sourceKey]!: group.sources.first.item,
+      for (final group in groups) originalIndexOf[group.sources.first.sourceKey]!: continueWatchingItemOf(group),
       for (final i in malformedIndexes) i: items[i],
     };
     return [for (final i in resultByIndex.keys.toList()..sort()) resultByIndex[i]!];
+  }
+
+  static int _compareContinueWatchingRecency(MediaItem a, MediaItem b) {
+    final viewed = (b.lastViewedAt ?? -1).compareTo(a.lastViewedAt ?? -1);
+    return viewed != 0 ? viewed : b.recencySortKey.compareTo(a.recencySortKey);
   }
 
   bool _hasOnlineClient(MediaItem item) {

@@ -34,9 +34,11 @@
     removed?: string | null;
     /** Titel van een bibliotheek die net aangemaakt is (`?added=`). */
     added?: string | null;
+    /** Hoe de scan na het aanmaken afliep (`?scan=queued` of `failed`); leeg is zonder scan. */
+    firstScan?: string | null;
   }
 
-  let { removed = null, added = null }: Props = $props();
+  let { removed = null, added = null, firstScan = null }: Props = $props();
 
   const api = $derived(adminApi(session.client));
 
@@ -55,7 +57,15 @@
 
   $effect(() => {
     if (removed) notice = t('admin.lib.notice.removed', { name: removed });
-    else if (added) notice = t('admin.lib.notice.added', { name: added });
+    else if (added)
+      notice = t(
+        firstScan === 'queued'
+          ? 'admin.lib.notice.addedScan'
+          : firstScan === 'failed'
+            ? 'admin.lib.notice.addedScanFailed'
+            : 'admin.lib.notice.added',
+        { name: added }
+      );
   });
 
   $effect(() => {

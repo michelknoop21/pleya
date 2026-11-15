@@ -60,6 +60,7 @@ import '../../utils/codec_utils.dart';
 import '../../utils/formatters.dart';
 import '../../utils/haptics.dart';
 import '../../utils/platform_detector.dart';
+import 'player_corner_offset.dart';
 import '../tv/tv_page_surface.dart';
 import 'widgets/player_safe_area.dart';
 import '../../utils/player_utils.dart';
@@ -1087,27 +1088,25 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                     ),
                   // Skip intro/credits button (auto-dismisses after 7s, then only shows with controls)
                   if (_isSkipMarkerButtonVisible)
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      right: PlatformDetector.isTV()
-                          ? tvPageInset(context)
-                          : 24.0 + (useIosFilmFrame ? MediaQuery.paddingOf(context).right : 0.0),
-                      bottom: () {
-                        if (!_showControls)
-                          return 24.0 + (useIosFilmFrame ? MediaQuery.paddingOf(context).bottom : 0.0);
-                        if (!isMobile || useIosFilmFrame) {
-                          final block = widget.chromeController.subtitleLift * MediaQuery.sizeOf(context).height;
-                          if (block > 0) return block + 10;
-                        }
-                        if (widget.chromeController.contentStripVisible) return 180.0;
-                        return isMobile ? 80.0 : 115.0;
-                      }(),
-                      child: AnimatedOpacity(
-                        opacity: 1.0,
-                        duration: tokens(context).slow,
-                        child: _buildSkipMarkerButton(),
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final corner = playerCornerOffset(
+                          context,
+                          widget.chromeController,
+                          controlsShown: _showControls,
+                        );
+                        return AnimatedPositioned(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          right: corner.right,
+                          bottom: corner.bottom,
+                          child: AnimatedOpacity(
+                            opacity: 1.0,
+                            duration: tokens(context).slow,
+                            child: _buildSkipMarkerButton(),
+                          ),
+                        );
+                      },
                     ),
                   if (_showPerformanceOverlay)
                     AnimatedPositioned(

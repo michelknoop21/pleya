@@ -141,6 +141,7 @@ import '../widgets/fitting_title_text.dart';
 import 'big_p/big_p_detail_peek.dart';
 import 'actor_media_screen.dart';
 import 'hub_detail_screen.dart';
+import 'media_detail/borrowed_cast.dart';
 import 'media_detail/cast_section.dart';
 import 'media_detail/detail_track_preview.dart';
 import 'media_detail/extras_section.dart';
@@ -369,6 +370,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   int _episodesLoadGeneration = 0;
   bool _showEpisodesDirectly = false;
   MediaItem? _fullMetadata;
+  BorrowedCast? _borrowedCast;
   ItemWatchers? _watchers;
 
   /// What the server said per item: the page's own, and each season tab that
@@ -1462,6 +1464,22 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return downloadProvider.syncRuleKeyForClient(client, metadata.id, serverId: ServerId(serverId));
   }
 
+  /// See [BorrowedCast]: pictures for a cast list that came without any.
+  Future<void> _borrowCastPhotos(MediaItem metadata) async {
+    _borrowedCast = null;
+    final route = _routeContext;
+    if (route == null || !route.hasAlternativeSources || widget.isOffline) return;
+    if (parseGlobalKey(route.pageSourceKey)?.ratingKey != metadata.id) return;
+    final borrowed = await borrowCastPhotos(
+      pageRoles: metadata.roles ?? const <MediaRole>[],
+      pageSourceKey: route.pageSourceKey,
+      sourceKeys: route.availableSourceKeys,
+      clientFor: (serverId) => mounted ? context.tryGetMediaClientForServer(serverId) : null,
+    );
+    if (borrowed == null || !mounted || _fullMetadata?.id != metadata.id) return;
+    setState(() => _borrowedCast = borrowed);
+  }
+
   void _navigateToActorMedia(MediaRole actor, {TvFocusRestoreTarget? restoreTarget}) {
     final personId = actor.id;
     if (personId == null || _metadata.serverId == null) return;
@@ -1666,6 +1684,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         _isLoadingMetadata = false;
       });
       _closeSelectTrace();
+      unawaited(_borrowCastPhotos(base));
       unawaited(_syncUnifiedOnDeck());
 
       if (base.isShow) {
@@ -4375,6 +4394,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       metadata: metadata,
       cardWidth: _getResponsiveCardWidth(),
       client: getServerBoundMediaClient(context),
+      borrowedCast: _borrowedCast,
       focusNode: _castFocusNode,
       onKeyEvent: _handleCastKeyEvent,
       scrollController: _castScrollController,

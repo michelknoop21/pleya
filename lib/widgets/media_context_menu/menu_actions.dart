@@ -50,6 +50,15 @@ extension on MediaContextMenuState {
     // Backend capabilities gate menu items so we don't expose actions the
     // active server cannot perform.
     final mediaClient = _itemServerId != null ? multiServerProvider.getClientForServer(ServerId(_itemServerId!)) : null;
+    // Deleting a title: the owner rule on Plex and Jellyfin. A Pleya Server has
+    // no canonical metadata path, so there it is the server's own line (owner
+    // or admin, which hold `manage` on every library) and only while its admin
+    // switched file deletion on (`media_delete`, chapter 17h).
+    final canDeleteMedia = switch (mediaClient) {
+      MediaDeletionGate(:final supportsMediaDeletion) =>
+        supportsMediaDeletion && multiServerProvider.serverManager.canAdministerServer(ServerId(_itemServerId!)),
+      _ => isAdmin,
+    };
     // Collections have their own rule: a Pleya Server admin passes `isAdmin`'s
     // neighbours but not this one, and another user's collection stays his.
     final canManageCollections =
@@ -108,6 +117,7 @@ extension on MediaContextMenuState {
           itemBackend: itemBackend,
           mediaClient: mediaClient,
           isAdmin: isAdmin,
+          canDeleteMedia: canDeleteMedia,
           canManageCollections: canManageCollections,
         ),
       );

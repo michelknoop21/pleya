@@ -334,12 +334,16 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
     }
 
     return switch (action) {
-      LibraryMaintenance.scan => _confirmAndRun(
-        title: t.libraries.scanLibrary,
-        message: t.libraries.scanLibraryConfirm(title: library.title),
-        action: run,
-        successMessage: t.messages.libraryScanStarted(title: library.title),
-        failureMessage: t.libraries.failedToScan,
+      LibraryMaintenance.scan => _scanConfirmation(library).then(
+        (message) async => message == null || !mounted
+            ? null
+            : _confirmAndRun(
+                title: t.libraries.scanLibrary,
+                message: message,
+                action: run,
+                successMessage: t.messages.libraryScanStarted(title: library.title),
+                failureMessage: t.libraries.failedToScan,
+              ),
       ),
       LibraryMaintenance.analyze => _confirmAndRun(
         title: t.libraries.analyzeLibrary,
@@ -363,6 +367,16 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
         failureMessage: t.libraries.failedToEmptyTrash,
       ),
     };
+  }
+
+  final _scanQuestion = ScanQuestion();
+
+  /// The scan question, with the server's next planned scan when it has one;
+  /// null while an earlier one is still being prepared.
+  Future<String?> _scanConfirmation(MediaLibrary library) {
+    final is24Hour = MediaQuery.alwaysUse24HourFormatOf(context);
+    final client = libraryMaintenanceClient(context.read<MultiServerProvider>().serverManager, library);
+    return _scanQuestion.ask(client, library, is24Hour: is24Hour);
   }
 
   Future<void> _toggleVisibility(MediaLibrary library, {required bool isHidden}) async {

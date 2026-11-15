@@ -804,6 +804,12 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
         throw StateError('Snapshot contains unsupported items');
       }
       _rememberExternalIds(page.knownItems, readOrder: readOrder, source: source);
+      // A list row carries every field the ancestor columns read (title, index,
+      // parent_id, artwork), so the shows and seasons of this page answer the
+      // lookups of their children's pages without a read per ancestor.
+      for (final item in page.knownItems) {
+        if (item.kind == PleyaItemKind.show || item.kind == PleyaItemKind.season) _itemCache[item.id] = item;
+      }
       final visible = itemFilter == null ? page.knownItems : page.knownItems.where(itemFilter).toList();
       final count = itemFilter == null ? page.items.length : visible.length;
       exhausted = page.nextCursor == null;

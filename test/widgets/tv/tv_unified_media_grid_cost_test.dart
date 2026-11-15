@@ -6,13 +6,14 @@
 /// that grew with the number of cards: a scroll frame that repainted the cards
 /// (H1), an artwork recenter that rebuilt every card (H2), and a
 /// `LocalLibraryProvider` notification that looks up a poster for every card
-/// (H3). H1 and H2 are now held at a constant cost; H3 stays as measured.
+/// (H3). H1 and H2 are now held at a constant cost; candidate-cache reads stay inside the artwork window (H3).
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -29,6 +30,7 @@ import 'package:pleya/widgets/optimized_media_image.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_grid.dart';
 import 'package:provider/provider.dart';
+import '../../test_helpers/catalog_artwork_client.dart';
 
 /// Copied from `tv_unified_media_grid_test.dart`, with a path the paint probe
 /// can name its card by.
@@ -101,6 +103,7 @@ Future<void> pumpGrid(WidgetTester tester, {required int groups}) async {
           home: InputModeTracker(
             child: Scaffold(
               body: TvUnifiedMediaGrid(
+                clientFor: (id) => CatalogArtworkClient(ServerId(id)),
                 key: gridKey,
                 groups: [for (var i = 0; i < groups; i++) _group(i)],
                 controller: controller,
@@ -174,12 +177,19 @@ void main() {
     expect(find.byKey(const ValueKey('probe-g400')), findsOneWidget);
   });
 
-  // Kept: Task 5 makes each lookup cheap, not fewer.
-  testWidgets('H3: one LocalLibraryProvider notification looks up a poster for every card', (tester) async {
-    await pumpGrid(tester, groups: 500);
-    ScanDiagnostics.posterPathCalls = 0;
-    localLibrary.publish();
-    await tester.pump();
-    expect(ScanDiagnostics.posterPathCalls, greaterThanOrEqualTo(500));
+  // The paint seam bypasses OptimizedMediaImage's own reads; this measures
+  // candidate-cache reads before it, including the unified fallback selector.
+  testWidgets('H3: candidate-cache reads stay bounded as the grid grows', (tester) async {
+    final reads = <int>[];
+    for (final groups in [130, 500]) {
+      await pumpGrid(tester, groups: groups);
+      ScanDiagnostics.posterPathCalls = 0;
+      localLibrary.publish();
+      await tester.pump();
+      reads.add(ScanDiagnostics.posterPathCalls);
+    }
+    expect(reads.first, greaterThan(0));
+    expect(reads.last, reads.first);
+    expect(reads.last, lessThan(130));
   });
 }

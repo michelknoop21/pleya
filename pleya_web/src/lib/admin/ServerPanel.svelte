@@ -1,14 +1,14 @@
 <!--
-  Het serverpaneel van scherm 20 (`.kv` in web.css): naam, adres, versie,
-  database en gebruikers. Alles komt uit `GET /server` (de beheervelden), uit
-  `GET /info` en uit `GET /users`. Het aantal ingelogde toestellen uit de
-  northstar ontbreekt: dat vraagt `GET /sessions?user_id=` per gebruiker.
+  Het serverpaneel van het overzicht (`.kv` in web.css): naam, adres, versie,
+  database en de omzetter. Alles komt uit `GET /server` (de beheervelden), uit
+  `GET /info` en uit `GET /transcode-sessions`. De omzetter staat er alleen als
+  de server er een heeft (`max_sessions` boven nul). Het aantal gebruikers
+  staat op de tegel Gebruikers.
 -->
 <script lang="ts">
   import Panel from '../components/Panel.svelte';
   import type { Info } from '../api/types';
   import { t } from '../i18n';
-  import { formatCount } from '../util/format';
   import type { OverviewData } from './overview';
 
   let { data, info }: { data: OverviewData; info: Info | null } = $props();
@@ -48,8 +48,16 @@
         })}
       </dd>
     {/if}
-    <dt>{t('admin.server.users')}</dt>
-    <dd>{formatCount(data.users.length)}</dd>
+    {#if data.transcode.max_sessions > 0}
+      <dt>{t('admin.server.transcoder')}</dt>
+      <dd>
+        {t('admin.watching.transcode', {
+          count: data.transcode.items.length,
+          max: data.transcode.max_sessions,
+          accel: data.transcode.hardware.accel
+        })}
+      </dd>
+    {/if}
   </dl>
 </Panel>
 

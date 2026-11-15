@@ -4,6 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../media/media_item.dart';
+import '../../media/media_item_types.dart';
 import '../../mpv/mpv.dart';
 import '../../models/livetv_capture_buffer.dart';
 import '../../media/media_source_info.dart';
@@ -343,12 +344,12 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
 
   bool _compactFilmFrame(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return widget.footerControls != null && size.width > size.height && size.height < 375;
+    return widget.footerControls != null && size.width > size.height && size.height <= 500;
   }
 
   Widget _buildTopBar(BuildContext context) {
     final header = Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: _compactFilmFrame(context) ? 8 : 16),
+      padding: EdgeInsets.all(_compactFilmFrame(context) ? 8 : 16),
       child: VideoControlsHeader(
         metadata: widget.metadata,
         style: VideoHeaderStyle.filmFrame,
@@ -376,7 +377,7 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
       builder: (context) => MobilePlaybackControls(
         player: widget.player,
         isLive: widget.isLive,
-        compact: _compactFilmFrame(context),
+        isEpisode: widget.metadata.isEpisode,
         onPrevious: widget.onPrevious,
         onNext: widget.onNext,
         onCancelAutoHide: widget.onCancelAutoHide,

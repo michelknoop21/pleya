@@ -150,7 +150,7 @@ final List<AssistantTool> _adminTools = [
     },
     required: const ['item_id'],
     serves: (ctx, id) =>
-        ctx.admin<ItemMetadataRefreshClient>(id) != null &&
+        (ctx.admin<ItemMetadataRefreshClient>(id)?.supportsItemMetadataRefresh ?? false) &&
         (!ctx.libraryDoctorMode || ctx.libraryDoctorActions.contains('refresh_metadata')),
     run: (ctx, id, args) async {
       if (ctx.libraryDoctorMode || args.containsKey('doctor_option_id')) {

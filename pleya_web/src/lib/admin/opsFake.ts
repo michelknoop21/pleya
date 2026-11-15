@@ -32,6 +32,8 @@ export interface OpsFakeOptions {
   jobs?: Job[];
   /** Pagina's scans na de eerste, gevraagd met `cursor=pageN`. */
   morePages?: Scan[][];
+  /** De regels van `GET /server/log`; zonder deze optie kent de nepserver de route niet. */
+  log?: { at: string; level: string; component?: string; message: string }[];
   /** "METHOD /pad" naar een vast antwoord, voor de foutpaden. */
   fail?: Record<string, Response | (() => Response)>;
 }
@@ -74,6 +76,12 @@ export function opsFake(options: OpsFakeOptions) {
       let items = libraryId ? state.scans.filter((s) => s.library_id === libraryId) : state.scans;
       if (libraryId && limit > 0) items = items.slice(0, limit);
       return json({ items, next_cursor: libraryId || !state.morePages.length ? null : 'page1' });
+    }
+    if (method === 'GET' && path === '/server/log' && options.log) {
+      // Zoals de server: `level` is een ondergrens.
+      const order = ['debug', 'info', 'warn', 'error'];
+      const floor = order.indexOf(url.searchParams.get('level') ?? 'debug');
+      return json({ entries: options.log.filter((e) => order.indexOf(e.level) >= floor) });
     }
     if (method === 'GET' && path === '/jobs') return json({ items: state.jobs, next_cursor: null });
     if (method === 'POST' && path === '/storage/roots/recheck') return new Response(null, { status: 202 });

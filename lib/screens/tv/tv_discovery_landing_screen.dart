@@ -44,6 +44,7 @@ import '../../widgets/tv/tv_rail_stack.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_view_all_action.dart';
 import 'tv_discovery_activation_mixin.dart';
+import 'tv_shell_frame.dart';
 
 class TvDiscoveryLandingScreen extends StatefulWidget {
   const TvDiscoveryLandingScreen({
@@ -164,7 +165,8 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
         // to disappear is artwork, and a scrim painted over it would have to
         // match the page colour exactly — which it cannot, since the page has
         // its own vertical lift.
-        final safeArea = TvDiscoverySafeArea.maybe(context);
+        final topInset = TvShellSurface.isPresent(context) ? 0.0 : TvCatalogLayout.topSafeInset * scale;
+        final safeArea = TvDiscoverySafeArea.maybe(context, topInset: topInset);
         final page = ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
             begin: Alignment.bottomCenter,
@@ -176,7 +178,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
           child: ListView(
             controller: _scrollController,
             padding: EdgeInsets.only(
-              top: TvCatalogLayout.topSafeInset * scale,
+              top: topInset,
               // The bottom edge is the one that carries the last readable line
               // and, once the viewer is on the final rail, its focus ring — so
               // it pays the wider band (P12, see

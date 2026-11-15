@@ -24,7 +24,7 @@ Stand van branch `feat/tvos-detail-northstar`. Route: `MediaDetailScreen` op TV,
 | Seizoenen | chips boven de afleveringen | tabs Serie en Season N, seizoensposters op tab Serie |
 | Afleveringen | lijst | brede kaarten op de seizoentab, seizoenkaart vooraan |
 | Deep-link naar aflevering | seizoenschip en lijst | opent de seizoentab op die aflevering, ook voorbij de eerste pagina |
-| Episode Action | instelling | blijft: play speelt af, details opent de eigen pagina van de aflevering |
+| Episode Action | instelling | geldt niet meer op de seriepagina (A25-EPISODE-SELECT, 13 nov): Select op een aflevering speelt daar altijd af; de eigen pagina van de aflevering opent via Details bekijken in het menu van de kaart. Buiten de seriepagina blijft de instelling gelden |
 | Terugkeer uit acteur of aflevering | focus op de pagina | `TvFocusRestoreHost` zet de ring terug op de kaart, per seizoen de laatste kaart |
 | Menu | sluit de pagina | seizoen terug naar de poster, dan de pagina; een pagina die op een seizoen opende sluit meteen |
 | Offline | detail met kijkstatus | ongewijzigd; de activiteitsregel leest dan niets |

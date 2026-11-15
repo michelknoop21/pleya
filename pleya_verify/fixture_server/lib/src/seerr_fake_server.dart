@@ -32,6 +32,7 @@ class SeerrFakeServer {
   final String apiKey;
 
   final List<Map<String, dynamic>> requests = [];
+  final List<Map<String, dynamic>> issues = [];
   final Map<String, List<Map<String, dynamic>>> discover = {
     'trending': [],
     'movies': [],
@@ -69,6 +70,7 @@ class SeerrFakeServer {
 
   void reset() {
     requests.clear();
+    issues.clear();
     for (final bucket in discover.values) {
       bucket.clear();
     }
@@ -92,6 +94,37 @@ class SeerrFakeServer {
     final query = request.url.queryParameters;
     final method = request.method;
 
+    if (method == 'GET' && path.endsWith('/issue')) {
+      final status = switch (query['filter']) {
+        'open' => 1,
+        'resolved' => 2,
+        _ => null,
+      };
+      final creator = int.tryParse(query['createdBy'] ?? '');
+      return _json({
+        'pageInfo': {'pages': 1},
+        'results': [
+          for (final issue in issues)
+            if ((status == null || issue['status'] == status) &&
+                (creator == null || (issue['createdBy'] as Map)['id'] == creator))
+              issue,
+        ],
+      });
+    }
+    final issueMatch = RegExp(r'/issue/(\d+)(?:/(open|resolved))?$').firstMatch(path);
+    if (issueMatch != null) {
+      final id = int.parse(issueMatch.group(1)!);
+      final issue = issues.where((row) => row['id'] == id).firstOrNull;
+      if (issue != null) {
+        final status = issueMatch.group(2);
+        if (method == 'GET' && status == null) return _json(issue);
+        if (method == 'POST' && status != null) {
+          issue['status'] = status == 'open' ? 1 : 2;
+          return _json(issue);
+        }
+      }
+      return _json({'message': 'Issue not found'}, status: 404);
+    }
     final single = RegExp(r'/request/(\d+)(?:/(approve|decline))?$').firstMatch(path);
     if (single != null) return _requestRoute(method, int.parse(single.group(1)!), single.group(2), request);
     if (method == 'POST' && path.endsWith('/request')) return _createRequest(request);

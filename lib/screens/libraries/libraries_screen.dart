@@ -721,6 +721,8 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     }
   }
 
+  final _scanQuestion = ScanQuestion();
+
   List<ContextMenuItem> _getLibraryMenuItems(MediaLibrary library) {
     // Library maintenance on the library's own server, offered as far as that
     // client implements it and the profile may administer the server. Empty
@@ -774,12 +776,21 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     if (item == null || maintenance == null) return;
 
     if (item.requiresConfirmation) {
+      var message = item.confirmationMessage ?? t.libraries.confirmActionMessage;
+      if (maintenance == LibraryMaintenance.scan) {
+        final is24Hour = MediaQuery.alwaysUse24HourFormatOf(context);
+        final client = libraryMaintenanceClient(context.read<MultiServerProvider>().serverManager, library);
+        final asked = await _scanQuestion.ask(client, library, is24Hour: is24Hour);
+        if (asked == null || !mounted) return;
+        message = asked;
+      }
       final confirmed = await showConfirmDialog(
         context,
         title: item.confirmationTitle ?? t.dialog.confirmAction,
-        message: item.confirmationMessage ?? t.libraries.confirmActionMessage,
+        message: message,
         confirmText: t.common.confirm,
         isDestructive: item.isDestructive,
+        confirmAutomationId: AutomationIds.libraryMaintenanceConfirm,
       );
       if (!confirmed) return;
     }
@@ -1769,7 +1780,14 @@ class _LibraryManagementSheetState extends State<_LibraryManagementSheet> {
         title: library.title,
         entries: [
           for (final item in menuItems)
-            AppMenuItem<String>(value: item.value, icon: item.icon, label: item.label, destructive: item.isDestructive),
+            AppMenuItem<String>(
+              value: item.value,
+              icon: item.icon,
+              label: item.label,
+              destructive: item.isDestructive,
+              automationId: AutomationIds.libraryMaintenanceAction,
+              automationInstance: item.value,
+            ),
         ],
         onSelected: (value) => widget.onLibraryMenuAction(value, library),
       ),
@@ -1995,10 +2013,15 @@ class _LibraryManagementSheetState extends State<_LibraryManagementSheet> {
             if (_hasLibraryOptions(library))
               Container(
                 decoration: FocusTheme.focusBackgroundDecoration(isFocused: isOptionsButtonFocused, borderRadius: 20),
-                child: IconButton(
-                  icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
-                  tooltip: t.libraries.libraryOptions,
-                  onPressed: () => _showLibraryMenuBottomSheet(context, library),
+                child: AutomationNode(
+                  id: AutomationIds.libraryManageOptions,
+                  instance: '$index',
+                  role: 'button',
+                  child: IconButton(
+                    icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
+                    tooltip: t.libraries.libraryOptions,
+                    onPressed: () => _showLibraryMenuBottomSheet(context, library),
+                  ),
                 ),
               ),
           ],

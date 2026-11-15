@@ -25,15 +25,26 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			SetupAcceptsName: s.opts.Settings != nil && s.opts.Settings.HasStore(),
 		},
 		Capabilities: Capabilities{
-			AssistantMemory: s.opts.Memory != nil,
-			Browse:          true,
-			Search:          true,
-			Artwork:         true,
+			// DEC-XXX: rijke push hangt aan dezelfde schakelaar als push zelf.
+			PushNotifications: s.opts.Push.Enabled(),
+			PushRichContent:   s.opts.Push.Enabled(),
+			AssistantMemory:   s.opts.Memory != nil,
+			Browse:            true,
+			Search:            true,
+			Artwork:           true,
 			// ArtworkSizes: de ladder bestaat zodra ffmpeg en een cachemap er zijn.
 			ArtworkSizes:      s.opts.Artwork.Available(),
 			ArtworkCacheAdmin: s.artworkCacheAdminAvailable(),
 			// LibraryMaintenance: legen gaat via de wachtrij, net als de scan.
 			LibraryMaintenance: s.opts.Jobs != nil,
+			// De drie gaten uit C-05 (DEC-XXX): de kijkstatusboom hangt aan de
+			// opslag, verversen per titel aan de catalogus, en de volgende scan
+			// aan de planner.
+			WatchStateTree:      s.opts.Watch != nil,
+			ItemMetadataRefresh: s.opts.Catalog != nil,
+			ScanSchedule:        s.opts.NextScanAt != nil,
+			// MediaDelete: aangezet en een schrijfbare root gemeten (DEC-XXX).
+			MediaDelete: len(s.opts.MediaDelete) > 0,
 			// Filters: D1 is gebouwd, dus de parameters en de facetten bestaan.
 			Filters: true,
 			// ExternalIDLookup: de filterparameter external_id en het itemveld bestaan.
@@ -68,6 +79,9 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			EmbeddedSubtitles:      s.transcodeEnabled(),
 			PlaybackSubtitles:      s.transcodeEnabled(),
 			PlaybackAudioSelection: s.transcodeEnabled(),
+			// De startpositie wordt gemeten met ffprobe; zonder ffprobe is er geen
+			// eerlijke tijdlijn en blijft de vlag uit.
+			PlaybackStartPosition: s.startPositionEnabled(),
 			// Transcode: aan zodra er een manager met sessies is (S18).
 			Transcode: s.transcodeEnabled(),
 			Downloads: s.opts.Downloads != nil && s.opts.Jobs != nil,

@@ -561,9 +561,8 @@ class PleyaWatchStateEvent {
 
 /// `StreamSession`, the answer to `POST /auth/stream-session`.
 ///
-/// Carries only the non-secret half; the secret rides in a cookie. This app
-/// does not open stream sessions (its player sets a header), so the type exists
-/// to keep the fixture under contract rather than to be called.
+/// Carries only the non-secret half; the secret rides in a cookie. The native
+/// player opens one per version so mpv never holds the short-lived access token.
 class PleyaStreamSession {
   const PleyaStreamSession({required this.streamSessionId, required this.expiresAt});
 

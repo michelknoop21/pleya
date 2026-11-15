@@ -27,14 +27,16 @@ part of '../../pleya_server_client.dart';
 /// answer: a refused write teaches this client what it missed, and the next
 /// write carries the right claim.
 ///
-/// ## The stream URL carries no credential
+/// ## The stream URL carries no secret
 ///
-/// `GET /stream/{version_id}` is class `authenticated`, and this client
-/// authorises it with a bearer header rather than with the query-string stream
-/// token. The token in a URL exists for players that cannot set a header; mpv
-/// can, and a credential that never enters a URL never enters a log, a referrer
-/// or a shell history either. [PleyaServerClient.streamHeaders] carries it.
-mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
+/// With `capabilities.stream_sessions` the player gets a stream session: the
+/// non-secret id in the URL and the secret in a `Cookie` header, see
+/// `_PleyaServerStreamSessionMethods`. Without it, or when no session could be
+/// opened, it gets the access token as a bearer header from
+/// [PleyaServerClient.streamHeaders]. The query-string stream token exists for
+/// players that cannot set a header; mpv can, so only its sidecar subtitles use
+/// one, because `/subtitles` takes no stream session.
+mixin _PleyaServerPlaybackMethods on _PleyaServerRequests, _PleyaServerStreamSessionMethods {
   /// Where deferred subtitles are written; the app's temporary directory unless a test says otherwise.
   @visibleForTesting
   Directory? subtitleTempDirectory;
@@ -42,6 +44,12 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   /// The watched fraction the server uses when a report carries no `completed`.
   /// Kept in step with `watch.WatchedFraction` on the server side.
   static const double _watchedFraction = 0.9;
+
+  /// From the browse methods; marking a season or show on an older server
+  /// walks them.
+  Future<List<MediaItem>> fetchPlayableDescendants(String parentId);
+  Future<List<MediaItem>> fetchChildren(String parentId);
+  String get scopedServerId;
 
   // ---------------------------------------------------------------------------
   // Direct play
@@ -134,6 +142,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
             selectedSubtitleStreamId: needsBurn ? subtitleId : options.selectedSubtitleStreamId,
             sessionIdentifier: options.sessionIdentifier,
             transcodeSessionId: options.transcodeSessionId,
+            startAtViewOffset: options.startAtViewOffset,
           );
           plan = await _planPlayback(options.metadata.id, versions, index, explicit: true, options: effectiveOptions);
         }
@@ -154,17 +163,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       deliverEmbeddedText:
           wireCapabilities.embeddedSubtitles && plan != null && plan.deliveryMode != PleyaDeliveryMode.directPlay,
     );
-    final subtitles = [
+    final sidecars = [
       for (final track in mediaInfo.subtitleTracks)
-        if (plan?.subtitle?.action != 'burn' && track.isExternalFile && track.key != null)
-          SubtitleTrack.uri(
-            track.key!,
-            title: track.title,
-            language: track.languageCode,
-            codec: track.codec,
-            isDefault: track.selected,
-            isForced: track.forced,
-          ),
+        if (plan?.subtitle?.action != 'burn' && track.isExternalFile && track.key != null) track,
     ];
 
     final deferredSubtitle = plan?.subtitle?.action == 'burn' ? null : _deferredEmbeddedSubtitle(mediaInfo);
@@ -182,6 +183,25 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       rethrow;
     }
 
+    final credential = await _playerStreamCredential(version.id, subtitles: sidecars.isNotEmpty);
+    String authorize(String url, String name, String? value) {
+      if (value == null) return url;
+      final uri = Uri.parse(url);
+      return uri.replace(queryParameters: {...uri.queryParameters, name: value}).toString();
+    }
+
+    final subtitles = [
+      for (final track in sidecars)
+        SubtitleTrack.uri(
+          authorize(track.key!, 'stream_token', credential?.subtitleToken),
+          title: track.title,
+          language: track.languageCode,
+          codec: track.codec,
+          isDefault: track.selected,
+          isForced: track.forced,
+        ),
+    ];
+
     // A delivery the server converts comes with a session: the player opens
     // its HLS playlist, and this client keeps the session alive until the
     // playback is reported stopped.
@@ -190,7 +210,10 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
       _holdTranscodeSession(options.metadata.id, sessionId, start);
       return PlaybackInitializationResult(
         availableVersions: versions,
-        videoUrl: '${connection.baseUrl}${plan.streamUrl}',
+        videoUrl: authorize('${connection.baseUrl}${plan.streamUrl}', 'ss', credential?.sessionId),
+        streamHeaders: credential?.headers,
+        hold: credential?.hold,
+        release: credential?.release,
         selectedMediaIndex: index,
         isTranscoding: plan.deliveryMode == PleyaDeliveryMode.transcode,
         activeAudioStreamId: plan.selectedAudioStreamId == null ? null : effectiveOptions.selectedAudioStreamId,
@@ -202,12 +225,19 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         mediaInfo: mediaInfo,
         externalSubtitles: subtitles,
         deferredSubtitle: deferredSubtitle,
+        streamStart: switch (plan.startPositionMs) {
+          final int ms => Duration(milliseconds: ms),
+          null => null,
+        },
       );
     }
 
     return PlaybackInitializationResult(
       availableVersions: versions,
-      videoUrl: _streamUrl(version.id),
+      videoUrl: authorize(_streamUrl(version.id), 'ss', credential?.sessionId),
+      streamHeaders: credential?.headers,
+      hold: credential?.hold,
+      release: credential?.release,
       selectedMediaIndex: index,
       playMethod: 'DirectPlay',
       playSessionId: _watchLedger.sessionFor(options.metadata.id, _mintSessionId),
@@ -360,6 +390,13 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   ///
   /// An automatic first version lets the server choose. A stable source id
   /// carries explicit intent, including selection of the first version.
+  ///
+  /// A conversion starts at the view offset when the player can place a stream
+  /// whose timestamps do not start at zero, and the server says it can start
+  /// there (DEC-XXX, startpositie in het afspeelplan). Plex and Jellyfin take
+  /// their start from the same offset, so a resume or a switch of quality or
+  /// audio continues where it was on every backend. Without both, the request
+  /// is byte for byte the one from before.
   Future<PleyaPlaybackPlan?> _planPlayback(
     String itemId,
     List<MediaVersion> versions,
@@ -401,6 +438,20 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
           ?.id;
       if (audioId == null) throw PlaybackException('The selected audio stream is no longer available.');
     }
+    final offsetMs = options.metadata.viewOffsetMs ?? 0;
+    final durationMs = options.metadata.durationMs;
+    final startMs =
+        options.startAtViewOffset &&
+            wireCapabilities.playbackStartPosition &&
+            offsetMs > 0 &&
+            // Without a known duration the player would take the stream's own
+            // length, the rest of the film, as the title's: the position then
+            // runs past the end and progress and "nearly done" go off.
+            durationMs != null &&
+            durationMs > 0 &&
+            offsetMs < durationMs
+        ? offsetMs
+        : null;
     String? receivedSessionId;
     try {
       final json = await _postJson('/playback/plan', {
@@ -412,6 +463,7 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
         if (!quality.isOriginal)
           'quality': {'max_video_bitrate_kbps': quality.videoBitrateKbps, 'max_height': quality.resolutionHeight},
         'capabilities': pleyaDeviceCapabilitiesToWire(DeviceCapabilitiesService.currentSnapshot),
+        'start_position_ms': ?startMs,
       });
       if (json == null) {
         if (selected) throw PlaybackException('The requested playback selection could not be prepared.');
@@ -436,6 +488,9 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
                   plan.subtitle?.url !=
                       '$pleyaProtocolPrefix/subtitles/${Uri.encodeComponent(subtitle!.sourceStreamId!)}') ||
               (subtitleMode == 'burn' && plan.deliveryMode != PleyaDeliveryMode.transcode));
+      // No `start_position_ms` in the answer means a stream from zero (a server
+      // without the flag ignores the field): streamStart stays null and the
+      // player seeks to the resume point, as before the start position.
       if (wrongSource ||
           (selected &&
               (plan.deliveryMode == null ||
@@ -477,27 +532,11 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     if (index < 0) return null;
     final versionId = versions[index].id;
 
-    // An external player URL is optional: a failed mint is "no URL", not an
-    // error the caller has to handle (`_postJson` throws on failure).
-    final Map<String, dynamic>? json;
-    try {
-      json = await _postJson('/auth/stream-token', {'version_id': versionId});
-    } catch (e) {
-      appLogger.d('PleyaServerClient: stream token mint failed', error: e);
-      return null;
-    }
-    if (json == null) return null;
-    try {
-      final token = PleyaStreamToken.fromJson(json);
-      return Uri.parse(_streamUrl(versionId)).replace(queryParameters: {'stream_token': token.streamToken}).toString();
-    } on PleyaWireFormatException catch (e) {
-      appLogger.w('PleyaServerClient: stream token did not match the contract', error: e);
-      return null;
-    }
+    // An external player URL is optional: a failed mint is "no URL".
+    final token = await _streamToken(versionId);
+    if (token == null) return null;
+    return Uri.parse(_streamUrl(versionId)).replace(queryParameters: {'stream_token': token}).toString();
   }
-
-  String _streamUrl(String versionId) =>
-      '${connection.baseUrl}$pleyaProtocolPrefix/stream/${Uri.encodeComponent(versionId)}';
 
   // ---------------------------------------------------------------------------
   // Watch state: reporting
@@ -687,7 +726,14 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
   // ---------------------------------------------------------------------------
 
   /// Mark watched. Ignores another device's lease, by rule 5.
-  Future<void> markWatched(MediaItem item) async => _markWatched(item);
+  ///
+  /// A season or show is marked with everything below it: the server keeps no
+  /// state that rolls up from episodes, so a mark on the container alone left
+  /// every episode unwatched.
+  Future<void> markWatched(MediaItem item) async {
+    if (_isContainer(item)) return _markTree(item, 'mark_watched');
+    await _markWatched(item);
+  }
 
   Future<PleyaUserState?> _markWatched(MediaItem item) => _applyWatchState(
     itemId: item.id,
@@ -697,12 +743,65 @@ mixin _PleyaServerPlaybackMethods on _PleyaServerRequests {
     action: 'mark_watched',
   );
 
-  Future<void> markUnwatched(MediaItem item) async => _applyWatchState(
+  Future<void> markUnwatched(MediaItem item) async {
+    if (_isContainer(item)) return _markTree(item, 'mark_unwatched');
+    await _markUnwatched(item);
+  }
+
+  Future<PleyaUserState?> _markUnwatched(MediaItem item) => _applyWatchState(
     itemId: item.id,
     sessionId: _watchLedger.sessionFor(item.id, _mintSessionId),
     position: Duration.zero,
     action: 'mark_unwatched',
   );
+
+  bool _isContainer(MediaItem item) => item.kind == MediaKind.season || item.kind == MediaKind.show;
+
+  /// Marks [container] and every season and episode below it.
+  ///
+  /// With `watch_state_tree` that is one request the server applies in one
+  /// transaction, and every revision in the answer goes into the ledger like a
+  /// single mark's does. An older server has no such route; there the episodes
+  /// are marked one at a time, then a show's seasons, then the container
+  /// itself, which is what the app used to send on its own.
+  Future<void> _markTree(MediaItem container, String action) async {
+    if (!wireCapabilities.watchState) return;
+    if (wireCapabilities.watchStateTree) {
+      final json = await _postJson('/items/${container.id}/watch-state', {
+        'session_id': _watchLedger.sessionFor(container.id, _mintSessionId),
+        'explicit_action': action,
+      });
+      if (json == null) return;
+      try {
+        for (final entry in PleyaWatchStateEntry.pageFromJson(json)) {
+          _watchLedger.remember(entry.itemId, entry.state.revision);
+        }
+      } on PleyaWireFormatException catch (e) {
+        appLogger.w('PleyaServerClient: watch-state tree answer did not match the contract', error: e);
+      }
+      return;
+    }
+    final watched = action == 'mark_watched';
+    final seasons = container.kind == MediaKind.show
+        ? (await fetchChildren(container.id)).where((child) => child.kind == MediaKind.season).toList()
+        : const <MediaItem>[];
+    final items = [...await fetchPlayableDescendants(container.id), ...seasons, container];
+    final done = <MediaItem>[];
+    try {
+      for (final item in items) {
+        await (watched ? _markWatched(item) : _markUnwatched(item));
+        done.add(item);
+      }
+    } catch (_) {
+      // The caller announces the whole tree only on success. What did land
+      // before the failure is announced here, so the screen does not keep
+      // showing it the old way.
+      for (final item in done) {
+        WatchStateNotifier().notifyWatched(item: item, isNowWatched: watched, cacheServerId: scopedServerId);
+      }
+      rethrow;
+    }
+  }
 
   /// Hide from Continue Watching.
   ///

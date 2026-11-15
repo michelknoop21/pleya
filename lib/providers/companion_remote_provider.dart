@@ -130,7 +130,8 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   @visibleForTesting
   List<String> get debugHostConnectionIds => isHostServerRunning ? _hostConnectionIds : const [];
 
-  CompanionRemoteProvider() {
+  CompanionRemoteProvider({@visibleForTesting LanDiscoveryService? discoveryService})
+    : _discoveryService = discoveryService {
     _initializeDeviceInfo();
   }
 
@@ -737,7 +738,9 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
     }
 
     _discoveryService ??= LanDiscoveryService();
-    return _discoveryService!.startListeningForContexts(_clientAuthContexts);
+    // Asked per beacon: an identity rebuild leaves a running listener bound
+    // (a host restart does not touch it), and it must match the new identities.
+    return _discoveryService!.startListeningForCurrentContexts(() => _clientAuthContexts);
   }
 
   bool get isListeningForHosts => _discoveryService?.isListening ?? false;
@@ -952,7 +955,10 @@ class CompanionRemoteProvider with ChangeNotifier, DisposableChangeNotifierMixin
   /// Phone side: asks the connected Apple TV what it plays (A-23e). With
   /// [peek] only that; without, the Apple TV also opens the session to follow.
   Future<FlyFollowAnswer> askFlyFollow({required bool peek, Duration timeout = const Duration(seconds: 10)}) {
-    if (!_linkUp) return Future.value(const FlyFollowAnswer.refused(FlyFollowRefusal.failed));
+    if (!_linkUp) {
+      appLogger.d('Meenemen: no link to the Apple TV, nothing asked');
+      return Future.value(const FlyFollowAnswer.refused(FlyFollowRefusal.failed));
+    }
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     final answer = _follows.wait(id, timeout);
     sendCommand(RemoteCommandType.follow, data: {flyFollowRequestKey: id, flyFollowPeekKey: peek});

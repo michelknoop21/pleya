@@ -300,6 +300,11 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// Separate from the mixin's pagination generation so a filter reload can
   /// invalidate in-flight filter/sort fetches without touching item pagination.
   int _contentRequestId = 0;
+
+  /// Telt elke keer dat de lijst opnieuw geladen wordt, ook bij een nieuwe
+  /// sortering of filter. Een herlaadbeurt na een menukeuze die daardoor is
+  /// ingehaald, mag zijn antwoord niet meer toepassen.
+  int _itemsLoadId = 0;
   int _firstCharactersRequestId = 0;
   AbortController? _firstCharactersAbort;
   static const int _fetchSize = 200;
@@ -740,6 +745,7 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   }
 
   Future<void> _loadItems({bool preserveFocus = false}) async {
+    _itemsLoadId++;
     final generation = _contentRequestId;
     setState(() {
       isLoading = true;
@@ -1302,8 +1308,36 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// A card's menu changed the listing (removed, renamed, watched): the grid
   /// and its letter offsets have to follow together.
   void _reloadItemsAndIndex() {
-    unawaited(_loadItems());
+    unawaited(_reloadItemsInPlace());
     unawaited(_loadFirstCharacters());
+  }
+
+  /// Haalt de lijst opnieuw op zonder hem eerst te legen. [_loadItems] wist de
+  /// items en toont de laadindicator, waardoor de lijst instort en de scroll
+  /// bovenaan begint. Hier blijft het oude raster staan tot de pagina rond de
+  /// zichtbare positie binnen is; die komt er in één keer voor in de plaats.
+  Future<void> _reloadItemsInPlace() async {
+    final generation = _contentRequestId;
+    final loadId = ++_itemsLoadId;
+    final start = _computeVisibleRange()?.firstIndex ?? 0;
+    final LibraryPage<MediaItem> page;
+    try {
+      page = await fetchPage(start, _calculateInitialFetchSize(), null);
+    } catch (e) {
+      appLogger.w('Library reload after a menu action failed; the grid stays as it was', error: e);
+      return;
+    }
+    // Ingehaald door een nieuwe sortering, filter of een latere menukeuze:
+    // dit antwoord hoort bij een lijst die niet meer op het scherm staat.
+    if (generation != _contentRequestId || loadId != _itemsLoadId || !mounted) return;
+    setState(() {
+      resetPaginationState();
+      for (var i = 0; i < page.items.length; i++) {
+        loadedItems[start + i] = page.items[i];
+      }
+      totalSize = page.totalCount;
+    });
+    onPageLoaded(start, page.items);
   }
 
   /// Fetch first characters for the current library/filter state.

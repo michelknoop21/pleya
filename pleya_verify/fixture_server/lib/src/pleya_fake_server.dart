@@ -54,6 +54,19 @@ class PleyaFakeServer {
   /// without it refuses `copy` whole: `WatchStateEvent` is a closed schema.
   bool watchStateCopyCapability = false;
 
+  /// Whether `/info` advertises `watch_state_tree` and
+  /// `POST /items/{id}/watch-state` exists. Off by default, like a server from
+  /// before DEC-XXX (drie servergaten).
+  bool watchStateTreeCapability = false;
+
+  /// Whether `/info` advertises `scan_schedule`; the planned moment itself is
+  /// `next_scan_at` on each library map.
+  bool scanScheduleCapability = false;
+
+  /// Every `POST /items/{id}/watch-state` this server received: the item id and
+  /// the body as sent.
+  final List<({String itemId, Map<String, dynamic> body})> watchTreeEvents = [];
+
   /// The session that holds each title. `playback_started` and the explicit
   /// actions take it, which is rule 5: a mark ignores whoever is watching. A copy
   /// reads it, the way `watch.Decide` refuses one on any live lease.
@@ -76,6 +89,16 @@ class PleyaFakeServer {
   bool playbackPlanCapability = false;
   bool playbackQualityCapability = false;
   bool playbackAudioSelectionCapability = false;
+
+  /// `/info` advertises `playback_start_position`, and a plan with
+  /// `start_position_ms` starts its HLS at the segment that holds that
+  /// position, answering where that segment begins (the measured start).
+  bool playbackStartPositionCapability = false;
+
+  /// True plays a server that lost the flag after the client read `/info`: it
+  /// ignores `start_position_ms`, leaves it out of the answer and streams
+  /// from zero, as the contract says.
+  bool planIgnoresStartPosition = false;
   bool embeddedSubtitlesCapability = false;
   bool playbackSubtitlesCapability = false;
 
@@ -171,6 +194,10 @@ class PleyaFakeServer {
   /// envelope, without recording the event. Reads (the 5xx regression of
   /// backlog 24.3) need a write that fails fast, not a timeout.
   int? watchStateFailureStatus;
+
+  /// `POST /watch-state` for these item ids answers 500, the rest as usual: a
+  /// failure halfway through a client that marks one item at a time.
+  final Set<String> watchStateFailingItems = {};
 
   /// While set, `POST /watch-state` answers 200 with this body as it stands. A
   /// proxy or a broken build can do that, and it says nothing about the write.
@@ -285,6 +312,15 @@ class PleyaFakeServer {
   /// ask twice" read this.
   final List<String> requests = [];
 
+  /// Open stream sessions (DEC-051) by id. A test removes one to play an
+  /// expired session. A non-null [streamSessionFailureStatus] refuses a new one.
+  final Map<String, ({String versionId, String secret})> streamSessions = {};
+  int? streamSessionFailureStatus;
+  int _streamSessionCount = 0;
+
+  /// Every request a stream session authorised, as method and path.
+  final List<String> streamSessionUses = [];
+
   final Map<String, Map<String, dynamic>> items = {};
   final List<Map<String, dynamic>> libraries = [];
 
@@ -383,11 +419,16 @@ class PleyaFakeServer {
     watchStates.clear();
     ownedByThisSession = true;
     watchStateCopyCapability = false;
+    watchStateTreeCapability = false;
+    scanScheduleCapability = false;
+    watchTreeEvents.clear();
     watchLeases.clear();
     filtersCapability = false;
     playbackPlanCapability = false;
     playbackQualityCapability = false;
     playbackAudioSelectionCapability = false;
+    playbackStartPositionCapability = false;
+    planIgnoresStartPosition = false;
     embeddedSubtitlesCapability = false;
     playbackSubtitlesCapability = false;
     personalCapability = false;
@@ -424,6 +465,7 @@ class PleyaFakeServer {
     planRequests.clear();
     sessionCalls.clear();
     watchStateFailureStatus = null;
+    watchStateFailingItems.clear();
     watchStateRawAnswer = null;
     usersCapability = false;
     adminJobs.clear();
@@ -801,11 +843,15 @@ class PleyaFakeServer {
       return body == null ? _json(_error('library.not_found'), status: 404) : _json(body);
     }
     final bearer = request.headers['Authorization'];
+    // Like the server: a bearer is checked first, so a stream session or a
+    // stream token only authorises a request that carries none.
+    final streamAuthorized = bearer == null && _streamAuthorized(request, path, query);
+    if (streamAuthorized) streamSessionUses.add('${request.method} $path');
     final memoryUsername = _memoryAccessUsers[bearer];
     final expected = rejectCurrentAccessTokens ? null : 'Bearer at-$refreshCount';
     final authorized =
         !rejectCurrentAccessTokens && (assistantMemoryCapability ? memoryUsername != null : bearer == expected);
-    if (!authorized) {
+    if (!authorized && !streamAuthorized) {
       return _json(_error('auth.invalid_token'), status: 401);
     }
     if (path == '/server') {
@@ -842,6 +888,25 @@ class PleyaFakeServer {
       return _json({'stream_token': 'st-for-${body['version_id']}', 'expires_at': '2026-08-21T21:09:11Z'});
     }
 
+    if (path == '/auth/stream-session' && request.method == 'POST' && watchState) {
+      if (streamSessionFailureStatus case final status?) {
+        return _json(_error('session.stream_session_limit'), status: status);
+      }
+      final versionId = (jsonDecode(request.body) as Map<String, dynamic>)['version_id'] as String;
+      final id = 'ss-${++_streamSessionCount}';
+      final secret = 'secret-$_streamSessionCount';
+      streamSessions[id] = (versionId: versionId, secret: secret);
+      return http.Response(
+        jsonEncode({'stream_session_id': id, 'expires_at': '2026-08-21T21:34:11Z'}),
+        200,
+        headers: {
+          'content-type': 'application/json',
+          'set-cookie':
+              'pleya_ss_$id=$secret; Path=/pleya/v1/stream/; Expires=Fri, 21 Aug 2026 21:34:11 GMT; HttpOnly; SameSite=Strict',
+        },
+      );
+    }
+
     if (path == '/playback/plan' && request.method == 'POST' && playbackPlanCapability) {
       final failure = planFailureStatus;
       if (failure != null) return _json(_error('playback.not_playable'), status: failure);
@@ -856,6 +921,13 @@ class PleyaFakeServer {
         'params': <String, dynamic>{},
       };
       final direct = planDeliveryMode == 'direct_play';
+      final requestedStart = playbackStartPositionCapability && !planIgnoresStartPosition
+          ? body['start_position_ms'] as int?
+          : null;
+      final firstSegment = requestedStart == null || direct
+          ? 0
+          : sampleHlsSegmentStartsMs.lastIndexWhere((start) => start <= requestedStart);
+      final playlist = firstSegment == 0 ? 'index.m3u8' : 'from-$firstSegment.m3u8';
       // A mode the client does not know still comes with a session, like a
       // newer server would send it.
       return _json({
@@ -870,7 +942,7 @@ class PleyaFakeServer {
           },
         if (body['quality'] != null) 'effective_quality': body['quality'],
         if (body['audio_stream_id'] != null) 'selected_audio_stream_id': body['audio_stream_id'],
-        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/$sessionId/index.m3u8',
+        'stream_url': direct ? '/pleya/v1/stream/$versionId' : '/pleya/v1/playback/sessions/$sessionId/$playlist',
         'container': direct ? 'original' : 'hls',
         'video': {'action': (body['subtitle'] as Map?)?['mode'] == 'burn' ? 'transcode' : 'copy'},
         'audio': {'action': 'copy'},
@@ -878,13 +950,15 @@ class PleyaFakeServer {
         'session_id': direct ? null : sessionId,
         'reason': reason,
         'reasons': [reason],
+        if (requestedStart != null) 'start_position_ms': direct ? 0 : sampleHlsSegmentStartsMs[firstSegment],
       });
     }
 
     if (path.startsWith('/playback/sessions/') && playbackPlanCapability) {
       if (request.method == 'GET') {
         final file = path.split('/').last;
-        final bytes = sampleHlsFiles[file];
+        final from = RegExp(r'^from-(\d+)\.m3u8$').firstMatch(file);
+        final bytes = from == null ? sampleHlsFiles[file] : sampleHlsPlaylistFrom(int.parse(from[1]!));
         if (bytes != null) {
           if (!file.endsWith('.m3u8')) return _streamResponse(request, bytes);
           return http.Response.bytes(bytes, 200, headers: {'content-type': 'application/vnd.apple.mpegurl'});
@@ -929,10 +1003,43 @@ class PleyaFakeServer {
     }
     if (downloadsCapability && path.startsWith('/downloads')) return _downloads(request, path);
 
+    final tree = RegExp(r'^/items/([^/]+)/watch-state$').firstMatch(path);
+    if (tree != null && request.method == 'POST') {
+      if (!watchStateTreeCapability) return _json(_error('library.not_found'), status: 404);
+      final itemId = Uri.decodeComponent(tree.group(1)!);
+      if (!items.containsKey(itemId)) return _json(_error('library.not_found'), status: 404);
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      watchTreeEvents.add((itemId: itemId, body: body));
+      final ids = <String>[itemId];
+      for (var i = 0; i < ids.length; i++) {
+        ids.addAll(children[ids[i]] ?? const <String>[]);
+      }
+      final watched = body['explicit_action'] == 'mark_watched';
+      return _json({
+        'items': [
+          for (final id in ids)
+            {
+              'item_id': id,
+              'state': watchStates[id] = {
+                'position_ms': 0,
+                'watched': watched,
+                // mark_unwatched leaves the count, as the real server does.
+                'play_count': watched && ((watchStates[id]?['play_count'] as int?) ?? 0) == 0
+                    ? 1
+                    : (watchStates[id]?['play_count'] as int?) ?? 0,
+                'updated_at': '2026-08-21T20:00:00Z',
+                'revision': ((watchStates[id]?['revision'] as int?) ?? 0) + 1,
+              },
+            },
+        ],
+      });
+    }
+
     if (path == '/watch-state' && request.method == 'POST') {
       final failure = watchStateFailureStatus;
       if (failure != null) return _json(_error('server.internal'), status: failure);
       final event = jsonDecode(request.body) as Map<String, dynamic>;
+      if (watchStateFailingItems.contains(event['item_id'])) return _json(_error('server.internal'), status: 500);
       watchEvents.add(event);
       final raw = watchStateRawAnswer;
       if (raw != null) return http.Response(raw, 200, headers: {'content-type': 'application/json'});
@@ -1212,6 +1319,8 @@ class PleyaFakeServer {
       if (assistantMemoryCapability) 'assistant_memory': true,
       'watch_state_ownership': watchStateOwnership,
       if (watchStateCopyCapability) 'watch_state_copy': true,
+      if (watchStateTreeCapability) 'watch_state_tree': true,
+      if (scanScheduleCapability) 'scan_schedule': true,
       'stream_sessions': watchState,
       if (filtersCapability) 'filters': true,
       if (reportsExternalIds) 'external_id_lookup': true,
@@ -1220,6 +1329,7 @@ class PleyaFakeServer {
       if (playbackQualityCapability || playbackAudioSelectionCapability || playbackSubtitlesCapability)
         'transcode': true,
       if (playbackAudioSelectionCapability) 'playback_audio_selection': true,
+      if (playbackStartPositionCapability) 'playback_start_position': true,
       if (embeddedSubtitlesCapability) 'embedded_subtitles': true,
       if (playbackSubtitlesCapability) 'playback_subtitles': true,
       if (downloadsCapability) 'downloads': true,
@@ -1395,6 +1505,24 @@ class PleyaFakeServer {
     final polls = _downloadPolls[id] = (_downloadPolls[id] ?? 0) + 1;
     if (downloadFails) return _json(wire(id, 'failed'));
     return _json(wire(id, polls > downloadPrepareRounds ? 'ready' : 'preparing'));
+  }
+
+  /// DEC-051: `ss` plus the cookie named after it opens the bound version and
+  /// HLS files; a stream token opens its version and, loosely here, any
+  /// sidecar subtitle.
+  bool _streamAuthorized(http.Request request, String path, Map<String, String> query) {
+    final ss = query['ss'];
+    if (ss != null) {
+      final session = streamSessions[ss];
+      final cookies = (request.headers['cookie'] ?? '').split(';').map((c) => c.trim());
+      return session != null &&
+          cookies.contains('pleya_ss_$ss=${session.secret}') &&
+          (path == '/stream/${session.versionId}' || path.startsWith('/playback/sessions/'));
+    }
+    final token = query['stream_token'];
+    return token != null &&
+        token.startsWith('st-for-') &&
+        (path == '/stream/${token.substring('st-for-'.length)}' || path.startsWith('/subtitles/'));
   }
 
   http.Response _json(Object body, {int status = 200}) =>

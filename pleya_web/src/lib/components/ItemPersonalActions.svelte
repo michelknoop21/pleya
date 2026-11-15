@@ -9,7 +9,14 @@
   import ConfirmDialog from './ConfirmDialog.svelte';
   import Select from './Select.svelte';
 
-  let { item, onchange }: { item: Item; onchange: (next: Item) => void } = $props();
+  interface Props {
+    item: Item;
+    onchange: (next: Item) => void;
+    /** Ronde icoonknoppen in plaats van tekstknoppen; de naam van de knop blijft dezelfde. */
+    icons?: boolean;
+  }
+  let { item, onchange, icons = false }: Props = $props();
+  const cls = $derived(icons ? 'ico' : 'btn btn--secondary');
   let active = true;
   onDestroy(() => { active = false; });
   let busy = $state(false);
@@ -67,15 +74,22 @@
   }
 </script>
 
+{#snippet face(label: string, path: string)}
+  {#if icons}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d={path} /></svg>
+    <span class="visually-hidden">{label}</span>
+  {:else}{label}{/if}
+{/snippet}
+
 <div class="personal-actions">
   {#if session.capabilities?.favorites}
-    <button class="btn btn--secondary" aria-disabled={busy} aria-pressed={!!item.favorite} onclick={favorite}>
-      {t(item.favorite ? 'personal.removeFavorite' : 'personal.addFavorite')}
+    <button class={cls} aria-disabled={busy} aria-pressed={!!item.favorite} onclick={favorite}>
+      {@render face(t(item.favorite ? 'personal.removeFavorite' : 'personal.addFavorite'), 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z')}
     </button>
   {/if}
   {#if session.capabilities?.ratings}
-    <button class="btn btn--secondary" aria-disabled={busy} onclick={() => { if (busy) return; draftRating = item.rating == null ? '' : String(item.rating); error = null; ratingOpen = true; }}>
-      {item.rating == null ? t('personal.rate') : t('personal.rated', { rating: item.rating })}
+    <button class={cls} class:ico--on={icons && item.rating != null} aria-disabled={busy} onclick={() => { if (busy) return; draftRating = item.rating == null ? '' : String(item.rating); error = null; ratingOpen = true; }}>
+      {@render face(item.rating == null ? t('personal.rate') : t('personal.rated', { rating: item.rating }), 'm12 4 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z')}
     </button>
     <ConfirmDialog bind:open={ratingOpen} title={t('personal.yourRating')} confirmLabel={t('personal.save')} danger={false} {busy} onconfirm={rate}>
       <Select label={t('personal.rating')} options={ratingOptions} bind:value={draftRating} disabled={busy} />
@@ -83,12 +97,12 @@
     </ConfirmDialog>
   {/if}
   {#if canWatch}
-    <button class="btn btn--secondary" aria-disabled={busy} onclick={watched}>
-      {t(item.user_state?.watched ? 'personal.markUnwatched' : 'personal.markWatched')}
+    <button class={cls} class:ico--on={icons && !!item.user_state?.watched} aria-disabled={busy} onclick={watched}>
+      {@render face(t(item.user_state?.watched ? 'personal.markUnwatched' : 'personal.markWatched'), 'm5 12 5 5 9-10')}
     </button>
   {/if}
   {#if canAdd}
-    <button class="btn btn--secondary" aria-haspopup="dialog" onclick={() => addToList.open(item)}>{t('lists.add.title')}</button>
+    <button class={cls} aria-haspopup="dialog" onclick={() => addToList.open(item)}>{@render face(t('lists.add.title'), 'M12 5v14M5 12h14')}</button>
   {/if}
 </div>
 {#if error && !ratingOpen}<p role="alert">{error}</p>{/if}
@@ -97,5 +111,23 @@
   .personal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .personal-actions:empty { display: none; }
   /* aria-disabled, not disabled: a disabled button drops keyboard focus while the request runs. */
-  .personal-actions .btn[aria-disabled='true'] { opacity: 0.5; cursor: progress; }
+  .personal-actions .btn[aria-disabled='true'],
+  .personal-actions .ico[aria-disabled='true'] { opacity: 0.5; cursor: progress; }
+  .personal-actions:has(.ico) { gap: 12px; }
+  .ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--text) 30%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bg) 50%, transparent);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .ico svg { width: 20px; height: 20px; }
+  .ico[aria-pressed='true'], .ico--on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 </style>

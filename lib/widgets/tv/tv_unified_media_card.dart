@@ -41,9 +41,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:provider/provider.dart';
-
-import '../../providers/local_library_provider.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
@@ -54,7 +51,7 @@ import '../../services/settings_service.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../utils/layout_constants.dart';
 import '../new_content_badge.dart';
-import '../optimized_media_image.dart';
+import '../unified_media_image.dart';
 import 'tv_catalog_card.dart';
 import 'tv_catalog_compact_card.dart';
 import 'tv_catalog_meta.dart';
@@ -158,14 +155,11 @@ class TvUnifiedMediaCard extends StatelessWidget {
     ScanDiagnostics.cardBuilds++;
     final scale = TvLayoutConstants.scaleOf(context);
     final item = group.representativeSource.item;
-    final serverId = group.representativeSource.serverId.value;
-    final imagePath = item.rowThumbPath;
     final artwork = TvCatalogArtworkFill(
-      child: OptimizedMediaImage(
-        client: clientFor?.call(serverId),
-        imagePath: imagePath,
-        localFilePath: context.select<LocalLibraryProvider?, String?>((p) => p?.posterPath(item.serverId, imagePath)),
-        fit: BoxFit.cover,
+      child: UnifiedMediaImage(
+        group: group,
+        pathOf: (source) => source.rowThumbPath,
+        clientFor: clientFor,
         fallbackIcon: Symbols.movie_rounded,
       ),
     );

@@ -41,6 +41,11 @@ class PlayerNative extends PlayerBase {
   @override
   bool get attachesExternalSubtitlesAtOpen => true;
 
+  /// Measured with mpv 0.41 on Apple only (the MPVKit route of iOS, tvOS and
+  /// macOS). Android's mpv, Windows and Linux stay rebased until measured.
+  @override
+  bool get keepsAbsoluteTimestamps => Platform.isIOS || Platform.isMacOS;
+
   /// Node properties are returned as structured maps on macOS/iOS/Linux,
   /// but as JSON strings on Android/Windows.
   static final String _nodeFormat = (Platform.isAndroid || Platform.isWindows) ? 'string' : 'node';
@@ -172,6 +177,7 @@ class PlayerNative extends PlayerBase {
     List<SubtitleTrack>? externalSubtitles,
     Duration timelineOffset = Duration.zero,
     Duration? timelineDuration,
+    bool absoluteTimestamps = false,
   }) async {
     if (disposed) return;
     await _ensureInitialized();
@@ -242,9 +248,16 @@ class PlayerNative extends PlayerBase {
     }
 
     final loadfileArgs = ['loadfile', uri, 'replace'];
-    final loadfileOption = _externalSubtitlesLoadfileOption(externalSubtitles);
-    if (loadfileOption != null) {
-      loadfileArgs.addAll(['-1', loadfileOption]);
+    // Per file, so the next loadfile is rebased again. With `no`, time-pos,
+    // `start`, seeks and external subtitles all run on the stream's own clock;
+    // with the default only the stream is moved to zero and a sidecar keeps
+    // its own times.
+    final loadfileOptions = [
+      if (absoluteTimestamps) 'rebase-start-time=no',
+      ?_externalSubtitlesLoadfileOption(externalSubtitles),
+    ];
+    if (loadfileOptions.isNotEmpty) {
+      loadfileArgs.addAll(['-1', loadfileOptions.join(',')]);
     }
     await command(loadfileArgs);
 

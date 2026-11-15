@@ -112,7 +112,9 @@ int _byDescending(int a, int b, int aIndex, int bIndex) {
 /// cannot be ordered as "not new" by one copy's watch date and labelled "new"
 /// by another's.
 MediaItem continueWatchingItemOf(UnifiedMediaGroup group) {
-  final item = group.representativeSource.item;
+  // Artwork may belong to a next-up copy while the shared watch-state
+  // holder has actual resume progress. Sections and status follow that holder.
+  final item = group.sources.firstWhere((source) => source.sourceKey == group.watchState.representativeSourceKey).item;
   int? newest;
   for (final source in group.sources) {
     final viewed = source.item.lastViewedAt;
@@ -120,3 +122,7 @@ MediaItem continueWatchingItemOf(UnifiedMediaGroup group) {
   }
   return newest == null || newest == item.lastViewedAt ? item : item.copyWith(lastViewedAt: newest);
 }
+
+/// Completed leaves have nothing left to resume, unless explicitly rewatched.
+/// Containers remain backend-owned next-episode substitutions.
+bool isContinueWatchingEligible(MediaItem item) => (!item.isMovie && !item.isEpisode) || item.isUnwatchedOrInProgress;

@@ -21,9 +21,15 @@ export interface NavItem {
   href: string;
   label: string;
   icon: 'home' | 'movie' | 'show' | 'book' | 'person';
+  /**
+   * Het aantal titels achter het slot: de som van `item_count` uit
+   * `GET /libraries`. Ontbreekt bij een slot zonder bibliotheken en zolang
+   * alleen het bewaarde record bekend is, want dat draagt geen aantallen.
+   */
+  count?: number;
 }
 
-type LibraryRef = Pick<Library, 'id'> & { kind: string };
+type LibraryRef = Pick<Library, 'id'> & { kind: string; item_count?: number };
 
 const KIND_SLOT: Record<string, NavSlot> = { movies: 'films', shows: 'series', books: 'books' };
 
@@ -41,16 +47,25 @@ export function navItems(
   const items: NavItem[] = [];
   const browse = capabilities?.browse === true;
   const has = (kind: string) => libraries.some((l) => l.kind === kind);
+  const count = (kind: string): { count?: number } => {
+    let total = 0;
+    for (const library of libraries) {
+      if (library.kind !== kind) continue;
+      if (typeof library.item_count !== 'number') return {};
+      total += library.item_count;
+    }
+    return { count: total };
+  };
 
   if (browse) items.push({ id: 'home', href: '/', label: t('nav.home'), icon: 'home' });
   if (browse && has('shows')) {
-    items.push({ id: 'series', href: '/series', label: t('nav.series'), icon: 'show' });
+    items.push({ id: 'series', href: '/series', label: t('nav.series'), icon: 'show', ...count('shows') });
   }
   if (browse && has('movies')) {
-    items.push({ id: 'films', href: '/films', label: t('nav.films'), icon: 'movie' });
+    items.push({ id: 'films', href: '/films', label: t('nav.films'), icon: 'movie', ...count('movies') });
   }
   if (browse && has('books')) {
-    items.push({ id: 'books', href: slotHref(libraries, 'books'), label: t('nav.books'), icon: 'book' });
+    items.push({ id: 'books', href: slotHref(libraries, 'books'), label: t('nav.books'), icon: 'book', ...count('books') });
   }
   // Mijn Pleya leunt op GET /server en GET /info, en die zijn er altijd zodra
   // er een sessie is. Er zit geen capability onder omdat er geen capability

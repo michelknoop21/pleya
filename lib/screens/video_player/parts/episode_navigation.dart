@@ -572,6 +572,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
             : null,
         sessionIdentifier: _playbackSessionIdentifier,
         transcodeSessionId: _playbackTranscodeSessionId,
+        startAtViewOffset: currentPlayer.keepsAbsoluteTimestamps,
       );
       if (!isCurrentReload()) return true;
       final result = playbackContext.result;
@@ -630,11 +631,12 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         isTranscoding: result.isTranscoding,
       );
       if (!isCurrentReload()) return true;
-      final openTiming = _playbackOpenTiming(
+      final openTiming = playbackOpenTiming(
         backend: metadata.backend,
         isTranscoding: result.isTranscoding,
         resumePosition: openResumePosition,
         durationMs: metadata.durationMs,
+        streamStart: result.streamStart,
       );
       await stoppedProgressFuture;
       if (!isCurrentReload()) return true;

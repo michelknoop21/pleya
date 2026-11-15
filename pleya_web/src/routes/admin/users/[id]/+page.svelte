@@ -1,4 +1,4 @@
-<!-- `/admin/users/{id}`: scherm 27, met de bevestigingen als dialoog. -->
+<!-- `/admin/users/{id}`: scherm 27, met tabs via `?tab=` en de bevestigingen als dialoog. -->
 <script lang="ts">
   import { page } from '$app/state';
 
@@ -13,5 +13,9 @@
 </svelte:head>
 
 {#key id}
-  <UserEditor {id} added={page.url.searchParams.get('added')} />
+  <UserEditor
+    {id}
+    added={page.url.searchParams.get('added')}
+    tab={page.url.searchParams.get('tab')}
+  />
 {/key}

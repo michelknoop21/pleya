@@ -6,6 +6,7 @@ import 'ids.dart';
 import '../services/settings_service.dart' show EpisodePosterMode;
 import '../utils/global_key_utils.dart';
 import '../utils/json_utils.dart';
+import '../utils/title_normalizer.dart';
 import 'external_rating.dart';
 import 'media_backend.dart';
 import 'media_kind.dart';
@@ -728,12 +729,12 @@ sealed class MediaItem with _$MediaItem {
   /// Display-friendly title that prefers the show name for episodes/seasons.
   String get displayTitle {
     if ((kind == MediaKind.episode || kind == MediaKind.season) && grandparentTitle != null) {
-      return grandparentTitle!;
+      return titleWithoutYearSuffix(grandparentTitle!);
     }
     if (kind == MediaKind.season && parentTitle != null) {
-      return parentTitle!;
+      return titleWithoutYearSuffix(parentTitle!);
     }
-    return title ?? '';
+    return titleWithoutYearSuffix(title ?? '');
   }
 
   /// Subtitle line shown below [displayTitle] for episodes/seasons.

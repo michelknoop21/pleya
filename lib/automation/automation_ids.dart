@@ -534,6 +534,15 @@ class AutomationIds {
   /// The three dots of the iPhone library filter row: manage and refresh.
   static const String libraryFilterMore = 'library.filter.more';
   static const String libraryFilterCount = 'library.filter.count';
+
+  /// Library maintenance on the iPhone: "Manage libraries" in the three-dot
+  /// menu, the options of one library in that sheet (by row index), an entry
+  /// of its maintenance menu (by action name) and the confirm button of the
+  /// question that follows.
+  static const String libraryMoreManage = 'library.more.manage';
+  static const String libraryManageOptions = 'library.manage.options';
+  static const String libraryMaintenanceAction = 'library.maintenance.action';
+  static const String libraryMaintenanceConfirm = 'library.maintenance.confirm';
   static const String sheetLibrarySort = 'sheet.library_sort';
   static const String sheetLibraryFilter = 'sheet.library_filter';
 
@@ -703,6 +712,12 @@ class AutomationIds {
   /// (`requests.list.more[0]`). It opens [requestsActions].
   static const String requestsListMore = 'requests.list.more';
 
+  /// A Regiekamer count tile above the requests list (`pending`, `approved`, `all`, `issues`).
+  static const String requestsListTile = 'requests.list.tile';
+
+  /// The Goedkeuren that approves every ticked request at once.
+  static const String requestsListBulkApprove = 'requests.list.bulk_approve';
+
   /// What the list shows instead of rows: `requests.list.state[empty]`,
   /// `[filtered]`, `[error]`, `[unsupported]`.
   static const String requestsListState = 'requests.list.state';
@@ -714,6 +729,8 @@ class AutomationIds {
   /// `requests.detail.action[request]`, `[mine]`, `[refresh]`, `[library]`,
   /// `[search]`.
   static const String requestsDetailAction = 'requests.detail.action';
+  static const String seerrIssueItem = 'seerr.issues.item';
+  static const String seerrIssueStatusAction = 'seerr.issues.status_action';
 
   /// A landing's header, title line, "Alle series"/"Alle films" action and one
   /// of its rails. All four are instanceable and all four carry the landing's
@@ -782,6 +799,11 @@ class AutomationIds {
   /// `UnifiedGroupAction`, because which actions are offered (and in which
   /// order) already varies with the group's own state.
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
+
+  /// The two buttons of the "Verwijderen van server" confirmation, suffixed
+  /// `[confirm]` or `[cancel]`, so a scenario can prove that only the confirm
+  /// reaches the server.
+  static const String dialogDeleteMedia = 'dialog.delete_media';
 
   /// The TV library action sheet (LIB7, mockup 27 B). Its state lists the
   /// offered actions in order, so a scenario can prove that a non-owner gets
@@ -912,8 +934,11 @@ class AutomationIds {
     requestsActionsItem,
     requestsListItem,
     requestsListMore,
+    requestsListTile,
+    requestsListBulkApprove,
     requestsListState,
     requestsDetailAction,
+    seerrIssueItem,
     homeRail,
     homeRailItem,
     homeRailHeader,
@@ -932,6 +957,7 @@ class AutomationIds {
     searchHistoryChip,
     sheetSourcePickerRow,
     sheetContextMenuItem,
+    dialogDeleteMedia,
     catalogHeader,
     catalogHeaderSearch,
     catalogChipSources,
@@ -1004,6 +1030,10 @@ class AutomationIds {
     {'id': libraryHeaderAvatar, 'role': 'button', 'instanceable': false},
     {'id': libraryFilterMore, 'role': 'button', 'instanceable': false},
     {'id': libraryFilterCount, 'role': 'region', 'instanceable': false},
+    {'id': libraryMoreManage, 'role': 'button', 'instanceable': false},
+    {'id': libraryManageOptions, 'role': 'button', 'instanceable': true},
+    {'id': libraryMaintenanceAction, 'role': 'button', 'instanceable': true},
+    {'id': libraryMaintenanceConfirm, 'role': 'button', 'instanceable': false},
     {'id': sheetLibrarySort, 'role': 'sheet', 'instanceable': false},
     {'id': sheetLibraryFilter, 'role': 'sheet', 'instanceable': false},
     {'id': libraryFilterGrouping, 'role': 'filter', 'instanceable': false},
@@ -1152,9 +1182,13 @@ class AutomationIds {
     {'id': requestsActionsItem, 'role': 'button', 'instanceable': true},
     {'id': requestsListItem, 'role': 'list.item', 'instanceable': true},
     {'id': requestsListMore, 'role': 'button', 'instanceable': true},
+    {'id': requestsListTile, 'role': 'button', 'instanceable': true},
+    {'id': requestsListBulkApprove, 'role': 'button', 'instanceable': false},
     {'id': requestsListState, 'role': 'region', 'instanceable': true},
     {'id': requestsListScope, 'role': 'button', 'instanceable': true},
     {'id': requestsDetailAction, 'role': 'button', 'instanceable': true},
+    {'id': seerrIssueItem, 'role': 'list.item', 'instanceable': true},
+    {'id': seerrIssueStatusAction, 'role': 'button', 'instanceable': false},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
     {'id': landingHeaderAvatar, 'role': 'button', 'instanceable': true},
@@ -1170,6 +1204,7 @@ class AutomationIds {
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
     {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
+    {'id': dialogDeleteMedia, 'role': 'button', 'instanceable': true},
     {'id': sheetLibraryActions, 'role': 'sheet', 'instanceable': false},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},

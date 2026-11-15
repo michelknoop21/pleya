@@ -430,6 +430,46 @@ curl -s -X POST -H "Authorization: Bearer $A" $B/jobs/<job_id>/retry
 `job` is het achtste foutdomein. Na een mislukte probe van een bestand wacht de scanner volgens
 `probe_attempts` steeds langer voor hij het opnieuw probeert (`probeBackoff`).
 
+### Titels met hun bestanden verwijderen
+
+Standaard kan Pleya Server geen bestand wissen: de mediamounts in `compose.yaml` staan op `:ro` en
+dat blijft zo. Wie vanuit de app of de API een film, serie, seizoen of aflevering wil verwijderen
+mét de bestanden op de NAS, zet het zelf aan (DEC-XXX, media verwijderen; specificatie 17h).
+
+1. Leg de schrijfbare mount en de schakelaar samen vast in een eigen bestand naast `compose.yaml`,
+   niet in `compose.yaml` zelf (dat staat in git en geeft omgevingsvariabelen één voor één door).
+   Bijvoorbeeld `compose.media-delete.yaml`:
+
+   ```yaml
+   services:
+     pleya-server:
+       environment:
+         PLEYA_SERVER_ALLOW_MEDIA_DELETE: "true"
+       volumes:
+         - ${PLEYA_SERVER_MEDIA_HOST}:/media/library
+   ```
+
+   Compose vervangt daarmee de mount op `/media/library`; `/media/library2` blijft `:ro` zolang je
+   hem hier niet noemt, en daar wist de server dan niets.
+2. Start met beide bestanden:
+   `docker compose -f compose.yaml -f compose.media-delete.yaml up -d`.
+   `deploy-nas.sh` geeft zijn eigen `-f`-lijst mee en kent dit bestand niet: na een uitrol met dat
+   script staat verwijderen weer uit (geen variabele, mount `:ro`) tot je dit commando opnieuw draait.
+3. Controleer het log. Per mediaroot staat er een waarschuwing: "media verwijderen staat aan" voor
+   een schrijfbare root, "deze mediaroot is niet schrijfbaar" voor een root die `:ro` bleef.
+   `GET /pleya/v1/info` heeft dan `capabilities.media_delete: true`.
+
+Wat er dan gebeurt: een beheerder (owner of admin) kan via `DELETE /pleya/v1/items/{id}` een titel
+verwijderen. Een lid niet, ook niet met het recht `manage`. De server wist de videobestanden, de
+losse ondertitels en de artwork die de scanner aan die titel hing, en mappen die daardoor leeg raken
+tot aan de bibliotheekroot. Een `.nfo` of ander bestand dat de scanner niet kende blijft staan, en
+de map eromheen dus ook. Een API-token kan niet wissen. Er is geen prullenbak op schijf: weg is weg,
+dus een back-up van de media is het vangnet, en de back-up van Pleya bevat geen media.
+
+De prijs: met een schrijfbare mount kan een overgenomen beheeraccount mediabestanden vernietigen,
+en met `:ro` kan dat niet. Uitzetten: zonder het extra bestand herstarten
+(`docker compose -f compose.yaml up -d`).
+
 ### Back-ups en restore
 
 Sinds S25 maakt de server elke nacht een back-up (database, `/config`, versleutelde geheimen),
@@ -712,6 +752,76 @@ bestaande bibliotheekroutes en beheerschermen.
 `compose.yaml` bevat een uitgecommentarieerd blok voor `/dev/dri` met `group_add: "937"`, de groep
 `videodriver` zoals gemeten op deze NAS. Het is volledig inert zolang het uitstaat en staat er alleen
 zodat later blijkt dat de weg vrij is. Aanzetten hoort bij PS-8.
+
+### Opt-in push naar iOS
+
+Pleya Server kan nieuwe films en afleveringen rechtstreeks aan Apple Push
+Notification service aanbieden. De app vraagt pas iOS-toestemming nadat de
+gebruiker bij **Notificaties** een pushcategorie voor deze server aanzet.
+
+Verbind de iOS-app via een vertrouwd HTTPS-adres met de server. Gebruik een
+APNs-sleutel van het Apple Developer-team dat de Pleya iOS-build ondertekent,
+beperkt tot de gekozen omgeving en tot het topic `nl.michelknoop.pleya`. Plaats `AuthKey.p8`
+en `apns.json` samen in een alleen-lezen secretmount buiten `/config` en de
+back-upmap. Geef alleen de servergebruiker toegang. Voorbeeldinhoud van
+`apns.json` met fictieve identifiers:
+
+```json
+{
+  "team_id": "AAAAAAAAAA",
+  "key_id": "BBBBBBBBBB",
+  "environment": "production"
+}
+```
+
+Zet `PLEYA_SERVER_APNS_CONFIG=/run/secrets/pleya-apns/apns.json`. `compose.yaml`
+mount de map uit `PLEYA_SERVER_APNS_HOST` (standaard `./data/apns`) read-only op
+`/run/secrets/pleya-apns`; zet die variabele in `.env` als de sleutel elders staat.
+Kies geen map binnen `PLEYA_SERVER_CONFIG_HOST` of `PLEYA_SERVER_BACKUP_HOST`: de
+server ziet alleen het containerpad en merkt dan niet dat de sleutel ook onder
+`/config` of in de back-upmap staat. De server maakt uitgaand HTTPS via HTTP/2
+over poort 443 naar `api.push.apple.com` of `api.sandbox.push.apple.com`. Gebruik
+`sandbox` voor een ontwikkelbuild en `production` voor TestFlight en distributie.
+Zonder geldige configuratie blijft push uit en de server schrijft een korte
+opstartmelding bij een configuratiefout.
+
+De server zet push ook uit als `AuthKey.p8` onder `PLEYA_SERVER_CONFIG_DIR`
+(standaard `/config`) staat, of als groep of anderen het bestand mogen lezen.
+Alles in `/config` gaat mee in elke back-up, en daar blijven alleen `.key`-bestanden
+en bestanden met rechten 0600 geheim. Geef de sleutel dus rechten 0600 voor de
+gebruiker uit `PLEYA_UID` (`chown 1026:100 AuthKey.p8 && chmod 600 AuthKey.p8`, met de
+waarden van `PLEYA_UID` en `PLEYA_GID` uit `.env`; 1026:100 is die op de NAS).
+Een sleutel die na een kopie met `sudo` nog van root is, kan de server ook met rechten
+0600 niet lezen. De opstartmelding noemt welke van de twee regels de sleutel brak.
+
+De eerste succesvolle scan per bibliotheek bepaalt de uitgangsstand. Uit
+latere voltooide scans komen alleen nieuwe, afspeelbare films en afleveringen
+van na de toestemming in de wachtrij. De server controleert sessie,
+categorie en bibliotheekrechten vóór verzending. Apple ziet alleen de algemene
+tekst "Er staat iets nieuws in je bibliotheek." Een app die
+`capabilities.push_rich_content` ziet, stuurt bij de registratie een eigen sleutel
+mee; de server versleutelt daarmee titel en posterverwijzing in de melding, en de
+Notification Service Extension op de iPhone toont "Nieuw: <titel>" met de poster.
+Zonder sleutel, of als ontsleutelen mislukt, blijft de algemene tekst staan. Of
+de titel ook op het vergrendelde scherm verschijnt, regelt iOS met **Toon
+voorvertoning** (Instellingen, Berichtgeving). De poster komt van deze server met
+een artworktoken dat één afbeelding opent en na hooguit 15 minuten vervalt;
+binnen die tijd weigert de server het zodra de sessie is ingetrokken (DEC-XXX). De server probeert tijdelijke bezorgfouten hoogstens 24 uur opnieuw; een door
+Apple geweigerd of verlopen providertoken telt als tijdelijk en wordt opnieuw
+ondertekend. Apple
+bewaart de alert niet voor een onbereikbaar toestel. Titels die in dezelfde
+scanronde binnenkomen, zoals een heel seizoen, worden één melding per toestel.
+Een APNs-token hoort bij één account: meldt een ander account op een gedeelde
+iPad zich met hetzelfde toestel aan, dan vervalt de oude registratie.
+Registraties van ingetrokken sessies ruimt de dagelijkse sessieronde op, ook
+als push uit staat. Een opt-out of rechtenwijziging tijdens het aanbieden aan
+APNs houdt die ene alert niet meer tegen; dat venster duurt hoogstens 8 seconden.
+De pushwachtrij gaat uit van één serverinstantie per database (DEC-120): zij
+neemt geen rijvergrendeling, dus een tweede instantie op dezelfde database
+verstuurt dubbel. Offline uitschakelen wordt
+bij de eerstvolgende verbinding met de server verwerkt.
+Toestelregistraties en afleveringen staan buiten de databaseback-up. Seerr-
+en release-updates zijn in de app beschikbaar als in-appmeldingen.
 
 ## MCP-koppeling
 

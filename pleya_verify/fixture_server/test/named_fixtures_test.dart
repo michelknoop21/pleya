@@ -74,6 +74,43 @@ void main() {
     expect(subtitles.body, contains('Pleya sidecar'));
   });
 
+  test('playback.start-position.v1 resumes films at 70 s and starts the stream at the segment holding it', () async {
+    final server = PleyaFakeServer();
+    Future<http.Response> request(String path, {Map<String, dynamic>? body}) {
+      final req = http.Request(body == null ? 'GET' : 'POST', Uri.parse('http://fixture$path'))
+        ..headers['Authorization'] = 'Bearer at-0';
+      if (body != null) req.body = jsonEncode(body);
+      return server.handle(req);
+    }
+
+    applyNamedFixture(server, 'catalog.mixed.v1');
+    applyNamedFixture(server, 'playback.app.v1');
+    expect(applyNamedFixture(server, 'playback.start-position.v1'), isTrue);
+    final info =
+        jsonDecode((await server.handle(http.Request('GET', Uri.parse('http://fixture/pleya/v1/info')))).body) as Map;
+    expect((info['capabilities'] as Map)['playback_start_position'], isTrue);
+    final movie = server.items.values.firstWhere((item) => item['kind'] == 'movie');
+    expect((movie['user_state'] as Map)['position_ms'], 70000);
+
+    final plan =
+        jsonDecode(
+              (await request(
+                '/pleya/v1/playback/plan',
+                body: {'item_id': movie['id'], 'start_position_ms': 70000},
+              )).body,
+            )
+            as Map;
+    expect(plan['start_position_ms'], 60186);
+    final playlist = await request(plan['stream_url'] as String);
+    expect(playlist.statusCode, 200);
+    final fragments = playlist.body.split('\n').where((line) => line.isNotEmpty && !line.startsWith('#')).toList();
+    expect(fragments, ['seg_00004.m4s', 'seg_00005.m4s', 'seg_00006.m4s', 'seg_00007.m4s']);
+
+    final fromZero = jsonDecode((await request('/pleya/v1/playback/plan', body: {'item_id': movie['id']})).body) as Map;
+    expect(fromZero.containsKey('start_position_ms'), isFalse, reason: 'only an asking request gets the field');
+    expect(fromZero['stream_url'], endsWith('/index.m3u8'));
+  });
+
   group('catalog.hero-recent.v1', () {
     test('Latest answers with a bare array of films inside the DEC-097 window', () async {
       final jellyfin = JellyfinFakeServer();

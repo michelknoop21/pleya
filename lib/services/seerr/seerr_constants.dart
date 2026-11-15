@@ -17,6 +17,9 @@ class SeerrConstants {
   /// How long a status/me lookup is cached before re-fetching.
   static const Duration statusCacheTtl = Duration(seconds: 60);
 
+  /// How long a 404 on the issue route counts as "this server has no issues".
+  static const Duration issueProbeTtl = Duration(minutes: 3);
+
   /// TMDB poster size used across request/discover surfaces.
   static const String tmdbImageBase = 'https://image.tmdb.org/t/p/w342';
 
@@ -118,6 +121,9 @@ class SeerrPermission {
 
   static const int admin = 2;
   static const int manageRequests = 16;
+  static const int manageIssues = 1048576;
+  static const int viewIssues = 2097152;
+  static const int createIssues = 4194304;
   static const int request = 32;
   // Overseerr `Permission`: REQUEST_4K=1024, _MOVIE=2048, _TV=4096. (512 is
   // AUTO_APPROVE_TV — using it here silently mis-gated the 4K toggle.)

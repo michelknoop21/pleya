@@ -1,17 +1,20 @@
 <!--
-  Het paneel Account van scherm 27: de gebruikersnaam (alleen te lezen, het
-  contract kent geen hernoemen) en Wachtwoord opnieuw instellen. Een beheerder
-  kiest een nieuw wachtwoord en geeft het door; de server toont het huidige
-  nooit. De eigenaar zet zijn wachtwoord alleen zelf (`auth.owner_immutable`
-  voor een ander), dus voor een andere beheerder dan hij is de knop uit.
+  Het paneel Account op de tab Profiel: de gebruikersnaam (alleen te lezen,
+  het contract kent geen hernoemen) en het formulier voor een nieuw
+  wachtwoord. De knop Wachtwoord opnieuw instellen staat in de kop van de
+  pagina (UserHead) en zet `open`. Een beheerder kiest een nieuw wachtwoord en
+  geeft het door; de server toont het huidige nooit. De eigenaar zet zijn
+  wachtwoord alleen zelf (`auth.owner_immutable` voor een ander), dus voor een
+  andere beheerder dan hij is de knop uit en staat hier waarom.
 
   Het nieuwe wachtwoord gaat alleen in de aanvraag; het veld wordt na het
   versturen leeggemaakt en vraagt de browser niets te onthouden.
 -->
 <script lang="ts">
-  import AdminIcon from '../components/AdminIcon.svelte';
   import Field from '../components/Field.svelte';
   import Panel from '../components/Panel.svelte';
+  import { tick } from 'svelte';
+
   import { t } from '../i18n';
   import { PASSWORD_MIN, passwordProblem } from './users';
 
@@ -20,16 +23,25 @@
     /** Mag de beheerder het wachtwoord van deze gebruiker zetten? */
     canReset: boolean;
     busy: boolean;
+    /** Staat het formulier voor een nieuw wachtwoord open? */
+    open?: boolean;
     onreset: (password: string) => Promise<boolean>;
   }
 
-  let { username, canReset, busy, onreset }: Props = $props();
+  let { username, canReset, busy, open = $bindable(false), onreset }: Props = $props();
 
-  let open = $state(false);
   let password = $state('');
   let submitted = $state(false);
 
   const problem = $derived(passwordProblem(password));
+
+  let form = $state<HTMLFormElement | null>(null);
+
+  // De knop die het formulier opent staat in de kop; zonder deze stap blijft de
+  // focus daar en merkt een toetsenbordgebruiker niet dat er iets verscheen.
+  $effect(() => {
+    if (open) void tick().then(() => form?.querySelector('input')?.focus());
+  });
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -55,7 +67,7 @@
   <div class="body">
     <Field label={t('admin.users.form.username')} value={username} disabled autocomplete="off" />
     {#if open}
-      <form class="reset" onsubmit={(e) => void submit(e)} novalidate>
+      <form class="reset" bind:this={form} onsubmit={(e) => void submit(e)} novalidate>
         <Field
           label={t('admin.users.account.newPassword')}
           type="password"
@@ -74,17 +86,6 @@
           </button>
         </div>
       </form>
-    {:else}
-      <div>
-        <button
-          type="button"
-          class="btn btn--secondary btn--sm"
-          disabled={!canReset}
-          onclick={() => (open = true)}
-        >
-          <AdminIcon name="gear" size={16} />{t('admin.users.account.reset')}
-        </button>
-      </div>
     {/if}
     <p class="help">
       {canReset ? t('admin.users.account.resetHelp') : t('admin.users.account.ownerOnly')}

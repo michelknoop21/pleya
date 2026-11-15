@@ -50,7 +50,7 @@ export class TranscodeHold {
 
   /** Begint de hartslag. Een vorige sessie wordt eerst gestopt. */
   hold(sessionId: string): void {
-    if (this.#sessionId && this.#sessionId !== sessionId) this.release(false);
+    if (this.#sessionId && this.#sessionId !== sessionId) void this.release(false);
     this.#sessionId = sessionId;
     this.#handle = this.#timers.setInterval(() => void this.#beat(), HEARTBEAT_EVERY_MS);
   }
@@ -81,11 +81,12 @@ export class TranscodeHold {
   /**
    * Stopt de hartslag en de sessie. Twee keer aanroepen stuurt één DELETE.
    * `keepalive` hoort bij `pagehide`, waar de pagina de aanvraag niet afwacht.
+   * De belofte lost op als de DELETE afgerond is.
    */
-  release(keepalive: boolean): void {
+  release(keepalive: boolean): Promise<void> {
     this.#clearTimer();
     const id = this.#sessionId;
     this.#sessionId = null;
-    if (id) this.#api.stop(id, keepalive);
+    return id ? this.#api.stop(id, keepalive) : Promise.resolve();
   }
 }

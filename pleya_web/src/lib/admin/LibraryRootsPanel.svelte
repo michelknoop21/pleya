@@ -12,6 +12,7 @@
   import Field from '../components/Field.svelte';
   import Panel from '../components/Panel.svelte';
   import StatusPill from '../components/StatusPill.svelte';
+  import StepTitle from './StepTitle.svelte';
   import type { StorageRoot } from '../api/types';
   import { t } from '../i18n';
   import { formatBytes } from '../util/format';
@@ -29,9 +30,11 @@
     libraryId: string | null;
     readonly?: boolean;
     error?: string;
+    /** Het stapnummer voor de kop, bij Bibliotheek toevoegen. */
+    step?: number;
   }
 
-  let { roots, selected = $bindable(), libraryId, readonly = false, error }: Props = $props();
+  let { roots, selected = $bindable(), libraryId, readonly = false, error, step }: Props = $props();
 
   const uid = $props.id();
   const choices = $derived(rootChoices(roots, libraryId));
@@ -80,7 +83,9 @@
 </script>
 
 <Panel>
-  {#snippet title()}{t('admin.lib.form.roots')}{/snippet}
+  {#snippet title()}
+    {#if step}<StepTitle n={step}>{t('admin.lib.form.roots')}</StepTitle>{:else}{t('admin.lib.form.roots')}{/if}
+  {/snippet}
   <p class="help" id={`${uid}-help`}>{t('admin.lib.form.rootsHelp')}</p>
   {#if error}
     <p class="help help--err" id={`${uid}-err`}>{error}</p>

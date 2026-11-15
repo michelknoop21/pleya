@@ -36,7 +36,8 @@ func (s *Server) playbackPolicy() playback.Policy {
 
 // startTranscode zet het plan om in een lopende sessie. De bron is het bestand
 // van de gekozen versie; wat er in de argumenten komt bepaalt de planner.
-func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan playback.Plan, src playback.Source) (*transcode.Session, bool) {
+// startMs is de gevalideerde startpositie uit de aanvraag, nul voor het begin.
+func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan playback.Plan, src playback.Source, startMs int64) (*transcode.Session, bool) {
 	versionID, err := id.Parse(plan.VersionID)
 	if err != nil {
 		writeInternal(w, s.log, err)
@@ -66,6 +67,7 @@ func (s *Server) startTranscode(w http.ResponseWriter, r *http.Request, plan pla
 		Mode:                transcode.Mode(plan.Mode),
 		AudioCodec:          plan.AudioCodec,
 		AudioChannels:       plan.AudioMaxCh,
+		StartMs:             startMs,
 	}
 	if plan.Quality != nil {
 		job.MaxVideoBitrateKbps, job.MaxHeight = plan.Quality.MaxVideoBitrateKbps, plan.Quality.MaxHeight

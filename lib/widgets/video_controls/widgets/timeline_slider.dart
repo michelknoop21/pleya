@@ -8,6 +8,8 @@ import '../../../focus/focusable_wrapper.dart';
 import '../../../focus/input_mode_tracker.dart';
 import '../../../services/scrub_preview_source.dart';
 import '../../../utils/formatters.dart';
+import '../../../utils/platform_detector.dart';
+import '../../../utils/tv_hig.dart';
 import '../film_frame_palette.dart';
 import '../helpers/eager_horizontal_drag_recognizer.dart';
 import '../painters/buffer_range_painter.dart';
@@ -16,6 +18,12 @@ import '../painters/buffer_range_painter.dart';
 ///
 /// Displays a horizontal slider showing playback position and duration,
 /// with optional chapter markers overlaid at their respective positions.
+/// The visible row of the timeline track: the slim handle's height.
+const double kTimelineTrackRowHeight = 20;
+
+/// Minimum touch height of the phone timeline (Apple HIG 44 pt).
+const double kTimelineTouchExtent = 44;
+
 class TimelineSlider extends StatefulWidget {
   final Duration position;
   final Duration duration;
@@ -50,6 +58,13 @@ class TimelineSlider extends StatefulWidget {
   /// keep up with accumulated seeks. Single presses should leave this false.
   final bool showKeyRepeatThumbnail;
 
+  /// Height of the touch band, when it should reach past the visible track
+  /// row (the phone timeline: the band covers the times under it, so a tap
+  /// anywhere in the row seeks instead of falling through to the video,
+  /// which hides the controls). The track stays in the top
+  /// [kTimelineTrackRowHeight] of the band.
+  final double? touchExtent;
+
   const TimelineSlider({
     super.key,
     required this.position,
@@ -68,6 +83,7 @@ class TimelineSlider extends StatefulWidget {
     this.enabled = true,
     this.thumbnailDataBuilder,
     this.showKeyRepeatThumbnail = false,
+    this.touchExtent,
   });
 
   @override
@@ -297,9 +313,9 @@ class _TimelineSliderState extends State<TimelineSlider> {
       ),
       child: Text(
         formatDurationTimestamp(time),
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 12,
+          fontSize: TvHig.readable(context, 12),
           height: 1.0,
           fontFeatures: [FontFeature.tabularFigures()],
         ),
@@ -333,6 +349,20 @@ class _TimelineSliderState extends State<TimelineSlider> {
     );
   }
 
+  /// The round thumb is 13 tall, the slim handle 20: without a floor the
+  /// phone's gesture area shrank to 13 and a tap just under the line hid the
+  /// controls (DENS1 review C1). The row keeps the handle's 20, and
+  /// [TimelineSlider.touchExtent] can stretch the band further down.
+  Widget _touchBand({required bool roundThumb, required Widget child}) {
+    final row = roundThumb ? SizedBox(height: kTimelineTrackRowHeight, child: child) : child;
+    final extent = widget.touchExtent;
+    if (extent == null) return row;
+    return SizedBox(
+      height: extent,
+      child: Align(alignment: Alignment.topCenter, child: row),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final durationMs = widget.duration.inMilliseconds;
@@ -341,6 +371,7 @@ class _TimelineSliderState extends State<TimelineSlider> {
         ? (_dragValue ?? _pendingSeekValue ?? widget.position.inMilliseconds.toDouble()).clamp(0.0, max).toDouble()
         : 0.0;
     final displayPosition = Duration(milliseconds: displayValue.toInt());
+    final roundThumb = PlatformDetector.isMobile(context);
     final hasTooltip =
         durationMs > 0 &&
         (_dragValue != null ||
@@ -372,80 +403,91 @@ class _TimelineSliderState extends State<TimelineSlider> {
                     ),
               }
             : const <Type, GestureRecognizerFactory>{},
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: .center,
-          children: [
-            // Buffer range + segmented background track (with chapter gaps)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: _sliderPadding),
-                  child: CustomPaint(
-                    painter: BufferRangePainter(
-                      ranges: widget.bufferRanges,
-                      duration: widget.duration,
-                      chapters: widget.chaptersLoaded && widget.showChapterMarkersOnTimeline
-                          ? widget.chapters
-                          : const [],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Semantics(
-              label: t.videoControls.timelineSlider,
-              slider: true,
-              value: formatDurationTimestamp(displayPosition),
-              increasedValue: formatDurationTimestamp(
-                Duration(milliseconds: (displayValue + 10000).clamp(0.0, max).round()),
-              ),
-              decreasedValue: formatDurationTimestamp(
-                Duration(milliseconds: (displayValue - 10000).clamp(0.0, max).round()),
-              ),
-              enabled: widget.enabled,
-              onIncrease: widget.enabled && durationMs > 0 ? () => _semanticSeekBy(const Duration(seconds: 10)) : null,
-              onDecrease: widget.enabled && durationMs > 0 ? () => _semanticSeekBy(const Duration(seconds: -10)) : null,
-              child: ExcludeSemantics(
+        child: _touchBand(
+          roundThumb: roundThumb,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: .center,
+            children: [
+              // Buffer range + segmented background track (with chapter gaps)
+              Positioned.fill(
                 child: IgnorePointer(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: kFilmTrackHeight,
-                      trackGap: 0,
-                      padding: .zero,
-                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
-                      tickMarkShape: SliderTickMarkShape.noTickMark,
-                      thumbSize: WidgetStatePropertyAll(
-                        (!InputModeTracker.isKeyboardMode(context) || _isFocused) ? const Size(4, 20) : Size.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: _sliderPadding),
+                    child: CustomPaint(
+                      painter: BufferRangePainter(
+                        ranges: widget.bufferRanges,
+                        duration: widget.duration,
+                        chapters: widget.chaptersLoaded && widget.showChapterMarkersOnTimeline
+                            ? widget.chapters
+                            : const [],
                       ),
                     ),
-                    child: Slider(
-                      value: displayValue,
-                      min: 0.0,
-                      max: max,
-                      onChanged: _noopSliderChanged,
-                      activeColor: kFilmProgress,
-                      inactiveColor: Colors.transparent,
+                  ),
+                ),
+              ),
+              Semantics(
+                label: t.videoControls.timelineSlider,
+                slider: true,
+                value: formatDurationTimestamp(displayPosition),
+                increasedValue: formatDurationTimestamp(
+                  Duration(milliseconds: (displayValue + 10000).clamp(0.0, max).round()),
+                ),
+                decreasedValue: formatDurationTimestamp(
+                  Duration(milliseconds: (displayValue - 10000).clamp(0.0, max).round()),
+                ),
+                enabled: widget.enabled,
+                onIncrease: widget.enabled && durationMs > 0
+                    ? () => _semanticSeekBy(const Duration(seconds: 10))
+                    : null,
+                onDecrease: widget.enabled && durationMs > 0
+                    ? () => _semanticSeekBy(const Duration(seconds: -10))
+                    : null,
+                child: ExcludeSemantics(
+                  child: IgnorePointer(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: kFilmTrackHeight,
+                        trackGap: 0,
+                        padding: .zero,
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
+                        tickMarkShape: SliderTickMarkShape.noTickMark,
+                        thumbSize: WidgetStatePropertyAll(
+                          (!InputModeTracker.isKeyboardMode(context) || _isFocused) ? const Size(4, 20) : Size.zero,
+                        ),
+                        // Mockup A: a round white thumb on phone and tablet; the
+                        // pointer and remote players keep the slim handle.
+                        thumbShape: roundThumb ? const RoundSliderThumbShape(enabledThumbRadius: 6.5) : null,
+                      ),
+                      child: Slider(
+                        value: displayValue,
+                        min: 0.0,
+                        max: max,
+                        onChanged: _noopSliderChanged,
+                        activeColor: kFilmProgress,
+                        thumbColor: roundThumb ? Colors.white : null,
+                        inactiveColor: Colors.transparent,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            // Tooltip layer: a permanent child so showing/hiding the tooltip
-            // never changes the structure around the slider.
-            Positioned.fill(
-              child: IgnorePointer(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final tooltip = hasTooltip
-                        ? _buildActiveTooltip(constraints.maxWidth, durationMs, displayValue, displayPosition)
-                        : null;
-                    return Stack(clipBehavior: Clip.none, children: [?tooltip]);
-                  },
+              // Tooltip layer: a permanent child so showing/hiding the tooltip
+              // never changes the structure around the slider.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tooltip = hasTooltip
+                          ? _buildActiveTooltip(constraints.maxWidth, durationMs, displayValue, displayPosition)
+                          : null;
+                      return Stack(clipBehavior: Clip.none, children: [?tooltip]);
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

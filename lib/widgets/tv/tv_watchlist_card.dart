@@ -50,6 +50,7 @@ import 'tv_catalog_empty_state.dart';
 import 'tv_catalog_card.dart';
 import 'tv_catalog_meta.dart';
 import 'tv_unified_layout.dart';
+import '../../services/image_cache_service.dart';
 
 class TvWatchlistCard extends StatelessWidget {
   const TvWatchlistCard({
@@ -183,6 +184,9 @@ class TvWatchlistArtwork extends StatelessWidget {
     return TvCatalogArtworkFill(
       child: CachedNetworkImage(
         imageUrl: url,
+        // The shared artwork cache: bounded downloads with a timeout, instead of
+        // the package default that waits on a dead socket forever.
+        cacheManager: PlexImageCacheManager.instance,
         fit: BoxFit.cover,
         // No fade: the grid builds every card at once, so a per-card animation
         // turns opening the page into forty things moving, and hoofdstuk 10.2b

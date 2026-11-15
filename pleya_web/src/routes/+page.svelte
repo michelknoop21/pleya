@@ -130,10 +130,10 @@
   {/if}
   <div class="home" class:home--with-hero={Boolean(hero)}>
     {#if !hero}<h1 class="sr-only">{t('home.title')}</h1>{/if}
-    <ContinueWatchingRail items={continuing} />
-    <HubRail title={t('home.nextUp')} items={next} getParent={parentReader} />
+    <ContinueWatchingRail items={continuing} getParent={parentReader} />
+    <HubRail title={t('home.nextUp')} items={next} getParent={parentReader} quickActions />
     {#each recent as row (row.id)}
-      <HubRail title={`${t('home.recentlyAdded')} · ${row.title}`} items={row.items} href={`/libraries/${encodeURIComponent(row.id)}`} getParent={parentReader} />
+      <HubRail title={`${t('home.recentlyAdded')} · ${row.title}`} items={row.items} href={`/libraries/${encodeURIComponent(row.id)}`} getParent={parentReader} quickActions />
     {/each}
   </div>
 {/if}

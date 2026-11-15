@@ -8,6 +8,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/services/local_library/local_library_store.dart';
+import 'package:pleya/utils/app_logger.dart';
 
 const library = MediaLibrary(
   id: 'films',
@@ -73,6 +74,32 @@ void main() {
 
       final read = await reopen();
       expect(read.libraryItems(library.globalKey).last.title, 'Kärlek & anarki 500 ★');
+    });
+
+    test('Japanese and emoji titles load back unchanged and a loadstats line follows', () async {
+      const titles = ['千と千尋の神隠し', 'Spirited \u{1F409} Away', 'Kärlek ★'];
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(library, [
+        for (final (i, title) in titles.indexed) film('film-$i').copyWith(title: title),
+      ], complete: true);
+
+      MemoryLogOutput.clearLogs();
+      final read = await reopen();
+      expect(read.libraryItems(library.globalKey).map((i) => i.title), titles);
+      final lines = MemoryLogOutput.getLogs().map((e) => e.message);
+      expect(
+        lines.where((l) => RegExp(r'^loadstats files=1 bytes=\d+ ms=\d+ rss=\d+/\d+MB$').hasMatch(l)),
+        hasLength(1),
+      );
+    });
+
+    test('a corrupt library file still fails the load', () async {
+      final store = LocalLibraryStore(root);
+      await store.load();
+      await store.saveLibrary(library, [film('a')], complete: true);
+      await (await libraryFile()).writeAsString('{"library":');
+      expect(reopen(), throwsA(isA<FormatException>()));
     });
 
     test('a save that is no longer current keeps the previous file and leaves no pending file', () async {

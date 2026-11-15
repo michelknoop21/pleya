@@ -51,9 +51,11 @@
      * deelt de rij er een met zichzelf.
      */
     getParent?: ItemReader;
+    /** Geeft de standaardkaart haar snelle acties (MediaCard `quickActions`). */
+    quickActions?: boolean;
   }
 
-  let { title, items, href, viewAllLabel, shape: shapeOverride, card, getParent }: Props = $props();
+  let { title, items, href, viewAllLabel, shape: shapeOverride, card, getParent, quickActions = false }: Props = $props();
 
   const uid = $props.id();
   const headingId = `${uid}-title`;
@@ -177,6 +179,7 @@
                 title={episode?.title}
                 artworkId={episode ? episode.artworkId : undefined}
                 subtitle={episode?.subtitle}
+                {quickActions}
               />
             {/if}
           </li>

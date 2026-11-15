@@ -77,19 +77,30 @@ class TvSleepTimerSubView extends StatelessWidget {
           ),
         );
 
+        // Eight durations stacked ran past the panel's bottom on an Apple TV,
+        // so "2 uur" was never on screen (DENS1, T3). Two columns of four fit.
+        Widget durations(Iterable<int> minutesList) => TvPanelGroup(
+          children: [
+            for (final minutes in minutesList)
+              TvPanelRow.choice(
+                title: formatDurationTextual(minutes * 60 * 1000, abbreviated: false),
+                selected: minutes == activeMinutes,
+                onSelect: () {
+                  sleepTimer.startTimer(Duration(minutes: minutes), () => player.pause());
+                  onDone();
+                },
+              ),
+          ],
+        );
+        const half = 4;
         final right = <Widget>[
           TvPanelSectionHeader(label: t.videoControls.tvPanel.sleepAfter),
-          TvPanelGroup(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final minutes in durationsMinutes)
-                TvPanelRow.choice(
-                  title: formatDurationTextual(minutes * 60 * 1000, abbreviated: false),
-                  selected: minutes == activeMinutes,
-                  onSelect: () {
-                    sleepTimer.startTimer(Duration(minutes: minutes), () => player.pause());
-                    onDone();
-                  },
-                ),
+              Expanded(child: durations(durationsMinutes.take(half))),
+              SizedBox(width: TvPanelMetrics.of(context).gap(14)),
+              Expanded(child: durations(durationsMinutes.skip(half))),
             ],
           ),
         ];

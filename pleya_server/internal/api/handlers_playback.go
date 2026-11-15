@@ -61,6 +61,9 @@ type PlaybackPlanRequest struct {
 	ItemID        string                     `json:"item_id"`
 	VersionID     *string                    `json:"version_id,omitempty"`
 	Capabilities  *DeviceCapabilitiesWire    `json:"capabilities,omitempty"`
+	// StartPositionMs is de positie in de titel waar de client wil beginnen.
+	// Afwezig is het gedrag van vóór dit veld: een omzetting begint op nul.
+	StartPositionMs *int64 `json:"start_position_ms,omitempty"`
 }
 
 // PlaybackReason is een domeincode met parameters.
@@ -92,12 +95,48 @@ type PlaybackPlan struct {
 	SessionID             *string               `json:"session_id"`
 	Reason                PlaybackReason        `json:"reason"`
 	Reasons               []PlaybackReason      `json:"reasons"`
+	// StartPositionMs is het eerste tijdstempel van de stream; de segmenten
+	// dragen filmtijd. Alleen aanwezig als de aanvraag start_position_ms droeg.
+	StartPositionMs *int64 `json:"start_position_ms,omitempty"`
+}
+
+// startTailMs is hoeveel film een omzetting met een startpositie minstens
+// overhoudt. Een start in de laatste seconden levert geen segment op, en een
+// eerdere start dan gevraagd mag altijd.
+const startTailMs = 10_000
+
+// startPosition maakt van de gevraagde positie de positie waar de omzetting
+// begint. Onwaar betekent dat de positie niet in deze versie bestaat. Een duur
+// van nul is onbekend en begrenst niets.
+func startPosition(requested *int64, durationMs int64) (int64, bool) {
+	if requested == nil {
+		return 0, true
+	}
+	if *requested < 0 || durationMs > 0 && *requested >= durationMs {
+		return 0, false
+	}
+	if durationMs > 0 && *requested > durationMs-startTailMs {
+		return max(0, durationMs-startTailMs), true
+	}
+	return *requested, true
+}
+
+// startPositionEnabled zegt of de server een startpositie kan meten: zonder
+// omzetter of ffprobe staat playback_start_position uit.
+func (s *Server) startPositionEnabled() bool {
+	return s.transcodeEnabled() && s.opts.FFprobe.Found
 }
 
 func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 	var req PlaybackPlanRequest
 	if !s.decodeBody(w, r, &req, CodeNotFound) {
 		return
+	}
+	if !s.startPositionEnabled() {
+		// Zonder de vlag bestaat het veld voor deze server niet. Negeren in
+		// plaats van per aanvraag een omzetting te starten die de start niet kan
+		// meten en dan 502 geeft.
+		req.StartPositionMs = nil
 	}
 	itemID, err := id.Parse(strings.TrimSpace(req.ItemID))
 	if err != nil {
@@ -213,6 +252,21 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 		writeInternal(w, s.log, err)
 		return
 	}
+	// De duur is die van de gekozen versie: zonder version_id kiest de planner,
+	// en een positie uit een langere versie bestaat in een kortere niet.
+	var durationMs int64
+	for _, v := range item.Versions {
+		if v.ID.String() == plan.VersionID {
+			durationMs = v.DurationMs
+		}
+	}
+	startMs, ok := startPosition(req.StartPositionMs, durationMs)
+	// Bij direct play dwingt het veld niets af: de client zoekt in het bestand.
+	if !ok && plan.Mode != playback.DirectPlay {
+		writeError(w, s.log, CodePlaybackSelectionInvalid, "start position is beyond this version",
+			map[string]any{"version_id": plan.VersionID, "duration_ms": durationMs})
+		return
+	}
 	var subtitlePlan *PlaybackSubtitlePlan
 	if req.Subtitle != nil {
 		subtitlePlan = &PlaybackSubtitlePlan{Action: req.Subtitle.Mode, StreamID: req.Subtitle.StreamID}
@@ -262,7 +316,7 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 		var sess *transcode.Session
 		if plan.Mode != playback.DirectPlay {
 			var ok bool
-			if sess, ok = s.startTranscode(w, fresh, plan, chosenSource(sources, plan.VersionID)); !ok {
+			if sess, ok = s.startTranscode(w, fresh, plan, chosenSource(sources, plan.VersionID), startMs); !ok {
 				return
 			}
 		}
@@ -271,6 +325,15 @@ func (s *Server) handlePlaybackPlan(w http.ResponseWriter, r *http.Request) {
 		response.EffectiveQuality = plan.Quality
 		response.SelectedAudioStreamID = req.AudioStreamID
 		response.Subtitle = subtitlePlan
+		if req.StartPositionMs != nil {
+			// Bij direct play is de stream het bestand zelf en begint hij op nul;
+			// de client zoekt daar zelf. Bij een omzetting telt wat gemeten is.
+			var streamStart int64
+			if sess != nil {
+				streamStart = sess.StartMs
+			}
+			response.StartPositionMs = &streamStart
+		}
 		writeJSON(w, http.StatusOK, response)
 	}).ServeHTTP(w, r)
 }

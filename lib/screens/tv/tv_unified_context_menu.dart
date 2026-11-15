@@ -768,6 +768,18 @@ class _ActionMenuPanel extends StatelessWidget {
   final String? extraActionLabel;
   final VoidCallback? onChooseExtra;
 
+  /// The trailing row ("Beheren" in the catalogue, "Home aanpassen" on Home),
+  /// numbered after the others so a scenario can walk the remote onto it.
+  Widget _extraRow(int index, String label, Widget row) => Builder(
+    builder: (rowContext) => AutomationNode(
+      id: AutomationIds.sheetContextMenuItem,
+      instance: '$index',
+      role: 'list.item',
+      state: () => {'label': label, 'focused': automationRowHasFocus(rowContext)},
+      child: row,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
@@ -897,19 +909,23 @@ class _ActionMenuPanel extends StatelessWidget {
                       ],
                       if (extraActionLabel != null) ...[
                         divider(),
-                        TvCatalogOptionRow(
-                          key: const ValueKey('tvContextMenuExtraAction'),
-                          label: extraActionLabel!,
-                          // Vandaag is dit alleen "Home aanpassen" (ROW1).
-                          // tune_rounded is de enige uit de gecheckte set die
-                          // "stel dit scherm in" zegt zonder een tweede
-                          // betekenis te dragen. Komt er een tweede extra-actie
-                          // bij, dan hoort het icoon in TvContextMenuExtraAction
-                          // te gaan, niet hier hardcoded.
-                          leadingIcon: Symbols.tune_rounded,
-                          isSelected: false,
-                          scale: scale,
-                          onPressed: onChooseExtra!,
+                        _extraRow(
+                          rowIndex,
+                          extraActionLabel!,
+                          TvCatalogOptionRow(
+                            key: const ValueKey('tvContextMenuExtraAction'),
+                            label: extraActionLabel!,
+                            // Vandaag is dit alleen "Home aanpassen" (ROW1).
+                            // tune_rounded is de enige uit de gecheckte set die
+                            // "stel dit scherm in" zegt zonder een tweede
+                            // betekenis te dragen. Komt er een tweede extra-actie
+                            // bij, dan hoort het icoon in TvContextMenuExtraAction
+                            // te gaan, niet hier hardcoded.
+                            leadingIcon: Symbols.tune_rounded,
+                            isSelected: false,
+                            scale: scale,
+                            onPressed: onChooseExtra!,
+                          ),
                         ),
                       ],
                     ],

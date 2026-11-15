@@ -11,6 +11,9 @@ import 'package:pleya/services/deferred_subtitle_loader.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/sheets/track_sheet.dart';
+import 'package:pleya/widgets/app_icon.dart';
+import 'package:pleya/widgets/video_controls/film_frame_palette.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 const _testTokens = MonoTokens(
   radiusSm: 8,
@@ -36,6 +39,40 @@ void main() {
 
   setUp(() {
     LocaleSettings.setLocaleSync(AppLocale.en);
+  });
+
+  group('TrackSheet density (DENS1)', () {
+    testWidgets('two subtitle rows do not open a full-height sheet', (tester) async {
+      final player = _FakeTrackSheetPlayer(
+        tracks: const Tracks(
+          subtitle: [SubtitleTrack(id: 's1', title: 'English')],
+        ),
+        track: const TrackSelection(subtitle: SubtitleTrack.off),
+      );
+      await _pumpTrackSheet(tester, player: player, trackControlsState: const TrackControlsState());
+      final list = tester.getSize(find.byType(ListView));
+      expect(list.height, lessThan(160));
+    });
+
+    testWidgets('the chosen row and its check are mint, not the red primary', (tester) async {
+      final player = _FakeTrackSheetPlayer(
+        tracks: const Tracks(
+          subtitle: [SubtitleTrack(id: 's1', title: 'English')],
+        ),
+        track: const TrackSelection(subtitle: SubtitleTrack.off),
+      );
+      // The dark player sheet; a light sheet keeps the app primary (review I1).
+      await _pumpTrackSheet(
+        tester,
+        player: player,
+        trackControlsState: const TrackControlsState(),
+        brightness: Brightness.dark,
+      );
+      final check = tester.widget<AppIcon>(
+        find.byWidgetPredicate((w) => w is AppIcon && w.icon == Symbols.check_rounded),
+      );
+      expect(check.color, kFilmFocus);
+    });
   });
 
   group('TrackSheet subtitle controls', () {
@@ -281,10 +318,11 @@ Future<void> _pumpTrackSheet(
   WidgetTester tester, {
   required Player player,
   required TrackControlsState trackControlsState,
+  Brightness? brightness,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: ThemeData(extensions: const [_testTokens]),
+      theme: ThemeData(brightness: brightness, extensions: const [_testTokens]),
       home: Scaffold(
         body: SizedBox(
           width: 700,

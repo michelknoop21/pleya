@@ -1,0 +1,61 @@
+name: ios.catalog.delete-from-server
+target: ios-sim
+# Verwijderen van server from the Alle films quick menu (A-07, the
+# "nog steeds geen items verwijderen" report of 13 November 2026).
+# `catalog.delete.v1`: the Jellyfin user is an administrator; Arrival is on
+# both the Pleya fixture and Jellyfin under TMDB 329865, so its card has two
+# sources and the delete row names the one server it removes from. Pleya
+# Server has no delete, so that copy is never offered.
+#
+# What this proves:
+#   1. the quick menu of a two-source card offers "Verwijderen van server"
+#      for the Jellyfin copy only, with the server name in the row;
+#   2. Annuleren in the confirmation sends nothing;
+#   3. confirming sends exactly one DELETE, for the Jellyfin copy of Arrival.
+setup:
+  - reset_app
+  - seed: catalog.delete.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - sign_in: {base_url: "{{fixture_jellyfin}}", username: verify-owner, password: verify-password, backend: jellyfin}
+  - open: screen.movies
+steps:
+  - wait_until: {id: screen.movies, timeout: 20000}
+  - settle: 3500
+  - tap: {id: "landing.view_all[movies]"}
+  - wait_until: {id: screen.catalog_movies, timeout: 15000}
+  - wait_until: {id: "catalog.grid.item[movies.2]", timeout: 15000}
+  - settle: 1500
+  - snapshot: 00-grid
+  - assert: {id: "catalog.grid.item[movies.0]", state: {title: Arrival, sources: 2}}
+  - tap: {id: "catalog.grid.item[movies.0]", holdMs: 900}
+  - wait_until: {id: sheet.context_menu, timeout: 10000}
+  - settle: 600
+  # Only the Jellyfin copy can go: Pleya Server has no delete. The row says
+  # which server, because the card carries two.
+  - assert: {id: "sheet.context_menu.item[delete.verify-jellyfin:del-arrival]", insideViewport: true, state: {label: "Verwijderen van server · Verify Jellyfin"}}
+  - snapshot: 01-quick-menu
+
+  # Annuleren: the confirmation closes and the server hears nothing.
+  - tap: {id: "sheet.context_menu.item[delete.verify-jellyfin:del-arrival]"}
+  - wait_until: {id: "dialog.delete_media[cancel]", timeout: 8000}
+  - settle: 500
+  - snapshot: 02-confirmation
+  - tap: {id: "dialog.delete_media[cancel]"}
+  - settle: 800
+  - fixture_mutate: {op: jellyfin_deletes, items: []}
+  - assert: {id: "catalog.grid.item[movies.0]", state: {title: Arrival, sources: 2}}
+
+  # Confirming sends exactly one DELETE, for Jellyfin's Arrival, and the card
+  # keeps the copy on the Pleya fixture.
+  - tap: {id: "catalog.grid.item[movies.0]", holdMs: 900}
+  - wait_until: {id: "sheet.context_menu.item[delete.verify-jellyfin:del-arrival]", timeout: 10000}
+  - settle: 500
+  - tap: {id: "sheet.context_menu.item[delete.verify-jellyfin:del-arrival]"}
+  - wait_until: {id: "dialog.delete_media[confirm]", timeout: 8000}
+  - settle: 500
+  - tap: {id: "dialog.delete_media[confirm]"}
+  - settle: 2500
+  - fixture_mutate: {op: jellyfin_deletes, items: [del-arrival]}
+  - assert: {id: "catalog.grid.item[movies.0]", state: {title: Arrival, sources: 1}}
+  - snapshot: 03-after-delete

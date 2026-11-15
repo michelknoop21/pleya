@@ -176,7 +176,7 @@ func (s *Server) handleCreateLibrary(w http.ResponseWriter, r *http.Request) {
 
 	s.auditEvent(r, auditCreateLibrary, lib.ID.String(), audit.OutcomeOK,
 		map[string]any{"title": lib.Title, "kind": lib.Kind})
-	writeJSON(w, http.StatusCreated, adminLibraryWire(lib))
+	writeJSON(w, http.StatusCreated, s.adminLibraryWire(lib))
 }
 
 func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
@@ -300,7 +300,7 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.auditEvent(r, auditUpdateLibrary, lib.ID.String(), audit.OutcomeOK, nil)
-	writeJSON(w, http.StatusOK, adminLibraryWire(lib))
+	writeJSON(w, http.StatusOK, s.adminLibraryWire(lib))
 }
 
 func (s *Server) handleDeleteLibrary(w http.ResponseWriter, r *http.Request) {
@@ -381,16 +381,16 @@ func (s *Server) handleAdoptLibrary(w http.ResponseWriter, r *http.Request) {
 
 	s.auditEvent(r, auditAdoptLibrary, lib.ID.String(), audit.OutcomeOK,
 		map[string]any{"title": lib.Title, "slug": lib.Slug})
-	writeJSON(w, http.StatusOK, adminLibraryWire(lib))
+	writeJSON(w, http.StatusOK, s.adminLibraryWire(lib))
 }
 
 // adminLibraryWire is Library met de velden die alleen klasse admin ziet
 // (J.3): de aanroeper heeft requireAdmin al gehaald, dus dit is de volledige
 // vorm en niet een keuze die de handler nog moet maken.
-func adminLibraryWire(l catalog.Library) Library {
+func (s *Server) adminLibraryWire(l catalog.Library) Library {
 	managed := string(l.Managed)
 	scanInterval := l.ScanIntervalSeconds
-	return Library{
+	wire := Library{
 		ID:                  l.ID.String(),
 		Title:               l.Title,
 		Kind:                l.Kind,
@@ -399,4 +399,13 @@ func adminLibraryWire(l catalog.Library) Library {
 		ScanIntervalSeconds: &scanInterval,
 		ScanOnStart:         &l.ScanOnStart,
 	}
+	if s.opts.NextScanAt != nil {
+		var next *string
+		if at, ok := s.opts.NextScanAt(l.ID); ok {
+			formatted := formatTime(at.UTC())
+			next = &formatted
+		}
+		wire.NextScanAt = &next
+	}
+	return wire
 }

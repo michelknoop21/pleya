@@ -389,7 +389,7 @@ class TvSpotlightBackground extends StatelessWidget {
     final spoilerAlpha = isLight ? 0.90 : 0.72;
     final shouldHideSpoiler = hideSpoilers && media.shouldHideSpoiler;
     final summary = shouldHideSpoiler ? null : media.summary;
-    final title = media.grandparentTitle ?? media.displayTitle;
+    final title = media.displayTitle;
 
     return Column(
       crossAxisAlignment: .start,
