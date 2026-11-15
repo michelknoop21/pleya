@@ -18,7 +18,9 @@ name: Goldens - Regenerate
 on:
   push:
     branches: [fix/tvos-detail-northstar-polish]
-    paths: [.github/workflows/goldens.yml]
+    paths:
+      - .github/workflows/goldens.yml
+      - test/screens/media_detail_synopsis_panel_test.dart
   workflow_dispatch:
     inputs:
       targets:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/focus_theme.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -71,7 +72,9 @@ void main() {
         child: MaterialApp(
           builder: withNoticeLayer(),
           theme: monoTheme(dark: dark),
-          home: withProfileNavigationScope(child: MediaDetailScreen(metadata: metadata)),
+          home: withProfileNavigationScope(
+            child: InputModeTracker(child: MediaDetailScreen(metadata: metadata)),
+          ),
         ),
       ),
     );
