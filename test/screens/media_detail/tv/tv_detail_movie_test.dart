@@ -214,6 +214,20 @@ void main() {
     expect(ring.value, closeTo(41 / 102, 0.001));
   });
 
+  // 06: the focused pill stays on the page margin. Grown from its centre it
+  // stood 8 points left of every other line on the page.
+  testWidgets('the focused pill grows from the margin, not past it', (tester) async {
+    await pumpDetail(tester, _Client(_movie()));
+    await tester.pumpAndSettle();
+
+    final pill = find.byType(TvDetailPlayPill);
+    expect(tester.widget<TvDetailPlayPill>(pill).focused, isTrue);
+    final body = find.descendant(of: pill, matching: find.byType(Container)).first;
+    final drawn = tester.getRect(body);
+    expect(drawn.left, closeTo(_panel.width * 107 / 1600, 0.5));
+    expect(drawn.width, greaterThan(tester.getSize(body).width), reason: 'still lifted under the focus');
+  });
+
   testWidgets('a film not started has a plain Play and no restart', (tester) async {
     await pumpDetail(tester, _Client(_movie(viewOffsetMs: null)));
 

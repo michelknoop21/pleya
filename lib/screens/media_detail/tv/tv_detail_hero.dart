@@ -187,41 +187,28 @@ extension _MediaDetailTvHero on _MediaDetailScreenState {
     _tvDetailReadMoreVisible = readMoreVisible;
     final directors = metadata.directors ?? const <String>[];
     final scores = _buildTvDetailScores(metadata, ink);
-    // Beside the text rather than under it: a long synopsis is the ordinary
-    // case, and a row of its own would move everything under it off the height
-    // of the northstar.
-    final synopsis = description == null
+    // 03 and 06 draw no control beside the synopsis. One that runs past its
+    // lines opens in full from the text itself (DEC-109's Meer lezen).
+    final synopsisText = description == null
         ? null
-        : Row(
-            mainAxisSize: .min,
-            crossAxisAlignment: .end,
-            children: [
-              SizedBox(
-                width: synopsisWidth,
-                child: Text(
-                  description,
-                  maxLines: TvDetailLayout.synopsisLines,
-                  overflow: .ellipsis,
-                  style: synopsisStyle,
-                ),
-              ),
-              if (readMoreVisible) ...[
-                SizedBox(width: 12 * pt),
-                AutomationNode(
-                  id: AutomationIds.mediaDetailReadMore,
-                  role: 'button',
-                  focusNode: _tvDetailReadMoreFocusNode,
-                  child: TvViewAllAction(
-                    label: t.discover.readMore,
-                    semanticLabel: t.discover.readMoreSemantic,
-                    focusNode: _tvDetailReadMoreFocusNode,
-                    onSelect: () => _openTvDetailSynopsisPanel(description),
-                    onNavigateUp: _focusAboveTvDetailHero,
-                    onNavigateDown: onSeason ? _focusBelowTvDetailTabs : _focusTvDetailActionRow,
-                  ),
-                ),
-              ],
-            ],
+        : TvDetailSynopsis(
+            text: description,
+            style: synopsisStyle,
+            width: synopsisWidth,
+            maxLines: TvDetailLayout.synopsisLines,
+            focusNode: _tvDetailReadMoreFocusNode,
+            semanticLabel: t.discover.readMoreSemantic,
+            onSelect: readMoreVisible ? () => _openTvDetailSynopsisPanel(description) : null,
+            onNavigateUp: _focusAboveTvDetailHero,
+            onNavigateDown: onSeason ? _focusBelowTvDetailTabs : _focusTvDetailActionRow,
+          );
+    final synopsis = synopsisText == null || !readMoreVisible
+        ? synopsisText
+        : AutomationNode(
+            id: AutomationIds.mediaDetailReadMore,
+            role: 'button',
+            focusNode: _tvDetailReadMoreFocusNode,
+            child: synopsisText,
           );
     final rowHeadroom = TvCatalogGrid.focusHeadroom(
       cardHeight: TvDetailLayout.wideCardHeight * pt,

@@ -14,9 +14,11 @@ import 'tv_detail_layout.dart';
 ///
 /// The colour comes from the artwork itself: nothing in the app computes a
 /// palette, and a blur this heavy leaves nothing of a backdrop but its colours:
-/// a soft gradient that runs on behind every row and never moves. The reduced
-/// tier draws the theme background: a full-screen blur is what an old Apple TV
-/// cannot afford.
+/// a soft gradient that runs on behind every row and never moves. One colour
+/// matrix on the same layer darkens the brightness but keeps most of the hue
+/// (06/07 and 03/04 are a coloured wash, not artwork under a black veil), see
+/// [TvDetailLayout.backdropMatrix]. The reduced tier draws the theme
+/// background: a full-screen blur is what an old Apple TV cannot afford.
 class TvDetailBackdrop extends StatelessWidget {
   const TvDetailBackdrop({super.key, required this.item, required this.client, this.localPath});
 
@@ -39,10 +41,13 @@ class TvDetailBackdrop extends StatelessWidget {
       children: [
         ColoredBox(color: tk.bg),
         ImageFiltered(
-          imageFilter: ImageFilter.blur(
-            sigmaX: TvDetailLayout.backdropBlur,
-            sigmaY: TvDetailLayout.backdropBlur,
-            tileMode: TileMode.mirror,
+          imageFilter: ImageFilter.compose(
+            outer: ColorFilter.matrix(TvDetailLayout.backdropMatrix(floor: _floor(context, tk.bg))),
+            inner: ImageFilter.blur(
+              sigmaX: TvDetailLayout.backdropBlur,
+              sigmaY: TvDetailLayout.backdropBlur,
+              tileMode: TileMode.mirror,
+            ),
           ),
           child: OptimizedMediaImage(
             client: client,
@@ -56,10 +61,14 @@ class TvDetailBackdrop extends StatelessWidget {
             fadeInDuration: Duration.zero,
           ),
         ),
-        ColoredBox(color: tk.bg.withValues(alpha: TvDetailLayout.scrimAlpha)),
       ],
     );
   }
+
+  /// The brightness everything is pulled towards: the light background, or in
+  /// the dark a lifted grey rather than black, so dark artwork stays a colour.
+  static double _floor(BuildContext context, Color bg) =>
+      Theme.of(context).brightness == Brightness.dark ? TvDetailLayout.backdropDarkFloor : TvDetailLayout.luma(bg);
 }
 
 /// A fade along [begin] to [end], from opaque to clear or back, without the
