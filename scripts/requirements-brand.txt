@@ -16,4 +16,4 @@
 # een tweede run laat op elke omgeving een schone tree achter.
 #
 #   pip install -r scripts/requirements-brand.txt
-Pillow==12.3.0
+Pillow==13.0.0
